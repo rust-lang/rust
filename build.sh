@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Settings
@@ -34,13 +34,13 @@ done
 # Build cg_clif
 unset CARGO_TARGET_DIR
 unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' ]]; then
+if [[ "$unamestr" == 'Linux' || "$unamestr" == "FreeBSD" ]]; then
    export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
 elif [[ "$unamestr" == 'Darwin' ]]; then
    export RUSTFLAGS='-Csplit-debuginfo=unpacked -Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
    dylib_ext='dylib'
 else
-   echo "Unsupported os"
+   echo "Unsupported os $unamestr"
    exit 1
 fi
 if [[ "$CHANNEL" == "release" ]]; then

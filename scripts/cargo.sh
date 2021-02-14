@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 dir=$(dirname "$0")
 source "$dir/config.sh"

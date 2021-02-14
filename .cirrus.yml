@@ -1,0 +1,25 @@
+task:
+  name: freebsd
+  freebsd_instance:
+    image: freebsd-12-1-release-amd64
+  setup_rust_script:
+    - pkg install -y curl git bash
+    - curl https://sh.rustup.rs -sSf --output rustup.sh
+    - sh rustup.sh --default-toolchain none -y --profile=minimal
+  cargo_bin_cache:
+    folder: ~/.cargo/bin
+  target_cache:
+    folder: target
+  prepare_script:
+    - . $HOME/.cargo/env
+    - git config --global user.email "user@example.com"
+    - git config --global user.name "User"
+    - ./prepare.sh
+  test_script:
+    - . $HOME/.cargo/env
+    - # Enable backtraces for easier debugging
+    - export RUST_BACKTRACE=1
+    - # Reduce amount of benchmark runs as they are slow
+    - export COMPILE_RUNS=2
+    - export RUN_RUNS=2
+    - ./test.sh

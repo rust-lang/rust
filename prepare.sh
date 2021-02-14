@@ -1,4 +1,4 @@
-#!/bin/bash --verbose
+#!/usr/bin/env bash
 set -e
 
 rustup component add rust-src rustc-dev llvm-tools-preview
