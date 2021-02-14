@@ -17,14 +17,14 @@ use clap::ArgMatches;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-// use this to store the crates when interacting with the crates.toml file
+/// List of sources to check, loaded from a .toml file
 #[derive(Debug, Serialize, Deserialize)]
-struct CrateList {
+struct SourceList {
     crates: HashMap<String, TomlCrate>,
 }
 
-// crate data we stored in the toml, can have multiple versions per crate
-// A single TomlCrate is laster mapped to several CrateSources in that case
+/// A crate source stored inside the .toml
+/// will be translated into on one of the `CrateSource` variants
 #[derive(Debug, Serialize, Deserialize)]
 struct TomlCrate {
     name: String,
@@ -34,7 +34,8 @@ struct TomlCrate {
     path: Option<String>,
 }
 
-// represents an archive we download from crates.io, or a git repo, or a local repo
+/// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
+/// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 enum CrateSource {
     CratesIo { name: String, version: String },
@@ -42,9 +43,7 @@ enum CrateSource {
     Path { name: String, path: PathBuf },
 }
 
-// represents the extracted sourcecode of a crate
-// we actually don't need to special-case git repos here because it does not matter for clippy, yay!
-// (clippy only needs a simple path)
+/// Represents the actual source code of a crate that we ran "cargo clippy" on
 #[derive(Debug)]
 struct Crate {
     version: String,
@@ -53,6 +52,7 @@ struct Crate {
     path: PathBuf,
 }
 
+/// A single warning that clippy issued while checking a `Crate`
 #[derive(Debug)]
 struct ClippyWarning {
     crate_name: String,
@@ -76,6 +76,9 @@ impl std::fmt::Display for ClippyWarning {
 }
 
 impl CrateSource {
+    /// Makes the sources available on the disk for clippy to check.
+    /// Clones a git repo and checks out the specified commit or downloads a crate from crates.io or
+    /// copies a local folder
     fn download_and_extract(&self) -> Crate {
         match self {
             CrateSource::CratesIo { name, version } => {
@@ -178,6 +181,8 @@ impl CrateSource {
 }
 
 impl Crate {
+    /// Run `cargo clippy` on the `Crate` and collect and return all the lint warnings that clippy
+    /// issued
     fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<ClippyWarning> {
         println!("Linting {} {}...", &self.name, &self.version);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
@@ -218,6 +223,7 @@ impl Crate {
     }
 }
 
+/// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
     Command::new("cargo")
         .arg("build")
@@ -225,7 +231,7 @@ fn build_clippy() {
         .expect("Failed to build clippy!");
 }
 
-// get a list of CrateSources we want to check from a "lintcheck_crates.toml" file.
+/// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
 fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     let toml_path = PathBuf::from(
         env::var("LINTCHECK_TOML").unwrap_or(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml").to_string()),
@@ -234,7 +240,7 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
-    let crate_list: CrateList =
+    let crate_list: SourceList =
         toml::from_str(&toml_content).unwrap_or_else(|e| panic!("Failed to parse {}: \n{}", toml_path.display(), e));
     // parse the hashmap of the toml file into a list of crates
     let tomlcrates: Vec<TomlCrate> = crate_list
@@ -288,7 +294,7 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
     (toml_filename, crate_sources)
 }
 
-// extract interesting data from a json lint message
+/// Parse the json output of clippy and return a `ClippyWarning`
 fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
     let jmsg: Value = serde_json::from_str(&json_message).unwrap_or_else(|e| panic!("Failed to parse json:\n{:?}", e));
 
@@ -313,7 +319,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
     }
 }
 
-// the main fn
+/// lintchecks `main()` function
 pub fn run(clap_config: &ArgMatches) {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
 
