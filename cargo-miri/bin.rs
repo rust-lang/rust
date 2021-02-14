@@ -565,7 +565,7 @@ fn phase_cargo_miri(mut args: env::Args) {
     exec(cmd)
 }
 
-fn phase_cargo_rustc(args: env::Args) {
+fn phase_cargo_rustc(mut args: env::Args) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -655,7 +655,7 @@ fn phase_cargo_rustc(args: env::Args) {
     if !print && target_crate {
         // Forward arguments, but remove "link" from "--emit" to make this a check-only build.
         let emit_flag = "--emit";
-        for arg in args {
+        while let Some(arg) = args.next() {
             if arg.starts_with(emit_flag) {
                 // Patch this argument. First, extract its value.
                 let val = &arg[emit_flag.len()..];
@@ -671,6 +671,10 @@ fn phase_cargo_rustc(args: env::Args) {
                     }
                 }
                 cmd.arg(format!("{}={}", emit_flag, val.join(",")));
+            } else if arg == "--extern" {
+                // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
+                // https://github.com/rust-lang/miri/issues/1705
+                forward_patched_extern_arg(&mut args, &mut cmd);
             } else {
                 cmd.arg(arg);
             }
