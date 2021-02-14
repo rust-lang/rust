@@ -319,6 +319,26 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
     }
 }
 
+/// Generate a short list of occuring lints-types and their count
+fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
+    // count lint type occurrences
+    let mut counter: HashMap<&String, usize> = HashMap::new();
+    clippy_warnings
+        .iter()
+        .for_each(|wrn| *counter.entry(&wrn.linttype).or_insert(0) += 1);
+
+    // collect into a tupled list for sorting
+    let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
+    // sort by "000{count} {clippy::lintname}"
+    // to not have a lint with 200 and 2 warnings take the same spot
+    stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
+
+    stats
+        .iter()
+        .map(|(lint, count)| format!("{} {}\n", lint, count))
+        .collect::<String>()
+}
+
 /// lintchecks `main()` function
 pub fn run(clap_config: &ArgMatches) {
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
@@ -380,7 +400,8 @@ pub fn run(clap_config: &ArgMatches) {
             .collect()
     };
 
-    // generate some stats:
+    // generate some stats
+    let stats_formatted = gather_stats(&clippy_warnings);
 
     // grab crashes/ICEs, save the crate name and the ice message
     let ices: Vec<(&String, &String)> = clippy_warnings
@@ -388,23 +409,6 @@ pub fn run(clap_config: &ArgMatches) {
         .filter(|warning| warning.is_ice)
         .map(|w| (&w.crate_name, &w.message))
         .collect();
-
-    // count lint type occurrences
-    let mut counter: HashMap<&String, usize> = HashMap::new();
-    clippy_warnings
-        .iter()
-        .for_each(|wrn| *counter.entry(&wrn.linttype).or_insert(0) += 1);
-
-    // collect into a tupled list for sorting
-    let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
-    // sort by "000{count} {clippy::lintname}"
-    // to not have a lint with 200 and 2 warnings take the same spot
-    stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
-
-    let stats_formatted: String = stats
-        .iter()
-        .map(|(lint, count)| format!("{} {}\n", lint, count))
-        .collect::<String>();
 
     let mut all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
     all_msgs.sort();
