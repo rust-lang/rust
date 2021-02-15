@@ -1066,6 +1066,7 @@ impl FusedIterator for Ancestors<'_> {}
 ///
 /// Which method works best depends on what kind of situation you're in.
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "path_buf_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `PathBuf::as_mut_vec` current implementation relies

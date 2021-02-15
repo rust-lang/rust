@@ -442,6 +442,7 @@ impl<T> [T] {
     /// // Here, `s` and `x` can be modified independently.
     /// ```
     #[rustc_conversion_suggestion]
+    #[rustc_diagnostic_item = "slice_to_vec_method"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T>

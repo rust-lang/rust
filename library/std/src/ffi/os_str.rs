@@ -71,6 +71,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "os_string_type")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
