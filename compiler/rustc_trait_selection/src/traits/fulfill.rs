@@ -647,7 +647,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ProcessResult::Unchanged
             }
             Err(selection_err) => {
-                info!("selecting trait at depth {} yielded Err", obligation.recursion_depth);
+                debug!("selecting trait at depth {} yielded Err", obligation.recursion_depth);
 
                 ProcessResult::Error(CodeSelectionError(selection_err))
             }

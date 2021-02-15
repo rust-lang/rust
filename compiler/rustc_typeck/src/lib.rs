@@ -56,6 +56,7 @@ This API is completely unstable and subject to change.
 */
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(bindings_after_at)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -421,8 +422,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
-
-    astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
+    item_cx.to_ty(hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(

@@ -477,7 +477,7 @@ pub(super) fn check_opaque<'tcx>(
 
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
-#[instrument(skip(tcx, span))]
+#[instrument(level = "debug", skip(tcx, span))]
 pub(super) fn check_opaque_for_inheriting_lifetimes(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,

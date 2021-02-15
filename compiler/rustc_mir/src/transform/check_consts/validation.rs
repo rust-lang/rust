@@ -812,7 +812,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         }
     }
 
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         use rustc_target::spec::abi::Abi::RustIntrinsic;
 

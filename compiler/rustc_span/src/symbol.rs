@@ -593,6 +593,7 @@ symbols! {
         html_no_source,
         html_playground_url,
         html_root_url,
+        hwaddress,
         i,
         i128,
         i128_type,
@@ -1603,6 +1604,7 @@ pub mod sym {
     use super::Symbol;
     use std::convert::TryInto;
 
+    #[doc(inline)]
     pub use super::sym_generated::*;
 
     // Used from a macro in `librustc_feature/accepted.rs`

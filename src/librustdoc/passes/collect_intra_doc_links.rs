@@ -1151,11 +1151,12 @@ impl LinkCollector<'_, '_> {
         };
 
         let verify = |kind: DefKind, id: DefId| {
-            debug!("intra-doc link to {} resolved to {:?}", path_str, res);
+            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id));
+            debug!("intra-doc link to {} resolved to {:?} (id: {:?})", path_str, res, id);
 
             // Disallow e.g. linking to enums with `struct@`
             debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-            match (self.kind_side_channel.take().map(|(kind, _)| kind).unwrap_or(kind), disambiguator) {
+            match (kind, disambiguator) {
                 | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
@@ -1190,7 +1191,7 @@ impl LinkCollector<'_, '_> {
                 }
             }
 
-            Some((kind, id))
+            Some(())
         };
 
         match res {
@@ -1241,7 +1242,7 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
             }
             Res::Def(kind, id) => {
-                let (kind, id) = verify(kind, id)?;
+                verify(kind, id)?;
                 let id = clean::register_res(cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink { link: ori_link.link, link_text, did: Some(id), fragment })
             }

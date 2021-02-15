@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle};
+use super::{ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
@@ -938,16 +938,24 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            fields.push(match self.parse_pat_field(lo, attrs) {
-                Ok(field) => field,
-                Err(err) => {
-                    if let Some(mut delayed_err) = delayed_err {
-                        delayed_err.emit();
-                    }
-                    return Err(err);
-                }
-            });
-            ate_comma = self.eat(&token::Comma);
+            let field =
+                self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
+                    let field = match this.parse_pat_field(lo, attrs) {
+                        Ok(field) => Ok(field),
+                        Err(err) => {
+                            if let Some(mut delayed_err) = delayed_err.take() {
+                                delayed_err.emit();
+                            }
+                            return Err(err);
+                        }
+                    }?;
+                    ate_comma = this.eat(&token::Comma);
+                    // We just ate a comma, so there's no need to use
+                    // `TrailingToken::Comma`
+                    Ok((field, TrailingToken::None))
+                })?;
+
+            fields.push(field)
         }
 
         if let Some(mut err) = delayed_err {

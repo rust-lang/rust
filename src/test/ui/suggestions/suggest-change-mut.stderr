@@ -1,0 +1,35 @@
+error[E0277]: the trait bound `&T: std::io::Read` is not satisfied
+  --> $DIR/suggest-change-mut.rs:12:48
+   |
+LL |         let mut stream_reader = BufReader::new(&stream);
+   |                                                ^^^^^^^ the trait `std::io::Read` is not implemented for `&T`
+   |
+   = note: required by `BufReader::<R>::new`
+help: consider removing the leading `&`-reference
+   |
+LL |         let mut stream_reader = BufReader::new(stream);
+   |                                               --
+help: consider changing this borrow's mutability
+   |
+LL |         let mut stream_reader = BufReader::new(&mut stream);
+   |                                                ^^^^
+
+error[E0599]: the method `read_until` exists for struct `BufReader<&T>`, but its trait bounds were not satisfied
+  --> $DIR/suggest-change-mut.rs:16:23
+   |
+LL |         stream_reader.read_until(b'\n', &mut buffer).expect("Reading into buffer failed");
+   |                       ^^^^^^^^^^ method cannot be called on `BufReader<&T>` due to unsatisfied trait bounds
+   | 
+  ::: $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL
+   |
+LL | pub struct BufReader<R> {
+   | ----------------------- doesn't satisfy `BufReader<&T>: BufRead`
+   |
+   = note: the following trait bounds were not satisfied:
+           `&T: std::io::Read`
+           which is required by `BufReader<&T>: BufRead`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

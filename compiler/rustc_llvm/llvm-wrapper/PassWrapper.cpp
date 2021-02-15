@@ -33,6 +33,7 @@
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
+#include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
 
@@ -131,6 +132,12 @@ extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool 
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
   return wrap(createThreadSanitizerLegacyPassPass());
+}
+
+extern "C" LLVMPassRef LLVMRustCreateHWAddressSanitizerPass(bool Recover) {
+  const bool CompileKernel = false;
+
+  return wrap(createHWAddressSanitizerLegacyPassPass(CompileKernel, Recover));
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
@@ -722,6 +729,8 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeMemoryRecover;
   int  SanitizeMemoryTrackOrigins;
   bool SanitizeThread;
+  bool SanitizeHWAddress;
+  bool SanitizeHWAddressRecover;
 };
 
 extern "C" void
@@ -884,6 +893,23 @@ LLVMRustOptimizeWithNewPassManager(
         [SanitizerOptions](ModulePassManager &MPM) {
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
+        }
+      );
+#endif
+    }
+    if (SanitizerOptions->SanitizeHWAddress) {
+#if LLVM_VERSION_GE(11, 0)
+      OptimizerLastEPCallbacks.push_back(
+        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(HWAddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
+        }
+      );
+#else
+      PipelineStartEPCallbacks.push_back(
+        [SanitizerOptions](ModulePassManager &MPM) {
+          MPM.addPass(HWAddressSanitizerPass(
+              /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
         }
       );
 #endif

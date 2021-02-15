@@ -131,6 +131,7 @@ pub enum Attribute {
     ReturnsTwice = 25,
     ReadNone = 26,
     InaccessibleMemOnly = 27,
+    SanitizeHWAddress = 28,
 }
 
 /// LLVMIntPredicate
@@ -439,6 +440,8 @@ pub struct SanitizerOptions {
     pub sanitize_memory_recover: bool,
     pub sanitize_memory_track_origins: c_int,
     pub sanitize_thread: bool,
+    pub sanitize_hwaddress: bool,
+    pub sanitize_hwaddress_recover: bool,
 }
 
 /// LLVMRelocMode
@@ -2128,6 +2131,7 @@ extern "C" {
         Recover: bool,
     ) -> &'static mut Pass;
     pub fn LLVMRustCreateThreadSanitizerPass() -> &'static mut Pass;
+    pub fn LLVMRustCreateHWAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
     pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
     pub fn LLVMRustAddLastExtensionPasses(
         PMB: &PassManagerBuilder,

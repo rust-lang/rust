@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_query_system::query::{QueryCache, QueryContext, QueryState};
+use rustc_query_system::query::{QueryCache, QueryCacheStore};
 use std::fmt::Debug;
 use std::io::Write;
 
@@ -230,7 +230,7 @@ where
 pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
     tcx: TyCtxt<'tcx>,
     query_name: &'static str,
-    query_state: &QueryState<crate::dep_graph::DepKind, <TyCtxt<'tcx> as QueryContext>::Query, C>,
+    query_cache: &QueryCacheStore<C>,
     string_cache: &mut QueryKeyStringCache,
 ) where
     C: QueryCache,
@@ -251,7 +251,7 @@ pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             // need to invoke queries itself, we cannot keep the query caches
             // locked while doing so. Instead we copy out the
             // `(query_key, dep_node_index)` pairs and release the lock again.
-            let query_keys_and_indices: Vec<_> = query_state
+            let query_keys_and_indices: Vec<_> = query_cache
                 .iter_results(|results| results.map(|(k, _, i)| (k.clone(), i)).collect());
 
             // Now actually allocate the strings. If allocating the strings
@@ -276,7 +276,7 @@ pub(super) fn alloc_self_profile_query_strings_for_query_cache<'tcx, C>(
             let query_name = profiler.get_or_alloc_cached_string(query_name);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
-            query_state.iter_results(|results| {
+            query_cache.iter_results(|results| {
                 let query_invocation_ids: Vec<_> = results.map(|v| v.2.into()).collect();
 
                 profiler.bulk_map_query_invocation_id_to_single_string(

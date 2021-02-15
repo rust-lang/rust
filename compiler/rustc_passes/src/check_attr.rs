@@ -1101,17 +1101,6 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_arm(self, arm);
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
-        self.check_attributes(
-            macro_def.hir_id,
-            &macro_def.attrs,
-            &macro_def.span,
-            Target::MacroDef,
-            None,
-        );
-        intravisit::walk_macro_def(self, macro_def);
-    }
-
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
@@ -1156,6 +1145,23 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     ) {
         self.check_attributes(variant.id, variant.attrs, &variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant, generics, item_id)
+    }
+
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
+        self.check_attributes(
+            macro_def.hir_id,
+            macro_def.attrs,
+            &macro_def.span,
+            Target::MacroDef,
+            None,
+        );
+        intravisit::walk_macro_def(self, macro_def);
+    }
+
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        self.check_attributes(param.hir_id, param.attrs, &param.span, Target::Param, None);
+
+        intravisit::walk_param(self, param);
     }
 }
 

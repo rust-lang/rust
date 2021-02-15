@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle};
+use super::{AttrWrapper, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
@@ -26,7 +26,7 @@ pub(super) const DEFAULT_INNER_ATTR_FORBIDDEN: InnerAttrPolicy<'_> = InnerAttrPo
 
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
-    pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
+    pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         loop {
@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        Ok(attrs)
+        Ok(AttrWrapper::new(attrs))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -89,7 +89,8 @@ impl<'a> Parser<'a> {
             inner_parse_policy, self.token
         );
         let lo = self.token.span;
-        self.collect_tokens(|this| {
+        // Attributse can't have attributes of their own
+        self.collect_tokens_no_attrs(|this| {
             if this.eat(&token::Pound) {
                 let style = if this.eat(&token::Not) {
                     ast::AttrStyle::Inner
@@ -163,7 +164,8 @@ impl<'a> Parser<'a> {
                 let args = this.parse_attr_args()?;
                 Ok(ast::AttrItem { path, args, tokens: None })
             };
-            if capture_tokens { self.collect_tokens(do_parse) } else { do_parse(self) }?
+            // Attr items don't have attributes
+            if capture_tokens { self.collect_tokens_no_attrs(do_parse) } else { do_parse(self) }?
         })
     }
 

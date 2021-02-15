@@ -145,8 +145,8 @@ pub struct BTreeMap<K, V> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
-        unsafe {
-            drop(ptr::read(self).into_iter());
+        if let Some(root) = self.root.take() {
+            Dropper { front: root.into_dying().first_leaf_edge(), remaining_length: self.length };
         }
     }
 }
@@ -330,6 +330,14 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.iter()).finish()
     }
+}
+
+/// A simplified version of `IntoIter` that is not double-ended and has only one
+/// purpose: to drop the remainder of an `IntoIter`. Therefore it also serves to
+/// drop an entire tree without the need to first look up a `back` leaf edge.
+struct Dropper<K, V> {
+    front: Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
+    remaining_length: usize,
 }
 
 /// An iterator over the keys of a `BTreeMap`.
@@ -1271,7 +1279,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_unchecked()) }
+            Some(unsafe { self.range.next_unchecked() })
         }
     }
 
@@ -1302,7 +1310,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for Iter<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            unsafe { Some(self.range.next_back_unchecked()) }
+            Some(unsafe { self.range.next_back_unchecked() })
         }
     }
 }
@@ -1340,8 +1348,7 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            let (k, v) = unsafe { self.range.next_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
+            Some(unsafe { self.range.next_unchecked() })
         }
     }
 
@@ -1369,8 +1376,7 @@ impl<'a, K: 'a, V: 'a> DoubleEndedIterator for IterMut<'a, K, V> {
             None
         } else {
             self.length -= 1;
-            let (k, v) = unsafe { self.range.next_back_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
+            Some(unsafe { self.range.next_back_unchecked() })
         }
     }
 }
@@ -1410,42 +1416,42 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     }
 }
 
-#[stable(feature = "btree_drop", since = "1.7.0")]
-impl<K, V> Drop for IntoIter<K, V> {
+impl<K, V> Drop for Dropper<K, V> {
     fn drop(&mut self) {
-        struct DropGuard<'a, K, V>(&'a mut IntoIter<K, V>);
+        // Similar to advancing a non-fusing iterator.
+        fn next_or_end<K, V>(this: &mut Dropper<K, V>) -> Option<(K, V)> {
+            if this.remaining_length == 0 {
+                unsafe { ptr::read(&this.front).deallocating_end() }
+                None
+            } else {
+                this.remaining_length -= 1;
+                Some(unsafe { this.front.deallocating_next_unchecked() })
+            }
+        }
+
+        struct DropGuard<'a, K, V>(&'a mut Dropper<K, V>);
 
         impl<'a, K, V> Drop for DropGuard<'a, K, V> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(_) = self.0.next() {}
-
-                unsafe {
-                    let mut node =
-                        ptr::read(&self.0.front).unwrap_unchecked().into_node().forget_type();
-                    while let Some(parent) = node.deallocate_and_ascend() {
-                        node = parent.into_node().forget_type();
-                    }
-                }
+                while let Some(_pair) = next_or_end(&mut self.0) {}
             }
         }
 
-        while let Some(pair) = self.next() {
+        while let Some(pair) = next_or_end(self) {
             let guard = DropGuard(self);
             drop(pair);
             mem::forget(guard);
         }
+    }
+}
 
-        unsafe {
-            if let Some(front) = ptr::read(&self.front) {
-                let mut node = front.into_node().forget_type();
-                // Most of the nodes have been deallocated while traversing
-                // but one pile from a leaf up to the root is left standing.
-                while let Some(parent) = node.deallocate_and_ascend() {
-                    node = parent.into_node().forget_type();
-                }
-            }
+#[stable(feature = "btree_drop", since = "1.7.0")]
+impl<K, V> Drop for IntoIter<K, V> {
+    fn drop(&mut self) {
+        if let Some(front) = self.front.take() {
+            Dropper { front, remaining_length: self.length };
         }
     }
 }
@@ -1459,7 +1465,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.front.as_mut().unwrap().next_unchecked() })
+            Some(unsafe { self.front.as_mut().unwrap().deallocating_next_unchecked() })
         }
     }
 
@@ -1475,7 +1481,7 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.back.as_mut().unwrap().next_back_unchecked() })
+            Some(unsafe { self.back.as_mut().unwrap().deallocating_next_back_unchecked() })
         }
     }
 }
@@ -1692,7 +1698,7 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { unsafe { Some(self.next_unchecked()) } }
+        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a V)> {
@@ -1856,12 +1862,7 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() {
-            None
-        } else {
-            let (k, v) = unsafe { self.next_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
-        }
+        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
@@ -1899,12 +1900,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() {
-            None
-        } else {
-            let (k, v) = unsafe { self.next_back_unchecked() };
-            Some((k, v)) // coerce k from `&mut K` to `&K`
-        }
+        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
     }
 }
 

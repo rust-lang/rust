@@ -1079,7 +1079,10 @@ impl<'tcx> Witness<'tcx> {
 /// `is_under_guard` is used to inform if the pattern has a guard. If it
 /// has one it must not be inserted into the matrix. This shouldn't be
 /// relied on for soundness.
-#[instrument(skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level))]
+#[instrument(
+    level = "debug",
+    skip(cx, matrix, witness_preference, hir_id, is_under_guard, is_top_level)
+)]
 fn is_useful<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
