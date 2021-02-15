@@ -228,12 +228,17 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(t, n) => {
-                let n = tcx.lift(n).unwrap();
-                match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    _ if t.is_simple_ty() => format!("array `{}`", self).into(),
-                    Some(n) => format!("array of {} element{}", n, pluralize!(n)).into(),
-                    None => "array".into(),
+                if t.is_simple_ty() {
+                    return format!("array `{}`", self).into();
                 }
+
+                let n = tcx.lift(n).unwrap();
+                if let ty::ConstKind::Value(v) = n.val {
+                    if let Some(n) = v.try_to_machine_usize(tcx) {
+                        return format!("array of {} element{}", n, pluralize!(n)).into();
+                    }
+                }
+                "array".into()
             }
             ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
