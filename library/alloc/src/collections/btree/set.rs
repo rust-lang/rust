@@ -649,12 +649,12 @@ impl<T> BTreeSet<T> {
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
-    /// let mut map = BTreeSet::new();
-    /// assert_eq!(map.first(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.first(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.first(), Some(&1));
+    /// let mut set = BTreeSet::new();
+    /// assert_eq!(set.first(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.first(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.first(), Some(&1));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn first(&self) -> Option<&T>
@@ -675,12 +675,12 @@ impl<T> BTreeSet<T> {
     /// #![feature(map_first_last)]
     /// use std::collections::BTreeSet;
     ///
-    /// let mut map = BTreeSet::new();
-    /// assert_eq!(map.last(), None);
-    /// map.insert(1);
-    /// assert_eq!(map.last(), Some(&1));
-    /// map.insert(2);
-    /// assert_eq!(map.last(), Some(&2));
+    /// let mut set = BTreeSet::new();
+    /// assert_eq!(set.last(), None);
+    /// set.insert(1);
+    /// assert_eq!(set.last(), Some(&1));
+    /// set.insert(2);
+    /// assert_eq!(set.last(), Some(&2));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
     pub fn last(&self) -> Option<&T>
