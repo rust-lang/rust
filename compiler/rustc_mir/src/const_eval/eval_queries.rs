@@ -208,7 +208,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    // see comment in const_eval_raw_provider for what we're doing here
+    // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
