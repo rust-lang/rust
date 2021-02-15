@@ -9,8 +9,10 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.0"
+cdylib = { path = "cdylib" }
 issue_1567 = { path = "issue-1567" }
 issue_1691 = { path = "issue-1691" }
+issue_1705 = { path = "issue-1705" }
 
 [dev-dependencies]
 rand = { version = "0.7", features = ["small_rng"] }
