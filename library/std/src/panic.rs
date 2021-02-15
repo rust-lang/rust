@@ -408,7 +408,7 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
 ///
-/// Also note that unwinding into Rust code with a foreign exception (e.g. a
+/// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
 ///
 /// # Examples
