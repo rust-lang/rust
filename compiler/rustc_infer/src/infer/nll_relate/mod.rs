@@ -72,6 +72,8 @@ where
 }
 
 pub trait TypeRelatingDelegate<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
     /// Push a constraint `sup: sub` -- this constraint must be
     /// satisfied for the two types to be related. `sub` and `sup` may
     /// be regions from the type or new variables created through the
@@ -473,9 +475,8 @@ where
         self.infcx.tcx
     }
 
-    // FIXME(oli-obk): not sure how to get the correct ParamEnv
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::empty()
+        self.delegate.param_env()
     }
 
     fn tag(&self) -> &'static str {
@@ -819,9 +820,8 @@ where
         self.infcx.tcx
     }
 
-    // FIXME(oli-obk): not sure how to get the correct ParamEnv
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        ty::ParamEnv::empty()
+        self.delegate.param_env()
     }
 
     fn tag(&self) -> &'static str {
