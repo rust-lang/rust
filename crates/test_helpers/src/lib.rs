@@ -241,7 +241,24 @@ macro_rules! test_lanes {
             mod $test {
                 use super::*;
 
-                fn implementation<const $lanes: usize>() $body
+                fn implementation<const $lanes: usize>()
+                where
+                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost64,
+                $body
 
                 #[cfg(target_arch = "wasm32")]
                 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
@@ -302,7 +319,24 @@ macro_rules! test_lanes_panic {
             mod $test {
                 use super::*;
 
-                fn implementation<const $lanes: usize>() $body
+                fn implementation<const $lanes: usize>()
+                where
+                    core_simd::SimdU8<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU16<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdU128<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdUsize<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI8<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI16<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdI128<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdIsize<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdF32<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::SimdF64<$lanes>: core_simd::LanesAtMost64,
+                    core_simd::BitMask<$lanes>: core_simd::LanesAtMost64,
+                $body
 
                 #[test]
                 #[should_panic]
