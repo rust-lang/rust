@@ -1,75 +1,139 @@
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:29:13
+  --> $DIR/default_numeric_fallback.rs:10:17
    |
-LL |     let x = 1;
-   |             ^
+LL |         let x = 22;
+   |                 ^^
    |
    = note: `-D clippy::default-numeric-fallback` implied by `-D warnings`
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:30:13
+  --> $DIR/default_numeric_fallback.rs:11:18
    |
-LL |     let x = 0.1;
-   |             ^^^
+LL |         let x = [1, 2, 3];
+   |                  ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:32:23
+  --> $DIR/default_numeric_fallback.rs:11:21
    |
-LL |     let x = if true { 1 } else { 2 };
+LL |         let x = [1, 2, 3];
+   |                     ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:11:24
+   |
+LL |         let x = [1, 2, 3];
+   |                        ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:12:28
+   |
+LL |         let x = if true { (1, 2) } else { (3, 4) };
+   |                            ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:12:31
+   |
+LL |         let x = if true { (1, 2) } else { (3, 4) };
+   |                               ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:12:44
+   |
+LL |         let x = if true { (1, 2) } else { (3, 4) };
+   |                                            ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:12:47
+   |
+LL |         let x = if true { (1, 2) } else { (3, 4) };
+   |                                               ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:13:23
+   |
+LL |         let x = match 1 {
    |                       ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:32:34
+  --> $DIR/default_numeric_fallback.rs:14:13
    |
-LL |     let x = if true { 1 } else { 2 };
-   |                                  ^
-   |
-   = help: consider adding suffix to avoid default numeric fallback
-
-error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:35:17
-   |
-LL |         let y = 1;
-   |                 ^
+LL |             1 => 1,
+   |             ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:39:17
+  --> $DIR/default_numeric_fallback.rs:14:18
    |
-LL |     generic_arg(10);
-   |                 ^^
-   |
-   = help: consider adding suffix to avoid default numeric fallback
-
-error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:40:19
-   |
-LL |     s.generic_arg(10);
-   |                   ^^
+LL |             1 => 1,
+   |                  ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:41:28
+  --> $DIR/default_numeric_fallback.rs:15:18
    |
-LL |     let x: _ = generic_arg(10);
-   |                            ^^
+LL |             _ => 2,
+   |                  ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:42:30
+  --> $DIR/default_numeric_fallback.rs:19:17
    |
-LL |     let x: _ = s.generic_arg(10);
-   |                              ^^
+LL |         let x = 0.12;
+   |                 ^^^^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
-error: aborting due to 9 previous errors
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:37:21
+   |
+LL |             let y = 1;
+   |                     ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:73:21
+   |
+LL |         generic_arg(1);
+   |                     ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:76:32
+   |
+LL |         let x: _ = generic_arg(1);
+   |                                ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:96:23
+   |
+LL |         s.generic_arg(1);
+   |                       ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: aborting due to 17 previous errors
 

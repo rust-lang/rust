@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** For those who are very careful about types, default numeric fallback
     /// can be a pitfall that cause unexpected runtime behavior.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** This lint can only be allowed at the function level or above.
     ///
     /// **Example:**
     /// ```rust

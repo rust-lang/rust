@@ -4,55 +4,97 @@
 #![allow(clippy::no_effect)]
 #![allow(clippy::unnecessary_operation)]
 
-fn concrete_arg(x: i32) {}
+mod basic_expr {
+    fn test() {
+        // Should lint unsuffixed literals typed `i32`.
+        let x = 22;
+        let x = [1, 2, 3];
+        let x = if true { (1, 2) } else { (3, 4) };
+        let x = match 1 {
+            1 => 1,
+            _ => 2,
+        };
 
-fn generic_arg<T>(t: T) {}
+        // Should lint unsuffixed literals typed `f64`.
+        let x = 0.12;
 
-struct ConcreteStruct {
-    x: i32,
+        // Should NOT lint suffixed literals.
+        let x = 22_i32;
+        let x = 0.12_f64;
+
+        // Should NOT lint literals in init expr if `Local` has a type annotation.
+        let x: f64 = 0.1;
+        let x: [i32; 3] = [1, 2, 3];
+        let x: (i32, i32) = if true { (1, 2) } else { (3, 4) };
+        let x: _ = 1;
+    }
 }
 
-struct StructForMethodCallTest {
-    x: i32,
+mod nested_local {
+    fn test() {
+        let x: _ = {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1
+        };
+    }
 }
 
-impl StructForMethodCallTest {
-    fn concrete_arg(&self, x: i32) {}
+mod function_def {
+    fn ret_i32() -> i32 {
+        // Even though the output type is specified,
+        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
+        23
+    }
 
-    fn generic_arg<T>(&self, t: T) {}
+    fn test() {
+        // Should lint this because return type is inferred to `i32` and NOT bound to a concrete
+        // type.
+        let f = || -> _ { 1 };
+
+        // Even though the output type is specified,
+        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
+        let f = || -> i32 { 1 };
+    }
 }
 
-fn main() {
-    let s = StructForMethodCallTest { x: 10_i32 };
+mod function_calls {
+    fn concrete_arg(x: i32) {}
 
-    // Bad.
-    let x = 1;
-    let x = 0.1;
+    fn generic_arg<T>(t: T) {}
 
-    let x = if true { 1 } else { 2 };
+    fn test() {
+        // Should NOT lint this because the argument type is bound to a concrete type.
+        concrete_arg(1);
 
-    let x: _ = {
-        let y = 1;
-        1
-    };
+        // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
+        generic_arg(1);
 
-    generic_arg(10);
-    s.generic_arg(10);
-    let x: _ = generic_arg(10);
-    let x: _ = s.generic_arg(10);
-
-    // Good.
-    let x = 1_i32;
-    let x: i32 = 1;
-    let x: _ = 1;
-    let x = 0.1_f64;
-    let x: f64 = 0.1;
-    let x: _ = 0.1;
-
-    let x: _ = if true { 1 } else { 2 };
-
-    concrete_arg(10);
-    s.concrete_arg(10);
-    let x = concrete_arg(10);
-    let x = s.concrete_arg(10);
+        // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
+        let x: _ = generic_arg(1);
+    }
 }
+
+mod method_calls {
+    struct StructForMethodCallTest {}
+
+    impl StructForMethodCallTest {
+        fn concrete_arg(&self, x: i32) {}
+
+        fn generic_arg<T>(&self, t: T) {}
+    }
+
+    fn test() {
+        let s = StructForMethodCallTest {};
+
+        // Should NOT lint this because the argument type is bound to a concrete type.
+        s.concrete_arg(1);
+
+        // Should lint this because the argument type is bound to a concrete type.
+        s.generic_arg(1);
+    }
+}
+
+fn main() {}
