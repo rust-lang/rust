@@ -16,6 +16,7 @@ mod fmt;
 mod intrinsics;
 mod ops;
 mod round;
+mod comparisons;
 
 mod math;
 

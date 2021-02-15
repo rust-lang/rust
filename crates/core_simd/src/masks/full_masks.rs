@@ -75,6 +75,25 @@ macro_rules! define_mask {
                     0
                 }
             }
+
+            /// Creates a mask from an integer vector.
+            ///
+            /// # Safety
+            /// All lanes must be either 0 or -1.
+            #[inline]
+            pub unsafe fn from_int_unchecked(value: $type) -> Self {
+                Self(value)
+            }
+
+            /// Creates a mask from an integer vector.
+            ///
+            /// # Panics
+            /// Panics if any lane is not 0 or -1.
+            #[inline]
+            pub fn from_int(value: $type) -> Self {
+                use core::convert::TryInto;
+                value.try_into().unwrap()
+            }
         }
 
         impl<const $lanes: usize> core::convert::From<bool> for $name<$lanes>
