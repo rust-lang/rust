@@ -223,7 +223,7 @@ def children_of_btree_map(map):
         keys = leaf["keys"]
         vals = leaf["vals"]
         edges = cast_to_internal(node_ptr)["edges"] if height > 0 else None
-        length = leaf["len"]
+        length = leaf["head"]["len"]
 
         for i in xrange(0, length + 1):
             if height > 0:
