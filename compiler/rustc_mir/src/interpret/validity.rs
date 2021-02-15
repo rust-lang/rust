@@ -21,7 +21,7 @@ use std::hash::Hash;
 
 use super::{
     CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy,
-    ValueVisitor,
+    ScalarMaybeUninit, ValueVisitor,
 };
 
 macro_rules! throw_validation_failure {
@@ -378,7 +378,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         value: OpTy<'tcx, M::PointerTag>,
         kind: &str,
     ) -> InterpResult<'tcx> {
-        let value = self.ecx.read_immediate(value)?;
+        let value = try_validation!(
+            self.ecx.read_immediate(value),
+            self.path,
+            err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
+        );
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         let place = try_validation!(
@@ -485,6 +489,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         Ok(())
     }
 
+    fn read_scalar(
+        &self,
+        op: OpTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, ScalarMaybeUninit<M::PointerTag>> {
+        Ok(try_validation!(
+            self.ecx.read_scalar(op),
+            self.path,
+            err_unsup!(ReadPointerAsBytes) => { "(potentially part of) a pointer" } expected { "plain (non-pointer) bytes" },
+        ))
+    }
+
     /// Check if this is a value of primitive type, and if yes check the validity of the value
     /// at that type.  Return `true` if the type is indeed primitive.
     fn try_visit_primitive(
@@ -495,7 +510,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let ty = value.layout.ty;
         match ty.kind() {
             ty::Bool => {
-                let value = self.ecx.read_scalar(value)?;
+                let value = self.read_scalar(value)?;
                 try_validation!(
                     value.to_bool(),
                     self.path,
@@ -505,7 +520,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Char => {
-                let value = self.ecx.read_scalar(value)?;
+                let value = self.read_scalar(value)?;
                 try_validation!(
                     value.to_char(),
                     self.path,
@@ -515,11 +530,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
-                let value = try_validation!(
-                    self.ecx.read_scalar(value),
-                    self.path,
-                    err_unsup!(ReadPointerAsBytes) => { "read of part of a pointer" },
-                );
+                let value = self.read_scalar(value)?;
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 if self.ctfe_mode.is_some() {
@@ -541,9 +552,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // actually enforce the strict rules for raw pointers (mostly because
                 // that lets us re-use `ref_to_mplace`).
                 let place = try_validation!(
-                    self.ecx.ref_to_mplace(self.ecx.read_immediate(value)?),
+                    self.ecx.read_immediate(value).and_then(|i| self.ecx.ref_to_mplace(i)),
                     self.path,
                     err_ub!(InvalidUninitBytes(None)) => { "uninitialized raw pointer" },
+                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
                 );
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
@@ -569,9 +581,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 Ok(true)
             }
             ty::FnPtr(_sig) => {
-                let value = self.ecx.read_scalar(value)?;
+                let value = try_validation!(
+                    self.ecx.read_immediate(value),
+                    self.path,
+                    err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
+                );
                 let _fn = try_validation!(
-                    value.check_init().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value.to_scalar().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
@@ -615,7 +631,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         op: OpTy<'tcx, M::PointerTag>,
         scalar_layout: &Scalar,
     ) -> InterpResult<'tcx> {
-        let value = self.ecx.read_scalar(op)?;
+        let value = self.read_scalar(op)?;
         let valid_range = &scalar_layout.valid_range;
         let (lo, hi) = valid_range.clone().into_inner();
         // Determine the allowed range
