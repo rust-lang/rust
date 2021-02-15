@@ -386,7 +386,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         // Handle wide pointers.
         // Check metadata early, for better diagnostics
         let place = try_validation!(
-            self.ecx.ref_to_mplace(value),
+            self.ecx.ref_to_mplace(&value),
             self.path,
             err_ub!(InvalidUninitBytes(None)) => { "uninitialized {}", kind },
         );

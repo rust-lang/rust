@@ -303,12 +303,12 @@ where
     /// Generally prefer `deref_operand`.
     pub fn ref_to_mplace(
         &self,
-        val: ImmTy<'tcx, M::PointerTag>,
+        val: &ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let pointee_type =
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
-        let (ptr, meta) = match *val {
+        let (ptr, meta) = match **val {
             Immediate::Scalar(ptr) => (ptr.check_init()?, MemPlaceMeta::None),
             Immediate::ScalarPair(ptr, meta) => {
                 (ptr.check_init()?, MemPlaceMeta::Meta(meta.check_init()?))
@@ -335,7 +335,7 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-        let place = self.ref_to_mplace(val)?;
+        let place = self.ref_to_mplace(&val)?;
         self.mplace_access_checked(place, None)
     }
 
