@@ -289,7 +289,6 @@ use super::{PatternFoldable, PatternFolder};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::OnceCell;
 
 use rustc_arena::TypedArena;
 use rustc_hir::def_id::DefId;
@@ -300,6 +299,7 @@ use rustc_span::Span;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
+use std::lazy::OnceCell;
 
 crate struct MatchCheckCtxt<'a, 'tcx> {
     crate tcx: TyCtxt<'tcx>,
