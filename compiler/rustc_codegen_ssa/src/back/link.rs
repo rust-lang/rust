@@ -922,28 +922,20 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
 
-    match sess.opts.target_triple.triple() {
-        "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
-            // On Apple platforms, the sanitizer is always built as a dylib, and
-            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
-            // rpath to the library as well (the rpath should be absolute, see
-            // PR #41352 for details).
-            let filename = format!("rustc{}_rt.{}", channel, name);
-            let path = find_sanitizer_runtime(&sess, &filename);
-            let rpath = path.to_str().expect("non-utf8 component in path");
-            linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-            linker.link_dylib(Symbol::intern(&filename));
-        }
-        "aarch64-fuchsia"
-        | "aarch64-unknown-linux-gnu"
-        | "x86_64-fuchsia"
-        | "x86_64-unknown-freebsd"
-        | "x86_64-unknown-linux-gnu" => {
-            let filename = format!("librustc{}_rt.{}.a", channel, name);
-            let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
-            linker.link_whole_rlib(&path);
-        }
-        _ => {}
+    if sess.target.is_like_osx {
+        // On Apple platforms, the sanitizer is always built as a dylib, and
+        // LLVM will link to `@rpath/*.dylib`, so we need to specify an
+        // rpath to the library as well (the rpath should be absolute, see
+        // PR #41352 for details).
+        let filename = format!("rustc{}_rt.{}", channel, name);
+        let path = find_sanitizer_runtime(&sess, &filename);
+        let rpath = path.to_str().expect("non-utf8 component in path");
+        linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
+        linker.link_dylib(Symbol::intern(&filename));
+    } else {
+        let filename = format!("librustc{}_rt.{}.a", channel, name);
+        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        linker.link_whole_rlib(&path);
     }
 }
 
