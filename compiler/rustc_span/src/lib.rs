@@ -510,11 +510,10 @@ impl Span {
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
     pub fn allows_unstable(&self, feature: Symbol) -> bool {
-        self.ctxt().outer_expn_data().allow_internal_unstable.map_or(false, |features| {
-            features
-                .iter()
-                .any(|&f| f == feature || f == sym::allow_internal_unstable_backcompat_hack)
-        })
+        self.ctxt()
+            .outer_expn_data()
+            .allow_internal_unstable
+            .map_or(false, |features| features.iter().any(|&f| f == feature))
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
