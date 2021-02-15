@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Changes since the last major version]
 
+- `jemalloc` allocator `config.toml` option is replaced with `mimalloc` option for improved performance characteristics [#81782](https://github.com/rust-lang/rust/pull/81782)
 - `llvm-libunwind` now accepts `in-tree` (formerly true), `system` or `no` (formerly false) [#77703](https://github.com/rust-lang/rust/pull/77703)
 
 ### Non-breaking changes

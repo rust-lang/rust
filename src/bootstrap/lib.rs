@@ -564,9 +564,6 @@ impl Build {
     /// Gets the space-separated set of activated features for the compiler.
     fn rustc_features(&self) -> String {
         let mut features = String::new();
-        if self.config.jemalloc {
-            features.push_str("jemalloc");
-        }
         if self.config.mimalloc {
             features.push_str("mimalloc");
         }

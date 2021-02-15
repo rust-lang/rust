@@ -99,7 +99,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
-      --set rust.jemalloc
+      --set rust.mimalloc
 ENV SCRIPT ../src/ci/pgo.sh python2.7 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
