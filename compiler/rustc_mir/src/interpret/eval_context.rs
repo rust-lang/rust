@@ -548,8 +548,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: MemPlaceMeta<M::PointerTag>,
-        layout: TyAndLayout<'tcx>,
+        metadata: &MemPlaceMeta<M::PointerTag>,
+        layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
@@ -577,7 +577,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
+                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, &field)? {
                     Some(size_and_align) => size_and_align,
                     None => {
                         // A field with extern type.  If this field is at offset 0, we behave
@@ -645,9 +645,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(mplace.meta, mplace.layout)
+        self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
 
     pub fn push_stack_frame(

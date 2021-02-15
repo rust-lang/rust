@@ -102,7 +102,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         ecx: &InterpCx<'mir, 'tcx, M>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, Self> {
-        ecx.mplace_downcast(*self, variant)
+        ecx.mplace_downcast(self, variant)
     }
 
     #[inline(always)]
@@ -111,7 +111,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> Value<'mir, 'tcx, M>
         ecx: &InterpCx<'mir, 'tcx, M>,
         field: usize,
     ) -> InterpResult<'tcx, Self> {
-        ecx.mplace_field(*self, field)
+        ecx.mplace_field(self, field)
     }
 }
 
@@ -208,7 +208,7 @@ macro_rules! make_value_visitor {
                     ty::Dynamic(..) => {
                         // immediate trait objects are not a thing
                         let dest = v.to_op(self.ecx())?.assert_mem_place(self.ecx());
-                        let inner = self.ecx().unpack_dyn_trait(dest)?.1;
+                        let inner = self.ecx().unpack_dyn_trait(&dest)?.1;
                         trace!("walk_value: dyn object layout: {:#?}", inner.layout);
                         // recurse with the inner type
                         return self.visit_field(&v, 0, &Value::from_mem_place(inner));
@@ -241,7 +241,7 @@ macro_rules! make_value_visitor {
                         // Now we can go over all the fields.
                         // This uses the *run-time length*, i.e., if we are a slice,
                         // the dynamic info from the metadata is used.
-                        let iter = self.ecx().mplace_array_fields(mplace)?
+                        let iter = self.ecx().mplace_array_fields(&mplace)?
                             .map(|f| f.and_then(|f| {
                                 Ok(Value::from_mem_place(f))
                             }));

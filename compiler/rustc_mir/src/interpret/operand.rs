@@ -180,6 +180,13 @@ impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     }
 }
 
+impl<'tcx, Tag: Copy> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
+    }
+}
+
 impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
@@ -243,7 +250,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
@@ -307,11 +314,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
         Ok(match src.try_as_mplace(self) {
-            Ok(mplace) => {
+            Ok(ref mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
                     Ok(val)
                 } else {
-                    Err(mplace)
+                    Err(*mplace)
                 }
             }
             Err(val) => Ok(val),
@@ -340,7 +347,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     // Turn the wide MPlace into a string (must already be dereferenced!)
-    pub fn read_str(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
+    pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len))?;
         let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
@@ -354,7 +361,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace(self) {
-            Ok(mplace) => {
+            Ok(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
@@ -397,7 +404,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             // Indexing into a big array. This must be an mplace.
             let mplace = op.assert_mem_place(self);
-            Ok(self.mplace_index(mplace, index)?.into())
+            Ok(self.mplace_index(&mplace, index)?.into())
         }
     }
 
@@ -408,7 +415,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
         Ok(match op.try_as_mplace(self) {
-            Ok(mplace) => self.mplace_downcast(mplace, variant)?.into(),
+            Ok(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
                 let layout = op.layout.for_variant(self, variant);
                 OpTy { layout, ..*op }
@@ -430,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
                 let mplace = base.assert_mem_place(self);
-                self.mplace_projection(mplace, proj_elem)?.into()
+                self.mplace_projection(&mplace, proj_elem)?.into()
             }
         })
     }

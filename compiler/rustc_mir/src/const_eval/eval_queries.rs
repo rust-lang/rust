@@ -72,7 +72,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(ecx, intern_kind, ret)?;
+    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -137,7 +137,7 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace(ecx)
     };
 
-    let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
+    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
@@ -155,12 +155,12 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Ok(mplace) => to_const_value(mplace),
+        Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
+                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.check_init().unwrap() {

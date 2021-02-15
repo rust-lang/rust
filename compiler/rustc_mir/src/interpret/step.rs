@@ -218,9 +218,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
-                if let Some(first_ptr) = self.check_mplace_access(dest, None)? {
+                if let Some(first_ptr) = self.check_mplace_access(&dest, None)? {
                     // Write the first.
-                    let first = self.mplace_field(dest, 0)?;
+                    let first = self.mplace_field(&dest, 0)?;
                     self.copy_op(&op, &first.into())?;
 
                     if length > 1 {

@@ -444,7 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let (instance, place) = match place.layout.ty.kind() {
             ty::Dynamic(..) => {
                 // Dropping a trait object.
-                self.unpack_dyn_trait(place)?
+                self.unpack_dyn_trait(&place)?
             }
             _ => (instance, place),
         };

@@ -40,7 +40,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             assert!(args.len() == 1);
 
             let msg_place = self.deref_operand(&args[0])?;
-            let msg = Symbol::intern(self.read_str(msg_place)?);
+            let msg = Symbol::intern(self.read_str(&msg_place)?);
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             Err(ConstEvalErrKind::Panic { msg, file, line, col }.into())

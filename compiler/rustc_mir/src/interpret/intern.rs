@@ -296,7 +296,7 @@ pub enum InternKind {
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
-    ret: MPlaceTy<'tcx>,
+    ret: &MPlaceTy<'tcx>,
 ) -> Result<(), ErrorReported>
 where
     'tcx: 'mir,
@@ -328,7 +328,7 @@ where
         Some(ret.layout.ty),
     );
 
-    ref_tracking.track((ret, base_intern_mode), || ());
+    ref_tracking.track((*ret, base_intern_mode), || ());
 
     while let Some(((mplace, mode), _)) = ref_tracking.todo.pop() {
         let res = InternVisitor {
@@ -435,11 +435,11 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            MPlaceTy<'tcx, M::PointerTag>,
+            &MPlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, &'tcx Allocation> {
         let dest = self.allocate(layout, MemoryKind::Stack);
-        f(self, dest)?;
+        f(self, &dest)?;
         let ptr = dest.ptr.assert_ptr();
         assert_eq!(ptr.offset, Size::ZERO);
         let mut alloc = self.memory.alloc_map.remove(&ptr.alloc_id).unwrap().1;
