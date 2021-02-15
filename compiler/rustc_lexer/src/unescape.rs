@@ -299,10 +299,8 @@ where
 
     fn skip_ascii_whitespace(chars: &mut Chars<'_>) {
         let str = chars.as_str();
-        let first_non_space = str
-            .bytes()
-            .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-            .unwrap_or(str.len());
+        let first_non_space =
+            str.bytes().position(|b| !b.is_ascii_whitespace()).unwrap_or(str.len());
         *chars = str[first_non_space..].chars()
     }
 }
