@@ -1,0 +1,40 @@
+SOURCE_FILE@0..49
+  IMPL@0..48
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    FOR_KW@7..10 "for"
+    WHITESPACE@10..11 " "
+    PATH_TYPE@11..14
+      PATH@11..14
+        PATH_SEGMENT@11..14
+          NAME_REF@11..14
+            IDENT@11..14 "Foo"
+    WHITESPACE@14..15 " "
+    ASSOC_ITEM_LIST@15..48
+      L_CURLY@15..16 "{"
+      WHITESPACE@16..21 "\n    "
+      FN@21..46
+        DEFAULT_KW@21..28 "default"
+        WHITESPACE@28..29 " "
+        ASYNC_KW@29..34 "async"
+        WHITESPACE@34..35 " "
+        FN_KW@35..37 "fn"
+        WHITESPACE@37..38 " "
+        NAME@38..41
+          IDENT@38..41 "foo"
+        PARAM_LIST@41..43
+          L_PAREN@41..42 "("
+          R_PAREN@42..43 ")"
+        WHITESPACE@43..44 " "
+        BLOCK_EXPR@44..46
+          L_CURLY@44..45 "{"
+          R_CURLY@45..46 "}"
+      WHITESPACE@46..47 "\n"
+      R_CURLY@47..48 "}"
+  WHITESPACE@48..49 "\n"
