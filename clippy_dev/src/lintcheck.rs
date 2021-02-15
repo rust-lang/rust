@@ -125,20 +125,28 @@ impl CrateSource {
                 // clone the repo if we have not done so
                 if !repo_path.is_dir() {
                     println!("Cloning {} and checking out {}", url, commit);
-                    Command::new("git")
+                    if !Command::new("git")
                         .arg("clone")
                         .arg(url)
                         .arg(&repo_path)
-                        .output()
-                        .expect("Failed to clone git repo!");
+                        .status()
+                        .expect("Failed to clone git repo!")
+                        .success()
+                    {
+                        eprintln!("Failed to clone {} into {}", url, repo_path.display())
+                    }
                 }
                 // check out the commit/branch/whatever
-                Command::new("git")
+                if !Command::new("git")
                     .arg("checkout")
                     .arg(commit)
                     .current_dir(&repo_path)
-                    .output()
-                    .expect("Failed to check out commit");
+                    .status()
+                    .expect("Failed to check out commit")
+                    .success()
+                {
+                    eprintln!("Failed to checkout {} of repo at {}", commit, repo_path.display())
+                }
 
                 Crate {
                     version: commit.clone(),
