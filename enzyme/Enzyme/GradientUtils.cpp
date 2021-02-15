@@ -2097,6 +2097,7 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
 #else
     li->setAlignment(arg->getAlignment());
 #endif
+    li->setDebugLoc(getNewFromOriginal(arg->getDebugLoc()));
     li->setVolatile(arg->isVolatile());
     li->setOrdering(arg->getOrdering());
     li->setSyncScopeID(arg->getSyncScopeID());
