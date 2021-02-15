@@ -1028,7 +1028,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box strings::StringAdd);
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
-    store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback::default());
+    store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
