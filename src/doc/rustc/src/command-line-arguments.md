@@ -300,7 +300,7 @@ flag][prefer-dynamic] may be used to influence which is used.
 If the same crate name is specified with and without a path, the one with the
 path is used and the pathless flag has no effect.
 
-[extern prelude]: ../reference/items/extern-crates.html#extern-prelude
+[extern prelude]: ../reference/names/preludes.html#extern-prelude
 [prefer-dynamic]: codegen-options/index.md#prefer-dynamic
 
 <a id="option-sysroot"></a>
