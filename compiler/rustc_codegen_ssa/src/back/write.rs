@@ -1193,7 +1193,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // necessary. There's already optimizations in place to avoid sending work
     // back to the coordinator if LTO isn't requested.
     return thread::spawn(move || {
-        let max_workers = num_cpus::get();
         let mut worker_id_counter = 0;
         let mut free_worker_ids = Vec::new();
         let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
@@ -1253,7 +1252,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // For codegenning more CGU or for running them through LLVM.
             if !codegen_done {
                 if main_thread_worker_state == MainThreadWorkerState::Idle {
-                    if !queue_full_enough(work_items.len(), running, max_workers) {
+                    // Compute the number of workers that will be running once we've taken as many
+                    // items from the work queue as we can, plus one for the main thread. It's not
+                    // critically important that we use this instead of just `running`, but it
+                    // prevents the `queue_full_enough` heuristic from fluctuating just because a
+                    // worker finished up and we decreased the `running` count, even though we're
+                    // just going to increase it right after this when we put a new worker to work.
+                    let extra_tokens = tokens.len().checked_sub(running).unwrap();
+                    let additional_running = std::cmp::min(extra_tokens, work_items.len());
+                    let anticipated_running = running + additional_running + 1;
+
+                    if !queue_full_enough(work_items.len(), anticipated_running) {
                         // The queue is not full enough, codegen more items:
                         if codegen_worker_send.send(Message::CodegenItem).is_err() {
                             panic!("Could not send Message::CodegenItem to main thread")
@@ -1529,13 +1538,59 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
     // A heuristic that determines if we have enough LLVM WorkItems in the
     // queue so that the main thread can do LLVM work instead of codegen
-    fn queue_full_enough(
-        items_in_queue: usize,
-        workers_running: usize,
-        max_workers: usize,
-    ) -> bool {
-        // Tune me, plz.
-        items_in_queue > 0 && items_in_queue >= max_workers.saturating_sub(workers_running / 2)
+    fn queue_full_enough(items_in_queue: usize, workers_running: usize) -> bool {
+        // This heuristic scales ahead-of-time codegen according to available
+        // concurrency, as measured by `workers_running`. The idea is that the
+        // more concurrency we have available, the more demand there will be for
+        // work items, and the fuller the queue should be kept to meet demand.
+        // An important property of this approach is that we codegen ahead of
+        // time only as much as necessary, so as to keep fewer LLVM modules in
+        // memory at once, thereby reducing memory consumption.
+        //
+        // When the number of workers running is less than the max concurrency
+        // available to us, this heuristic can cause us to instruct the main
+        // thread to work on an LLVM item (that is, tell it to "LLVM") instead
+        // of codegen, even though it seems like it *should* be codegenning so
+        // that we can create more work items and spawn more LLVM workers.
+        //
+        // But this is not a problem. When the main thread is told to LLVM,
+        // according to this heuristic and how work is scheduled, there is
+        // always at least one item in the queue, and therefore at least one
+        // pending jobserver token request. If there *is* more concurrency
+        // available, we will immediately receive a token, which will upgrade
+        // the main thread's LLVM worker to a real one (conceptually), and free
+        // up the main thread to codegen if necessary. On the other hand, if
+        // there isn't more concurrency, then the main thread working on an LLVM
+        // item is appropriate, as long as the queue is full enough for demand.
+        //
+        // Speaking of which, how full should we keep the queue? Probably less
+        // full than you'd think. A lot has to go wrong for the queue not to be
+        // full enough and for that to have a negative effect on compile times.
+        //
+        // Workers are unlikely to finish at exactly the same time, so when one
+        // finishes and takes another work item off the queue, we often have
+        // ample time to codegen at that point before the next worker finishes.
+        // But suppose that codegen takes so long that the workers exhaust the
+        // queue, and we have one or more workers that have nothing to work on.
+        // Well, it might not be so bad. Of all the LLVM modules we create and
+        // optimize, one has to finish last. It's not necessarily the case that
+        // by losing some concurrency for a moment, we delay the point at which
+        // that last LLVM module is finished and the rest of compilation can
+        // proceed. Also, when we can't take advantage of some concurrency, we
+        // give tokens back to the job server. That enables some other rustc to
+        // potentially make use of the available concurrency. That could even
+        // *decrease* overall compile time if we're lucky. But yes, if no other
+        // rustc can make use of the concurrency, then we've squandered it.
+        //
+        // However, keeping the queue full is also beneficial when we have a
+        // surge in available concurrency. Then items can be taken from the
+        // queue immediately, without having to wait for codegen.
+        //
+        // So, the heuristic below tries to keep one item in the queue for every
+        // four running workers. Based on limited benchmarking, this appears to
+        // be more than sufficient to avoid increasing compilation times.
+        let quarter_of_workers = workers_running - 3 * workers_running / 4;
+        items_in_queue > 0 && items_in_queue >= quarter_of_workers
     }
 
     fn maybe_start_llvm_timer<'a>(
