@@ -21,7 +21,7 @@ use syntax::{
 };
 
 use crate::{
-    assist_context::AssistContext,
+    assist_context::{AssistBuilder, AssistContext},
     ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
 };
 
@@ -463,4 +463,26 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
     }
 
     buf
+}
+
+pub(crate) fn add_method_to_adt(
+    builder: &mut AssistBuilder,
+    adt: &ast::Adt,
+    impl_def: Option<ast::Impl>,
+    method: &str,
+) {
+    let mut buf = String::with_capacity(method.len() + 2);
+    if impl_def.is_some() {
+        buf.push('\n');
+    }
+    buf.push_str(method);
+
+    let start_offset = impl_def
+        .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
+        .unwrap_or_else(|| {
+            buf = generate_impl_text(&adt, &buf);
+            adt.syntax().text_range().end()
+        });
+
+    builder.insert(start_offset, buf);
 }
