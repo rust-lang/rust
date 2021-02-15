@@ -332,7 +332,6 @@ impl char {
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-        const ASCII_DIGIT_MASK: u32 = 0b11_0000;
         // the code is split up here to improve execution speed for cases where
         // the `radix` is constant and 10 or smaller
         let val = if likely(radix <= 10) {
