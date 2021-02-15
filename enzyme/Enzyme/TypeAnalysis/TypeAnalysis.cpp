@@ -2784,6 +2784,20 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
           &call);
     }
+    if (ci->getName() == "frexp" || ci->getName() == "frexpf" || ci->getName() == "frexpl") {
+
+      auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
+      updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1), &call);
+      updateAnalysis(call.getOperand(0), TypeTree(ConcreteType(call.getType())).Only(-1), &call);
+      TypeTree ival(BaseType::Pointer);
+      auto objSize = DL.getTypeSizeInBits(cast<PointerType>(call.getOperand(1)->getType())->getElementType()) / 8;
+      for (size_t i=0; i < objSize; ++i) {
+        ival.insert({(int)i}, BaseType::Integer);
+      }
+      updateAnalysis(call.getOperand(1), ival.Only(-1),
+                     &call);
+      return;
+    }
 
     if (ci->getName() == "__cxa_guard_acquire" || ci->getName() == "printf" ||
         ci->getName() == "vprintf" || ci->getName() == "puts") {

@@ -68,6 +68,7 @@ class TypeTree : public std::enable_shared_from_this<TypeTree> {
 private:
   // mapping of known indices to type if one exists
   ConcreteTypeMapType mapping;
+  std::vector<int> minIndices;
 
 public:
   TypeTree() {}
@@ -262,64 +263,55 @@ public:
       return changed;
     }
 
-    size_t maxSize = Seq.size();
-    for (const auto &pair : mapping) {
-      if (pair.first.size() > maxSize) {
-        maxSize = pair.first.size();
+
+    bool possibleDeletion = false;
+    size_t minLen = (minIndices.size() <= Seq.size()) ? minIndices.size() : Seq.size();
+    for (size_t i=0; i < minLen; i++) {
+      if (minIndices[i] > Seq[i]) {
+        if (minIndices[i] > MaxTypeOffset)
+          possibleDeletion = true;  
+        minIndices[i] = Seq[i];
       }
     }
 
-    std::vector<int> minBest(maxSize, std::numeric_limits<int>::max());
-    for (const auto &pair : mapping) {
-      size_t i = 0;
-      for (int val : pair.first) {
-        if (val < minBest[i]) {
-          minBest[i] = val;
-        }
-        ++i;
+    if (minIndices.size() < Seq.size()) {
+      for (size_t i=minIndices.size(), end = Seq.size(); i < end; ++i) {
+        minIndices.push_back(Seq[i]);
       }
     }
 
-    {
-      size_t i=0;
-      for (auto val : Seq) {
-        if (val < minBest[i]) {
-          minBest[i] = val;
+    if (possibleDeletion) {
+      std::vector<std::vector<int>> toErase;
+      for (const auto &pair : mapping) {
+        size_t i = 0;
+        bool mustKeep = false;
+        bool considerErase = false;
+        for (int val : pair.first) {
+          if (val == minIndices[i]) {
+            mustKeep = true;
+            break;
+          }
+          if (val > MaxTypeOffset) {
+            considerErase = true;
+          }
+          ++i;
         }
-        ++i;
+        if (!mustKeep && considerErase) {
+          toErase.push_back(pair.first);
+        }
       }
-    }
 
-    std::vector<std::vector<int>> toErase;
-    for (const auto &pair : mapping) {
-      size_t i = 0;
-      bool mustKeep = false;
-      bool considerErase = false;
-      for (int val : pair.first) {
-        if (val == minBest[i]) {
-          mustKeep = true;
-          break;
-        }
-        if (val > MaxTypeOffset) {
-          considerErase = true;
-        }
-        ++i;
+      for(auto vec : toErase) {
+        mapping.erase(vec);
+        changed = true;
       }
-      if (!mustKeep && considerErase) {
-        toErase.push_back(pair.first);
-      }
-    }
-
-    for(auto vec : toErase) {
-      mapping.erase(vec);
-      changed = true;
     }
 
     size_t i = 0;
     bool keep = false;
     bool considerErase = false;
     for (auto val : Seq) {
-      if (val == minBest[i]) {
+      if (val == minIndices[i]) {
         keep = true;
         break;
       } else if (val > MaxTypeOffset) {

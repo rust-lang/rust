@@ -83,9 +83,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<TargetLibraryInfoWrapperPass>();
-    AU.addRequired<AAResultsWrapperPass>();
     AU.addRequired<GlobalsAAWrapperPass>();
-    AU.addRequired<BasicAAWrapperPass>();
 
     // AU.addRequiredID(LCSSAID);
 
@@ -600,7 +598,6 @@ public:
         }
 
         if (Fn && Fn->getName() == "__enzyme_float") {
-          Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -610,7 +607,6 @@ public:
           }
         }
         if (Fn && Fn->getName() == "__enzyme_integer") {
-          Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -620,7 +616,6 @@ public:
           }
         }
         if (Fn && Fn->getName() == "__enzyme_double") {
-          Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -630,7 +625,6 @@ public:
           }
         }
         if (Fn && Fn->getName() == "__enzyme_pointer") {
-          Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -642,10 +636,13 @@ public:
         if (Fn && Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
         }
+        if (Fn && (Fn->getName() == "frexp" || Fn->getName() == "frexpf" || Fn->getName() == "frexpl")) {
+          CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
+          CI->addParamAttr(1, Attribute::WriteOnly);
+        }
         if (Fn && (Fn->getName() == "__fd_sincos_1" ||
                    Fn->getName() == "__fd_cos_1" ||
                    Fn->getName() == "__mth_i_ipowi")) {
-          Fn->addFnAttr(Attribute::ReadNone);
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
         if (Fn && (Fn->getName() == "f90io_fmtw_end" ||
@@ -883,18 +880,29 @@ public:
   bool runOnModule(Module &M) override {
     // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
 
-    // llvm::errs() << "G_AA: " << &G_AA << "\n";
-    // AAResults AA(TLI);
-    // AA.addAAResult(B_AA);
-    // AA.addAAResult(G_AA);
-
-    /*
-    auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    auto &SE = getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-    auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-    */
     bool changed = false;
     for (Function &F : M) {
+      if (F.getName() == "__enzyme_float" ||
+          F.getName() == "__enzyme_double" ||
+          F.getName() == "__enzyme_integer" ||
+          F.getName() == "__enzyme_pointer") {
+        F.addFnAttr(Attribute::ReadNone);
+        for (auto& arg : F.args()) {
+          if (arg.getType()->isPointerTy()) {
+            arg.addAttr(Attribute::ReadNone);
+            arg.addAttr(Attribute::NoCapture);
+          }
+        }
+      }
+      if (F.getName() == "frexp" || F.getName() == "frexpf" || F.getName() == "frexpl") {
+        F.addFnAttr(Attribute::ArgMemOnly);
+        F.addParamAttr(1, Attribute::WriteOnly);
+      }
+      if (F.getName() == "__fd_sincos_1" ||
+          F.getName() == "__fd_cos_1" ||
+          F.getName() == "__mth_i_ipowi") {
+        F.addFnAttr(Attribute::ReadNone);
+      }
       if (F.empty())
         continue;
       std::vector<Instruction *> toErase;
@@ -946,9 +954,6 @@ public:
     for (Function &F : M) {
       if (F.empty())
         continue;
-
-      // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
-      // auto &LI = getAnalysis<LoopInfoWrapperPass>(F).getLoopInfo();
 
       bool successful = true;
       changed |= lowerEnzymeCalls(F, PostOpt, successful, done);

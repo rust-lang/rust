@@ -180,6 +180,11 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
       CI->getArgOperand(0) != val && CI->getArgOperand(1) != val)
     return true;
 
+  // only the float arg input is potentially active
+  if (Name == "frexp" || Name == "frexpf" || Name == "frexpl") {
+    return val != CI->getOperand(0);
+  }
+
   // TODO interprocedural detection
   // Before potential introprocedural detection, any function without definition
   // may to be assumed to have an active use
@@ -218,18 +223,21 @@ static inline void propagateArgumentInformation(
 
     /// Only the src/dst in memset/memcpy/memmove impact the activity of the
     /// instruction
-    if (auto F = CI.getCalledFunction()) {
-      // memset cannot propagate activity as it sets
-      // data to a given single byte which is inactive
-      if (F->getIntrinsicID() == Intrinsic::memset) {
-        return;
-      }
-      if (F->getIntrinsicID() == Intrinsic::memcpy ||
-          F->getIntrinsicID() == Intrinsic::memmove) {
-        propagateFromOperand(CI.getOperand(0));
-        propagateFromOperand(CI.getOperand(1));
-        return;
-      }
+    // memset cannot propagate activity as it sets
+    // data to a given single byte which is inactive
+    if (F->getIntrinsicID() == Intrinsic::memset) {
+      return;
+    }
+    if (F->getIntrinsicID() == Intrinsic::memcpy ||
+        F->getIntrinsicID() == Intrinsic::memmove) {
+      propagateFromOperand(CI.getOperand(0));
+      propagateFromOperand(CI.getOperand(1));
+      return;
+    }
+
+    if (Name == "frexp" || Name == "frexpf" || Name == "frexpl") {
+      propagateFromOperand(CI.getOperand(0));
+      return;
     }
   }
 
