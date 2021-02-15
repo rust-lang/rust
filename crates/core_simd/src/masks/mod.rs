@@ -7,16 +7,22 @@ pub use full_masks::*;
 mod bitmask;
 pub use bitmask::*;
 
+use crate::LanesAtMost64;
+
 macro_rules! define_opaque_mask {
     {
         $(#[$attr:meta])*
         struct $name:ident<const $lanes:ident: usize>($inner_ty:ty);
+        @bits $bits_ty:ty
     } => {
         $(#[$attr])*
         #[allow(non_camel_case_types)]
-        pub struct $name<const $lanes: usize>($inner_ty) where BitMask<LANES>: LanesAtMost64;
+        pub struct $name<const $lanes: usize>($inner_ty) where $bits_ty: LanesAtMost64;
 
-        impl<const $lanes: usize> $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64
+        {
             /// Construct a mask by setting all lanes to the given value.
             pub fn splat(value: bool) -> Self {
                 Self(<$inner_ty>::splat(value))
@@ -43,6 +49,7 @@ macro_rules! define_opaque_mask {
 
         impl<const $lanes: usize> From<BitMask<$lanes>> for $name<$lanes>
         where
+            $bits_ty: LanesAtMost64,
             BitMask<$lanes>: LanesAtMost64,
         {
             fn from(value: BitMask<$lanes>) -> Self {
@@ -52,6 +59,7 @@ macro_rules! define_opaque_mask {
 
         impl<const $lanes: usize> From<$name<$lanes>> for crate::BitMask<$lanes>
         where
+            $bits_ty: LanesAtMost64,
             BitMask<$lanes>: LanesAtMost64,
         {
             fn from(value: $name<$lanes>) -> Self {
@@ -61,7 +69,7 @@ macro_rules! define_opaque_mask {
 
         impl<const $lanes: usize> From<$inner_ty> for $name<$lanes>
         where
-            BitMask<$lanes>: LanesAtMost64,
+            $bits_ty: LanesAtMost64,
         {
             fn from(value: $inner_ty) -> Self {
                 Self(value)
@@ -70,50 +78,72 @@ macro_rules! define_opaque_mask {
 
         impl<const $lanes: usize> From<$name<$lanes>> for $inner_ty
         where
-            BitMask<$lanes>: LanesAtMost64,
+            $bits_ty: LanesAtMost64,
         {
             fn from(value: $name<$lanes>) -> Self {
                 value.0
             }
         }
 
-        impl<const $lanes: usize> Copy for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {}
+        impl<const $lanes: usize> Copy for $name<$lanes>
+        where
+            $inner_ty: Copy,
+            $bits_ty: LanesAtMost64,
+        {}
 
-        impl<const $lanes: usize> Clone for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> Clone for $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<const $lanes: usize> Default for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> Default for $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn default() -> Self {
                 Self::splat(false)
             }
         }
 
-        impl<const $lanes: usize> PartialEq for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> PartialEq for $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
             }
         }
 
-        impl<const $lanes: usize> PartialOrd for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> PartialOrd for $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
                 self.0.partial_cmp(&other.0)
             }
         }
 
-        impl<const $lanes: usize> core::fmt::Debug for $name<$lanes> where BitMask<$lanes>: LanesAtMost64 {
+        impl<const $lanes: usize> core::fmt::Debug for $name<$lanes>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                 core::fmt::Debug::fmt(&self.0, f)
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAnd for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitAnd for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitand(self, rhs: Self) -> Self {
@@ -121,7 +151,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAnd<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitAnd<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitand(self, rhs: bool) -> Self {
@@ -129,7 +162,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAnd<$name<LANES>> for bool where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitAnd<$name<LANES>> for bool
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = $name<LANES>;
             #[inline]
             fn bitand(self, rhs: $name<LANES>) -> $name<LANES> {
@@ -137,7 +173,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOr for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitOr for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitor(self, rhs: Self) -> Self {
@@ -145,7 +184,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOr<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitOr<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitor(self, rhs: bool) -> Self {
@@ -153,7 +195,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOr<$name<LANES>> for bool where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitOr<$name<LANES>> for bool
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = $name<LANES>;
             #[inline]
             fn bitor(self, rhs: $name<LANES>) -> $name<LANES> {
@@ -161,7 +206,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXor for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitXor for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitxor(self, rhs: Self) -> Self::Output {
@@ -169,7 +217,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXor<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitXor<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = Self;
             #[inline]
             fn bitxor(self, rhs: bool) -> Self::Output {
@@ -177,7 +228,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXor<$name<LANES>> for bool where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitXor<$name<LANES>> for bool
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = $name<LANES>;
             #[inline]
             fn bitxor(self, rhs: $name<LANES>) -> Self::Output {
@@ -185,7 +239,10 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::Not for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::Not for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             type Output = $name<LANES>;
             #[inline]
             fn not(self) -> Self::Output {
@@ -193,42 +250,60 @@ macro_rules! define_opaque_mask {
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitand_assign(&mut self, rhs: Self) {
                 self.0 &= rhs.0;
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAndAssign<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitAndAssign<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitand_assign(&mut self, rhs: bool) {
                 *self &= Self::splat(rhs);
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitor_assign(&mut self, rhs: Self) {
                 self.0 |= rhs.0;
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOrAssign<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitOrAssign<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitor_assign(&mut self, rhs: bool) {
                 *self |= Self::splat(rhs);
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitxor_assign(&mut self, rhs: Self) {
                 self.0 ^= rhs.0;
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXorAssign<bool> for $name<LANES> where BitMask<LANES>: LanesAtMost64 {
+        impl<const LANES: usize> core::ops::BitXorAssign<bool> for $name<LANES>
+        where
+            $bits_ty: LanesAtMost64,
+        {
             #[inline]
             fn bitxor_assign(&mut self, rhs: bool) {
                 *self ^= Self::splat(rhs);
@@ -242,6 +317,7 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct Mask8<const LANES: usize>(SimdMask8<LANES>);
+    @bits crate::SimdI8<LANES>
 }
 
 define_opaque_mask! {
@@ -249,6 +325,7 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct Mask16<const LANES: usize>(SimdMask16<LANES>);
+    @bits crate::SimdI16<LANES>
 }
 
 define_opaque_mask! {
@@ -256,6 +333,7 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct Mask32<const LANES: usize>(SimdMask32<LANES>);
+    @bits crate::SimdI32<LANES>
 }
 
 define_opaque_mask! {
@@ -263,6 +341,7 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct Mask64<const LANES: usize>(SimdMask64<LANES>);
+    @bits crate::SimdI64<LANES>
 }
 
 define_opaque_mask! {
@@ -270,6 +349,7 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct Mask128<const LANES: usize>(SimdMask128<LANES>);
+    @bits crate::SimdI128<LANES>
 }
 
 define_opaque_mask! {
@@ -277,12 +357,17 @@ define_opaque_mask! {
     ///
     /// The layout of this type is unspecified.
     struct MaskSize<const LANES: usize>(SimdMaskSize<LANES>);
+    @bits crate::SimdIsize<LANES>
 }
 
 macro_rules! implement_mask_ops {
-    { $($vector:ident => $mask:ident,)* } => {
+    { $($vector:ident => $mask:ident ($inner_ty:ident),)* } => {
         $(
-            impl<const LANES: usize> crate::$vector<LANES> where BitMask<LANES>: LanesAtMost64 {
+            impl<const LANES: usize> crate::$vector<LANES>
+            where
+                crate::$vector<LANES>: LanesAtMost64,
+                crate::$inner_ty<LANES>: LanesAtMost64,
+            {
                 /// Test if each lane is equal to the corresponding lane in `other`.
                 #[inline]
                 pub fn lanes_eq(&self, other: &Self) -> $mask<LANES> {
@@ -324,22 +409,22 @@ macro_rules! implement_mask_ops {
 }
 
 implement_mask_ops! {
-    SimdI8 => Mask8,
-    SimdI16 => Mask16,
-    SimdI32 => Mask32,
-    SimdI64 => Mask64,
-    SimdI128 => Mask128,
-    SimdIsize => MaskSize,
+    SimdI8 => Mask8 (SimdI8),
+    SimdI16 => Mask16 (SimdI16),
+    SimdI32 => Mask32 (SimdI32),
+    SimdI64 => Mask64 (SimdI64),
+    SimdI128 => Mask128 (SimdI128),
+    SimdIsize => MaskSize (SimdIsize),
 
-    SimdU8 => Mask8,
-    SimdU16 => Mask16,
-    SimdU32 => Mask32,
-    SimdU64 => Mask64,
-    SimdU128 => Mask128,
-    SimdUsize => MaskSize,
+    SimdU8 => Mask8 (SimdI8),
+    SimdU16 => Mask16 (SimdI16),
+    SimdU32 => Mask32 (SimdI32),
+    SimdU64 => Mask64 (SimdI64),
+    SimdU128 => Mask128 (SimdI128),
+    SimdUsize => MaskSize (SimdIsize),
 
-    SimdF32 => Mask32,
-    SimdF64 => Mask64,
+    SimdF32 => Mask32 (SimdI32),
+    SimdF64 => Mask64 (SimdI64),
 }
 
 /// Vector of eight 8-bit masks

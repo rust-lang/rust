@@ -2,7 +2,10 @@ macro_rules! implement {
     {
         $type:ident, $int_type:ident
     } => {
-        impl<const LANES: usize> crate::$type<LANES> {
+        impl<const LANES: usize> crate::$type<LANES>
+        where
+            Self: crate::LanesAtMost64,
+        {
             /// Returns the largest integer less than or equal to each lane.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
@@ -16,7 +19,13 @@ macro_rules! implement {
             pub fn ceil(self) -> Self {
                 unsafe { crate::intrinsics::simd_ceil(self) }
             }
+        }
 
+        impl<const LANES: usize> crate::$type<LANES>
+        where
+            Self: crate::LanesAtMost64,
+            crate::$int_type<LANES>: crate::LanesAtMost64,
+        {
             /// Rounds toward zero and converts to the same-width integer type, assuming that
             /// the value is finite and fits in that type.
             ///

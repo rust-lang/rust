@@ -2,7 +2,9 @@
 
 /// A SIMD vector of containing `LANES` `i64` values.
 #[repr(simd)]
-pub struct SimdI64<const LANES: usize>([i64; LANES]);
+pub struct SimdI64<const LANES: usize>([i64; LANES])
+where
+    Self: crate::LanesAtMost64;
 
 impl_integer_vector! { SimdI64, i64 }
 
