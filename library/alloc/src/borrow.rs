@@ -32,7 +32,7 @@ where
 /// to `T`. The `ToOwned` trait generalizes `Clone` to construct owned data
 /// from any borrow of a given type.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "to_owned_trait")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "ToOwned")]
 pub trait ToOwned {
     /// The resulting type after obtaining ownership.
     #[stable(feature = "rust1", since = "1.0.0")]
