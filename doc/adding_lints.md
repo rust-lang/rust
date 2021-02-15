@@ -108,6 +108,9 @@ should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing. Note that if the generated files are
 empty, they should be removed.
 
+Note that you can run multiple test files by specifying a comma separated list:
+`TESTNAME=foo_functions,test2,test3`.
+
 ### Cargo lints
 
 For cargo lints, the process of testing differs in that we are interested in
