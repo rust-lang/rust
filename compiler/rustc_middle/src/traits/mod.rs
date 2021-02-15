@@ -228,7 +228,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// Inline asm operand type must be `Sized`.
     InlineAsmSized,
     /// `[T, ..n]` implies that `T` must be `Copy`.
-    RepeatVec,
+    /// If the function in the array repeat expression is a `const fn`,
+    /// display a help message suggesting to move the function call to a
+    /// new `const` item while saying that `T` doesn't implement `Copy`.
+    RepeatVec(bool),
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
     FieldSized {
