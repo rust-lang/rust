@@ -404,3 +404,16 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl Allocator for ! {
+    #[inline]
+    fn allocate(&self, _: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        *self
+    }
+
+    #[inline]
+    unsafe fn deallocate(&self, _: NonNull<u8>, _: Layout) {
+        *self
+    }
+}
