@@ -1,4 +1,4 @@
-// Regression test for #82087. Checks that mismatched lifetimes and types are
+// Regression test for #82126. Checks that mismatched lifetimes and types are
 // properly handled.
 
 // edition:2018
