@@ -128,7 +128,7 @@ mod handlers {
     mod flip_trait_bound;
     mod generate_default_from_enum_variant;
     mod generate_derive;
-    mod generate_enum_match_method;
+    mod generate_enum_is_method;
     mod generate_enum_projection_method;
     mod generate_from_impl_for_enum;
     mod generate_function;
@@ -190,7 +190,7 @@ mod handlers {
             flip_trait_bound::flip_trait_bound,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_derive::generate_derive,
-            generate_enum_match_method::generate_enum_is_method,
+            generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_into_method,
             generate_enum_projection_method::generate_enum_as_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
