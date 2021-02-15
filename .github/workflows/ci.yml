@@ -279,7 +279,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist"
-              RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
@@ -289,7 +289,7 @@ jobs:
           - name: dist-x86_64-apple-alt
             env:
               SCRIPT: "./x.py dist"
-              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               NO_LLVM_ASSERTIONS: 1
@@ -298,7 +298,7 @@ jobs:
           - name: x86_64-apple
             env:
               SCRIPT: "./x.py --stage 2 test"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.8
               MACOSX_STD_DEPLOYMENT_TARGET: 10.7
@@ -308,7 +308,7 @@ jobs:
           - name: dist-aarch64-apple
             env:
               SCRIPT: "./x.py dist --stage 2"
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --host=aarch64-apple-darwin --target=aarch64-apple-darwin --enable-full-tools --enable-sanitizers --enable-profiler --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               SELECT_XCODE: /Applications/Xcode_12.2.app
               USE_XCODE_CLANG: 1
@@ -317,7 +317,6 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              JEMALLOC_SYS_WITH_LG_PAGE: 14
             os: macos-latest
           - name: x86_64-msvc-1
             env:
