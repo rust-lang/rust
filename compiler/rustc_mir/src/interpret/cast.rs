@@ -20,7 +20,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         src: &OpTy<'tcx, M::PointerTag>,
         cast_kind: CastKind,
         cast_ty: Ty<'tcx>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
@@ -260,7 +260,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     fn unsize_into_ptr(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
         source_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
@@ -302,7 +302,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
         cast_ty: TyAndLayout<'tcx>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
@@ -340,9 +340,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let src_field = self.operand_field(src, i)?;
                     let dst_field = self.place_field(dest, i)?;
                     if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(&src_field, dst_field)?;
+                        self.copy_op(&src_field, &dst_field)?;
                     } else {
-                        self.unsize_into(&src_field, cast_ty_field, dst_field)?;
+                        self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
                     }
                 }
                 Ok(())

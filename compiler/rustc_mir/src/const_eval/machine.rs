@@ -222,7 +222,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         instance: ty::Instance<'tcx>,
         _abi: Abi,
         args: &[OpTy<'tcx>],
-        _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
@@ -262,7 +262,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         // Shared intrinsics.
@@ -366,7 +366,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _dest: PlaceTy<'tcx>,
+        _dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         Err(ConstEvalErrKind::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
     }

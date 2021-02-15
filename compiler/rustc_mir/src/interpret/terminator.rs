@@ -78,8 +78,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ),
                 };
                 let args = self.eval_operands(args)?;
+                let dest_place;
                 let ret = match destination {
-                    Some((dest, ret)) => Some((self.eval_place(dest)?, ret)),
+                    Some((dest, ret)) => {
+                        dest_place = self.eval_place(dest)?;
+                        Some((&dest_place, ret))
+                    },
                     None => None,
                 };
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
@@ -96,7 +100,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("TerminatorKind::drop: {:?}, type {}", place, ty);
 
                 let instance = Instance::resolve_drop_in_place(*self.tcx, ty);
-                self.drop_in_place(place, instance, target, unwind)?;
+                self.drop_in_place(&place, instance, target, unwind)?;
             }
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -180,7 +184,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         rust_abi: bool,
         caller_arg: &mut impl Iterator<Item = OpTy<'tcx, M::PointerTag>>,
-        callee_arg: PlaceTy<'tcx, M::PointerTag>,
+        callee_arg: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if rust_abi && callee_arg.layout.is_zst() {
             // Nothing to do.
@@ -211,7 +215,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
@@ -344,12 +348,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if Some(local) == body.spread_arg {
                             // Must be a tuple
                             for i in 0..dest.layout.fields.count() {
-                                let dest = self.place_field(dest, i)?;
-                                self.pass_argument(rust_abi, &mut caller_iter, dest)?;
+                                let dest = self.place_field(&dest, i)?;
+                                self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
                             }
                         } else {
                             // Normal argument
-                            self.pass_argument(rust_abi, &mut caller_iter, dest)?;
+                            self.pass_argument(rust_abi, &mut caller_iter, &dest)?;
                         }
                     }
                     // Now we should have no more caller args
@@ -426,7 +430,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn drop_in_place(
         &mut self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
         instance: ty::Instance<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
@@ -457,7 +461,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             FnVal::Instance(instance),
             Abi::Rust,
             &[arg.into()],
-            Some((dest.into(), target)),
+            Some((&dest.into(), target)),
             unwind,
         )
     }

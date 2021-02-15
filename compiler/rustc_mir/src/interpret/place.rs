@@ -592,7 +592,7 @@ where
     /// into the field of a local `ScalarPair`, we have to first allocate it.
     pub fn place_field(
         &mut self,
-        base: PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::PointerTag>,
         field: usize,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         // FIXME: We could try to be smarter and avoid allocation for fields that span the
@@ -603,7 +603,7 @@ where
 
     pub fn place_index(
         &mut self,
-        base: PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::PointerTag>,
         index: u64,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         let mplace = self.force_allocation(base)?;
@@ -612,7 +612,7 @@ where
 
     pub fn place_downcast(
         &self,
-        base: PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         // Downcast just changes the layout
@@ -622,7 +622,7 @@ where
             }
             Place::Local { .. } => {
                 let layout = base.layout.for_variant(self, variant);
-                PlaceTy { layout, ..base }
+                PlaceTy { layout, ..*base }
             }
         })
     }
@@ -630,7 +630,7 @@ where
     /// Projects into a place.
     pub fn place_projection(
         &mut self,
-        base: PlaceTy<'tcx, M::PointerTag>,
+        base: &PlaceTy<'tcx, M::PointerTag>,
         &proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
@@ -660,7 +660,7 @@ where
         };
 
         for elem in place.projection.iter() {
-            place_ty = self.place_projection(place_ty, &elem)?
+            place_ty = self.place_projection(&place_ty, &elem)?
         }
 
         trace!("{:?}", self.dump_place(place_ty.place));
@@ -681,7 +681,7 @@ where
     pub fn write_scalar(
         &mut self,
         val: impl Into<ScalarMaybeUninit<M::PointerTag>>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         self.write_immediate(Immediate::Scalar(val.into()), dest)
     }
@@ -691,7 +691,7 @@ where
     pub fn write_immediate(
         &mut self,
         src: Immediate<M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         self.write_immediate_no_validate(src, dest)?;
 
@@ -726,7 +726,7 @@ where
     fn write_immediate_no_validate(
         &mut self,
         src: Immediate<M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if cfg!(debug_assertions) {
             // This is a very common path, avoid some checks in release mode
@@ -844,7 +844,7 @@ where
     pub fn copy_op(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         self.copy_op_no_validate(src, dest)?;
 
@@ -863,7 +863,7 @@ where
     fn copy_op_no_validate(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
         // actually "transmute" `&mut T` to `&T` in an assignment without a cast.
@@ -922,7 +922,7 @@ where
     pub fn copy_op_transmute(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
             // Fast path: Just use normal `copy_op`
@@ -959,7 +959,7 @@ where
         let dest = self.force_allocation(dest)?;
         self.copy_op_no_validate(
             src,
-            PlaceTy::from(MPlaceTy { mplace: *dest, layout: src.layout }),
+            &PlaceTy::from(MPlaceTy { mplace: *dest, layout: src.layout }),
         )?;
 
         if M::enforce_validity(self) {
@@ -980,7 +980,7 @@ where
     /// version.
     pub fn force_allocation_maybe_sized(
         &mut self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
         meta: MemPlaceMeta<M::PointerTag>,
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, Option<Size>)> {
         let (mplace, size) = match place.place {
@@ -1025,7 +1025,7 @@ where
     #[inline(always)]
     pub fn force_allocation(
         &mut self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         Ok(self.force_allocation_maybe_sized(place, MemPlaceMeta::None)?.0)
     }
@@ -1061,7 +1061,7 @@ where
     pub fn write_discriminant(
         &mut self,
         variant_index: VariantIdx,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Layout computation excludes uninhabited variants from consideration
         // therefore there's no way to represent those variants in the given layout.
@@ -1092,7 +1092,7 @@ where
                 let tag_val = size.truncate(discr_val);
 
                 let tag_dest = self.place_field(dest, tag_field)?;
-                self.write_scalar(Scalar::from_uint(tag_val, size), tag_dest)?;
+                self.write_scalar(Scalar::from_uint(tag_val, size), &tag_dest)?;
             }
             Variants::Multiple {
                 tag_encoding:
@@ -1123,7 +1123,7 @@ where
                     )?;
                     // Write result.
                     let niche_dest = self.place_field(dest, tag_field)?;
-                    self.write_immediate(*tag_val, niche_dest)?;
+                    self.write_immediate(*tag_val, &niche_dest)?;
                 }
             }
         }

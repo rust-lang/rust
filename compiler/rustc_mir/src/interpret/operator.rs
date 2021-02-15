@@ -16,7 +16,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: mir::BinOp,
         left: &ImmTy<'tcx, M::PointerTag>,
         right: &ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
@@ -36,7 +36,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: mir::BinOp,
         left: &ImmTy<'tcx, M::PointerTag>,
         right: &ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         let (val, _overflowed, ty) = self.overflowing_binary_op(op, left, right)?;
         assert_eq!(ty, dest.layout.ty, "type mismatch for result of {:?}", op);

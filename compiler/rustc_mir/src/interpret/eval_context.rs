@@ -654,7 +654,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
+        return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         // first push a stack frame so we have access to the local substs
@@ -662,7 +662,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place,
+            return_place: return_place.copied(),
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -777,10 +777,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if !unwinding {
             // Copy the return value to the caller's stack frame.
-            if let Some(return_place) = frame.return_place {
+            if let Some(ref return_place) = frame.return_place {
                 let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
                 self.copy_op_transmute(&op, return_place)?;
-                trace!("{:?}", self.dump_place(*return_place));
+                trace!("{:?}", self.dump_place(**return_place));
             } else {
                 throw_ub!(Unreachable);
             }

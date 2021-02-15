@@ -197,7 +197,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _instance: ty::Instance<'tcx>,
         _abi: Abi,
         _args: &[OpTy<'tcx>],
-        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
+        _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         Ok(None)
@@ -207,7 +207,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
-        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
+        _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
         throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
@@ -237,7 +237,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     fn box_alloc(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _dest: PlaceTy<'tcx>,
+        _dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         throw_machine_stop_str!("can't const prop heap allocations")
     }
@@ -392,12 +392,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             .filter(|ret_layout| {
                 !ret_layout.is_zst() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
             })
-            .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack));
+            .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack).into());
 
         ecx.push_stack_frame(
             Instance::new(def_id, substs),
             dummy_body,
-            ret.map(Into::into),
+            ret.as_ref(),
             StackPopCleanup::None { cleanup: false },
         )
         .expect("failed to push initial stack frame");
@@ -760,14 +760,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     match op {
                         BinOp::BitAnd => {
                             if arg_value == 0 {
-                                this.ecx.write_immediate(*const_arg, dest)?;
+                                this.ecx.write_immediate(*const_arg, &dest)?;
                             }
                         }
                         BinOp::BitOr => {
                             if arg_value == const_arg.layout.size.truncate(u128::MAX)
                                 || (const_arg.layout.ty.is_bool() && arg_value == 1)
                             {
-                                this.ecx.write_immediate(*const_arg, dest)?;
+                                this.ecx.write_immediate(*const_arg, &dest)?;
                             }
                         }
                         BinOp::Mul => {
@@ -777,9 +777,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                         const_arg.to_scalar()?.into(),
                                         Scalar::from_bool(false).into(),
                                     );
-                                    this.ecx.write_immediate(val, dest)?;
+                                    this.ecx.write_immediate(val, &dest)?;
                                 } else {
-                                    this.ecx.write_immediate(*const_arg, dest)?;
+                                    this.ecx.write_immediate(*const_arg, &dest)?;
                                 }
                             }
                         }

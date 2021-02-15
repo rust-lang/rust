@@ -462,9 +462,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn place_to_op(
         &self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match *place {
+        let op = match **place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
             Place::Local { frame, local } => {
                 *self.access_local(&self.stack()[frame], local, None)?

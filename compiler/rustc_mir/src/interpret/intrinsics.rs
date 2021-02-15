@@ -115,7 +115,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
@@ -459,7 +459,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 for i in 0..len {
                     let place = self.place_index(dest, i)?;
                     let value = if i == index { *elem } else { self.operand_index(input, i)? };
-                    self.copy_op(&value, place)?;
+                    self.copy_op(&value, &place)?;
                 }
             }
             sym::simd_extract => {
@@ -492,7 +492,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => return Ok(false),
         }
 
-        trace!("{:?}", self.dump_place(*dest));
+        trace!("{:?}", self.dump_place(**dest));
         self.go_to_block(ret);
         Ok(true)
     }
@@ -501,7 +501,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         a: &ImmTy<'tcx, M::PointerTag>,
         b: &ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
