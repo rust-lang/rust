@@ -53,20 +53,22 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if matches!(
-        *item.kind,
-        clean::StructFieldItem(_)
-            | clean::VariantItem(_)
-            | clean::AssocConstItem(_, _)
-            | clean::AssocTypeItem(_, _)
-            | clean::TypedefItem(_, _)
-            | clean::StaticItem(_)
-            | clean::ConstantItem(_)
-            | clean::ExternCrateItem(_, _)
-            | clean::ImportItem(_)
-            | clean::PrimitiveItem(_)
-            | clean::KeywordItem(_)
-    ) {
+    if !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
+        || matches!(
+            *item.kind,
+            clean::StructFieldItem(_)
+                | clean::VariantItem(_)
+                | clean::AssocConstItem(_, _)
+                | clean::AssocTypeItem(_, _)
+                | clean::TypedefItem(_, _)
+                | clean::StaticItem(_)
+                | clean::ConstantItem(_)
+                | clean::ExternCrateItem(_, _)
+                | clean::ImportItem(_)
+                | clean::PrimitiveItem(_)
+                | clean::KeywordItem(_)
+        )
+    {
         return false;
     }
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
@@ -93,9 +95,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
 
     if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
-        if cx.renderinfo.borrow().access_levels.is_public(item.def_id)
-            && should_have_doc_example(cx, &item)
-        {
+        if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
             cx.tcx.struct_span_lint_hir(

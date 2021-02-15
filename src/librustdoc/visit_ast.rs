@@ -35,9 +35,6 @@ crate fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) ->
         if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
             return true;
         }
-        if node == hir::CRATE_HIR_ID {
-            break;
-        }
     }
     false
 }
