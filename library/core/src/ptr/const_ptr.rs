@@ -56,7 +56,7 @@ impl<T: ?Sized> *const T {
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
     pub const fn to_raw_parts(self) -> (*const (), <T as super::Pointee>::Metadata) {
-        (self.cast(), super::metadata(self))
+        (self.cast(), metadata(self))
     }
 
     /// Returns `None` if the pointer is null, or else returns a shared reference to
