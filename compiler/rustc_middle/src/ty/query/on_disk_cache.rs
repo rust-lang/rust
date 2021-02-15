@@ -427,7 +427,7 @@ impl<'sess> OnDiskCache<'sess> {
 
             fn sorted_cnums_including_local_crate(tcx: TyCtxt<'_>) -> Vec<CrateNum> {
                 let mut cnums = vec![LOCAL_CRATE];
-                cnums.extend_from_slice(&tcx.crates()[..]);
+                cnums.extend_from_slice(tcx.crates());
                 cnums.sort_unstable();
                 // Just to be sure...
                 cnums.dedup();

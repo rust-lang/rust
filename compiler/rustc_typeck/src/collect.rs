@@ -229,14 +229,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     let mut visitor = PlaceholderHirTyCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(
-        tcx,
-        Some(generics.span),
-        &generics.params[..],
-        visitor.0,
-        suggest,
-        None,
-    );
+    placeholder_type_error(tcx, Some(generics.span), generics.params, visitor.0, suggest, None);
 }
 
 impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -417,7 +410,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
                         | hir::ItemKind::Struct(_, generics)
                         | hir::ItemKind::Union(_, generics) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
-                            let (lt_sp, sugg) = match &generics.params[..] {
+                            let (lt_sp, sugg) = match generics.params {
                                 [] => (generics.span, format!("<{}>", lt_name)),
                                 [bound, ..] => {
                                     (bound.span.shrink_to_lo(), format!("{}, ", lt_name))

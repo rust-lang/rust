@@ -671,7 +671,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !impl_candidates.is_empty() && e.span.contains(span) {
                     if let Some(expr) = exprs.first() {
                         if let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
-                            if let [path_segment] = &path.segments[..] {
+                            if let [path_segment] = path.segments {
                                 let candidate_len = impl_candidates.len();
                                 let suggestions = impl_candidates.iter().map(|candidate| {
                                     format!(

@@ -709,7 +709,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (tup, args) = args.split_last().unwrap();
             (args, Some(tup))
         } else {
-            (&args[..], None)
+            (args, None)
         };
 
         'make_args: for (i, arg) in first_args.iter().enumerate() {

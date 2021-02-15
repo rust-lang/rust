@@ -975,7 +975,7 @@ where
 {
     fn clean(&self, cx: &DocContext<'_>) -> FnDecl {
         FnDecl {
-            inputs: (&self.0.inputs[..], self.1).clean(cx),
+            inputs: (self.0.inputs, self.1).clean(cx),
             output: self.0.output.clean(cx),
             c_variadic: self.0.c_variadic,
             attrs: Attributes::default(),
@@ -1939,7 +1939,7 @@ impl Clean<String> for Symbol {
 impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, || {
-            (self.generic_params.clean(cx), (&*self.decl, &self.param_names[..]).clean(cx))
+            (self.generic_params.clean(cx), (&*self.decl, self.param_names).clean(cx))
         });
         BareFunctionDecl { unsafety: self.unsafety, abi: self.abi, decl, generic_params }
     }

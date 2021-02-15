@@ -2374,7 +2374,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             crate::collect::placeholder_type_error(
                 tcx,
                 ident_span.map(|sp| sp.shrink_to_hi()),
-                &generics.params[..],
+                generics.params,
                 visitor.0,
                 true,
                 hir_ty,
