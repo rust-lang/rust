@@ -18,7 +18,8 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     fn layout(&self) -> TyAndLayout<'tcx>;
 
     /// Makes this into an `OpTy`.
-    fn to_op(&self, ecx: &InterpCx<'mir, 'tcx, M>) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
+    fn to_op(&self, ecx: &InterpCx<'mir, 'tcx, M>)
+    -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     /// Creates this from an `MPlaceTy`.
     fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self;
@@ -31,8 +32,11 @@ pub trait Value<'mir, 'tcx, M: Machine<'mir, 'tcx>>: Copy {
     ) -> InterpResult<'tcx, Self>;
 
     /// Projects to the n-th field.
-    fn project_field(&self, ecx: &InterpCx<'mir, 'tcx, M>, field: usize)
-    -> InterpResult<'tcx, Self>;
+    fn project_field(
+        &self,
+        ecx: &InterpCx<'mir, 'tcx, M>,
+        field: usize,
+    ) -> InterpResult<'tcx, Self>;
 }
 
 // Operands and memory-places are both values.

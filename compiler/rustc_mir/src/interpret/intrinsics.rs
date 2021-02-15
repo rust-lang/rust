@@ -226,8 +226,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;
                 let is_add = intrinsic_name == sym::saturating_add;
-                let (val, overflowed, _ty) =
-                    self.overflowing_binary_op(if is_add { BinOp::Add } else { BinOp::Sub }, &l, &r)?;
+                let (val, overflowed, _ty) = self.overflowing_binary_op(
+                    if is_add { BinOp::Add } else { BinOp::Sub },
+                    &l,
+                    &r,
+                )?;
                 let val = if overflowed {
                     let num_bits = l.layout.size.bits();
                     if l.layout.abi.is_signed() {

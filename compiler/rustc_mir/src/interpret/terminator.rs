@@ -83,7 +83,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Some((dest, ret)) => {
                         dest_place = self.eval_place(dest)?;
                         Some((&dest_place, ret))
-                    },
+                    }
                     None => None,
                 };
                 self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;

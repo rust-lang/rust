@@ -1198,9 +1198,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             // This can be `None` if the lhs wasn't const propagated and we just
                             // triggered the assert on the value of the rhs.
                             match self.eval_operand(op, source_info) {
-                                Some(op) => {
-                                    DbgVal::Val(self.ecx.read_immediate(&op).unwrap().to_const_int())
-                                }
+                                Some(op) => DbgVal::Val(
+                                    self.ecx.read_immediate(&op).unwrap().to_const_int(),
+                                ),
                                 None => DbgVal::Underscore,
                             }
                         };
