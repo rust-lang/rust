@@ -57,19 +57,19 @@ pub(crate) fn annotations(
             let action = runnable.action();
             let range = runnable.nav.full_range;
 
-            if action.debugee && config.debug {
+            if config.run {
                 annotations.push(Annotation {
                     range,
 
                     // FIXME: This one allocates without reason if run is enabled, but debug is disabled
-                    kind: AnnotationKind::Runnable { debug: true, runnable: runnable.clone() },
+                    kind: AnnotationKind::Runnable { debug: false, runnable: runnable.clone() },
                 });
             }
 
-            if config.run {
+            if action.debugee && config.debug {
                 annotations.push(Annotation {
                     range,
-                    kind: AnnotationKind::Runnable { debug: false, runnable },
+                    kind: AnnotationKind::Runnable { debug: true, runnable },
                 });
             }
         }
@@ -199,7 +199,7 @@ fn main() {
                     Annotation {
                         range: 50..85,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -218,7 +218,7 @@ fn main() {
                     Annotation {
                         range: 50..85,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -303,7 +303,7 @@ fn main() {
                     Annotation {
                         range: 14..48,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -322,7 +322,7 @@ fn main() {
                     Annotation {
                         range: 14..48,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -411,7 +411,7 @@ fn main() {
                     Annotation {
                         range: 66..100,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -430,7 +430,7 @@ fn main() {
                     Annotation {
                         range: 66..100,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -572,7 +572,7 @@ fn main() {}
                     Annotation {
                         range: 0..12,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -591,7 +591,7 @@ fn main() {}
                     Annotation {
                         range: 0..12,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -645,7 +645,7 @@ fn main() {
                     Annotation {
                         range: 58..95,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -664,7 +664,7 @@ fn main() {
                     Annotation {
                         range: 58..95,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -787,7 +787,7 @@ mod tests {
                     Annotation {
                         range: 0..12,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -806,7 +806,7 @@ mod tests {
                     Annotation {
                         range: 0..12,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -825,7 +825,7 @@ mod tests {
                     Annotation {
                         range: 14..64,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -846,7 +846,7 @@ mod tests {
                     Annotation {
                         range: 14..64,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -867,7 +867,7 @@ mod tests {
                     Annotation {
                         range: 30..62,
                         kind: Runnable {
-                            debug: true,
+                            debug: false,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
@@ -893,7 +893,7 @@ mod tests {
                     Annotation {
                         range: 30..62,
                         kind: Runnable {
-                            debug: false,
+                            debug: true,
                             runnable: Runnable {
                                 nav: NavigationTarget {
                                     file_id: FileId(
