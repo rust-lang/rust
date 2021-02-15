@@ -963,6 +963,7 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) definitions: &'tcx Definitions,
 
     pub queries: query::Queries<'tcx>,
+    pub query_caches: query::QueryCaches<'tcx>,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1154,6 +1155,7 @@ impl<'tcx> TyCtxt<'tcx> {
             untracked_crate: krate,
             definitions,
             queries: query::Queries::new(providers, extern_providers, on_disk_query_result_cache),
+            query_caches: query::QueryCaches::default(),
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
             selection_cache: Default::default(),

@@ -1244,10 +1244,9 @@ where
         .prof
         .extra_verbose_generic_activity("encode_query_results_for", std::any::type_name::<Q>());
 
-    let state = Q::query_state(tcx);
-    assert!(state.all_inactive());
-
-    state.iter_results(|results| {
+    assert!(Q::query_state(tcx).all_inactive());
+    let cache = Q::query_cache(tcx);
+    cache.iter_results(|results| {
         for (key, value, dep_node) in results {
             if Q::cache_on_disk(tcx, &key, Some(value)) {
                 let dep_node = SerializedDepNodeIndex::new(dep_node.index());
