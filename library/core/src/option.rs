@@ -150,7 +150,7 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    convert, fmt, hint, mem,
+    fmt, hint, mem,
     ops::{self, Deref, DerefMut},
 };
 
@@ -1275,7 +1275,8 @@ impl<T, E> Option<Result<T, E>> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Result<Option<T>, E> {
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
             Some(Err(e)) => Err(e),
@@ -1750,7 +1751,11 @@ impl<T> Option<Option<T>> {
     /// ```
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
-    pub fn flatten(self) -> Option<T> {
-        self.and_then(convert::identity)
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn flatten(self) -> Option<T> {
+        match self {
+            Some(inner) => inner,
+            None => None,
+        }
     }
 }
