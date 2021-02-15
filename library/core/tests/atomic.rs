@@ -60,6 +60,24 @@ fn uint_xor() {
 }
 
 #[test]
+fn uint_min() {
+    let x = AtomicUsize::new(0xf731);
+    assert_eq!(x.fetch_min(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), 0x137f);
+    assert_eq!(x.fetch_min(0xf731, SeqCst), 0x137f);
+    assert_eq!(x.load(SeqCst), 0x137f);
+}
+
+#[test]
+fn uint_max() {
+    let x = AtomicUsize::new(0x137f);
+    assert_eq!(x.fetch_max(0xf731, SeqCst), 0x137f);
+    assert_eq!(x.load(SeqCst), 0xf731);
+    assert_eq!(x.fetch_max(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), 0xf731);
+}
+
+#[test]
 fn int_and() {
     let x = AtomicIsize::new(0xf731);
     assert_eq!(x.fetch_and(0x137f, SeqCst), 0xf731);
@@ -85,6 +103,24 @@ fn int_xor() {
     let x = AtomicIsize::new(0xf731);
     assert_eq!(x.fetch_xor(0x137f, SeqCst), 0xf731);
     assert_eq!(x.load(SeqCst), 0xf731 ^ 0x137f);
+}
+
+#[test]
+fn int_min() {
+    let x = AtomicIsize::new(0xf731);
+    assert_eq!(x.fetch_min(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), 0x137f);
+    assert_eq!(x.fetch_min(0xf731, SeqCst), 0x137f);
+    assert_eq!(x.load(SeqCst), 0x137f);
+}
+
+#[test]
+fn int_max() {
+    let x = AtomicIsize::new(0x137f);
+    assert_eq!(x.fetch_max(0xf731, SeqCst), 0x137f);
+    assert_eq!(x.load(SeqCst), 0xf731);
+    assert_eq!(x.fetch_max(0x137f, SeqCst), 0xf731);
+    assert_eq!(x.load(SeqCst), 0xf731);
 }
 
 static S_FALSE: AtomicBool = AtomicBool::new(false);
