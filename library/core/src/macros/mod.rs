@@ -816,6 +816,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Optionally inspects an environment variable at compile time.
