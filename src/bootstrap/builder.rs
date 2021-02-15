@@ -579,8 +579,7 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
 
-    pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
-        let paths = paths.unwrap_or(&[]);
+    pub fn default_doc(&self, paths: &[PathBuf]) {
         self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
     }
 
