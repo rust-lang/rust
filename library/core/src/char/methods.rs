@@ -337,7 +337,7 @@ impl char {
         // the `radix` is constant and 10 or smaller
         let val = if likely(radix <= 10) {
             // If not a digit, a number greater than radix will be created.
-            self as u32 ^ ASCII_DIGIT_MASK
+            (self as u32).wrapping_sub('0' as u32)
         } else {
             match self {
                 '0'..='9' => self as u32 - '0' as u32,
