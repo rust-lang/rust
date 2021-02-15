@@ -10,8 +10,8 @@
 //     keys: [K; 2 * B - 1],
 //     vals: [V; 2 * B - 1],
 //     edges: [if height > 0 { Box<Node<K, V, height - 1>> } else { () }; 2 * B],
-//     parent: Option<(NonNull<Node<K, V, height + 1>>, u16)>,
-//     len: u16,
+//     parent: Option<(NonNull<Node<K, V, height + 1>>, PackedLength)>,
+//     len: PackedLength,
 // }
 // ```
 //
@@ -47,6 +47,15 @@ const KV_IDX_CENTER: usize = B - 1;
 const EDGE_IDX_LEFT_OF_CENTER: usize = B - 1;
 const EDGE_IDX_RIGHT_OF_CENTER: usize = B;
 
+#[cfg(target_pointer_width = "64")]
+type PackedLength = u32;
+
+#[cfg(target_pointer_width = "32")]
+type PackedLength = u16;
+
+#[cfg(target_pointer_width = "16")]
+type PackedLength = u8;
+
 /// The underlying representation of leaf nodes and part of the representation of internal nodes.
 struct LeafNode<K, V> {
     /// We want to be covariant in `K` and `V`.
@@ -55,10 +64,10 @@ struct LeafNode<K, V> {
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
     /// This is only guaranteed to be initialized when `parent` is non-null.
-    parent_idx: MaybeUninit<u16>,
+    parent_idx: MaybeUninit<PackedLength>,
 
     /// The number of keys and values this node stores.
-    len: u16,
+    len: PackedLength,
 
     /// The arrays storing the actual data of the node. Only the first `len` elements of each
     /// array are initialized and valid.
@@ -341,7 +350,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     pub fn len(&self) -> usize {
         // Crucially, we only access the `len` field here. If BorrowType is marker::ValMut,
         // there might be outstanding mutable references to values that we must not invalidate.
-        unsafe { usize::from((*Self::as_leaf_ptr(self)).len) }
+        unsafe { (*Self::as_leaf_ptr(self)).len as usize }
     }
 
     /// Returns the number of levels that the node and leaves are apart. Zero
@@ -390,7 +399,7 @@ impl<BorrowType: marker::BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type>
             .as_ref()
             .map(|parent| Handle {
                 node: NodeRef::from_internal(*parent, self.height + 1),
-                idx: unsafe { usize::from((*leaf_ptr).parent_idx.assume_init()) },
+                idx: unsafe { (*leaf_ptr).parent_idx.assume_init() as usize },
                 _marker: PhantomData,
             })
             .ok_or(self)
@@ -431,9 +440,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Borrows a view into the keys stored in the node.
     pub fn keys(&self) -> &[K] {
         let leaf = self.into_leaf();
-        unsafe {
-            MaybeUninit::slice_assume_init_ref(leaf.keys.get_unchecked(..usize::from(leaf.len)))
-        }
+        let len = leaf.len as usize;
+        unsafe { MaybeUninit::slice_assume_init_ref(leaf.keys.get_unchecked(..len)) }
     }
 }
 
@@ -570,7 +578,7 @@ impl<'a, K, V, Type> NodeRef<marker::ValMut<'a>, K, V, Type> {
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Borrows exclusive access to the length of the node.
-    pub fn len_mut(&mut self) -> &mut u16 {
+    pub fn len_mut(&mut self) -> &mut PackedLength {
         &mut self.as_leaf_mut().len
     }
 }
@@ -581,7 +589,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     fn set_parent_link(&mut self, parent: NonNull<InternalNode<K, V>>, parent_idx: usize) {
         let leaf = Self::as_leaf_ptr(self);
         unsafe { (*leaf).parent = Some(parent) };
-        unsafe { (*leaf).parent_idx.write(parent_idx as u16) };
+        unsafe { (*leaf).parent_idx.write(parent_idx as PackedLength) };
     }
 }
 
@@ -598,7 +606,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key-value pair to the end of the node.
     pub fn push(&mut self, key: K, val: V) {
         let len = self.len_mut();
-        let idx = usize::from(*len);
+        let idx = *len as usize;
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
@@ -631,7 +639,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         assert!(edge.height == self.height - 1);
 
         let len = self.len_mut();
-        let idx = usize::from(*len);
+        let idx = *len as usize;
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
@@ -843,7 +851,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         unsafe {
             slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
             slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
-            *self.node.len_mut() = new_len as u16;
+            *self.node.len_mut() = new_len as PackedLength;
 
             self.node.val_area_mut(self.idx).assume_init_mut()
         }
@@ -903,7 +911,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
             slice_insert(self.node.key_area_mut(..new_len), self.idx, key);
             slice_insert(self.node.val_area_mut(..new_len), self.idx, val);
             slice_insert(self.node.edge_area_mut(..new_len + 1), self.idx + 1, edge.node);
-            *self.node.len_mut() = new_len as u16;
+            *self.node.len_mut() = new_len as PackedLength;
 
             self.node.correct_childrens_parent_links(self.idx + 1..new_len + 1);
         }
@@ -1057,7 +1065,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         debug_assert!(self.idx < self.node.len());
         let old_len = self.node.len();
         let new_len = old_len - self.idx - 1;
-        new_node.len = new_len as u16;
+        new_node.len = new_len as PackedLength;
         unsafe {
             let k = self.node.key_area_mut(self.idx).assume_init_read();
             let v = self.node.val_area_mut(self.idx).assume_init_read();
@@ -1071,7 +1079,7 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
                 &mut new_node.vals[..new_len],
             );
 
-            *self.node.len_mut() = self.idx as u16;
+            *self.node.len_mut() = self.idx as PackedLength;
             (k, v)
         }
     }
@@ -1105,7 +1113,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
         unsafe {
             let k = slice_remove(self.node.key_area_mut(..old_len), self.idx);
             let v = slice_remove(self.node.val_area_mut(..old_len), self.idx);
-            *self.node.len_mut() = (old_len - 1) as u16;
+            *self.node.len_mut() = (old_len - 1) as PackedLength;
             ((k, v), self.left_edge())
         }
     }
@@ -1124,7 +1132,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         unsafe {
             let mut new_node = InternalNode::new();
             let kv = self.split_leaf_data(&mut new_node.data);
-            let new_len = usize::from(new_node.data.len);
+            let new_len = new_node.data.len as usize;
             move_to_slice(
                 self.node.edge_area_mut(self.idx + 1..old_len + 1),
                 &mut new_node.edges[..new_len + 1],
@@ -1242,7 +1250,7 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
         assert!(new_left_len <= CAPACITY);
 
         unsafe {
-            *left_node.len_mut() = new_left_len as u16;
+            *left_node.len_mut() = new_left_len as PackedLength;
 
             let parent_key = slice_remove(parent_node.key_area_mut(..old_parent_len), parent_idx);
             left_node.key_area_mut(old_left_len).write(parent_key);
@@ -1360,8 +1368,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
             let new_left_len = old_left_len - count;
             let new_right_len = old_right_len + count;
-            *left_node.len_mut() = new_left_len as u16;
-            *right_node.len_mut() = new_right_len as u16;
+            *left_node.len_mut() = new_left_len as PackedLength;
+            *right_node.len_mut() = new_right_len as PackedLength;
 
             // Move leaf data.
             {
@@ -1423,8 +1431,8 @@ impl<'a, K: 'a, V: 'a> BalancingContext<'a, K, V> {
 
             let new_left_len = old_left_len + count;
             let new_right_len = old_right_len - count;
-            *left_node.len_mut() = new_left_len as u16;
-            *right_node.len_mut() = new_right_len as u16;
+            *left_node.len_mut() = new_left_len as PackedLength;
+            *right_node.len_mut() = new_right_len as PackedLength;
 
             // Move leaf data.
             {
@@ -1559,8 +1567,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             assert!(left_node.height == right_node.height);
 
             if new_right_len > 0 {
-                *left_node.len_mut() = new_left_len as u16;
-                *right_node.len_mut() = new_right_len as u16;
+                *left_node.len_mut() = new_left_len as PackedLength;
+                *right_node.len_mut() = new_right_len as PackedLength;
 
                 move_to_slice(
                     left_node.key_area_mut(new_left_len..old_left_len),
