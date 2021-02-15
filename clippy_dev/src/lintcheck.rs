@@ -136,6 +136,7 @@ impl CrateSource {
                 Command::new("git")
                     .arg("checkout")
                     .arg(commit)
+                    .current_dir(&repo_path)
                     .output()
                     .expect("Failed to check out commit");
 
