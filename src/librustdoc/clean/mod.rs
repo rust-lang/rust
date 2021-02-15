@@ -1269,7 +1269,7 @@ impl Clean<Item> for ty::AssocItem {
 
                     AssocTypeItem(bounds, ty.clean(cx))
                 } else {
-                    // FIXME: when could this happen? ASsociated items in inherent impls?
+                    // FIXME: when could this happen? Associated items in inherent impls?
                     let type_ = cx.tcx.type_of(self.def_id).clean(cx);
                     TypedefItem(
                         Typedef {
