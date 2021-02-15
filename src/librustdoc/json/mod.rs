@@ -183,7 +183,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 match &*item.kind {
                     // These don't have names so they don't get added to the output by default
                     ImportItem(_) => self.item(item.clone()).unwrap(),
-                    ExternCrateItem(_, _) => self.item(item.clone()).unwrap(),
+                    ExternCrateItem { .. } => self.item(item.clone()).unwrap(),
                     ImplItem(i) => i.items.iter().for_each(|i| self.item(i.clone()).unwrap()),
                     _ => {}
                 }
