@@ -1,11 +1,15 @@
 use crate::raw::{Allocator, Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::TryReserveError;
+#[cfg(feature = "nightly")]
+use crate::UnavailableMutError;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
 use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem;
+#[cfg(feature = "nightly")]
+use core::mem::MaybeUninit;
 use core::ops::Index;
 
 /// Default hasher for `HashMap`.
@@ -1111,6 +1115,137 @@ where
     {
         let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
         self.table.get_mut(hash, equivalent_key(k))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness,
+    /// at most one mutable reference will be returned to any value. An
+    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
+    /// key-value pair exists, but a mutable reference to the value already occurs at index `i` in
+    /// the returned array.
+    ///
+    /// This method is available only if the `nightly` feature is enabled.
+    ///
+    /// ```
+    /// use hashbrown::{HashMap, UnavailableMutError};
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_each_mut([
+    ///     "Athenæum",
+    ///     "New York Public Library",
+    ///     "Athenæum",
+    ///     "Library of Congress",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     [
+    ///         Ok(&mut 1807),
+    ///         Err(UnavailableMutError::Absent),
+    ///         Err(UnavailableMutError::Duplicate(0)),
+    ///         Ok(&mut 1800),
+    ///     ]
+    /// );
+    /// ```
+    #[cfg(feature = "nightly")]
+    pub fn get_each_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Result<&'_ mut V, UnavailableMutError>; N]
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let mut pairs = self.get_each_inner_mut(ks);
+        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
+        let mut out: [MaybeUninit<Result<&'_ mut V, UnavailableMutError>>; N] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        for i in 0..N {
+            out[i] = MaybeUninit::new(
+                mem::replace(&mut pairs[i], Err(UnavailableMutError::Absent)).map(|(_, v)| v),
+            );
+        }
+        unsafe { MaybeUninit::array_assume_init(out) }
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, with immutable
+    /// references to the corresponding keys.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness,
+    /// at most one mutable reference will be returned to any value. An
+    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
+    /// key-value pair exists, but a mutable reference to the value already occurs at index `i` in
+    /// the returned array.
+    ///
+    /// This method is available only if the `nightly` feature is enabled.
+    ///
+    /// ```
+    /// use hashbrown::{HashMap, UnavailableMutError};
+    ///
+    /// let mut libraries = HashMap::new();
+    /// libraries.insert("Bodleian Library".to_string(), 1602);
+    /// libraries.insert("Athenæum".to_string(), 1807);
+    /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
+    /// libraries.insert("Library of Congress".to_string(), 1800);
+    ///
+    /// let got = libraries.get_each_key_value_mut([
+    ///     "Bodleian Library",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    ///     "Herzogin-Anna-Amalia-Bibliothek",
+    ///     "Gewandhaus",
+    /// ]);
+    /// assert_eq!(
+    ///     got,
+    ///     [
+    ///         Ok((&"Bodleian Library".to_string(), &mut 1602)),
+    ///         Ok((&"Herzogin-Anna-Amalia-Bibliothek".to_string(), &mut 1691)),
+    ///         Err(UnavailableMutError::Duplicate(1)),
+    ///         Err(UnavailableMutError::Absent),
+    ///     ]
+    /// );
+    /// ```
+    #[cfg(feature = "nightly")]
+    pub fn get_each_key_value_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Result<(&'_ K, &'_ mut V), UnavailableMutError>; N]
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let mut pairs = self.get_each_inner_mut(ks);
+        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
+        let mut out: [MaybeUninit<Result<(&'_ K, &'_ mut V), UnavailableMutError>>; N] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        for i in 0..N {
+            out[i] = MaybeUninit::new(
+                mem::replace(&mut pairs[i], Err(UnavailableMutError::Absent))
+                    .map(|(k, v)| (&*k, v)),
+            );
+        }
+        unsafe { MaybeUninit::array_assume_init(out) }
+    }
+
+    #[cfg(feature = "nightly")]
+    fn get_each_inner_mut<Q: ?Sized, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Result<&'_ mut (K, V), UnavailableMutError>; N]
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let mut hashes = [0_u64; N];
+        for i in 0..N {
+            hashes[i] = make_hash::<K, Q, S>(&self.hash_builder, ks[i]);
+        }
+        self.table
+            .get_each_mut(hashes, |i, (k, _)| ks[i].eq(k.borrow()))
     }
 
     /// Inserts a key-value pair into the map.
@@ -3315,6 +3450,7 @@ mod test_map {
     use super::{HashMap, RawEntryMut};
     use crate::TryReserveError::*;
     use rand::{rngs::SmallRng, Rng, SeedableRng};
+    use std::borrow::ToOwned;
     use std::cell::RefCell;
     use std::usize;
     use std::vec::Vec;
@@ -4682,7 +4818,6 @@ mod test_map {
     #[test]
     fn test_const_with_hasher() {
         use core::hash::BuildHasher;
-        use std::borrow::ToOwned;
         use std::collections::hash_map::DefaultHasher;
 
         #[derive(Clone)]
@@ -4701,5 +4836,34 @@ mod test_map {
         let mut map = EMPTY_MAP.clone();
         map.insert(17, "seventeen".to_owned());
         assert_eq!("seventeen", map[&17]);
+    }
+
+    #[test]
+    #[cfg(feature = "nightly")]
+    fn test_get_each_mut() {
+        use crate::UnavailableMutError::*;
+
+        let mut map = HashMap::new();
+        map.insert("foo".to_owned(), 0);
+        map.insert("bar".to_owned(), 10);
+        map.insert("baz".to_owned(), 20);
+        map.insert("qux".to_owned(), 30);
+
+        let xs = map.get_each_mut(["foo", "dud", "foo", "qux"]);
+        assert_eq!(
+            xs,
+            [Ok(&mut 0), Err(Absent), Err(Duplicate(0)), Ok(&mut 30)]
+        );
+
+        let ys = map.get_each_key_value_mut(["bar", "baz", "baz", "dip"]);
+        assert_eq!(
+            ys,
+            [
+                Ok((&"bar".to_owned(), &mut 10)),
+                Ok((&"baz".to_owned(), &mut 20)),
+                Err(Duplicate(1)),
+                Err(Absent),
+            ]
+        );
     }
 }
