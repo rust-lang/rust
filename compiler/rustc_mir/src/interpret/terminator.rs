@@ -25,7 +25,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Goto { target } => self.go_to_block(target),
 
             SwitchInt { ref discr, ref targets, switch_ty } => {
-                let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
+                let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
                 assert_eq!(discr.layout.ty, switch_ty);
 
@@ -38,8 +38,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let res = self
                         .overflowing_binary_op(
                             mir::BinOp::Eq,
-                            discr,
-                            ImmTy::from_uint(const_int, discr.layout),
+                            &discr,
+                            &ImmTy::from_uint(const_int, discr.layout),
                         )?
                         .0;
                     if res.to_bool()? {
@@ -58,7 +58,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, abi) = match *func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
-                        let fn_ptr = self.read_scalar(func)?.check_init()?;
+                        let fn_ptr = self.read_scalar(&func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
                         (fn_val, caller_abi)
                     }
@@ -101,7 +101,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond_val =
-                    self.read_immediate(self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
+                    self.read_immediate(&self.eval_operand(cond, None)?)?.to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {
@@ -202,7 +202,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // We allow some transmutes here
-        self.copy_op_transmute(caller_arg, callee_arg)
+        self.copy_op_transmute(&caller_arg, callee_arg)
     }
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
@@ -314,7 +314,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let caller_args: Cow<'_, [OpTy<'tcx, M::PointerTag>]> =
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
-                            let (&untuple_arg, args) = args.split_last().unwrap();
+                            let (untuple_arg, args) = args.split_last().unwrap();
                             trace!("eval_fn_call: Will pass last argument by untupling");
                             Cow::from(
                                 args.iter()
@@ -397,7 +397,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let receiver_place = match args[0].layout.ty.builtin_deref(true) {
                     Some(_) => {
                         // Built-in pointer.
-                        self.deref_operand(args[0])?
+                        self.deref_operand(&args[0])?
                     }
                     None => {
                         // Unsized self.

@@ -200,8 +200,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Self::PointerTag>,
-        right: ImmTy<'tcx, Self::PointerTag>,
+        left: &ImmTy<'tcx, Self::PointerTag>,
+        right: &ImmTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
     /// Heap allocations via the `box` keyword.

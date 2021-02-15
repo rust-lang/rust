@@ -39,7 +39,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
             // &str
             assert!(args.len() == 1);
 
-            let msg_place = self.deref_operand(args[0])?;
+            let msg_place = self.deref_operand(&args[0])?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
             let span = self.find_closest_untracked_caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
@@ -284,8 +284,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         };
         match intrinsic_name {
             sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
-                let a = ecx.read_immediate(args[0])?.to_scalar()?;
-                let b = ecx.read_immediate(args[1])?.to_scalar()?;
+                let a = ecx.read_immediate(&args[0])?.to_scalar()?;
+                let b = ecx.read_immediate(&args[1])?.to_scalar()?;
                 let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
                     ecx.guaranteed_eq(a, b)
                 } else {
@@ -294,8 +294,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
             }
             sym::const_allocate => {
-                let size = ecx.read_scalar(args[0])?.to_machine_usize(ecx)?;
-                let align = ecx.read_scalar(args[1])?.to_machine_usize(ecx)?;
+                let size = ecx.read_scalar(&args[0])?.to_machine_usize(ecx)?;
+                let align = ecx.read_scalar(&args[1])?.to_machine_usize(ecx)?;
 
                 let align = match Align::from_bytes(align) {
                     Ok(a) => a,
@@ -330,7 +330,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         use rustc_middle::mir::AssertKind::*;
         // Convert `AssertKind<Operand>` to `AssertKind<Scalar>`.
         let eval_to_int =
-            |op| ecx.read_immediate(ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
+            |op| ecx.read_immediate(&ecx.eval_operand(op, None)?).map(|x| x.to_const_int());
         let err = match msg {
             BoundsCheck { ref len, ref index } => {
                 let len = eval_to_int(len)?;
@@ -358,8 +358,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn binary_ptr_op(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        _left: ImmTy<'tcx>,
-        _right: ImmTy<'tcx>,
+        _left: &ImmTy<'tcx>,
+        _right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
     }

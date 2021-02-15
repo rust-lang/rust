@@ -228,8 +228,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn binary_ptr_op(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: BinOp,
-        _left: ImmTy<'tcx>,
-        _right: ImmTy<'tcx>,
+        _left: &ImmTy<'tcx>,
+        _right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         // We can't do this because aliasing of memory can differ between const eval and llvm
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
@@ -426,7 +426,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.try_read_immediate(op) {
+        Some(match self.ecx.try_read_immediate(&op) {
             Ok(Ok(imm)) => imm.into(),
             _ => op,
         })
@@ -548,8 +548,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<()> {
         if let (val, true) = self.use_ecx(|this| {
-            let val = this.ecx.read_immediate(this.ecx.eval_operand(arg, None)?)?;
-            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, val)?;
+            let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
+            let (_res, overflow, _ty) = this.ecx.overflowing_unary_op(op, &val)?;
             Ok((val, overflow))
         })? {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
@@ -573,8 +573,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         source_info: SourceInfo,
     ) -> Option<()> {
-        let r = self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(right, None)?));
-        let l = self.use_ecx(|this| this.ecx.read_immediate(this.ecx.eval_operand(left, None)?));
+        let r = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?));
+        let l = self.use_ecx(|this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if op == BinOp::Shr || op == BinOp::Shl {
             let r = r?;
@@ -609,7 +609,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
         }
 
-        if let (Some(l), Some(r)) = (l, r) {
+        if let (Some(l), Some(r)) = (&l, &r) {
             // The remaining operators are handled through `overflowing_binary_op`.
             if self.use_ecx(|this| {
                 let (_res, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
@@ -630,7 +630,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match *operand {
             Operand::Copy(l) | Operand::Move(l) => {
                 if let Some(value) = self.get_const(l) {
-                    if self.should_const_prop(value) {
+                    if self.should_const_prop(&value) {
                         // FIXME(felix91gr): this code only handles `Scalar` cases.
                         // For now, we're not handling `ScalarPair` cases because
                         // doing so here would require a lot of code duplication.
@@ -745,7 +745,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let r = this.ecx.eval_operand(right, None);
 
                     let const_arg = match (l, r) {
-                        (Ok(x), Err(_)) | (Err(_), Ok(x)) => this.ecx.read_immediate(x)?,
+                        (Ok(ref x), Err(_)) | (Err(_), Ok(ref x)) => this.ecx.read_immediate(x)?,
                         (Err(e), Err(_)) => return Err(e),
                         (Ok(_), Ok(_)) => {
                             this.ecx.eval_rvalue_into_place(rvalue, place)?;
@@ -809,7 +809,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn replace_with_const(
         &mut self,
         rval: &mut Rvalue<'tcx>,
-        value: OpTy<'tcx>,
+        value: &OpTy<'tcx>,
         source_info: SourceInfo,
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
@@ -902,7 +902,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns `true` if and only if this `op` should be const-propagated into.
-    fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
+    fn should_const_prop(&mut self, op: &OpTy<'tcx>) -> bool {
         let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
 
         if mir_opt_level == 0 {
@@ -913,7 +913,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return false;
         }
 
-        match *op {
+        match **op {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUninit::Scalar(s))) => {
                 s.is_bits()
             }
@@ -1094,7 +1094,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 // This will return None if the above `const_prop` invocation only "wrote" a
                 // type whose creation requires no write. E.g. a generator whose initial state
                 // consists solely of uninitialized memory (so it doesn't capture any locals).
-                if let Some(value) = self.get_const(place) {
+                if let Some(ref value) = self.get_const(place) {
                     if self.should_const_prop(value) {
                         trace!("replacing {:?} with {:?}", rval, value);
                         self.replace_with_const(rval, value, source_info);
@@ -1177,10 +1177,10 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
         match &mut terminator.kind {
             TerminatorKind::Assert { expected, ref msg, ref mut cond, .. } => {
-                if let Some(value) = self.eval_operand(&cond, source_info) {
+                if let Some(ref value) = self.eval_operand(&cond, source_info) {
                     trace!("assertion on {:?} should be {:?}", value, expected);
                     let expected = ScalarMaybeUninit::from(Scalar::from_bool(*expected));
-                    let value_const = self.ecx.read_scalar(value).unwrap();
+                    let value_const = self.ecx.read_scalar(&value).unwrap();
                     if expected != value_const {
                         enum DbgVal<T> {
                             Val(T),
@@ -1199,7 +1199,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             // triggered the assert on the value of the rhs.
                             match self.eval_operand(op, source_info) {
                                 Some(op) => {
-                                    DbgVal::Val(self.ecx.read_immediate(op).unwrap().to_const_int())
+                                    DbgVal::Val(self.ecx.read_immediate(&op).unwrap().to_const_int())
                                 }
                                 None => DbgVal::Underscore,
                             }

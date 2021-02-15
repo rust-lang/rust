@@ -248,10 +248,10 @@ impl<'tcx, Tag: Debug + Copy> OpTy<'tcx, Tag> {
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
     pub fn try_as_mplace(
-        self,
+        &self,
         cx: &impl HasDataLayout,
     ) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
-        match *self {
+        match **self {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
             Operand::Immediate(_) if self.layout.is_zst() => {
                 Ok(MPlaceTy::dangling(self.layout, cx))
@@ -263,7 +263,7 @@ impl<'tcx, Tag: Debug + Copy> OpTy<'tcx, Tag> {
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
-    pub fn assert_mem_place(self, cx: &impl HasDataLayout) -> MPlaceTy<'tcx, Tag> {
+    pub fn assert_mem_place(&self, cx: &impl HasDataLayout) -> MPlaceTy<'tcx, Tag> {
         self.try_as_mplace(cx).unwrap()
     }
 }
@@ -331,7 +331,7 @@ where
     /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
     pub fn deref_operand(
         &self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
@@ -551,12 +551,12 @@ where
         Ok(match proj_elem {
             Field(field, _) => self.mplace_field(base, field.index())?,
             Downcast(_, variant) => self.mplace_downcast(base, variant)?,
-            Deref => self.deref_operand(base.into())?,
+            Deref => self.deref_operand(&base.into())?,
 
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.access_local(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(n)?;
+                let n = self.read_scalar(&n)?;
                 let n = u64::try_from(
                     self.force_bits(n.check_init()?, self.tcx.data_layout.pointer_size)?,
                 )
@@ -637,7 +637,7 @@ where
         Ok(match proj_elem {
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
-            Deref => self.deref_operand(self.place_to_op(base)?)?.into(),
+            Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
             // For the other variants, we have to force an allocation.
             // This matches `operand_projection`.
             Subslice { .. } | ConstantIndex { .. } | Index(_) => {
@@ -697,7 +697,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?)?;
+            self.validate_operand(&self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -714,7 +714,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into())?;
+            self.validate_operand(&dest.into())?;
         }
 
         Ok(())
@@ -843,14 +843,14 @@ where
     #[inline(always)]
     pub fn copy_op(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         self.copy_op_no_validate(src, dest)?;
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?)?;
+            self.validate_operand(&self.place_to_op(dest)?)?;
         }
 
         Ok(())
@@ -862,7 +862,7 @@ where
     /// right type.
     fn copy_op_no_validate(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // We do NOT compare the types for equality, because well-typed code can
@@ -921,7 +921,7 @@ where
     /// have the same size.
     pub fn copy_op_transmute(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         if mir_assign_valid_types(*self.tcx, self.param_env, src.layout, dest.layout) {
@@ -964,7 +964,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into())?;
+            self.validate_operand(&dest.into())?;
         }
 
         Ok(())
@@ -1118,8 +1118,8 @@ where
                         ImmTy::from_uint(variant_index_relative, tag_layout);
                     let tag_val = self.binary_op(
                         mir::BinOp::Add,
-                        variant_index_relative_val,
-                        niche_start_val,
+                        &variant_index_relative_val,
+                        &niche_start_val,
                     )?;
                     // Write result.
                     let niche_dest = self.place_field(dest, tag_field)?;

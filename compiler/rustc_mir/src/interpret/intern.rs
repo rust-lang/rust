@@ -167,7 +167,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
     fn visit_aggregate(
         &mut self,
-        mplace: MPlaceTy<'tcx>,
+        mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         // ZSTs cannot contain pointers, so we can skip them.
@@ -191,13 +191,13 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         self.walk_aggregate(mplace, fields)
     }
 
-    fn visit_value(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
-            let value = self.ecx.read_immediate(mplace.into())?;
+            let value = self.ecx.read_immediate(&(*mplace).into())?;
             let mplace = self.ecx.ref_to_mplace(value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.
@@ -338,7 +338,7 @@ where
             leftover_allocations,
             inside_unsafe_cell: false,
         }
-        .visit_value(mplace);
+        .visit_value(&mplace);
         // We deliberately *ignore* interpreter errors here.  When there is a problem, the remaining
         // references are "leftover"-interned, and later validation will show a proper error
         // and point at the right part of the value causing the problem.

@@ -17,7 +17,7 @@ use super::{
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         cast_kind: CastKind,
         cast_ty: Ty<'tcx>,
         dest: PlaceTy<'tcx, M::PointerTag>,
@@ -259,7 +259,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into_ptr(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
         source_ty: Ty<'tcx>,
@@ -300,7 +300,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         cast_ty: TyAndLayout<'tcx>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
@@ -340,9 +340,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let src_field = self.operand_field(src, i)?;
                     let dst_field = self.place_field(dest, i)?;
                     if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(src_field, dst_field)?;
+                        self.copy_op(&src_field, dst_field)?;
                     } else {
-                        self.unsize_into(src_field, cast_ty_field, dst_field)?;
+                        self.unsize_into(&src_field, cast_ty_field, dst_field)?;
                     }
                 }
                 Ok(())

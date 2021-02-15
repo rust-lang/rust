@@ -105,7 +105,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 /// type system.
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
-    op: OpTy<'tcx>,
+    op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
@@ -201,7 +201,7 @@ fn turn_into_const_value<'tcx>(
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
     // Turn this into a proper constant.
-    op_to_const(&ecx, mplace.into())
+    op_to_const(&ecx, &mplace.into())
 }
 
 pub fn eval_to_const_value_raw_provider<'tcx>(
@@ -348,7 +348,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         Some(_) => CtfeValidationMode::Regular, // a `static`
                         None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
                     };
-                    ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                    ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
                     inner = true;
                 }
             };

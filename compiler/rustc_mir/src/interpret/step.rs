@@ -162,29 +162,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(op, dest)?;
+                self.copy_op(&op, dest)?;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
                 let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
-                let left = self.read_immediate(self.eval_operand(left, layout)?)?;
+                let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_ignore_overflow(bin_op, left, right, dest)?;
+                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                self.binop_ignore_overflow(bin_op, &left, &right, dest)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
-                let left = self.read_immediate(self.eval_operand(left, None)?)?;
+                let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(bin_op, left, right, dest)?;
+                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                self.binop_with_overflow(bin_op, &left, &right, dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
-                let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
-                let val = self.unary_op(un_op, val)?;
+                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let val = self.unary_op(un_op, &val)?;
                 assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
                 self.write_immediate(*val, dest)?;
             }
@@ -208,7 +208,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
                         let field_dest = self.place_field(dest, field_index)?;
-                        self.copy_op(op, field_dest)?;
+                        self.copy_op(&op, field_dest)?;
                     }
                 }
             }
@@ -221,7 +221,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(first_ptr) = self.check_mplace_access(dest, None)? {
                     // Write the first.
                     let first = self.mplace_field(dest, 0)?;
-                    self.copy_op(op, first.into())?;
+                    self.copy_op(&op, first.into())?;
 
                     if length > 1 {
                         let elem_size = first.layout.size;
@@ -278,12 +278,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
-                self.cast(src, cast_kind, cast_ty, dest)?;
+                self.cast(&src, cast_kind, cast_ty, dest)?;
             }
 
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
-                let discr_val = self.read_discriminant(op)?.0;
+                let discr_val = self.read_discriminant(&op)?.0;
                 self.write_scalar(discr_val, dest)?;
             }
         }
