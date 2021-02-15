@@ -225,11 +225,34 @@ impl Crate {
         let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
             // get all clippy warnings and ICEs
-            .filter(|line| line.contains("clippy::") || line.contains("internal compiler error: "))
+            .filter(|line| filter_clippy_warnings(&line))
             .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
         warnings
     }
+}
+
+/// takes a single json-formatted clippy warnings and returns true (we are interested in that line)
+/// or false (we aren't)
+fn filter_clippy_warnings(line: &str) -> bool {
+    // we want to collect ICEs because clippy might have crashed.
+    // these are summarized later
+    if line.contains("internal compiler error: ") {
+        return true;
+    }
+    // in general, we want all clippy warnings
+    // however due to some kind of bug, sometimes there are absolute paths
+    // to libcore files inside the message
+    // or we end up with cargo-metadata output (https://github.com/rust-lang/rust-clippy/issues/6508)
+
+    // filter out these message to avoid unnecessary noise in the logs
+    if line.contains("clippy::")
+        && !(line.contains("could not read cargo metadata")
+            || (line.contains(".rustup") && line.contains("toolchains")))
+    {
+        return true;
+    }
+    false
 }
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
