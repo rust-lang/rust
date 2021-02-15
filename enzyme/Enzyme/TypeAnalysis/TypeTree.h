@@ -106,9 +106,6 @@ public:
     return BaseType::Unknown;
   }
 
-  /// Remove a given offset sequence
-  void erase(const std::vector<int> Seq) { mapping.erase(Seq); }
-
   /// Return if changed
   bool insert(const std::vector<int> Seq, ConcreteType CT,
               bool intsAreLegalSubPointer = false) {
@@ -265,45 +262,68 @@ public:
       return changed;
     }
 
-    std::vector<std::pair<int, std::set<std::vector<int>>>> best;
+    size_t maxSize = Seq.size();
+    for (const auto &pair : mapping) {
+      if (pair.first.size() > maxSize) {
+        maxSize = pair.first.size();
+      }
+    }
+
+    std::vector<int> minBest(maxSize, std::numeric_limits<int>::max());
     for (const auto &pair : mapping) {
       size_t i = 0;
       for (int val : pair.first) {
-        if (best.size() <= i) {
-          best.emplace_back(val, std::set<std::vector<int>>());
+        if (val < minBest[i]) {
+          minBest[i] = val;
         }
-        assert(best.size() > i);
-        if (val > best[i].first) {
-          best[i].first = val;
-          best[i].second.clear();
-        }
-
-        if (val == best[i].first) {
-          best[i].first = val;
-          best[i].second.insert(pair.first);
-        }
-        i++;
+        ++i;
       }
     }
+
+    {
+      size_t i=0;
+      for (auto val : Seq) {
+        if (val < minBest[i]) {
+          minBest[i] = val;
+        }
+        ++i;
+      }
+    }
+
+    std::vector<std::vector<int>> toErase;
+    for (const auto &pair : mapping) {
+      size_t i = 0;
+      bool mustKeep = false;
+      bool considerErase = false;
+      for (int val : pair.first) {
+        if (val == minBest[i]) {
+          mustKeep = true;
+          break;
+        }
+        if (val > MaxTypeOffset) {
+          considerErase = true;
+        }
+        ++i;
+      }
+      if (!mustKeep && considerErase) {
+        toErase.push_back(pair.first);
+      }
+    }
+
+    for(auto vec : toErase) {
+      mapping.erase(vec);
+      changed = true;
+    }
+
     size_t i = 0;
     bool keep = false;
     bool considerErase = false;
-    for (auto Off : Seq) {
-      if (i < best.size()) {
-        if (Off < best[i].first) {
-          if (best[i].first > MaxTypeOffset)
-            for (auto v : best[i].second) {
-              mapping.erase(v);
-              changed = true;
-            }
-          keep = true;
-        } else {
-          if (Off > MaxTypeOffset) {
-            considerErase = true;
-          }
-        }
-      } else {
+    for (auto val : Seq) {
+      if (val == minBest[i]) {
         keep = true;
+        break;
+      } else if (val > MaxTypeOffset) {
+        considerErase = true;
       }
       i++;
     }
@@ -312,12 +332,13 @@ public:
     mapping.insert(std::pair<const std::vector<int>, ConcreteType>(Seq, CT));
     return true;
   }
+
   /// How this TypeTree compares with another
   bool operator<(const TypeTree &vd) const { return mapping < vd.mapping; }
 
   /// Whether this TypeTree contains any information
-  bool isKnown() {
-    for (auto &pair : mapping) {
+  bool isKnown() const {
+    for (const auto &pair : mapping) {
       // we should assert here as we shouldn't keep any unknown maps for
       // efficiency
       assert(pair.second.isKnown());
@@ -326,7 +347,7 @@ public:
   }
 
   /// Whether this TypeTree knows any non-pointer information
-  bool isKnownPastPointer() {
+  bool isKnownPastPointer() const {
     for (auto &pair : mapping) {
       // we should assert here as we shouldn't keep any unknown maps for
       // efficiency
