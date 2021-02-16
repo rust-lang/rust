@@ -157,7 +157,7 @@ var updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
         return function() {
-            let cssTheme = getComputedStyle(document.documentElement)
+            var cssTheme = getComputedStyle(document.documentElement)
                 .getPropertyValue('content');
 
             switchTheme(
