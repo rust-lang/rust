@@ -67,7 +67,7 @@ impl RootDatabase {
     }
 
     pub fn collect_garbage(&mut self) {
-        if cfg!(feature = "wasm") {
+        if cfg!(target_arch = "wasm32") {
             return;
         }
 

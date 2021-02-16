@@ -9,9 +9,6 @@ edition = "2018"
 [lib]
 doctest = false
 
-[features]
-wasm = []
-
 [dependencies]
 log = "0.4.8"
 rayon = "1.5.0"
