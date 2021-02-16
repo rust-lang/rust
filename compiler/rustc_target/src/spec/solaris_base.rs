@@ -3,7 +3,6 @@ use crate::spec::TargetOptions;
 pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "solaris".to_string(),
-        vendor: "sun".to_string(),
         dynamic_linking: true,
         executables: true,
         has_rpath: true,

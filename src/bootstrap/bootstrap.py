@@ -240,13 +240,16 @@ def default_build_triple(verbose):
         else:
             ostype = 'unknown-linux-gnu'
     elif ostype == 'SunOS':
-        ostype = 'sun-solaris'
+        ostype = 'pc-solaris'
         # On Solaris, uname -m will return a machine classification instead
         # of a cpu type, so uname -p is recommended instead.  However, the
         # output from that option is too generic for our purposes (it will
         # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
         # must be used instead.
         cputype = require(['isainfo', '-k']).decode(default_encoding)
+        # sparc cpus have sun as a target vendor
+        if 'sparc' in cputype:
+            ostype = 'sun-solaris'
     elif ostype.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
