@@ -90,6 +90,7 @@ pub struct OsString {
 ///
 /// [`&str`]: str
 /// [conversions]: super#conversions
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies
