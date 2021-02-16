@@ -492,7 +492,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
-                if let Some(place_ref) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
@@ -507,21 +507,31 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, place_ref.projection, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(
+                        reborrowed_place_ref.local,
+                        reborrowed_place_ref.projection,
+                        ctx,
+                        location,
+                    );
                     return;
                 }
             }
             Rvalue::AddressOf(mutbl, place) => {
-                if let Some(place_ref) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, place_ref.projection, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(
+                        reborrowed_place_ref.local,
+                        reborrowed_place_ref.projection,
+                        ctx,
+                        location,
+                    );
                     return;
                 }
             }
