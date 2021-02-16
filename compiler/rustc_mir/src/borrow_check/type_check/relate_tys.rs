@@ -18,6 +18,7 @@ use crate::borrow_check::type_check::{BorrowCheckContext, Locations};
 /// variables, but not the type `b`.
 pub(super) fn relate_types<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     a: Ty<'tcx>,
     v: ty::Variance,
     b: Ty<'tcx>,
@@ -28,7 +29,7 @@ pub(super) fn relate_types<'tcx>(
     debug!("relate_types(a={:?}, v={:?}, b={:?}, locations={:?})", a, v, b, locations);
     TypeRelating::new(
         infcx,
-        NllTypeRelatingDelegate::new(infcx, borrowck_context, locations, category),
+        NllTypeRelatingDelegate::new(infcx, borrowck_context, param_env, locations, category),
         v,
     )
     .relate(a, b)?;
@@ -38,6 +39,8 @@ pub(super) fn relate_types<'tcx>(
 struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
     borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+
+    param_env: ty::ParamEnv<'tcx>,
 
     /// Where (and why) is this relation taking place?
     locations: Locations,
@@ -50,14 +53,19 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
         infcx: &'me InferCtxt<'me, 'tcx>,
         borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Self {
-        Self { infcx, borrowck_context, locations, category }
+        Self { infcx, borrowck_context, param_env, locations, category }
     }
 }
 
 impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }

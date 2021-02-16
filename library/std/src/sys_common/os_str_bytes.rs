@@ -6,6 +6,7 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::mem;
 use crate::rc::Rc;
+use crate::sealed::Sealed;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys_common::bytestring::debug_fmt_bytestring;
@@ -232,8 +233,11 @@ impl Slice {
 }
 
 /// Platform-specific extensions to [`OsString`].
+///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStringExt {
+pub trait OsStringExt: Sealed {
     /// Creates an [`OsString`] from a byte vector.
     ///
     /// See the module documentation for an example.
@@ -258,8 +262,11 @@ impl OsStringExt for OsString {
 }
 
 /// Platform-specific extensions to [`OsStr`].
+///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait OsStrExt {
+pub trait OsStrExt: Sealed {
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Creates an [`OsStr`] from a byte slice.
     ///

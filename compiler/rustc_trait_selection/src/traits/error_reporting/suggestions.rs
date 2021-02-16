@@ -1881,10 +1881,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec => {
+            ObligationCauseCode::RepeatVec(is_const_fn) => {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
+
+                if is_const_fn {
+                    err.help(
+                        "consider creating a new `const` item and initializing with the result \
+                        of the function call to be used in the repeat position, like \
+                        `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
+                    );
+                }
+
+                if self.tcx.sess.is_nightly_build() && is_const_fn {
+                    err.help(
+                        "create an inline `const` block, see PR \
+                        #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
+                        for more information",
+                    );
+                }
             }
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);

@@ -371,12 +371,4 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
             }
         }
     }
-
-    fn visit_mod(&mut self, module: &mut ast::Mod) {
-        noop_visit_mod(module, self);
-        // remove macro definitions
-        module.items.retain(
-            |item| !matches!(item.kind, ast::ItemKind::MacCall(_) if !self.cx.ecfg.keep_macs),
-        );
-    }
 }

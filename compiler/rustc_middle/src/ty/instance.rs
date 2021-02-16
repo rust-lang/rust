@@ -347,6 +347,7 @@ impl<'tcx> Instance<'tcx> {
     }
 
     // This should be kept up to date with `resolve`.
+    #[instrument(level = "debug", skip(tcx))]
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,

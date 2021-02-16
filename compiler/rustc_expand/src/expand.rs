@@ -1067,8 +1067,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {
         self.cfg.configure_expr(expr);
         visit_clobber(expr.deref_mut(), |mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.kind);
-
             if let Some(attr) = self.take_first_attr(&mut expr) {
                 // Collect the invoc regardless of whether or not attributes are permitted here
                 // expansion will eat the attribute so it won't error later.
@@ -1166,8 +1164,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let expr = configure!(self, expr);
         expr.filter_map(|mut expr| {
-            self.cfg.configure_expr_kind(&mut expr.kind);
-
             if let Some(attr) = self.take_first_attr(&mut expr) {
                 self.cfg.maybe_emit_expr_attr_err(&attr.0);
 
@@ -1192,7 +1188,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_pat(&mut self, pat: &mut P<ast::Pat>) {
-        self.cfg.configure_pat(pat);
         match pat.kind {
             PatKind::MacCall(_) => {}
             _ => return noop_visit_pat(pat, self),
@@ -1406,15 +1401,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         });
     }
 
-    fn visit_foreign_mod(&mut self, foreign_mod: &mut ast::ForeignMod) {
-        self.cfg.configure_foreign_mod(foreign_mod);
-        noop_visit_foreign_mod(foreign_mod, self);
-    }
-
     fn flat_map_foreign_item(
         &mut self,
-        mut foreign_item: P<ast::ForeignItem>,
+        foreign_item: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
+        let mut foreign_item = configure!(self, foreign_item);
+
         if let Some(attr) = self.take_first_attr(&mut foreign_item) {
             return self
                 .collect_attr(
@@ -1437,11 +1429,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
             _ => noop_flat_map_foreign_item(foreign_item, self),
         }
-    }
-
-    fn visit_item_kind(&mut self, item: &mut ast::ItemKind) {
-        self.cfg.configure_item_kind(item);
-        noop_visit_item_kind(item, self);
     }
 
     fn flat_map_generic_param(
@@ -1602,11 +1589,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             *id = self.cx.resolver.next_node_id()
         }
     }
-
-    fn visit_fn_decl(&mut self, mut fn_decl: &mut P<ast::FnDecl>) {
-        self.cfg.configure_fn_decl(&mut fn_decl);
-        noop_visit_fn_decl(fn_decl, self);
-    }
 }
 
 pub struct ExpansionConfig<'feat> {
@@ -1614,9 +1596,8 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
-    pub should_test: bool, // If false, strip `#[test]` nodes
-    pub keep_macs: bool,
-    pub span_debug: bool, // If true, use verbose debugging for `proc_macro::Span`
+    pub should_test: bool,          // If false, strip `#[test]` nodes
+    pub span_debug: bool,           // If true, use verbose debugging for `proc_macro::Span`
     pub proc_macro_backtrace: bool, // If true, show backtraces for proc-macro panics
 }
 
@@ -1628,7 +1609,6 @@ impl<'feat> ExpansionConfig<'feat> {
             recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,
-            keep_macs: false,
             span_debug: false,
             proc_macro_backtrace: false,
         }

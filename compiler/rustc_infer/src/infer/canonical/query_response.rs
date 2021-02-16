@@ -639,6 +639,10 @@ struct QueryTypeRelatingDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }
