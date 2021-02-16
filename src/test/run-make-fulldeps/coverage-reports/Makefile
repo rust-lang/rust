@@ -1,4 +1,3 @@
-# ignore-test Broken; accidentally silently ignored on Linux CI; FIXME(#81688)
 # needs-profiler-support
 # ignore-windows-gnu
 # min-llvm-version: 11.0
@@ -128,7 +127,7 @@ endif
 			$$( \
 				for file in $(TMPDIR)/rustdoc-$@/*/rust_out; \
 				do \
-				[[ -x $$file ]] && printf "%s %s " -object $$file; \
+				[ -x "$$file" ] && printf "%s %s " -object $$file; \
 				done \
 			) \
 		2> "$(TMPDIR)"/show_coverage_stderr.$@.txt \
