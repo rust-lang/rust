@@ -195,6 +195,7 @@ fn assist_order_if_expr() {
     let assists = Assist::get(&db, &TEST_CONFIG, false, frange);
     let mut assists = assists.iter();
 
+    assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
     assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
     assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
 }
@@ -220,6 +221,7 @@ fn assist_filter_works() {
         let assists = Assist::get(&db, &cfg, false, frange);
         let mut assists = assists.iter();
 
+        assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
         assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
         assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
     }
@@ -228,9 +230,10 @@ fn assist_filter_works() {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
         let assists = Assist::get(&db, &cfg, false, frange);
-        assert_eq!(assists.len(), 1);
+        assert_eq!(assists.len(), 2);
 
         let mut assists = assists.iter();
+        assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
         assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
     }
 

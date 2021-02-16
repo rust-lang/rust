@@ -24,10 +24,23 @@ pub fn name_ref(text: &str) -> ast::NameRef {
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
 // `expr_xxx`.
 pub fn ty(text: &str) -> ast::Type {
-    ast_from_text(&format!("impl {} for D {{}};", text))
+    ast_from_text(&format!("fn f() -> {} {{}}", text))
 }
 pub fn ty_unit() -> ast::Type {
     ty("()")
+}
+// FIXME: handle types of length == 1
+pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
+    let contents = types.into_iter().join(", ");
+    ty(&format!("({})", contents))
+}
+// FIXME: handle path to type
+pub fn ty_generic(name: ast::NameRef, types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
+    let contents = types.into_iter().join(", ");
+    ty(&format!("{}<{}>", name, contents))
+}
+pub fn ty_ref(target: ast::Type, exclusive: bool) -> ast::Type {
+    ty(&if exclusive { format!("&mut {}", target) } else { format!("&{}", target) })
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
@@ -175,11 +188,20 @@ pub fn expr_path(path: ast::Path) -> ast::Expr {
 pub fn expr_continue() -> ast::Expr {
     expr_from_text("continue")
 }
-pub fn expr_break() -> ast::Expr {
-    expr_from_text("break")
+pub fn expr_break(expr: Option<ast::Expr>) -> ast::Expr {
+    match expr {
+        Some(expr) => expr_from_text(&format!("break {}", expr)),
+        None => expr_from_text("break"),
+    }
 }
-pub fn expr_return() -> ast::Expr {
-    expr_from_text("return")
+pub fn expr_return(expr: Option<ast::Expr>) -> ast::Expr {
+    match expr {
+        Some(expr) => expr_from_text(&format!("return {}", expr)),
+        None => expr_from_text("return"),
+    }
+}
+pub fn expr_try(expr: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("{}?", expr))
 }
 pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Expr {
     expr_from_text(&format!("match {} {}", expr, match_arm_list))
@@ -212,6 +234,10 @@ pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
 pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("({})", expr))
 }
+pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::Expr {
+    let expr = elements.into_iter().format(", ");
+    expr_from_text(&format!("({})", expr))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
@@ -234,6 +260,13 @@ pub fn ident_pat(name: ast::Name) -> ast::IdentPat {
 
     fn from_text(text: &str) -> ast::IdentPat {
         ast_from_text(&format!("fn f({}: ())", text))
+    }
+}
+pub fn ident_mut_pat(name: ast::Name) -> ast::IdentPat {
+    return from_text(name.text());
+
+    fn from_text(text: &str) -> ast::IdentPat {
+        ast_from_text(&format!("fn f(mut {}: ())", text))
     }
 }
 
@@ -356,17 +389,25 @@ pub fn token(kind: SyntaxKind) -> SyntaxToken {
         .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
 }
 
-pub fn param(name: String, ty: String) -> ast::Param {
-    ast_from_text(&format!("fn f({}: {}) {{ }}", name, ty))
+pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
+    ast_from_text(&format!("fn f({}: {}) {{ }}", pat, ty))
 }
 
 pub fn ret_type(ty: ast::Type) -> ast::RetType {
     ast_from_text(&format!("fn f() -> {} {{ }}", ty))
 }
 
-pub fn param_list(pats: impl IntoIterator<Item = ast::Param>) -> ast::ParamList {
+pub fn param_list(
+    self_param: Option<ast::SelfParam>,
+    pats: impl IntoIterator<Item = ast::Param>,
+) -> ast::ParamList {
     let args = pats.into_iter().join(", ");
-    ast_from_text(&format!("fn f({}) {{ }}", args))
+    let list = match self_param {
+        Some(self_param) if args.is_empty() => format!("fn f({}) {{ }}", self_param),
+        Some(self_param) => format!("fn f({}, {}) {{ }}", self_param, args),
+        None => format!("fn f({}) {{ }}", args),
+    };
+    ast_from_text(&list)
 }
 
 pub fn generic_param(name: String, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {

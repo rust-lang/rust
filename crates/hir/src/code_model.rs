@@ -1802,6 +1802,18 @@ impl Type {
         None
     }
 
+    pub fn type_parameters(&self) -> impl Iterator<Item = Type> + '_ {
+        let ty = self.ty.value.strip_references();
+        let substs = match ty {
+            Ty::Apply(apply_ty) => &apply_ty.parameters,
+            Ty::Opaque(opaque_ty) => &opaque_ty.parameters,
+            _ => return Either::Left(iter::empty()),
+        };
+
+        let iter = substs.iter().map(move |ty| self.derived(ty.clone()));
+        Either::Right(iter)
+    }
+
     pub fn iterate_method_candidates<T>(
         &self,
         db: &dyn HirDatabase,

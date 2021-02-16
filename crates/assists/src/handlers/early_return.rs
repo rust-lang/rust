@@ -88,7 +88,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
 
     let early_expression: ast::Expr = match parent_container.kind() {
         WHILE_EXPR | LOOP_EXPR => make::expr_continue(),
-        FN => make::expr_return(),
+        FN => make::expr_return(None),
         _ => return None,
     };
 
