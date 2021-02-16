@@ -283,10 +283,14 @@ fn filter_clippy_warnings(line: &str) -> bool {
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
-    Command::new("cargo")
+    let output = Command::new("cargo")
         .arg("build")
         .output()
         .expect("Failed to build clippy!");
+    if !output.status.success() {
+        eprintln!("Failed to compile Clippy");
+        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr))
+    }
 }
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
@@ -402,11 +406,13 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
 
 /// lintchecks `main()` function
 pub fn run(clap_config: &ArgMatches) {
-    let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy");
-
     println!("Compiling clippy...");
     build_clippy();
     println!("Done compiling");
+
+    let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy")
+        .canonicalize()
+        .expect("failed to canonicalize path to clippy binary");
 
     // assert that clippy is found
     assert!(
@@ -484,5 +490,6 @@ pub fn run(clap_config: &ArgMatches) {
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
     let file = format!("lintcheck-logs/{}_logs.txt", filename);
+    println!("Writing logs to {}", file);
     write(file, text).unwrap();
 }
