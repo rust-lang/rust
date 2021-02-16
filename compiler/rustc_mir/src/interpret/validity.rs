@@ -586,8 +586,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.path,
                     err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
                 );
+                // Make sure we print a `ScalarMaybeUninit` (and not an `ImmTy`) in the error
+                // message below.
+                let value = value.to_scalar_or_uninit();
                 let _fn = try_validation!(
-                    value.to_scalar().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
+                    value.check_init().and_then(|ptr| self.ecx.memory.get_fn(ptr)),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
