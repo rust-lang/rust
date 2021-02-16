@@ -99,15 +99,14 @@ where
         // As a result, we have some special logic to remove readonly files on windows.
         // This is also the reason that we can't use things like fs::remove_dir_all().
         Err(ref e) if cfg!(windows) && e.kind() == ErrorKind::PermissionDenied => {
-            let mut p = t!(path.symlink_metadata()).permissions();
+            let m = t!(path.symlink_metadata());
+            let mut p = m.permissions();
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
-                // Deleting symlinked directories on Windows is non-trivial.
-                // Skip doing so for now.
+                // Delete symlinked directories on Windows
                 #[cfg(windows)]
-                if e.kind() == ErrorKind::PermissionDenied && path.is_dir() {
-                    eprintln!("warning: failed to delete '{}'.", path.display());
+                if m.file_type().is_symlink() && path.is_dir() && fs::remove_dir(path).is_ok() {
                     return;
                 }
                 panic!("failed to {} {}: {}", desc, path.display(), e);
