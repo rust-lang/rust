@@ -1,6 +1,7 @@
-use stdx::format_to;
+use itertools::Itertools;
+use stdx::{format_to, to_lower_snake_case};
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, NameOwner},
     SyntaxKind::{
         BLOCK_EXPR, BREAK_EXPR, CLOSURE_EXPR, COMMENT, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
     },
@@ -54,7 +55,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let var_name = match &field_shorthand {
                 Some(it) => it.to_string(),
-                None => "var_name".to_string(),
+                None => suggest_variable_name(ctx, &to_extract),
             };
             let expr_range = match &field_shorthand {
                 Some(it) => it.syntax().text_range().cover(to_extract.syntax().text_range()),
@@ -173,6 +174,89 @@ impl Anchor {
     }
 }
 
+fn suggest_variable_name(ctx: &AssistContext, expr: &ast::Expr) -> String {
+    // FIXME: account for existing names in the scope
+    suggest_name_from_func(expr)
+        .or_else(|| suggest_name_from_method(expr))
+        .or_else(|| suggest_name_from_param(ctx, expr))
+        .or_else(|| suggest_name_by_type(ctx, expr))
+        .unwrap_or_else(|| "var_name".to_string())
+}
+
+fn normalize_name(name: &str) -> Option<String> {
+    let name = to_lower_snake_case(name);
+
+    let useless_names = ["new", "default", "some", "none", "ok", "err"];
+    if useless_names.contains(&name.as_str()) {
+        return None;
+    }
+
+    Some(name)
+}
+
+fn suggest_name_from_func(expr: &ast::Expr) -> Option<String> {
+    let call = match expr {
+        ast::Expr::CallExpr(call) => call,
+        _ => return None,
+    };
+    let func = match call.expr()? {
+        ast::Expr::PathExpr(path) => path,
+        _ => return None,
+    };
+    let ident = func.path()?.segment()?.name_ref()?.ident_token()?;
+    normalize_name(ident.text())
+}
+
+fn suggest_name_from_method(expr: &ast::Expr) -> Option<String> {
+    let method = match expr {
+        ast::Expr::MethodCallExpr(call) => call,
+        _ => return None,
+    };
+    let ident = method.name_ref()?.ident_token()?;
+    normalize_name(ident.text())
+}
+
+fn suggest_name_from_param(ctx: &AssistContext, expr: &ast::Expr) -> Option<String> {
+    let arg_list = expr.syntax().parent().and_then(ast::ArgList::cast)?;
+    let args_parent = arg_list.syntax().parent()?;
+    let func = if let Some(call) = ast::CallExpr::cast(args_parent.clone()) {
+        let func = call.expr()?;
+        let func_ty = ctx.sema.type_of_expr(&func)?;
+        func_ty.as_callable(ctx.db())?
+    } else if let Some(method) = ast::MethodCallExpr::cast(args_parent) {
+        ctx.sema.resolve_method_call_as_callable(&method)?
+    } else {
+        return None;
+    };
+
+    let (idx, _) = arg_list.args().find_position(|it| it == expr).unwrap();
+    let (pat, _) = func.params(ctx.db()).into_iter().nth(idx)?;
+    let param = match pat? {
+        either::Either::Right(ast::Pat::IdentPat(param)) => param,
+        _ => return None,
+    };
+    let name = param.name()?;
+    normalize_name(&name.to_string())
+}
+
+fn suggest_name_by_type(ctx: &AssistContext, expr: &ast::Expr) -> Option<String> {
+    let ty = ctx.sema.type_of_expr(expr)?;
+    let ty = ty.remove_ref().unwrap_or(ty);
+
+    name_from_type(ty, ctx)
+}
+
+fn name_from_type(ty: hir::Type, ctx: &AssistContext) -> Option<String> {
+    let name = if let Some(adt) = ty.as_adt() {
+        adt.name(ctx.db()).to_string()
+    } else if let Some(trait_) = ty.as_dyn_trait() {
+        trait_.name(ctx.db()).to_string()
+    } else {
+        return None;
+    };
+    normalize_name(&name)
+}
+
 #[cfg(test)]
 mod tests {
     use test_utils::mark;
@@ -274,8 +358,8 @@ fn foo() {
 "#,
             r#"
 fn foo() {
-    let $0var_name = bar(1 + 1);
-    var_name
+    let $0bar = bar(1 + 1);
+    bar
 }
 "#,
         )
@@ -401,8 +485,8 @@ fn main() {
 ",
             "
 fn main() {
-    let $0var_name = bar.foo();
-    let v = var_name;
+    let $0foo = bar.foo();
+    let v = foo;
 }
 ",
         );
@@ -551,6 +635,202 @@ struct S {
 fn main() {
     let $0foo = 1 + 1;
     S { foo }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_type() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Test(i32);
+
+fn foo() -> Test {
+    $0{ Test(10) }$0
+}
+"#,
+            r#"
+struct Test(i32);
+
+fn foo() -> Test {
+    let $0test = { Test(10) };
+    test
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    bar(1, $01+1$0);
+}
+"#,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    let $0size = 1+1;
+    bar(1, size);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_parameter_name_has_precedence_over_type() {
+        check_assist(
+            extract_variable,
+            r#"
+struct TextSize(u32);
+fn bar(test: u32, size: TextSize)
+
+fn foo() {
+    bar(1, $0{ TextSize(1+1) }$0);
+}
+"#,
+            r#"
+struct TextSize(u32);
+fn bar(test: u32, size: TextSize)
+
+fn foo() {
+    let $0size = { TextSize(1+1) };
+    bar(1, size);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_function() {
+        check_assist(
+            extract_variable,
+            r#"
+fn is_required(test: u32, size: u32) -> bool
+
+fn foo() -> bool {
+    $0is_required(1, 2)$0
+}
+"#,
+            r#"
+fn is_required(test: u32, size: u32) -> bool
+
+fn foo() -> bool {
+    let $0is_required = is_required(1, 2);
+    is_required
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_method() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32) -> u32 { n }
+}
+
+fn foo() -> u32 {
+    $0S.bar(1)$0
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32) -> u32 { n }
+}
+
+fn foo() -> u32 {
+    let $0bar = S.bar(1);
+    bar
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_method_param() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    S.bar($01 + 1$0, 2)
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    let $0n = 1 + 1;
+    S.bar(n, 2)
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_ufcs_method_param() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    S::bar(&S, $01 + 1$0, 2)
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    let $0n = 1 + 1;
+    S::bar(&S, n, 2)
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_function_name_has_precedence() {
+        check_assist(
+            extract_variable,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    bar(1, $0symbol_size(1, 2)$0);
+}
+"#,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    let $0symbol_size = symbol_size(1, 2);
+    bar(1, symbol_size);
 }
 "#,
         )
