@@ -21,9 +21,6 @@ pub fn clean(build: &Build, all: bool) {
     } else {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
-        // Only delete the bootstrap executable on non-Windows systems
-        // Windows does not allow deleting a currently running executable
-        #[cfg(not(windows))]
         rm_rf(&build.out.join("bootstrap"));
 
         for host in &build.hosts {
@@ -54,14 +51,40 @@ fn rm_rf(path: &Path) {
         }
         Ok(metadata) => {
             if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
-                do_op(path, "remove file", |p| fs::remove_file(p));
+                do_op(path, "remove file", |p| {
+                    fs::remove_file(p).or_else(|e| {
+                        // Work around the fact that we cannot
+                        // delete an executable while it runs on Windows.
+                        #[cfg(windows)]
+                        if e.kind() == std::io::ErrorKind::PermissionDenied
+                            && p.file_name().and_then(std::ffi::OsStr::to_str)
+                                == Some("bootstrap.exe")
+                        {
+                            eprintln!("warning: failed to delete '{}'.", p.display());
+                            return Ok(());
+                        }
+                        Err(e)
+                    })
+                });
                 return;
             }
 
             for file in t!(fs::read_dir(path)) {
                 rm_rf(&t!(file).path());
             }
-            do_op(path, "remove dir", |p| fs::remove_dir(p));
+            do_op(path, "remove dir", |p| {
+                fs::remove_dir(p).or_else(|e| {
+                    // Check for dir not empty on Windows
+                    #[cfg(windows)]
+                    if matches!(e.kind(), std::io::ErrorKind::Other)
+                        && e.raw_os_error() == Some(145)
+                    {
+                        return Ok(());
+                    }
+
+                    Err(e)
+                })
+            });
         }
     };
 }
@@ -80,8 +103,15 @@ where
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {
+                // Deleting symlinked directories on Windows is non-trivial.
+                // Skip doing so for now.
+                #[cfg(windows)]
+                if e.kind() == ErrorKind::PermissionDenied && path.is_dir() {
+                    eprintln!("warning: failed to delete '{}'.", path.display());
+                    return;
+                }
                 panic!("failed to {} {}: {}", desc, path.display(), e);
-            })
+            });
         }
         Err(e) => {
             panic!("failed to {} {}: {}", desc, path.display(), e);
