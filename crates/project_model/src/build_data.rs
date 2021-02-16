@@ -61,7 +61,7 @@ pub(crate) type BuildDataMap = FxHashMap<String, BuildData>;
 
 impl BuildDataCollector {
     pub(crate) fn add_config(&mut self, workspace_root: &AbsPath, config: BuildDataConfig) {
-        self.configs.insert(workspace_root.to_path_buf().clone(), config);
+        self.configs.insert(workspace_root.to_path_buf(), config);
     }
 
     pub fn collect(&mut self, progress: &dyn Fn(String)) -> Result<BuildDataResult> {

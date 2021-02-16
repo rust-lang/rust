@@ -232,7 +232,7 @@ fn rewrite_intra_doc_link(
         let items = t.items(db);
         if let Some(field_or_assoc_item) = items.iter().find_map(|assoc_item| {
             if let Some(name) = assoc_item.name(db) {
-                if link.to_string() == format!("{}::{}", canonical_path, name) {
+                if *link == format!("{}::{}", canonical_path, name) {
                     return Some(FieldOrAssocItem::AssocItem(*assoc_item));
                 }
             }

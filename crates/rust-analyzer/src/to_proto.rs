@@ -891,10 +891,10 @@ pub(crate) fn code_lens(
 
             let id = lsp_types::TextDocumentIdentifier { uri: url.clone() };
 
-            let doc_pos = lsp_types::TextDocumentPositionParams::new(id.clone(), position);
+            let doc_pos = lsp_types::TextDocumentPositionParams::new(id, position);
 
             let goto_params = lsp_types::request::GotoImplementationParams {
-                text_document_position_params: doc_pos.clone(),
+                text_document_position_params: doc_pos,
                 work_done_progress_params: Default::default(),
                 partial_result_params: Default::default(),
             };
