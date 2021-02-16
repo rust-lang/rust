@@ -1,16 +1,14 @@
 use crate::utils;
-use crate::utils::match_var;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Expr, ExprKind, HirId, Path};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
-use rustc_span::symbol::{Ident, Symbol};
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
@@ -79,36 +77,6 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         self.update(&cmt)
     }
-}
-
-pub struct UsedVisitor {
-    pub var: Symbol, // var to look for
-    pub used: bool,  // has the var been used otherwise?
-}
-
-impl<'tcx> Visitor<'tcx> for UsedVisitor {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if match_var(expr, self.var) {
-            self.used = true;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
-pub fn is_unused<'tcx>(ident: &'tcx Ident, body: &'tcx Expr<'_>) -> bool {
-    let mut visitor = UsedVisitor {
-        var: ident.name,
-        used: false,
-    };
-    walk_expr(&mut visitor, body);
-    !visitor.used
 }
 
 pub struct ParamBindingIdCollector {

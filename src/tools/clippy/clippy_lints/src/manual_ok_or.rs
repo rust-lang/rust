@@ -1,9 +1,10 @@
 use crate::utils::{
-    indent_of, is_type_diagnostic_item, match_qpath, paths, reindent_multiline, snippet_opt, span_lint_and_sugg,
+    indent_of, is_type_diagnostic_item, match_qpath, path_to_local_id, paths, reindent_multiline, snippet_opt,
+    span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def, Expr, ExprKind, PatKind, QPath};
+use rustc_hir::{Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -90,8 +91,6 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind;
         if let ExprKind::Call(Expr { kind: ExprKind::Path(ok_path), .. }, &[ref ok_arg]) = body.value.kind;
         if match_qpath(ok_path, &paths::RESULT_OK);
-        if let ExprKind::Path(QPath::Resolved(_, ok_arg_path)) = ok_arg.kind;
-        if let def::Res::Local(ok_arg_path_id) = ok_arg_path.res;
-        then { param_id == ok_arg_path_id } else { false }
+        then { path_to_local_id(ok_arg, param_id) } else { false }
     }
 }
