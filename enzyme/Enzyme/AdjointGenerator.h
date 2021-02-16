@@ -3123,6 +3123,43 @@ public:
           addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
           return;
         }
+
+        if (called->getName() == "cabs" || called->getName() == "cabsf" ||
+            called->getName() == "cabsl") {
+          if (Mode == DerivativeMode::Forward ||
+              gutils->isConstantInstruction(orig)) {
+            eraseIfUnused(*orig);
+            return;
+          }
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+
+          Value *vdiff = diffe(orig, Builder2);
+
+          SmallVector<Value *, 2> args;
+          for (size_t i = 0; i < orig->getNumArgOperands(); ++i)
+            args.push_back(lookup(
+                gutils->getNewFromOriginal(orig->getArgOperand(i)), Builder2));
+
+          CallInst *d = cast<CallInst>(Builder2.CreateCall(called, args));
+
+          Value *div = Builder2.CreateFDiv(vdiff, d);
+
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+
+          if (args.size() == 2) {
+            for (int i = 0; i < 2; i++)
+              if (!gutils->isConstantValue(orig->getArgOperand(i)))
+                addToDiffe(orig->getArgOperand(i),
+                           Builder2.CreateFMul(args[i], div), Builder2,
+                           orig->getType());
+          } else {
+            llvm::errs() << *orig << "\n";
+            llvm_unreachable("unknown calling convention found for cabs");
+          }
+          return;
+        }
       }
 
       if (n == "lgamma" || n == "lgammaf" || n == "lgammal" ||

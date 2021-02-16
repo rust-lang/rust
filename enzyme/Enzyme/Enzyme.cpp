@@ -457,6 +457,17 @@ public:
       llvm::errs() << "postfn:\n" << *newFunc << "\n";
     Builder.setFastMathFlags(getFast());
 
+    if (args.size() != newFunc->getFunctionType()->getNumParams()) {
+      llvm::errs() << *CI << "\n";
+      llvm::errs() << *newFunc << "\n";
+      for (auto arg : args) {
+        llvm::errs() << " + " << *arg << "\n";
+      }
+      EmitFailure("TooFewArguments", CI->getDebugLoc(), CI,
+                  "Too few arguments passed to __enzyme_autodiff");
+      return false;
+    }
+    assert(args.size() == newFunc->getFunctionType()->getNumParams());
     CallInst *diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
     diffret->setCallingConv(CI->getCallingConv());
     diffret->setDebugLoc(CI->getDebugLoc());
