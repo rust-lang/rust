@@ -70,7 +70,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     add_braces_suggestion(arg, &mut err);
                     err.set_primary_message(
                         "unresolved item provided when a constant was expected",
-                    );
+                    )
+                    .emit();
+                    return;
                 }
                 Res::Def(DefKind::TyParam, src_def_id) => {
                     if let Some(param_local_id) = param.def_id.as_local() {
