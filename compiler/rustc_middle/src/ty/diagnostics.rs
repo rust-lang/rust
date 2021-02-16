@@ -75,6 +75,36 @@ impl<'tcx> TyS<'tcx> {
     }
 }
 
+pub fn suggest_arbitrary_trait_bound(
+    generics: &hir::Generics<'_>,
+    err: &mut DiagnosticBuilder<'_>,
+    param_name: &str,
+    constraint: &str,
+) -> bool {
+    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
+    match (param, param_name) {
+        (Some(_), "Self") => return false,
+        _ => {}
+    }
+    // Suggest a where clause bound for a non-type paremeter.
+    let (action, prefix) = if generics.where_clause.predicates.is_empty() {
+        ("introducing a", " where ")
+    } else {
+        ("extending the", ", ")
+    };
+    err.span_suggestion_verbose(
+        generics.where_clause.tail_span_for_suggestion(),
+        &format!(
+            "consider {} `where` bound, but there might be an alternative better way to express \
+             this requirement",
+            action,
+        ),
+        format!("{}{}: {}", prefix, param_name, constraint),
+        Applicability::MaybeIncorrect,
+    );
+    true
+}
+
 /// Suggest restricting a type param with a new bound.
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
