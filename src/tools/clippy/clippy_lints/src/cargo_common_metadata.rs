@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use crate::utils::{run_lints, span_lint};
 use rustc_hir::{hir_id::CRATE_HIR_ID, Crate};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::DUMMY_SP;
 
 declare_clippy_lint! {
@@ -51,6 +51,21 @@ declare_clippy_lint! {
     "common metadata is defined in `Cargo.toml`"
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct CargoCommonMetadata {
+    ignore_publish: bool,
+}
+
+impl CargoCommonMetadata {
+    pub fn new(ignore_publish: bool) -> Self {
+        Self { ignore_publish }
+    }
+}
+
+impl_lint_pass!(CargoCommonMetadata => [
+    CARGO_COMMON_METADATA
+]);
+
 fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, field: &str) {
     let message = format!("package `{}` is missing `{}` metadata", package.name, field);
     span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, &message);
@@ -69,8 +84,6 @@ fn is_empty_vec(value: &[String]) -> bool {
     value.iter().all(String::is_empty)
 }
 
-declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);
-
 impl LateLintPass<'_> for CargoCommonMetadata {
     fn check_crate(&mut self, cx: &LateContext<'_>, _: &Crate<'_>) {
         if !run_lints(cx, &[CARGO_COMMON_METADATA], CRATE_HIR_ID) {
@@ -80,32 +93,36 @@ impl LateLintPass<'_> for CargoCommonMetadata {
         let metadata = unwrap_cargo_metadata!(cx, CARGO_COMMON_METADATA, false);
 
         for package in metadata.packages {
-            if is_empty_vec(&package.authors) {
-                missing_warning(cx, &package, "package.authors");
-            }
+            // only run the lint if publish is `None` (`publish = true` or skipped entirely)
+            // or if the vector isn't empty (`publish = ["something"]`)
+            if package.publish.as_ref().filter(|publish| publish.is_empty()).is_none() || self.ignore_publish {
+                if is_empty_vec(&package.authors) {
+                    missing_warning(cx, &package, "package.authors");
+                }
 
-            if is_empty_str(&package.description) {
-                missing_warning(cx, &package, "package.description");
-            }
+                if is_empty_str(&package.description) {
+                    missing_warning(cx, &package, "package.description");
+                }
 
-            if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
-                missing_warning(cx, &package, "either package.license or package.license_file");
-            }
+                if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
+                    missing_warning(cx, &package, "either package.license or package.license_file");
+                }
 
-            if is_empty_str(&package.repository) {
-                missing_warning(cx, &package, "package.repository");
-            }
+                if is_empty_str(&package.repository) {
+                    missing_warning(cx, &package, "package.repository");
+                }
 
-            if is_empty_path(&package.readme) {
-                missing_warning(cx, &package, "package.readme");
-            }
+                if is_empty_path(&package.readme) {
+                    missing_warning(cx, &package, "package.readme");
+                }
 
-            if is_empty_vec(&package.keywords) {
-                missing_warning(cx, &package, "package.keywords");
-            }
+                if is_empty_vec(&package.keywords) {
+                    missing_warning(cx, &package, "package.keywords");
+                }
 
-            if is_empty_vec(&package.categories) {
-                missing_warning(cx, &package, "package.categories");
+                if is_empty_vec(&package.categories) {
+                    missing_warning(cx, &package, "package.categories");
+                }
             }
         }
     }
