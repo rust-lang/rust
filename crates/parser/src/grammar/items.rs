@@ -83,6 +83,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool) {
     }
 }
 
+/// Try to parse an item, completing `m` in case of success.
 pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     // test_err pub_expr
     // fn foo() { pub 92; }
@@ -140,6 +141,33 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker) -> Result<(), Marker> {
                 if matches!(p.nth(2), T![impl] | T![fn]) {
                     p.bump_remap(T![default]);
                     p.bump(T![unsafe]);
+                    has_mods = true;
+                }
+            }
+            T![async] => {
+                // test default_async_fn
+                // impl T for Foo {
+                //     default async fn foo() {}
+                // }
+
+                // test default_async_unsafe_fn
+                // impl T for Foo {
+                //     default async unsafe fn foo() {}
+                // }
+                let mut maybe_fn = p.nth(2);
+                let is_unsafe = if matches!(maybe_fn, T![unsafe]) {
+                    maybe_fn = p.nth(3);
+                    true
+                } else {
+                    false
+                };
+
+                if matches!(maybe_fn, T![fn]) {
+                    p.bump_remap(T![default]);
+                    p.bump(T![async]);
+                    if is_unsafe {
+                        p.bump(T![unsafe])
+                    }
                     has_mods = true;
                 }
             }
