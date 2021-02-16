@@ -897,7 +897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return (
                     path.res,
                     opt_qself.as_ref().map(|qself| self.to_ty(qself)),
-                    &path.segments[..],
+                    path.segments,
                 );
             }
             QPath::TypeRelative(ref qself, ref segment) => (self.to_ty(qself), qself, segment),

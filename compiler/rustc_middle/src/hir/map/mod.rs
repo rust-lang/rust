@@ -854,22 +854,22 @@ impl<'hir> Map<'hir> {
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
         self.find_entry(id).map_or(&[], |entry| match entry.node {
-            Node::Param(a) => &a.attrs[..],
+            Node::Param(a) => a.attrs,
             Node::Local(l) => &l.attrs[..],
-            Node::Item(i) => &i.attrs[..],
-            Node::ForeignItem(fi) => &fi.attrs[..],
-            Node::TraitItem(ref ti) => &ti.attrs[..],
-            Node::ImplItem(ref ii) => &ii.attrs[..],
-            Node::Variant(ref v) => &v.attrs[..],
-            Node::Field(ref f) => &f.attrs[..],
+            Node::Item(i) => i.attrs,
+            Node::ForeignItem(fi) => fi.attrs,
+            Node::TraitItem(ref ti) => ti.attrs,
+            Node::ImplItem(ref ii) => ii.attrs,
+            Node::Variant(ref v) => v.attrs,
+            Node::Field(ref f) => f.attrs,
             Node::Expr(ref e) => &*e.attrs,
             Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id.id)),
             Node::Arm(ref a) => &*a.attrs,
-            Node::GenericParam(param) => &param.attrs[..],
+            Node::GenericParam(param) => param.attrs,
             // Unit/tuple structs/variants take the attributes straight from
             // the struct/variant definition.
             Node::Ctor(..) => self.attrs(self.get_parent_item(id)),
-            Node::Crate(item) => &item.attrs[..],
+            Node::Crate(item) => item.attrs,
             Node::MacroDef(def) => def.attrs,
             Node::AnonConst(..)
             | Node::PathSegment(..)

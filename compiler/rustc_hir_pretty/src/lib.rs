@@ -392,7 +392,7 @@ impl<'a> State<'a> {
                     &f.decl,
                     None,
                     &f.generic_params,
-                    &f.param_names[..],
+                    f.param_names,
                 );
             }
             hir::TyKind::OpaqueDef(..) => self.s.word("/*impl Trait*/"),
@@ -1200,7 +1200,7 @@ impl<'a> State<'a> {
         self.s.word("{");
         self.commasep_cmnt(
             Consistent,
-            &fields[..],
+            fields,
             |s, field| {
                 s.ibox(INDENT_UNIT);
                 if !field.is_shorthand {

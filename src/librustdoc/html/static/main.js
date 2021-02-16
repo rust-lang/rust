@@ -2908,10 +2908,14 @@ function defocusSearchBar() {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-        ].map(x => "<dt>" +
-            x[0].split(" ")
-                .map((y, index) => (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ")
-                .join("") + "</dt><dd>" + x[1] + "</dd>").join("");
+        ].map(function(x) {
+            return "<dt>" +
+                x[0].split(" ")
+                    .map(function(y, index) {
+                        return (index & 1) === 0 ? "<kbd>" + y + "</kbd>" : " " + y + " ";
+                    })
+                    .join("") + "</dt><dd>" + x[1] + "</dd>";
+        }).join("");
         var div_shortcuts = document.createElement("div");
         addClass(div_shortcuts, "shortcuts");
         div_shortcuts.innerHTML = "<h2>Keyboard Shortcuts</h2><dl>" + shortcuts + "</dl></div>";
@@ -2929,7 +2933,9 @@ function defocusSearchBar() {
             "You can look for items with an exact name by putting double quotes around \
              your request: <code>\"string\"</code>",
             "Look for items inside another one by searching for a path: <code>vec::Vec</code>",
-        ].map(x => "<p>" + x + "</p>").join("");
+        ].map(function(x) {
+            return "<p>" + x + "</p>";
+        }).join("");
         var div_infos = document.createElement("div");
         addClass(div_infos, "infos");
         div_infos.innerHTML = "<h2>Search Tricks</h2>" + infos;

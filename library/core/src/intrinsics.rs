@@ -1688,8 +1688,8 @@ extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "const_int_saturating", since = "1.40.0")]
     pub fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
-    /// Returns the value of the discriminant for the variant in 'v',
-    /// cast to a `u64`; if `T` has no discriminant, returns `0`.
+    /// Returns the value of the discriminant for the variant in 'v';
+    /// if `T` has no discriminant, returns `0`.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`](crate::mem::discriminant).
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
