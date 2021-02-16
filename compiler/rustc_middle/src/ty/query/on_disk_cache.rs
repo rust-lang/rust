@@ -13,7 +13,7 @@ use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::definitions::Definitions;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
@@ -303,13 +303,15 @@ impl<'sess> OnDiskCache<'sess> {
                 latest_foreign_def_path_hashes,
             };
 
+            let remap = tcx.dep_graph.compression_map();
+
             // Encode query results.
             let mut query_result_index = EncodedQueryResultIndex::new();
 
             tcx.sess.time("encode_query_results", || -> FileEncodeResult {
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
-                tcx.queries.encode_query_results(tcx, enc, qri)
+                tcx.queries.encode_query_results(tcx, enc, qri, &remap)
             })?;
 
             // Encode diagnostics.
@@ -318,11 +320,11 @@ impl<'sess> OnDiskCache<'sess> {
                 .borrow()
                 .iter()
                 .map(
-                    |(dep_node_index, diagnostics)| -> Result<_, <FileEncoder as Encoder>::Error> {
+                    |(&dep_node_index, diagnostics)| -> Result<_, <FileEncoder as Encoder>::Error> {
                         let pos = AbsoluteBytePos::new(encoder.position());
                         // Let's make sure we get the expected type here.
                         let diagnostics: &EncodedDiagnostics = diagnostics;
-                        let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
+                        let dep_node_index = remap[dep_node_index].unwrap();
                         encoder.encode_tagged(dep_node_index, diagnostics)?;
 
                         Ok((dep_node_index, pos))
@@ -1220,6 +1222,7 @@ pub fn encode_query_results<'a, 'tcx, CTX, Q>(
     tcx: CTX,
     encoder: &mut CacheEncoder<'a, 'tcx, FileEncoder>,
     query_result_index: &mut EncodedQueryResultIndex,
+    remap: &IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>>,
 ) -> FileEncodeResult
 where
     CTX: QueryContext + 'tcx,
@@ -1236,7 +1239,7 @@ where
     cache.iter_results(|results| {
         for (key, value, dep_node) in results {
             if Q::cache_on_disk(tcx, &key, Some(value)) {
-                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+                let dep_node = remap[dep_node].unwrap();
 
                 // Record position of the cache entry.
                 query_result_index

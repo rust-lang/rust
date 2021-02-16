@@ -43,6 +43,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
 use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
+use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 use rustc_serialize::opaque;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::utils::NativeLibKind;
@@ -237,6 +238,7 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<'tcx>,
                 encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
                 query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+                remap: &IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>>,
             ) -> opaque::FileEncodeResult;
 
             fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>);

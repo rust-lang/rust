@@ -13,6 +13,7 @@ use rustc_query_system::query::{QueryContext, QueryDescription, QueryJobId, Quer
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
+use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque;
 use rustc_span::def_id::{DefId, LocalDefId};
 
@@ -177,6 +178,7 @@ impl<'tcx> QueryCtxt<'tcx> {
         self,
         encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
         query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+        remap: &IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>>,
     ) -> opaque::FileEncodeResult {
         macro_rules! encode_queries {
             ($($query:ident,)*) => {
@@ -184,7 +186,8 @@ impl<'tcx> QueryCtxt<'tcx> {
                     on_disk_cache::encode_query_results::<_, super::queries::$query<'_>>(
                         self,
                         encoder,
-                        query_result_index
+                        query_result_index,
+                        remap,
                     )?;
                 )*
             }
@@ -478,10 +481,10 @@ macro_rules! define_queries {
                         return
                     }
 
-                    debug_assert!(tcx.dep_graph
-                                     .node_color(dep_node)
-                                     .map(|c| c.is_green())
-                                     .unwrap_or(false));
+                    debug_assert_eq!(
+                        tcx.dep_graph.node_color(dep_node),
+                        Some(DepNodeColor::Green),
+                    );
 
                     let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
                     if queries::$name::cache_on_disk(tcx, &key, None) {
@@ -562,9 +565,10 @@ macro_rules! define_queries_struct {
                 tcx: TyCtxt<'tcx>,
                 encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
                 query_result_index: &mut on_disk_cache::EncodedQueryResultIndex,
+                remap: &IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>>,
             ) -> opaque::FileEncodeResult {
                 let tcx = QueryCtxt { tcx, queries: self };
-                tcx.encode_query_results(encoder, query_result_index)
+                tcx.encode_query_results(encoder, query_result_index, remap)
             }
 
             fn exec_cache_promotions(&'tcx self, tcx: TyCtxt<'tcx>) {

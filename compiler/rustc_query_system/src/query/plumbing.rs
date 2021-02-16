@@ -2,8 +2,9 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepKind, DepNode};
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{
+    DepContext, DepKind, DepNode, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
+};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
@@ -509,10 +510,10 @@ fn load_from_disk_and_cache_in_memory<CTX, K, V: Debug>(
 where
     CTX: QueryContext,
 {
+    debug_assert!(tcx.dep_context().dep_graph().node_color(dep_node) == Some(DepNodeColor::Green));
+
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
-
-    debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
     let result = if query.cache_on_disk(tcx, &key, None) {
@@ -568,13 +569,6 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 ) where
     CTX: QueryContext,
 {
-    assert!(
-        Some(tcx.dep_graph().fingerprint_of(dep_node_index))
-            == tcx.dep_graph().prev_fingerprint_of(dep_node),
-        "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
-    );
-
     debug!("BEGIN verify_ich({:?})", dep_node);
     let mut hcx = tcx.create_stable_hashing_context();
 

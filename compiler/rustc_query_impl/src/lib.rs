@@ -26,6 +26,7 @@ use rustc_middle::ich::StableHashingContext;
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_query_system::dep_graph::{DepNodeColor, DepNodeIndex, SerializedDepNodeIndex};
 use rustc_serialize::opaque;
 use rustc_span::{Span, DUMMY_SP};
 

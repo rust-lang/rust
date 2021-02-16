@@ -64,7 +64,7 @@ use rustc_hir::HirId;
 use rustc_span::symbol::Symbol;
 use std::hash::Hash;
 
-pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
+pub use rustc_query_system::dep_graph::{DepContext, DepNodeColor, DepNodeParams};
 
 /// This struct stores metadata about each DepKind.
 ///
