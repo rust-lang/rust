@@ -29,6 +29,29 @@ const WRAPPER_TYPES: &[&str] = &["Box", "Option", "Result"];
 /// `args.into_config()` -> `config`
 /// `bytes.to_vec()` -> `vec`
 const USELESS_METHOD_PREFIXES: &[&str] = &["into_", "as_", "to_"];
+/// Useless methods that are stripped from expression
+///
+/// # Examples
+/// `var.name().to_string()` -> `var.name()`
+const USELESS_METHODS: &[&str] = &[
+    "to_string",
+    "as_str",
+    "to_owned",
+    "as_ref",
+    "clone",
+    "cloned",
+    "expect",
+    "expect_none",
+    "unwrap",
+    "unwrap_none",
+    "unwrap_or",
+    "unwrap_or_default",
+    "unwrap_or_else",
+    "unwrap_unchecked",
+    "iter",
+    "into_iter",
+    "iter_mut",
+];
 
 /// Suggest name of variable for given expression
 ///
@@ -49,10 +72,39 @@ const USELESS_METHOD_PREFIXES: &[&str] = &["into_", "as_", "to_"];
 ///
 /// Currently it sticks to the first name found.
 pub(crate) fn variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
-    from_param(expr, sema)
-        .or_else(|| from_call(expr))
-        .or_else(|| from_type(expr, sema))
-        .unwrap_or_else(|| "var_name".to_string())
+    // `from_param` does not benifit from stripping
+    // it need the largest context possible
+    // so we check firstmost
+    if let Some(name) = from_param(expr, sema) {
+        return name;
+    }
+
+    let mut next_expr = Some(expr.clone());
+    while let Some(expr) = next_expr {
+        let name = from_call(&expr).or_else(|| from_type(&expr, sema));
+        if let Some(name) = name {
+            return name;
+        }
+
+        match expr {
+            ast::Expr::RefExpr(inner) => next_expr = inner.expr(),
+            ast::Expr::BoxExpr(inner) => next_expr = inner.expr(),
+            ast::Expr::AwaitExpr(inner) => next_expr = inner.expr(),
+            // ast::Expr::BlockExpr(block) => expr = block.tail_expr(),
+            ast::Expr::CastExpr(inner) => next_expr = inner.expr(),
+            ast::Expr::MethodCallExpr(method) if is_useless_method(&method) => {
+                next_expr = method.receiver();
+            }
+            ast::Expr::ParenExpr(inner) => next_expr = inner.expr(),
+            ast::Expr::TryExpr(inner) => next_expr = inner.expr(),
+            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::PrefixOp::Deref) => {
+                next_expr = prefix.expr()
+            }
+            _ => break,
+        }
+    }
+
+    "var_name".to_string()
 }
 
 fn normalize(name: &str) -> Option<String> {
@@ -73,6 +125,16 @@ fn is_valid_name(name: &str) -> bool {
     match syntax::lex_single_syntax_kind(name) {
         Some((syntax::SyntaxKind::IDENT, _error)) => true,
         _ => false,
+    }
+}
+
+fn is_useless_method(method: &ast::MethodCallExpr) -> bool {
+    let ident = method.name_ref().and_then(|it| it.ident_token());
+
+    if let Some(ident) = ident {
+        USELESS_METHODS.contains(&ident.text())
+    } else {
+        false
     }
 }
 
@@ -99,15 +161,20 @@ fn from_method_call(expr: &ast::Expr) -> Option<String> {
         _ => return None,
     };
     let ident = method.name_ref()?.ident_token()?;
-    let name = normalize(ident.text())?;
+    let mut name = ident.text();
+
+    if USELESS_METHODS.contains(&name) {
+        return None;
+    }
 
     for prefix in USELESS_METHOD_PREFIXES {
         if let Some(suffix) = name.strip_prefix(prefix) {
-            return Some(suffix.to_string());
+            name = suffix;
+            break;
         }
     }
 
-    Some(name)
+    normalize(&name)
 }
 
 fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
@@ -764,6 +831,46 @@ mod tests {
                     $0bar()$0;
                 }"#,
                 "seed",
+            );
+        }
+    }
+
+    mod variable {
+        use super::*;
+
+        #[test]
+        fn ref_call() {
+            check_name_suggestion(
+                |e, c| Some(variable(e, c)),
+                r#"
+                fn foo() {
+                    $0&bar(1, 3)$0
+                }"#,
+                "bar",
+            );
+        }
+
+        #[test]
+        fn name_to_string() {
+            check_name_suggestion(
+                |e, c| Some(variable(e, c)),
+                r#"
+                fn foo() {
+                    $0function.name().to_string()$0
+                }"#,
+                "name",
+            );
+        }
+
+        #[test]
+        fn nested_useless_method() {
+            check_name_suggestion(
+                |e, c| Some(variable(e, c)),
+                r#"
+                fn foo() {
+                    $0function.name().as_ref().unwrap().to_string()$0
+                }"#,
+                "name",
             );
         }
     }
