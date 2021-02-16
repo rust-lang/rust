@@ -21,6 +21,9 @@ pub fn clean(build: &Build, all: bool) {
     } else {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
+        // Only delete the bootstrap executable on non-Windows systems
+        // Windows does not allow deleting a currently running executable
+        #[cfg(not(windows))]
         rm_rf(&build.out.join("bootstrap"));
 
         for host in &build.hosts {
