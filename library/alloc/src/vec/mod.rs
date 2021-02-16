@@ -1514,15 +1514,53 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
     /// ```
     #[stable(feature = "dedup_by", since = "1.16.0")]
-    pub fn dedup_by<F>(&mut self, same_bucket: F)
+    pub fn dedup_by<F>(&mut self, mut same_bucket: F)
     where
         F: FnMut(&mut T, &mut T) -> bool,
     {
-        let len = {
-            let (dedup, _) = self.as_mut_slice().partition_dedup_by(same_bucket);
-            dedup.len()
-        };
-        self.truncate(len);
+        let len = self.len();
+        if len <= 1 {
+            return;
+        }
+
+        let ptr = self.as_mut_ptr();
+        /* Offset of the element we want to check if it is duplicate */
+        let mut read: usize = 1;
+        /* Offset of the place where we want to place the non-duplicate
+         * when we find it. */
+        let mut write: usize = 1;
+
+        /* Drop items while going through Vec, it should be more efficient than
+         * doing slice partition_dedup + truncate */
+
+        /* INVARIANT: len > read >= write > write-1 >= 0
+         * SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
+         * are always in-bounds and read_ptr never aliases prev_ptr */
+        unsafe {
+            while read < len {
+                let read_ptr = ptr.add(read);
+                let prev_ptr = ptr.add(write.wrapping_sub(1));
+
+                if same_bucket(&mut *read_ptr, &mut *prev_ptr) {
+                    /* We have found duplicate, drop it in-place */
+                    ptr::drop_in_place(read_ptr);
+                } else {
+                    let write_ptr = ptr.add(write);
+
+                    /* Looks like doing just `copy` can be faster than
+                     * conditional `copy_nonoverlapping` */
+                    ptr::copy(read_ptr, write_ptr, 1);
+
+                    /* We have filled that place, so go further */
+                    write += 1;
+                }
+
+                read += 1;
+            }
+
+            /* `write` items are inside vec, rest is already dropped */
+            self.set_len(write);
+        }
     }
 
     /// Appends an element to the back of a collection.
