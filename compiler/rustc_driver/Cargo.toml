@@ -33,6 +33,7 @@ rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_interface = { path = "../rustc_interface" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
 rustc_span = { path = "../rustc_span" }
 
 [target.'cfg(windows)'.dependencies]

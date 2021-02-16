@@ -3713,6 +3713,7 @@ dependencies = [
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr",
  "rustc_codegen_ssa",
  "rustc_data_structures",
  "rustc_error_codes",

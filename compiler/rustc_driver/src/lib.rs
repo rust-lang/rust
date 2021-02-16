@@ -263,11 +263,12 @@ fn run_compiler(
                     }
                     let should_stop = RustcDefaultCalls::print_crate_info(
                         &***compiler.codegen_backend(),
-                        compiler.session(),
+                        &compiler,
                         None,
                         &odir,
                         &ofile,
-                    );
+                    )
+                    .unwrap_or(Compilation::Continue);
 
                     if should_stop == Compilation::Stop {
                         return;
@@ -319,11 +320,11 @@ fn run_compiler(
         let sess = compiler.session();
         let should_stop = RustcDefaultCalls::print_crate_info(
             &***compiler.codegen_backend(),
-            sess,
+            compiler,
             Some(compiler.input()),
             compiler.output_dir(),
             compiler.output_file(),
-        )
+        )?
         .and_then(|| {
             RustcDefaultCalls::list_metadata(
                 sess,
@@ -593,7 +594,11 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
 
 fn show_content_with_pager(content: &str) {
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
-        if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
+        if cfg!(windows) {
+            OsString::from("more.com")
+        } else {
+            OsString::from("less")
+        }
     });
 
     let mut fallback_to_println = false;
@@ -620,6 +625,60 @@ fn show_content_with_pager(content: &str) {
     if fallback_to_println {
         print!("{}", content);
     }
+}
+
+fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
+    match lib.cfg {
+        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
+        None => true,
+    }
+}
+
+use rustc_codegen_ssa::{CrateInfo, NativeLib};
+use rustc_session::utils::NativeLibKind;
+
+fn print_native_static_libs(compiler: &interface::Compiler) -> interface::Result<()> {
+    let sess = compiler.session();
+    compiler.enter(|queries| {
+        use rustc_codegen_ssa::back::link::each_linked_rlib;
+        let mut all_native_libs = vec![];
+        queries.parse()?;
+        queries.global_ctxt()?.take().enter(|tcx| {
+            let crate_info = CrateInfo::new(tcx);
+            let res = each_linked_rlib(&crate_info, &mut |cnum, _path| {
+                all_native_libs.extend(crate_info.native_libraries[&cnum].iter().cloned());
+            });
+            if let Err(e) = res {
+                sess.fatal(&e);
+            }
+            let lib_args: Vec<_> = all_native_libs
+                .iter()
+                .filter(|l| relevant_lib(sess, l))
+                .filter_map(|lib| {
+                    let name = lib.name?;
+                    match lib.kind {
+                        NativeLibKind::StaticNoBundle
+                        | NativeLibKind::Dylib
+                        | NativeLibKind::Unspecified => {
+                            if sess.target.is_like_msvc {
+                                Some(format!("{}.lib", name))
+                            } else {
+                                Some(format!("-l{}", name))
+                            }
+                        }
+                        NativeLibKind::Framework => {
+                            // ld-only syntax, since there are no frameworks in MSVC
+                            Some(format!("-framework {}", name))
+                        }
+                        // These are included, no need to print them
+                        NativeLibKind::StaticBundle | NativeLibKind::RawDylib => None,
+                    }
+                })
+                .collect();
+            println!("native-static-libs: {}", &lib_args.join(" "));
+            Ok(())
+        })
+    })
 }
 
 impl RustcDefaultCalls {
@@ -679,16 +738,16 @@ impl RustcDefaultCalls {
 
     fn print_crate_info(
         codegen_backend: &dyn CodegenBackend,
-        sess: &Session,
+        compiler: &interface::Compiler,
         input: Option<&Input>,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
-    ) -> Compilation {
+    ) -> interface::Result<Compilation> {
+        let sess = compiler.session();
+
         use rustc_session::config::PrintRequest::*;
-        // PrintRequest::NativeStaticLibs is special - printed during linking
-        // (empty iterator returns true)
-        if sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
-            return Compilation::Continue;
+        if sess.opts.prints.is_empty() {
+            return Ok(Compilation::Continue);
         }
 
         let attrs = match input {
@@ -699,7 +758,7 @@ impl RustcDefaultCalls {
                     Ok(attrs) => Some(attrs),
                     Err(mut parse_error) => {
                         parse_error.emit();
-                        return Compilation::Stop;
+                        return Ok(Compilation::Stop);
                     }
                 }
             }
@@ -776,10 +835,12 @@ impl RustcDefaultCalls {
                     codegen_backend.print(*req, sess);
                 }
                 // Any output here interferes with Cargo's parsing of other printed output
-                PrintRequest::NativeStaticLibs => {}
+                PrintRequest::NativeStaticLibs => {
+                    print_native_static_libs(compiler)?;
+                }
             }
         }
-        Compilation::Stop
+        Ok(Compilation::Stop)
     }
 }
 
@@ -1147,7 +1208,11 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
         }
     }
 
-    if !result.is_empty() { Some((result, excluded_cargo_defaults)) } else { None }
+    if !result.is_empty() {
+        Some((result, excluded_cargo_defaults))
+    } else {
+        None
+    }
 }
 
 /// Runs a closure and catches unwinds triggered by fatal errors.
