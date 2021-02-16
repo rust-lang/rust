@@ -331,6 +331,9 @@ pub(crate) struct ReportedErrors {
 
     /// Formatted code differs from existing code (--check only).
     pub(crate) has_diff: bool,
+
+    /// Formatted code missed something, like lost comments or extra trailing space
+    pub(crate) has_unformatted_code_errors: bool,
 }
 
 impl ReportedErrors {
@@ -342,6 +345,7 @@ impl ReportedErrors {
         self.has_macro_format_failure |= other.has_macro_format_failure;
         self.has_check_errors |= other.has_check_errors;
         self.has_diff |= other.has_diff;
+        self.has_unformatted_code_errors |= other.has_unformatted_code_errors;
     }
 }
 
