@@ -6,7 +6,7 @@ use hir::{HasSource, InFile, Module, ModuleDef, ModuleSource, Semantics};
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId},
     defs::{Definition, NameClass, NameRefClass},
-    search::{FileReference, NameLike},
+    search::FileReference,
     RootDatabase,
 };
 use stdx::never;
@@ -47,12 +47,13 @@ pub(crate) fn prepare_rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
-    let range = match &find_name_like(&sema, &syntax, position)
+    let range = match &sema
+        .find_node_at_offset_with_descend(&syntax, position.offset)
         .ok_or_else(|| format_err!("No references found at position"))?
     {
-        NameLike::Name(it) => it.syntax(),
-        NameLike::NameRef(it) => it.syntax(),
-        NameLike::Lifetime(it) => it.syntax(),
+        ast::NameLike::Name(it) => it.syntax(),
+        ast::NameLike::NameRef(it) => it.syntax(),
+        ast::NameLike::Lifetime(it) => it.syntax(),
     }
     .text_range();
     Ok(RangeInfo::new(range, ()))
@@ -121,50 +122,28 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
     }
 }
 
-fn find_name_like(
-    sema: &Semantics<RootDatabase>,
-    syntax: &SyntaxNode,
-    position: FilePosition,
-) -> Option<NameLike> {
-    let namelike = if let Some(name_ref) =
-        sema.find_node_at_offset_with_descend::<ast::NameRef>(syntax, position.offset)
-    {
-        NameLike::NameRef(name_ref)
-    } else if let Some(name) =
-        sema.find_node_at_offset_with_descend::<ast::Name>(syntax, position.offset)
-    {
-        NameLike::Name(name)
-    } else if let Some(lifetime) =
-        sema.find_node_at_offset_with_descend::<ast::Lifetime>(syntax, position.offset)
-    {
-        NameLike::Lifetime(lifetime)
-    } else {
-        return None;
-    };
-    Some(namelike)
-}
-
 fn find_definition(
     sema: &Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     position: FilePosition,
 ) -> RenameResult<Definition> {
-    match find_name_like(sema, syntax, position)
+    match sema
+        .find_node_at_offset_with_descend(syntax, position.offset)
         .ok_or_else(|| format_err!("No references found at position"))?
     {
         // renaming aliases would rename the item being aliased as the HIR doesn't track aliases yet
-        NameLike::Name(name)
+        ast::NameLike::Name(name)
             if name.syntax().parent().map_or(false, |it| ast::Rename::can_cast(it.kind())) =>
         {
             bail!("Renaming aliases is currently unsupported")
         }
-        NameLike::Name(name) => {
+        ast::NameLike::Name(name) => {
             NameClass::classify(sema, &name).map(|class| class.referenced_or_defined(sema.db))
         }
-        NameLike::NameRef(name_ref) => {
+        ast::NameLike::NameRef(name_ref) => {
             NameRefClass::classify(sema, &name_ref).map(|class| class.referenced(sema.db))
         }
-        NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
+        ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
             .map(|class| NameRefClass::referenced(class, sema.db))
             .or_else(|| {
                 NameClass::classify_lifetime(sema, &lifetime)
@@ -187,10 +166,12 @@ fn source_edit_from_references(
             // if the ranges differ then the node is inside a macro call, we can't really attempt
             // to make special rewrites like shorthand syntax and such, so just rename the node in
             // the macro input
-            NameLike::NameRef(name_ref) if name_ref.syntax().text_range() == reference.range => {
+            ast::NameLike::NameRef(name_ref)
+                if name_ref.syntax().text_range() == reference.range =>
+            {
                 source_edit_from_name_ref(name_ref, new_name, def)
             }
-            NameLike::Name(name) if name.syntax().text_range() == reference.range => {
+            ast::NameLike::Name(name) if name.syntax().text_range() == reference.range => {
                 source_edit_from_name(name, new_name)
             }
             _ => None,

@@ -297,6 +297,52 @@ impl ast::RecordExprField {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum NameLike {
+    NameRef(ast::NameRef),
+    Name(ast::Name),
+    Lifetime(ast::Lifetime),
+}
+
+impl NameLike {
+    pub fn as_name_ref(&self) -> Option<&ast::NameRef> {
+        match self {
+            NameLike::NameRef(name_ref) => Some(name_ref),
+            _ => None,
+        }
+    }
+}
+
+impl ast::AstNode for NameLike {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, SyntaxKind::NAME | SyntaxKind::NAME_REF | SyntaxKind::LIFETIME)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::NAME => NameLike::Name(ast::Name { syntax }),
+            SyntaxKind::NAME_REF => NameLike::NameRef(ast::NameRef { syntax }),
+            SyntaxKind::LIFETIME => NameLike::Lifetime(ast::Lifetime { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            NameLike::NameRef(it) => it.syntax(),
+            NameLike::Name(it) => it.syntax(),
+            NameLike::Lifetime(it) => it.syntax(),
+        }
+    }
+}
+
+mod __ {
+    use super::{
+        ast::{Lifetime, Name, NameRef},
+        NameLike,
+    };
+    stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum NameOrNameRef {
     Name(ast::Name),
