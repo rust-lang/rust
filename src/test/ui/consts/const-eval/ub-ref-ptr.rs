@@ -3,6 +3,12 @@
 
 use std::mem;
 
+#[repr(C)]
+union MaybeUninit<T: Copy> {
+    uninit: (),
+    init: T,
+}
+
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
 //~| type validation failed: encountered an unaligned reference (required 2 byte alignment but found 1)
@@ -33,6 +39,11 @@ const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value
 
 const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
+//~^ ERROR it is undefined behavior to use this value
+
+const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
+//~^ ERROR it is undefined behavior to use this value
+const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR it is undefined behavior to use this value
 
 fn main() {}
