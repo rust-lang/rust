@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `*p4` as mutable, as it is behind a `*const` pointer
+  --> $DIR/raw-ref-unsize-coercion-receiver.rs:18:20
+   |
+LL |   let p4 = &raw const a4;
+   |            ------------- help: consider changing this to be a mutable pointer: `&mut raw const a4`
+LL |   let _ = unsafe { p4.get_unchecked_mut(1) };
+   |                    ^^ `p4` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
