@@ -1,3 +1,4 @@
+// ignore-test FIXME (Miri issue #1711)
 #![allow(invalid_value)]
 
 union MyUninit {
