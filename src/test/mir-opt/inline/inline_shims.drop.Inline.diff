@@ -11,7 +11,7 @@
       scope 1 {
       }
       scope 2 {
-+         scope 3 (inlined drop_in_place::<Option<B>> - shim(Some(Option<B>))) { // at $DIR/inline-shims.rs:12:14: 12:40
++         scope 3 (inlined std::ptr::drop_in_place::<Option<B>> - shim(Some(Option<B>))) { // at $DIR/inline-shims.rs:12:14: 12:40
 +             let mut _6: isize;           // in scope 3 at $DIR/inline-shims.rs:12:14: 12:40
 +             let mut _7: isize;           // in scope 3 at $DIR/inline-shims.rs:12:14: 12:40
 +         }
@@ -21,10 +21,10 @@
           StorageLive(_3);                 // scope 0 at $DIR/inline-shims.rs:11:5: 11:42
           StorageLive(_4);                 // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
           _4 = _1;                         // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
-          _3 = drop_in_place::<Vec<A>>(move _4) -> bb1; // scope 1 at $DIR/inline-shims.rs:11:14: 11:40
+          _3 = std::ptr::drop_in_place::<Vec<A>>(move _4) -> bb1; // scope 1 at $DIR/inline-shims.rs:11:14: 11:40
                                            // mir::Constant
                                            // + span: $DIR/inline-shims.rs:11:14: 11:37
-                                           // + literal: Const { ty: unsafe fn(*mut std::vec::Vec<A>) {std::intrinsics::drop_in_place::<std::vec::Vec<A>>}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: unsafe fn(*mut std::vec::Vec<A>) {std::ptr::drop_in_place::<std::vec::Vec<A>>}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {
@@ -32,10 +32,10 @@
           StorageDead(_3);                 // scope 0 at $DIR/inline-shims.rs:11:41: 11:42
           StorageLive(_5);                 // scope 2 at $DIR/inline-shims.rs:12:38: 12:39
           _5 = _2;                         // scope 2 at $DIR/inline-shims.rs:12:38: 12:39
--         _0 = drop_in_place::<Option<B>>(move _5) -> bb2; // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
+-         _0 = std::ptr::drop_in_place::<Option<B>>(move _5) -> bb2; // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-shims.rs:12:14: 12:37
--                                          // + literal: Const { ty: unsafe fn(*mut std::option::Option<B>) {std::intrinsics::drop_in_place::<std::option::Option<B>>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: unsafe fn(*mut std::option::Option<B>) {std::ptr::drop_in_place::<std::option::Option<B>>}, val: Value(Scalar(<ZST>)) }
 +         StorageLive(_6);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
 +         StorageLive(_7);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
 +         _6 = discriminant((*_5));        // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
