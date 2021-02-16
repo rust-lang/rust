@@ -385,6 +385,7 @@ where
 /// It returns the shard index and a lock guard to the shard,
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
+#[inline]
 pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
     cache: &'a QueryCacheStore<C>,
