@@ -866,7 +866,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_variances_of(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_variances_of({:?})", def_id);
-        record!(self.tables.variances[def_id] <- &self.tcx.variances_of(def_id)[..]);
+        record!(self.tables.variances[def_id] <- self.tcx.variances_of(def_id));
     }
 
     fn encode_item_type(&mut self, def_id: DefId) {

@@ -1682,7 +1682,7 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_inner_attributes_inline(attrs);
-        self.commasep_exprs(Inconsistent, &exprs[..]);
+        self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
         self.end();
     }
@@ -1723,7 +1723,7 @@ impl<'a> State<'a> {
         self.print_inner_attributes_inline(attrs);
         self.commasep_cmnt(
             Consistent,
-            &fields[..],
+            fields,
             |s, field| {
                 s.print_outer_attributes(&field.attrs);
                 s.ibox(INDENT_UNIT);
@@ -1758,7 +1758,7 @@ impl<'a> State<'a> {
     fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
         self.popen();
         self.print_inner_attributes_inline(attrs);
-        self.commasep_exprs(Inconsistent, &exprs[..]);
+        self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
             self.s.word(",");
         }

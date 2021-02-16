@@ -135,7 +135,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let parent_generics = match self.items.get(&parent_hir_id).unwrap().kind {
             hir::ItemKind::Impl(hir::Impl { ref generics, .. })
-            | hir::ItemKind::Trait(_, _, ref generics, ..) => &generics.params[..],
+            | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
             _ => &[],
         };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
