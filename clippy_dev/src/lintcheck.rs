@@ -32,15 +32,29 @@ struct TomlCrate {
     git_url: Option<String>,
     git_hash: Option<String>,
     path: Option<String>,
+    options: Option<Vec<String>>,
 }
 
 /// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
 /// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
 #[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 enum CrateSource {
-    CratesIo { name: String, version: String },
-    Git { name: String, url: String, commit: String },
-    Path { name: String, path: PathBuf },
+    CratesIo {
+        name: String,
+        version: String,
+        options: Option<Vec<String>>,
+    },
+    Git {
+        name: String,
+        url: String,
+        commit: String,
+        options: Option<Vec<String>>,
+    },
+    Path {
+        name: String,
+        path: PathBuf,
+        options: Option<Vec<String>>,
+    },
 }
 
 /// Represents the actual source code of a crate that we ran "cargo clippy" on
@@ -50,6 +64,7 @@ struct Crate {
     name: String,
     // path to the extracted sources that clippy can check
     path: PathBuf,
+    options: Option<Vec<String>>,
 }
 
 /// A single warning that clippy issued while checking a `Crate`
@@ -81,7 +96,7 @@ impl CrateSource {
     /// copies a local folder
     fn download_and_extract(&self) -> Crate {
         match self {
-            CrateSource::CratesIo { name, version } => {
+            CrateSource::CratesIo { name, version, options } => {
                 let extract_dir = PathBuf::from("target/lintcheck/crates");
                 let krate_download_dir = PathBuf::from("target/lintcheck/downloads");
 
@@ -113,9 +128,15 @@ impl CrateSource {
                     version: version.clone(),
                     name: name.clone(),
                     path: extract_dir.join(format!("{}-{}/", name, version)),
+                    options: options.clone(),
                 }
             },
-            CrateSource::Git { name, url, commit } => {
+            CrateSource::Git {
+                name,
+                url,
+                commit,
+                options,
+            } => {
                 let repo_path = {
                     let mut repo_path = PathBuf::from("target/lintcheck/crates");
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
@@ -152,9 +173,10 @@ impl CrateSource {
                     version: commit.clone(),
                     name: name.clone(),
                     path: repo_path,
+                    options: options.clone(),
                 }
             },
-            CrateSource::Path { name, path } => {
+            CrateSource::Path { name, path, options } => {
                 use fs_extra::dir;
 
                 // simply copy the entire directory into our target dir
@@ -183,6 +205,7 @@ impl CrateSource {
                     version: String::from("local"),
                     name: name.clone(),
                     path: crate_root,
+                    options: options.clone(),
                 }
             },
         }
@@ -198,18 +221,21 @@ impl Crate {
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir/");
 
+        let mut args = vec!["--", "--message-format=json", "--", "--cap-lints=warn"];
+
+        if let Some(options) = &self.options {
+            for opt in options {
+                args.push(opt);
+            }
+        } else {
+            args.extend(&["-Wclippy::pedantic", "-Wclippy::cargo"])
+        }
+
         let all_output = std::process::Command::new(&cargo_clippy_path)
             .env("CARGO_TARGET_DIR", shared_target_dir)
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
-            .args(&[
-                "--",
-                "--message-format=json",
-                "--",
-                "--cap-lints=warn",
-                "-Wclippy::pedantic",
-                "-Wclippy::cargo",
-            ])
+            .args(&args)
             .current_dir(&self.path)
             .output()
             .unwrap_or_else(|error| {
@@ -289,6 +315,7 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
             crate_sources.push(CrateSource::Path {
                 name: tk.name.clone(),
                 path: PathBuf::from(path),
+                options: tk.options.clone(),
             });
         }
 
@@ -298,6 +325,7 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
                 crate_sources.push(CrateSource::CratesIo {
                     name: tk.name.clone(),
                     version: ver.to_string(),
+                    options: tk.options.clone(),
                 });
             })
         }
@@ -307,6 +335,7 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
                 name: tk.name.clone(),
                 url: tk.git_url.clone().unwrap(),
                 commit: tk.git_hash.clone().unwrap(),
+                options: tk.options.clone(),
             });
         }
         // if we have a version as well as a git data OR only one git data, something is funky

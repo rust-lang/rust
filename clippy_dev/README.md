@@ -1,4 +1,4 @@
-# Clippy Dev Tool 
+# Clippy Dev Tool
 
 The Clippy Dev Tool is a tool to ease Clippy development, similar to `rustc`s `x.py`.
 
@@ -28,25 +28,39 @@ The results will then be saved to `lintcheck-logs/custom_logs.toml`.
 
 ### Configuring the Crate Sources
 
-The sources to check are saved in a `toml` file.  
-There are three types of sources.  
-A crates-io source:
-````toml
-bitflags = {name = "bitflags", versions = ['1.2.1']}
-````
-Requires a "name" and one or multiple "versions" to be checked.
+The sources to check are saved in a `toml` file.
+There are three types of sources.
 
-A git source:
-````toml
-puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
-````
-Requires a name, the url to the repo and unique identifier of a commit,
-branch or tag which is checked out before linting.  
-There is no way to always check `HEAD` because that would lead to changing lint-results as the repo would get updated.  
-If `git_url` or `git_hash` is missing, an error will be thrown.
+1. Crates-io Source
 
-A local dependency:
-````toml
- clippy = {name = "clippy", path = "/home/user/clippy"}
-````
-For when you want to add a repository that is not published yet.  
+   ````toml
+   bitflags = {name = "bitflags", versions = ['1.2.1']}
+   ````
+   Requires a "name" and one or multiple "versions" to be checked.
+
+2. `git` Source
+   ````toml
+   puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
+   ````
+   Requires a name, the url to the repo and unique identifier of a commit,
+   branch or tag which is checked out before linting.
+   There is no way to always check `HEAD` because that would lead to changing lint-results as the repo would get updated.
+   If `git_url` or `git_hash` is missing, an error will be thrown.
+
+3. Local Dependency
+   ````toml
+    clippy = {name = "clippy", path = "/home/user/clippy"}
+   ````
+   For when you want to add a repository that is not published yet.
+
+#### Command Line Options (optional)
+
+```toml
+bitflags = {name = "bitflags", versions = ['1.2.1'], options = ['-Wclippy::pedantic', '-Wclippy::cargo']}
+```
+
+It is possible to specify command line options for each crate. This makes it
+possible to only check a crate for certain lint groups. If no options are
+specified, the lint groups `clippy::all`, `clippy::pedantic`, and
+`clippy::cargo` are checked. If an empty array is specified only `clippy::all`
+is checked.
