@@ -198,7 +198,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
-                let inputs = parameters_for(&projection.projection_ty.trait_ref(tcx), true);
+                let inputs = parameters_for(&projection.projection_ty, true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
                 if !relies_only_on_inputs {
                     continue;

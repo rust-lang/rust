@@ -914,6 +914,7 @@ impl<'a> State<'a> {
 
     pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocTyConstraint) {
         self.print_ident(constraint.ident);
+        constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
         self.s.space();
         match &constraint.kind {
             ast::AssocTyConstraintKind::Equality { ty } => {

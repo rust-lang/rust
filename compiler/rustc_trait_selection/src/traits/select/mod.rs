@@ -32,6 +32,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Constness;
+use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::fast_reject;
@@ -1254,32 +1255,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn match_projection_projections(
         &mut self,
         obligation: &ProjectionTyObligation<'tcx>,
-        obligation_trait_ref: &ty::TraitRef<'tcx>,
-        data: &PolyProjectionPredicate<'tcx>,
+        env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
     ) -> bool {
         let mut nested_obligations = Vec::new();
-        let projection_ty = if potentially_unnormalized_candidates {
+        let (infer_predicate, _) = self.infcx.replace_bound_vars_with_fresh_vars(
+            obligation.cause.span,
+            LateBoundRegionConversionTime::HigherRankedType,
+            env_predicate,
+        );
+        let infer_projection = if potentially_unnormalized_candidates {
             ensure_sufficient_stack(|| {
                 project::normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    data.map_bound(|data| data.projection_ty),
+                    infer_predicate.projection_ty,
                     &mut nested_obligations,
                 )
             })
         } else {
-            data.map_bound(|data| data.projection_ty)
+            infer_predicate.projection_ty
         };
 
-        // FIXME(generic_associated_types): Compare the whole projections
-        let data_poly_trait_ref = projection_ty.map_bound(|proj| proj.trait_ref(self.tcx()));
-        let obligation_poly_trait_ref = ty::Binder::dummy(*obligation_trait_ref);
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .sup(obligation_poly_trait_ref, data_poly_trait_ref)
+            .sup(obligation.predicate, infer_projection)
             .map_or(false, |InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
                     TraitObligationStackList::empty(&ProvisionalEvaluationCache::default()),
