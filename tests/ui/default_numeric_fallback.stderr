@@ -112,7 +112,47 @@ LL |             let y = 1;
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:73:21
+  --> $DIR/default_numeric_fallback.rs:45:21
+   |
+LL |             let y = 1;
+   |                     ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:51:21
+   |
+LL |             let y = 1;
+   |                     ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:63:9
+   |
+LL |         1
+   |         ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:69:27
+   |
+LL |         let f = || -> _ { 1 };
+   |                           ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:73:29
+   |
+LL |         let f = || -> i32 { 1 };
+   |                             ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:87:21
    |
 LL |         generic_arg(1);
    |                     ^
@@ -120,7 +160,7 @@ LL |         generic_arg(1);
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:76:32
+  --> $DIR/default_numeric_fallback.rs:90:32
    |
 LL |         let x: _ = generic_arg(1);
    |                                ^
@@ -128,12 +168,28 @@ LL |         let x: _ = generic_arg(1);
    = help: consider adding suffix to avoid default numeric fallback
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback.rs:96:23
+  --> $DIR/default_numeric_fallback.rs:108:28
+   |
+LL |         GenericStruct { x: 1 };
+   |                            ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:111:36
+   |
+LL |         let _ = GenericStruct { x: 1 };
+   |                                    ^
+   |
+   = help: consider adding suffix to avoid default numeric fallback
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback.rs:131:23
    |
 LL |         s.generic_arg(1);
    |                       ^
    |
    = help: consider adding suffix to avoid default numeric fallback
 
-error: aborting due to 17 previous errors
+error: aborting due to 24 previous errors
 

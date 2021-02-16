@@ -64,7 +64,7 @@ struct NumericFallbackVisitor<'a, 'tcx> {
 impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
-            ty_bounds: Vec::new(),
+            ty_bounds: vec![TyBound::Nothing],
             cx,
         }
     }
@@ -121,6 +121,42 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 }
             },
 
+            ExprKind::Struct(qpath, fields, base) => {
+                if_chain! {
+                    if let Some(def_id) = self.cx.qpath_res(qpath, expr.hir_id).opt_def_id();
+                    let ty = self.cx.tcx.type_of(def_id);
+                    if let Some(adt_def) = ty.ty_adt_def();
+                    if adt_def.is_struct();
+                    if let Some(variant) = adt_def.variants.iter().next();
+                    then {
+                        let fields_def = &variant.fields;
+
+                        // Push field type then visit each field expr.
+                        for field in fields.iter() {
+                            let bound =
+                                fields_def
+                                    .iter()
+                                    .find_map(|f_def| {
+                                        if f_def.ident == field.ident
+                                            { Some(self.cx.tcx.type_of(f_def.did)) }
+                                        else { None }
+                                    });
+                            self.ty_bounds.push(bound.into());
+                            self.visit_expr(field.expr);
+                            self.ty_bounds.pop();
+                        }
+
+                        // Visit base with no bound.
+                        if let Some(base) = base {
+                            self.ty_bounds.push(TyBound::Nothing);
+                            self.visit_expr(base);
+                            self.ty_bounds.pop();
+                        }
+                        return;
+                    }
+                }
+            },
+
             ExprKind::Lit(lit) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
                 self.check_lit(lit, ty);
@@ -166,18 +202,27 @@ fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'
 }
 
 #[derive(Debug, Clone, Copy)]
-enum TyBound<'ctx> {
+enum TyBound<'tcx> {
     Any,
-    Ty(Ty<'ctx>),
+    Ty(Ty<'tcx>),
     Nothing,
 }
 
-impl<'ctx> TyBound<'ctx> {
+impl<'tcx> TyBound<'tcx> {
     fn is_integral(self) -> bool {
         match self {
             TyBound::Any => true,
             TyBound::Ty(t) => t.is_integral(),
             TyBound::Nothing => false,
+        }
+    }
+}
+
+impl<'tcx> From<Option<Ty<'tcx>>> for TyBound<'tcx> {
+    fn from(v: Option<Ty<'tcx>>) -> Self {
+        match v {
+            Some(t) => TyBound::Ty(t),
+            None => TyBound::Nothing,
         }
     }
 }

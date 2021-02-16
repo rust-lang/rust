@@ -39,6 +39,20 @@ mod nested_local {
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             1
         };
+
+        let x: _ = if true {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1
+        } else {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            2
+        };
     }
 }
 
@@ -46,7 +60,7 @@ mod function_def {
     fn ret_i32() -> i32 {
         // Even though the output type is specified,
         // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
-        23
+        1
     }
 
     fn test() {
@@ -74,6 +88,27 @@ mod function_calls {
 
         // Should lint this because the argument type is inferred to `i32` and NOT bound to a concrete type.
         let x: _ = generic_arg(1);
+    }
+}
+
+mod struct_ctor {
+    struct ConcreteStruct {
+        x: i32,
+    }
+
+    struct GenericStruct<T> {
+        x: T,
+    }
+
+    fn test() {
+        // Should NOT lint this because the field type is bound to a concrete type.
+        ConcreteStruct { x: 1 };
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        GenericStruct { x: 1 };
+
+        // Should lint this because the field type is inferred to `i32` and NOT bound to a concrete type.
+        let _ = GenericStruct { x: 1 };
     }
 }
 
