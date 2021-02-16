@@ -176,9 +176,9 @@ impl Anchor {
 
 fn suggest_variable_name(ctx: &AssistContext, expr: &ast::Expr) -> String {
     // FIXME: account for existing names in the scope
-    suggest_name_from_func(expr)
+    suggest_name_from_param(ctx, expr)
+        .or_else(|| suggest_name_from_func(expr))
         .or_else(|| suggest_name_from_method(expr))
-        .or_else(|| suggest_name_from_param(ctx, expr))
         .or_else(|| suggest_name_by_type(ctx, expr))
         .unwrap_or_else(|| "var_name".to_string())
 }
@@ -815,7 +815,7 @@ fn foo() {
     }
 
     #[test]
-    fn extract_var_function_name_has_precedence() {
+    fn extract_var_parameter_name_has_precedence_over_function() {
         check_assist(
             extract_variable,
             r#"
@@ -829,8 +829,8 @@ fn foo() {
 fn bar(test: u32, size: u32)
 
 fn foo() {
-    let $0symbol_size = symbol_size(1, 2);
-    bar(1, symbol_size);
+    let $0size = symbol_size(1, 2);
+    bar(1, size);
 }
 "#,
         )
