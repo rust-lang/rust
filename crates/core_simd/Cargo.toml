@@ -14,3 +14,11 @@ version = "0.2"
 
 [dev-dependencies.wasm-bindgen-test]
 version = "0.3"
+
+[dev-dependencies.proptest]
+version = "0.10"
+default-features = false
+features = ["alloc"]
+
+[dev-dependencies.test_helpers]
+path = "../test_helpers"

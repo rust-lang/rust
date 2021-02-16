@@ -141,6 +141,12 @@ macro_rules! impl_vector {
             }
         }
 
+        impl <const LANES: usize> From<$name<LANES>> for [$type; LANES] where $name<LANES>: crate::LanesAtMost64 {
+            fn from(vector: $name<LANES>) -> Self {
+                vector.to_array()
+            }
+        }
+
         // splat
         impl<const LANES: usize> From<$type> for $name<LANES> where Self: crate::LanesAtMost64 {
             #[inline]
