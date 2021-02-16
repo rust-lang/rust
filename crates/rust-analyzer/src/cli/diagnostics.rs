@@ -11,7 +11,7 @@ use ide::{DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
 
 use crate::cli::{
-    load_cargo::{load_cargo, LoadCargoConfig},
+    load_cargo::{load_workspace_at, LoadCargoConfig},
     Result,
 };
 
@@ -33,12 +33,9 @@ pub fn diagnostics(
     load_out_dirs_from_check: bool,
     with_proc_macro: bool,
 ) -> Result<()> {
-    let load_cargo_config = LoadCargoConfig {
-        cargo_config: Default::default(),
-        load_out_dirs_from_check,
-        with_proc_macro,
-    };
-    let (host, _vfs) = load_cargo(path, &load_cargo_config)?;
+    let cargo_config = Default::default();
+    let load_cargo_config = LoadCargoConfig { load_out_dirs_from_check, with_proc_macro };
+    let (host, _vfs) = load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();
     let analysis = host.analysis();
 

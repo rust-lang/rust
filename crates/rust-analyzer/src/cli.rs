@@ -18,7 +18,7 @@ pub use self::{
     analysis_bench::{BenchCmd, BenchWhat, Position},
     analysis_stats::AnalysisStatsCmd,
     diagnostics::diagnostics,
-    load_cargo::load_cargo,
+    load_cargo::{load_workspace, load_workspace_at, LoadCargoConfig},
     ssr::{apply_ssr_rules, search_for_patterns},
 };
 

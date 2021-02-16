@@ -25,7 +25,7 @@ use stdx::format_to;
 use syntax::AstNode;
 
 use crate::cli::{
-    load_cargo::{load_cargo, LoadCargoConfig},
+    load_cargo::{load_workspace_at, LoadCargoConfig},
     print_memory_usage,
     progress_report::ProgressReport,
     report_metric, Result, Verbosity,
@@ -59,12 +59,13 @@ impl AnalysisStatsCmd {
         };
 
         let mut db_load_sw = self.stop_watch();
+        let cargo_config = Default::default();
         let load_cargo_config = LoadCargoConfig {
-            cargo_config: Default::default(),
             load_out_dirs_from_check: self.load_output_dirs,
             with_proc_macro: self.with_proc_macro,
         };
-        let (host, vfs) = load_cargo(&self.path, &load_cargo_config)?;
+        let (host, vfs) =
+            load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
         let db = host.raw_database();
         eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
 

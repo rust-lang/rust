@@ -17,7 +17,7 @@ use ide_db::{
 use vfs::AbsPathBuf;
 
 use crate::cli::{
-    load_cargo::{load_cargo, LoadCargoConfig},
+    load_cargo::{load_workspace_at, LoadCargoConfig},
     print_memory_usage, Verbosity,
 };
 
@@ -63,13 +63,13 @@ impl BenchCmd {
         let start = Instant::now();
         eprint!("loading: ");
 
+        let cargo_config = Default::default();
         let load_cargo_config = LoadCargoConfig {
-            cargo_config: Default::default(),
             load_out_dirs_from_check: self.load_output_dirs,
             with_proc_macro: self.with_proc_macro,
         };
-
-        let (mut host, vfs) = load_cargo(&self.path, &load_cargo_config)?;
+        let (mut host, vfs) =
+            load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
         eprintln!("{:?}\n", start.elapsed());
 
         let file_id = {

@@ -14,16 +14,28 @@ use vfs::{loader::Handle, AbsPath, AbsPathBuf};
 use crate::reload::{ProjectFolders, SourceRootConfig};
 
 pub struct LoadCargoConfig {
-    pub cargo_config: CargoConfig,
     pub load_out_dirs_from_check: bool,
     pub with_proc_macro: bool,
 }
 
-pub fn load_cargo(root: &Path, config: &LoadCargoConfig) -> Result<(AnalysisHost, vfs::Vfs)> {
+pub fn load_workspace_at(
+    root: &Path,
+    cargo_config: &CargoConfig,
+    load_config: &LoadCargoConfig,
+    progress: &dyn Fn(String),
+) -> Result<(AnalysisHost, vfs::Vfs)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
-    let ws = ProjectWorkspace::load(root, &config.cargo_config, &|_| {})?;
+    let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
+    load_workspace(workspace, load_config, progress)
+}
+
+pub fn load_workspace(
+    ws: ProjectWorkspace,
+    config: &LoadCargoConfig,
+    progress: &dyn Fn(String),
+) -> Result<(AnalysisHost, vfs::Vfs)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -42,7 +54,7 @@ pub fn load_cargo(root: &Path, config: &LoadCargoConfig) -> Result<(AnalysisHost
     let build_data = if config.load_out_dirs_from_check {
         let mut collector = BuildDataCollector::default();
         ws.collect_build_data_configs(&mut collector);
-        Some(collector.collect(&|_| {})?)
+        Some(collector.collect(progress)?)
     } else {
         None
     };
@@ -66,11 +78,12 @@ pub fn load_cargo(root: &Path, config: &LoadCargoConfig) -> Result<(AnalysisHost
     });
 
     log::debug!("crate graph: {:?}", crate_graph);
-    let host = load(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
+    let host =
+        load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
     Ok((host, vfs))
 }
 
-fn load(
+fn load_crate_graph(
     crate_graph: CrateGraph,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
@@ -120,17 +133,17 @@ mod tests {
     use hir::Crate;
 
     #[test]
-    fn test_loading_rust_analyzer() {
+    fn test_loading_rust_analyzer() -> Result<()> {
         let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
-        let load_cargo_config = LoadCargoConfig {
-            cargo_config: Default::default(),
-            load_out_dirs_from_check: false,
-            with_proc_macro: false,
-        };
+        let cargo_config = Default::default();
+        let load_cargo_config =
+            LoadCargoConfig { load_out_dirs_from_check: false, with_proc_macro: false };
+        let (host, _vfs) = load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
 
-        let (host, _vfs) = load_cargo(path, &load_cargo_config).unwrap();
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
+
+        Ok(())
     }
 }
