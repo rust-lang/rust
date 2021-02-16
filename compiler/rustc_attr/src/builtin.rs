@@ -9,6 +9,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use std::fmt;
 use std::num::NonZeroU32;
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
@@ -18,7 +19,7 @@ pub fn is_builtin_attr(attr: &Attribute) -> bool {
 enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),
-    MissingSince,
+    InvalidSince,
     NonIdentFeature,
     MissingFeature,
     MultipleStabilityLevels,
@@ -37,8 +38,8 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
                 .span_label(span, format!("expected one of {}", expected.join(", ")))
                 .emit();
         }
-        AttrError::MissingSince => {
-            struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+        AttrError::InvalidSince => {
+            struct_span_err!(diag, span, E0542, "invalid 'since'").emit();
         }
         AttrError::NonIdentFeature => {
             struct_span_err!(diag, span, E0546, "'feature' is not an identifier").emit();
@@ -158,7 +159,7 @@ pub struct ConstStability {
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    Stable { since: Version },
 }
 
 impl StabilityLevel {
@@ -428,7 +429,7 @@ where
                         }
                     }
 
-                    match (feature, since) {
+                    match (feature, since.and_then(|s| parse_version(&s.as_str(), false))) {
                         (Some(feature), Some(since)) => {
                             let level = Stable { since };
                             if sym::stable == meta_name {
@@ -443,7 +444,7 @@ where
                             continue;
                         }
                         _ => {
-                            handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
+                            handle_errors(&sess.parse_sess, attr.span, AttrError::InvalidSince);
                             continue;
                         }
                     }
@@ -525,11 +526,18 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Version {
-    major: u16,
-    minor: u16,
-    patch: u16,
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable_Generic)]
+pub struct Version {
+    major: u8,
+    minor: u8,
+    patch: u8,
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
 }
 
 fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
@@ -648,30 +656,56 @@ pub fn eval_condition(
 }
 
 #[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic)]
-pub struct Deprecation {
-    pub since: Option<Symbol>,
-    /// The note to issue a reason.
-    pub note: Option<Symbol>,
-    /// A text snippet used to completely replace any use of the deprecated item in an expression.
-    ///
-    /// This is currently unstable.
-    pub suggestion: Option<Symbol>,
+pub enum DeprKind {
+    /// The stable #[deprecated] attribute
+    Deprecated {
+        /// Opaque, unvalidated string
+        since: Option<Symbol>,
+        /// Note displayed alongside deprecation warning
+        note: Option<Symbol>,
+    },
+    /// The compiler-only #[rustc_deprecated] attribute
+    RustcDeprecated {
+        /// Whether or not the deprecation is currently in effect,
+        /// i.e. whether `since` is at least the current Rust version.
+        now: bool,
+        /// `None` if `since="TBD"`, otherwise a Rust version triple "X.Y.Z"
+        since: Option<Version>,
+        /// Note displayed alongside deprecation warning
+        note: Symbol,
+        /// A text snippet used to completely replace any use
+        /// of the deprecated item in an expression.
+        /// Currently unstable.
+        suggestion: Option<Symbol>,
+    },
+}
 
-    /// Whether to treat the since attribute as being a Rust version identifier
-    /// (rather than an opaque string).
-    pub is_since_rustc_version: bool,
+impl DeprKind {
+    pub fn note(&self) -> Option<Symbol> {
+        match *self {
+            Self::Deprecated { note, .. } => note,
+            Self::RustcDeprecated { note, .. } => Some(note),
+        }
+    }
+
+    pub fn suggestion(&self) -> Option<Symbol> {
+        match *self {
+            Self::Deprecated { .. } => None,
+            Self::RustcDeprecated { suggestion, .. } => suggestion,
+        }
+    }
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
+pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(DeprKind, Span)> {
     find_deprecation_generic(sess, attrs.iter())
 }
 
-fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
+fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(DeprKind, Span)>
 where
     I: Iterator<Item = &'a Attribute>,
 {
-    let mut depr: Option<(Deprecation, Span)> = None;
+    let mut depr: Option<(DeprKind, Span)> = None;
     let diagnostic = &sess.parse_sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
@@ -786,26 +820,53 @@ where
             }
         }
 
-        if suggestion.is_some() && sess.check_name(attr, sym::deprecated) {
-            unreachable!("only allowed on rustc_deprecated")
-        }
+        depr = if sess.check_name(attr, sym::deprecated) {
+            Some((DeprKind::Deprecated { since, note }, attr.span))
+        } else {
+            let since = match since {
+                None => {
+                    // `since` field must be present
+                    handle_errors(&sess.parse_sess, attr.span, AttrError::InvalidSince);
+                    continue;
+                }
+                Some(since_sym) => {
+                    if since_sym == sym::TBD {
+                        None // "TBD" is the only non-version allowed for the `since` field
+                    } else {
+                        if let Some(since_ver) = parse_version(&since_sym.as_str(), false) {
+                            Some(since_ver)
+                        } else {
+                            // `since` field must be a valid version
+                            handle_errors(&sess.parse_sess, attr.span, AttrError::InvalidSince);
+                            continue;
+                        }
+                    }
+                }
+            };
 
-        if sess.check_name(attr, sym::rustc_deprecated) {
-            if since.is_none() {
-                handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
-                continue;
-            }
+            let note = match note {
+                None => {
+                    struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'").emit();
+                    continue;
+                }
+                Some(n) => n,
+            };
 
-            if note.is_none() {
-                struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'").emit();
-                continue;
-            }
-        }
+            // Whether the deprecation is currently active
+            let now = match since {
+                None => false, // "TBD", therefore deprecated_in_future
+                Some(since_ver) => {
+                    match option_env!("CFG_RELEASE").and_then(|s| parse_version(s, true)) {
+                        None => true, // if invalid Rust version, assume deprecation is in effect
+                        Some(rust_ver) => rust_ver > since_ver,
+                    }
+                }
+            };
+
+            Some((DeprKind::RustcDeprecated { now, since, note, suggestion }, attr.span))
+        };
 
         sess.mark_attr_used(&attr);
-
-        let is_since_rustc_version = sess.check_name(attr, sym::rustc_deprecated);
-        depr = Some((Deprecation { since, note, suggestion, is_since_rustc_version }, attr.span));
     }
 
     depr

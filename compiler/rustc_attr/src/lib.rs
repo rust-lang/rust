@@ -12,6 +12,7 @@ extern crate rustc_macros;
 mod builtin;
 
 pub use builtin::*;
+pub use DeprKind::*;
 pub use IntType::*;
 pub use ReprAttr::*;
 pub use StabilityLevel::*;

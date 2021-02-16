@@ -6,7 +6,7 @@ use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
+use rustc_attr::{self as attr, DeprKind, HasAttrs, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
@@ -705,7 +705,7 @@ pub struct SyntaxExtension {
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
-    pub deprecation: Option<Deprecation>,
+    pub deprecation: Option<DeprKind>,
     /// Names of helper attributes registered by this macro.
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.

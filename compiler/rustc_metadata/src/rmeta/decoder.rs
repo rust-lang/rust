@@ -917,7 +917,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.const_stability.get(self, id).map(|stab| stab.decode(self))
     }
 
-    fn get_deprecation(&self, id: DefIndex) -> Option<attr::Deprecation> {
+    fn get_deprecation(&self, id: DefIndex) -> Option<attr::DeprKind> {
         self.root.tables.deprecation.get(self, id).map(|depr| depr.decode(self))
     }
 

@@ -288,7 +288,7 @@ define_tables! {
     children: Table<DefIndex, Lazy<[DefIndex]>>,
     stability: Table<DefIndex, Lazy<attr::Stability>>,
     const_stability: Table<DefIndex, Lazy<attr::ConstStability>>,
-    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
+    deprecation: Table<DefIndex, Lazy<attr::DeprKind>>,
     ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
     fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
     impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,

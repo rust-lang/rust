@@ -48,14 +48,13 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
-use rustc_attr::{Deprecation, StabilityLevel};
+use rustc_attr::{self as attr, StabilityLevel, Version};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::Mutability;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -1761,8 +1760,8 @@ fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     buf.write_str("<span class=\"out-of-band\">");
     render_stability_since_raw(
         buf,
-        item.stable_since(cx.tcx()).as_deref(),
-        item.const_stable_since(cx.tcx()).as_deref(),
+        item.stable_since(cx.tcx()),
+        item.const_stable_since(cx.tcx()),
         None,
         None,
     );
@@ -2240,13 +2239,10 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 
     // The trailing space after each tag is to space it properly against the rest of the docs.
     if let Some(depr) = &item.deprecation(tcx) {
-        let mut message = "Deprecated";
-        if !stability::deprecation_in_effect(
-            depr.is_since_rustc_version,
-            depr.since.map(|s| s.as_str()).as_deref(),
-        ) {
-            message = "Deprecation planned";
-        }
+        let message = match depr {
+            attr::Deprecated { .. } | attr::RustcDeprecated { now: true, .. } => "Deprecated",
+            attr::RustcDeprecated { now: false, .. } => "Deprecation planned",
+        };
         tags += &tag_html("deprecated", "", message);
     }
 
@@ -2300,27 +2296,22 @@ fn short_item_info(
     let mut extra_info = vec![];
     let error_codes = cx.shared.codes;
 
-    if let Some(Deprecation { note, since, is_since_rustc_version, suggestion: _ }) =
-        item.deprecation(cx.tcx())
-    {
-        // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
-        // but only display the future-deprecation messages for #[rustc_deprecated].
-        let mut message = if let Some(since) = since {
-            let since = &since.as_str();
-            if !stability::deprecation_in_effect(is_since_rustc_version, Some(since)) {
-                if *since == "TBD" {
-                    String::from("Deprecating in a future Rust version")
-                } else {
-                    format!("Deprecating in {}", Escape(since))
-                }
-            } else {
-                format!("Deprecated since {}", Escape(since))
+    if let Some(depr) = item.deprecation(cx.tcx()) {
+        let mut message = match depr {
+            attr::Deprecated { since: None, .. } => String::from("Deprecated"),
+            attr::Deprecated { since: Some(since), .. } => {
+                format!("Deprecated since {}", Escape(&since.as_str()))
             }
-        } else {
-            String::from("Deprecated")
+            attr::RustcDeprecated { now: true, since: Some(since), .. } => {
+                format!("Deprecated since {}", since)
+            }
+            attr::RustcDeprecated { now: false, since: Some(since), .. } => {
+                format!("Deprecating in {}", since)
+            }
+            _ => String::from("Deprecating in a future Rust version"),
         };
 
-        if let Some(note) = note {
+        if let Some(note) = depr.note() {
             let note = note.as_str();
             let mut ids = cx.id_map.borrow_mut();
             let html = MarkdownHtml(
@@ -2330,8 +2321,9 @@ fn short_item_info(
                 cx.shared.edition,
                 &cx.shared.playground,
             );
-            message.push_str(&format!(": {}", html.into_string()));
+            message = format!("{}: {}", message, html.into_string());
         }
+
         extra_info.push(format!(
             "<div class=\"stab deprecated\"><span class=\"emoji\">👎</span> {}</div>",
             message,
@@ -2494,8 +2486,8 @@ fn render_implementor(
         trait_,
         AssocItemLink::Anchor(None),
         RenderMode::Normal,
-        trait_.stable_since(cx.tcx()).as_deref(),
-        trait_.const_stable_since(cx.tcx()).as_deref(),
+        trait_.stable_since(cx.tcx()),
+        trait_.const_stable_since(cx.tcx()),
         false,
         Some(use_absolute),
         false,
@@ -2523,8 +2515,8 @@ fn render_impls(
                 containing_item,
                 assoc_link,
                 RenderMode::Normal,
-                containing_item.stable_since(cx.tcx()).as_deref(),
-                containing_item.const_stable_since(cx.tcx()).as_deref(),
+                containing_item.stable_since(cx.tcx()),
+                containing_item.const_stable_since(cx.tcx()),
                 true,
                 None,
                 false,
@@ -2777,8 +2769,8 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     it,
                     assoc_link,
                     RenderMode::Normal,
-                    implementor.impl_item.stable_since(cx.tcx()).as_deref(),
-                    implementor.impl_item.const_stable_since(cx.tcx()).as_deref(),
+                    implementor.impl_item.stable_since(cx.tcx()),
+                    implementor.impl_item.const_stable_since(cx.tcx()),
                     false,
                     None,
                     true,
@@ -2923,14 +2915,11 @@ fn assoc_type(
 
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<&str>,
-    const_ver: Option<&str>,
-    containing_ver: Option<&str>,
-    containing_const_ver: Option<&str>,
+    ver: Option<Version>,
+    const_ver: Option<Version>,
+    containing_ver: Option<Version>,
+    containing_const_ver: Option<Version>,
 ) {
-    let ver = ver.filter(|inner| !inner.is_empty());
-    let const_ver = const_ver.filter(|inner| !inner.is_empty());
-
     match (ver, const_ver) {
         (Some(v), Some(cv)) if const_ver != containing_const_ver => {
             write!(
@@ -2958,10 +2947,10 @@ fn render_stability_since(
 ) {
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
-        item.const_stable_since(tcx).as_deref(),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
+        item.const_stable_since(tcx),
+        containing_item.stable_since(tcx),
+        containing_item.const_stable_since(tcx),
     )
 }
 
@@ -3540,8 +3529,8 @@ fn render_assoc_items(
                 containing_item,
                 AssocItemLink::Anchor(None),
                 render_mode,
-                containing_item.stable_since(cx.tcx()).as_deref(),
-                containing_item.const_stable_since(cx.tcx()).as_deref(),
+                containing_item.stable_since(cx.tcx()),
+                containing_item.const_stable_since(cx.tcx()),
                 true,
                 None,
                 false,
@@ -3745,8 +3734,8 @@ fn render_impl(
     parent: &clean::Item,
     link: AssocItemLink<'_>,
     render_mode: RenderMode,
-    outer_version: Option<&str>,
-    outer_const_version: Option<&str>,
+    outer_version: Option<Version>,
+    outer_const_version: Option<Version>,
     show_def_docs: bool,
     use_absolute: Option<bool>,
     is_on_foreign_type: bool,
@@ -3807,8 +3796,8 @@ fn render_impl(
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
         render_stability_since_raw(
             w,
-            i.impl_item.stable_since(cx.tcx()).as_deref(),
-            i.impl_item.const_stable_since(cx.tcx()).as_deref(),
+            i.impl_item.stable_since(cx.tcx()),
+            i.impl_item.const_stable_since(cx.tcx()),
             outer_version,
             outer_const_version,
         );
@@ -3847,8 +3836,8 @@ fn render_impl(
         link: AssocItemLink<'_>,
         render_mode: RenderMode,
         is_default_item: bool,
-        outer_version: Option<&str>,
-        outer_const_version: Option<&str>,
+        outer_version: Option<Version>,
+        outer_const_version: Option<Version>,
         trait_: Option<&clean::Trait>,
         show_def_docs: bool,
     ) {
@@ -3881,8 +3870,8 @@ fn render_impl(
                     w.write_str("</code>");
                     render_stability_since_raw(
                         w,
-                        item.stable_since(cx.tcx()).as_deref(),
-                        item.const_stable_since(cx.tcx()).as_deref(),
+                        item.stable_since(cx.tcx()),
+                        item.const_stable_since(cx.tcx()),
                         outer_version,
                         outer_const_version,
                     );
@@ -3911,8 +3900,8 @@ fn render_impl(
                 w.write_str("</code>");
                 render_stability_since_raw(
                     w,
-                    item.stable_since(cx.tcx()).as_deref(),
-                    item.const_stable_since(cx.tcx()).as_deref(),
+                    item.stable_since(cx.tcx()),
+                    item.const_stable_since(cx.tcx()),
                     outer_version,
                     outer_const_version,
                 );
@@ -3991,8 +3980,8 @@ fn render_impl(
         i: &clean::Impl,
         parent: &clean::Item,
         render_mode: RenderMode,
-        outer_version: Option<&str>,
-        outer_const_version: Option<&str>,
+        outer_version: Option<Version>,
+        outer_const_version: Option<Version>,
         show_def_docs: bool,
     ) {
         for trait_item in &t.items {

@@ -21,7 +21,6 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
-use std::cmp::Ordering;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
@@ -167,7 +166,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if let Some((rustc_attr::Deprecation { is_since_rustc_version: true, .. }, span)) = &depr {
+        if let Some((attr::RustcDeprecated { .. }, span)) = &depr {
             if stab.is_none() {
                 struct_span_err!(
                     self.tcx.sess,
@@ -193,40 +192,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
-            if let (&Some(dep_since), &attr::Stable { since: stab_since }) =
-                (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
+            if let (
+                &Some((attr::RustcDeprecated { since: Some(depr_since), .. }, _)),
+                &attr::Stable { since: stab_since },
+            ) = (&depr, &stab.level)
             {
-                // Explicit version of iter::order::lt to handle parse errors properly
-                for (dep_v, stab_v) in
-                    dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
-                {
-                    match stab_v.parse::<u64>() {
-                        Err(_) => {
-                            self.tcx.sess.span_err(item_sp, "Invalid stability version found");
-                            break;
-                        }
-                        Ok(stab_vp) => match dep_v.parse::<u64>() {
-                            Ok(dep_vp) => match dep_vp.cmp(&stab_vp) {
-                                Ordering::Less => {
-                                    self.tcx.sess.span_err(
-                                        item_sp,
-                                        "An API can't be stabilized after it is deprecated",
-                                    );
-                                    break;
-                                }
-                                Ordering::Equal => continue,
-                                Ordering::Greater => break,
-                            },
-                            Err(_) => {
-                                if dep_v != "TBD" {
-                                    self.tcx
-                                        .sess
-                                        .span_err(item_sp, "Invalid deprecation version found");
-                                }
-                                break;
-                            }
-                        },
-                    }
+                if depr_since < stab_since {
+                    self.tcx
+                        .sess
+                        .span_err(item_sp, "An API can't be stabilized after it is deprecated");
                 }
             }
 

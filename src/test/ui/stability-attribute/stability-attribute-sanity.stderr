@@ -1,8 +1,8 @@
 error[E0541]: unknown meta item 'reason'
-  --> $DIR/stability-attribute-sanity.rs:8:42
+  --> $DIR/stability-attribute-sanity.rs:8:46
    |
-LL |     #[stable(feature = "a", since = "b", reason)]
-   |                                          ^^^^^^ expected one of `since`, `note`
+LL |     #[stable(feature = "a", since = "1.0.0", reason)]
+   |                                              ^^^^^^ expected one of `since`, `note`
 
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:11:29
@@ -13,7 +13,7 @@ LL |     #[stable(feature = "a", since)]
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:14:14
    |
-LL |     #[stable(feature, since = "a")]
+LL |     #[stable(feature, since = "1.0.0")]
    |              ^^^^^^^
 
 error[E0539]: incorrect meta item
@@ -25,7 +25,7 @@ LL |     #[stable(feature = "a", since(b))]
 error[E0539]: incorrect meta item
   --> $DIR/stability-attribute-sanity.rs:20:14
    |
-LL |     #[stable(feature(b), since = "a")]
+LL |     #[stable(feature(b), since = "1.0.0")]
    |              ^^^^^^^^^^
 
 error[E0546]: missing 'feature'
@@ -43,16 +43,16 @@ LL |     #[unstable(feature = "b")]
 error[E0546]: missing 'feature'
   --> $DIR/stability-attribute-sanity.rs:31:5
    |
-LL |     #[stable(since = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[stable(since = "1.0.0")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0542]: missing 'since'
+error[E0542]: invalid 'since'
   --> $DIR/stability-attribute-sanity.rs:36:5
    |
 LL |     #[stable(feature = "a")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0542]: missing 'since'
+error[E0542]: invalid 'since'
   --> $DIR/stability-attribute-sanity.rs:40:5
    |
 LL |     #[rustc_deprecated(reason = "a")]
@@ -61,14 +61,14 @@ LL |     #[rustc_deprecated(reason = "a")]
 error[E0543]: missing 'reason'
   --> $DIR/stability-attribute-sanity.rs:44:5
    |
-LL |     #[rustc_deprecated(since = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_deprecated(since = "1.0.0")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:49:1
    |
-LL | #[stable(feature = "a", since = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[stable(feature = "a", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:53:1
@@ -79,16 +79,16 @@ LL | #[unstable(feature = "b", issue = "none")]
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:57:1
    |
-LL | #[stable(feature = "a", since = "b")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[stable(feature = "a", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0550]: multiple deprecated attributes
   --> $DIR/stability-attribute-sanity.rs:62:1
    |
-LL | #[rustc_deprecated(since = "b", reason = "text")]
-   | ------------------------------------------------- first deprecation attribute
-LL | #[rustc_deprecated(since = "b", reason = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
+LL | #[rustc_deprecated(since = "1.0.0", reason = "text")]
+   | ----------------------------------------------------- first deprecation attribute
+LL | #[rustc_deprecated(since = "1.0.0", reason = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
 
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1
@@ -96,25 +96,31 @@ error[E0544]: multiple stability levels
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Invalid stability version found
-  --> $DIR/stability-attribute-sanity.rs:65:1
+error[E0542]: invalid 'since'
+  --> $DIR/stability-attribute-sanity.rs:67:1
    |
-LL | pub const fn multiple4() { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[stable(feature = "a", since = "invalid")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Invalid deprecation version found
-  --> $DIR/stability-attribute-sanity.rs:70:1
+error[E0542]: invalid 'since'
+  --> $DIR/stability-attribute-sanity.rs:71:1
    |
-LL | fn invalid_deprecation_version() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated(since = "invalid", reason = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:72:1
+  --> $DIR/stability-attribute-sanity.rs:74:1
    |
-LL | #[rustc_deprecated(since = "a", reason = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_deprecated(since = "1.0.0", reason = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: An API can't be stabilized after it is deprecated
+  --> $DIR/stability-attribute-sanity.rs:80:1
+   |
+LL | fn deprecated_before_stabilized() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0546, E0547, E0549, E0550.
 For more information about an error, try `rustc --explain E0539`.

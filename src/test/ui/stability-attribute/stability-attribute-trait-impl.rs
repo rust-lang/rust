@@ -1,12 +1,12 @@
 #![feature(staged_api)]
 
-#[stable(feature = "x", since = "1")]
+#[stable(feature = "x", since = "1.0.0")]
 struct StableType;
 
 #[unstable(feature = "x", issue = "none")]
 struct UnstableType;
 
-#[stable(feature = "x", since = "1")]
+#[stable(feature = "x", since = "1.0.0")]
 trait StableTrait {}
 
 #[unstable(feature = "x", issue = "none")]

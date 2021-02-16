@@ -5,7 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::ty::{self, TyCtxt};
 use rustc_ast::NodeId;
-use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
+use rustc_attr::{self as attr, ConstStability, DeprKind, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
@@ -39,18 +39,18 @@ impl StabilityLevel {
 #[derive(Clone, HashStable, Debug)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
-    pub attr: Deprecation,
+    pub attr: DeprKind,
     /// The `DefId` where the attr was originally attached. `None` for non-local
     /// `DefId`'s.
     origin: Option<HirId>,
 }
 
 impl DeprecationEntry {
-    pub fn local(attr: Deprecation, id: HirId) -> DeprecationEntry {
+    pub fn local(attr: DeprKind, id: HirId) -> DeprecationEntry {
         DeprecationEntry { attr, origin: Some(id) }
     }
 
-    pub fn external(attr: Deprecation) -> DeprecationEntry {
+    pub fn external(attr: DeprKind) -> DeprecationEntry {
         DeprecationEntry { attr, origin: None }
     }
 
@@ -129,42 +129,6 @@ pub fn report_unstable(
     }
 }
 
-/// Checks whether an item marked with `deprecated(since="X")` is currently
-/// deprecated (i.e., whether X is not greater than the current rustc version).
-pub fn deprecation_in_effect(is_since_rustc_version: bool, since: Option<&str>) -> bool {
-    fn parse_version(ver: &str) -> Vec<u32> {
-        // We ignore non-integer components of the version (e.g., "nightly").
-        ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
-    }
-
-    if !is_since_rustc_version {
-        // The `since` field doesn't have semantic purpose in the stable `deprecated`
-        // attribute, only in `rustc_deprecated`.
-        return true;
-    }
-
-    if let Some(since) = since {
-        if since == "TBD" {
-            return false;
-        }
-
-        if let Some(rustc) = option_env!("CFG_RELEASE") {
-            let since: Vec<u32> = parse_version(&since);
-            let rustc: Vec<u32> = parse_version(rustc);
-            // We simply treat invalid `since` attributes as relating to a previous
-            // Rust version, thus always displaying the warning.
-            if since.len() != 3 {
-                return true;
-            }
-            return since <= rustc;
-        }
-    };
-
-    // Assume deprecation is in effect if "since" field is missing
-    // or if we can't determine the current Rust version.
-    true
-}
-
 pub fn deprecation_suggestion(
     diag: &mut DiagnosticBuilder<'_>,
     kind: &str,
@@ -181,33 +145,34 @@ pub fn deprecation_suggestion(
     }
 }
 
-pub fn deprecation_message(depr: &Deprecation, kind: &str, path: &str) -> (String, &'static Lint) {
-    let since = depr.since.map(Symbol::as_str);
-    let (message, lint) = if deprecation_in_effect(depr.is_since_rustc_version, since.as_deref()) {
-        (format!("use of deprecated {} `{}`", kind, path), DEPRECATED)
-    } else {
-        (
-            if since.as_deref() == Some("TBD") {
-                format!(
-                    "use of {} `{}` that will be deprecated in a future Rust version",
-                    kind, path
-                )
-            } else {
-                format!(
-                    "use of {} `{}` that will be deprecated in future version {}",
-                    kind,
-                    path,
-                    since.unwrap()
-                )
-            },
-            DEPRECATED_IN_FUTURE,
-        )
+pub fn deprecation_message(depr: &DeprKind, kind: &str, path: &str) -> String {
+    let mut message = match depr {
+        attr::Deprecated { .. } | attr::RustcDeprecated { now: true, .. } => {
+            format!("use of deprecated {} `{}`", kind, path)
+        }
+        attr::RustcDeprecated { now: false, since: None, .. } => {
+            format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
+        }
+        attr::RustcDeprecated { now: false, since: Some(since), .. } => {
+            format!(
+                "use of {} `{}` that will be deprecated in future version {}",
+                kind, path, since
+            )
+        }
     };
-    let message = match depr.note {
-        Some(reason) => format!("{}: {}", message, reason),
-        None => message,
-    };
-    (message, lint)
+
+    if let Some(note) = depr.note() {
+        message = format!("{}: {}", message, note);
+    }
+
+    message
+}
+
+pub fn deprecation_lint(depr: &DeprKind) -> &'static Lint {
+    match depr {
+        attr::RustcDeprecated { now: false, .. } => DEPRECATED_IN_FUTURE,
+        attr::Deprecated { .. } | attr::RustcDeprecated { now: true, .. } => DEPRECATED,
+    }
 }
 
 pub fn early_report_deprecation(
@@ -302,14 +267,15 @@ impl<'tcx> TyCtxt<'tcx> {
                 //
                 // #[rustc_deprecated] however wants to emit down the whole
                 // hierarchy.
-                if !skip || depr_entry.attr.is_since_rustc_version {
+                if !skip || matches!(depr_entry.attr, attr::RustcDeprecated { .. }) {
                     let path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
                     let kind = self.def_kind(def_id).descr(def_id);
-                    let (message, lint) = deprecation_message(&depr_entry.attr, kind, path);
+                    let message = deprecation_message(&depr_entry.attr, kind, path);
+                    let lint = deprecation_lint(&depr_entry.attr);
                     late_report_deprecation(
                         self,
                         &message,
-                        depr_entry.attr.suggestion,
+                        depr_entry.attr.suggestion(),
                         lint,
                         span,
                         id,
@@ -421,7 +387,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
+    pub fn lookup_deprecation(self, id: DefId) -> Option<DeprKind> {
         self.lookup_deprecation_entry(id).map(|depr| depr.attr)
     }
 }

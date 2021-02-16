@@ -12,7 +12,7 @@ use arrayvec::ArrayVec;
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
-use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
+use rustc_attr::{ConstStability, DeprKind, Stability, StabilityLevel, Version};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_feature::UnstableFeatures;
 use rustc_hir as hir;
@@ -114,7 +114,7 @@ impl Item {
         if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id) }
     }
 
-    crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
+    crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<DeprKind> {
         if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
     }
 
@@ -257,16 +257,16 @@ impl Item {
         })
     }
 
-    crate fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+    crate fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<Version> {
         match self.stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
     }
 
-    crate fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<SymbolStr> {
+    crate fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<Version> {
         match self.const_stability(tcx)?.level {
-            StabilityLevel::Stable { since, .. } => Some(since.as_str()),
+            StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
     }

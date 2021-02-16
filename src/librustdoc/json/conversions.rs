@@ -7,6 +7,7 @@
 use std::convert::From;
 
 use rustc_ast::ast;
+use rustc_attr::{self as attr, DeprKind};
 use rustc_hir::def::CtorKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
@@ -87,10 +88,14 @@ impl JsonRenderer<'_> {
     }
 }
 
-crate fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    #[rustfmt::skip]
-    let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
-    Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
+crate fn from_deprecation(depr: DeprKind) -> Deprecation {
+    let since = match depr {
+        attr::Deprecated { since, .. } => since.map(|s| s.to_string()),
+        attr::RustcDeprecated { since: Some(since), .. } => Some(since.to_string()),
+        attr::RustcDeprecated { since: None, .. } => Some(String::from("TBD")),
+    };
+
+    Deprecation { since, note: depr.note().map(|s| s.to_string()) }
 }
 
 impl From<clean::GenericArgs> for GenericArgs {

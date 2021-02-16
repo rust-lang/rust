@@ -1,7 +1,7 @@
 #![feature(staged_api)]
-#![stable(feature = "test", since = "0")]
+#![stable(feature = "test", since = "1.0.0")]
 
-#[stable(feature = "test", since = "0")]
+#[stable(feature = "test", since = "1.0.0")]
 pub struct Reverse<T>(pub T); //~ ERROR field has missing stability attribute
 
 fn main() {
