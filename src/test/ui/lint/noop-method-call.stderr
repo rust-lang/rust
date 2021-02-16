@@ -1,35 +1,19 @@
 warning: call to `.clone()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:24:35
+  --> $DIR/noop-method-call.rs:12:74
    |
-LL |     let foo_clone: &Foo<u32> = foo.clone();
-   |                                   ^^^^^^^^ unnecessary method call
+LL |     let non_clone_type_ref_clone: &NonCloneType<u32> = non_clone_type_ref.clone();
+   |                                                                          ^^^^^^^^ unnecessary method call
    |
    = note: `#[warn(noop_method_call)]` on by default
-   = note: the type `&Foo<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
-
-warning: call to `.deref()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:31:44
-   |
-LL |     let derefed: &DerefExample<u32> = deref.deref();
-   |                                            ^^^^^^^^ unnecessary method call
-   |
-   = note: the type `&DerefExample<u32>` which `deref` is being called on is the same as the type returned from `deref`, so the method call does not do anything and can be removed
-
-warning: call to `.borrow()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:38:32
-   |
-LL |     let borrowed: &Foo<u32> = a.borrow();
-   |                                ^^^^^^^^^ unnecessary method call
-   |
-   = note: the type `&Foo<u32>` which `borrow` is being called on is the same as the type returned from `borrow`, so the method call does not do anything and can be removed
+   = note: the type `&NonCloneType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
 
 warning: call to `.clone()` on a reference in this situation does nothing
-  --> $DIR/noop-method-call.rs:50:8
+  --> $DIR/noop-method-call.rs:32:19
    |
-LL |     foo.clone();
-   |        ^^^^^^^^ unnecessary method call
+LL |     non_clone_type.clone();
+   |                   ^^^^^^^^ unnecessary method call
    |
-   = note: the type `&Foo<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
+   = note: the type `&NonCloneType<u32>` which `clone` is being called on is the same as the type returned from `clone`, so the method call does not do anything and can be removed
 
-warning: 4 warnings emitted
+warning: 2 warnings emitted
 

@@ -50,9 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
                 // Check that we're dealing with a trait method for one of the traits we care about.
                 Some(trait_id)
-                    if [sym::Clone, sym::Deref, sym::Borrow]
-                        .iter()
-                        .any(|s| cx.tcx.is_diagnostic_item(*s, trait_id)) =>
+                    if [sym::Clone].iter().any(|s| cx.tcx.is_diagnostic_item(*s, trait_id)) =>
                 {
                     (trait_id, did)
                 }
@@ -73,13 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             _ => return,
         };
         // (Re)check that it implements the noop diagnostic.
-        for (s, peel_ref) in [
-            (sym::noop_method_borrow, true),
-            (sym::noop_method_clone, false),
-            (sym::noop_method_deref, true),
-        ]
-        .iter()
-        {
+        for (s, peel_ref) in [(sym::noop_method_clone, false)].iter() {
             if cx.tcx.is_diagnostic_item(*s, i.def_id()) {
                 let method = &call.ident.name;
                 let receiver = &elements[0];

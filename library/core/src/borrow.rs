@@ -153,7 +153,6 @@
 /// [`HashMap<K, V>`]: ../../std/collections/struct.HashMap.html
 /// [`String`]: ../../std/string/struct.String.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "Borrow"]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrows from an owned value.
     ///
@@ -220,7 +219,6 @@ impl<T: ?Sized> BorrowMut<T> for T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Borrow<T> for &T {
-    #[rustc_diagnostic_item = "noop_method_borrow"]
     fn borrow(&self) -> &T {
         &**self
     }
