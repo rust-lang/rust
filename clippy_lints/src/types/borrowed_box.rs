@@ -9,6 +9,8 @@ use if_chain::if_chain;
 
 use crate::utils::{match_path, paths, snippet, span_lint_and_sugg};
 
+use super::BORROWED_BOX;
+
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, mut_ty: &MutTy<'_>) -> bool {
     match mut_ty.ty.kind {
         TyKind::Path(ref qpath) => {
@@ -61,7 +63,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     };
                     span_lint_and_sugg(
                         cx,
-                        super::BORROWED_BOX,
+                        BORROWED_BOX,
                         hir_ty.span,
                         "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                         "try",
