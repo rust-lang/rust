@@ -767,7 +767,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let hir = self.infcx.tcx.hir();
 
         if let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind {
-            let opaque_ty = hir.item(id.id);
+            let opaque_ty = hir.item(id);
             if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 bounds:
                     [hir::GenericBound::LangItemTrait(

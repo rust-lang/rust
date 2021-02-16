@@ -29,7 +29,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
+            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id());
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
@@ -1058,7 +1058,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
         self.check_attributes(
-            item.hir_id,
+            item.hir_id(),
             item.attrs,
             &item.span,
             target,
@@ -1081,7 +1081,13 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
-        self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
+        self.check_attributes(
+            trait_item.hir_id(),
+            &trait_item.attrs,
+            &trait_item.span,
+            target,
+            None,
+        );
         intravisit::walk_trait_item(self, trait_item)
     }
 
@@ -1104,7 +1110,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
-            f_item.hir_id,
+            f_item.hir_id(),
             &f_item.attrs,
             &f_item.span,
             target,
@@ -1115,7 +1121,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = target_from_impl_item(self.tcx, impl_item);
-        self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
+        self.check_attributes(impl_item.hir_id(), &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 
@@ -1149,7 +1155,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
         self.check_attributes(
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.attrs,
             &macro_def.span,
             Target::MacroDef,

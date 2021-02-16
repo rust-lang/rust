@@ -28,7 +28,7 @@ impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
             return;
         }
         if let hir::ItemKind::Use(ref path, _) = item.kind {
-            self.check_import(item.hir_id, path.span);
+            self.check_import(item.item_id(), path.span);
         }
     }
 
@@ -45,24 +45,28 @@ struct CheckVisitor<'tcx> {
 }
 
 impl CheckVisitor<'tcx> {
-    fn check_import(&self, id: hir::HirId, span: Span) {
-        let def_id = self.tcx.hir().local_def_id(id);
-        if !self.tcx.maybe_unused_trait_import(def_id) {
+    fn check_import(&self, item_id: hir::ItemId, span: Span) {
+        if !self.tcx.maybe_unused_trait_import(item_id.def_id) {
             return;
         }
 
-        if self.used_trait_imports.contains(&def_id) {
+        if self.used_trait_imports.contains(&item_id.def_id) {
             return;
         }
 
-        self.tcx.struct_span_lint_hir(lint::builtin::UNUSED_IMPORTS, id, span, |lint| {
-            let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                format!("unused import: `{}`", snippet)
-            } else {
-                "unused import".to_owned()
-            };
-            lint.build(&msg).emit();
-        });
+        self.tcx.struct_span_lint_hir(
+            lint::builtin::UNUSED_IMPORTS,
+            item_id.hir_id(),
+            span,
+            |lint| {
+                let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    format!("unused import: `{}`", snippet)
+                } else {
+                    "unused import".to_owned()
+                };
+                lint.build(&msg).emit();
+            },
+        );
     }
 }
 
@@ -109,7 +113,6 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     // Collect all the extern crates (in a reliable order).
     let mut crates_to_lint = vec![];
     tcx.hir().krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
-        tcx,
         crates_to_lint: &mut crates_to_lint,
     });
 
@@ -189,8 +192,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     }
 }
 
-struct CollectExternCrateVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct CollectExternCrateVisitor<'a> {
     crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }
 
@@ -211,12 +213,11 @@ struct ExternCrateToLint {
     warn_if_unused: bool,
 }
 
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
+impl<'a, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
-            let extern_crate_def_id = self.tcx.hir().local_def_id(item.hir_id);
             self.crates_to_lint.push(ExternCrateToLint {
-                def_id: extern_crate_def_id.to_def_id(),
+                def_id: item.def_id.to_def_id(),
                 span: item.span,
                 orig_name,
                 warn_if_unused: !item.ident.as_str().starts_with('_'),

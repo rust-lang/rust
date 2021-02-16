@@ -72,7 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
-                        let id = impl_item.hir_id;
+                        let id = impl_item.hir_id();
                         if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;

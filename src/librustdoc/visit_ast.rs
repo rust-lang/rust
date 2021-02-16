@@ -89,7 +89,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // (since a direct parent isn't necessarily a module, c.f. #77828).
             let macro_parent_def_id = {
                 use rustc_middle::ty::DefIdTree;
-                tcx.parent(tcx.hir().local_def_id(def.hir_id).to_def_id()).unwrap()
+                tcx.parent(def.def_id.to_def_id()).unwrap()
             };
             let macro_parent_path = tcx.def_path(macro_parent_def_id);
             // HACK: rustdoc has no way to lookup `doctree::Module`s by their HirId. Instead,
@@ -132,8 +132,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
-        for i in m.item_ids {
-            let item = self.cx.tcx.hir().expect_item(i.id);
+        for &i in m.item_ids {
+            let item = self.cx.tcx.hir().item(i);
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
@@ -231,8 +231,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ret = match tcx.hir().get(res_hir_id) {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                for i in m.item_ids {
-                    let i = self.cx.tcx.hir().expect_item(i.id);
+                for &i in m.item_ids {
+                    let i = self.cx.tcx.hir().item(i);
                     self.visit_item(i, None, om);
                 }
                 self.inlining = prev;
@@ -270,8 +270,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.ident.name);
 
         if item.vis.node.is_pub() {
-            let def_id = self.cx.tcx.hir().local_def_id(item.hir_id);
-            self.store_path(def_id.to_def_id());
+            self.store_path(item.def_id.to_def_id());
         }
 
         match item.kind {
@@ -305,7 +304,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     });
                     let ident = if is_glob { None } else { Some(name) };
                     if self.maybe_inline_local(
-                        item.hir_id,
+                        item.hir_id(),
                         path.res,
                         ident,
                         is_glob,
@@ -322,7 +321,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.mods.push(self.visit_mod_contents(
                     item.span,
                     &item.vis,
-                    item.hir_id,
+                    item.hir_id(),
                     m,
                     Some(name),
                 ));

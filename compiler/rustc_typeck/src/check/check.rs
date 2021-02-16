@@ -373,8 +373,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     (fcx, gen_ty)
 }
 
-pub(super) fn check_struct(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
-    let def_id = tcx.hir().local_def_id(id);
+fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
@@ -387,8 +386,7 @@ pub(super) fn check_struct(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def);
 }
 
-fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
-    let def_id = tcx.hir().local_def_id(id);
+fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
@@ -683,34 +681,32 @@ fn check_opaque_meets_bounds<'tcx>(
 
 pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     debug!(
-        "check_item_type(it.hir_id={}, it.name={})",
-        it.hir_id,
-        tcx.def_path_str(tcx.hir().local_def_id(it.hir_id).to_def_id())
+        "check_item_type(it.def_id={:?}, it.name={})",
+        it.def_id,
+        tcx.def_path_str(it.def_id.to_def_id())
     );
     let _indenter = indenter();
     match it.kind {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
-            tcx.ensure().typeck(def_id);
-            maybe_check_static_with_link_section(tcx, def_id, it.span);
-            check_static_inhabited(tcx, def_id, it.span);
+            tcx.ensure().typeck(it.def_id);
+            maybe_check_static_with_link_section(tcx, it.def_id, it.span);
+            check_static_inhabited(tcx, it.def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
-            tcx.ensure().typeck(tcx.hir().local_def_id(it.hir_id));
+            tcx.ensure().typeck(it.def_id);
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
-            check_enum(tcx, it.span, &enum_definition.variants, it.hir_id);
+            check_enum(tcx, it.span, &enum_definition.variants, it.def_id);
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
         hir::ItemKind::Impl(ref impl_) => {
-            debug!("ItemKind::Impl {} with id {}", it.ident, it.hir_id);
-            let impl_def_id = tcx.hir().local_def_id(it.hir_id);
-            if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+            debug!("ItemKind::Impl {} with id {:?}", it.ident, it.def_id);
+            if let Some(impl_trait_ref) = tcx.impl_trait_ref(it.def_id) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    impl_def_id,
+                    it.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -719,8 +715,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             }
         }
         hir::ItemKind::Trait(_, _, _, _, ref items) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
-            check_on_unimplemented(tcx, def_id.to_def_id(), it);
+            check_on_unimplemented(tcx, it.def_id.to_def_id(), it);
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
@@ -730,16 +725,15 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         fn_maybe_err(tcx, item.ident.span, abi);
                     }
                     hir::TraitItemKind::Type(.., Some(_default)) => {
-                        let item_def_id = tcx.hir().local_def_id(item.hir_id).to_def_id();
-                        let assoc_item = tcx.associated_item(item_def_id);
+                        let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
-                            InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
+                            InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
                         let _: Result<_, rustc_errors::ErrorReported> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
                             item.span,
-                            ty::TraitRef { def_id: def_id.to_def_id(), substs: trait_substs },
+                            ty::TraitRef { def_id: it.def_id.to_def_id(), substs: trait_substs },
                         );
                     }
                     _ => {}
@@ -747,10 +741,10 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             }
         }
         hir::ItemKind::Struct(..) => {
-            check_struct(tcx, it.hir_id, it.span);
+            check_struct(tcx, it.def_id, it.span);
         }
         hir::ItemKind::Union(..) => {
-            check_union(tcx, it.hir_id, it.span);
+            check_union(tcx, it.def_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
             // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
@@ -758,16 +752,13 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             // Since rustdoc doesn't care about the concrete type behind `impl Trait`, just don't look at it!
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
-                let def_id = tcx.hir().local_def_id(it.hir_id);
-
-                let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-                check_opaque(tcx, def_id, substs, it.span, &origin);
+                let substs = InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
+                check_opaque(tcx, it.def_id, substs, it.span, &origin);
             }
         }
         hir::ItemKind::TyAlias(..) => {
-            let def_id = tcx.hir().local_def_id(it.hir_id);
-            let pty_ty = tcx.type_of(def_id);
-            let generics = tcx.generics_of(def_id);
+            let pty_ty = tcx.type_of(it.def_id);
+            let generics = tcx.generics_of(it.def_id);
             check_type_params_are_used(tcx, &generics, pty_ty);
         }
         hir::ItemKind::ForeignMod { abi, items } => {
@@ -785,7 +776,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 }
             } else {
                 for item in items {
-                    let def_id = tcx.hir().local_def_id(item.id.hir_id);
+                    let def_id = item.id.def_id;
                     let generics = tcx.generics_of(def_id);
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -835,9 +826,8 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
 }
 
 pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item<'_>) {
-    let item_def_id = tcx.hir().local_def_id(item.hir_id);
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id.to_def_id());
+    let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item.def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
@@ -938,7 +928,7 @@ pub(super) fn check_impl_items_against_trait<'tcx>(
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = tcx.associated_item(tcx.hir().local_def_id(impl_item.hir_id));
+        let ty_impl_item = tcx.associated_item(impl_item.def_id);
 
         let mut items =
             associated_items.filter_by_name(tcx, ty_impl_item.ident, impl_trait_ref.def_id);
@@ -1345,13 +1335,12 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty
 }
 
 #[allow(trivial_numeric_casts)]
-pub fn check_enum<'tcx>(
+fn check_enum<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     vs: &'tcx [hir::Variant<'tcx>],
-    id: hir::HirId,
+    def_id: LocalDefId,
 ) {
-    let def_id = tcx.hir().local_def_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 

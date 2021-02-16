@@ -823,11 +823,11 @@ fn compare_synthetic_generics<'tcx>(
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
                         let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
-                        let trait_m = tcx.hir().local_def_id_to_hir_id(trait_m.def_id.as_local()?);
-                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { hir_id: trait_m });
+                        let trait_m = trait_m.def_id.as_local()?;
+                        let trait_m = tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m });
 
-                        let impl_m = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.as_local()?);
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
+                        let impl_m = impl_m.def_id.as_local()?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
 
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
@@ -860,8 +860,8 @@ fn compare_synthetic_generics<'tcx>(
                 (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
                     (|| {
-                        let impl_m = tcx.hir().local_def_id_to_hir_id(impl_m.def_id.as_local()?);
-                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { hir_id: impl_m });
+                        let impl_m = impl_m.def_id.as_local()?;
+                        let impl_m = tcx.hir().impl_item(hir::ImplItemId { def_id: impl_m });
                         let input_tys = match impl_m.kind {
                             hir::ImplItemKind::Fn(ref sig, _) => sig.decl.inputs,
                             _ => unreachable!(),

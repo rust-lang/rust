@@ -38,8 +38,7 @@ impl<'tcx> Checker<'tcx> {
         F: FnMut(TyCtxt<'tcx>, LocalDefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
-            for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                let impl_def_id = self.tcx.hir().local_def_id(impl_id);
+            for &impl_def_id in self.tcx.hir().trait_impls(self.trait_def_id) {
                 f(self.tcx, impl_def_id);
             }
         }

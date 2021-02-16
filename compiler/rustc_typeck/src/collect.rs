@@ -240,7 +240,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        convert_item(self.tcx, item.hir_id);
+        convert_item(self.tcx, item.item_id());
         reject_placeholder_type_signatures_in_item(self.tcx, item);
         intravisit::walk_item(self, item);
     }
@@ -274,12 +274,12 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        convert_trait_item(self.tcx, trait_item.hir_id);
+        convert_trait_item(self.tcx, trait_item.trait_item_id());
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        convert_impl_item(self.tcx, impl_item.hir_id);
+        convert_impl_item(self.tcx, impl_item.impl_item_id());
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -707,10 +707,10 @@ fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty<'_>, param_id: hir::HirId) -> bool
     }
 }
 
-fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
-    let it = tcx.hir().expect_item(item_id);
-    debug!("convert: item {} with id {}", it.ident, it.hir_id);
-    let def_id = tcx.hir().local_def_id(item_id);
+fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
+    let it = tcx.hir().item(item_id);
+    debug!("convert: item {} with id {}", it.ident, it.hir_id());
+    let def_id = item_id.def_id;
 
     match it.kind {
         // These don't define types.
@@ -721,12 +721,11 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in items {
                 let item = tcx.hir().foreign_item(item.id);
-                let def_id = tcx.hir().local_def_id(item.hir_id);
-                tcx.ensure().generics_of(def_id);
-                tcx.ensure().type_of(def_id);
-                tcx.ensure().predicates_of(def_id);
+                tcx.ensure().generics_of(item.def_id);
+                tcx.ensure().type_of(item.def_id);
+                tcx.ensure().predicates_of(item.def_id);
                 if let hir::ForeignItemKind::Fn(..) = item.kind {
-                    tcx.ensure().fn_sig(def_id);
+                    tcx.ensure().fn_sig(item.def_id);
                 }
             }
         }
@@ -797,23 +796,22 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::HirId) {
     }
 }
 
-fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
-    let trait_item = tcx.hir().expect_trait_item(trait_item_id);
-    let def_id = tcx.hir().local_def_id(trait_item.hir_id);
-    tcx.ensure().generics_of(def_id);
+fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
+    let trait_item = tcx.hir().trait_item(trait_item_id);
+    tcx.ensure().generics_of(trait_item_id.def_id);
 
     match trait_item.kind {
         hir::TraitItemKind::Fn(..) => {
-            tcx.ensure().type_of(def_id);
-            tcx.ensure().fn_sig(def_id);
+            tcx.ensure().type_of(trait_item_id.def_id);
+            tcx.ensure().fn_sig(trait_item_id.def_id);
         }
 
         hir::TraitItemKind::Const(.., Some(_)) => {
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().type_of(trait_item_id.def_id);
         }
 
         hir::TraitItemKind::Const(..) => {
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().type_of(trait_item_id.def_id);
             // Account for `const C: _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -821,8 +819,8 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
-            tcx.ensure().item_bounds(def_id);
-            tcx.ensure().type_of(def_id);
+            tcx.ensure().item_bounds(trait_item_id.def_id);
+            tcx.ensure().type_of(trait_item_id.def_id);
             // Account for `type T = _;`.
             let mut visitor = PlaceholderHirTyCollector::default();
             visitor.visit_trait_item(trait_item);
@@ -830,7 +828,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
         }
 
         hir::TraitItemKind::Type(_, None) => {
-            tcx.ensure().item_bounds(def_id);
+            tcx.ensure().item_bounds(trait_item_id.def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
             let mut visitor = PlaceholderHirTyCollector::default();
@@ -840,15 +838,15 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::HirId) {
         }
     };
 
-    tcx.ensure().predicates_of(def_id);
+    tcx.ensure().predicates_of(trait_item_id.def_id);
 }
 
-fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::HirId) {
-    let def_id = tcx.hir().local_def_id(impl_item_id);
+fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
+    let def_id = impl_item_id.def_id;
     tcx.ensure().generics_of(def_id);
     tcx.ensure().type_of(def_id);
     tcx.ensure().predicates_of(def_id);
-    let impl_item = tcx.hir().expect_impl_item(impl_item_id);
+    let impl_item = tcx.hir().impl_item(impl_item_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
             tcx.ensure().fn_sig(def_id);
@@ -1115,7 +1113,7 @@ fn super_predicates_that_define_assoc_type(
         let is_trait_alias = tcx.is_trait_alias(trait_def_id);
         let superbounds2 = icx.type_parameter_bounds_in_generics(
             generics,
-            item.hir_id,
+            item.hir_id(),
             self_param_ty,
             OnlySelfBounds(!is_trait_alias),
             assoc_name,
@@ -1439,12 +1437,12 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     //
                     // Something of a hack: use the node id for the trait, also as
                     // the node id for the Self type parameter.
-                    let param_id = item.hir_id;
+                    let param_id = item.def_id;
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
                         name: kw::SelfUpper,
-                        def_id: tcx.hir().local_def_id(param_id).to_def_id(),
+                        def_id: param_id.to_def_id(),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,

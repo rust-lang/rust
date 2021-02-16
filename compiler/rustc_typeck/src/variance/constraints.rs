@@ -71,7 +71,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         match item.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
                     self.visit_node_helper(struct_def.ctor_hir_id().unwrap());
@@ -79,7 +79,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Enum(ref enum_def, _) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
 
                 for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
@@ -89,7 +89,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemKind::Fn(..) => {
-                self.visit_node_helper(item.hir_id);
+                self.visit_node_helper(item.hir_id());
             }
 
             _ => {}
@@ -98,19 +98,19 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         if let hir::TraitItemKind::Fn(..) = trait_item.kind {
-            self.visit_node_helper(trait_item.hir_id);
+            self.visit_node_helper(trait_item.hir_id());
         }
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
         if let hir::ImplItemKind::Fn(..) = impl_item.kind {
-            self.visit_node_helper(impl_item.hir_id);
+            self.visit_node_helper(impl_item.hir_id());
         }
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem<'_>) {
         if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
-            self.visit_node_helper(foreign_item.hir_id);
+            self.visit_node_helper(foreign_item.hir_id());
         }
     }
 }

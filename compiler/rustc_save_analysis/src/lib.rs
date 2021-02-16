@@ -137,7 +137,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let def_id = item.def_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, arg_names, ref generics) => {
@@ -156,7 +156,7 @@ impl<'tcx> SaveContext<'tcx> {
                             unsafety: hir::Unsafety::Unsafe,
                             // functions in extern block cannot be const
                             constness: hir::Constness::NotConst,
-                            abi: self.tcx.hir().get_foreign_abi(item.hir_id),
+                            abi: self.tcx.hir().get_foreign_abi(item.hir_id()),
                             // functions in extern block cannot be async
                             asyncness: hir::IsAsync::NotAsync,
                         },
@@ -201,7 +201,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
+        let def_id = item.def_id.to_def_id();
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
@@ -290,7 +290,11 @@ impl<'tcx> SaveContext<'tcx> {
                     span: self.span_from_span(item.ident.span),
                     value: filename.to_string(),
                     parent: None,
-                    children: m.item_ids.iter().map(|i| id_from_hir_id(i.id, self)).collect(),
+                    children: m
+                        .item_ids
+                        .iter()
+                        .map(|i| id_from_def_id(i.def_id.to_def_id()))
+                        .collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(&item.attrs),
                     sig: sig::item_signature(item, self),
@@ -354,7 +358,7 @@ impl<'tcx> SaveContext<'tcx> {
                                 parent: None,
                                 children: items
                                     .iter()
-                                    .map(|i| id_from_hir_id(i.id.hir_id, self))
+                                    .map(|i| id_from_def_id(i.id.def_id.to_def_id()))
                                     .collect(),
                                 docs: String::new(),
                                 sig: None,

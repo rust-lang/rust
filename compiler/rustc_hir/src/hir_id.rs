@@ -18,6 +18,21 @@ pub struct HirId {
     pub local_id: ItemLocalId,
 }
 
+impl HirId {
+    pub fn expect_owner(self) -> LocalDefId {
+        assert_eq!(self.local_id.index(), 0);
+        self.owner
+    }
+
+    pub fn as_owner(self) -> Option<LocalDefId> {
+        if self.local_id.index() == 0 { Some(self.owner) } else { None }
+    }
+
+    pub fn make_owner(owner: LocalDefId) -> Self {
+        Self { owner, local_id: ItemLocalId::from_u32(0) }
+    }
+}
+
 impl fmt::Display for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)

@@ -1050,27 +1050,45 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(name, &item.attrs, item.hir_id(), item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_trait_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_trait_item(this, item);
+            },
+        );
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_impl_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_impl_item(this, item);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_foreign_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_foreign_item(this, item);
+            },
+        );
     }
 
     fn visit_variant(
@@ -1094,7 +1112,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.visit_testable(
             macro_def.ident.to_string(),
             &macro_def.attrs,
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.span,
             |_| (),
         );

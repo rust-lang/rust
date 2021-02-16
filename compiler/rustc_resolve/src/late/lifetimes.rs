@@ -587,7 +587,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
                 //                 ^                  ^ this gets resolved in the scope of
                 //                                      the opaque_ty generics
-                let opaque_ty = self.tcx.hir().expect_item(item_id.id);
+                let opaque_ty = self.tcx.hir().item(item_id);
                 let (generics, bounds) = match opaque_ty.kind {
                     // Named opaque `impl Trait` types are reached via `TyKind::Path`.
                     // This arm is for `impl Trait` in the types of statics, constants and locals.
@@ -632,20 +632,32 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                                 // Ensure that the parent of the def is an item, not HRTB
                                 let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                                let parent_impl_id = hir::ImplItemId { hir_id: parent_id };
-                                let parent_trait_id = hir::TraitItemId { hir_id: parent_id };
-                                let krate = self.tcx.hir().krate();
-
-                                if !(krate.items.contains_key(&parent_id)
-                                    || krate.impl_items.contains_key(&parent_impl_id)
-                                    || krate.trait_items.contains_key(&parent_trait_id))
+                                let parent_is_item = if let Some(parent_def_id) =
+                                    parent_id.as_owner()
                                 {
+                                    let parent_item_id = hir::ItemId { def_id: parent_def_id };
+                                    let parent_impl_id = hir::ImplItemId { def_id: parent_def_id };
+                                    let parent_trait_id =
+                                        hir::TraitItemId { def_id: parent_def_id };
+                                    let parent_foreign_id =
+                                        hir::ForeignItemId { def_id: parent_def_id };
+                                    let krate = self.tcx.hir().krate();
+
+                                    krate.items.contains_key(&parent_item_id)
+                                        || krate.impl_items.contains_key(&parent_impl_id)
+                                        || krate.trait_items.contains_key(&parent_trait_id)
+                                        || krate.foreign_items.contains_key(&parent_foreign_id)
+                                } else {
+                                    false
+                                };
+
+                                if !parent_is_item {
                                     struct_span_err!(
                                         self.tcx.sess,
                                         lifetime.span,
                                         E0657,
                                         "`impl Trait` can only capture lifetimes \
-                                         bound at the fn or impl level"
+                                             bound at the fn or impl level"
                                     )
                                     .emit();
                                     self.uninsert_lifetime_on_error(lifetime, def.unwrap());
@@ -738,7 +750,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.push((&trait_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(trait_item.hir_id)),
+                    Some(tcx.hir().get_parent_item(trait_item.hir_id())),
                     &sig.decl,
                     &trait_item.generics,
                     |this| intravisit::walk_trait_item(this, trait_item),
@@ -800,7 +812,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.missing_named_lifetime_spots.push((&impl_item.generics).into());
                 let tcx = self.tcx;
                 self.visit_early_late(
-                    Some(tcx.hir().get_parent_item(impl_item.hir_id)),
+                    Some(tcx.hir().get_parent_item(impl_item.hir_id())),
                     &sig.decl,
                     &impl_item.generics,
                     |this| intravisit::walk_impl_item(this, impl_item),
@@ -1255,7 +1267,7 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
                     tcx.sess.span_err(item.span, &object_lifetime_default_reprs);
                 }
 
-                map.insert(item.hir_id, result);
+                map.insert(item.hir_id(), result);
             }
             _ => {}
         }
@@ -2111,7 +2123,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(parent)).kind
                 {
                     assoc_item_kind =
-                        trait_items.iter().find(|ti| ti.id.hir_id == parent).map(|ti| ti.kind);
+                        trait_items.iter().find(|ti| ti.id.hir_id() == parent).map(|ti| ti.kind);
                 }
                 match *m {
                     hir::TraitFn::Required(_) => None,
@@ -2125,7 +2137,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 {
                     impl_self = Some(self_ty);
                     assoc_item_kind =
-                        items.iter().find(|ii| ii.id.hir_id == parent).map(|ii| ii.kind);
+                        items.iter().find(|ii| ii.id.hir_id() == parent).map(|ii| ii.kind);
                 }
                 Some(body)
             }

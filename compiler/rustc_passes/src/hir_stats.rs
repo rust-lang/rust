@@ -100,7 +100,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
-        let nested_item = self.krate.unwrap().item(id.id);
+        let nested_item = self.krate.unwrap().item(id);
         self.visit_item(nested_item)
     }
 
@@ -120,7 +120,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_item(&mut self, i: &'v hir::Item<'v>) {
-        self.record("Item", Id::Node(i.hir_id), i);
+        self.record("Item", Id::Node(i.hir_id()), i);
         hir_visit::walk_item(self, i)
     }
 
@@ -130,7 +130,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
-        self.record("ForeignItem", Id::Node(i.hir_id), i);
+        self.record("ForeignItem", Id::Node(i.hir_id()), i);
         hir_visit::walk_foreign_item(self, i)
     }
 
@@ -187,12 +187,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
-        self.record("TraitItem", Id::Node(ti.hir_id), ti);
+        self.record("TraitItem", Id::Node(ti.hir_id()), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
-        self.record("ImplItem", Id::Node(ii.hir_id), ii);
+        self.record("ImplItem", Id::Node(ii.hir_id()), ii);
         hir_visit::walk_impl_item(self, ii)
     }
 
@@ -246,7 +246,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef<'v>) {
-        self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
+        self.record("MacroDef", Id::Node(macro_def.hir_id()), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }
 }

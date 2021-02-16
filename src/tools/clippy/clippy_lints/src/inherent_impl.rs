@@ -59,20 +59,15 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             // but filter out implementations that have generic params (type or lifetime)
             // or are derived from a macro
             if !in_macro(item.span) && generics.params.is_empty() {
-                self.impls.insert(item.hir_id.owner.to_def_id(), item.span);
+                self.impls.insert(item.def_id.to_def_id(), item.span);
             }
         }
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>, krate: &'tcx Crate<'_>) {
-        if let Some(item) = krate.items.values().next() {
+        if !krate.items.is_empty() {
             // Retrieve all inherent implementations from the crate, grouped by type
-            for impls in cx
-                .tcx
-                .crate_inherent_impls(item.hir_id.owner.to_def_id().krate)
-                .inherent_impls
-                .values()
-            {
+            for impls in cx.tcx.crate_inherent_impls(def_id::LOCAL_CRATE).inherent_impls.values() {
                 // Filter out implementations that have generic params (type or lifetime)
                 let mut impl_spans = impls.iter().filter_map(|impl_def| self.impls.get(impl_def));
                 if let Some(initial_span) = impl_spans.next() {

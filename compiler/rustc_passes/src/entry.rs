@@ -32,8 +32,7 @@ struct EntryContext<'a, 'tcx> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        let def_id = self.map.local_def_id(item.hir_id);
-        let def_key = self.map.def_key(def_id);
+        let def_key = self.map.def_key(item.def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
     }
@@ -116,18 +115,18 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
         }
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
-                ctxt.main_fn = Some((item.hir_id, item.span));
+                ctxt.main_fn = Some((item.hir_id(), item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
                     .emit();
             }
         }
         EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push((item.hir_id, item.span));
+            ctxt.non_main_fns.push((item.hir_id(), item.span));
         }
         EntryPointType::MainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.hir_id, item.span));
+                ctxt.attr_main_fn = Some((item.hir_id(), item.span));
             } else {
                 struct_span_err!(
                     ctxt.session,
@@ -142,7 +141,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
         }
         EntryPointType::Start => {
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.hir_id, item.span));
+                ctxt.start_fn = Some((item.hir_id(), item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
                     .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")

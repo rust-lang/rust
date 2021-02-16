@@ -956,7 +956,7 @@ rustc_queries! {
     /// Passing in any other crate will cause an ICE.
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
-    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 

@@ -133,18 +133,17 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => as_primitive(Res::Def(
-                            DefKind::Mod,
-                            cx.tcx.hir().local_def_id(id.id).to_def_id(),
-                        )),
+                        hir::ItemKind::Mod(_) => {
+                            as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
+                        }
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
                             as_primitive(path.res).map(|(_, prim)| {
                                 // Pretend the primitive is local.
-                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim)
+                                (id.def_id.to_def_id(), prim)
                             })
                         }
                         _ => None,
@@ -185,18 +184,15 @@ impl Clean<ExternalCrate> for CrateNum {
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = cx.tcx.hir().expect_item(id.id);
+                    let item = cx.tcx.hir().item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => as_keyword(Res::Def(
-                            DefKind::Mod,
-                            cx.tcx.hir().local_def_id(id.id).to_def_id(),
-                        )),
+                        hir::ItemKind::Mod(_) => {
+                            as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
+                        }
                         hir::ItemKind::Use(ref path, hir::UseKind::Single)
                             if item.vis.node.is_pub() =>
                         {
-                            as_keyword(path.res).map(|(_, prim)| {
-                                (cx.tcx.hir().local_def_id(id.id).to_def_id(), prim)
-                            })
+                            as_keyword(path.res).map(|(_, prim)| (id.def_id.to_def_id(), prim))
                         }
                         _ => None,
                     }
@@ -912,7 +908,7 @@ fn clean_fn_or_proc_macro(
         }
         None => {
             let mut func = (sig, generics, body_id).clean(cx);
-            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+            let def_id = item.def_id.to_def_id();
             func.header.constness =
                 if is_const_fn(cx.tcx, def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
                     hir::Constness::Const
@@ -1048,7 +1044,7 @@ impl Clean<TypeKind> for hir::def::DefKind {
 
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
+        let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, || {
             let inner = match self.kind {
                 hir::TraitItemKind::Const(ref ty, default) => {
@@ -1089,7 +1085,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
 
 impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
-        let local_did = cx.tcx.hir().local_def_id(self.hir_id).to_def_id();
+        let local_did = self.def_id.to_def_id();
         cx.with_param_env(local_did, || {
             let inner = match self.kind {
                 hir::ImplItemKind::Const(ref ty, expr) => {
@@ -1120,7 +1116,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
 
             let what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id));
+            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()));
             if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
                 if impl_.of_trait.is_some() {
                     // Trait impl items always inherit the impl's visibility --
@@ -1475,7 +1471,7 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Tup(ref tys) => Tuple(tys.clean(cx)),
             TyKind::OpaqueDef(item_id, _) => {
-                let item = cx.tcx.hir().expect_item(item_id.id);
+                let item = cx.tcx.hir().item(item_id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
                     ImplTrait(ty.bounds.clean(cx))
                 } else {
@@ -1950,8 +1946,8 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
         use hir::ItemKind;
 
         let (item, renamed) = self;
-        let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
-        let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id));
+        let def_id = item.def_id.to_def_id();
+        let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
         cx.with_param_env(def_id, || {
             let kind = match item.kind {
                 ItemKind::Static(ty, mutability, body_id) => {
@@ -1999,7 +1995,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                     fields: variant_data.fields().clean(cx),
                     fields_stripped: false,
                 }),
-                ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id, cx),
+                ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
                 // proc macros can have a name set by attributes
                 ItemKind::Fn(ref sig, ref generics, body_id) => {
                     clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
@@ -2107,8 +2103,7 @@ fn clean_extern_crate(
     cx: &DocContext<'_>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
-    let def_id = cx.tcx.hir().local_def_id(krate.hir_id);
-    let cnum = cx.tcx.extern_mod_stmt_cnum(def_id).unwrap_or(LOCAL_CRATE);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
     let please_inline = krate.vis.node.is_pub()
@@ -2127,7 +2122,7 @@ fn clean_extern_crate(
 
         if let Some(items) = inline::try_inline(
             cx,
-            cx.tcx.parent_module(krate.hir_id).to_def_id(),
+            cx.tcx.parent_module(krate.hir_id()).to_def_id(),
             res,
             name,
             Some(krate.attrs),
@@ -2196,7 +2191,6 @@ fn clean_use_statement(
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
-    let def_id = cx.tcx.hir().local_def_id(import.hir_id).to_def_id();
     let path = path.clean(cx);
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
@@ -2221,14 +2215,14 @@ fn clean_use_statement(
 
             if let Some(mut items) = inline::try_inline(
                 cx,
-                cx.tcx.parent_module(import.hir_id).to_def_id(),
+                cx.tcx.parent_module(import.hir_id()).to_def_id(),
                 path.res,
                 name,
                 Some(import.attrs),
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(
-                    def_id,
+                    import.def_id.to_def_id(),
                     None,
                     ImportItem(Import::new_simple(name, resolve_use_source(cx, path), false)),
                     cx,
@@ -2239,16 +2233,16 @@ fn clean_use_statement(
         Import::new_simple(name, resolve_use_source(cx, path), true)
     };
 
-    vec![Item::from_def_id_and_parts(def_id, None, ImportItem(inner), cx)]
+    vec![Item::from_def_id_and_parts(import.def_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
 impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let (item, renamed) = self;
-        cx.with_param_env(cx.tcx.hir().local_def_id(item.hir_id).to_def_id(), || {
+        cx.with_param_env(item.def_id.to_def_id(), || {
             let kind = match item.kind {
                 hir::ForeignItemKind::Fn(ref decl, ref names, ref generics) => {
-                    let abi = cx.tcx.hir().get_foreign_abi(item.hir_id);
+                    let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
                     let (generics, decl) = enter_impl_trait(cx, || {
                         (generics.clean(cx), (&**decl, &names[..]).clean(cx))
                     });
@@ -2270,7 +2264,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
             };
 
             Item::from_hir_id_and_parts(
-                item.hir_id,
+                item.hir_id(),
                 Some(renamed.unwrap_or(item.ident.name)),
                 kind,
                 cx,
@@ -2297,7 +2291,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             )
         } else {
             let vis = item.vis.clean(cx);
-            let def_id = cx.tcx.hir().local_def_id(item.hir_id).to_def_id();
+            let def_id = item.def_id.to_def_id();
 
             if matchers.len() <= 1 {
                 format!(
@@ -2320,7 +2314,7 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
         };
 
         Item::from_hir_id_and_parts(
-            item.hir_id,
+            item.hir_id(),
             Some(name),
             MacroItem(Macro { source, imported_from: None }),
             cx,

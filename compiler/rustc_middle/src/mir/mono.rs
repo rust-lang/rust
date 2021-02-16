@@ -7,7 +7,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
-use rustc_hir::HirId;
+use rustc_hir::{HirId, ItemId};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -43,7 +43,7 @@ pub enum InstantiationMode {
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
-    GlobalAsm(HirId),
+    GlobalAsm(ItemId),
 }
 
 impl<'tcx> MonoItem<'tcx> {
@@ -71,9 +71,8 @@ impl<'tcx> MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
-            MonoItem::GlobalAsm(hir_id) => {
-                let def_id = tcx.hir().local_def_id(hir_id);
-                SymbolName::new(tcx, &format!("global_asm_{:?}", def_id))
+            MonoItem::GlobalAsm(item_id) => {
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
             }
         }
     }
@@ -178,7 +177,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Static(def_id) => {
                 def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }
-            MonoItem::GlobalAsm(hir_id) => Some(hir_id),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
         }
         .map(|hir_id| tcx.hir().span(hir_id))
     }
@@ -195,9 +194,9 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
             MonoItem::Static(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
-            MonoItem::GlobalAsm(node_id) => {
+            MonoItem::GlobalAsm(item_id) => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    node_id.hash_stable(hcx, hasher);
+                    item_id.hash_stable(hcx, hasher);
                 })
             }
         }
@@ -351,7 +350,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                     MonoItem::Static(def_id) => {
                         def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                     }
-                    MonoItem::GlobalAsm(hir_id) => Some(hir_id),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
                 },
                 item.symbol_name(tcx),
             )

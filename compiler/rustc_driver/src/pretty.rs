@@ -237,7 +237,7 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Name(_) => {}
             pprust_hir::AnnNode::Item(item) => {
                 s.s.space();
-                s.synth_comment(format!("hir_id: {}", item.hir_id));
+                s.synth_comment(format!("hir_id: {}", item.hir_id()));
             }
             pprust_hir::AnnNode::SubItem(id) => {
                 s.s.space();

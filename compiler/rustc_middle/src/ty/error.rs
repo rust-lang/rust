@@ -821,7 +821,7 @@ fn foo(&self) -> Self::T { String::new() }
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } = item.defaultness
                             {
-                                if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                                if self.type_of(item.id.def_id) == found {
                                     db.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -841,7 +841,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                        if self.type_of(item.id.def_id) == found {
                             db.span_label(item.span, "expected this associated type");
                             return true;
                         }

@@ -59,7 +59,7 @@ pub fn impl_wf_check(tcx: TyCtxt<'_>) {
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
     for &module in tcx.hir().krate().modules.keys() {
-        tcx.ensure().check_mod_impl_wf(tcx.hir().local_def_id(module));
+        tcx.ensure().check_mod_impl_wf(module);
     }
 }
 
@@ -81,11 +81,10 @@ struct ImplWfCheck<'tcx> {
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Impl(ref impl_) = item.kind {
-            let impl_def_id = self.tcx.hir().local_def_id(item.hir_id);
-            enforce_impl_params_are_constrained(self.tcx, impl_def_id, impl_.items);
+            enforce_impl_params_are_constrained(self.tcx, item.def_id, impl_.items);
             enforce_impl_items_are_distinct(self.tcx, impl_.items);
             if self.min_specialization {
-                check_min_specialization(self.tcx, impl_def_id.to_def_id(), item.span);
+                check_min_specialization(self.tcx, item.def_id.to_def_id(), item.span);
             }
         }
     }
@@ -131,7 +130,7 @@ fn enforce_impl_params_are_constrained(
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs
         .iter()
-        .map(|item_ref| tcx.hir().local_def_id(item_ref.id.hir_id))
+        .map(|item_ref| item_ref.id.def_id)
         .flat_map(|def_id| {
             let item = tcx.associated_item(def_id);
             match item.kind {

@@ -369,7 +369,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         tcx.sess.time("type_collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
+                tcx.ensure().collect_mod_item_types(module);
             }
         });
     })?;
@@ -401,7 +401,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(module);
         }
     });
 

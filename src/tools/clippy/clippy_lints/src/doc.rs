@@ -216,18 +216,17 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id).to_def_id())
+                if !(is_entrypoint_fn(cx, item.def_id.to_def_id())
                     || in_external_macro(cx.tcx.sess, item.span))
                 {
                     let body = cx.tcx.hir().body(body_id);
-                    let impl_item_def_id = cx.tcx.hir().local_def_id(item.hir_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(impl_item_def_id),
+                        typeck_results: cx.tcx.typeck(item.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(&body.value);
-                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(ref impl_) => {
@@ -247,7 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, None, None);
             }
         }
     }
@@ -259,14 +258,13 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
             let body = cx.tcx.hir().body(body_id);
-            let impl_item_def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(impl_item_def_id),
+                typeck_results: cx.tcx.typeck(item.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(&body.value);
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }

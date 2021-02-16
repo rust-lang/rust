@@ -11,7 +11,6 @@ use rustc_hir::intravisit;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::fast_reject::simplify_type;
 use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{
@@ -1352,17 +1351,15 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
     // Crate-local:
 
-    struct Visitor<'a, 'tcx> {
-        map: &'a hir_map::Map<'tcx>,
+    struct Visitor<'a> {
         traits: &'a mut Vec<DefId>,
     }
 
-    impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
+    impl<'v, 'a> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a> {
         fn visit_item(&mut self, i: &'v hir::Item<'v>) {
             match i.kind {
                 hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
-                    let def_id = self.map.local_def_id(i.hir_id);
-                    self.traits.push(def_id.to_def_id());
+                    self.traits.push(i.def_id.to_def_id());
                 }
                 _ => (),
             }
@@ -1375,7 +1372,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
         fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
     }
 
-    tcx.hir().krate().visit_all_item_likes(&mut Visitor { map: &tcx.hir(), traits: &mut traits });
+    tcx.hir().krate().visit_all_item_likes(&mut Visitor { traits: &mut traits });
 
     // Cross-crate:
 
@@ -1445,8 +1442,8 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
             return;
         }
         // Find a `use` statement.
-        for item_id in module.item_ids {
-            let item = self.tcx.hir().expect_item(item_id.id);
+        for &item_id in module.item_ids {
+            let item = self.tcx.hir().item(item_id);
             match item.kind {
                 hir::ItemKind::Use(..) => {
                     // Don't suggest placing a `use` before the prelude
