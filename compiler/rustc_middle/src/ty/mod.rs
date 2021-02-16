@@ -2299,6 +2299,8 @@ impl<'tcx> AdtDef {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
+        assert!(variants.raw.is_sorted_by_key(|v| v.def_id));
+
         if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
@@ -2448,7 +2450,10 @@ impl<'tcx> AdtDef {
 
     /// Return a `VariantDef` given a variant id.
     pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
-        self.variants.iter().find(|v| v.def_id == vid).expect("variant_with_id: unknown variant")
+        match self.variants.raw.binary_search_by_key(&vid, |v| v.def_id) {
+            Ok(idx) => &self.variants[VariantIdx::new(idx)],
+            Err(_) => bug!("variant_with_id: unknown variant"),
+        }
     }
 
     /// Return a `VariantDef` given a constructor id.
@@ -2461,11 +2466,10 @@ impl<'tcx> AdtDef {
 
     /// Return the index of `VariantDef` given a variant id.
     pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
-        self.variants
-            .iter_enumerated()
-            .find(|(_, v)| v.def_id == vid)
-            .expect("variant_index_with_id: unknown variant")
-            .0
+        match self.variants.raw.binary_search_by_key(&vid, |v| v.def_id) {
+            Ok(idx) => VariantIdx::new(idx),
+            Err(_) => bug!("variant_index_with_id: unknown variant"),
+        }
     }
 
     /// Return the index of `VariantDef` given a constructor id.
