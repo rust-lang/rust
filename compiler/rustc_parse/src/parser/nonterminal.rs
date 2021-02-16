@@ -120,9 +120,9 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Pat2018 { .. } | NonterminalKind::Pat2021 { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
-                    NonterminalKind::Pat2018 { .. } => this.parse_pat(None),
+                    NonterminalKind::Pat2018 { .. } => this.parse_pat_no_top_alt(None),
                     NonterminalKind::Pat2021 { .. } => {
-                        this.parse_top_pat(GateOr::Yes, RecoverComma::No)
+                        this.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)
                     }
                     _ => unreachable!(),
                 })?)
