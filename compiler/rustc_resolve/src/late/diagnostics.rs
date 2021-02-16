@@ -1105,7 +1105,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
-            for assoc_item in &items[..] {
+            for assoc_item in items {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,

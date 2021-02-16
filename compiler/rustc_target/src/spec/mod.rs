@@ -1492,7 +1492,7 @@ impl Target {
             } );
             ($key_name:ident = $json_name:expr, optional) => ( {
                 let name = $json_name;
-                if let Some(o) = obj.find(&name[..]) {
+                if let Some(o) = obj.find(name) {
                     base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
