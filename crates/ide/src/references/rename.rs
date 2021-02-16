@@ -342,8 +342,10 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
 
     // FIXME: reimplement this on the hir instead
     // as of the time of this writing params in hir don't keep their names
-    let fn_ast =
-        fn_def.source(sema.db).ok_or(format_err!("Cannot rename non-param local to self"))?.value;
+    let fn_ast = fn_def
+        .source(sema.db)
+        .ok_or_else(|| format_err!("Cannot rename non-param local to self"))?
+        .value;
 
     let first_param_range = fn_ast
         .param_list()

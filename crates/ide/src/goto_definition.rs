@@ -31,7 +31,7 @@ pub(crate) fn goto_definition(
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
     let parent = token.parent();
-    if let Some(comment) = ast::Comment::cast(token.clone()) {
+    if let Some(comment) = ast::Comment::cast(token) {
         let nav = def_for_doc_comment(&sema, position, &comment)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
     }

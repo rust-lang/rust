@@ -11,7 +11,7 @@ use syntax::{algo::find_node_at_offset, ast, AstNode};
 // | VS Code | **Rust Analyzer: View Hir**
 // |===
 pub(crate) fn view_hir(db: &RootDatabase, position: FilePosition) -> String {
-    body_hir(db, position).unwrap_or("Not inside a function body".to_string())
+    body_hir(db, position).unwrap_or_else(|| "Not inside a function body".to_string())
 }
 
 fn body_hir(db: &RootDatabase, position: FilePosition) -> Option<String> {

@@ -519,7 +519,7 @@ impl Config {
                     .data
                     .checkOnSave_target
                     .clone()
-                    .or(self.data.cargo_target.clone()),
+                    .or_else(|| self.data.cargo_target.clone()),
                 all_targets: self.data.checkOnSave_allTargets,
                 no_default_features: self
                     .data
@@ -533,7 +533,7 @@ impl Config {
                     .data
                     .checkOnSave_features
                     .clone()
-                    .unwrap_or(self.data.cargo_features.clone()),
+                    .unwrap_or_else(|| self.data.cargo_features.clone()),
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
             },
         };
@@ -731,7 +731,7 @@ fn get_field<T: DeserializeOwned>(
 fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json::Value {
     for ((f1, ..), (f2, ..)) in fields.iter().zip(&fields[1..]) {
         fn key(f: &str) -> &str {
-            f.splitn(2, "_").next().unwrap()
+            f.splitn(2, '_').next().unwrap()
         }
         assert!(key(f1) <= key(f2), "wrong field order: {:?} {:?}", f1, f2);
     }
