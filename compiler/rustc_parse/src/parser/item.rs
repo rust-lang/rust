@@ -35,14 +35,16 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
-        let ((mut inner_attrs, items, inner), inline) = if self.eat(&token::Semi) {
-            ((Vec::new(), Vec::new(), Span::default()), false)
+        let mod_kind = if self.eat(&token::Semi) {
+            ModKind::Unloaded
         } else {
             self.expect(&token::OpenDelim(token::Brace))?;
-            (self.parse_mod(&token::CloseDelim(token::Brace))?, true)
+            let (mut inner_attrs, items, inner_span) =
+                self.parse_mod(&token::CloseDelim(token::Brace))?;
+            attrs.append(&mut inner_attrs);
+            ModKind::Loaded(items, Inline::Yes, inner_span)
         };
-        attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(Mod { unsafety, inline, items, inner })))
+        Ok((id, ItemKind::Mod(unsafety, mod_kind)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).

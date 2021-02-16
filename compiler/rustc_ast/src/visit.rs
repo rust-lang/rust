@@ -290,7 +290,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id)
         }
-        ItemKind::Mod(ref module) => walk_list!(visitor, visit_item, &module.items),
+        ItemKind::Mod(_unsafety, ref mod_kind) => match mod_kind {
+            ModKind::Loaded(items, _inline, _inner_span) => {
+                walk_list!(visitor, visit_item, items)
+            }
+            ModKind::Unloaded => {}
+        },
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }

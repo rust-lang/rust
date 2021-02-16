@@ -1,10 +1,10 @@
 // Code that generates a test runner to run all the tests in a crate
 
 use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
+use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
@@ -106,10 +106,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         if let ast::ItemKind::Mod(..) = item.kind {
             let tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
-            let module = match item.kind {
-                ast::ItemKind::Mod(module) => module,
-                _ => unreachable!(),
-            };
             let mut tests = mem::replace(&mut self.tests, tests);
 
             if !tests.is_empty() {
@@ -117,8 +113,12 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                     if item.id == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { item.id };
                 // Create an identifier that will hygienically resolve the test
                 // case name, even in another module.
+                let inner_span = match item.kind {
+                    ast::ItemKind::Mod(_, ModKind::Loaded(.., span)) => span,
+                    _ => unreachable!(),
+                };
                 let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
-                    module.inner,
+                    inner_span,
                     AstPass::TestHarness,
                     &[],
                     Some(parent),
@@ -130,7 +130,6 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 }
                 self.cx.test_cases.extend(tests);
             }
-            item.kind = ast::ItemKind::Mod(module);
         }
         smallvec![P(item)]
     }

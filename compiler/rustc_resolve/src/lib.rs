@@ -29,7 +29,7 @@ use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::{ItemKind, Path};
+use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -339,8 +339,8 @@ impl UsePlacementFinder {
 
 impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_item(&mut self, item: &'tcx ast::Item) {
-        if let ItemKind::Mod(module) = &item.kind {
-            if let ControlFlow::Break(..) = self.check_mod(&module.items, item.id) {
+        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
+            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
                 return;
             }
         }

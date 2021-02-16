@@ -314,7 +314,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ItemKind::Fn(sig, generics, body_id)
                 })
             }
-            ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(&m.items, m.inner)),
+            ItemKind::Mod(_, ref mod_kind) => match mod_kind {
+                ModKind::Loaded(items, _, inner_span) => {
+                    hir::ItemKind::Mod(self.lower_mod(items, *inner_span))
+                }
+                ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
+            },
             ItemKind::ForeignMod(ref fm) => {
                 if fm.abi.is_none() {
                     self.maybe_lint_missing_abi(span, id, abi::Abi::C);

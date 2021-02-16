@@ -913,11 +913,13 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_generics(generics);
             visit_opt(body, |body| vis.visit_block(body));
         }
-        ItemKind::Mod(m) => {
-            let Mod { inner, unsafety: _, items, inline: _ } = m;
-            vis.visit_span(inner);
-            items.flat_map_in_place(|item| vis.flat_map_item(item));
-        }
+        ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
+            ModKind::Loaded(items, _inline, inner_span) => {
+                vis.visit_span(inner_span);
+                items.flat_map_in_place(|item| vis.flat_map_item(item));
+            }
+            ModKind::Unloaded => {}
+        },
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
         ItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
@@ -1010,7 +1012,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: item_vis,
             span,
-            kind: ItemKind::Mod(Mod { inner: span, unsafety: Unsafe::No, items, inline: true }),
+            kind: ItemKind::Mod(Unsafe::No, ModKind::Loaded(items, Inline::Yes, span)),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
@@ -1021,7 +1023,9 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
             match kind {
-                ItemKind::Mod(module) => Crate { attrs, items: module.items, span, proc_macros },
+                ItemKind::Mod(_, ModKind::Loaded(items, ..)) => {
+                    Crate { attrs, items, span, proc_macros }
+                }
                 _ => panic!("visitor converted a module to not a module"),
             }
         } else {
