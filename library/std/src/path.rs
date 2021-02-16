@@ -2321,7 +2321,9 @@ impl Path {
     }
 
     /// Returns an object that implements [`Display`] for safely printing paths
-    /// that may contain non-Unicode data.
+    /// that may contain non-Unicode data. This may perform lossy conversion,
+    /// depending on the platform.  If you would like an implementation which
+    /// escapes the path please use [`Debug`] instead.
     ///
     /// [`Display`]: fmt::Display
     ///
@@ -2555,7 +2557,9 @@ impl fmt::Debug for Path {
 ///
 /// A [`Path`] might contain non-Unicode data. This `struct` implements the
 /// [`Display`] trait in a way that mitigates that. It is created by the
-/// [`display`](Path::display) method on [`Path`].
+/// [`display`](Path::display) method on [`Path`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the path please use [`Debug`] instead.
 ///
 /// # Examples
 ///
