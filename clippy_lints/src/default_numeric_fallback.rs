@@ -1,4 +1,5 @@
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
+use rustc_errors::Applicability;
 use rustc_hir::{
     intravisit::{walk_expr, walk_stmt, NestedVisitorMap, Visitor},
     Body, Expr, ExprKind, HirId, Lit, Stmt, StmtKind,
@@ -12,7 +13,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 use if_chain::if_chain;
 
-use crate::utils::span_lint_and_help;
+use crate::utils::{snippet, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of unconstrained numeric literals which may cause default numeric fallback in type
@@ -75,16 +76,24 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
                 if let Some(ty_bound) = self.ty_bounds.last();
                 if matches!(lit.node,
                             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed));
-                if matches!(lit_ty.kind(), ty::Int(IntTy::I32) | ty::Float(FloatTy::F64));
                 if !ty_bound.is_integral();
                 then {
-                    span_lint_and_help(
+                    let suffix = match lit_ty.kind() {
+                        ty::Int(IntTy::I32) => "i32",
+                        ty::Float(FloatTy::F64) => "f64",
+                        // Default numeric fallback never results in other types.
+                        _ => return,
+                    };
+
+                    let sugg = format!("{}_{}", snippet(self.cx, lit.span, ""), suffix);
+                    span_lint_and_sugg(
                         self.cx,
                         DEFAULT_NUMERIC_FALLBACK,
                         lit.span,
                         "default numeric fallback might occur",
-                        None,
-                        "consider adding suffix to avoid default numeric fallback",
+                        "consider adding suffix",
+                        sugg,
+                        Applicability::MaybeIncorrect,
                     );
                 }
         }
