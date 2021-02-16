@@ -3,7 +3,6 @@
 // check-pass
 
 #![feature(decl_macro, rustc_attrs)]
-#![allow(noop_method_call)]
 
 mod x {
     pub use std::ops::Not as _;

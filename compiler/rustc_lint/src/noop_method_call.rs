@@ -15,6 +15,7 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
+    /// #![deny(noop_method_call)]
     /// struct Foo;
     /// let foo = &Foo;
     /// let clone: &Foo = foo.clone();
@@ -30,7 +31,7 @@ declare_lint! {
     /// calling `clone` on a `&T` where `T` does not implement clone, actually doesn't do anything
     /// as references are copy. This lint detects these calls and warns the user about them.
     pub NOOP_METHOD_CALL,
-    Warn,
+    Allow,
     "detects the use of well-known noop methods"
 }
 
@@ -50,7 +51,9 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             Some((DefKind::AssocFn, did)) => match cx.tcx.trait_of_item(did) {
                 // Check that we're dealing with a trait method for one of the traits we care about.
                 Some(trait_id)
-                    if [sym::Clone].iter().any(|s| cx.tcx.is_diagnostic_item(*s, trait_id)) =>
+                    if [sym::Clone, sym::Deref, sym::Borrow]
+                        .iter()
+                        .any(|s| cx.tcx.is_diagnostic_item(*s, trait_id)) =>
                 {
                     (trait_id, did)
                 }
@@ -71,20 +74,11 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             _ => return,
         };
         // (Re)check that it implements the noop diagnostic.
-        for (s, peel_ref) in [(sym::noop_method_clone, false)].iter() {
+        for s in [sym::noop_method_clone, sym::noop_method_deref, sym::noop_method_borrow].iter() {
             if cx.tcx.is_diagnostic_item(*s, i.def_id()) {
                 let method = &call.ident.name;
                 let receiver = &elements[0];
                 let receiver_ty = cx.typeck_results().expr_ty(receiver);
-                let receiver_ty = match receiver_ty.kind() {
-                    // Remove one borrow from the receiver if appropriate to positively verify that
-                    // the receiver `&self` type and the return type are the same, depending on the
-                    // involved trait being checked.
-                    ty::Ref(_, ty, _) if *peel_ref => ty,
-                    // When it comes to `Clone` we need to check the `receiver_ty` directly.
-                    // FIXME: we must come up with a better strategy for this.
-                    _ => receiver_ty,
-                };
                 let expr_ty = cx.typeck_results().expr_ty_adjusted(expr);
                 if receiver_ty != expr_ty {
                     // This lint will only trigger if the receiver type and resulting expression \

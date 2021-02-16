@@ -1,5 +1,3 @@
-#![cfg_attr(not(bootstrap), allow(noop_method_call))]
-
 #[test]
 fn test_borrowed_clone() {
     let x = 5;

@@ -14,6 +14,5 @@ mod y {
 
 pub fn main() {
     use x::*;
-    #[allow(noop_method_call)]
     (&0).deref();
 }
