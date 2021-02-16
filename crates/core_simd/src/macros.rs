@@ -147,14 +147,6 @@ macro_rules! impl_vector {
             }
         }
 
-        // splat
-        impl<const LANES: usize> From<$type> for $name<LANES> where Self: crate::LanesAtMost64 {
-            #[inline]
-            fn from(value: $type) -> Self {
-                Self::splat(value)
-            }
-        }
-
         impl_shuffle_2pow_lanes!{ $name }
     }
 }
