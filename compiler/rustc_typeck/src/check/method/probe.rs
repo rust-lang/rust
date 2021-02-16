@@ -177,6 +177,17 @@ pub struct Pick<'tcx> {
     pub unsize: Option<Ty<'tcx>>,
 }
 
+impl Pick<'tcx> {
+    pub(crate) fn unsize_raw_ptr(&self) -> bool {
+        if let Some(t) = &self.unsize {
+            if let &ty::Slice(_) = t.kind() {
+                return self.autoderefs == 1 && self.autoref.is_some();
+            }
+        }
+        false
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PickKind<'tcx> {
     InherentImplPick,
@@ -1062,6 +1073,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
         let steps = self.steps.clone();
 
+        let allow_deref_raw_ptr = |step: &CandidateStep<'tcx>| -> bool {
+            // allow dereferencing of raw pointers to slices
+            if let &ty::Slice(_) = step.self_ty.value.value.kind() {
+                true
+            } else {
+                !step.from_unsafe_deref
+            }
+        };
+
         // find the first step that works
         steps
             .iter()
@@ -1069,7 +1089,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 debug!("pick_core: step={:?}", step);
                 // skip types that are from a type error or that would require dereferencing
                 // a raw pointer
-                !step.self_ty.references_error() && !step.from_unsafe_deref
+                !step.self_ty.references_error() && allow_deref_raw_ptr(&step)
             })
             .flat_map(|step| {
                 let InferOk { value: self_ty, obligations: _ } = self
@@ -1085,6 +1105,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.pick_by_value_method(step, self_ty).or_else(|| {
                     self.pick_autorefd_method(step, self_ty, hir::Mutability::Not)
                         .or_else(|| self.pick_autorefd_method(step, self_ty, hir::Mutability::Mut))
+                        .or_else(|| {
+                            // allow unsizing of raw pointers
+                            self.pick_raw_autorefd_slice_method(step, self_ty)
+                        })
                 })
             })
             .next()
@@ -1700,6 +1724,43 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         } else {
             self.tcx.associated_items(def_id).in_definition_order().copied().collect()
         }
+    }
+    fn pick_raw_autorefd_slice_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Option<PickResult<'tcx>> {
+        // To enable raw-ptr unsizing we try to autoref slices to raw pointers
+        debug!("pick_raw_ptr_autorefd_slice_method(step: {:?}, self_ty: {:?}", step, self_ty);
+        if let &ty::Slice(_) = self_ty.kind() {
+            let tcx = self.tcx;
+
+            let autoref_ptr_ty =
+                tcx.mk_ptr(ty::TypeAndMut { ty: self_ty, mutbl: hir::Mutability::Not });
+            return self
+                .pick_method(autoref_ptr_ty)
+                .map(|r| {
+                    r.map(|mut pick| {
+                        pick.autoderefs = step.autoderefs;
+                        pick.autoref = Some(hir::Mutability::Not);
+                        pick.unsize = step.unsize.then_some(self_ty);
+                        pick
+                    })
+                })
+                .or_else(|| {
+                    let autoref_mut_ptr_ty =
+                        tcx.mk_ptr(ty::TypeAndMut { ty: self_ty, mutbl: hir::Mutability::Mut });
+                    self.pick_method(autoref_mut_ptr_ty).map(|r| {
+                        r.map(|mut pick| {
+                            pick.autoderefs = step.autoderefs;
+                            pick.autoref = Some(hir::Mutability::Mut);
+                            pick.unsize = step.unsize.then_some(self_ty);
+                            pick
+                        })
+                    })
+                });
+        }
+        None
     }
 }
 

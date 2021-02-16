@@ -13,6 +13,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{self, Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
+use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits;
 
 use std::ops::Deref;
@@ -137,8 +138,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
-        let mut autoderef =
-            self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
+        let mut autoderef = self.autoderef_self_ty(unadjusted_self_ty, &pick);
         let (_, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,
             None => {
@@ -189,6 +189,25 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.apply_adjustments(self.self_expr, adjustments);
 
         target
+    }
+
+    fn autoderef_self_ty(
+        &'a self,
+        unadjusted_self_ty: Ty<'tcx>,
+        pick: &probe::Pick<'tcx>,
+    ) -> Autoderef<'a, 'tcx> {
+        let autoderef =
+            self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
+
+        // We allow unsize coercions of raw pointers in method callee position
+        if let &ty::RawPtr(ty::TypeAndMut { ty: t, .. }) = unadjusted_self_ty.kind() {
+            if let ty::Array(_, _) = t.kind() {
+                if pick.unsize_raw_ptr() {
+                    return autoderef.include_raw_pointers();
+                }
+            }
+        }
+        autoderef
     }
 
     /// Returns a set of substitutions for the method *receiver* where all type and region
