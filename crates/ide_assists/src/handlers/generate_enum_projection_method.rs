@@ -8,9 +8,9 @@ use crate::{
     AssistContext, AssistId, AssistKind, Assists,
 };
 
-// Assist: generate_enum_into_method
+// Assist: generate_enum_try_into_method
 //
-// Generate an `into_` method for an enum variant.
+// Generate an `try_into_` method for an enum variant.
 //
 // ```
 // enum Value {
@@ -26,23 +26,29 @@ use crate::{
 // }
 //
 // impl Value {
-//     fn into_text(self) -> Option<String> {
+//     fn try_into_text(self) -> Result<String, Self> {
 //         if let Self::Text(v) = self {
-//             Some(v)
+//             Ok(v)
 //         } else {
-//             None
+//             Err(self)
 //         }
 //     }
 // }
 // ```
-pub(crate) fn generate_enum_into_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn generate_enum_try_into_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     generate_enum_projection_method(
         acc,
         ctx,
-        "generate_enum_into_method",
-        "Generate an `into_` method for an enum variant",
-        "into",
-        "",
+        "generate_enum_try_into_method",
+        "Generate an `try_into_` method for an enum variant",
+        ProjectionProps {
+            fn_name_prefix: "try_into",
+            self_param: "self",
+            return_prefix: "Result<",
+            return_suffix: ", Self>",
+            happy_case: "Ok",
+            sad_case: "Err(self)",
+        },
     )
 }
 
@@ -79,18 +85,32 @@ pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext) ->
         ctx,
         "generate_enum_as_method",
         "Generate an `as_` method for an enum variant",
-        "as",
-        "&",
+        ProjectionProps {
+            fn_name_prefix: "as",
+            self_param: "&self",
+            return_prefix: "Option<&",
+            return_suffix: ">",
+            happy_case: "Some",
+            sad_case: "None",
+        },
     )
 }
 
-pub(crate) fn generate_enum_projection_method(
+struct ProjectionProps {
+    fn_name_prefix: &'static str,
+    self_param: &'static str,
+    return_prefix: &'static str,
+    return_suffix: &'static str,
+    happy_case: &'static str,
+    sad_case: &'static str,
+}
+
+fn generate_enum_projection_method(
     acc: &mut Assists,
     ctx: &AssistContext,
     assist_id: &'static str,
     assist_description: &str,
-    fn_name_prefix: &str,
-    ref_prefix: &str,
+    props: ProjectionProps,
 ) -> Option<()> {
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let variant_name = variant.name()?;
@@ -112,7 +132,7 @@ pub(crate) fn generate_enum_projection_method(
         ast::StructKind::Unit => return None,
     };
 
-    let fn_name = format!("{}_{}", fn_name_prefix, &to_lower_snake_case(variant_name.text()));
+    let fn_name = format!("{}_{}", props.fn_name_prefix, &to_lower_snake_case(variant_name.text()));
 
     // Return early if we've found an existing new fn
     let impl_def = find_struct_impl(&ctx, &parent_enum, &fn_name)?;
@@ -121,20 +141,24 @@ pub(crate) fn generate_enum_projection_method(
     acc.add(AssistId(assist_id, AssistKind::Generate), assist_description, target, |builder| {
         let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
         let method = format!(
-            "    {0}fn {1}({2}self) -> Option<{2}{3}> {{
-        if let Self::{4}{5} = self {{
-            Some({6})
+            "    {0}fn {1}({2}) -> {3}{4}{5} {{
+        if let Self::{6}{7} = self {{
+            {8}({9})
         }} else {{
-            None
+            {10}
         }}
     }}",
             vis,
             fn_name,
-            ref_prefix,
+            props.self_param,
+            props.return_prefix,
             field_type.syntax(),
+            props.return_suffix,
             variant_name,
             pattern_suffix,
+            props.happy_case,
             bound_name,
+            props.sad_case,
         );
 
         add_method_to_adt(builder, &parent_enum, impl_def, &method);
@@ -148,9 +172,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_enum_into_tuple_variant() {
+    fn test_generate_enum_try_into_tuple_variant() {
         check_assist(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"
 enum Value {
     Number(i32),
@@ -162,11 +186,11 @@ enum Value {
 }
 
 impl Value {
-    fn into_text(self) -> Option<String> {
+    fn try_into_text(self) -> Result<String, Self> {
         if let Self::Text(v) = self {
-            Some(v)
+            Ok(v)
         } else {
-            None
+            Err(self)
         }
     }
 }"#,
@@ -174,20 +198,20 @@ impl Value {
     }
 
     #[test]
-    fn test_generate_enum_into_already_implemented() {
+    fn test_generate_enum_try_into_already_implemented() {
         check_assist_not_applicable(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"enum Value {
     Number(i32),
     Text(String)$0,
 }
 
 impl Value {
-    fn into_text(self) -> Option<String> {
+    fn try_into_text(self) -> Result<String, Self> {
         if let Self::Text(v) = self {
-            Some(v)
+            Ok(v)
         } else {
-            None
+            Err(self)
         }
     }
 }"#,
@@ -195,9 +219,9 @@ impl Value {
     }
 
     #[test]
-    fn test_generate_enum_into_unit_variant() {
+    fn test_generate_enum_try_into_unit_variant() {
         check_assist_not_applicable(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"enum Value {
     Number(i32),
     Text(String),
@@ -207,9 +231,9 @@ impl Value {
     }
 
     #[test]
-    fn test_generate_enum_into_record_with_multiple_fields() {
+    fn test_generate_enum_try_into_record_with_multiple_fields() {
         check_assist_not_applicable(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"enum Value {
     Number(i32),
     Text(String),
@@ -219,9 +243,9 @@ impl Value {
     }
 
     #[test]
-    fn test_generate_enum_into_tuple_with_multiple_fields() {
+    fn test_generate_enum_try_into_tuple_with_multiple_fields() {
         check_assist_not_applicable(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"enum Value {
     Number(i32),
     Text(String, String)$0,
@@ -230,9 +254,9 @@ impl Value {
     }
 
     #[test]
-    fn test_generate_enum_into_record_variant() {
+    fn test_generate_enum_try_into_record_variant() {
         check_assist(
-            generate_enum_into_method,
+            generate_enum_try_into_method,
             r#"enum Value {
     Number(i32),
     Text { text: String }$0,
@@ -243,11 +267,11 @@ impl Value {
 }
 
 impl Value {
-    fn into_text(self) -> Option<String> {
+    fn try_into_text(self) -> Result<String, Self> {
         if let Self::Text { text } = self {
-            Some(text)
+            Ok(text)
         } else {
-            None
+            Err(self)
         }
     }
 }"#,

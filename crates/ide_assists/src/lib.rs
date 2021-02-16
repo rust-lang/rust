@@ -191,7 +191,7 @@ mod handlers {
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_derive::generate_derive,
             generate_enum_is_method::generate_enum_is_method,
-            generate_enum_projection_method::generate_enum_into_method,
+            generate_enum_projection_method::generate_enum_try_into_method,
             generate_enum_projection_method::generate_enum_as_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
