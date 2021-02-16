@@ -7,7 +7,7 @@ use std::{sync::Arc, time::Instant};
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Change, FileId};
+use ide::{Analysis, AnalysisHost, Cancelable, Change, FileId};
 use ide_db::base_db::{CrateId, VfsPath};
 use lsp_types::{SemanticTokens, Url};
 use parking_lot::{Mutex, RwLock};
@@ -22,7 +22,7 @@ use crate::{
     diagnostics::{CheckFixes, DiagnosticCollection},
     document::DocumentData,
     from_proto,
-    line_endings::LineEndings,
+    line_index::{LineEndings, LineIndex},
     main_loop::Task,
     op_queue::OpQueue,
     reload::SourceRootConfig,
@@ -271,8 +271,11 @@ impl GlobalStateSnapshot {
         file_id_to_url(&self.vfs.read().0, id)
     }
 
-    pub(crate) fn file_line_endings(&self, id: FileId) -> LineEndings {
-        self.vfs.read().1[&id]
+    pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancelable<LineIndex> {
+        let endings = self.vfs.read().1[&file_id];
+        let index = self.analysis.file_line_index(file_id)?;
+        let res = LineIndex { index, endings, encoding: self.config.offset_encoding() };
+        Ok(res)
     }
 
     pub(crate) fn url_file_version(&self, url: &Url) -> Option<i32> {

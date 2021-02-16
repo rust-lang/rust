@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 34aec6bfeaeb97a
+lsp_ext.rs hash: d279d971d4f62cd7
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -18,6 +18,12 @@ Requests which we hope to upstream live under `experimental/` namespace.
 Requests, which are likely to always remain specific to `rust-analyzer` are under `rust-analyzer/` namespace.
 
 If you want to be notified about the changes to this document, subscribe to [#4604](https://github.com/rust-analyzer/rust-analyzer/issues/4604).
+
+## UTF-8 offsets
+
+rust-analyzer supports clangd's extension for opting into UTF-8 as the coordinate space for offsets (by default, LSP uses UTF-16 offsets).
+
+https://clangd.llvm.org/extensions.html#utf-8-offsets
 
 ## `initializationOptions`
 

@@ -29,7 +29,7 @@ mod from_proto;
 mod semantic_tokens;
 mod markdown;
 mod diagnostics;
-mod line_endings;
+mod line_index;
 mod request_metrics;
 mod lsp_utils;
 mod thread_pool;

@@ -15,11 +15,19 @@ pub struct LineIndex {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LineCol {
+pub struct LineColUtf16 {
     /// Zero-based
     pub line: u32,
     /// Zero-based
-    pub col_utf16: u32,
+    pub col: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct LineCol {
+    /// Zero-based
+    pub line: u32,
+    /// Zero-based utf8 offset
+    pub col: u32,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -92,14 +100,21 @@ impl LineIndex {
         let line = partition_point(&self.newlines, |&it| it <= offset) - 1;
         let line_start_offset = self.newlines[line];
         let col = offset - line_start_offset;
-
-        LineCol { line: line as u32, col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32 }
+        LineCol { line: line as u32, col: col.into() }
     }
 
     pub fn offset(&self, line_col: LineCol) -> TextSize {
-        //FIXME: return Result
-        let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
-        self.newlines[line_col.line as usize] + col
+        self.newlines[line_col.line as usize] + TextSize::from(line_col.col)
+    }
+
+    pub fn to_utf16(&self, line_col: LineCol) -> LineColUtf16 {
+        let col = self.utf8_to_utf16_col(line_col.line, line_col.col.into());
+        LineColUtf16 { line: line_col.line, col: col as u32 }
+    }
+
+    pub fn to_utf8(&self, line_col: LineColUtf16) -> LineCol {
+        let col = self.utf16_to_utf8_col(line_col.line, line_col.col);
+        LineCol { line: line_col.line, col: col.into() }
     }
 
     pub fn lines(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {
