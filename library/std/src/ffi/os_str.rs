@@ -1208,11 +1208,18 @@ impl<'a> Extend<&'a OsStr> for OsString {
 impl FromIterator<OsString> for OsString {
     #[inline]
     fn from_iter<I: IntoIterator<Item = OsString>>(iter: I) -> Self {
-        let mut buf = Self::new();
-        for s in iter {
-            buf.push(&s);
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(mut buf) => {
+                buf.extend(iterator);
+                buf
+            }
         }
-        buf
     }
 }
 
