@@ -15,8 +15,6 @@ use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
-use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
 pub use self::PpMode::*;
@@ -375,13 +373,14 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
+fn write_or_print(out: &str, ofile: Option<&Path>) {
     match ofile {
-        None => print!("{}", String::from_utf8(out).unwrap()),
-        Some(p) => match File::create(p) {
-            Ok(mut w) => w.write_all(&out).unwrap(),
-            Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
-        },
+        None => print!("{}", out),
+        Some(p) => {
+            if let Err(e) = std::fs::write(p, out) {
+                panic!("print-print failed to write {} due to {}", p.display(), e);
+            }
+        }
     }
 }
 
@@ -417,7 +416,7 @@ pub fn print_after_parsing(
         unreachable!();
     };
 
-    write_output(out.into_bytes(), ofile);
+    write_or_print(&out, ofile);
 }
 
 pub fn print_after_hir_lowering<'tcx>(
@@ -477,7 +476,7 @@ pub fn print_after_hir_lowering<'tcx>(
         _ => unreachable!(),
     }
 
-    write_output(out.into_bytes(), ofile);
+    write_or_print(&out, ofile);
 }
 
 // In an ideal world, this would be a public function called by the driver after
@@ -503,7 +502,8 @@ fn print_with_analysis(
     }
     .unwrap();
 
-    write_output(out, ofile);
+    let out = std::str::from_utf8(&out).unwrap();
+    write_or_print(out, ofile);
 
     Ok(())
 }
