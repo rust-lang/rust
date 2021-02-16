@@ -508,12 +508,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                         }
                     };
                     self.visit_local(&reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(
-                        reborrowed_place_ref.local,
-                        reborrowed_place_ref.projection,
-                        ctx,
-                        location,
-                    );
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
@@ -526,12 +521,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
                     self.visit_local(&reborrowed_place_ref.local, ctx, location);
-                    self.visit_projection(
-                        reborrowed_place_ref.local,
-                        reborrowed_place_ref.projection,
-                        ctx,
-                        location,
-                    );
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
