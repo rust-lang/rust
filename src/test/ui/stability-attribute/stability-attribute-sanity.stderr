@@ -116,5 +116,5 @@ LL | #[rustc_deprecated(since = "a", reason = "text")]
 
 error: aborting due to 19 previous errors
 
-Some errors have detailed explanations: E0539, E0541, E0542, E0546, E0547, E0550.
+Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0546, E0547, E0550.
 For more information about an error, try `rustc --explain E0539`.

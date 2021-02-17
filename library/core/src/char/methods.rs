@@ -1,5 +1,6 @@
 //! impl char {}
 
+use crate::intrinsics::likely;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -330,16 +331,13 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
+        assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
         // the code is split up here to improve execution speed for cases where
         // the `radix` is constant and 10 or smaller
-        let val = if radix <= 10 {
-            match self {
-                '0'..='9' => self as u32 - '0' as u32,
-                _ => return None,
-            }
+        let val = if likely(radix <= 10) {
+            // If not a digit, a number greater than radix will be created.
+            (self as u32).wrapping_sub('0' as u32)
         } else {
-            assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-
             match self {
                 '0'..='9' => self as u32 - '0' as u32,
                 'a'..='z' => self as u32 - 'a' as u32 + 10,

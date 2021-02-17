@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
@@ -34,9 +35,11 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
 
-pub fn remove(sess: &Session, path: &Path) {
+pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
-        sess.err(&format!("failed to remove {}: {}", path.display(), e));
+        if e.kind() != io::ErrorKind::NotFound {
+            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+        }
     }
 }
 
@@ -112,11 +115,11 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         if !sess.opts.cg.save_temps {
             let remove_temps_from_module = |module: &CompiledModule| {
                 if let Some(ref obj) = module.object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
 
                 if let Some(ref obj) = module.dwarf_object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
             };
 

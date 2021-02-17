@@ -1350,7 +1350,7 @@ pub fn parse_error_format(
     error_format
 }
 
-fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
+pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
     let edition = match matches.opt_str("edition") {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             early_error(
