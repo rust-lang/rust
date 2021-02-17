@@ -7,7 +7,7 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/closure-origin-single-variant-diagnostics.rs:18:9
    |
 LL | /         if let SingleVariant::Point(ref mut x, _) = point {

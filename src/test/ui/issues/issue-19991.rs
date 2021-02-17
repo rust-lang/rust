@@ -1,4 +1,4 @@
-// Test if the sugared if-let construct correctly prints "missing an else clause" when an else
+// Test if the sugared `if let` construct correctly prints "missing an else clause" when an else
 // clause does not exist, instead of the unsympathetic "`match` arms have incompatible types"
 
 fn main() {

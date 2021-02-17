@@ -1,4 +1,4 @@
-error: irrefutable if-let guard
+error: irrefutable `if let` guard
   --> $DIR/warns.rs:7:24
    |
 LL |         Some(x) if let () = x => {}
