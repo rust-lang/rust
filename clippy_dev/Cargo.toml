@@ -9,6 +9,7 @@ edition = "2018"
 bytecount = "0.6"
 clap = "2.33"
 flate2 = { version = "1.0.19", optional = true }
+fs_extra = { version = "1.2.0", optional = true }
 itertools = "0.9"
 opener = "0.4"
 regex = "1"
@@ -21,5 +22,5 @@ ureq = { version = "2.0.0-rc3", optional = true }
 walkdir = "2"
 
 [features]
-lintcheck = ["flate2", "serde_json", "tar", "toml", "ureq", "serde"]
+lintcheck = ["flate2", "serde_json", "tar", "toml", "ureq", "serde", "fs_extra"]
 deny-warnings = []

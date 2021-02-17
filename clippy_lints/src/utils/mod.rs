@@ -36,7 +36,7 @@ use rustc_ast::ast::{self, Attribute, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
@@ -49,7 +49,7 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, layout::IntegerExt, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -304,6 +304,22 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
         .rev()
         .zip(segments.iter().rev())
         .all(|(a, b)| a.ident.name.as_str() == *b)
+}
+
+/// If the expression is a path to a local, returns the canonical `HirId` of the local.
+pub fn path_to_local(expr: &Expr<'_>) -> Option<HirId> {
+    if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
+        if let Res::Local(id) = path.res {
+            return Some(id);
+        }
+    }
+    None
+}
+
+/// Returns true if the expression is a path to a local with the specified `HirId`.
+/// Use this function to see if an expression matches a function argument or a match binding.
+pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
+    path_to_local(expr) == Some(id)
 }
 
 /// Gets the definition associated to a path.
@@ -1134,9 +1150,7 @@ pub fn is_try<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
             if let PatKind::TupleStruct(ref path, ref pat, None) = arm.pat.kind;
             if match_qpath(path, &paths::RESULT_OK[1..]);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
-            if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.kind;
-            if let Res::Local(lid) = path.res;
-            if lid == hir_id;
+            if path_to_local_id(arm.body, hir_id);
             then {
                 return true;
             }
@@ -1180,12 +1194,11 @@ pub fn is_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> bool 
     cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }
 
-pub fn get_arg_name(pat: &Pat<'_>) -> Option<Symbol> {
-    match pat.kind {
-        PatKind::Binding(.., ident, None) => Some(ident.name),
-        PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
-        _ => None,
+pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
+    while let PatKind::Ref(subpat, _) = pat.kind {
+        pat = subpat;
     }
+    pat
 }
 
 pub fn int_bits(tcx: TyCtxt<'_>, ity: ty::IntTy) -> u64 {
@@ -1700,6 +1713,30 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
             false
         }
     }
+}
+
+/// Check if the resolution of a given path is an `Ok` variant of `Result`.
+pub fn is_ok_ctor(cx: &LateContext<'_>, res: Res) -> bool {
+    if let Some(ok_id) = cx.tcx.lang_items().result_ok_variant() {
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
+            if let Some(variant_id) = cx.tcx.parent(id) {
+                return variant_id == ok_id;
+            }
+        }
+    }
+    false
+}
+
+/// Check if the resolution of a given path is a `Some` variant of `Option`.
+pub fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
+    if let Some(some_id) = cx.tcx.lang_items().option_some_variant() {
+        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
+            if let Some(variant_id) = cx.tcx.parent(id) {
+                return variant_id == some_id;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]

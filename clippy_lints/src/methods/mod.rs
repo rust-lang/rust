@@ -1,4 +1,6 @@
 mod bind_instead_of_map;
+mod bytes_nth;
+mod filter_map_identity;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod manual_saturating_arithmetic;
@@ -15,8 +17,7 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
-use rustc_hir::{Expr, ExprKind, PatKind, QPath, TraitItem, TraitItemKind, UnOp};
+use rustc_hir::{Expr, ExprKind, PatKind, TraitItem, TraitItemKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -30,12 +31,12 @@ use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, higher,
-    implements_trait, in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, match_var, meets_msrv, method_calls,
-    method_chain_args, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, sugg,
-    walk_ptrs_ty_depth, SpanlessEq,
+    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
+    match_qpath, match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
+    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth,
+    SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1467,6 +1468,51 @@ declare_clippy_lint! {
     "using `.inspect().for_each()`, which can be replaced with `.for_each()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `filter_map(|x| x)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely by using `flatten`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.filter_map(|x| x);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let iter = vec![Some(1)].into_iter();
+    /// iter.flatten();
+    /// ```
+    pub FILTER_MAP_IDENTITY,
+    complexity,
+    "call to `filter_map` where `flatten` is sufficient"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `.bytes().nth()`.
+    ///
+    /// **Why is this bad?** `.as_bytes().get()` is more efficient and more
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let _ = "Hello".bytes().nth(3);
+    ///
+    /// // Good
+    /// let _ = "Hello".as_bytes().get(3);
+    /// ```
+    pub BYTES_NTH,
+    style,
+    "replace `.bytes().nth()` with `.as_bytes().get()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1504,6 +1550,7 @@ impl_lint_pass!(Methods => [
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
     FILTER_MAP,
+    FILTER_MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
     FILTER_MAP_NEXT,
@@ -1513,6 +1560,7 @@ impl_lint_pass!(Methods => [
     ITER_NEXT_SLICE,
     ITER_NTH,
     ITER_NTH_ZERO,
+    BYTES_NTH,
     ITER_SKIP_NEXT,
     GET_UNWRAP,
     STRING_EXTEND_CHARS,
@@ -1590,6 +1638,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
+            ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
@@ -1597,7 +1646,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
-            ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            ["filter_map", ..] => {
+                unnecessary_filter_map::lint(cx, expr, arg_lists[0]);
+                filter_map_identity::check(cx, expr, arg_lists[0], method_spans[0]);
+            },
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
             ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
@@ -2181,7 +2233,10 @@ fn lint_expect_fun_call(
         span_replace_word,
         &format!("use of `{}` followed by a function call", name),
         "try this",
-        format!("unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})", closure_args, arg_root_snippet),
+        format!(
+            "unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})",
+            closure_args, arg_root_snippet
+        ),
         applicability,
     );
 }
@@ -2394,11 +2449,12 @@ fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: 
             if bin_op.node == op;
 
             // Extract the names of the two arguments to the closure
-            if let Some(first_arg_ident) = get_arg_name(&closure_body.params[0].pat);
-            if let Some(second_arg_ident) = get_arg_name(&closure_body.params[1].pat);
+            if let [param_a, param_b] = closure_body.params;
+            if let PatKind::Binding(_, first_arg_id, ..) = strip_pat_refs(&param_a.pat).kind;
+            if let PatKind::Binding(_, second_arg_id, second_arg_ident, _) = strip_pat_refs(&param_b.pat).kind;
 
-            if match_var(&*left_expr, first_arg_ident);
-            if replacement_has_args || match_var(&*right_expr, second_arg_ident);
+            if path_to_local_id(left_expr, first_arg_id);
+            if replacement_has_args || path_to_local_id(right_expr, second_arg_id);
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -3066,10 +3122,8 @@ fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_f
             };
             // let the filter closure arg and the map closure arg be equal
             if_chain! {
-                if let ExprKind::Path(QPath::Resolved(None, a_path)) = a_path.kind;
-                if let ExprKind::Path(QPath::Resolved(None, b_path)) = b.kind;
-                if a_path.res == Res::Local(filter_param_id);
-                if b_path.res == Res::Local(map_param_id);
+                if path_to_local_id(a_path, filter_param_id);
+                if path_to_local_id(b, map_param_id);
                 if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
                 then {
                     return true;
@@ -3253,8 +3307,9 @@ fn lint_search_is_some<'tcx>(
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))
-                    } else if let Some(name) = get_arg_name(&closure_arg.pat) {
-                        Some(search_snippet.replace(&format!("*{}", name), &name.as_str()))
+                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(&closure_arg.pat).kind {
+                        let name = &*ident.name.as_str();
+                        Some(search_snippet.replace(&format!("*{}", name), name))
                     } else {
                         None
                     }
@@ -3686,9 +3741,7 @@ fn lint_option_as_ref_deref<'tcx>(
                 hir::ExprKind::MethodCall(_, _, args, _) => {
                     if_chain! {
                         if args.len() == 1;
-                        if let hir::ExprKind::Path(qpath) = &args[0].kind;
-                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, args[0].hir_id);
-                        if closure_body.params[0].pat.hir_id == local_id;
+                        if path_to_local_id(&args[0], closure_body.params[0].pat.hir_id);
                         let adj = cx
                             .typeck_results()
                             .expr_adjustments(&args[0])
@@ -3708,10 +3761,8 @@ fn lint_option_as_ref_deref<'tcx>(
                     if_chain! {
                         if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner1) = inner.kind;
                         if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner2) = inner1.kind;
-                        if let hir::ExprKind::Path(ref qpath) = inner2.kind;
-                        if let hir::def::Res::Local(local_id) = cx.qpath_res(qpath, inner2.hir_id);
                         then {
-                            closure_body.params[0].pat.hir_id == local_id
+                            path_to_local_id(inner2, closure_body.params[0].pat.hir_id)
                         } else {
                             false
                         }
@@ -4092,16 +4143,50 @@ fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<
         if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
         then {
             // `expr` implements `FromIterator` trait
-            let iter_expr = snippet(cx, args[0].span, "..");
+            let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
+            let turbofish = extract_turbofish(cx, expr, ty);
+            let sugg = format!("{}.collect::<{}>()", iter_expr, turbofish);
             span_lint_and_sugg(
                 cx,
                 FROM_ITER_INSTEAD_OF_COLLECT,
                 expr.span,
                 "usage of `FromIterator::from_iter`",
                 "use `.collect()` instead of `::from_iter()`",
-                format!("{}.collect()", iter_expr),
+                sugg,
                 Applicability::MaybeIncorrect,
             );
+        }
+    }
+}
+
+fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
+    if_chain! {
+        let call_site = expr.span.source_callsite();
+        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(call_site);
+        let snippet_split = snippet.split("::").collect::<Vec<_>>();
+        if let Some((_, elements)) = snippet_split.split_last();
+
+        then {
+            // is there a type specifier? (i.e.: like `<u32>` in `collections::BTreeSet::<u32>::`)
+            if let Some(type_specifier) = snippet_split.iter().find(|e| e.starts_with('<') && e.ends_with('>')) {
+                // remove the type specifier from the path elements
+                let without_ts = elements.iter().filter_map(|e| {
+                    if e == type_specifier { None } else { Some((*e).to_string()) }
+                }).collect::<Vec<_>>();
+                // join and add the type specifier at the end (i.e.: `collections::BTreeSet<u32>`)
+                format!("{}{}", without_ts.join("::"), type_specifier)
+            } else {
+                // type is not explicitly specified so wildcards are needed
+                // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
+                let ty_str = ty.to_string();
+                let start = ty_str.find('<').unwrap_or(0);
+                let end = ty_str.find('>').unwrap_or_else(|| ty_str.len());
+                let nb_wildcard = ty_str[start..end].split(',').count();
+                let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
+                format!("{}<{}>", elements.join("::"), wildcards)
+            }
+        } else {
+            ty.to_string()
         }
     }
 }
