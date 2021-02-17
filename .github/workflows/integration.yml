@@ -72,14 +72,11 @@ jobs:
       uses: actions/checkout@v2
 
       # Run build
-    - name: setup
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly-x86_64-unknown-linux-gnu
-        target: x86_64-unknown-linux-gnu
-        override: true
-        profile: minimal
-        default: true
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+
     - name: run integration tests
       env:
         INTEGRATION: ${{ matrix.integration }}

@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     runs-on: windows-latest
-    name: (${{ matrix.target }}, ${{ matrix.channel }})
+    name: (${{ matrix.target }}, nightly)
     strategy:
       # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
       # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
@@ -23,14 +23,6 @@ jobs:
           x86_64-pc-windows-gnu,
           x86_64-pc-windows-msvc,
         ]
-        channel: [ nightly ]
-        include:
-          - channel: nightly
-            target: i686-pc-windows-gnu
-
-    env:
-      CFG_RELEASE_CHANNEL: nightly
-      CFG_RELEASE: nightly
 
     steps:
     # The Windows runners have autocrlf enabled by default
@@ -41,14 +33,15 @@ jobs:
       uses: actions/checkout@v2
 
       # Run build
-    - name: setup
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.channel }}-${{ matrix.target }}
-        target: ${{ matrix.target }}
-        override: true
-        profile: minimal
-        default: true
+    - name: Install Rustup using win.rustup.rs
+      run: |
+        # Disable the download progress bar which can cause perf issues
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
+        .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
+        del rustup-init.exe
+        rustup target add ${{ matrix.target }}
+      shell: powershell
 
     - name: Add mingw32 to path for i686-gnu
       run: |
