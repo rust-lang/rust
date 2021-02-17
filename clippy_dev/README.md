@@ -72,3 +72,6 @@ possible to only check a crate for certain lint groups. If no options are
 specified, the lint groups `clippy::all`, `clippy::pedantic`, and
 `clippy::cargo` are checked. If an empty array is specified only `clippy::all`
 is checked.
+
+**Note:** `-Wclippy::all` is always enabled by default, unless `-Aclippy::all`
+is explicitly specified in the options.
