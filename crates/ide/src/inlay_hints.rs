@@ -109,26 +109,31 @@ fn get_chaining_hints(
     // Chaining can be defined as an expression whose next sibling tokens are newline and dot
     // Ignoring extra whitespace and comments
     let next = tokens.next()?.kind();
-    let next_next = tokens.next()?.kind();
-    if next == SyntaxKind::WHITESPACE && next_next == T![.] {
-        let ty = sema.type_of_expr(&expr)?;
-        if ty.is_unknown() {
-            return None;
+    if next == SyntaxKind::WHITESPACE {
+        let mut next_next = tokens.next()?.kind();
+        while next_next == SyntaxKind::WHITESPACE {
+            next_next = tokens.next()?.kind();
         }
-        if matches!(expr, ast::Expr::PathExpr(_)) {
-            if let Some(hir::Adt::Struct(st)) = ty.as_adt() {
-                if st.fields(sema.db).is_empty() {
-                    return None;
+        if next_next == T![.] {
+            let ty = sema.type_of_expr(&expr)?;
+            if ty.is_unknown() {
+                return None;
+            }
+            if matches!(expr, ast::Expr::PathExpr(_)) {
+                if let Some(hir::Adt::Struct(st)) = ty.as_adt() {
+                    if st.fields(sema.db).is_empty() {
+                        return None;
+                    }
                 }
             }
+            acc.push(InlayHint {
+                range: expr.syntax().text_range(),
+                kind: InlayKind::ChainingHint,
+                label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
+                    ty.display_truncated(sema.db, config.max_length).to_string().into()
+                }),
+            });
         }
-        acc.push(InlayHint {
-            range: expr.syntax().text_range(),
-            kind: InlayKind::ChainingHint,
-            label: hint_iterator(sema, &famous_defs, config, &ty).unwrap_or_else(|| {
-                ty.display_truncated(sema.db, config.max_length).to_string().into()
-            }),
-        });
     }
     Some(())
 }
@@ -983,6 +988,7 @@ struct C;
 fn main() {
     let c = A(B(C))
         .into_b() // This is a comment
+        // This is another comment
         .into_c();
 }
 "#,
