@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{
+use crate::{
     is_expn_of, match_def_path, match_qpath, match_type, method_calls, path_to_res, paths, run_lints, snippet,
     span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };

@@ -1,3 +1,38 @@
+#![feature(bindings_after_at)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
+#![feature(concat_idents)]
+#![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
+#![feature(in_band_lifetimes)]
+#![feature(once_cell)]
+#![feature(or_patterns)]
+#![feature(rustc_private)]
+#![feature(stmt_expr_attributes)]
+#![feature(control_flow_enum)]
+
+extern crate rustc_ast;
+extern crate rustc_ast_pretty;
+extern crate rustc_attr;
+extern crate rustc_data_structures;
+extern crate rustc_driver;
+extern crate rustc_errors;
+extern crate rustc_hir;
+extern crate rustc_hir_pretty;
+extern crate rustc_index;
+extern crate rustc_infer;
+extern crate rustc_lexer;
+extern crate rustc_lint;
+extern crate rustc_middle;
+extern crate rustc_mir;
+extern crate rustc_parse;
+extern crate rustc_parse_format;
+extern crate rustc_session;
+extern crate rustc_span;
+extern crate rustc_target;
+extern crate rustc_trait_selection;
+extern crate rustc_typeck;
+
 #[macro_use]
 pub mod sym_helper;
 
@@ -8,6 +43,7 @@ pub mod author;
 pub mod camel_case;
 pub mod comparisons;
 pub mod conf;
+pub mod consts;
 mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
@@ -63,6 +99,105 @@ use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
 
+/// Macro used to declare a Clippy lint.
+///
+/// Every lint declaration consists of 4 parts:
+///
+/// 1. The documentation, which is used for the website
+/// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
+/// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
+///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
+/// 4. The `description` that contains a short explanation on what's wrong with code where the
+///    lint is triggered.
+///
+/// Currently the categories `style`, `correctness`, `complexity` and `perf` are enabled by default.
+/// As said in the README.md of this repository, if the lint level mapping changes, please update
+/// README.md.
+///
+/// # Example
+///
+/// ```
+/// #![feature(rustc_private)]
+/// extern crate rustc_session;
+/// use rustc_session::declare_tool_lint;
+/// use clippy_lints::declare_clippy_lint;
+///
+/// declare_clippy_lint! {
+///     /// **What it does:** Checks for ... (describe what the lint matches).
+///     ///
+///     /// **Why is this bad?** Supply the reason for linting the code.
+///     ///
+///     /// **Known problems:** None. (Or describe where it could go wrong.)
+///     ///
+///     /// **Example:**
+///     ///
+///     /// ```rust
+///     /// // Bad
+///     /// Insert a short example of code that triggers the lint
+///     ///
+///     /// // Good
+///     /// Insert a short example of improved code that doesn't trigger the lint
+///     /// ```
+///     pub LINT_NAME,
+///     pedantic,
+///     "description"
+/// }
+/// ```
+/// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
+#[macro_export]
+macro_rules! declare_clippy_lint {
+    { $(#[$attr:meta])* pub $name:tt, style, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, restriction, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
+        }
+    };
+    { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
+        declare_tool_lint! {
+            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
+        }
+    };
+}
+
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
         return Some(version);
@@ -78,6 +213,7 @@ pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool
     msrv.map_or(true, |msrv| msrv.meets(*lint_msrv))
 }
 
+#[macro_export]
 macro_rules! extract_msrv_attr {
     (LateContext) => {
         extract_msrv_attr!(@LateContext, ());
@@ -87,11 +223,11 @@ macro_rules! extract_msrv_attr {
     };
     (@$context:ident$(, $call:tt)?) => {
         fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
-            use $crate::utils::get_unique_inner_attr;
+            use $crate::get_unique_inner_attr;
             match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
                 Some(msrv_attr) => {
                     if let Some(msrv) = msrv_attr.value_str() {
-                        self.msrv = $crate::utils::parse_msrv(
+                        self.msrv = $crate::parse_msrv(
                             &msrv.to_string(),
                             Some(cx.sess$($call)?),
                             Some(msrv_attr.span),
