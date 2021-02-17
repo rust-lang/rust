@@ -634,14 +634,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     | GenericArgKind::Const(_),
                     _,
                 ) => {
-                    // I *think* that HIR lowering should ensure this
-                    // doesn't happen, even in erroneous
-                    // programs. Else we should use delay-span-bug.
-                    span_bug!(
+                    // HIR lowering sometimes doesn't catch this in erroneous
+                    // programs, so we need to use delay_span_bug here. See #82126.
+                    self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        "unmatched subst and hir arg: found {:?} vs {:?}",
-                        kind,
-                        hir_arg,
+                        &format!("unmatched subst and hir arg: found {:?} vs {:?}", kind, hir_arg),
                     );
                 }
             }
