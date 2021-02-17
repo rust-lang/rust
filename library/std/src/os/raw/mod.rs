@@ -11,7 +11,16 @@
 #[cfg(test)]
 mod tests;
 
-#[doc(include = "char.md")]
+macro_rules! type_alias {
+    { $Docfile:tt, $Alias:ident = $Real:ty; $( $Cfg:tt )* } => {
+        #[doc(include = $Docfile)]
+        $( $Cfg )*
+        #[stable(feature = "raw_os", since = "1.1.0")]
+        pub type $Alias = $Real;
+    }
+}
+
+type_alias! { "char.md", c_char = u8;
 #[cfg(any(
     all(
         target_os = "linux",
@@ -52,10 +61,8 @@ mod tests;
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64")
-))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_char = u8;
-#[doc(include = "char.md")]
+))]}
+type_alias! { "char.md", c_char = i8;
 #[cfg(not(any(
     all(
         target_os = "linux",
@@ -96,55 +103,21 @@ pub type c_char = u8;
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64")
-)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_char = i8;
-#[doc(include = "schar.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_schar = i8;
-#[doc(include = "uchar.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_uchar = u8;
-#[doc(include = "short.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_short = i16;
-#[doc(include = "ushort.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ushort = u16;
-#[doc(include = "int.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_int = i32;
-#[doc(include = "uint.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_uint = u32;
-#[doc(include = "long.md")]
-#[cfg(any(target_pointer_width = "32", windows))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_long = i32;
-#[doc(include = "ulong.md")]
-#[cfg(any(target_pointer_width = "32", windows))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulong = u32;
-#[doc(include = "long.md")]
-#[cfg(all(target_pointer_width = "64", not(windows)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_long = i64;
-#[doc(include = "ulong.md")]
-#[cfg(all(target_pointer_width = "64", not(windows)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulong = u64;
-#[doc(include = "longlong.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_longlong = i64;
-#[doc(include = "ulonglong.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulonglong = u64;
-#[doc(include = "float.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_float = f32;
-#[doc(include = "double.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_double = f64;
+)))]}
+type_alias! { "schar.md", c_schar = i8; }
+type_alias! { "uchar.md", c_uchar = u8; }
+type_alias! { "short.md", c_short = i16; }
+type_alias! { "ushort.md", c_ushort = u16; }
+type_alias! { "int.md", c_int = i32; }
+type_alias! { "uint.md", c_uint = u32; }
+type_alias! { "long.md", c_long = i32; #[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "ulong.md", c_ulong = u32; #[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "long.md", c_long = i64; #[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "ulong.md", c_ulong = u64; #[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "longlong.md", c_longlong = i64; }
+type_alias! { "ulonglong.md", c_ulonglong = u64; }
+type_alias! { "float.md", c_float = f32; }
+type_alias! { "double.md", c_double = f64; }
 
 #[stable(feature = "raw_os", since = "1.1.0")]
 #[doc(no_inline)]
