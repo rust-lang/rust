@@ -15,7 +15,7 @@ declare_lint! {
     ///
     /// ```rust
     /// # #![allow(unused)]
-    /// #![deny(noop_method_call)]
+    /// #![warn(noop_method_call)]
     /// struct Foo;
     /// let foo = &Foo;
     /// let clone: &Foo = foo.clone();
