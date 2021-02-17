@@ -1,4 +1,3 @@
-// ignore-test FIXME (Miri issue #1711)
 #![feature(box_syntax)]
 
 fn main() {
