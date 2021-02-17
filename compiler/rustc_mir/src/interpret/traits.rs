@@ -118,7 +118,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .get_raw(vtable_slot.alloc_id)?
             .read_ptr_sized(self, vtable_slot)?
             .check_init()?;
-        Ok(self.memory.get_fn(fn_ptr)?)
+        self.memory.get_fn(fn_ptr)
     }
 
     /// Returns the drop fn instance as well as the actual dynamic type.

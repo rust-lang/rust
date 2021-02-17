@@ -253,7 +253,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for SubstsRef<'tcx> {
     fn decode(decoder: &mut D) -> Result<Self, D::Error> {
         let len = decoder.read_usize()?;
         let tcx = decoder.tcx();
-        Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
+        tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -314,7 +314,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_type_list((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
@@ -323,9 +323,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
 {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
-        Ok(decoder
-            .tcx()
-            .mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))?)
+        decoder.tcx().mk_poly_existential_predicates((0..len).map(|_| Decodable::decode(decoder)))
     }
 }
 
