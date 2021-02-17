@@ -1,41 +1,20 @@
-error[E0308]: mismatched types
-  --> $DIR/hrtb-perfect-forwarding.rs:46:5
+error: implementation of `Bar` is not general enough
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
-   |     ^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
    |
-   = note: expected type `Bar<&'a isize>`
-              found type `Bar<&'b isize>`
-note: the required lifetime does not necessarily outlive the lifetime `'b` as defined on the function body at 39:21
-  --> $DIR/hrtb-perfect-forwarding.rs:39:21
-   |
-LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
-   |                     ^^
-note: the lifetime requirement is introduced here
-  --> $DIR/hrtb-perfect-forwarding.rs:40:15
-   |
-LL |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
-   |               ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `T` must implement `Bar<&'0 isize>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Bar<&'b isize>`
 
-error[E0308]: mismatched types
-  --> $DIR/hrtb-perfect-forwarding.rs:46:5
+error: implementation of `Bar` is not general enough
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
-   |     ^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^ implementation of `Bar` is not general enough
    |
-   = note: expected type `Bar<&'a isize>`
-              found type `Bar<&'b isize>`
-note: the lifetime `'b` as defined on the function body at 39:21 doesn't meet the lifetime requirements
-  --> $DIR/hrtb-perfect-forwarding.rs:39:21
-   |
-LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
-   |                     ^^
-note: the lifetime requirement is introduced here
-  --> $DIR/hrtb-perfect-forwarding.rs:40:15
-   |
-LL |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
-   |               ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `T` must implement `Bar<&'0 isize>`, for any lifetime `'0`...
+   = note: ...but it actually implements `Bar<&'b isize>`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

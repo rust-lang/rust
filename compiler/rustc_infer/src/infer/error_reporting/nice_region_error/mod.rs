@@ -43,7 +43,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'cx>> {
+    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
         self.try_report_named_anon_conflict().or_else(|| self.try_report_placeholder_conflict())
