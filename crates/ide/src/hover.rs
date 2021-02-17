@@ -2,8 +2,8 @@ use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, GenericParam, HasAttrs, HasSource,
     HirDisplay, Module, ModuleDef, ModuleSource, Semantics,
 };
-use ide_db::base_db::SourceDatabase;
 use ide_db::{
+    base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
@@ -94,7 +94,12 @@ pub(crate) fn hover(
     let node = token.parent();
     let definition = match_ast! {
         match node {
-            ast::Name(name) => NameClass::classify(&sema, &name).and_then(|d| d.defined(sema.db)),
+            // we don't use NameClass::referenced_or_defined here as we do not want to resolve
+            // field pattern shorthands to their definition
+            ast::Name(name) => NameClass::classify(&sema, &name).and_then(|class| match class {
+                NameClass::ConstReference(def) => Some(def),
+                def => def.defined(sema.db),
+            }),
             ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
             ast::Lifetime(lifetime) => NameClass::classify_lifetime(&sema, &lifetime)
                 .map_or_else(|| NameRefClass::classify_lifetime(&sema, &lifetime).map(|d| d.referenced(sema.db)), |d| d.defined(sema.db)),
@@ -3441,6 +3446,37 @@ impl<const LEN: usize> Foo<LEN$0> {}
                 ```rust
                 const LEN: usize
                 ```
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_const_pat() {
+        check(
+            r#"
+/// This is a doc
+const FOO: usize = 3;
+fn foo() {
+    match 5 {
+        FOO$0 => (),
+        _ => ()
+    }
+}
+"#,
+            expect![[r#"
+                *FOO*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                const FOO: usize = 3
+                ```
+
+                ---
+
+                This is a doc
             "#]],
         );
     }
