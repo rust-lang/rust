@@ -1294,16 +1294,16 @@ impl<T> Result<T, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ok_or_err)]
+    /// #![feature(result_into_ok_or_err)]
     /// let ok: Result<u32, u32> = Ok(3);
     /// let err: Result<u32, u32> = Err(4);
     ///
-    /// assert_eq!(ok.ok_or_err(), 3);
-    /// assert_eq!(err.ok_or_err(), 4);
+    /// assert_eq!(ok.into_ok_or_err(), 3);
+    /// assert_eq!(err.into_ok_or_err(), 4);
     /// ```
     #[inline]
-    #[unstable(feature = "ok_or_err", reason = "newly added", issue = "none")]
-    pub const fn ok_or_err(self) -> T {
+    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "none")]
+    pub const fn into_ok_or_err(self) -> T {
         match self {
             Ok(v) => v,
             Err(v) => v,
