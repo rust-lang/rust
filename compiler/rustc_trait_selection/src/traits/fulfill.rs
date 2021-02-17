@@ -6,6 +6,7 @@ use rustc_errors::ErrorReported;
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
@@ -633,9 +634,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // only reason we can fail to make progress on
                 // trait selection is because we don't have enough
                 // information about the types in the trait.
-                *stalled_on = trait_ref_infer_vars(
+                *stalled_on = substs_infer_vars(
                     self.selcx,
-                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref),
+                    trait_obligation.predicate.map_bound(|pred| pred.trait_ref.substs),
                 );
 
                 debug!(
@@ -663,9 +664,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
             Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
             Ok(Ok(None)) => {
-                *stalled_on = trait_ref_infer_vars(
+                *stalled_on = substs_infer_vars(
                     self.selcx,
-                    project_obligation.predicate.to_poly_trait_ref(tcx),
+                    project_obligation.predicate.map_bound(|pred| pred.projection_ty.substs),
                 );
                 ProcessResult::Unchanged
             }
@@ -678,16 +679,15 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     }
 }
 
-/// Returns the set of inference variables contained in a trait ref.
-fn trait_ref_infer_vars<'a, 'tcx>(
+/// Returns the set of inference variables contained in `substs`.
+fn substs_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
+    substs: ty::Binder<SubstsRef<'tcx>>,
 ) -> Vec<TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()
-        .resolve_vars_if_possible(trait_ref)
-        .skip_binder()
-        .substs
+        .resolve_vars_if_possible(substs)
+        .skip_binder() // ok because this check doesn't care about regions
         .iter()
         // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
         // doesn't contain inference variables, not just the outermost level.
