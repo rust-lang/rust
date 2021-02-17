@@ -35,7 +35,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 
 #![no_std /* 0#0 */]
 #[prelude_import /* 0#1 */]
-use ::core /* 0#1 */::prelude /* 0#1 */::v1 /* 0#1 */::*;
+use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#2 */;
 #[macro_use /* 0#1 */]
