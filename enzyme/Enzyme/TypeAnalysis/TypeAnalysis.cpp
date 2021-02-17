@@ -271,7 +271,7 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
     if (auto FP = dyn_cast<ConstantFP>(Val)) {
       if (FP->isExactlyValue(0.0))
         return TypeTree(BaseType::Anything).Only(-1);
-      return TypeTree(FP->getType()).Only(-1);
+      return TypeTree(FP->getType()->getScalarType()).Only(-1);
     }
 
     if (auto ci = dyn_cast<ConstantInt>(Val)) {
@@ -1248,7 +1248,8 @@ void TypeAnalyzer::visitTruncInst(TruncInst &I) {
 void TypeAnalyzer::visitZExtInst(ZExtInst &I) {
   if (direction & DOWN) {
     TypeTree Result;
-    if (cast<IntegerType>(I.getOperand(0)->getType())->getBitWidth() == 1) {
+    if (cast<IntegerType>(I.getOperand(0)->getType()->getScalarType())
+            ->getBitWidth() == 1) {
       Result = TypeTree(BaseType::Anything).Only(-1);
     } else {
       Result = getAnalysis(I.getOperand(0));
@@ -1284,46 +1285,58 @@ void TypeAnalyzer::visitAddrSpaceCastInst(AddrSpaceCastInst &I) {
 
 void TypeAnalyzer::visitFPExtInst(FPExtInst &I) {
   // No direction check as always true
-  updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
-  updateAnalysis(I.getOperand(0),
-                 TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1),
-                 &I);
+  updateAnalysis(
+      &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+  updateAnalysis(
+      I.getOperand(0),
+      TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
+          .Only(-1),
+      &I);
 }
 
 void TypeAnalyzer::visitFPTruncInst(FPTruncInst &I) {
   // No direction check as always true
-  updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
-  updateAnalysis(I.getOperand(0),
-                 TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1),
-                 &I);
+  updateAnalysis(
+      &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
+  updateAnalysis(
+      I.getOperand(0),
+      TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
+          .Only(-1),
+      &I);
 }
 
 void TypeAnalyzer::visitFPToUIInst(FPToUIInst &I) {
   // No direction check as always true
   updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
-  updateAnalysis(I.getOperand(0),
-                 TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1),
-                 &I);
+  updateAnalysis(
+      I.getOperand(0),
+      TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
+          .Only(-1),
+      &I);
 }
 
 void TypeAnalyzer::visitFPToSIInst(FPToSIInst &I) {
   // No direction check as always true
   updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
-  updateAnalysis(I.getOperand(0),
-                 TypeTree(ConcreteType(I.getOperand(0)->getType())).Only(-1),
-                 &I);
+  updateAnalysis(
+      I.getOperand(0),
+      TypeTree(ConcreteType(I.getOperand(0)->getType()->getScalarType()))
+          .Only(-1),
+      &I);
 }
 
 void TypeAnalyzer::visitUIToFPInst(UIToFPInst &I) {
   // No direction check as always true
   updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
-  updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
+  updateAnalysis(
+      &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitSIToFPInst(SIToFPInst &I) {
   // No direction check as always true
   updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
-  updateAnalysis(&I, TypeTree(ConcreteType(I.getType())).Only(-1), &I);
+  updateAnalysis(
+      &I, TypeTree(ConcreteType(I.getType()->getScalarType())).Only(-1), &I);
 }
 
 void TypeAnalyzer::visitPtrToIntInst(PtrToIntInst &I) {
@@ -2721,7 +2734,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         if (T->isFloatingPointTy()) {
           updateAnalysis(
               call.getArgOperand(i),
-              TypeTree(ConcreteType(call.getArgOperand(i)->getType())).Only(-1),
+              TypeTree(ConcreteType(
+                           call.getArgOperand(i)->getType()->getScalarType()))
+                  .Only(-1),
               &call);
         } else if (T->isIntegerTy()) {
           updateAnalysis(call.getArgOperand(i),
@@ -2733,8 +2748,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       }
       Type *T = call.getType();
       if (T->isFloatingPointTy()) {
-        updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
-                       &call);
+        updateAnalysis(
+            &call,
+            TypeTree(ConcreteType(call.getType()->getScalarType())).Only(-1),
+            &call);
       } else if (T->isIntegerTy()) {
         updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
       } else if (T->isVoidTy()) {
