@@ -3,9 +3,9 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::{cmp, fmt, iter, str};
 
+use rustc_data_structures::sync::Lrc;
 use rustc_span::{self, SourceFile};
 use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
@@ -13,7 +13,7 @@ use thiserror::Error;
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
-    pub file: Rc<SourceFile>,
+    pub file: Lrc<SourceFile>,
     pub lo: usize,
     pub hi: usize,
 }

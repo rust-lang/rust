@@ -1,6 +1,5 @@
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{Lrc, Send};
 use rustc_errors::emitter::{Emitter, EmitterWriter};
@@ -21,8 +20,8 @@ use crate::{Config, ErrorKind, FileName};
 /// ParseSess holds structs necessary for constructing a parser.
 pub(crate) struct ParseSess {
     parse_sess: RawParseSess,
-    ignore_path_set: Rc<IgnorePathSet>,
-    can_reset_errors: Rc<RefCell<bool>>,
+    ignore_path_set: Lrc<IgnorePathSet>,
+    can_reset_errors: Lrc<AtomicBool>,
 }
 
 /// Emitter which discards every error.
@@ -41,17 +40,17 @@ fn silent_emitter() -> Box<dyn Emitter + Send> {
 
 /// Emit errors against every files expect ones specified in the `ignore_path_set`.
 struct SilentOnIgnoredFilesEmitter {
-    ignore_path_set: Rc<IgnorePathSet>,
-    source_map: Rc<SourceMap>,
+    ignore_path_set: Lrc<IgnorePathSet>,
+    source_map: Lrc<SourceMap>,
     emitter: Box<dyn Emitter + Send>,
     has_non_ignorable_parser_errors: bool,
-    can_reset: Rc<RefCell<bool>>,
+    can_reset: Lrc<AtomicBool>,
 }
 
 impl SilentOnIgnoredFilesEmitter {
     fn handle_non_ignoreable_error(&mut self, db: &Diagnostic) {
         self.has_non_ignorable_parser_errors = true;
-        *self.can_reset.borrow_mut() = false;
+        self.can_reset.store(false, Ordering::Release);
         self.emitter.emit_diagnostic(db);
     }
 }
@@ -73,7 +72,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
                     .is_match(&FileName::Real(path.to_path_buf()))
                 {
                     if !self.has_non_ignorable_parser_errors {
-                        *self.can_reset.borrow_mut() = true;
+                        self.can_reset.store(true, Ordering::Release);
                     }
                     return;
                 }
@@ -84,9 +83,9 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
 }
 
 fn default_handler(
-    source_map: Rc<SourceMap>,
-    ignore_path_set: Rc<IgnorePathSet>,
-    can_reset: Rc<RefCell<bool>>,
+    source_map: Lrc<SourceMap>,
+    ignore_path_set: Lrc<IgnorePathSet>,
+    can_reset: Lrc<AtomicBool>,
     hide_parse_errors: bool,
 ) -> Handler {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
@@ -124,16 +123,16 @@ fn default_handler(
 impl ParseSess {
     pub(crate) fn new(config: &Config) -> Result<ParseSess, ErrorKind> {
         let ignore_path_set = match IgnorePathSet::from_ignore_list(&config.ignore()) {
-            Ok(ignore_path_set) => Rc::new(ignore_path_set),
+            Ok(ignore_path_set) => Lrc::new(ignore_path_set),
             Err(e) => return Err(ErrorKind::InvalidGlobPattern(e)),
         };
-        let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
-        let can_reset_errors = Rc::new(RefCell::new(false));
+        let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let can_reset_errors = Lrc::new(AtomicBool::new(false));
 
         let handler = default_handler(
-            Rc::clone(&source_map),
-            Rc::clone(&ignore_path_set),
-            Rc::clone(&can_reset_errors),
+            Lrc::clone(&source_map),
+            Lrc::clone(&ignore_path_set),
+            Lrc::clone(&can_reset_errors),
             config.hide_parse_errors(),
         );
         let parse_sess = RawParseSess::with_span_handler(handler, source_map);
@@ -204,11 +203,11 @@ impl ParseSess {
         SnippetProvider::new(
             source_file.start_pos,
             source_file.end_pos,
-            Rc::clone(source_file.src.as_ref().unwrap()),
+            Lrc::clone(source_file.src.as_ref().unwrap()),
         )
     }
 
-    pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Rc<String>> {
+    pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Lrc<String>> {
         self.parse_sess
             .source_map()
             .get_source_file(&file_name.into())
@@ -236,7 +235,7 @@ impl ParseSess {
     }
 
     pub(super) fn can_reset_errors(&self) -> bool {
-        *self.can_reset_errors.borrow()
+        self.can_reset_errors.load(Ordering::Acquire)
     }
 
     pub(super) fn has_errors(&self) -> bool {
@@ -287,9 +286,10 @@ mod tests {
         use crate::utils::mk_sp;
         use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName, DUMMY_SP};
         use std::path::PathBuf;
+        use std::sync::atomic::AtomicU32;
 
         struct TestEmitter {
-            num_emitted_errors: Rc<RefCell<u32>>,
+            num_emitted_errors: Lrc<AtomicU32>,
         }
 
         impl Emitter for TestEmitter {
@@ -297,7 +297,7 @@ mod tests {
                 None
             }
             fn emit_diagnostic(&mut self, _db: &Diagnostic) {
-                *self.num_emitted_errors.borrow_mut() += 1;
+                self.num_emitted_errors.fetch_add(1, Ordering::Release);
             }
         }
 
@@ -314,16 +314,17 @@ mod tests {
         }
 
         fn build_emitter(
-            num_emitted_errors: Rc<RefCell<u32>>,
-            can_reset: Rc<RefCell<bool>>,
-            source_map: Option<Rc<SourceMap>>,
+            num_emitted_errors: Lrc<AtomicU32>,
+            can_reset: Lrc<AtomicBool>,
+            source_map: Option<Lrc<SourceMap>>,
             ignore_list: Option<IgnoreList>,
         ) -> SilentOnIgnoredFilesEmitter {
             let emitter_writer = TestEmitter { num_emitted_errors };
             let source_map =
-                source_map.unwrap_or_else(|| Rc::new(SourceMap::new(FilePathMapping::empty())));
-            let ignore_path_set =
-                Rc::new(IgnorePathSet::from_ignore_list(&ignore_list.unwrap_or_default()).unwrap());
+                source_map.unwrap_or_else(|| Lrc::new(SourceMap::new(FilePathMapping::empty())));
+            let ignore_path_set = Lrc::new(
+                IgnorePathSet::from_ignore_list(&ignore_list.unwrap_or_default()).unwrap(),
+            );
             SilentOnIgnoredFilesEmitter {
                 has_non_ignorable_parser_errors: false,
                 source_map,
@@ -339,10 +340,10 @@ mod tests {
 
         #[test]
         fn handles_fatal_parse_error_in_ignored_file() {
-            let num_emitted_errors = Rc::new(RefCell::new(0));
-            let can_reset_errors = Rc::new(RefCell::new(false));
+            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
+            let can_reset_errors = Lrc::new(AtomicBool::new(false));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
-            let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
+            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
             source_map.new_source_file(
@@ -350,16 +351,16 @@ mod tests {
                 source,
             );
             let mut emitter = build_emitter(
-                Rc::clone(&num_emitted_errors),
-                Rc::clone(&can_reset_errors),
-                Some(Rc::clone(&source_map)),
+                Lrc::clone(&num_emitted_errors),
+                Lrc::clone(&can_reset_errors),
+                Some(Lrc::clone(&source_map)),
                 Some(ignore_list),
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, Some(span));
             emitter.emit_diagnostic(&fatal_diagnostic);
-            assert_eq!(*num_emitted_errors.borrow(), 1);
-            assert_eq!(*can_reset_errors.borrow(), false);
+            assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
+            assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
 
         #[test]
@@ -367,26 +368,26 @@ mod tests {
             if !is_nightly_channel!() {
                 return;
             }
-            let num_emitted_errors = Rc::new(RefCell::new(0));
-            let can_reset_errors = Rc::new(RefCell::new(false));
+            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
+            let can_reset_errors = Lrc::new(AtomicBool::new(false));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
-            let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
+            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
                 SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
                 source,
             );
             let mut emitter = build_emitter(
-                Rc::clone(&num_emitted_errors),
-                Rc::clone(&can_reset_errors),
-                Some(Rc::clone(&source_map)),
+                Lrc::clone(&num_emitted_errors),
+                Lrc::clone(&can_reset_errors),
+                Some(Lrc::clone(&source_map)),
                 Some(ignore_list),
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
             emitter.emit_diagnostic(&non_fatal_diagnostic);
-            assert_eq!(*num_emitted_errors.borrow(), 0);
-            assert_eq!(*can_reset_errors.borrow(), true);
+            assert_eq!(num_emitted_errors.load(Ordering::Acquire), 0);
+            assert_eq!(can_reset_errors.load(Ordering::Acquire), true);
         }
 
         #[test]
@@ -394,25 +395,25 @@ mod tests {
             if !is_nightly_channel!() {
                 return;
             }
-            let num_emitted_errors = Rc::new(RefCell::new(0));
-            let can_reset_errors = Rc::new(RefCell::new(false));
-            let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
+            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
+            let can_reset_errors = Lrc::new(AtomicBool::new(false));
+            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
                 SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
                 source,
             );
             let mut emitter = build_emitter(
-                Rc::clone(&num_emitted_errors),
-                Rc::clone(&can_reset_errors),
-                Some(Rc::clone(&source_map)),
+                Lrc::clone(&num_emitted_errors),
+                Lrc::clone(&can_reset_errors),
+                Some(Lrc::clone(&source_map)),
                 None,
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
             emitter.emit_diagnostic(&non_fatal_diagnostic);
-            assert_eq!(*num_emitted_errors.borrow(), 1);
-            assert_eq!(*can_reset_errors.borrow(), false);
+            assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
+            assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
 
         #[test]
@@ -420,9 +421,9 @@ mod tests {
             if !is_nightly_channel!() {
                 return;
             }
-            let num_emitted_errors = Rc::new(RefCell::new(0));
-            let can_reset_errors = Rc::new(RefCell::new(false));
-            let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
+            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
+            let can_reset_errors = Lrc::new(AtomicBool::new(false));
+            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
             let bar_source = String::from(r#"pub fn bar() { 1x; }"#);
             let foo_source = String::from(r#"pub fn foo() { 1x; }"#);
@@ -441,9 +442,9 @@ mod tests {
                 fatal_source,
             );
             let mut emitter = build_emitter(
-                Rc::clone(&num_emitted_errors),
-                Rc::clone(&can_reset_errors),
-                Some(Rc::clone(&source_map)),
+                Lrc::clone(&num_emitted_errors),
+                Lrc::clone(&can_reset_errors),
+                Some(Lrc::clone(&source_map)),
                 Some(ignore_list),
             );
             let bar_span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
@@ -454,8 +455,8 @@ mod tests {
             emitter.emit_diagnostic(&bar_diagnostic);
             emitter.emit_diagnostic(&foo_diagnostic);
             emitter.emit_diagnostic(&fatal_diagnostic);
-            assert_eq!(*num_emitted_errors.borrow(), 2);
-            assert_eq!(*can_reset_errors.borrow(), false);
+            assert_eq!(num_emitted_errors.load(Ordering::Acquire), 2);
+            assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
     }
 }
