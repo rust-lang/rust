@@ -24,14 +24,21 @@ use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::{self as hir, ExprKind, Item, ItemKind, Mutability};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
+use rustc_middle::ty::BorrowKind;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
+use rustc_trait_selection::infer::TyCtxtInferExt;
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceWithHirId};
+use rustc_typeck::hir_ty_to_ty;
 use serde::Serialize;
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
+use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
-use crate::utils::{last_path_segment, match_function_call, match_type, paths, span_lint, walk_ptrs_ty_depth};
+use crate::utils::{
+    last_path_segment, match_function_call, match_type, path_to_local_id, paths, span_lint, walk_ptrs_ty_depth,
+};
 
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "metadata_collection.json";
@@ -91,6 +98,10 @@ impl Drop for MetadataCollector {
     /// You might ask: How hacky is this?
     /// My answer:     YES
     fn drop(&mut self) {
+        if self.lints.is_empty() {
+            return;
+        }
+
         let mut applicability_info = std::mem::take(&mut self.applicability_into);
 
         // Mapping the final data
@@ -99,6 +110,9 @@ impl Drop for MetadataCollector {
             .for_each(|x| x.applicability = applicability_info.remove(&x.id));
 
         // Outputting
+        if Path::new(OUTPUT_FILE).exists() {
+            fs::remove_file(OUTPUT_FILE).unwrap();
+        }
         let mut file = OpenOptions::new().write(true).create(true).open(OUTPUT_FILE).unwrap();
         writeln!(file, "{}", serde_json::to_string_pretty(&self.lints).unwrap()).unwrap();
     }
@@ -158,6 +172,17 @@ struct ApplicabilityInfo {
     applicabilities: FxHashSet<String>,
 }
 
+fn log_to_file(msg: &str) {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true)
+        .open("metadata-lint.log")
+        .unwrap();
+
+    write!(file, "{}", msg).unwrap();
+}
+
 impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
     /// Collecting lint declarations like:
     /// ```rust, ignore
@@ -213,6 +238,20 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
         }
     }
 
+    /// Collecting constant applicability from the actual lint emissions
+    ///
+    /// Example:
+    /// ```rust, ignore
+    /// span_lint_and_sugg(
+    ///     cx,
+    ///     SOME_LINT,
+    ///     item.span,
+    ///     "Le lint message",
+    ///     "Here comes help:",
+    ///     "#![allow(clippy::all)]",
+    ///     Applicability::MachineApplicable, // <-- Extracts this constant value
+    /// );
+    /// ```
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let Some(args) = match_simple_lint_emission(cx, expr) {
             if let Some((lint_name, mut applicability)) = extract_emission_info(cx, args) {
@@ -225,6 +264,73 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
             }
         }
     }
+
+    /// Tracking and hopefully collecting dynamic applicability values
+    ///
+    /// Example:
+    /// ```rust, ignore
+    /// // vvv Applicability value to track
+    /// let mut applicability = Applicability::MachineApplicable;
+    /// // vvv Value Mutation
+    /// let suggestion = snippet_with_applicability(cx, expr.span, "_", &mut applicability);
+    /// // vvv Emission to link the value to the lint
+    /// span_lint_and_sugg(
+    ///     cx,
+    ///     SOME_LINT,
+    ///     expr.span,
+    ///     "This can be improved",
+    ///     "try",
+    ///     suggestion,
+    ///     applicability,
+    /// );
+    /// ```
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx hir::Local<'tcx>) {
+        if let Some(tc) = cx.maybe_typeck_results() {
+            // TODO xFrednet 2021-02-14: support nested applicability (only in tuples)
+            let local_ty = if let Some(ty) = local.ty {
+                hir_ty_to_ty(cx.tcx, ty)
+            } else if let Some(init) = local.init {
+                tc.expr_ty(init)
+            } else {
+                return;
+            };
+
+            if_chain! {
+                if match_type(cx, local_ty, &paths::APPLICABILITY);
+                if let Some(body) = get_parent_body(cx, local.hir_id);
+                then {
+                    let span = SerializableSpan::from_span(cx, local.span);
+                    let local_str = crate::utils::snippet(cx, local.span, "_");
+                    let value_life = format!("{} -- {}:{}\n", local_str, span.path.rsplit('/').next().unwrap_or_default(), span.line);
+                    let value_hir_id = local.pat.hir_id;
+                    let mut tracker = ValueTracker {cx, value_hir_id, value_life};
+
+                    cx.tcx.infer_ctxt().enter(|infcx| {
+                        let body_owner_id = cx.tcx.hir().body_owner_def_id(body.id());
+                        ExprUseVisitor::new(
+                            &mut tracker,
+                            &infcx,
+                            body_owner_id,
+                            cx.param_env,
+                            cx.typeck_results()
+                        )
+                        .consume_body(body);
+                    });
+
+                    log_to_file(&tracker.value_life);
+                    lint_collection_error_span(cx, local.span, "Applicability value found");
+                }
+            }
+        }
+    }
+}
+
+fn get_parent_body<'a, 'tcx>(cx: &'a LateContext<'tcx>, id: hir::HirId) -> Option<&'tcx hir::Body<'tcx>> {
+    let map = cx.tcx.hir();
+
+    map.parent_iter(id)
+        .find_map(|(parent, _)| map.maybe_body_owned_by(parent))
+        .map(|body| map.body(body))
 }
 
 fn sym_to_string(sym: Symbol) -> String {
@@ -262,6 +368,9 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
     None
 }
 
+// ==================================================================
+// Lint emission
+// ==================================================================
 fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &str) {
     span_lint(
         cx,
@@ -280,13 +389,16 @@ fn lint_collection_error_span(cx: &LateContext<'_>, span: Span, message: &str) {
     );
 }
 
+// ==================================================================
+// Applicability
+// ==================================================================
 fn match_simple_lint_emission<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
 ) -> Option<&'tcx [hir::Expr<'tcx>]> {
     LINT_EMISSION_FUNCTIONS
         .iter()
-        .find_map(|emission_fn| match_function_call(cx, expr, emission_fn).map(|args| args))
+        .find_map(|emission_fn| match_function_call(cx, expr, emission_fn))
 }
 
 /// This returns the lint name and the possible applicability of this emission
@@ -315,4 +427,44 @@ fn extract_emission_info<'tcx>(cx: &LateContext<'tcx>, args: &[hir::Expr<'_>]) -
             applicability.map(sym_to_string).map_or_else(Vec::new, |x| vec![x]),
         )
     })
+}
+
+struct ValueTracker<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    value_hir_id: hir::HirId,
+    value_life: String,
+}
+
+impl<'a, 'tcx> ValueTracker<'a, 'tcx> {
+    fn is_value_expr(&self, expr_id: hir::HirId) -> bool {
+        match self.cx.tcx.hir().find(expr_id) {
+            Some(hir::Node::Expr(expr)) => path_to_local_id(expr, self.value_hir_id),
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'tcx> Delegate<'tcx> for ValueTracker<'a, 'tcx> {
+    fn consume(&mut self, _place_with_id: &PlaceWithHirId<'tcx>, expr_id: hir::HirId, _: ConsumeMode) {
+        if self.is_value_expr(expr_id) {
+            // TODO xFrednet 2021-02-17: Check if lint emission and extract lint ID
+            todo!();
+        }
+    }
+
+    fn borrow(&mut self, _place_with_id: &PlaceWithHirId<'tcx>, expr_id: hir::HirId, bk: BorrowKind) {
+        if self.is_value_expr(expr_id) {
+            if let BorrowKind::MutBorrow = bk {
+                // TODO xFrednet 2021-02-17: Save the function
+                todo!();
+            }
+        }
+    }
+
+    fn mutate(&mut self, _assignee_place: &PlaceWithHirId<'tcx>, expr_id: hir::HirId) {
+        if self.is_value_expr(expr_id) {
+            // TODO xFrednet 2021-02-17: Save the new value as a mutation
+            todo!();
+        }
+    }
 }
