@@ -2,8 +2,6 @@
 
 #![recursion_limit = "256"]
 
-extern crate proc_macro;
-
 mod attrs;
 mod config_type;
 mod item_enum;

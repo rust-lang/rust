@@ -376,7 +376,7 @@ impl Rewrite for ast::Attribute {
     }
 }
 
-impl<'a> Rewrite for [ast::Attribute] {
+impl Rewrite for [ast::Attribute] {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         if self.is_empty() {
             return Some(String::new());
