@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_top_pat(GateOr::Yes, RecoverComma::Yes)?;
+        let pat = self.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::Yes)?;
 
         let (err, ty) = if self.eat(&token::Colon) {
             // Save the state of the parser before parsing type normally, in case there is a `:`
