@@ -101,7 +101,7 @@ function focusSearchBar() {
     getSearchInput().focus();
 }
 
-// Removes the focus from the search bar
+// Removes the focus from the search bar.
 function defocusSearchBar() {
     getSearchInput().blur();
 }
@@ -220,6 +220,11 @@ function defocusSearchBar() {
         addClass(search, "hidden");
         removeClass(main, "hidden");
         document.title = titleBeforeSearch;
+        // We also remove the query parameter from the URL.
+        if (browserSupportsHistoryApi()) {
+            history.replaceState("", window.currentCrate + " - Rust",
+                getNakedUrl() + window.location.hash);
+        }
     }
 
     // used for special search precedence
