@@ -3327,24 +3327,31 @@ pub trait Iterator {
     ///
     /// [`is_sorted`]: Iterator::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    fn is_sorted_by<F>(mut self, mut compare: F) -> bool
+    fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
     {
+        #[inline]
+        fn check<'a, T>(
+            last: &'a mut T,
+            mut compare: impl FnMut(&T, &T) -> Option<Ordering> + 'a,
+        ) -> impl FnMut(T) -> bool + 'a {
+            move |curr| {
+                if let Some(Ordering::Greater) | None = compare(&last, &curr) {
+                    return false;
+                }
+                *last = curr;
+                true
+            }
+        }
+
         let mut last = match self.next() {
             Some(e) => e,
             None => return true,
         };
 
-        while let Some(curr) = self.next() {
-            if let Some(Ordering::Greater) | None = compare(&last, &curr) {
-                return false;
-            }
-            last = curr;
-        }
-
-        true
+        self.all(check(&mut last, compare))
     }
 
     /// Checks if the elements of this iterator are sorted using the given key extraction
