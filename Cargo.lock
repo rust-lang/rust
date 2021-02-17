@@ -246,25 +246,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "completion"
-version = "0.0.0"
-dependencies = [
- "base_db",
- "either",
- "expect-test",
- "hir",
- "ide_db",
- "itertools 0.10.0",
- "log",
- "profile",
- "rustc-hash",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
 name = "const_fn"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -613,10 +594,10 @@ version = "0.0.0"
 dependencies = [
  "assists",
  "cfg",
- "completion",
  "either",
  "expect-test",
  "hir",
+ "ide_completion",
  "ide_db",
  "indexmap",
  "itertools 0.10.0",
@@ -632,6 +613,25 @@ dependencies = [
  "test_utils",
  "text_edit",
  "url",
+]
+
+[[package]]
+name = "ide_completion"
+version = "0.0.0"
+dependencies = [
+ "base_db",
+ "either",
+ "expect-test",
+ "hir",
+ "ide_db",
+ "itertools 0.10.0",
+ "log",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]

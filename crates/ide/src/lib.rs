@@ -83,11 +83,11 @@ pub use crate::{
     },
 };
 pub use assists::{Assist, AssistConfig, AssistId, AssistKind};
-pub use completion::{
+pub use hir::{Documentation, Semantics};
+pub use ide_completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, ImportEdit,
     InsertTextFormat,
 };
-pub use hir::{Documentation, Semantics};
 pub use ide_db::{
     base_db::{
         Canceled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
@@ -468,7 +468,7 @@ impl Analysis {
         config: &CompletionConfig,
         position: FilePosition,
     ) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| completion::completions(db, config, position).map(Into::into))
+        self.with_db(|db| ide_completion::completions(db, config, position).map(Into::into))
     }
 
     /// Resolves additional completion data at the position given.
@@ -482,7 +482,7 @@ impl Analysis {
     ) -> Cancelable<Vec<TextEdit>> {
         Ok(self
             .with_db(|db| {
-                completion::resolve_completion_edits(
+                ide_completion::resolve_completion_edits(
                     db,
                     config,
                     position,

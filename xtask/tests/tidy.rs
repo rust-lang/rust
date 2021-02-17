@@ -172,7 +172,7 @@ https://github.blog/2015-06-08-how-to-undo-almost-anything-with-git/#redo-after-
 fn deny_clippy(path: &PathBuf, text: &String) {
     let ignore = &[
         // The documentation in string literals may contain anything for its own purposes
-        "completion/src/generated_lint_completions.rs",
+        "ide_completion/src/generated_lint_completions.rs",
     ];
     if ignore.iter().any(|p| path.ends_with(p)) {
         return;
@@ -259,7 +259,7 @@ fn check_todo(path: &Path, text: &str) {
         // `ast::make`.
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "completion/src/generated_lint_completions.rs",
+        "ide_completion/src/generated_lint_completions.rs",
     ];
     if need_todo.iter().any(|p| path.ends_with(p)) {
         return;
@@ -286,10 +286,10 @@ fn check_dbg(path: &Path, text: &str) {
         // Assists to remove `dbg!()`
         "handlers/remove_dbg.rs",
         // We have .dbg postfix
-        "completion/src/completions/postfix.rs",
+        "ide_completion/src/completions/postfix.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "completion/src/lib.rs",
-        "completion/src/generated_lint_completions.rs",
+        "ide_completion/src/lib.rs",
+        "ide_completion/src/generated_lint_completions.rs",
         // test for doc test for remove_dbg
         "src/tests/generated.rs",
     ];
