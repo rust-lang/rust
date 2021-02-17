@@ -5,7 +5,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{implements_trait, is_must_use_func_call, is_must_use_ty, match_type, paths, span_lint_and_help};
+use crate::utils::{is_must_use_func_call, is_must_use_ty, match_type, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let _ = <expr>`
@@ -125,15 +125,6 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
                     GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
                 });
-                let implements_drop = cx.tcx.lang_items().drop_trait().map_or(false, |drop_trait|
-                    init_ty.walk().any(|inner| match inner.unpack() {
-                        GenericArgKind::Type(inner_ty) => {
-                            implements_trait(cx, inner_ty, drop_trait, &[])
-                        },
-
-                        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-                    })
-                );
                 if contains_sync_guard {
                     span_lint_and_help(
                         cx,
@@ -144,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         "consider using an underscore-prefixed named \
                             binding or dropping explicitly with `std::mem::drop`"
                     )
-                } else if implements_drop {
+                } else if init_ty.needs_drop(cx.tcx, cx.param_env) {
                     span_lint_and_help(
                         cx,
                         LET_UNDERSCORE_DROP,
