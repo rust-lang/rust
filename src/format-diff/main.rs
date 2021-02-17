@@ -4,10 +4,9 @@
 
 #![deny(warnings)]
 
-use env_logger;
 #[macro_use]
 extern crate log;
-use regex;
+
 use serde::{Deserialize, Serialize};
 use serde_json as json;
 use thiserror::Error;

@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use env_logger;
 use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
 

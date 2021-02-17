@@ -2,8 +2,6 @@
 
 #![deny(warnings)]
 
-use cargo_metadata;
-
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
