@@ -1,11 +1,15 @@
 use crate::alloc::alloc::{handle_alloc_error, Layout};
 use crate::scopeguard::guard;
 use crate::TryReserveError;
+#[cfg(feature = "nightly")]
+use crate::UnavailableMutError;
 use core::hint;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::mem::ManuallyDrop;
+#[cfg(feature = "nightly")]
+use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 cfg_if! {
@@ -316,12 +320,12 @@ impl<T> Bucket<T> {
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn as_ptr(&self) -> *mut T {
+    pub fn as_ptr(&self) -> *mut T {
         if mem::size_of::<T>() == 0 {
             // Just return an arbitrary ZST pointer which is properly aligned
             mem::align_of::<T>() as *mut T
         } else {
-            self.ptr.as_ptr().sub(1)
+            unsafe { self.ptr.as_ptr().sub(1) }
         }
     }
     #[cfg_attr(feature = "inline-more", inline)]
@@ -942,6 +946,64 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
             Some(bucket) => Some(unsafe { bucket.as_mut() }),
             None => None,
         }
+    }
+
+    /// Attempts to get mutable references to `N` entries in the table at once.
+    ///
+    /// Returns an array of length `N` with the results of each query. For soundness,
+    /// at most one mutable reference will be returned to any entry. An
+    /// `Err(UnavailableMutError::Duplicate(i))` in the returned array indicates that a suitable
+    /// entry exists, but a mutable reference to it already occurs at index `i` in the returned
+    /// array.
+    ///
+    /// The `eq` argument should be a closure such that `eq(i, k)` returns true if `k` is equal to
+    /// the `i`th key to be looked up.
+    ///
+    /// This method is available only if the `nightly` feature is enabled.
+    #[cfg(feature = "nightly")]
+    pub fn get_each_mut<const N: usize>(
+        &mut self,
+        hashes: [u64; N],
+        mut eq: impl FnMut(usize, &T) -> bool,
+    ) -> [Result<&'_ mut T, UnavailableMutError>; N] {
+        // Collect the requested buckets.
+        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
+        let mut buckets: [MaybeUninit<Option<Bucket<T>>>; N] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        for i in 0..N {
+            buckets[i] = MaybeUninit::new(self.find(hashes[i], |k| eq(i, k)));
+        }
+        let buckets: [Option<Bucket<T>>; N] = unsafe { MaybeUninit::array_assume_init(buckets) };
+
+        // Walk through the buckets, checking for duplicates and building up the output array.
+        // TODO use `MaybeUninit::uninit_array` here instead once that's stable.
+        let mut out: [MaybeUninit<Result<&'_ mut T, UnavailableMutError>>; N] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+        for i in 0..N {
+            out[i] = MaybeUninit::new(
+                #[allow(clippy::never_loop)]
+                'outer: loop {
+                    for j in 0..i {
+                        match (&buckets[j], &buckets[i]) {
+                            // These two buckets are the same, and we can't safely return a second
+                            // mutable reference to the same entry.
+                            (Some(prev), Some(cur)) if prev.as_ptr() == cur.as_ptr() => {
+                                break 'outer Err(UnavailableMutError::Duplicate(j));
+                            }
+                            _ => {}
+                        }
+                    }
+                    // This bucket is distinct from all previous buckets (or it doesn't exist), so
+                    // we're clear to return the result of the lookup.
+                    break match &buckets[i] {
+                        None => Err(UnavailableMutError::Absent),
+                        Some(bkt) => unsafe { Ok(bkt.as_mut()) },
+                    };
+                },
+            )
+        }
+
+        unsafe { MaybeUninit::array_assume_init(out) }
     }
 
     /// Returns the number of elements the map can hold without reallocating.
