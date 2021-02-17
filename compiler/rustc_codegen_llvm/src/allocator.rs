@@ -93,7 +93,7 @@ pub(crate) unsafe fn codegen(
     let args = [usize, usize]; // size, align
 
     let ty = llvm::LLVMFunctionType(void, args.as_ptr(), args.len() as c_uint, False);
-    let name = "__rust_alloc_error_handler".to_string();
+    let name = "__rust_alloc_error_handler";
     let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
     // -> ! DIFlagNoReturn
     llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
