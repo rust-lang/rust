@@ -26,7 +26,7 @@ pub struct SpanlessEq<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
     allow_side_effects: bool,
-    expr_fallback: Option<Box<dyn Fn(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
+    expr_fallback: Option<Box<dyn FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a>>,
 }
 
 impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
@@ -47,7 +47,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    pub fn expr_fallback(self, expr_fallback: impl Fn(&Expr<'_>, &Expr<'_>) -> bool + 'a) -> Self {
+    pub fn expr_fallback(self, expr_fallback: impl FnMut(&Expr<'_>, &Expr<'_>) -> bool + 'a) -> Self {
         Self {
             expr_fallback: Some(Box::new(expr_fallback)),
             ..self
@@ -209,7 +209,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::DropTemps(ref le), &ExprKind::DropTemps(ref re)) => self.eq_expr(le, re),
             _ => false,
         };
-        is_eq || self.inner.expr_fallback.as_ref().map_or(false, |f| f(left, right))
+        is_eq || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
     }
 
     fn eq_exprs(&mut self, left: &[Expr<'_>], right: &[Expr<'_>]) -> bool {
