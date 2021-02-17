@@ -225,7 +225,7 @@ fn report_bin_hex_error(
                 (t.name_str(), actually.to_string())
             }
         };
-        let mut err = lint.build(&format!("literal out of range for {}", t));
+        let mut err = lint.build(&format!("literal out of range for `{}`", t));
         err.note(&format!(
             "the literal `{}` (decimal `{}`) does not fit into \
              the type `{}` and will become `{}{}`",
@@ -238,12 +238,12 @@ fn report_bin_hex_error(
                 let (sans_suffix, _) = repr_str.split_at(pos);
                 err.span_suggestion(
                     expr.span,
-                    &format!("consider using `{}` instead", sugg_ty),
+                    &format!("consider using the type `{}` instead", sugg_ty),
                     format!("{}{}", sans_suffix, sugg_ty),
                     Applicability::MachineApplicable,
                 );
             } else {
-                err.help(&format!("consider using `{}` instead", sugg_ty));
+                err.help(&format!("consider using the type `{}` instead", sugg_ty));
             }
         }
         err.emit();
@@ -338,18 +338,23 @@ fn lint_int_literal<'tcx>(
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str()))
-                .note(&format!(
-                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
-                    cx.sess()
-                        .source_map()
-                        .span_to_snippet(lit.span)
-                        .expect("must get snippet from literal"),
-                    t.name_str(),
-                    min,
-                    max,
-                ))
-                .emit();
+            let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
+            err.note(&format!(
+                "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+                cx.sess()
+                    .source_map()
+                    .span_to_snippet(lit.span)
+                    .expect("must get snippet from literal"),
+                t.name_str(),
+                min,
+                max,
+            ));
+            if let Some(sugg_ty) =
+                get_type_suggestion(&cx.typeck_results().node_type(e.hir_id), v, negative)
+            {
+                err.help(&format!("consider using the type `{}` instead", sugg_ty));
+            }
+            err.emit();
         });
     }
 }
