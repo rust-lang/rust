@@ -71,6 +71,9 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     // Find the span of the argument to `panic!()`, before expansion in the
     // case of `panic!(some_macro!())`.
+    // We don't use source_callsite(), because this `panic!(..)` might itself
+    // be expanded from another macro, in which case we want to stop at that
+    // expansion.
     let mut arg_span = arg.span;
     let mut arg_macro = None;
     while !span.contains(arg_span) {
