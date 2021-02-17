@@ -12,7 +12,7 @@ use rustc_span::{sym, symbol::kw, Span};
 
 use crate::attr::first_attr_value_str_by_name;
 use crate::syntux::session::ParseSess;
-use crate::{Config, Input};
+use crate::Input;
 
 pub(crate) type DirectoryOwnership = rustc_expand::module::DirectoryOwnership;
 pub(crate) type ModulePathSuccess = rustc_expand::module::ModulePathSuccess;
@@ -31,10 +31,8 @@ pub(crate) struct Parser<'a> {
 /// A builder for the `Parser`.
 #[derive(Default)]
 pub(crate) struct ParserBuilder<'a> {
-    config: Option<&'a Config>,
     sess: Option<&'a ParseSess>,
     input: Option<Input>,
-    directory_ownership: Option<DirectoryOwnership>,
 }
 
 impl<'a> ParserBuilder<'a> {
@@ -45,19 +43,6 @@ impl<'a> ParserBuilder<'a> {
 
     pub(crate) fn sess(mut self, sess: &'a ParseSess) -> ParserBuilder<'a> {
         self.sess = Some(sess);
-        self
-    }
-
-    pub(crate) fn config(mut self, config: &'a Config) -> ParserBuilder<'a> {
-        self.config = Some(config);
-        self
-    }
-
-    pub(crate) fn directory_ownership(
-        mut self,
-        directory_ownership: Option<DirectoryOwnership>,
-    ) -> ParserBuilder<'a> {
-        self.directory_ownership = directory_ownership;
         self
     }
 
@@ -157,12 +142,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_crate(
-        config: &'a Config,
         input: Input,
-        directory_ownership: Option<DirectoryOwnership>,
         sess: &'a ParseSess,
     ) -> Result<ast::Crate, ParserError> {
-        let krate = Parser::parse_crate_inner(config, input, directory_ownership, sess)?;
+        let krate = Parser::parse_crate_inner(input, sess)?;
         if !sess.has_errors() {
             return Ok(krate);
         }
@@ -175,19 +158,12 @@ impl<'a> Parser<'a> {
         Err(ParserError::ParseError)
     }
 
-    fn parse_crate_inner(
-        config: &'a Config,
-        input: Input,
-        directory_ownership: Option<DirectoryOwnership>,
-        sess: &'a ParseSess,
-    ) -> Result<ast::Crate, ParserError> {
-        let mut parser = ParserBuilder::default()
-            .config(config)
+    fn parse_crate_inner(input: Input, sess: &'a ParseSess) -> Result<ast::Crate, ParserError> {
+        ParserBuilder::default()
             .input(input)
-            .directory_ownership(directory_ownership)
             .sess(sess)
-            .build()?;
-        parser.parse_crate_mod()
+            .build()?
+            .parse_crate_mod()
     }
 
     fn parse_crate_mod(&mut self) -> Result<ast::Crate, ParserError> {

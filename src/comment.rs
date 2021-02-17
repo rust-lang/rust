@@ -1674,7 +1674,8 @@ fn remove_comment_header(comment: &str) -> &str {
     } else {
         assert!(
             comment.starts_with("/*"),
-            format!("string '{}' is not a comment", comment)
+            "string '{}' is not a comment",
+            comment
         );
         &comment[2..comment.len() - 2]
     }

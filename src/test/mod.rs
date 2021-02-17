@@ -133,10 +133,8 @@ fn verify_config_used(path: &Path, config_name: &str) {
                     .map(Result::unwrap)
                     .take_while(|l| l.starts_with("//"))
                     .any(|l| l.starts_with(&format!("// rustfmt-{}", config_name))),
-                format!(
-                    "config option file {} does not contain expected config name",
-                    path.display()
-                )
+                "config option file {} does not contain expected config name",
+                path.display()
             );
         }
     }
@@ -884,6 +882,7 @@ fn rustfmt() -> PathBuf {
     me.push("rustfmt");
     assert!(
         me.is_file() || me.with_extension("exe").is_file(),
+        "{}",
         if cfg!(release) {
             "no rustfmt bin, try running `cargo build --release` before testing"
         } else {

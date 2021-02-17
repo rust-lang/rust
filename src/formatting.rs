@@ -76,7 +76,7 @@ fn format_project<T: FormatHandler>(
     // Parse the crate.
     let mut report = FormatReport::new();
     let directory_ownership = input.to_directory_ownership();
-    let krate = match Parser::parse_crate(config, input, directory_ownership, &parse_session) {
+    let krate = match Parser::parse_crate(input, &parse_session) {
         Ok(krate) => krate,
         // Surface parse error via Session (errors are merged there from report)
         Err(e) => {
