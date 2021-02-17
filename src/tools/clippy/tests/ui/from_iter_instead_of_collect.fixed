@@ -1,0 +1,48 @@
+// run-rustfix
+
+#![warn(clippy::from_iter_instead_of_collect)]
+#![allow(unused_imports)]
+
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::iter::FromIterator;
+
+fn main() {
+    let iter_expr = std::iter::repeat(5).take(5);
+    let _ = iter_expr.collect::<Vec<_>>();
+
+    let _ = vec![5, 5, 5, 5].iter().enumerate().collect::<HashMap<usize, &i8>>();
+
+    Vec::from_iter(vec![42u32]);
+
+    let a = vec![0, 1, 2];
+    assert_eq!(a, (0..3).collect::<Vec<_>>());
+    assert_eq!(a, (0..3).collect::<Vec<i32>>());
+
+    let mut b = (0..3).collect::<VecDeque<_>>();
+    b.push_back(4);
+
+    let mut b = (0..3).collect::<VecDeque<i32>>();
+    b.push_back(4);
+
+    {
+        use std::collections;
+        let mut b = (0..3).collect::<collections::VecDeque<i32>>();
+        b.push_back(4);
+    }
+
+    let values = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'd')];
+    let bm = values.iter().cloned().collect::<BTreeMap<_, _>>();
+    let mut bar = bm.range(0..2).collect::<BTreeMap<_, _>>();
+    bar.insert(&4, &'e');
+
+    let mut bts = (0..3).collect::<BTreeSet<_>>();
+    bts.insert(2);
+    {
+        use std::collections;
+        let _ = (0..3).collect::<collections::BTreeSet<_>>();
+        let _ = (0..3).collect::<collections::BTreeSet<u32>>();
+    }
+
+    for _i in [1, 2, 3].iter().collect::<Vec<_>>() {}
+    for _i in [1, 2, 3].iter().collect::<Vec<&i32>>() {}
+}

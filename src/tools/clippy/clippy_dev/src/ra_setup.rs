@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 /// Panics if `rustc_path` does not lead to a rustc repo or the files could not be read
 pub fn run(rustc_path: Option<&str>) {
     // we can unwrap here because the arg is required by clap
-    let rustc_path = PathBuf::from(rustc_path.unwrap());
+    let rustc_path = PathBuf::from(rustc_path.unwrap())
+        .canonicalize()
+        .expect("failed to get the absolute repo path");
     assert!(rustc_path.is_dir(), "path is not a directory");
     let rustc_source_basedir = rustc_path.join("compiler");
     assert!(

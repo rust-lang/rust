@@ -1,11 +1,12 @@
 use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
-use crate::utils::usage::is_unused;
+use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
-    expr_block, get_arg_name, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of,
-    is_refutable, is_type_diagnostic_item, is_wild, match_qpath, match_type, match_var, meets_msrv, multispan_sugg,
+    expr_block, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
+    is_type_diagnostic_item, is_wild, match_qpath, match_type, meets_msrv, multispan_sugg, path_to_local_id,
     peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block, snippet_opt,
     snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+    strip_pat_refs,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -616,9 +617,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             if let PatKind::TupleStruct(
                 QPath::Resolved(None, ref variant_name), ref args, _) = arms[0].pat.kind;
             if args.len() == 1;
-            if let Some(arg) = get_arg_name(&args[0]);
+            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
             let body = remove_blocks(&arms[0].body);
-            if match_var(body, arg);
+            if path_to_local_id(body, arg);
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -910,7 +911,7 @@ fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms
     }
 }
 
-fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
+fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
     let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
     if is_type_diagnostic_item(cx, ex_ty, sym::result_type) {
         for arm in arms {
@@ -922,8 +923,10 @@ fn check_wild_err_arm(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     if !matching_wild {
                         // Looking for unused bindings (i.e.: `_e`)
                         inner.iter().for_each(|pat| {
-                            if let PatKind::Binding(.., ident, None) = &pat.kind {
-                                if ident.as_str().starts_with('_') && is_unused(ident, arm.body) {
+                            if let PatKind::Binding(_, id, ident, None) = pat.kind {
+                                if ident.as_str().starts_with('_')
+                                    && !LocalUsedVisitor::new(cx, id).check_expr(arm.body)
+                                {
                                     ident_bind_name = (&ident.name.as_str()).to_string();
                                     matching_wild = true;
                                 }

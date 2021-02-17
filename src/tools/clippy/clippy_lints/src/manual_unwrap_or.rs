@@ -1,9 +1,9 @@
 use crate::consts::constant_simple;
 use crate::utils;
-use crate::utils::sugg;
+use crate::utils::{path_to_local_id, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def, Arm, Expr, ExprKind, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -83,9 +83,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             if utils::match_qpath(unwrap_qpath, &utils::paths::OPTION_SOME)
                 || utils::match_qpath(unwrap_qpath, &utils::paths::RESULT_OK);
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
-            if let ExprKind::Path(QPath::Resolved(_, body_path)) = unwrap_arm.body.kind;
-            if let def::Res::Local(body_path_hir_id) = body_path.res;
-            if body_path_hir_id == binding_hir_id;
+            if path_to_local_id(unwrap_arm.body, binding_hir_id);
             if !utils::usage::contains_return_break_continue_macro(or_arm.body);
             then {
                 Some(or_arm)

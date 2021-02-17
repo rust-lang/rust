@@ -1,20 +1,23 @@
 [crates]
 # some of these are from cargotest
-cargo = ['0.49.0']
-iron = ['0.6.1']
-ripgrep = ['12.1.1']
-xsv = ['0.13.0']
-#tokei = ['12.0.4']
-rayon = ['1.5.0']
-serde = ['1.0.118']
+cargo = {name = "cargo", versions = ['0.49.0']}
+iron = {name = "iron", versions = ['0.6.1']}
+ripgrep = {name = "ripgrep", versions = ['12.1.1']}
+xsv = {name = "xsv", versions = ['0.13.0']}
+# commented out because of 173K clippy::match_same_arms msgs in language_type.rs
+#tokei = { name = "tokei", versions = ['12.0.4']}
+rayon = {name = "rayon", versions = ['1.5.0']}
+serde = {name = "serde", versions = ['1.0.118']}
 # top 10 crates.io dls
-bitflags = ['1.2.1']
-libc = ['0.2.81']
-log = ['0.4.11']
-proc-macro2 = ['1.0.24']
-quote = ['1.0.7']
-rand = ['0.7.3']
-rand_core = ['0.6.0']
-regex = ['1.3.2']
-syn = ['1.0.54']
-unicode-xid = ['0.2.1']
+bitflags = {name = "bitflags", versions = ['1.2.1']}
+# crash = {name = "clippy_crash", path = "/tmp/clippy_crash"}
+libc = {name = "libc", versions = ['0.2.81']}
+log = {name = "log", versions = ['0.4.11']}
+proc-macro2 = {name = "proc-macro2", versions = ['1.0.24']}
+puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
+quote = {name = "quote", versions = ['1.0.7']}
+rand = {name = "rand", versions = ['0.7.3']}
+rand_core = {name = "rand_core", versions = ['0.6.0']}
+regex = {name = "regex", versions = ['1.3.2']}
+syn = {name = "syn", versions = ['1.0.54']}
+unicode-xid = {name = "unicode-xid", versions = ['0.2.1']}
