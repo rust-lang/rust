@@ -26,7 +26,8 @@ pub fn generate_lint_completions(mode: Mode) -> Result<()> {
     };
     let contents = reformat(ts.to_string().as_str())?;
 
-    let destination = project_root().join("crates/completion/src/generated_lint_completions.rs");
+    let destination =
+        project_root().join("crates/ide_completion/src/generated_lint_completions.rs");
     update(destination.as_path(), &contents, mode)?;
     run_rustfmt(mode)?;
 

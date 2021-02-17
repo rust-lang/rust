@@ -1,5 +1,5 @@
 [package]
-name = "completion"
+name = "ide_completion"
 version = "0.0.0"
 description = "TBD"
 license = "MIT OR Apache-2.0"
