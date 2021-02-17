@@ -297,7 +297,7 @@ impl ast::RecordExprField {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NameLike {
     NameRef(ast::NameRef),
     Name(ast::Name),
@@ -335,6 +335,16 @@ impl ast::AstNode for NameLike {
     }
 }
 
+impl fmt::Display for NameLike {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NameLike::Name(it) => fmt::Display::fmt(it, f),
+            NameLike::NameRef(it) => fmt::Display::fmt(it, f),
+            NameLike::Lifetime(it) => fmt::Display::fmt(it, f),
+        }
+    }
+}
+
 mod __ {
     use super::{
         ast::{Lifetime, Name, NameRef},
@@ -343,26 +353,11 @@ mod __ {
     stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum NameOrNameRef {
-    Name(ast::Name),
-    NameRef(ast::NameRef),
-}
-
-impl fmt::Display for NameOrNameRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NameOrNameRef::Name(it) => fmt::Display::fmt(it, f),
-            NameOrNameRef::NameRef(it) => fmt::Display::fmt(it, f),
-        }
-    }
-}
-
 impl ast::RecordPatField {
     pub fn for_field_name_ref(field_name: &ast::NameRef) -> Option<ast::RecordPatField> {
         let candidate = field_name.syntax().parent().and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
-            NameOrNameRef::NameRef(name_ref) if name_ref == *field_name => Some(candidate),
+            NameLike::NameRef(name_ref) if name_ref == *field_name => Some(candidate),
             _ => None,
         }
     }
@@ -371,19 +366,19 @@ impl ast::RecordPatField {
         let candidate =
             field_name.syntax().ancestors().nth(2).and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
-            NameOrNameRef::Name(name) if name == *field_name => Some(candidate),
+            NameLike::Name(name) if name == *field_name => Some(candidate),
             _ => None,
         }
     }
 
     /// Deals with field init shorthand
-    pub fn field_name(&self) -> Option<NameOrNameRef> {
+    pub fn field_name(&self) -> Option<NameLike> {
         if let Some(name_ref) = self.name_ref() {
-            return Some(NameOrNameRef::NameRef(name_ref));
+            return Some(NameLike::NameRef(name_ref));
         }
         if let Some(ast::Pat::IdentPat(pat)) = self.pat() {
             let name = pat.name()?;
-            return Some(NameOrNameRef::Name(name));
+            return Some(NameLike::Name(name));
         }
         None
     }
