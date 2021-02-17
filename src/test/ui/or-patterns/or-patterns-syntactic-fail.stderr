@@ -1,82 +1,14 @@
-error: an or-pattern parameter must be wrapped in parenthesis
+error: an or-pattern parameter must be wrapped in parentheses
   --> $DIR/or-patterns-syntactic-fail.rs:17:13
    |
 LL |     fn fun1(A | B: E) {}
-   |             ^^^^^ help: wrap the pattern in parenthesis: `(A | B)`
+   |             ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
-error: a leading `|` is not allowed in a parameter pattern
+error: an or-pattern parameter must be wrapped in parentheses
   --> $DIR/or-patterns-syntactic-fail.rs:19:13
    |
 LL |     fn fun2(| A | B: E) {}
-   |             ^ help: remove the `|`
-
-error: an or-pattern parameter must be wrapped in parenthesis
-  --> $DIR/or-patterns-syntactic-fail.rs:19:15
-   |
-LL |     fn fun2(| A | B: E) {}
-   |               ^^^^^ help: wrap the pattern in parenthesis: `(A | B)`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:30:11
-   |
-LL |     let ( | A | B) = E::A;
-   |           ^ help: remove the `|`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:31:11
-   |
-LL |     let ( | A | B,) = (E::B,);
-   |           ^ help: remove the `|`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:32:11
-   |
-LL |     let [ | A | B ] = [E::A];
-   |           ^ help: remove the `|`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:33:13
-   |
-LL |     let TS( | A | B );
-   |             ^ help: remove the `|`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:34:17
-   |
-LL |     let NS { f: | A | B };
-   |                 ^ help: remove the `|`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:36:11
-   |
-LL |     let ( || A | B) = E::A;
-   |           ^^ help: remove the `||`
-   |
-   = note: alternatives in or-patterns are separated with `|`, not `||`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:37:11
-   |
-LL |     let [ || A | B ] = [E::A];
-   |           ^^ help: remove the `||`
-   |
-   = note: alternatives in or-patterns are separated with `|`, not `||`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:38:13
-   |
-LL |     let TS( || A | B );
-   |             ^^ help: remove the `||`
-   |
-   = note: alternatives in or-patterns are separated with `|`, not `||`
-
-error: a leading `|` is only allowed in a top-level pattern
-  --> $DIR/or-patterns-syntactic-fail.rs:39:17
-   |
-LL |     let NS { f: || A | B };
-   |                 ^^ help: remove the `||`
-   |
-   = note: alternatives in or-patterns are separated with `|`, not `||`
+   |             ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error[E0369]: no implementation for `E | ()`
   --> $DIR/or-patterns-syntactic-fail.rs:13:22
@@ -88,17 +20,6 @@ LL |     let _ = |A | B: E| ();
    |
    = note: an implementation of `std::ops::BitOr` might be missing for `E`
 
-error[E0308]: mismatched types
-  --> $DIR/or-patterns-syntactic-fail.rs:41:36
-   |
-LL |     let recovery_witness: String = 0;
-   |                           ------   ^
-   |                           |        |
-   |                           |        expected struct `String`, found integer
-   |                           |        help: try using a conversion method: `0.to_string()`
-   |                           expected due to this
+error: aborting due to 3 previous errors
 
-error: aborting due to 14 previous errors
-
-Some errors have detailed explanations: E0308, E0369.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0369`.
