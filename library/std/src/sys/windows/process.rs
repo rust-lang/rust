@@ -78,6 +78,7 @@ pub struct Command {
     stdin: Option<Stdio>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    force_quotes_enabled: bool,
 }
 
 pub enum Stdio {
@@ -109,6 +110,7 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            force_quotes_enabled: false,
         }
     }
 
@@ -132,6 +134,10 @@ impl Command {
     }
     pub fn creation_flags(&mut self, flags: u32) {
         self.flags = flags;
+    }
+
+    pub fn force_quotes(&mut self, enabled: bool) {
+        self.force_quotes_enabled = enabled;
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -181,7 +187,7 @@ impl Command {
         si.dwFlags = c::STARTF_USESTDHANDLES;
 
         let program = program.as_ref().unwrap_or(&self.program);
-        let mut cmd_str = make_command_line(program, &self.args)?;
+        let mut cmd_str = make_command_line(program, &self.args, self.force_quotes_enabled)?;
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -467,7 +473,7 @@ fn zeroed_process_information() -> c::PROCESS_INFORMATION {
 
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
+fn make_command_line(prog: &OsStr, args: &[OsString], force_quotes: bool) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
@@ -476,7 +482,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     append_arg(&mut cmd, prog, true)?;
     for arg in args {
         cmd.push(' ' as u16);
-        append_arg(&mut cmd, arg, false)?;
+        append_arg(&mut cmd, arg, force_quotes)?;
     }
     return Ok(cmd);
 
