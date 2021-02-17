@@ -65,6 +65,17 @@ impl DiagnosticCollection {
         file_id: FileId,
         diagnostics: Vec<lsp_types::Diagnostic>,
     ) {
+        if let Some(existing_diagnostics) = self.native.get(&file_id) {
+            if existing_diagnostics.len() == diagnostics.len()
+                && diagnostics
+                    .iter()
+                    .zip(existing_diagnostics)
+                    .all(|(new, existing)| are_diagnostics_equal(new, existing))
+            {
+                return;
+            }
+        }
+
         self.native.insert(file_id, diagnostics);
         self.changes.insert(file_id);
     }
