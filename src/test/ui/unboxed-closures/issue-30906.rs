@@ -2,9 +2,12 @@
 
 fn test<F: for<'x> FnOnce<(&'x str,)>>(_: F) {}
 
-struct Compose<F,G>(F,G);
-impl<T,F,G> FnOnce<(T,)> for Compose<F,G>
-where F: FnOnce<(T,)>, G: FnOnce<(F::Output,)> {
+struct Compose<F, G>(F, G);
+impl<T, F, G> FnOnce<(T,)> for Compose<F, G>
+where
+    F: FnOnce<(T,)>,
+    G: FnOnce<(F::Output,)>,
+{
     type Output = G::Output;
     extern "rust-call" fn call_once(self, (x,): (T,)) -> G::Output {
         (self.1)((self.0)(x))
@@ -12,7 +15,8 @@ where F: FnOnce<(T,)>, G: FnOnce<(F::Output,)> {
 }
 
 fn bad<T>(f: fn(&'static str) -> T) {
-    test(Compose(f, |_| {})); //~ ERROR: mismatched types
+    test(Compose(f, |_| {}));
+    //~^ ERROR: implementation of `FnOnce` is not general enough
 }
 
 fn main() {}

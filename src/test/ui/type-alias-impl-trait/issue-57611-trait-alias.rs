@@ -15,9 +15,9 @@ struct X;
 
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR mismatched types
     //~| ERROR mismatched types
 
