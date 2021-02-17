@@ -4,7 +4,7 @@ use crate::type_error_struct;
 
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::{infer, traits};
@@ -374,7 +374,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     |p| format!("`{}` defined here returns `{}`", p, callee_ty),
                                 )
                             }
-                            _ => Some(format!("`{}` defined here", callee_ty)),
+                            _ => {
+                                match def {
+                                    // Emit a different diagnostic for local variables, as they are not
+                                    // type definitions themselves, but rather variables *of* that type.
+                                    Res::Local(hir_id) => Some(format!(
+                                        "`{}` has type `{}`",
+                                        self.tcx.hir().name(hir_id),
+                                        callee_ty
+                                    )),
+                                    Res::Def(kind, def_id)
+                                        if kind.ns() == Some(Namespace::ValueNS) =>
+                                    {
+                                        Some(format!(
+                                            "`{}` defined here",
+                                            self.tcx.def_path_str(def_id),
+                                        ))
+                                    }
+                                    _ => Some(format!("`{}` defined here", callee_ty)),
+                                }
+                            }
                         };
                         if let Some(label) = label {
                             err.span_label(span, label);

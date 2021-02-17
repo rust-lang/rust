@@ -14,7 +14,7 @@ error[E0618]: expected function, found `{integer}`
   --> $DIR/parse-error-correct.rs:7:13
    |
 LL |     let y = 42;
-   |         - `{integer}` defined here
+   |         - `y` has type `{integer}`
 LL |     let x = y.;
 LL |     let x = y.();
    |             ^---

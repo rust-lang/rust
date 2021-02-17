@@ -5,7 +5,7 @@ LL |         $not_a_function($some_argument)
    |         ------------------------------- call expression requires function
 ...
 LL |     let mut value_a = 0;
-   |         ----------- `{integer}` defined here
+   |         ----------- `value_a` has type `{integer}`
 LL |     let mut value_b = 0;
 LL |     macro_panic!(value_a, value_b);
    |                  ^^^^^^^
