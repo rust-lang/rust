@@ -53,33 +53,9 @@ impl IntoIterator for UsageSearchResult {
 }
 
 #[derive(Debug, Clone)]
-pub enum NameLike {
-    NameRef(ast::NameRef),
-    Name(ast::Name),
-    Lifetime(ast::Lifetime),
-}
-
-impl NameLike {
-    pub fn as_name_ref(&self) -> Option<&ast::NameRef> {
-        match self {
-            NameLike::NameRef(name_ref) => Some(name_ref),
-            _ => None,
-        }
-    }
-}
-
-mod __ {
-    use super::{
-        ast::{Lifetime, Name, NameRef},
-        NameLike,
-    };
-    stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
-}
-
-#[derive(Debug, Clone)]
 pub struct FileReference {
     pub range: TextRange,
-    pub name: NameLike,
+    pub name: ast::NameLike,
     pub access: Option<ReferenceAccess>,
 }
 
@@ -300,6 +276,7 @@ impl<'a> FindUsages<'a> {
     pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
         self.set_scope(Some(scope))
     }
+
     pub fn set_scope(mut self, scope: Option<SearchScope>) -> FindUsages<'a> {
         assert!(self.scope.is_none());
         self.scope = scope;
@@ -355,18 +332,23 @@ impl<'a> FindUsages<'a> {
                     continue;
                 }
 
-                if let Some(name_ref) = sema.find_node_at_offset_with_descend(&tree, offset) {
-                    if self.found_name_ref(&name_ref, sink) {
-                        return;
-                    }
-                } else if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
-                    if self.found_name(&name, sink) {
-                        return;
-                    }
-                } else if let Some(lifetime) = sema.find_node_at_offset_with_descend(&tree, offset)
-                {
-                    if self.found_lifetime(&lifetime, sink) {
-                        return;
+                if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
+                    match name {
+                        ast::NameLike::NameRef(name_ref) => {
+                            if self.found_name_ref(&name_ref, sink) {
+                                return;
+                            }
+                        }
+                        ast::NameLike::Name(name) => {
+                            if self.found_name(&name, sink) {
+                                return;
+                            }
+                        }
+                        ast::NameLike::Lifetime(lifetime) => {
+                            if self.found_lifetime(&lifetime, sink) {
+                                return;
+                            }
+                        }
                     }
                 }
             }
@@ -383,7 +365,7 @@ impl<'a> FindUsages<'a> {
                 let FileRange { file_id, range } = self.sema.original_range(lifetime.syntax());
                 let reference = FileReference {
                     range,
-                    name: NameLike::Lifetime(lifetime.clone()),
+                    name: ast::NameLike::Lifetime(lifetime.clone()),
                     access: None,
                 };
                 sink(file_id, reference)
@@ -402,7 +384,7 @@ impl<'a> FindUsages<'a> {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
                     range,
-                    name: NameLike::NameRef(name_ref.clone()),
+                    name: ast::NameLike::NameRef(name_ref.clone()),
                     access: reference_access(&def, &name_ref),
                 };
                 sink(file_id, reference)
@@ -412,12 +394,12 @@ impl<'a> FindUsages<'a> {
                 let reference = match self.def {
                     Definition::Field(_) if &field == self.def => FileReference {
                         range,
-                        name: NameLike::NameRef(name_ref.clone()),
+                        name: ast::NameLike::NameRef(name_ref.clone()),
                         access: reference_access(&field, &name_ref),
                     },
                     Definition::Local(l) if &local == l => FileReference {
                         range,
-                        name: NameLike::NameRef(name_ref.clone()),
+                        name: ast::NameLike::NameRef(name_ref.clone()),
                         access: reference_access(&Definition::Local(local), &name_ref),
                     },
                     _ => return false, // not a usage
@@ -441,7 +423,7 @@ impl<'a> FindUsages<'a> {
                 let FileRange { file_id, range } = self.sema.original_range(name.syntax());
                 let reference = FileReference {
                     range,
-                    name: NameLike::Name(name.clone()),
+                    name: ast::NameLike::Name(name.clone()),
                     // FIXME: mutable patterns should have `Write` access
                     access: Some(ReferenceAccess::Read),
                 };

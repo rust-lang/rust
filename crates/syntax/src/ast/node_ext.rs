@@ -298,25 +298,66 @@ impl ast::RecordExprField {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum NameOrNameRef {
-    Name(ast::Name),
+pub enum NameLike {
     NameRef(ast::NameRef),
+    Name(ast::Name),
+    Lifetime(ast::Lifetime),
 }
 
-impl fmt::Display for NameOrNameRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl NameLike {
+    pub fn as_name_ref(&self) -> Option<&ast::NameRef> {
         match self {
-            NameOrNameRef::Name(it) => fmt::Display::fmt(it, f),
-            NameOrNameRef::NameRef(it) => fmt::Display::fmt(it, f),
+            NameLike::NameRef(name_ref) => Some(name_ref),
+            _ => None,
         }
     }
+}
+
+impl ast::AstNode for NameLike {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, SyntaxKind::NAME | SyntaxKind::NAME_REF | SyntaxKind::LIFETIME)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::NAME => NameLike::Name(ast::Name { syntax }),
+            SyntaxKind::NAME_REF => NameLike::NameRef(ast::NameRef { syntax }),
+            SyntaxKind::LIFETIME => NameLike::Lifetime(ast::Lifetime { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            NameLike::NameRef(it) => it.syntax(),
+            NameLike::Name(it) => it.syntax(),
+            NameLike::Lifetime(it) => it.syntax(),
+        }
+    }
+}
+
+impl fmt::Display for NameLike {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NameLike::Name(it) => fmt::Display::fmt(it, f),
+            NameLike::NameRef(it) => fmt::Display::fmt(it, f),
+            NameLike::Lifetime(it) => fmt::Display::fmt(it, f),
+        }
+    }
+}
+
+mod __ {
+    use super::{
+        ast::{Lifetime, Name, NameRef},
+        NameLike,
+    };
+    stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
 }
 
 impl ast::RecordPatField {
     pub fn for_field_name_ref(field_name: &ast::NameRef) -> Option<ast::RecordPatField> {
         let candidate = field_name.syntax().parent().and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
-            NameOrNameRef::NameRef(name_ref) if name_ref == *field_name => Some(candidate),
+            NameLike::NameRef(name_ref) if name_ref == *field_name => Some(candidate),
             _ => None,
         }
     }
@@ -325,19 +366,19 @@ impl ast::RecordPatField {
         let candidate =
             field_name.syntax().ancestors().nth(2).and_then(ast::RecordPatField::cast)?;
         match candidate.field_name()? {
-            NameOrNameRef::Name(name) if name == *field_name => Some(candidate),
+            NameLike::Name(name) if name == *field_name => Some(candidate),
             _ => None,
         }
     }
 
     /// Deals with field init shorthand
-    pub fn field_name(&self) -> Option<NameOrNameRef> {
+    pub fn field_name(&self) -> Option<NameLike> {
         if let Some(name_ref) = self.name_ref() {
-            return Some(NameOrNameRef::NameRef(name_ref));
+            return Some(NameLike::NameRef(name_ref));
         }
         if let Some(ast::Pat::IdentPat(pat)) = self.pat() {
             let name = pat.name()?;
-            return Some(NameOrNameRef::Name(name));
+            return Some(NameLike::Name(name));
         }
         None
     }

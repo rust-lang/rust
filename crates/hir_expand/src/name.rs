@@ -87,11 +87,18 @@ impl AsName for ast::Name {
     }
 }
 
-impl AsName for ast::NameOrNameRef {
+impl AsName for ast::Lifetime {
+    fn as_name(&self) -> Name {
+        Name::resolve(self.text())
+    }
+}
+
+impl AsName for ast::NameLike {
     fn as_name(&self) -> Name {
         match self {
-            ast::NameOrNameRef::Name(it) => it.as_name(),
-            ast::NameOrNameRef::NameRef(it) => it.as_name(),
+            ast::NameLike::Name(it) => it.as_name(),
+            ast::NameLike::NameRef(it) => it.as_name(),
+            ast::NameLike::Lifetime(it) => it.as_name(),
         }
     }
 }
