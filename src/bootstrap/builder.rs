@@ -379,6 +379,7 @@ impl<'a> Builder<'a> {
                 check::Clippy,
                 check::Miri,
                 check::Rls,
+                check::Rustfmt,
                 check::Bootstrap
             ),
             Kind::Test => describe!(
