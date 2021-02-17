@@ -111,7 +111,7 @@ use crate::consts::{constant, Constant};
 /// #![feature(rustc_private)]
 /// extern crate rustc_session;
 /// use rustc_session::declare_tool_lint;
-/// use clippy_lints::declare_clippy_lint;
+/// use clippy_utils::declare_clippy_lint;
 ///
 /// declare_clippy_lint! {
 ///     /// **What it does:** Checks for ... (describe what the lint matches).
