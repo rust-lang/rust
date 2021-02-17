@@ -36,10 +36,10 @@ modifying rustc to see if things are generally working correctly would be the
 following:
 
 ```bash
-./x.py test src/test/{ui,compile-fail}
+./x.py test src/test/ui
 ```
 
-This will run the `ui` and `compile-fail` test suites. Of course, the choice
+This will run the `ui` test suite. Of course, the choice
 of test suites is somewhat arbitrary, and may not suit the task you are
 doing. For example, if you are hacking on debuginfo, you may be better off
 with the debuginfo test suite:
