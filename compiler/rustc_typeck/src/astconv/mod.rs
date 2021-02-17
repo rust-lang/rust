@@ -1473,7 +1473,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }),
                     assoc_name,
                 )
-                .into_iter()
             },
             || param_name.to_string(),
             assoc_name,

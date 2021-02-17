@@ -513,7 +513,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
-            _ => return this.parse_dot_or_call_expr(Some(attrs.into())),
+            _ => return this.parse_dot_or_call_expr(Some(attrs)),
         }
     }
 

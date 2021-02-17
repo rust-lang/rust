@@ -53,7 +53,7 @@ fn install_sh(
 }
 
 fn default_path(config: &Option<PathBuf>, default: &str) -> PathBuf {
-    PathBuf::from(config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default)))
+    config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default))
 }
 
 fn prepare_dir(mut path: PathBuf) -> String {
