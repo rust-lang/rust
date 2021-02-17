@@ -1,4 +1,4 @@
-use super::link::{self, remove};
+use super::link::{self, ensure_removed};
 use super::linker::LinkerInfo;
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
@@ -543,7 +543,7 @@ fn produce_final_output_artifacts(
             copy_gracefully(&path, &crate_output.path(output_type));
             if !sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                remove(sess, &path);
+                ensure_removed(sess.diagnostic(), &path);
             }
         } else {
             let ext = crate_output
@@ -642,19 +642,19 @@ fn produce_final_output_artifacts(
         for module in compiled_modules.modules.iter() {
             if let Some(ref path) = module.object {
                 if !keep_numbered_objects {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
 
             if let Some(ref path) = module.dwarf_object {
                 if !keep_numbered_objects {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
 
             if let Some(ref path) = module.bytecode {
                 if !keep_numbered_bitcode {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
         }
@@ -662,13 +662,13 @@ fn produce_final_output_artifacts(
         if !user_wants_bitcode {
             if let Some(ref metadata_module) = compiled_modules.metadata_module {
                 if let Some(ref path) = metadata_module.bytecode {
-                    remove(sess, &path);
+                    ensure_removed(sess.diagnostic(), &path);
                 }
             }
 
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
                 if let Some(ref path) = allocator_module.bytecode {
-                    remove(sess, path);
+                    ensure_removed(sess.diagnostic(), path);
                 }
             }
         }
