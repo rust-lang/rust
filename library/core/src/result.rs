@@ -1302,7 +1302,7 @@ impl<T> Result<T, T> {
     /// assert_eq!(err.into_ok_or_err(), 4);
     /// ```
     #[inline]
-    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "none")]
+    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
     pub const fn into_ok_or_err(self) -> T {
         match self {
             Ok(v) => v,
