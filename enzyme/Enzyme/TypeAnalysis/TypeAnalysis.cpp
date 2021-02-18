@@ -1722,19 +1722,35 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     case BinaryOperator::Xor:
       if (direction & UP)
         for (int i = 0; i < 2; ++i) {
+          if (!getAnalysis(&I)[{-1}].isFloat())
+            continue;
           // If & against 0b10000000000, the result is a float
-          auto CI = dyn_cast<ConstantInt>(I.getOperand(i));
-          if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
-            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
-          }
-          if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
-            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
-          }
-          if (CI) {
-            if (CI->isNegative() && CI->isMinValue(/*signed*/ true) &&
-                getAnalysis(&I)[{-1}].isFloat()) {
-              updateAnalysis(I.getOperand(1 - i), getAnalysis(&I), &I);
+          bool validXor = false;
+          if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+            if (CI->isZero()) {
+              validXor = true;
+            } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
+              validXor = true;
             }
+          } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+            validXor = true;
+            for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+              auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+          } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+            validXor = true;
+            for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+              auto CI = CV->getElementAsAPInt(i);
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+          }
+          if (validXor) {
+            updateAnalysis(I.getOperand(1 - i), getAnalysis(&I), &I);
           }
         }
       break;
@@ -1788,19 +1804,35 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       }
     } else if (I.getOpcode() == BinaryOperator::Xor) {
       for (int i = 0; i < 2; ++i) {
+        if (!getAnalysis(I.getOperand(1 - i))[{-1}].isFloat())
+          continue;
         // If & against 0b10000000000, the result is a float
-        auto CI = dyn_cast<ConstantInt>(I.getOperand(i));
-        if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
-          CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
-        }
-        if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
-          CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
-        }
-        if (CI) {
-          if (CI->isNegative() && CI->isMinValue(/*signed*/ true) &&
-              getAnalysis(I.getOperand(1 - i))[{-1}].isFloat()) {
-            Result = getAnalysis(I.getOperand(1 - i))[{-1}];
+        bool validXor = false;
+        if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (CI->isZero()) {
+            validXor = true;
+          } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
+            validXor = true;
           }
+        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+          validXor = true;
+          for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+            auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+            if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+              validXor = false;
+            }
+          }
+        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+          validXor = true;
+          for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+            auto CI = CV->getElementAsAPInt(i);
+            if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+              validXor = false;
+            }
+          }
+        }
+        if (validXor) {
+          Result = getAnalysis(I.getOperand(1 - i))[{-1}];
         }
       }
     }

@@ -1130,6 +1130,7 @@ public:
     }
     case Instruction::Xor: {
       auto FT = TR.query(&BO)[{-1}].isFloat();
+      auto eFT = FT;
       // If & against 0b10000000000 and a float the result is a float
       if (FT)
         for (int i = 0; i < 2; ++i) {
@@ -1156,6 +1157,64 @@ public:
               auto neg = Builder2.CreateFNeg(Builder2.CreateBitCast(idiff, FT));
               auto bc = Builder2.CreateBitCast(neg, BO.getType());
               addToDiffe(BO.getOperand(1 - i), bc, Builder2, FT);
+              return;
+            }
+          }
+
+          if (auto CV = dyn_cast<ConstantVector>(BO.getOperand(i))) {
+            bool validXor = true;
+            for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+              auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+            if (validXor) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              Value *V = UndefValue::get(CV->getType());
+              for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+                auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+                if (CI.isNullValue())
+                  V = Builder2.CreateInsertElement(
+                      V, Builder2.CreateExtractElement(idiff, i), i);
+                if (CI.isMinSignedValue())
+                  V = Builder2.CreateInsertElement(
+                      V,
+                      Builder2.CreateBitCast(
+                          Builder2.CreateFNeg(Builder2.CreateBitCast(
+                              Builder2.CreateExtractElement(idiff, i), eFT)),
+                          CV->getOperand(i)->getType()),
+                      i);
+              }
+              addToDiffe(BO.getOperand(1 - i), V, Builder2, FT);
+              return;
+            }
+          } else if (auto CV = dyn_cast<ConstantDataVector>(BO.getOperand(i))) {
+            bool validXor = true;
+            for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+              auto CI = CV->getElementAsAPInt(i);
+              if (!(CI.isNullValue() || CI.isMinSignedValue())) {
+                validXor = false;
+              }
+            }
+            if (validXor) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              Value *V = UndefValue::get(CV->getType());
+              for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+                auto CI = CV->getElementAsAPInt(i);
+                if (CI.isNullValue())
+                  V = Builder2.CreateInsertElement(
+                      V, Builder2.CreateExtractElement(idiff, i), i);
+                if (CI.isMinSignedValue())
+                  V = Builder2.CreateInsertElement(
+                      V,
+                      Builder2.CreateBitCast(
+                          Builder2.CreateFNeg(Builder2.CreateBitCast(
+                              Builder2.CreateExtractElement(idiff, i), eFT)),
+                          CV->getElementType()),
+                      i);
+              }
+              addToDiffe(BO.getOperand(1 - i), V, Builder2, FT);
               return;
             }
           }
