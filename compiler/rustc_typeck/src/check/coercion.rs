@@ -42,6 +42,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -1451,12 +1452,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // If the block is from an external macro, then do not suggest
                 // adding a semicolon, because there's nowhere to put it.
                 // See issue #81943.
-                let hir = fcx.tcx.hir();
-                let body_owner =
-                    hir.body_owner(hir.body_owned_by(hir.enclosing_body_owner(fcx.body_id)));
-                let from_same_crate = cond_expr.span.ctxt().dollar_crate_name()
-                    == hir.span(body_owner).ctxt().dollar_crate_name();
-                if cond_expr.span.desugaring_kind().is_none() && from_same_crate {
+                if cond_expr.span.desugaring_kind().is_none()
+                    && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                {
                     err.span_label(cond_expr.span, "expected this to be `()`");
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
