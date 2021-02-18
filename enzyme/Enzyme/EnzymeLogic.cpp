@@ -538,11 +538,11 @@ void calculateUnusedValuesInFunction(
                                                   PrimalSeen, oldUnreachable);
       });
 #if 0
-      llvm::errs() << "unnecessaryValues:\n";
+      llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
       for(auto a : unnecessaryValues) {
         llvm::errs() << *a << "\n";
       }
-      llvm::errs() << "unnecessaryInstructions:\n";
+      llvm::errs() << "unnecessaryInstructions " << func.getName() << ":\n";
       for(auto a : unnecessaryInstructions) {
         llvm::errs() << *a << "\n";
       }
@@ -1850,6 +1850,8 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
         if (looseTypeAnalysis) {
           if (orig->getType()->isFPOrFPVectorTy())
             PNfloatType = orig->getType()->getScalarType();
+          if (orig->getType()->isIntOrIntVectorTy())
+            continue;
         }
       }
       if (!PNfloatType) {

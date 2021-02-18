@@ -656,25 +656,27 @@ public:
           }
           if (allIncoming && lc.exitBlocks.size() == 1) {
             if (!gutils->isConstantValue(SI.getOperand(2 - i))) {
-
-              auto index = gutils->getOrInsertConditionalIndex(
-                  gutils->getNewFromOriginal(SI.getOperand(0)), lc, i == 1);
-              IRBuilder<> EB(*lc.exitBlocks.begin());
-              getReverseBuilder(EB, /*original=*/false);
-              Value *inc = lookup(lc.incvar, Builder2);
-              if (VectorType *VTy =
-                      dyn_cast<VectorType>(SI.getOperand(0)->getType())) {
+              auto addingType = TR.addingType(size, SI.getOperand(2 - i));
+              if (addingType || !looseTypeAnalysis) {
+                auto index = gutils->getOrInsertConditionalIndex(
+                    gutils->getNewFromOriginal(SI.getOperand(0)), lc, i == 1);
+                IRBuilder<> EB(*lc.exitBlocks.begin());
+                getReverseBuilder(EB, /*original=*/false);
+                Value *inc = lookup(lc.incvar, Builder2);
+                if (VectorType *VTy =
+                        dyn_cast<VectorType>(SI.getOperand(0)->getType())) {
 #if LLVM_VERSION_MAJOR >= 13
-                inc = Builder2.CreateVectorSplat(VTy->getElementCount(), inc);
+                  inc = Builder2.CreateVectorSplat(VTy->getElementCount(), inc);
 #else
-                inc = Builder2.CreateVectorSplat(VTy->getNumElements(), inc);
+                  inc = Builder2.CreateVectorSplat(VTy->getNumElements(), inc);
 #endif
+                }
+                Value *dif = Builder2.CreateSelect(
+                    Builder2.CreateICmpEQ(gutils->lookupM(index, EB), inc),
+                    diffe(&SI, Builder2),
+                    Constant::getNullValue(op1->getType()));
+                addToDiffe(SI.getOperand(2 - i), dif, Builder2, addingType);
               }
-              Value *dif = Builder2.CreateSelect(
-                  Builder2.CreateICmpEQ(gutils->lookupM(index, EB), inc),
-                  diffe(&SI, Builder2), Constant::getNullValue(op1->getType()));
-              addToDiffe(SI.getOperand(2 - i), dif, Builder2,
-                         TR.addingType(size, SI.getOperand(2 - i)));
             }
             return;
           }
@@ -1126,6 +1128,40 @@ public:
       }
       goto def;
     }
+    case Instruction::Xor: {
+      auto FT = TR.query(&BO)[{-1}].isFloat();
+      // If & against 0b10000000000 and a float the result is a float
+      if (FT)
+        for (int i = 0; i < 2; ++i) {
+          auto CI = dyn_cast<ConstantInt>(BO.getOperand(i));
+          if (auto CV = dyn_cast<ConstantVector>(BO.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+#if LLVM_VERSION_MAJOR >= 13
+            FT = VectorType::get(FT, CV->getType()->getElementCount());
+#else
+            FT = VectorType::get(FT, CV->getType()->getNumElements());
+#endif
+          }
+          if (auto CV = dyn_cast<ConstantDataVector>(BO.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+#if LLVM_VERSION_MAJOR >= 13
+            FT = VectorType::get(FT, CV->getType()->getElementCount());
+#else
+            FT = VectorType::get(FT, CV->getType()->getNumElements());
+#endif
+          }
+          if (CI) {
+            if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              auto neg = Builder2.CreateFNeg(Builder2.CreateBitCast(idiff, FT));
+              auto bc = Builder2.CreateBitCast(neg, BO.getType());
+              addToDiffe(BO.getOperand(1 - i), bc, Builder2, FT);
+              return;
+            }
+          }
+        }
+      goto def;
+    }
     case Instruction::Add: {
       if (looseTypeAnalysis) {
         // if loose type analysis, assume this integer add is constant
@@ -1417,17 +1453,33 @@ public:
 
     if (!vd.isKnownPastPointer()) {
       if (looseTypeAnalysis) {
-        if (isa<CastInst>(orig_op0) &&
-            cast<CastInst>(orig_op0)->getSrcTy()->isPointerTy() &&
-            cast<PointerType>(cast<CastInst>(orig_op0)->getSrcTy())
-                ->getElementType()
-                ->isFPOrFPVectorTy()) {
-          vd = TypeTree(ConcreteType(cast<PointerType>(
-                                         cast<CastInst>(orig_op0)->getSrcTy())
-                                         ->getElementType()
-                                         ->getScalarType()))
-                   .Only(0);
-          goto known;
+        if (auto CI = dyn_cast<CastInst>(orig_op0)) {
+          if (auto PT = dyn_cast<PointerType>(CI->getSrcTy())) {
+            if (PT->getElementType()->isFPOrFPVectorTy()) {
+              vd = TypeTree(ConcreteType(PT->getElementType()->getScalarType()))
+                       .Only(0);
+              goto known;
+            }
+            if (PT->getElementType()->isIntOrIntVectorTy()) {
+              vd = TypeTree(BaseType::Integer).Only(0);
+              goto known;
+            }
+            if (auto ST = dyn_cast<StructType>(PT->getElementType())) {
+              if (ST->getNumElements() &&
+                  ST->getElementType(0)->isIntOrIntVectorTy()) {
+                vd = TypeTree(BaseType::Integer).Only(0);
+                goto known;
+              }
+            }
+          }
+        }
+        if (auto gep = dyn_cast<GetElementPtrInst>(orig_op0)) {
+          if (auto AT = dyn_cast<ArrayType>(gep->getSourceElementType())) {
+            if (AT->getElementType()->isIntegerTy()) {
+              vd = TypeTree(BaseType::Integer).Only(0);
+              goto known;
+            }
+          }
         }
       }
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
@@ -1908,7 +1960,8 @@ public:
           cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
           Value *dif0 = Builder2.CreateFMul(
               Builder2.CreateFMul(vdiff, cal),
-              Builder2.CreateSIToFP(lookup(op1, Builder2), op0->getType()));
+              Builder2.CreateSIToFP(lookup(op1, Builder2),
+                                    op0->getType()->getScalarType()));
           addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
@@ -3123,7 +3176,6 @@ public:
           addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
           return;
         }
-
         if (called->getName() == "cabs" || called->getName() == "cabsf" ||
             called->getName() == "cabsl") {
           if (Mode == DerivativeMode::Forward ||
@@ -3154,10 +3206,32 @@ public:
                 addToDiffe(orig->getArgOperand(i),
                            Builder2.CreateFMul(args[i], div), Builder2,
                            orig->getType());
+            return;
           } else {
             llvm::errs() << *orig << "\n";
             llvm_unreachable("unknown calling convention found for cabs");
           }
+        }
+        if (called->getName() == "ldexp" || called->getName() == "ldexpf" ||
+            called->getName() == "ldexpl") {
+          if (Mode == DerivativeMode::Forward ||
+              gutils->isConstantInstruction(orig)) {
+            eraseIfUnused(*orig);
+            return;
+          }
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+
+          Value *vdiff = diffe(orig, Builder2);
+          Value *exponent = lookup(
+              gutils->getNewFromOriginal(orig->getArgOperand(1)), Builder2);
+
+          Value *args[] = {vdiff, exponent};
+
+          CallInst *darg = cast<CallInst>(Builder2.CreateCall(called, args));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), darg, Builder2, orig->getType());
           return;
         }
       }

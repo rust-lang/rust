@@ -263,19 +263,19 @@ public:
       return changed;
     }
 
-
     bool possibleDeletion = false;
-    size_t minLen = (minIndices.size() <= Seq.size()) ? minIndices.size() : Seq.size();
-    for (size_t i=0; i < minLen; i++) {
+    size_t minLen =
+        (minIndices.size() <= Seq.size()) ? minIndices.size() : Seq.size();
+    for (size_t i = 0; i < minLen; i++) {
       if (minIndices[i] > Seq[i]) {
         if (minIndices[i] > MaxTypeOffset)
-          possibleDeletion = true;  
+          possibleDeletion = true;
         minIndices[i] = Seq[i];
       }
     }
 
     if (minIndices.size() < Seq.size()) {
-      for (size_t i=minIndices.size(), end = Seq.size(); i < end; ++i) {
+      for (size_t i = minIndices.size(), end = Seq.size(); i < end; ++i) {
         minIndices.push_back(Seq[i]);
       }
     }
@@ -287,11 +287,11 @@ public:
         bool mustKeep = false;
         bool considerErase = false;
         for (int val : pair.first) {
-          if (val == minIndices[i]) {
-            mustKeep = true;
-            break;
-          }
           if (val > MaxTypeOffset) {
+            if (val == minIndices[i]) {
+              mustKeep = true;
+              break;
+            }
             considerErase = true;
           }
           ++i;
@@ -301,7 +301,7 @@ public:
         }
       }
 
-      for(auto vec : toErase) {
+      for (auto vec : toErase) {
         mapping.erase(vec);
         changed = true;
       }
@@ -311,10 +311,11 @@ public:
     bool keep = false;
     bool considerErase = false;
     for (auto val : Seq) {
-      if (val == minIndices[i]) {
-        keep = true;
-        break;
-      } else if (val > MaxTypeOffset) {
+      if (val > MaxTypeOffset) {
+        if (val == minIndices[i]) {
+          keep = true;
+          break;
+        }
         considerErase = true;
       }
       i++;

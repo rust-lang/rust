@@ -10,13 +10,13 @@ target triple = "x86_64-unknown-linux-gnu"
 declare dso_local noalias i8* @malloc(i64) local_unnamed_addr #2
 
 ; Function Attrs: nounwind uwtable
-define dso_local double @foo(double %inp) #3 {
+define void @foo(double %inp) #3 {
 entry:
   %conv = bitcast double %inp to i64
   %call = tail call i64* @substore(i64 %conv, i64 3)
   %0 = bitcast i64* %call to double*
   %1 = load double, double* %0
-  ret double %1
+  ret void
 }
 
 ; Function Attrs: noinline nounwind uwtable
@@ -63,7 +63,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %call = tail call i64* @substore(i64 %conv, i64 3): {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
 ; CHECK-NEXT:   %0 = bitcast i64* %call to double*: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Integer, [-1,9]:Integer, [-1,10]:Integer, [-1,11]:Integer, [-1,12]:Integer, [-1,13]:Integer, [-1,14]:Integer, [-1,15]:Integer}
 ; CHECK-NEXT:   %1 = load double, double* %0{{(, align 8)?}}: {[-1]:Float@double}
-; CHECK-NEXT:   ret double %1: {}
+; CHECK-NEXT:   ret void: {}
 
 ; CHECK: substore - {[-1]:Pointer} |{[-1]:Float@double}:{} {[-1]:Integer}:{3,}
 ; CHECK-NEXT: i64 %flt: {[-1]:Float@double}

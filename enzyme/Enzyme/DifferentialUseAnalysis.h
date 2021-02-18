@@ -27,14 +27,15 @@
 
 enum ValueType { Primal, Shadow };
 
+typedef std::pair<const Value *, bool> UsageKey;
 // Determine if a value is needed in the reverse pass. We only use this logic in
 // the top level function right now.
 template <ValueType VT>
 bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
-    bool topLevel, std::map<std::pair<const Value *, bool>, bool> &seen,
+    bool topLevel, std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
-  auto idx = std::make_pair(inst, topLevel);
+  auto idx = UsageKey(inst, topLevel);
   if (seen.find(idx) != seen.end())
     return seen[idx];
   if (auto ainst = dyn_cast<Instruction>(inst)) {
@@ -271,6 +272,29 @@ bool is_value_needed_in_reverse(
     // instance
     if (isa<StoreInst>(use)) {
       continue;
+    }
+
+    // May need the primal version if active use of inactive value
+    // which is non floating point
+    if (isa<PHINode>(use) || isa<CastInst>(use)) {
+      if (!gutils->isConstantValue((Instruction *)cast<Instruction>(use)) &&
+          gutils->isConstantValue(const_cast<Value *>(inst)) &&
+          !TR.query(const_cast<Value *>(inst)).Inner0().isFloat()) {
+        if (!is_value_needed_in_reverse<VT>(TR, gutils, use, topLevel, seen,
+                                            oldUnreachable)) {
+          return seen[idx] = true;
+        }
+      }
+    }
+    if (isa<ReturnInst>(use)) {
+      if (!gutils->isConstantInstruction(cast<Instruction>(use)) &&
+          gutils->isConstantValue(const_cast<Value *>(inst)) &&
+          !TR.query(const_cast<Value *>(inst)).Inner0().isFloat()) {
+        if (!is_value_needed_in_reverse<VT>(TR, gutils, use, topLevel, seen,
+                                            oldUnreachable)) {
+          return seen[idx] = true;
+        }
+      }
     }
 
     if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) ||

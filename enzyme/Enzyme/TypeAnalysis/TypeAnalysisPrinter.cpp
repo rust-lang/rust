@@ -104,6 +104,21 @@ public:
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
     }
 
+    TypeTree dt;
+    if (F.getReturnType()->isFPOrFPVectorTy()) {
+      dt = ConcreteType(F.getReturnType()->getScalarType());
+    } else if (F.getReturnType()->isPointerTy()) {
+      auto et = cast<PointerType>(F.getReturnType())->getElementType();
+      if (et->isFPOrFPVectorTy()) {
+        dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
+      } else if (et->isPointerTy()) {
+        dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
+      }
+    } else if (F.getReturnType()->isIntOrIntVectorTy()) {
+      dt = ConcreteType(BaseType::Integer);
+    }
+    type_args.Return = dt.Only(-1);
+
     TypeAnalysis TA(TLI);
     TA.analyzeFunction(type_args);
     for (Function &f : *F.getParent()) {

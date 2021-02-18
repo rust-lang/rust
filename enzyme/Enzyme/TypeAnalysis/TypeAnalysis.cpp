@@ -104,6 +104,7 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"scalbn", Intrinsic::not_intrinsic},
     {"powi", Intrinsic::powi},
     {"cabs", Intrinsic::not_intrinsic},
+    {"ldexp", Intrinsic::not_intrinsic},
 #if LLVM_VERSION_MAJOR >= 9
     {"lround", Intrinsic::lround},
     {"llround", Intrinsic::llround},
@@ -1718,6 +1719,25 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
                        TypeTree(AnalysisRet.JustInt()[{}]).Only(-1), &I);
       break;
 
+    case BinaryOperator::Xor:
+      if (direction & UP)
+        for (int i = 0; i < 2; ++i) {
+          // If & against 0b10000000000, the result is a float
+          auto CI = dyn_cast<ConstantInt>(I.getOperand(i));
+          if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+          }
+          if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+          }
+          if (CI) {
+            if (CI->isNegative() && CI->isMinValue(/*signed*/ true) &&
+                getAnalysis(&I)[{-1}].isFloat()) {
+              updateAnalysis(I.getOperand(1 - i), getAnalysis(&I), &I);
+            }
+          }
+        }
+      break;
     default:
       break;
     }
@@ -1764,6 +1784,23 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         if (isa<ConstantInt>(I.getOperand(i)) &&
             getAnalysis(I.getOperand(1 - i)).Inner0() == BaseType::Integer) {
           Result = TypeTree(BaseType::Integer);
+        }
+      }
+    } else if (I.getOpcode() == BinaryOperator::Xor) {
+      for (int i = 0; i < 2; ++i) {
+        // If & against 0b10000000000, the result is a float
+        auto CI = dyn_cast<ConstantInt>(I.getOperand(i));
+        if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+          CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+        }
+        if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+          CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+        }
+        if (CI) {
+          if (CI->isNegative() && CI->isMinValue(/*signed*/ true) &&
+              getAnalysis(I.getOperand(1 - i))[{-1}].isFloat()) {
+            Result = getAnalysis(I.getOperand(1 - i))[{-1}];
+          }
         }
       }
     }
@@ -2784,18 +2821,23 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
           TypeTree(ConcreteType(call.getArgOperand(0)->getType())).Only(-1),
           &call);
     }
-    if (ci->getName() == "frexp" || ci->getName() == "frexpf" || ci->getName() == "frexpl") {
+    if (ci->getName() == "frexp" || ci->getName() == "frexpf" ||
+        ci->getName() == "frexpl") {
 
       auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
-      updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1), &call);
-      updateAnalysis(call.getOperand(0), TypeTree(ConcreteType(call.getType())).Only(-1), &call);
+      updateAnalysis(&call, TypeTree(ConcreteType(call.getType())).Only(-1),
+                     &call);
+      updateAnalysis(call.getOperand(0),
+                     TypeTree(ConcreteType(call.getType())).Only(-1), &call);
       TypeTree ival(BaseType::Pointer);
-      auto objSize = DL.getTypeSizeInBits(cast<PointerType>(call.getOperand(1)->getType())->getElementType()) / 8;
-      for (size_t i=0; i < objSize; ++i) {
+      auto objSize =
+          DL.getTypeSizeInBits(cast<PointerType>(call.getOperand(1)->getType())
+                                   ->getElementType()) /
+          8;
+      for (size_t i = 0; i < objSize; ++i) {
         ival.insert({(int)i}, BaseType::Integer);
       }
-      updateAnalysis(call.getOperand(1), ival.Only(-1),
-                     &call);
+      updateAnalysis(call.getOperand(1), ival.Only(-1), &call);
       return;
     }
 

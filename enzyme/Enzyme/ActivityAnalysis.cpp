@@ -326,11 +326,22 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
   // derivative information is through the return value
   // TODO the "doesn't write to active memory" can be made more aggressive than
   // doesn't write to any memory
-  if (!I->mayWriteToMemory() ||
-      (isa<CallInst>(I) && AA.onlyReadsMemory(cast<CallInst>(I))) ||
-      (isa<CallInst>(I) && cast<CallInst>(I)->getFunction() &&
-       isMemFreeLibMFunction(cast<CallInst>(I)->getFunction()->getName()))) {
-
+  bool noActiveWrite = false;
+  if (!I->mayWriteToMemory())
+    noActiveWrite = true;
+  else if (auto CI = dyn_cast<CallInst>(I)) {
+    if (AA.onlyReadsMemory(CI)) {
+      noActiveWrite = true;
+    } else if (auto F = CI->getCalledFunction()) {
+      if (isMemFreeLibMFunction(F->getName())) {
+        noActiveWrite = true;
+      } else if (F->getName() == "frexp" || F->getName() == "frexpf" ||
+                 F->getName() == "frexpl") {
+        noActiveWrite = true;
+      }
+    }
+  }
+  if (noActiveWrite) {
     // Even if returning a pointer, this instruction is considered inactive
     // since the instruction doesn't prop gradients. Thus, so long as we don't
     // return an object containing a float, this instruction is inactive

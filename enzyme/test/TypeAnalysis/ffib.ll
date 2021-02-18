@@ -23,7 +23,7 @@ return:                                           ; preds = %if.end, %entry
   ret double %accumulator.tr.lcssa
 }
 
-; CHECK: ffib - {} |{[-1]:Integer}:{} {[-1]:Float@double}:{} 
+; CHECK: ffib - {[-1]:Float@double} |{[-1]:Integer}:{} {[-1]:Float@double}:{} 
 ; CHECK-NEXT: i32 %n: {[-1]:Integer}
 ; CHECK-NEXT: double %x: {[-1]:Float@double}
 ; CHECK-NEXT: entry

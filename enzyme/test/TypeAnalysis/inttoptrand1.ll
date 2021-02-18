@@ -1,6 +1,6 @@
 ; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=matvec -o /dev/null | FileCheck %s
 
-define internal double @matvec(i64* %lhs, double* %res) {
+define internal void @matvec(i64* %lhs, double* %res) {
 entry:
   %loaded = load i64, i64* %lhs, align 4
   %a2 = inttoptr i64 %loaded to double*
@@ -9,7 +9,7 @@ entry:
   %gep = getelementptr inbounds double, double* %a2, i64 %and
   %a4 = load double, double* %gep, align 8
   store double %a4, double* %res, align 8
-  ret double %a4
+  ret void
 }
 
 
@@ -24,4 +24,4 @@ entry:
 ; CHECK-NEXT:   %gep = getelementptr inbounds double, double* %a2, i64 %and: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT:   %a4 = load double, double* %gep, align 8: {[-1]:Float@double}
 ; CHECK-NEXT:   store double %a4, double* %res, align 8: {}
-; CHECK-NEXT:   ret double %a4: {}
+; CHECK-NEXT:   ret void: {}

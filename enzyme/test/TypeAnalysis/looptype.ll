@@ -1,12 +1,12 @@
 ; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=callee -o /dev/null | FileCheck %s
 
-define i64 @callee(i64* %call, i64* %call3, i64* %call6) {
+define void @callee(i64* %call, i64* %call3, i64* %call6) {
 entry:
   br label %for.body
 
 for.cond.cleanup:                                 ; preds = %for.body
   %add8 = add nsw i64 %sub, %add
-  ret i64 %add8
+  ret void
 
 for.body:                                         ; preds = %for.body, %entry
   %indvars.iv = phi i64 [ 3, %entry ], [ %indvars.iv.next, %for.body ]
@@ -38,10 +38,9 @@ for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   br label %for.body: {}
 ; CHECK-NEXT: for.cond.cleanup
 ; CHECK-NEXT:   %add8 = add nsw i64 %sub, %add: {[-1]:Integer}
-; CHECK-NEXT:   ret i64 %add8: {}
+; CHECK-NEXT:   ret void: {}
 ; CHECK-NEXT: for.body
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ 3, %entry ], [ %indvars.iv.next, %for.body ]: {[-1]:Integer}
-; TODO this should become integer
 ; CHECK-NEXT:   %index.addr.023 = phi i64 [ 0, %entry ], [ %sub, %for.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %startInput.021 = phi i64 [ 0, %entry ], [ %add, %for.body ]: {[-1]:Integer}
 ; CHECK-NEXT:   %0 = load i64, i64* %call, align 8, !tbaa !0: {[-1]:Integer}

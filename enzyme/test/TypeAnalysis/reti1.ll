@@ -45,7 +45,7 @@ attributes #3 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: d - {} |{[-1,-1]:Float@double}:{} 
+; CHECK: d - {[-1]:Integer} |{[-1,-1]:Float@double}:{} 
 ; CHECK-NEXT: double* %x: {[-1,-1]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %call = tail call zeroext i1 @g(double* %x): {[-1]:Integer}

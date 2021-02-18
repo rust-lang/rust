@@ -3,7 +3,7 @@
 %struct.n = type { double, %struct.n* }
 
 ; Function Attrs: noinline norecurse nounwind readonly uwtable
-define dso_local double @sum_list(%struct.n* noalias readonly %node) local_unnamed_addr #0 {
+define void @sum_list(%struct.n* noalias readonly %node) local_unnamed_addr #0 {
 entry:
   br label %for
 
@@ -19,7 +19,7 @@ for:                              ; preds = %for.cond.cleanup4, %entry
   br i1 %cmp, label %for.cond.cleanup, label %for
 
 for.cond.cleanup:                                 ; preds = %for.cond.cleanup4, %entry
-  ret double %add
+  ret void
 }
 
 attributes #0 = { noinline norecurse nounwind readonly uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-infs-fp-math"="true" "no-jump-tables"="false" "no-nans-fp-math"="true" "no-signed-zeros-fp-math"="true" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="true" "use-soft-float"="false" }
@@ -60,4 +60,4 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %l1, null: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for: {}
 ; CHECK-NEXT: for.cond.cleanup
-; CHECK-NEXT:   ret double %add: {}
+; CHECK-NEXT:   ret void: {}

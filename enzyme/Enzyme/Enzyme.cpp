@@ -59,6 +59,8 @@
 #include "GradientUtils.h"
 #include "Utils.h"
 
+#include "llvm/Transforms/Utils.h"
+
 #include "CApi.h"
 using namespace llvm;
 #ifdef DEBUG_TYPE
@@ -636,7 +638,8 @@ public:
         if (Fn && Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
         }
-        if (Fn && (Fn->getName() == "frexp" || Fn->getName() == "frexpf" || Fn->getName() == "frexpl")) {
+        if (Fn && (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
+                   Fn->getName() == "frexpl")) {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
           CI->addParamAttr(1, Attribute::WriteOnly);
         }
@@ -882,24 +885,23 @@ public:
 
     bool changed = false;
     for (Function &F : M) {
-      if (F.getName() == "__enzyme_float" ||
-          F.getName() == "__enzyme_double" ||
+      if (F.getName() == "__enzyme_float" || F.getName() == "__enzyme_double" ||
           F.getName() == "__enzyme_integer" ||
           F.getName() == "__enzyme_pointer") {
         F.addFnAttr(Attribute::ReadNone);
-        for (auto& arg : F.args()) {
+        for (auto &arg : F.args()) {
           if (arg.getType()->isPointerTy()) {
             arg.addAttr(Attribute::ReadNone);
             arg.addAttr(Attribute::NoCapture);
           }
         }
       }
-      if (F.getName() == "frexp" || F.getName() == "frexpf" || F.getName() == "frexpl") {
+      if (F.getName() == "frexp" || F.getName() == "frexpf" ||
+          F.getName() == "frexpl") {
         F.addFnAttr(Attribute::ArgMemOnly);
         F.addParamAttr(1, Attribute::WriteOnly);
       }
-      if (F.getName() == "__fd_sincos_1" ||
-          F.getName() == "__fd_cos_1" ||
+      if (F.getName() == "__fd_sincos_1" || F.getName() == "__fd_cos_1" ||
           F.getName() == "__mth_i_ipowi") {
         F.addFnAttr(Attribute::ReadNone);
       }

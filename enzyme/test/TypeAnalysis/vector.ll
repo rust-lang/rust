@@ -9,7 +9,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.1 = private unnamed_addr constant [20 x i8] c"d_reduce_max(%i)=%f\00", align 1
 
 ; Function Attrs: norecurse nounwind readonly uwtable
-define dso_local double @reduce_max(double* nocapture readonly %vec, i32 %size) #0 {
+define dso_local void @reduce_max(double* nocapture readonly %vec, i32 %size) #0 {
 entry:
   %cmp12 = icmp sgt i32 %size, 0
   br i1 %cmp12, label %for.body.preheader, label %for.cond.cleanup
@@ -104,7 +104,7 @@ middle.block:                                     ; preds = %middle.block.unr-lc
 
 for.cond.cleanup:                                 ; preds = %for.body, %middle.block, %entry
   %ret.0.lcssa = phi double [ 0xFFF0000000000000, %entry ], [ %28, %middle.block ], [ %ret.0., %for.body ]
-  ret double %ret.0.lcssa
+  ret void
 
 for.body:                                         ; preds = %for.body.preheader20, %for.body
   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ %indvars.iv.ph, %for.body.preheader20 ]
@@ -124,53 +124,11 @@ declare void @llvm.lifetime.start.p0i8(i64, i8* nocapture) #1
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #1
 
-; Function Attrs: nounwind uwtable
-define dso_local i32 @main() local_unnamed_addr #2 {
-entry:
-  %vec = alloca [5 x double], align 16
-  %d_vec = alloca [5 x double], align 16
-  %0 = bitcast [5 x double]* %vec to i8*
-  call void @llvm.lifetime.start.p0i8(i64 40, i8* nonnull %0) #5
-  %1 = getelementptr inbounds [5 x double], [5 x double]* %vec, i64 0, i64 0
-  %2 = bitcast [5 x double]* %vec to <2 x double>*
-  store <2 x double> <double -1.000000e+00, double 2.000000e+00>, <2 x double>* %2, align 16
-  %3 = getelementptr inbounds [5 x double], [5 x double]* %vec, i64 0, i64 2
-  %4 = bitcast double* %3 to <2 x double>*
-  store <2 x double> <double -2.000000e-01, double 2.000000e+00>, <2 x double>* %4, align 16
-  %5 = getelementptr inbounds [5 x double], [5 x double]* %vec, i64 0, i64 4
-  store double 1.000000e+00, double* %5, align 16
-  %6 = bitcast [5 x double]* %d_vec to i8*
-  call void @llvm.lifetime.start.p0i8(i64 40, i8* nonnull %6) #5
-  call void @llvm.memset.p0i8.i64(i8* nonnull align 16 %6, i8 0, i64 40, i1 false)
-  %call1 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str, i64 0, i64 0), double 2.000000e+00)
-  %arraydecay3 = getelementptr inbounds [5 x double], [5 x double]* %d_vec, i64 0, i64 0
-  call void @__enzyme_autodiff(i8* bitcast (double (double*, i32)* @reduce_max to i8*), double* nonnull %1, double* nonnull %arraydecay3, i32 5) #5
-  %7 = load double, double* %arraydecay3, align 16, !tbaa !2
-  %call4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.1, i64 0, i64 0), i32 0, double %7)
-  %arrayidx.1 = getelementptr inbounds [5 x double], [5 x double]* %d_vec, i64 0, i64 1
-  %8 = load double, double* %arrayidx.1, align 8, !tbaa !2
-  %call4.1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.1, i64 0, i64 0), i32 1, double %8)
-  %arrayidx.2 = getelementptr inbounds [5 x double], [5 x double]* %d_vec, i64 0, i64 2
-  %9 = load double, double* %arrayidx.2, align 16, !tbaa !2
-  %call4.2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.1, i64 0, i64 0), i32 2, double %9)
-  %arrayidx.3 = getelementptr inbounds [5 x double], [5 x double]* %d_vec, i64 0, i64 3
-  %10 = load double, double* %arrayidx.3, align 8, !tbaa !2
-  %call4.3 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.1, i64 0, i64 0), i32 3, double %10)
-  %arrayidx.4 = getelementptr inbounds [5 x double], [5 x double]* %d_vec, i64 0, i64 4
-  %11 = load double, double* %arrayidx.4, align 16, !tbaa !2
-  %call4.4 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([20 x i8], [20 x i8]* @.str.1, i64 0, i64 0), i32 4, double %11)
-  call void @llvm.lifetime.end.p0i8(i64 40, i8* nonnull %6) #5
-  call void @llvm.lifetime.end.p0i8(i64 40, i8* nonnull %0) #5
-  ret i32 0
-}
-
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1) #1
 
 ; Function Attrs: nounwind
 declare dso_local i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #3
-
-declare dso_local void @__enzyme_autodiff(i8*, double*, double*, i32) local_unnamed_addr #4
 
 attributes #0 = { norecurse nounwind readonly uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "no-frame-pointer-elim"="false" "no-infs-fp-math"="true" "no-jump-tables"="false" "no-nans-fp-math"="true" "no-signed-zeros-fp-math"="true" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="true" "use-soft-float"="false" }
 attributes #1 = { argmemonly nounwind }
@@ -282,7 +240,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp.n, label %for.cond.cleanup, label %for.body.preheader20: {}
 ; CHECK-NEXT: for.cond.cleanup
 ; CHECK-NEXT:   %ret.0.lcssa = phi double [ 0xFFF0000000000000, %entry ], [ %28, %middle.block ], [ %ret.0., %for.body ]: {[-1]:Float@double}
-; CHECK-NEXT:   ret double %ret.0.lcssa: {}
+; CHECK-NEXT:   ret void: {}
 ; CHECK-NEXT: for.body
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ %indvars.iv.next, %for.body ], [ %indvars.iv.ph, %for.body.preheader20 ]: {[-1]:Integer}
 ; CHECK-NEXT:   %ret.013 = phi double [ %ret.0., %for.body ], [ %ret.013.ph, %for.body.preheader20 ]: {[-1]:Float@double}
