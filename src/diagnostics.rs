@@ -54,7 +54,7 @@ pub fn report_error<'tcx, 'mir>(
 ) -> Option<i64> {
     use InterpError::*;
 
-    let (title, helps) = match &e.kind {
+    let (title, helps) = match &e.kind() {
         MachineStop(info) => {
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
             use TerminationInfo::*;
@@ -81,7 +81,7 @@ pub fn report_error<'tcx, 'mir>(
             (title, helps)
         }
         _ => {
-            let title = match e.kind {
+            let title = match e.kind() {
                 Unsupported(_) =>
                     "unsupported operation",
                 UndefinedBehavior(_) =>
@@ -93,11 +93,11 @@ pub fn report_error<'tcx, 'mir>(
                 _ =>
                     bug!("This error should be impossible in Miri: {}", e),
             };
-            let helps = match e.kind {
+            let helps = match e.kind() {
                 Unsupported(UnsupportedOpInfo::NoMirFor(..)) =>
                     vec![format!("make sure to use a Miri sysroot, which you can prepare with `cargo miri setup`")],
                 Unsupported(UnsupportedOpInfo::ReadBytesAsPointer | UnsupportedOpInfo::ThreadLocalStatic(_) | UnsupportedOpInfo::ReadExternStatic(_)) =>
-                    panic!("Error should never be raised by Miri: {:?}", e.kind),
+                    panic!("Error should never be raised by Miri: {:?}", e.kind()),
                 Unsupported(_) =>
                     vec![format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support")],
                 UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
@@ -133,7 +133,7 @@ pub fn report_error<'tcx, 'mir>(
     }
 
     // Extra output to help debug specific issues.
-    match e.kind {
+    match e.kind() {
         UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some(access))) => {
             eprintln!(
                 "Uninitialized read occurred at offsets 0x{:x}..0x{:x} into this allocation:",
