@@ -422,3 +422,10 @@ $ rustdoc src/lib.rs --crate-version 1.3.37
 When `rustdoc` receives this flag, it will print an extra "Version (version)" into the sidebar of
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
+
+## `@path`: load command-line flags from a path
+
+If you specify `@path` on the command-line, then it will open `path` and read
+command line options from it. These options are one per line; a blank line indicates
+an empty option. The file can use Unix or Windows style line endings, and must be
+encoded as UTF-8.

@@ -55,7 +55,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
-mod args;
+pub mod args;
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
@@ -188,16 +188,8 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let mut args = Vec::new();
-    for arg in at_args {
-        match args::arg_expand(arg.clone()) {
-            Ok(arg) => args.extend(arg),
-            Err(err) => early_error(
-                ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
-            ),
-        }
-    }
+    let args = args::arg_expand_all(at_args);
+
     let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
