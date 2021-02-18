@@ -634,6 +634,16 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   // infinite loop
   if (auto ce = dyn_cast<ConstantExpr>(Val)) {
     if (ce->isCast()) {
+      if (auto PT = dyn_cast<PointerType>(ce->getType())) {
+        if (PT->getElementType()->isFunctionTy()) {
+          if (printconst)
+            llvm::errs()
+                << " VALUE nonconst as cast to pointer of functiontype " << *Val
+                << "\n";
+          return false;
+        }
+      }
+
       if (isConstantValue(TR, ce->getOperand(0))) {
         if (printconst)
           llvm::errs() << " VALUE const cast from from operand " << *Val
