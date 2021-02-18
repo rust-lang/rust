@@ -23,6 +23,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::Obligation;
 
 use std::cmp::Ordering;
+use std::iter;
 
 use super::probe::Mode;
 use super::{CandidateSource, MethodError, NoMatchData};
@@ -648,21 +649,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::PredicateKind::Projection(pred) => {
                                 let pred = bound_predicate.rebind(pred);
                                 // `<Foo as Iterator>::Item = String`.
-                                let trait_ref =
-                                    pred.skip_binder().projection_ty.trait_ref(self.tcx);
-                                let assoc = self
-                                    .tcx
-                                    .associated_item(pred.skip_binder().projection_ty.item_def_id);
-                                let ty = pred.skip_binder().ty;
-                                let obligation = format!("{}::{} = {}", trait_ref, assoc.ident, ty);
-                                let quiet = format!(
-                                    "<_ as {}>::{} = {}",
-                                    trait_ref.print_only_trait_path(),
-                                    assoc.ident,
-                                    ty
+                                let projection_ty = pred.skip_binder().projection_ty;
+
+                                let substs_with_infer_self = tcx.mk_substs(
+                                    iter::once(tcx.mk_ty_var(ty::TyVid { index: 0 }).into())
+                                        .chain(projection_ty.substs.iter().skip(1)),
                                 );
-                                bound_span_label(trait_ref.self_ty(), &obligation, &quiet);
-                                Some((obligation, trait_ref.self_ty()))
+
+                                let quiet_projection_ty = ty::ProjectionTy {
+                                    substs: substs_with_infer_self,
+                                    item_def_id: projection_ty.item_def_id,
+                                };
+
+                                let ty = pred.skip_binder().ty;
+
+                                let obligation = format!("{} = {}", projection_ty, ty);
+                                let quiet = format!("{} = {}", quiet_projection_ty, ty);
+
+                                bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
+                                Some((obligation, projection_ty.self_ty()))
                             }
                             ty::PredicateKind::Trait(poly_trait_ref, _) => {
                                 let p = poly_trait_ref.trait_ref;

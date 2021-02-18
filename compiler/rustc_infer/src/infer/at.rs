@@ -55,6 +55,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
 pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
     fn to_trace(
+        tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -178,7 +179,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        let trace = ToTrace::to_trace(self.cause, a_is_expected, a, b);
+        let trace = ToTrace::to_trace(self.infcx.tcx, self.cause, a_is_expected, a, b);
         Trace { at: self, trace, a_is_expected }
     }
 }
@@ -251,6 +252,7 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
     fn to_trace(
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -262,6 +264,7 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     fn to_trace(
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -273,6 +276,7 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
     fn to_trace(
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -284,6 +288,7 @@ impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     fn to_trace(
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -298,6 +303,7 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     fn to_trace(
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
@@ -306,6 +312,23 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
+    fn to_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        let a_ty = tcx.mk_projection(a.item_def_id, a.substs);
+        let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
+        TypeTrace {
+            cause: cause.clone(),
+            values: Types(ExpectedFound::new(a_is_expected, a_ty, b_ty)),
         }
     }
 }
