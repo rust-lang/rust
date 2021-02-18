@@ -292,7 +292,7 @@ the next section. Let's worry about the details later and emit our lint for
 
 Depending on how complex we want our lint message to be, we can choose from a
 variety of lint emission functions. They can all be found in
-[`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
+[`clippy_utils/src/diagnostics.rs`][diagnostics].
 
 `span_lint_and_help` seems most appropriate in this case. It allows us to
 provide an extra help message and we can't really suggest a better name
@@ -321,7 +321,7 @@ When code or an identifier must appear in a message or label, it should be
 surrounded with single grave accents \`.
 
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
-[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
+[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/diagnostics.rs
 [the rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/diagnostics.html
 
 ## Adding the lint logic
@@ -537,7 +537,7 @@ directory. Adding a configuration to a lint can be useful for thresholds or to c
 behavior that can be seen as a false positive for some users. Adding a configuration is done 
 in the following steps:
 
-1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
+1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
     like this:
     ```rust
     /// Lint: LINT_NAME. <The configuration field doc comment>
@@ -636,7 +636,7 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
+[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
