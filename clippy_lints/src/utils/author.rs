@@ -1,7 +1,7 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-use crate::{declare_clippy_lint, get_attr};
+use crate::utils::get_attr;
 use rustc_ast::ast::{Attribute, LitFloatType, LitKind};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::FxHashMap;

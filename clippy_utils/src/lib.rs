@@ -30,7 +30,6 @@ pub mod sym_helper;
 #[allow(clippy::module_name_repetitions)]
 pub mod ast_utils;
 pub mod attrs;
-pub mod author;
 pub mod camel_case;
 pub mod comparisons;
 pub mod conf;
@@ -39,9 +38,6 @@ mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
-pub mod inspector;
-#[cfg(feature = "internal-lints")]
-pub mod internal_lints;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
@@ -89,105 +85,6 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
-
-/// Macro used to declare a Clippy lint.
-///
-/// Every lint declaration consists of 4 parts:
-///
-/// 1. The documentation, which is used for the website
-/// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
-/// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
-///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
-/// 4. The `description` that contains a short explanation on what's wrong with code where the
-///    lint is triggered.
-///
-/// Currently the categories `style`, `correctness`, `complexity` and `perf` are enabled by default.
-/// As said in the README.md of this repository, if the lint level mapping changes, please update
-/// README.md.
-///
-/// # Example
-///
-/// ```
-/// #![feature(rustc_private)]
-/// extern crate rustc_session;
-/// use rustc_session::declare_tool_lint;
-/// use clippy_utils::declare_clippy_lint;
-///
-/// declare_clippy_lint! {
-///     /// **What it does:** Checks for ... (describe what the lint matches).
-///     ///
-///     /// **Why is this bad?** Supply the reason for linting the code.
-///     ///
-///     /// **Known problems:** None. (Or describe where it could go wrong.)
-///     ///
-///     /// **Example:**
-///     ///
-///     /// ```rust
-///     /// // Bad
-///     /// Insert a short example of code that triggers the lint
-///     ///
-///     /// // Good
-///     /// Insert a short example of improved code that doesn't trigger the lint
-///     /// ```
-///     pub LINT_NAME,
-///     pedantic,
-///     "description"
-/// }
-/// ```
-/// [lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-#[macro_export]
-macro_rules! declare_clippy_lint {
-    { $(#[$attr:meta])* pub $name:tt, style, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, correctness, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Deny, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, complexity, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, perf, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, pedantic, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, restriction, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, cargo, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, nursery, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, internal, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Allow, $description, report_in_external_macro: true
-        }
-    };
-    { $(#[$attr:meta])* pub $name:tt, internal_warn, $description:tt } => {
-        declare_tool_lint! {
-            $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
-        }
-    };
-}
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
