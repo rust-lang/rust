@@ -964,29 +964,29 @@ impl<K: DepKind> DepGraph<K> {
                                  ----------------------------------------------\
                                  ------------";
 
-        println!("[incremental]");
-        println!("[incremental] DepGraph Statistics");
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
-        println!("[incremental] Total Node Count: {}", total_node_count);
-        println!("[incremental] Total Edge Count: {}", total_edge_count);
+        eprintln!("[incremental]");
+        eprintln!("[incremental] DepGraph Statistics");
+        eprintln!("{}", SEPARATOR);
+        eprintln!("[incremental]");
+        eprintln!("[incremental] Total Node Count: {}", total_node_count);
+        eprintln!("[incremental] Total Edge Count: {}", total_edge_count);
 
         if cfg!(debug_assertions) {
             let total_edge_reads = current.total_read_count.load(Relaxed);
             let total_duplicate_edge_reads = current.total_duplicate_read_count.load(Relaxed);
 
-            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+            eprintln!("[incremental] Total Edge Reads: {}", total_edge_reads);
+            eprintln!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
         }
 
-        println!("[incremental]");
+        eprintln!("[incremental]");
 
-        println!(
+        eprintln!(
             "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
             "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
         );
 
-        println!(
+        eprintln!(
             "[incremental] -------------------------------------\
                   |------------------\
                   |-------------\
@@ -997,7 +997,7 @@ impl<K: DepKind> DepGraph<K> {
             let node_kind_ratio = (100.0 * (stat.node_counter as f64)) / (total_node_count as f64);
             let node_kind_avg_edges = (stat.edge_counter as f64) / (stat.node_counter as f64);
 
-            println!(
+            eprintln!(
                 "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
                 format!("{:?}", stat.kind),
                 node_kind_ratio,
@@ -1006,8 +1006,8 @@ impl<K: DepKind> DepGraph<K> {
             );
         }
 
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
+        eprintln!("{}", SEPARATOR);
+        eprintln!("[incremental]");
     }
 
     fn next_virtual_depnode_index(&self) -> DepNodeIndex {

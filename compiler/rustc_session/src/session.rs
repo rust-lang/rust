@@ -959,19 +959,19 @@ impl Session {
     }
 
     pub fn print_perf_stats(&self) {
-        println!(
+        eprintln!(
             "Total time spent computing symbol hashes:      {}",
             duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
         );
-        println!(
+        eprintln!(
             "Total queries canonicalized:                   {}",
             self.perf_stats.queries_canonicalized.load(Ordering::Relaxed)
         );
-        println!(
+        eprintln!(
             "normalize_generic_arg_after_erasing_regions:   {}",
             self.perf_stats.normalize_generic_arg_after_erasing_regions.load(Ordering::Relaxed)
         );
-        println!(
+        eprintln!(
             "normalize_projection_ty:                       {}",
             self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed)
         );
