@@ -18,6 +18,10 @@ LL |     default type U = &'static B;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&'static B == B`
    |
    = help: the trait `PartialEq<B>` is not implemented for `&'static B`
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | impl<B: 'static, T> X<B> for T where &'static B: PartialEq<B> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 
