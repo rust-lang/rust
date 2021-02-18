@@ -90,7 +90,7 @@ Item =
 | ExternCrate
 | Fn
 | Impl
-| MacroCall
+| MacroItem
 | MacroRules
 | MacroDef
 | Module
@@ -100,6 +100,9 @@ Item =
 | TypeAlias
 | Union
 | Use
+
+MacroItem =
+  MacroCall
 
 MacroRules =
   Attr* Visibility?
