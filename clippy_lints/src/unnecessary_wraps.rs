@@ -131,11 +131,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         });
 
         if can_sugg && !suggs.is_empty() {
-            let (lint_msg, return_type_suggestion_msg, return_type_suggestion) = if inner_type.is_unit() {
+            let (lint_msg, return_type_sugg_msg, return_type_sugg, body_sugg_msg) = if inner_type.is_unit() {
                 (
                     "this function's return value is unnecessary".to_string(),
                     "remove the return type...".to_string(),
                     snippet(cx, fn_decl.output.span(), "..").to_string(),
+                    "...and then remove returned values",
                 )
             } else {
                 (
@@ -145,21 +146,18 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                     ),
                     format!("remove `{}` from the return type...", return_type_label),
                     inner_type.to_string(),
+                    "...and then change returning expressions",
                 )
             };
 
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
                     fn_decl.output.span(),
-                    return_type_suggestion_msg.as_str(),
-                    return_type_suggestion,
+                    return_type_sugg_msg.as_str(),
+                    return_type_sugg,
                     Applicability::MaybeIncorrect,
                 );
-                diag.multipart_suggestion(
-                    "...and then change the returning expressions",
-                    suggs,
-                    Applicability::MaybeIncorrect,
-                );
+                diag.multipart_suggestion(body_sugg_msg, suggs, Applicability::MaybeIncorrect);
             });
         }
     }

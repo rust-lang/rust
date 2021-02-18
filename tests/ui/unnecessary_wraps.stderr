@@ -15,7 +15,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
    |                               ^^^
-help: ...and then change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         return 42;
 LL |     }
@@ -41,7 +41,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func2(a: bool, b: bool) -> i32 {
    |                               ^^^
-help: ...and then change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         return 10;
 LL |     }
@@ -63,7 +63,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func5() -> i32 {
    |               ^^^
-help: ...and then change the returning expressions
+help: ...and then change returning expressions
    |
 LL |     1
    |
@@ -80,7 +80,7 @@ help: remove `Result` from the return type...
    |
 LL | fn func7() -> i32 {
    |               ^^^
-help: ...and then change the returning expressions
+help: ...and then change returning expressions
    |
 LL |     1
    |
@@ -97,7 +97,7 @@ help: remove `Option` from the return type...
    |
 LL |     fn func12() -> i32 {
    |                    ^^^
-help: ...and then change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         1
    |
@@ -118,7 +118,7 @@ help: remove the return type...
    |
 LL | fn issue_6640_1(a: bool, b: bool) -> Option<()> {
    |                                      ^^^^^^^^^^
-help: ...and then change the returning expressions
+help: ...and then remove returned values
    |
 LL |         return ;
 LL |     }
@@ -144,7 +144,7 @@ help: remove the return type...
    |
 LL | fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
    |                                      ^^^^^^^^^^^^^^^
-help: ...and then change the returning expressions
+help: ...and then remove returned values
    |
 LL |         return ;
 LL |     }

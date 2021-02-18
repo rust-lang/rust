@@ -141,6 +141,24 @@ fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
     }
 }
 
+// should not be linted
+fn issue_6640_3() -> Option<()> {
+    if true {
+        Some(())
+    } else {
+        None
+    }
+}
+
+// should not be linted
+fn issue_6640_4() -> Result<(), ()> {
+    if true {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
 fn main() {
     // method calls are not linted
     func1(true, true);
