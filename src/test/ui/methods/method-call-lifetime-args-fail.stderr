@@ -1,4 +1,4 @@
-error[E0107]: this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+error[E0107]: this associated function takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/method-call-lifetime-args-fail.rs:16:7
    |
 LL |     S.early::<'static>();
@@ -20,7 +20,7 @@ error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime
   --> $DIR/method-call-lifetime-args-fail.rs:18:7
    |
 LL |     S.early::<'static, 'static, 'static>();
-   |       ^^^^^                   --------- help: remove this lifetime argument
+   |       ^^^^^                     ------- help: remove this lifetime argument
    |       |
    |       expected 2 lifetime arguments
    |
@@ -198,7 +198,7 @@ note: the late bound lifetime parameter is introduced here
 LL |     fn late_unused_early<'a, 'b>(self) -> &'b u8 { loop {} }
    |                          ^^
 
-error[E0107]: this associated function takes 2 lifetime arguments but only 1 lifetime argument was supplied
+error[E0107]: this associated function takes 2 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/method-call-lifetime-args-fail.rs:63:8
    |
 LL |     S::early::<'static>(S);
@@ -220,7 +220,7 @@ error[E0107]: this associated function takes 2 lifetime arguments but 3 lifetime
   --> $DIR/method-call-lifetime-args-fail.rs:65:8
    |
 LL |     S::early::<'static, 'static, 'static>(S);
-   |        ^^^^^                   --------- help: remove this lifetime argument
+   |        ^^^^^                     ------- help: remove this lifetime argument
    |        |
    |        expected 2 lifetime arguments
    |

@@ -9,8 +9,8 @@ macro_rules! impl_add {
         $(
             fn $n() {
                 S::f::<i64>();
-                //~^ ERROR this associated function takes 0 type arguments but 1 type argument was supplied
-                //~| ERROR this associated function takes 0 type arguments but 1 type argument was supplied
+                //~^ ERROR this associated function takes 0 generic
+                //~| ERROR this associated function takes 0 generic
             }
         )*
     }

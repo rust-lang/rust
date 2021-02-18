@@ -24,6 +24,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::QPath<'hir> {
+        debug!("lower_qpath(id: {:?}, qself: {:?}, p: {:?})", id, qself, p);
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
 
@@ -222,6 +223,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: ImplTraitContext<'_, 'hir>,
         explicit_owner: Option<NodeId>,
     ) -> hir::PathSegment<'hir> {
+        debug!(
+            "path_span: {:?}, lower_path_segment(segment: {:?}, expected_lifetimes: {:?})",
+            path_span, segment, expected_lifetimes
+        );
         let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
             let msg = "parenthesized type parameters may only be used with a `Fn` trait";
             match **generic_args {

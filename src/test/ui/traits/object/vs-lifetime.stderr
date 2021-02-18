@@ -8,7 +8,7 @@ error[E0107]: this struct takes 1 lifetime argument but 2 lifetime arguments wer
   --> $DIR/vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
-   |            ^        --------- help: remove this lifetime argument
+   |            ^          ------- help: remove this lifetime argument
    |            |
    |            expected 1 lifetime argument
    |
@@ -18,18 +18,18 @@ note: struct defined here, with 1 lifetime parameter: `'a`
 LL | struct S<'a, T>(&'a u8, T);
    |        ^ --
 
-error[E0107]: this struct takes 1 type argument but 0 type arguments were supplied
+error[E0107]: this struct takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/vs-lifetime.rs:11:12
    |
 LL |     let _: S<'static, 'static>;
-   |            ^ expected 1 type argument
+   |            ^ expected 1 generic argument
    |
-note: struct defined here, with 1 type parameter: `T`
+note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/vs-lifetime.rs:4:8
    |
 LL | struct S<'a, T>(&'a u8, T);
    |        ^     -
-help: add missing type argument
+help: add missing generic argument
    |
 LL |     let _: S<'static, 'static, T>;
    |                              ^^^

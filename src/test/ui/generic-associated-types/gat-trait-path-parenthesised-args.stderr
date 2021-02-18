@@ -1,11 +1,11 @@
 error: lifetime in trait object type must be followed by `+`
-  --> $DIR/gat-trait-path-parenthesised-args.rs:10:29
+  --> $DIR/gat-trait-path-parenthesised-args.rs:8:29
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^
 
 error: parenthesized generic arguments cannot be used in associated type constraints
-  --> $DIR/gat-trait-path-parenthesised-args.rs:10:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:8:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           ^^^^^
@@ -20,7 +20,7 @@ LL | #![feature(generic_associated_types)]
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/gat-trait-path-parenthesised-args.rs:10:29
+  --> $DIR/gat-trait-path-parenthesised-args.rs:8:29
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^ help: use `dyn`: `dyn 'a`
@@ -30,10 +30,10 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
 
 error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
-  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+  --> $DIR/gat-trait-path-parenthesised-args.rs:8:27
    |
-LL |   type Y<'a>;
-   |        ^ expected 1 lifetime argument
+LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   |                           ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
@@ -42,24 +42,18 @@ LL |   type Y<'a>;
    |        ^ --
 help: add missing lifetime argument
    |
-LL | fn foo<'a>(arg: Box<dyn X<Y('a'a) = &'a ()>>) {}
-   |                             ^^
+LL | fn foo<'a>(arg: Box<dyn X<Y('a, 'a) = &'a ()>>) {}
+   |                             ^^^
 
-error[E0107]: this associated type takes 0 type arguments but 1 type argument was supplied
-  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/gat-trait-path-parenthesised-args.rs:8:27
    |
-LL |     type Y<'a>;
-   |  ________^-
-   | |        |
-   | |        expected 0 type arguments
-LL | |
-LL | |
-LL | | }
-LL | |
-LL | | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   | |_________________________________________- help: remove these generics
+LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   |                           ^-------------- help: remove these generics
+   |                           |
+   |                           expected 0 generic arguments
    |
-note: associated type defined here, with 0 type parameters
+note: associated type defined here, with 0 generic parameters
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
    |
 LL |   type Y<'a>;

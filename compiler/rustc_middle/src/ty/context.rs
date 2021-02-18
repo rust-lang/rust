@@ -9,7 +9,7 @@ use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
 use crate::middle::cstore::{CrateStoreDyn, EncodedMetadata};
-use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
+use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
@@ -2685,6 +2685,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 })
                 .iter(),
         )
+    }
+
+    pub fn lifetime_scope(self, id: HirId) -> Option<LifetimeScopeForPath> {
+        self.lifetime_scope_map(id.owner).and_then(|mut map| map.remove(&id.local_id))
     }
 }
 

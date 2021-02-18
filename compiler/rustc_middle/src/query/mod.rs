@@ -1301,6 +1301,10 @@ rustc_queries! {
         desc { "looking up late bound vars" }
     }
 
+    query lifetime_scope_map(_: LocalDefId) -> Option<FxHashMap<ItemLocalId, LifetimeScopeForPath>> {
+        desc { "finds the lifetime scope for an HirId of a PathSegment" }
+    }
+
     query visibility(def_id: DefId) -> ty::Visibility {
         eval_always
         desc { |tcx| "computing visibility of `{}`", tcx.def_path_str(def_id) }

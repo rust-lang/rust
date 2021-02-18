@@ -2,43 +2,43 @@ error[E0107]: missing generics for trait `IntoCow`
   --> $DIR/ufcs-qpath-missing-params.rs:14:16
    |
 LL |     <String as IntoCow>::into_cow("foo".to_string());
-   |                ^^^^^^^ expected 1 type argument
+   |                ^^^^^^^ expected 1 generic argument
    |
-note: trait defined here, with 1 type parameter: `B`
+note: trait defined here, with 1 generic parameter: `B`
   --> $DIR/ufcs-qpath-missing-params.rs:3:11
    |
 LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
    |           ^^^^^^^     -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
 LL |     <String as IntoCow<B>>::into_cow("foo".to_string());
-   |                       ^^^
+   |                ^^^^^^^^^^
 
 error[E0107]: missing generics for trait `IntoCow`
   --> $DIR/ufcs-qpath-missing-params.rs:17:16
    |
 LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
-   |                ^^^^^^^ expected 1 type argument
+   |                ^^^^^^^ expected 1 generic argument
    |
-note: trait defined here, with 1 type parameter: `B`
+note: trait defined here, with 1 generic parameter: `B`
   --> $DIR/ufcs-qpath-missing-params.rs:3:11
    |
 LL | pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
    |           ^^^^^^^     -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
 LL |     <String as IntoCow<B>>::into_cow::<str>("foo".to_string());
-   |                       ^^^
+   |                ^^^^^^^^^^
 
-error[E0107]: this associated function takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/ufcs-qpath-missing-params.rs:17:26
    |
 LL |     <String as IntoCow>::into_cow::<str>("foo".to_string());
    |                          ^^^^^^^^------- help: remove these generics
    |                          |
-   |                          expected 0 type arguments
+   |                          expected 0 generic arguments
    |
-note: associated function defined here, with 0 type parameters
+note: associated function defined here, with 0 generic parameters
   --> $DIR/ufcs-qpath-missing-params.rs:4:8
    |
 LL |     fn into_cow(self) -> Cow<'a, B>;
