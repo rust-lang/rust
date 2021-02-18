@@ -1849,41 +1849,18 @@ impl DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
     }
 }
 
-struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+struct PrivateItemsInPublicInterfacesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     has_pub_restricted: bool,
-    old_error_set: &'a HirIdSet,
+    old_error_set_ancestry: HirIdSet,
 }
 
-impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+impl<'tcx> PrivateItemsInPublicInterfacesVisitor<'tcx> {
     fn check(
         &self,
         item_id: hir::HirId,
         required_visibility: ty::Visibility,
     ) -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
-        let mut has_old_errors = false;
-
-        // Slow path taken only if there any errors in the crate.
-        for &id in self.old_error_set {
-            // Walk up the nodes until we find `item_id` (or we hit a root).
-            let mut id = id;
-            loop {
-                if id == item_id {
-                    has_old_errors = true;
-                    break;
-                }
-                let parent = self.tcx.hir().get_parent_node(id);
-                if parent == id {
-                    break;
-                }
-                id = parent;
-            }
-
-            if has_old_errors {
-                break;
-            }
-        }
-
         SearchInterfaceForPrivateItemsVisitor {
             tcx: self.tcx,
             item_id,
@@ -1891,7 +1868,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             span: self.tcx.hir().span(item_id),
             required_visibility,
             has_pub_restricted: self.has_pub_restricted,
-            has_old_errors,
+            has_old_errors: self.old_error_set_ancestry.contains(&item_id),
             in_assoc_ty: false,
         }
     }
@@ -1917,7 +1894,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -2137,11 +2114,22 @@ fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
         pub_restricted_visitor.has_pub_restricted
     };
 
+    let mut old_error_set_ancestry = HirIdSet::default();
+    for mut id in visitor.old_error_set.iter().copied() {
+        loop {
+            if !old_error_set_ancestry.insert(id) {
+                break;
+            }
+            let parent = tcx.hir().get_parent_node(id);
+            if parent == id {
+                break;
+            }
+            id = parent;
+        }
+    }
+
     // Check for private types and traits in public interfaces.
-    let mut visitor = PrivateItemsInPublicInterfacesVisitor {
-        tcx,
-        has_pub_restricted,
-        old_error_set: &visitor.old_error_set,
-    };
+    let mut visitor =
+        PrivateItemsInPublicInterfacesVisitor { tcx, has_pub_restricted, old_error_set_ancestry };
     krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }
