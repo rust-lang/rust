@@ -221,12 +221,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ItemKind::MacroDef(MacroDef { ref body, macro_rules }) = i.kind {
             if !macro_rules || self.sess.contains_name(&i.attrs, sym::macro_export) {
                 let hir_id = self.lower_node_id(i.id);
-                let attrs = self.lower_attrs(hir_id, &i.attrs);
+                self.lower_attrs(hir_id, &i.attrs);
                 let body = P(self.lower_mac_args(body));
                 self.exported_macros.push(hir::MacroDef {
                     ident,
                     vis,
-                    attrs,
                     def_id: hir_id.expect_owner(),
                     span: i.span,
                     ast: MacroDef { body, macro_rules },
