@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use crate::def::{DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
