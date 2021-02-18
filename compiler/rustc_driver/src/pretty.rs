@@ -9,7 +9,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-use rustc_session::config::{Input, PpMode, PpSourceMode};
+use rustc_session::config::{Input, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
@@ -42,43 +42,41 @@ where
     F: FnOnce(&dyn PrinterSupport) -> A,
 {
     match *ppmode {
-        PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
+        Normal | EveryBodyLoops | Expanded => {
             let annotation = NoAnn { sess, tcx };
             f(&annotation)
         }
 
-        PpmIdentified | PpmExpandedIdentified => {
+        Identified | ExpandedIdentified => {
             let annotation = IdentifiedAnnotation { sess, tcx };
             f(&annotation)
         }
-        PpmExpandedHygiene => {
+        ExpandedHygiene => {
             let annotation = HygieneAnnotation { sess };
             f(&annotation)
         }
-        _ => panic!("Should use call_with_pp_support_hir"),
     }
 }
-fn call_with_pp_support_hir<A, F>(ppmode: &PpSourceMode, tcx: TyCtxt<'_>, f: F) -> A
+fn call_with_pp_support_hir<A, F>(ppmode: &PpHirMode, tcx: TyCtxt<'_>, f: F) -> A
 where
     F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate<'_>) -> A,
 {
     match *ppmode {
-        PpmNormal => {
+        PpHirMode::Normal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir().krate())
         }
 
-        PpmIdentified => {
+        PpHirMode::Identified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir().krate())
         }
-        PpmTyped => {
+        PpHirMode::Typed => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
-        _ => panic!("Should use call_with_pp_support"),
     }
 }
 
@@ -395,7 +393,7 @@ pub fn print_after_parsing(
 
     let mut out = String::new();
 
-    if let PpmSource(s) = ppm {
+    if let Source(s) = ppm {
         // Silently ignores an identified node.
         let out = &mut out;
         call_with_pp_support(&s, sess, None, move |annotation| {
@@ -436,7 +434,7 @@ pub fn print_after_hir_lowering<'tcx>(
     let mut out = String::new();
 
     match ppm {
-        PpmSource(s) => {
+        Source(s) => {
             // Silently ignores an identified node.
             let out = &mut out;
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
@@ -455,20 +453,20 @@ pub fn print_after_hir_lowering<'tcx>(
             })
         }
 
-        PpmHir(s) => {
+        Hir(s) => {
             let out = &mut out;
             call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
-                debug!("pretty printing source code {:?}", s);
+                debug!("pretty printing HIR {:?}", s);
                 let sess = annotation.sess();
                 let sm = sess.source_map();
                 *out = pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
             })
         }
 
-        PpmHirTree(s) => {
+        HirTree => {
             let out = &mut out;
-            call_with_pp_support_hir(&s, tcx, move |_annotation, krate| {
-                debug!("pretty printing source code {:?}", s);
+            call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, krate| {
+                debug!("pretty printing HIR tree");
                 *out = format!("{:#?}", krate);
             });
         }
@@ -493,9 +491,9 @@ fn print_with_analysis(
     tcx.analysis(LOCAL_CRATE)?;
 
     match ppm {
-        PpmMir | PpmMirCFG => match ppm {
-            PpmMir => write_mir_pretty(tcx, None, &mut out),
-            PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
+        Mir | MirCFG => match ppm {
+            Mir => write_mir_pretty(tcx, None, &mut out),
+            MirCFG => write_mir_graphviz(tcx, None, &mut out),
             _ => unreachable!(),
         },
         _ => unreachable!(),
