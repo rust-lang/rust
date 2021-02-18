@@ -575,6 +575,12 @@ impl<T> Cell<[T]> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
+    // Stores the location of the earliest currently active borrow.
+    // This gets updated whenver we go from having zero borrows
+    // to having a single borrow. When a borrow occurs, this gets included
+    // in the generated `BorroeError/`BorrowMutError`
+    #[cfg(feature = "debug_refcell")]
+    borrowed_at: Cell<Option<&'static crate::panic::Location<'static>>>,
     value: UnsafeCell<T>,
 }
 
@@ -582,12 +588,19 @@ pub struct RefCell<T: ?Sized> {
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowError {
     _private: (),
+    #[cfg(feature = "debug_refcell")]
+    location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BorrowError").finish()
+        let mut builder = f.debug_struct("BorrowError");
+
+        #[cfg(feature = "debug_refcell")]
+        builder.field("location", self.location);
+
+        builder.finish()
     }
 }
 
@@ -602,12 +615,19 @@ impl Display for BorrowError {
 #[stable(feature = "try_borrow", since = "1.13.0")]
 pub struct BorrowMutError {
     _private: (),
+    #[cfg(feature = "debug_refcell")]
+    location: &'static crate::panic::Location<'static>,
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BorrowMutError").finish()
+        let mut builder = f.debug_struct("BorrowMutError");
+
+        #[cfg(feature = "debug_refcell")]
+        builder.field("location", self.location);
+
+        builder.finish()
     }
 }
 
@@ -658,7 +678,12 @@ impl<T> RefCell<T> {
     #[rustc_const_stable(feature = "const_refcell_new", since = "1.24.0")]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
-        RefCell { value: UnsafeCell::new(value), borrow: Cell::new(UNUSED) }
+        RefCell {
+            value: UnsafeCell::new(value),
+            borrow: Cell::new(UNUSED),
+            #[cfg(feature = "debug_refcell")]
+            borrowed_at: Cell::new(None),
+        }
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
@@ -823,12 +848,29 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
+    #[cfg_attr(feature = "debug_refcell", track_caller)]
     pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
-            // SAFETY: `BorrowRef` ensures that there is only immutable access
-            // to the value while borrowed.
-            Some(b) => Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b }),
-            None => Err(BorrowError { _private: () }),
+            Some(b) => {
+                #[cfg(feature = "debug_refcell")]
+                {
+                    // `borrowed_at` is always the *first* active borrow
+                    if b.borrow.get() == 1 {
+                        self.borrowed_at.set(Some(crate::panic::Location::caller()));
+                    }
+                }
+
+                // SAFETY: `BorrowRef` ensures that there is only immutable access
+                // to the value while borrowed.
+                Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b })
+            }
+            None => Err(BorrowError {
+                _private: (),
+                // If a borrow occured, then we must already have an outstanding borrow,
+                // so `borrowed_at` will be `Some`
+                #[cfg(feature = "debug_refcell")]
+                location: self.borrowed_at.get().unwrap(),
+            }),
         }
     }
 
@@ -896,11 +938,25 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
+    #[cfg_attr(feature = "debug_refcell", track_caller)]
     pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
-            // SAFETY: `BorrowRef` guarantees unique access.
-            Some(b) => Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b }),
-            None => Err(BorrowMutError { _private: () }),
+            Some(b) => {
+                #[cfg(feature = "debug_refcell")]
+                {
+                    self.borrowed_at.set(Some(crate::panic::Location::caller()));
+                }
+
+                // SAFETY: `BorrowRef` guarantees unique access.
+                Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b })
+            }
+            None => Err(BorrowMutError {
+                _private: (),
+                // If a borrow occured, then we must already have an outstanding borrow,
+                // so `borrowed_at` will be `Some`
+                #[cfg(feature = "debug_refcell")]
+                location: self.borrowed_at.get().unwrap(),
+            }),
         }
     }
 
@@ -1016,7 +1072,13 @@ impl<T: ?Sized> RefCell<T> {
             // and is thus guaranteed to be valid for the lifetime of `self`.
             Ok(unsafe { &*self.value.get() })
         } else {
-            Err(BorrowError { _private: () })
+            Err(BorrowError {
+                _private: (),
+                // If a borrow occured, then we must already have an outstanding borrow,
+                // so `borrowed_at` will be `Some`
+                #[cfg(feature = "debug_refcell")]
+                location: self.borrowed_at.get().unwrap(),
+            })
         }
     }
 }
