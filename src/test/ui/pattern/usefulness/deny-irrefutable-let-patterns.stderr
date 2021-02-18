@@ -1,4 +1,4 @@
-error: irrefutable if-let pattern
+error: irrefutable `if let` pattern
   --> $DIR/deny-irrefutable-let-patterns.rs:4:5
    |
 LL |     if let _ = 5 {}
@@ -10,7 +10,7 @@ note: the lint level is defined here
 LL | #![deny(irrefutable_let_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: irrefutable while-let pattern
+error: irrefutable `while let` pattern
   --> $DIR/deny-irrefutable-let-patterns.rs:6:5
    |
 LL | /     while let _ = 5 {
