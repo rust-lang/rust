@@ -251,7 +251,7 @@ AssocItemList =
 AssocItem =
   Const
 | Fn
-| MacroCall
+| MacroItem
 | TypeAlias
 
 Impl =
@@ -268,7 +268,7 @@ ExternItemList =
 
 ExternItem =
   Fn
-| MacroCall
+| MacroItem
 | Static
 | TypeAlias
 
