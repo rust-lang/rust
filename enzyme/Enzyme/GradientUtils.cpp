@@ -2007,7 +2007,8 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     auto ip = invertPointerM(arg->getOperand(0), bb);
     if (arg->isCast()) {
       if (auto PT = dyn_cast<PointerType>(arg->getType())) {
-        if (PT->getElementType()->isFunctionTy()) {
+        if (isConstantValue(arg->getOperand(0)) &&
+            PT->getElementType()->isFunctionTy()) {
           goto end;
         }
       }

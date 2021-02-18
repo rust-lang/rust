@@ -1685,6 +1685,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     if (direction & DOWN)
       updateAnalysis(&I, TypeTree(dt).Only(-1), &I);
   } else {
+    auto &dl = I.getParent()->getParent()->getParent()->getDataLayout();
+    auto size = dl.getTypeSizeInBits(I.getType()) / 8;
     auto AnalysisLHS = getAnalysis(I.getOperand(0)).Data0();
     auto AnalysisRHS = getAnalysis(I.getOperand(1)).Data0();
     auto AnalysisRet = getAnalysis(&I).Data0();
@@ -1722,7 +1724,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
     case BinaryOperator::Xor:
       if (direction & UP)
         for (int i = 0; i < 2; ++i) {
-          if (!getAnalysis(&I)[{-1}].isFloat())
+          Type *FT = nullptr;
+          if (!(FT = getAnalysis(&I).IsAllFloat(size)))
             continue;
           // If & against 0b10000000000, the result is a float
           bool validXor = false;
@@ -1750,7 +1753,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             }
           }
           if (validXor) {
-            updateAnalysis(I.getOperand(1 - i), getAnalysis(&I), &I);
+            updateAnalysis(I.getOperand(1 - i), TypeTree(FT).Only(-1), &I);
           }
         }
       break;
@@ -1804,7 +1807,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
       }
     } else if (I.getOpcode() == BinaryOperator::Xor) {
       for (int i = 0; i < 2; ++i) {
-        if (!getAnalysis(I.getOperand(1 - i))[{-1}].isFloat())
+        Type *FT;
+        if (!(FT = getAnalysis(I.getOperand(1 - i)).IsAllFloat(size)))
           continue;
         // If & against 0b10000000000, the result is a float
         bool validXor = false;
@@ -1832,7 +1836,7 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           }
         }
         if (validXor) {
-          Result = getAnalysis(I.getOperand(1 - i))[{-1}];
+          Result = ConcreteType(FT);
         }
       }
     }

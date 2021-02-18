@@ -1129,7 +1129,10 @@ public:
       goto def;
     }
     case Instruction::Xor: {
-      auto FT = TR.query(&BO)[{-1}].isFloat();
+      auto &dl = gutils->oldFunc->getParent()->getDataLayout();
+      auto size = dl.getTypeSizeInBits(BO.getType()) / 8;
+
+      auto FT = TR.query(&BO).IsAllFloat(size);
       auto eFT = FT;
       // If & against 0b10000000000 and a float the result is a float
       if (FT)

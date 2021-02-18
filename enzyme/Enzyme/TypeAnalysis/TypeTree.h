@@ -663,6 +663,39 @@ public:
     return dat;
   }
 
+  llvm::Type *IsAllFloat(const size_t size) const {
+    auto m1 = TypeTree::operator[]({-1});
+    if (auto FT = m1.isFloat())
+      return FT;
+
+    auto m0 = TypeTree::operator[]({0});
+
+    if (auto flt = m0.isFloat()) {
+      size_t chunk;
+      if (flt->isFloatTy()) {
+        chunk = 4;
+      } else if (flt->isDoubleTy()) {
+        chunk = 8;
+      } else if (flt->isHalfTy()) {
+        chunk = 2;
+      } else {
+        llvm::errs() << *flt << "\n";
+        assert(0 && "unhandled float type");
+      }
+      for (size_t i = chunk; i < size; i += chunk) {
+        auto mx = TypeTree::operator[]({(int)i});
+        if (auto f2 = mx.isFloat()) {
+          if (f2 != flt)
+            return nullptr;
+        } else
+          return nullptr;
+      }
+      return flt;
+    } else {
+      return nullptr;
+    }
+  }
+
   /// Replace mappings in the range in [offset, offset+maxSize] with those in
   // [addOffset, addOffset + maxSize]. In other worse, select all mappings in
   // [offset, offset+maxSize] then add `addOffset`
