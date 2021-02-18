@@ -30,6 +30,7 @@ use rustc_span::{Loc, MultiSpan, Span};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::num::NonZeroUsize;
 use std::panic;
 use std::path::Path;
 use std::{error, fmt};
@@ -359,7 +360,7 @@ pub struct HandlerFlags {
     pub can_emit_warnings: bool,
     /// If true, error-level diagnostics are upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
-    pub treat_err_as_bug: Option<usize>,
+    pub treat_err_as_bug: Option<NonZeroUsize>,
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
@@ -396,7 +397,7 @@ impl Handler {
     pub fn with_tty_emitter(
         color_config: ColorConfig,
         can_emit_warnings: bool,
-        treat_err_as_bug: Option<usize>,
+        treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
@@ -424,7 +425,7 @@ impl Handler {
 
     pub fn with_emitter(
         can_emit_warnings: bool,
-        treat_err_as_bug: Option<usize>,
+        treat_err_as_bug: Option<NonZeroUsize>,
         emitter: Box<dyn Emitter + sync::Send>,
     ) -> Self {
         Handler::with_emitter_and_flags(
@@ -841,7 +842,7 @@ impl HandlerInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.map_or(false, |c| self.err_count() >= c)
+        self.flags.treat_err_as_bug.map_or(false, |c| self.err_count() >= c.get())
     }
 
     fn print_error_count(&mut self, registry: &Registry) {
@@ -950,7 +951,7 @@ impl HandlerInner {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
-        if self.flags.treat_err_as_bug.map_or(false, |c| self.err_count() + 1 >= c) {
+        if self.flags.treat_err_as_bug.map_or(false, |c| self.err_count() + 1 >= c.get()) {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
@@ -1023,7 +1024,7 @@ impl HandlerInner {
 
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
-            match (self.err_count(), self.flags.treat_err_as_bug.unwrap_or(0)) {
+            match (self.err_count(), self.flags.treat_err_as_bug.map(|c| c.get()).unwrap_or(0)) {
                 (1, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
                 (0, _) | (1, _) => {}
                 (count, as_bug) => panic!(

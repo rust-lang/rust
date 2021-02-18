@@ -20,6 +20,7 @@ use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy}
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
@@ -595,7 +596,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(tune_cpu, Some(String::from("abc")));
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(trap_unreachable, Some(false));
-    tracked!(treat_err_as_bug, Some(1));
+    tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
