@@ -169,11 +169,12 @@ fn opt_self_param(p: &mut Parser, m: Marker) {
         let la1 = p.nth(1);
         let la2 = p.nth(2);
         let la3 = p.nth(3);
-        if !matches!((p.current(), la1, la2, la3),
-              (T![&], T![self], _, _)
-            | (T![&], T![mut], T![self], _)
-            | (T![&], LIFETIME_IDENT, T![self], _)
-            | (T![&], LIFETIME_IDENT, T![mut], T![self])
+        if !matches!(
+            (p.current(), la1, la2, la3),
+            (T![&], T![self], _, _)
+                | (T![&], T![mut], T![self], _)
+                | (T![&], LIFETIME_IDENT, T![self], _)
+                | (T![&], LIFETIME_IDENT, T![mut], T![self])
         ) {
             return m.abandon(p);
         }

@@ -516,7 +516,8 @@ pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
     assert!(path.is_absolute());
     let url = lsp_types::Url::from_file_path(path).unwrap();
     match path.components().next() {
-        Some(path::Component::Prefix(prefix)) if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
+        Some(path::Component::Prefix(prefix))
+            if matches!(prefix.kind(), path::Prefix::Disk(_) | path::Prefix::VerbatimDisk(_)) =>
         {
             // Need to lowercase driver letter
         }
