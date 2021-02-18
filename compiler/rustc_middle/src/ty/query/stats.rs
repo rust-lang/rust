@@ -67,29 +67,29 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
     if cfg!(debug_assertions) {
         let hits: usize = queries.iter().map(|s| s.cache_hits).sum();
         let results: usize = queries.iter().map(|s| s.entry_count).sum();
-        println!("\nQuery cache hit rate: {}", hits as f64 / (hits + results) as f64);
+        eprintln!("\nQuery cache hit rate: {}", hits as f64 / (hits + results) as f64);
     }
 
     let mut query_key_sizes = queries.clone();
     query_key_sizes.sort_by_key(|q| q.key_size);
-    println!("\nLarge query keys:");
+    eprintln!("\nLarge query keys:");
     for q in query_key_sizes.iter().rev().filter(|q| q.key_size > 8) {
-        println!("   {} - {} x {} - {}", q.name, q.key_size, q.entry_count, q.key_type);
+        eprintln!("   {} - {} x {} - {}", q.name, q.key_size, q.entry_count, q.key_type);
     }
 
     let mut query_value_sizes = queries.clone();
     query_value_sizes.sort_by_key(|q| q.value_size);
-    println!("\nLarge query values:");
+    eprintln!("\nLarge query values:");
     for q in query_value_sizes.iter().rev().filter(|q| q.value_size > 8) {
-        println!("   {} - {} x {} - {}", q.name, q.value_size, q.entry_count, q.value_type);
+        eprintln!("   {} - {} x {} - {}", q.name, q.value_size, q.entry_count, q.value_type);
     }
 
     if cfg!(debug_assertions) {
         let mut query_cache_hits = queries.clone();
         query_cache_hits.sort_by_key(|q| q.cache_hits);
-        println!("\nQuery cache hits:");
+        eprintln!("\nQuery cache hits:");
         for q in query_cache_hits.iter().rev() {
-            println!(
+            eprintln!(
                 "   {} - {} ({}%)",
                 q.name,
                 q.cache_hits,
@@ -100,19 +100,19 @@ pub fn print_stats(tcx: TyCtxt<'_>) {
 
     let mut query_value_count = queries.clone();
     query_value_count.sort_by_key(|q| q.entry_count);
-    println!("\nQuery value count:");
+    eprintln!("\nQuery value count:");
     for q in query_value_count.iter().rev() {
-        println!("   {} - {}", q.name, q.entry_count);
+        eprintln!("   {} - {}", q.name, q.entry_count);
     }
 
     let mut def_id_density: Vec<_> =
         queries.iter().filter(|q| q.local_def_id_keys.is_some()).collect();
     def_id_density.sort_by_key(|q| q.local_def_id_keys.unwrap());
-    println!("\nLocal DefId density:");
+    eprintln!("\nLocal DefId density:");
     let total = tcx.hir().definitions().def_index_count() as f64;
     for q in def_id_density.iter().rev() {
         let local = q.local_def_id_keys.unwrap();
-        println!("   {} - {} = ({}%)", q.name, local, (local as f64 * 100.0) / total);
+        eprintln!("   {} - {} = ({}%)", q.name, local, (local as f64 * 100.0) / total);
     }
 }
 

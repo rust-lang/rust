@@ -243,7 +243,7 @@ impl SourceMapExtension for SourceMap {
         substring: &str,
         n: usize,
     ) -> Span {
-        println!(
+        eprintln!(
             "span_substr(file={:?}/{:?}, substring={:?}, n={})",
             file.name, file.start_pos, substring, n
         );

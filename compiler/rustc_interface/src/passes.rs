@@ -64,8 +64,8 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if sess.opts.debugging_opts.input_stats {
-        println!("Lines of code:             {}", sess.source_map().count_lines());
-        println!("Pre-expansion node count:  {}", count_nodes(&krate));
+        eprintln!("Lines of code:             {}", sess.source_map().count_lines());
+        eprintln!("Pre-expansion node count:  {}", count_nodes(&krate));
     }
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
@@ -394,7 +394,7 @@ fn configure_and_expand_inner<'a>(
     // Done with macro expansion!
 
     if sess.opts.debugging_opts.input_stats {
-        println!("Post-expansion node count: {}", count_nodes(&krate));
+        eprintln!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
     if sess.opts.debugging_opts.hir_stats {

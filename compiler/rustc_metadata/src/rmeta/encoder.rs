@@ -695,23 +695,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
 
-            println!("metadata stats:");
-            println!("             dep bytes: {}", dep_bytes);
-            println!("     lib feature bytes: {}", lib_feature_bytes);
-            println!("       lang item bytes: {}", lang_item_bytes);
-            println!(" diagnostic item bytes: {}", diagnostic_item_bytes);
-            println!("          native bytes: {}", native_lib_bytes);
-            println!("      source_map bytes: {}", source_map_bytes);
-            println!("            impl bytes: {}", impl_bytes);
-            println!("    exp. symbols bytes: {}", exported_symbols_bytes);
-            println!("  def-path table bytes: {}", def_path_table_bytes);
-            println!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
-            println!("             mir bytes: {}", mir_bytes);
-            println!("            item bytes: {}", item_bytes);
-            println!("           table bytes: {}", tables_bytes);
-            println!("         hygiene bytes: {}", hygiene_bytes);
-            println!("            zero bytes: {}", zero_bytes);
-            println!("           total bytes: {}", total_bytes);
+            eprintln!("metadata stats:");
+            eprintln!("             dep bytes: {}", dep_bytes);
+            eprintln!("     lib feature bytes: {}", lib_feature_bytes);
+            eprintln!("       lang item bytes: {}", lang_item_bytes);
+            eprintln!(" diagnostic item bytes: {}", diagnostic_item_bytes);
+            eprintln!("          native bytes: {}", native_lib_bytes);
+            eprintln!("      source_map bytes: {}", source_map_bytes);
+            eprintln!("            impl bytes: {}", impl_bytes);
+            eprintln!("    exp. symbols bytes: {}", exported_symbols_bytes);
+            eprintln!("  def-path table bytes: {}", def_path_table_bytes);
+            eprintln!(" proc-macro-data-bytes: {}", proc_macro_data_bytes);
+            eprintln!("             mir bytes: {}", mir_bytes);
+            eprintln!("            item bytes: {}", item_bytes);
+            eprintln!("           table bytes: {}", tables_bytes);
+            eprintln!("         hygiene bytes: {}", hygiene_bytes);
+            eprintln!("            zero bytes: {}", zero_bytes);
+            eprintln!("           total bytes: {}", total_bytes);
         }
 
         root

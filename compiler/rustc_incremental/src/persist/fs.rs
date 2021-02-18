@@ -440,12 +440,12 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
     }
 
     if sess.opts.debugging_opts.incremental_info {
-        println!(
+        eprintln!(
             "[incremental] session directory: \
                   {} files hard-linked",
             files_linked
         );
-        println!(
+        eprintln!(
             "[incremental] session directory: \
                  {} files copied",
             files_copied
