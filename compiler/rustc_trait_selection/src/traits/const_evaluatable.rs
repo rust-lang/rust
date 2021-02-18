@@ -72,17 +72,16 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 // We were unable to unify the abstract constant with
                 // a constant found in the caller bounds, there are
                 // now three possible cases here.
-                //
-                // - The substs are concrete enough that we can simply
-                //   try and evaluate the given constant.
-                // - The abstract const still references an inference
-                //   variable, in this case we return `TooGeneric`.
-                // - The abstract const references a generic parameter,
-                //   this means that we emit an error here.
                 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
                 enum FailureKind {
+                    /// The abstract const still references an inference
+                    /// variable, in this case we return `TooGeneric`.
                     MentionsInfer,
+                    /// The abstract const references a generic parameter,
+                    /// this means that we emit an error here.
                     MentionsParam,
+                    /// The substs are concrete enough that we can simply
+                    /// try and evaluate the given constant.
                     Concrete,
                 }
                 let mut failure_kind = FailureKind::Concrete;
