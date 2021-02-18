@@ -439,6 +439,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.pats[0]
     }
 
+    #[inline]
     fn head_ctor<'a>(&'a self, cx: &MatchCheckCtxt<'p, 'tcx>) -> &'a Constructor<'tcx> {
         self.head_ctor.get_or_init(|| Constructor::from_pat(cx, self.head()))
     }
