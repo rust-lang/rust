@@ -231,7 +231,7 @@ pub struct Stdin {
     inner: &'static Mutex<BufReader<StdinRaw>>,
 }
 
-/// A locked reference to the `Stdin` handle.
+/// A locked reference to the [`Stdin`] handle.
 ///
 /// This handle implements both the [`Read`] and [`BufRead`] traits, and
 /// is constructed via the [`Stdin::lock`] method.
@@ -494,7 +494,7 @@ pub struct Stdout {
     inner: Pin<&'static ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
 }
 
-/// A locked reference to the `Stdout` handle.
+/// A locked reference to the [`Stdout`] handle.
 ///
 /// This handle implements the [`Write`] trait, and is constructed via
 /// the [`Stdout::lock`] method.
@@ -708,9 +708,9 @@ pub struct Stderr {
     inner: Pin<&'static ReentrantMutex<RefCell<StderrRaw>>>,
 }
 
-/// A locked reference to the `Stderr` handle.
+/// A locked reference to the [`Stderr`] handle.
 ///
-/// This handle implements the `Write` trait and is constructed via
+/// This handle implements the [`Write`] trait and is constructed via
 /// the [`Stderr::lock`] method.
 ///
 /// ### Note: Windows Portability Consideration
