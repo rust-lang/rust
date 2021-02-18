@@ -1589,8 +1589,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
             }
             ty::PredicateKind::Projection(data) => {
-                let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
-                let self_ty = trait_ref.skip_binder().self_ty();
+                let self_ty = data.projection_ty.self_ty();
                 let ty = data.ty;
                 if predicate.references_error() {
                     return;

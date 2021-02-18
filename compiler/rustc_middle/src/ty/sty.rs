@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -1112,36 +1112,35 @@ pub struct ProjectionTy<'tcx> {
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
-    /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
-    /// associated item named `item_name`.
-    pub fn from_ref_and_name(
-        tcx: TyCtxt<'_>,
-        trait_ref: ty::TraitRef<'tcx>,
-        item_name: Ident,
-    ) -> ProjectionTy<'tcx> {
-        let item_def_id = tcx
-            .associated_items(trait_ref.def_id)
-            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
-            .unwrap()
-            .def_id;
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        tcx.associated_item(self.item_def_id).container.id()
+    }
 
-        ProjectionTy { substs: trait_ref.substs, item_def_id }
+    /// Extracts the underlying trait reference and own substs from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: Iterator` trait reference and `['a]` as the own substs
+    pub fn trait_ref_and_own_substs(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let trait_generics = tcx.generics_of(def_id);
+        (
+            ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
+            &self.substs[trait_generics.count()..],
+        )
     }
 
     /// Extracts the underlying trait reference from this projection.
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// WARNING: This will drop the substs for generic associated types
+    /// consider calling [Self::trait_ref_and_own_substs] to get those
+    /// as well.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
-        // FIXME: This method probably shouldn't exist at all, since it's not
-        // clear what this method really intends to do. Be careful when
-        // using this method since the resulting TraitRef additionally
-        // contains the substs for the assoc_item, which strictly speaking
-        // is not correct
-        let def_id = tcx.associated_item(self.item_def_id).container.id();
-        // Include substitutions for generic arguments of associated types
-        let assoc_item = tcx.associated_item(self.item_def_id);
-        let substs_assoc_item = self.substs.truncate_to(tcx, tcx.generics_of(assoc_item.def_id));
-        ty::TraitRef { def_id, substs: substs_assoc_item }
+        let def_id = self.trait_def_id(tcx);
+        ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1493,12 +1492,11 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return a `exists T. T: Iterator` existential trait
     /// reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'_>) -> ty::ExistentialTraitRef<'tcx> {
-        // FIXME(generic_associated_types): substs is the substs of the
-        // associated type, which should be truncated to get the correct substs
-        // for the trait.
+    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
-        ty::ExistentialTraitRef { def_id, substs: self.substs }
+        let subst_count = tcx.generics_of(def_id).count() - 1;
+        let substs = tcx.intern_substs(&self.substs[..subst_count]);
+        ty::ExistentialTraitRef { def_id, substs }
     }
 
     pub fn with_self_ty(
@@ -1515,6 +1513,20 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
+        }
+    }
+
+    pub fn erase_self_ty(
+        tcx: TyCtxt<'tcx>,
+        projection_predicate: ty::ProjectionPredicate<'tcx>,
+    ) -> Self {
+        // Assert there is a Self.
+        projection_predicate.projection_ty.substs.type_at(0);
+
+        Self {
+            item_def_id: projection_predicate.projection_ty.item_def_id,
+            substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
+            ty: projection_predicate.ty,
         }
     }
 }
