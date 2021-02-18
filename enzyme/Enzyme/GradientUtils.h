@@ -566,11 +566,27 @@ public:
     invertedPointers[orig] = anti;
 
     if (tape == nullptr) {
-      auto dst_arg =
-          bb.CreateBitCast(anti, Type::getInt8PtrTy(orig->getContext()));
+      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
+        bb.CreateCall(oldFunc->getParent()->getFunction("julia.write_barrier"),
+                      anti);
+        if (mode != DerivativeMode::Both) {
+          EmitFailure("SplitGCAllocation", orig->getDebugLoc(), orig,
+                      "Not handling Julia shadow GC allocation in split mode ",
+                      *orig);
+        }
+      }
+      auto dst_arg = bb.CreateBitCast(
+          anti, Type::getInt8PtrTy(orig->getContext(),
+                                   anti->getType()->getPointerAddressSpace()));
       auto val_arg = ConstantInt::get(Type::getInt8Ty(orig->getContext()), 0);
+      Value *size;
+      // todo check if this memset is legal and if a write barrier is needed
+      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj")
+        size = args[1];
+      else
+        size = args[0];
       auto len_arg =
-          bb.CreateZExtOrTrunc(args[0], Type::getInt64Ty(orig->getContext()));
+          bb.CreateZExtOrTrunc(size, Type::getInt64Ty(orig->getContext()));
       auto volatile_arg = ConstantInt::getFalse(orig->getContext());
 
 #if LLVM_VERSION_MAJOR == 6

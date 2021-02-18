@@ -3183,6 +3183,25 @@ public:
       }
 
       if (called) {
+        if (called->getName() == "julia.write_barrier") {
+          if (Mode == DerivativeMode::Reverse) {
+            eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+            return;
+          }
+          SmallVector<Value *, 1> iargs;
+          IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
+          for (size_t i = 0, end = orig->getNumArgOperands(); i < end; ++i) {
+            auto arg = orig->getArgOperand(i);
+            if (!gutils->isConstantValue(arg)) {
+              Value *ptrshadow = gutils->invertPointerM(arg, Builder2);
+              iargs.push_back(ptrshadow);
+            }
+          }
+          if (iargs.size()) {
+            Builder2.CreateCall(called, iargs);
+          }
+          return;
+        }
         Intrinsic::ID ID = Intrinsic::not_intrinsic;
         if (isMemFreeLibMFunction(called->getName(), &ID)) {
           if (Mode == DerivativeMode::Forward ||
@@ -3322,8 +3341,9 @@ public:
           assert(Type::getInt8Ty(tofree->getContext()));
           assert(PointerType::getUnqual(Type::getInt8Ty(tofree->getContext())));
           assert(Type::getInt8PtrTy(tofree->getContext()));
-          freeKnownAllocation(Builder2, tofree, *called, gutils->TLI)
-              ->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          auto CI = freeKnownAllocation(Builder2, tofree, *called, gutils->TLI);
+          if (CI)
+            CI->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
         }
       }
 
