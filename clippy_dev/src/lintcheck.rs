@@ -11,9 +11,11 @@ use crate::clippy_project_root;
 
 use std::collections::HashMap;
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{env, fmt, fs::write, path::PathBuf};
 
 use clap::ArgMatches;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -215,11 +217,20 @@ impl CrateSource {
 impl Crate {
     /// Run `cargo clippy` on the `Crate` and collect and return all the lint warnings that clippy
     /// issued
-    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<ClippyWarning> {
-        println!("Linting {} {}...", &self.name, &self.version);
+    fn run_clippy_lints(
+        &self,
+        cargo_clippy_path: &PathBuf,
+        target_dir_index: &AtomicUsize,
+        thread_limit: usize,
+    ) -> Vec<ClippyWarning> {
+        // advance the atomic index by one
+        let idx = target_dir_index.fetch_add(1, Ordering::SeqCst);
+        // "loop" the index within 0..thread_limit
+        let idx = idx % thread_limit;
+        println!("Linting {} {} in target dir {:?}", &self.name, &self.version, idx);
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
-        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir/");
+        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
         let mut args = vec!["--", "--message-format=json", "--", "--cap-lints=warn"];
 
@@ -232,7 +243,8 @@ impl Crate {
         }
 
         let all_output = std::process::Command::new(&cargo_clippy_path)
-            .env("CARGO_TARGET_DIR", shared_target_dir)
+            // use the looping index to create individual target dirs
+            .env("CARGO_TARGET_DIR", shared_target_dir.join(format!("_{:?}", idx)))
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
             .args(&args)
@@ -454,15 +466,27 @@ pub fn run(clap_config: &ArgMatches) {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1))
             .flatten()
             .collect()
     } else {
+        let counter = std::sync::atomic::AtomicUsize::new(0);
+
+        // Ask rayon for cpu (actually thread)count.
+        // Use one target dir for each cpu so that we can run N clippys in parallel.
+        // We need to use different target dirs because cargo would lock them for a single build otherwise,
+        // killing the parallelism. However this also means that deps will only be reused half/a
+        // quarter of the time which might result in a longer wall clock runtime
+
+        // Rayon seems to return thread count so half that for core count
+
+        let num_threads: usize = rayon::current_num_threads() / 2;
+
         // check all crates (default)
         crates
-            .into_iter()
+            .into_par_iter()
             .map(|krate| krate.download_and_extract())
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_threads))
             .flatten()
             .collect()
     };
