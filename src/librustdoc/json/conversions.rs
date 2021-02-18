@@ -182,7 +182,7 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
             bounds: g.into_iter().map(Into::into).collect(),
             default: t.map(Into::into),
         },
-        StrippedItem(inner) => from_clean_item_kind(*inner, tcx).into(),
+        StrippedItem(inner) => from_clean_item_kind(*inner, tcx),
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
