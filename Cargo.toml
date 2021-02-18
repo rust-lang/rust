@@ -19,7 +19,7 @@ edition = "2018"
 publish = false
 
 [workspace]
-exclude = ["clippy_dev", "mini-macro"]
+exclude = ["clippy_dev", "mini-macro", "target/lintcheck/crates"]
 
 [[bin]]
 name = "cargo-clippy"
