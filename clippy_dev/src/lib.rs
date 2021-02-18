@@ -186,11 +186,17 @@ fn gather_from_file(dir_entry: &walkdir::DirEntry) -> impl Iterator<Item = Lint>
     let path_buf = path.with_file_name(filename);
     let mut rel_path = path_buf
         .strip_prefix(clippy_project_root().join("clippy_lints/src"))
-        .expect("only files in `clippy_lints/src` should be looked at");
+        .map(PathBuf::from)
+        .or_else(|_| {
+            path_buf
+                .strip_prefix(clippy_project_root().join("clippy_utils/src"))
+                .map(|c| Path::new("utils").join(c))
+        })
+        .expect("only files in `clippy_lints/src` or `clippy_utils/src` should be looked at");
     // If the lints are stored in mod.rs, we get the module name from
     // the containing directory:
     if filename == "mod" {
-        rel_path = rel_path.parent().unwrap();
+        rel_path = rel_path.parent().unwrap().to_path_buf();
     }
 
     let module = rel_path
@@ -213,13 +219,15 @@ fn parse_contents(content: &str, module: &str) -> impl Iterator<Item = Lint> {
     lints.chain(deprecated).collect::<Vec<Lint>>().into_iter()
 }
 
-/// Collects all .rs files in the `clippy_lints/src` directory
+/// Collects all .rs files in the `clippy_lints/src` and `clippy_lints/src` directories
 fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     // We use `WalkDir` instead of `fs::read_dir` here in order to recurse into subdirectories.
     // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
-    let path = clippy_project_root().join("clippy_lints/src");
-    WalkDir::new(path)
+    let clippy_lints_path = clippy_project_root().join("clippy_lints/src");
+    let clippy_utils_path = clippy_project_root().join("clippy_utils/src");
+    WalkDir::new(clippy_lints_path)
         .into_iter()
+        .chain(WalkDir::new(clippy_utils_path).into_iter())
         .filter_map(Result::ok)
         .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
 }
