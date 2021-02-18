@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let Some((kind, def_id)) = TyCategory::from_ty(t) {
+                if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
@@ -1582,11 +1582,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         if let Some((expected, found)) = expected_found {
             let expected_label = match exp_found {
-                Mismatch::Variable(ef) => ef.expected.prefix_string(),
+                Mismatch::Variable(ef) => ef.expected.prefix_string(self.tcx),
                 Mismatch::Fixed(s) => s.into(),
             };
             let found_label = match exp_found {
-                Mismatch::Variable(ef) => ef.found.prefix_string(),
+                Mismatch::Variable(ef) => ef.found.prefix_string(self.tcx),
                 Mismatch::Fixed(s) => s.into(),
             };
             let exp_found = match exp_found {
@@ -2489,7 +2489,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
 pub enum TyCategory {
     Closure,
     Opaque,
-    Generator,
+    Generator(hir::GeneratorKind),
     Foreign,
 }
 
@@ -2498,16 +2498,18 @@ impl TyCategory {
         match self {
             Self::Closure => "closure",
             Self::Opaque => "opaque type",
-            Self::Generator => "generator",
+            Self::Generator(gk) => gk.descr(),
             Self::Foreign => "foreign type",
         }
     }
 
-    pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+    pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
-            ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+            ty::Generator(def_id, ..) => {
+                Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
+            }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
         }

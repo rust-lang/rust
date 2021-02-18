@@ -1280,7 +1280,7 @@ impl Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1298,12 +1298,21 @@ impl fmt::Display for GeneratorKind {
     }
 }
 
+impl GeneratorKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            GeneratorKind::Async(ask) => ask.descr(),
+            GeneratorKind::Gen => "generator",
+        }
+    }
+}
+
 /// In the case of a generator created as part of an async construct,
 /// which kind of async construct caused it to be created?
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
@@ -1322,6 +1331,16 @@ impl fmt::Display for AsyncGeneratorKind {
             AsyncGeneratorKind::Closure => "`async` closure body",
             AsyncGeneratorKind::Fn => "`async fn` body",
         })
+    }
+}
+
+impl AsyncGeneratorKind {
+    pub fn descr(&self) -> &'static str {
+        match self {
+            AsyncGeneratorKind::Block => "`async` block",
+            AsyncGeneratorKind::Closure => "`async` closure body",
+            AsyncGeneratorKind::Fn => "`async fn` body",
+        }
     }
 }
 
