@@ -45,7 +45,7 @@ impl NonConstExpr {
                 return None;
             }
 
-            Self::Match(IfLetGuardDesugar) => bug!("if-let guard outside a `match` expression"),
+            Self::Match(IfLetGuardDesugar) => bug!("`if let` guard outside a `match` expression"),
 
             // All other expressions are allowed.
             Self::Loop(Loop | While | WhileLet)

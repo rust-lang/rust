@@ -1289,8 +1289,22 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.skip_binder().projection_ty.item_def_id
     }
 
+    /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
-    pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.skip_binder().projection_ty.trait_def_id(tcx)
+    }
+
+    #[inline]
+    pub fn projection_self_ty(&self) -> Binder<Ty<'tcx>> {
+        self.map_bound(|predicate| predicate.projection_ty.self_ty())
+    }
+
+    /// Get the [PolyTraitRef] required for this projection to be well formed.
+    /// Note that for generic associated types the predicates of the associated
+    /// type also need to be checked.
+    #[inline]
+    pub fn required_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
         // Note: unlike with `TraitRef::to_poly_trait_ref()`,
         // `self.0.trait_ref` is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our

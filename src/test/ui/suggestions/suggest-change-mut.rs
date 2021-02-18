@@ -2,7 +2,7 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 
-fn issue_81421<T: Read + Write>(mut stream: T) {
+fn issue_81421<T: Read + Write>(mut stream: T) { //~ HELP consider introducing a `where` bound
     let initial_message = format!("Hello world");
     let mut buffer: Vec<u8> = Vec::new();
     let bytes_written = stream.write_all(initial_message.as_bytes());

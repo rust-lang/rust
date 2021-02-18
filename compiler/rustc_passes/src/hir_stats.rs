@@ -66,13 +66,13 @@ impl<'k> StatCollector<'k> {
 
         let mut total_size = 0;
 
-        println!("\n{}\n", title);
+        eprintln!("\n{}\n", title);
 
-        println!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
-        println!("----------------------------------------------------------------");
+        eprintln!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
+        eprintln!("----------------------------------------------------------------");
 
         for (label, data) in stats {
-            println!(
+            eprintln!(
                 "{:<18}{:>18}{:>14}{:>14}",
                 label,
                 to_readable_str(data.count * data.size),
@@ -82,8 +82,8 @@ impl<'k> StatCollector<'k> {
 
             total_size += data.count * data.size;
         }
-        println!("----------------------------------------------------------------");
-        println!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
+        eprintln!("----------------------------------------------------------------");
+        eprintln!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
     }
 }
 

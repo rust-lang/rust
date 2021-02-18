@@ -9,6 +9,10 @@ help: consider removing the leading `&`-reference
    |
 LL |         let mut stream_reader = BufReader::new(stream);
    |                                               --
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | fn issue_81421<T: Read + Write>(mut stream: T) where &T: std::io::Read {
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider changing this borrow's mutability
    |
 LL |         let mut stream_reader = BufReader::new(&mut stream);

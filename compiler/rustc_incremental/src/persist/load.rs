@@ -170,7 +170,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
                 if prev_commandline_args_hash != expected_hash {
                     if report_incremental_info {
-                        println!(
+                        eprintln!(
                             "[incremental] completely ignoring cache because of \
                                     differing commandline arguments"
                         );

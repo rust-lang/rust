@@ -368,9 +368,9 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, source: hir::MatchSource) {
     tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| {
         let msg = match source {
-            hir::MatchSource::IfLetDesugar { .. } => "irrefutable if-let pattern",
-            hir::MatchSource::WhileLetDesugar => "irrefutable while-let pattern",
-            hir::MatchSource::IfLetGuardDesugar => "irrefutable if-let guard",
+            hir::MatchSource::IfLetDesugar { .. } => "irrefutable `if let` pattern",
+            hir::MatchSource::WhileLetDesugar => "irrefutable `while let` pattern",
+            hir::MatchSource::IfLetGuardDesugar => "irrefutable `if let` guard",
             _ => bug!(),
         };
         lint.build(msg).emit()

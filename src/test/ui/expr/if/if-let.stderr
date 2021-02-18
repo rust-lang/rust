@@ -1,4 +1,4 @@
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:6:13
    |
 LL |               if let $p = $e $b
@@ -12,7 +12,7 @@ LL | |     });
    = note: `#[warn(irrefutable_let_patterns)]` on by default
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:6:13
    |
 LL |               if let $p = $e $b
@@ -25,7 +25,7 @@ LL | |     });
    |
    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:26:5
    |
 LL | /     if let a = 1 {
@@ -33,19 +33,19 @@ LL | |         println!("irrefutable pattern");
 LL | |     }
    | |_____^
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:30:5
    |
 LL | /     if let a = 1 {
 LL | |         println!("irrefutable pattern");
 LL | |     } else if true {
-LL | |         println!("else-if in irrefutable if-let");
+LL | |         println!("else-if in irrefutable `if let`");
 LL | |     } else {
-LL | |         println!("else in irrefutable if-let");
+LL | |         println!("else in irrefutable `if let`");
 LL | |     }
    | |_____^
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:40:12
    |
 LL |       } else if let a = 1 {
@@ -54,7 +54,7 @@ LL | |         println!("irrefutable pattern");
 LL | |     }
    | |_____^
 
-warning: irrefutable if-let pattern
+warning: irrefutable `if let` pattern
   --> $DIR/if-let.rs:46:12
    |
 LL |       } else if let a = 1 {

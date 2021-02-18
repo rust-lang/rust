@@ -242,6 +242,7 @@ language_item_table! {
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait;
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait;
+    DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait;
 
     Fn,                      kw::Fn,                   fn_trait,                   Target::Trait;

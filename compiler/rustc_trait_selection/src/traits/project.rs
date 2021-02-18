@@ -741,11 +741,7 @@ fn project_type<'cx, 'tcx>(
         return Err(ProjectionTyError::TraitSelectionError(SelectionError::Overflow));
     }
 
-    let obligation_trait_ref = &obligation.predicate.trait_ref(selcx.tcx());
-
-    debug!(?obligation_trait_ref);
-
-    if obligation_trait_ref.references_error() {
+    if obligation.predicate.references_error() {
         return Ok(ProjectedTy::Progress(Progress::error(selcx.tcx())));
     }
 
@@ -754,19 +750,19 @@ fn project_type<'cx, 'tcx>(
     // Make sure that the following procedures are kept in order. ParamEnv
     // needs to be first because it has highest priority, and Select checks
     // the return value of push_candidate which assumes it's ran at last.
-    assemble_candidates_from_param_env(selcx, obligation, &obligation_trait_ref, &mut candidates);
+    assemble_candidates_from_param_env(selcx, obligation, &mut candidates);
 
-    assemble_candidates_from_trait_def(selcx, obligation, &obligation_trait_ref, &mut candidates);
+    assemble_candidates_from_trait_def(selcx, obligation, &mut candidates);
 
-    assemble_candidates_from_object_ty(selcx, obligation, &obligation_trait_ref, &mut candidates);
+    assemble_candidates_from_object_ty(selcx, obligation, &mut candidates);
 
     if let ProjectionTyCandidateSet::Single(ProjectionTyCandidate::Object(_)) = candidates {
         // Avoid normalization cycle from selection (see
         // `assemble_candidates_from_object_ty`).
         // FIXME(lazy_normalization): Lazy normalization should save us from
-        // having to do special case this.
+        // having to special case this.
     } else {
-        assemble_candidates_from_impls(selcx, obligation, &obligation_trait_ref, &mut candidates);
+        assemble_candidates_from_impls(selcx, obligation, &mut candidates);
     };
 
     match candidates {
@@ -792,14 +788,12 @@ fn project_type<'cx, 'tcx>(
 fn assemble_candidates_from_param_env<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_param_env(..)");
     assemble_candidates_from_predicates(
         selcx,
         obligation,
-        obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::ParamEnv,
         obligation.param_env.caller_bounds().iter(),
@@ -820,7 +814,6 @@ fn assemble_candidates_from_param_env<'cx, 'tcx>(
 fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_trait_def(..)");
@@ -828,7 +821,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     let tcx = selcx.tcx();
     // Check whether the self-type is itself a projection.
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let bounds = match *obligation_trait_ref.self_ty().kind() {
+    let bounds = match *obligation.predicate.self_ty().kind() {
         ty::Projection(ref data) => tcx.item_bounds(data.item_def_id).subst(tcx, data.substs),
         ty::Opaque(def_id, substs) => tcx.item_bounds(def_id).subst(tcx, substs),
         ty::Infer(ty::TyVar(_)) => {
@@ -843,7 +836,6 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     assemble_candidates_from_predicates(
         selcx,
         obligation,
-        obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::TraitDef,
         bounds.iter(),
@@ -863,14 +855,13 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_object_ty(..)");
 
     let tcx = selcx.tcx();
 
-    let self_ty = obligation_trait_ref.self_ty();
+    let self_ty = obligation.predicate.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
     let data = match object_ty.kind() {
         ty::Dynamic(data, ..) => data,
@@ -890,7 +881,6 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     assemble_candidates_from_predicates(
         selcx,
         obligation,
-        obligation_trait_ref,
         candidate_set,
         ProjectionTyCandidate::Object,
         env_predicates,
@@ -901,7 +891,6 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
 fn assemble_candidates_from_predicates<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
     ctor: fn(ty::PolyProjectionPredicate<'tcx>) -> ProjectionTyCandidate<'tcx>,
     env_predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
@@ -921,8 +910,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
                 && infcx.probe(|_| {
                     selcx.match_projection_projections(
                         obligation,
-                        obligation_trait_ref,
-                        &data,
+                        data,
                         potentially_unnormalized_candidates,
                     )
                 });
@@ -948,14 +936,13 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
 fn assemble_candidates_from_impls<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_impls");
 
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = ty::Binder::dummy(*obligation_trait_ref);
+    let poly_trait_ref = obligation.predicate.trait_ref(selcx.tcx()).to_poly_trait_ref();
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let _ = selcx.infcx().commit_if_ok(|_| {
         let impl_source = match selcx.select(&trait_obligation) {
@@ -1410,25 +1397,25 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         poly_cache_entry,
     );
 
-    let cache_trait_ref = cache_entry.projection_ty.trait_ref(infcx.tcx);
-    let obligation_trait_ref = obligation.predicate.trait_ref(infcx.tcx);
+    let cache_projection = cache_entry.projection_ty;
+    let obligation_projection = obligation.predicate;
     let mut nested_obligations = Vec::new();
-    let cache_trait_ref = if potentially_unnormalized_candidate {
+    let cache_projection = if potentially_unnormalized_candidate {
         ensure_sufficient_stack(|| {
             normalize_with_depth_to(
                 selcx,
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                cache_trait_ref,
+                cache_projection,
                 &mut nested_obligations,
             )
         })
     } else {
-        cache_trait_ref
+        cache_projection
     };
 
-    match infcx.at(cause, param_env).eq(cache_trait_ref, obligation_trait_ref) {
+    match infcx.at(cause, param_env).eq(cache_projection, obligation_projection) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);

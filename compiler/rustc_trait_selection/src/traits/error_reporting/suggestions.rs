@@ -17,8 +17,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
-    TyCtxt, TypeFoldable, WithConstness,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -334,7 +334,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
-            _ => return,
+            _ => (false, None),
         };
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
@@ -453,6 +453,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Union(_, generics)
+                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Impl(hir::Impl { generics, .. })
+                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::TraitAlias(generics, _)
+                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                    ..
+                }) if !param_ty => {
+                    // Missing generic type parameter bound.
+                    let param_name = self_ty.to_string();
+                    let constraint = trait_ref.print_only_trait_path().to_string();
+                    if suggest_arbitrary_trait_bound(generics, &mut err, &param_name, &constraint) {
+                        return;
+                    }
+                }
                 hir::Node::Crate(..) => return,
 
                 _ => {}
