@@ -24,7 +24,7 @@ use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::{self as hir, ExprKind, Item, ItemKind, Mutability};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
-use rustc_middle::ty::BorrowKind;
+use rustc_middle::ty::{BorrowKind, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
@@ -37,7 +37,8 @@ use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
 use crate::utils::{
-    last_path_segment, match_function_call, match_type, path_to_local_id, paths, span_lint, walk_ptrs_ty_depth,
+    get_enclosing_body, get_parent_expr_for_hir, last_path_segment, match_function_call, match_qpath, match_type,
+    path_to_local_id, paths, span_lint, walk_ptrs_ty_depth,
 };
 
 /// This is the output file of the lint collector.
@@ -145,6 +146,12 @@ impl LintMetadata {
 struct SerializableSpan {
     path: String,
     line: usize,
+}
+
+impl std::fmt::Display for SerializableSpan {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.path.rsplit('/').next().unwrap_or_default(), self.line)
+    }
 }
 
 impl SerializableSpan {
@@ -285,52 +292,54 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
     /// );
     /// ```
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx hir::Local<'tcx>) {
-        if let Some(tc) = cx.maybe_typeck_results() {
-            // TODO xFrednet 2021-02-14: support nested applicability (only in tuples)
-            let local_ty = if let Some(ty) = local.ty {
-                hir_ty_to_ty(cx.tcx, ty)
-            } else if let Some(init) = local.init {
-                tc.expr_ty(init)
-            } else {
-                return;
-            };
-
-            if_chain! {
-                if match_type(cx, local_ty, &paths::APPLICABILITY);
-                if let Some(body) = get_parent_body(cx, local.hir_id);
-                then {
-                    let span = SerializableSpan::from_span(cx, local.span);
-                    let local_str = crate::utils::snippet(cx, local.span, "_");
-                    let value_life = format!("{} -- {}:{}\n", local_str, span.path.rsplit('/').next().unwrap_or_default(), span.line);
-                    let value_hir_id = local.pat.hir_id;
-                    let mut tracker = ValueTracker {cx, value_hir_id, value_life};
-
-                    cx.tcx.infer_ctxt().enter(|infcx| {
-                        let body_owner_id = cx.tcx.hir().body_owner_def_id(body.id());
-                        ExprUseVisitor::new(
-                            &mut tracker,
-                            &infcx,
-                            body_owner_id,
-                            cx.param_env,
-                            cx.typeck_results()
-                        )
-                        .consume_body(body);
-                    });
-
-                    log_to_file(&tracker.value_life);
-                    lint_collection_error_span(cx, local.span, "Applicability value found");
+        if_chain! {
+            if let Some(local_ty) = get_local_type(cx, local);
+            if match_type(cx, local_ty, &paths::APPLICABILITY);
+            if let Some(body) = get_enclosing_body(cx, local.hir_id);
+            then {
+                // TODO xFrednet: 2021-02-19: Remove debug code
+                let span = SerializableSpan::from_span(cx, local.span);
+                let local_str = crate::utils::snippet(cx, local.span, "_");
+                log_to_file(&format!("{} -- {}\n", local_str, span));
+                
+                let value_hir_id = local.pat.hir_id;
+                let mut tracker = ValueTracker::new(cx, value_hir_id);
+                if let Some(init_expr) = local.init {
+                    tracker.process_assign_expr(init_expr)
                 }
+
+                // TODO xFrednet 2021-02-18: Support nested bodies
+                // Note: The `ExprUseVisitor` only searches though one body, this means that values
+                // references in nested bodies like closures are not found by this simple visitor.
+                cx.tcx.infer_ctxt().enter(|infcx| {
+                    let body_owner_id = cx.tcx.hir().body_owner_def_id(body.id());
+                    ExprUseVisitor::new(
+                        &mut tracker,
+                        &infcx,
+                        body_owner_id,
+                        cx.param_env,
+                        cx.typeck_results()
+                    )
+                    .consume_body(body);
+                });
+
+                log_to_file(&format!("{:?}\n", tracker.value_mutations));
             }
         }
     }
 }
 
-fn get_parent_body<'a, 'tcx>(cx: &'a LateContext<'tcx>, id: hir::HirId) -> Option<&'tcx hir::Body<'tcx>> {
-    let map = cx.tcx.hir();
+fn get_local_type<'a>(cx: &'a LateContext<'_>, local: &'a hir::Local<'_>) -> Option<Ty<'a>> {
+    // TODO xFrednet 2021-02-14: support nested applicability (only in tuples)
+    if let Some(tc) = cx.maybe_typeck_results() {
+        if let Some(ty) = local.ty {
+            return Some(hir_ty_to_ty(cx.tcx, ty));
+        } else if let Some(init) = local.init {
+            return Some(tc.expr_ty(init));
+        }
+    }
 
-    map.parent_iter(id)
-        .find_map(|(parent, _)| map.maybe_body_owned_by(parent))
-        .map(|body| map.body(body))
+    None
 }
 
 fn sym_to_string(sym: Symbol) -> String {
@@ -429,42 +438,174 @@ fn extract_emission_info<'tcx>(cx: &LateContext<'tcx>, args: &[hir::Expr<'_>]) -
     })
 }
 
-struct ValueTracker<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
+#[allow(dead_code)]
+struct ValueTracker<'a, 'hir> {
+    cx: &'a LateContext<'hir>,
     value_hir_id: hir::HirId,
-    value_life: String,
+    value_mutations: Vec<ApplicabilityModifier<'hir>>,
 }
 
-impl<'a, 'tcx> ValueTracker<'a, 'tcx> {
+impl<'a, 'hir> ValueTracker<'a, 'hir> {
+    fn new(cx: &'a LateContext<'hir>, value_hir_id: hir::HirId) -> Self {
+        Self {
+            cx,
+            value_hir_id,
+            value_mutations: Vec::new(),
+        }
+    }
+
     fn is_value_expr(&self, expr_id: hir::HirId) -> bool {
         match self.cx.tcx.hir().find(expr_id) {
             Some(hir::Node::Expr(expr)) => path_to_local_id(expr, self.value_hir_id),
             _ => false,
         }
     }
-}
 
-impl<'a, 'tcx> Delegate<'tcx> for ValueTracker<'a, 'tcx> {
-    fn consume(&mut self, _place_with_id: &PlaceWithHirId<'tcx>, expr_id: hir::HirId, _: ConsumeMode) {
-        if self.is_value_expr(expr_id) {
-            // TODO xFrednet 2021-02-17: Check if lint emission and extract lint ID
-            todo!();
+    /// This function extracts possible `ApplicabilityModifier` from an assign statement like this:
+    ///
+    /// ```rust, ignore
+    /// //          vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv The expression to process
+    /// let value = Applicability::MachineApplicable;
+    /// ```
+    fn process_assign_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+        // This is a bit more complicated. I'll therefor settle on the simple solution of
+        // simplifying the cases we support.
+        match &expr.kind {
+            hir::ExprKind::Call(func_expr, ..) => {
+                // We only deal with resolved paths as this is the usual case. Other expression kinds like closures
+                // etc. are hard to track but might be a worthy improvement in the future
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = func_expr.kind {
+                    self.value_mutations.push(ApplicabilityModifier::Producer(path));
+                } else {
+                    let msg = format!(
+                        "Unsupported Call expression at: {}",
+                        SerializableSpan::from_span(self.cx, func_expr.span)
+                    );
+                    self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+                }
+            },
+            hir::ExprKind::MethodCall(..) => {
+                let msg = format!(
+                    "Unsupported MethodCall expression at: {}",
+                    SerializableSpan::from_span(self.cx, expr.span)
+                );
+                self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+            },
+            // We can ignore ifs without an else block because those can't be used as an assignment
+            hir::ExprKind::If(_con, if_block, Some(else_block)) => {
+                self.process_assign_expr(if_block);
+                self.process_assign_expr(else_block);
+            },
+            hir::ExprKind::Match(_expr, arms, _) => {
+                for arm in *arms {
+                    self.process_assign_expr(arm.body);
+                }
+            },
+            hir::ExprKind::Loop(block, ..) | hir::ExprKind::Block(block, ..) => {
+                if let Some(block_expr) = block.expr {
+                    self.process_assign_expr(block_expr);
+                }
+            },
+            hir::ExprKind::Path(path) => {
+                for enum_value in &paths::APPLICABILITY_VALUES {
+                    if match_qpath(path, enum_value) {
+                        self.value_mutations
+                            .push(ApplicabilityModifier::ConstValue(enum_value[2].to_string()));
+                    }
+                }
+            },
+            // hir::ExprKind::Field(expr, ident) => not supported
+            // hir::ExprKind::Index(expr, expr) => not supported
+            _ => {
+                let msg = format!(
+                    "Unexpected expression at: {}",
+                    SerializableSpan::from_span(self.cx, expr.span)
+                );
+                self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+            },
         }
     }
+}
 
-    fn borrow(&mut self, _place_with_id: &PlaceWithHirId<'tcx>, expr_id: hir::HirId, bk: BorrowKind) {
+impl<'a, 'hir> Delegate<'hir> for ValueTracker<'a, 'hir> {
+    fn consume(&mut self, _place_with_id: &PlaceWithHirId<'hir>, expr_id: hir::HirId, _: ConsumeMode) {
         if self.is_value_expr(expr_id) {
-            if let BorrowKind::MutBorrow = bk {
-                // TODO xFrednet 2021-02-17: Save the function
-                todo!();
+            // TODO xFrednet 2021-02-17: Check if lint emission and extract lint ID
+            if let Some(hir::Node::Expr(expr)) = self.cx.tcx.hir().find(expr_id) {
+                let span = SerializableSpan::from_span(self.cx, expr.span);
+                log_to_file(&format!("- consume {}\n", span));
             }
         }
     }
 
-    fn mutate(&mut self, _assignee_place: &PlaceWithHirId<'tcx>, expr_id: hir::HirId) {
+    fn borrow(&mut self, _place_with_id: &PlaceWithHirId<'hir>, expr_id: hir::HirId, bk: BorrowKind) {
         if self.is_value_expr(expr_id) {
-            // TODO xFrednet 2021-02-17: Save the new value as a mutation
-            todo!();
+            if let BorrowKind::MutBorrow = bk {
+                // TODO xFrednet 2021-02-17: Save the function
+                if let Some(hir::Node::Expr(expr)) = self.cx.tcx.hir().find(expr_id) {
+                    let span = SerializableSpan::from_span(self.cx, expr.span);
+                    log_to_file(&format!("- &mut     {}\n", span));
+                }
+            }
         }
     }
+
+    fn mutate(&mut self, _assignee_place: &PlaceWithHirId<'hir>, expr_id: hir::HirId) {
+        if_chain! {
+            if self.is_value_expr(expr_id);
+            if let Some(expr) = get_parent_expr_for_hir(self.cx, expr_id);
+            if let hir::ExprKind::Assign(_value_expr, assign_expr, ..) = expr.kind;
+            then {
+                self.process_assign_expr(assign_expr);
+            }
+        }
+    }
+}
+
+/// The life of a value in Rust is a true adventure. These are the corner stones of such a
+/// fairy tale. Let me introduce you to the possible stepping stones a value might have in
+/// in our crazy word:
+#[derive(Debug)]
+#[allow(dead_code)]
+enum ApplicabilityModifier<'hir> {
+    Unknown(String),
+    /// A simple constant value.
+    ///
+    /// This is the actual character of a value. It's baseline. This only defines where the value
+    /// started. As in real life it can still change and fully decide who it wants to be.
+    ConstValue(String),
+    /// A producer is a function that returns an applicability value.
+    ///
+    /// This is the heritage of this value. This value comes from a long family tree and is not
+    /// just a black piece of paper. The evaluation of this stepping stone needs additional
+    /// context. We therefore only add a reference. This reference will later be used to ask
+    /// the librarian about the possible initial character that this value might have.
+    Producer(&'hir hir::Path<'hir>),
+    /// A modifier that takes the given applicability and might modify it
+    ///
+    /// What would an RPG be without it's NPCs. The special thing about modifiers is that they can
+    /// be actively interested in the story of the value and might make decisions based on the
+    /// character of this hero. This means that a modifier doesn't just force its way into the life
+    /// of our hero but it actually asks him how he's been. The possible modification is a result
+    /// of the situation.
+    ///
+    /// Take this part of our heroes life very seriously!
+    Modifier(&'hir hir::Path<'hir>),
+    /// The actual emission of a lint
+    ///
+    /// All good things must come to an end. Even the life of your awesome applicability hero. He
+    /// was the bravest soul that has ever wondered this earth. Songs will be written about his
+    /// heroic deeds. Castles will be named after him and the world how we know it will never be
+    /// the same!
+    ///
+    /// Is this a happy ending? Did he archive what he wanted in his life? Yes, YES, he has lived a
+    /// life and he will continue to live in all the lint suggestions that can be applied or just
+    /// displayed by Clippy. He might be no more, but his legacy will serve generations to come.
+    LintEmit(LintEmission),
+}
+
+#[derive(Debug)]
+struct LintEmission {
+    lint: String,
+    is_multi_line_sugg: bool,
 }
