@@ -219,7 +219,7 @@ fn parse_contents(content: &str, module: &str) -> impl Iterator<Item = Lint> {
     lints.chain(deprecated).collect::<Vec<Lint>>().into_iter()
 }
 
-/// Collects all .rs files in the `clippy_lints/src` and `clippy_lints/src` directories
+/// Collects all .rs files in the `clippy_lints/src` and `clippy_utils/src` directories
 fn lint_files() -> impl Iterator<Item = walkdir::DirEntry> {
     // We use `WalkDir` instead of `fs::read_dir` here in order to recurse into subdirectories.
     // Otherwise we would not collect all the lints, for example in `clippy_lints/src/methods/`.
