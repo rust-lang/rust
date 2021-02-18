@@ -5,7 +5,7 @@
 fn irrefutable_let_guard() {
     match Some(()) {
         Some(x) if let () = x => {}
-        //~^ ERROR irrefutable if-let guard
+        //~^ ERROR irrefutable `if let` guard
         _ => {}
     }
 }
