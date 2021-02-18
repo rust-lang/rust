@@ -1141,7 +1141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let trait_def_ids: FxHashSet<DefId> = param
                                 .bounds
                                 .iter()
-                                .filter_map(|bound| Some(bound.trait_ref()?.trait_def_id()?))
+                                .filter_map(|bound| bound.trait_ref()?.trait_def_id())
                                 .collect();
                             if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
                                 err.span_suggestions(

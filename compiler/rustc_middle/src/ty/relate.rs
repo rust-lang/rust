@@ -154,7 +154,7 @@ pub fn relate_substs<R: TypeRelation<'tcx>>(
         relation.relate_with_variance(variance, a, b)
     });
 
-    Ok(tcx.mk_substs(params)?)
+    tcx.mk_substs(params)
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
@@ -647,7 +647,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'
                 _ => Err(TypeError::ExistentialMismatch(expected_found(relation, a, b))),
             }
         });
-        Ok(tcx.mk_poly_existential_predicates(v)?)
+        tcx.mk_poly_existential_predicates(v)
     }
 }
 

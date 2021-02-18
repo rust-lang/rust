@@ -607,7 +607,7 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                return Ok(with_no_queries(|| {
+                return with_no_queries(|| {
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
@@ -649,7 +649,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(" Sized");
                     }
                     Ok(self)
-                })?);
+                });
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
