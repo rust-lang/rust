@@ -290,6 +290,7 @@ E0543: include_str!("./error_codes/E0543.md"),
 E0545: include_str!("./error_codes/E0545.md"),
 E0546: include_str!("./error_codes/E0546.md"),
 E0547: include_str!("./error_codes/E0547.md"),
+E0549: include_str!("./error_codes/E0549.md"),
 E0550: include_str!("./error_codes/E0550.md"),
 E0551: include_str!("./error_codes/E0551.md"),
 E0552: include_str!("./error_codes/E0552.md"),
@@ -608,9 +609,6 @@ E0781: include_str!("./error_codes/E0781.md"),
 //  E0540, // multiple rustc_deprecated attributes
     E0544, // multiple stability levels
 //  E0548, // replaced with a generic attribute input check
-    // rustc_deprecated attribute must be paired with either stable or unstable
-    // attribute
-    E0549,
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
 //  E0558, // replaced with a generic attribute input check
