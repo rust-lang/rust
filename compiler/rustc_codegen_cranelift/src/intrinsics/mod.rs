@@ -497,6 +497,8 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         truncf64(flt) -> f64 => trunc,
         roundf32(flt) -> f32 => roundf,
         roundf64(flt) -> f64 => round,
+        roundevenf32(flt) -> f32 => roundevenf,
+        roundevenf64(flt) -> f64 => roundeven,
 
         // trigonometry
         sinf32(flt) -> f32 => sinf,

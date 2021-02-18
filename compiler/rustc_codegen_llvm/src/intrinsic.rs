@@ -68,6 +68,8 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<&'ll Va
         sym::nearbyintf64 => "llvm.nearbyint.f64",
         sym::roundf32 => "llvm.round.f32",
         sym::roundf64 => "llvm.round.f64",
+        sym::roundevenf32 => "llvm.roundeven.f32",
+        sym::roundevenf64 => "llvm.roundeven.f64",
         _ => return None,
     };
     Some(cx.get_intrinsic(&llvm_name))

@@ -573,6 +573,8 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.copysign.f64", fn(t_f64, t_f64) -> t_f64);
         ifn!("llvm.round.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.round.f64", fn(t_f64) -> t_f64);
+        ifn!("llvm.roundeven.f32", fn(t_f32) -> t_f32);
+        ifn!("llvm.roundeven.f64", fn(t_f64) -> t_f64);
 
         ifn!("llvm.rint.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.rint.f64", fn(t_f64) -> t_f64);
