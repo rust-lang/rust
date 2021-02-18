@@ -114,6 +114,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_impl_item(nested_impl_item)
     }
 
+    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
+        let nested_foreign_item = self.krate.unwrap().foreign_item(id);
+        self.visit_foreign_item(nested_foreign_item);
+    }
+
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let nested_body = self.krate.unwrap().body(body_id);
         self.visit_body(nested_body)
