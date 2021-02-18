@@ -12,7 +12,7 @@ use super::SelectionContext;
 use super::SelectionError;
 use super::{
     ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
-    ImplSourceGeneratorData, ImplSourceUserDefinedData,
+    ImplSourceGeneratorData, ImplSourcePointeeData, ImplSourceUserDefinedData,
 };
 use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 
@@ -1069,6 +1069,51 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Error(_) => false,
                 }
             }
+            super::ImplSource::Pointee(..) => {
+                // While `Pointee` is automatically implemented for every type,
+                // the concrete metadata type may not be known yet.
+                //
+                // Any type with multiple potential metadata types is therefore not eligible.
+                let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
+
+                // FIXME: should this normalize?
+                let tail = selcx.tcx().struct_tail_without_normalization(self_ty);
+                match tail.kind() {
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(..)
+                    | ty::Slice(_)
+                    | ty::RawPtr(..)
+                    | ty::Ref(..)
+                    | ty::FnDef(..)
+                    | ty::FnPtr(..)
+                    | ty::Dynamic(..)
+                    | ty::Closure(..)
+                    | ty::Generator(..)
+                    | ty::GeneratorWitness(..)
+                    | ty::Never
+                    // If returned by `struct_tail_without_normalization` this is a unit struct
+                    // without any fields, or not a struct, and therefore is Sized.
+                    | ty::Adt(..)
+                    // If returned by `struct_tail_without_normalization` this is the empty tuple.
+                    | ty::Tuple(..)
+                    // Integers and floats are always Sized, and so have unit type metadata.
+                    | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+
+                    ty::Projection(..)
+                    | ty::Opaque(..)
+                    | ty::Param(..)
+                    | ty::Bound(..)
+                    | ty::Placeholder(..)
+                    | ty::Infer(..)
+                    | ty::Error(_) => false,
+                }
+            }
             super::ImplSource::Param(..) => {
                 // This case tell us nothing about the value of an
                 // associated type. Consider:
@@ -1169,6 +1214,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         super::ImplSource::DiscriminantKind(data) => {
             confirm_discriminant_kind_candidate(selcx, obligation, data)
         }
+        super::ImplSource::Pointee(data) => confirm_pointee_candidate(selcx, obligation, data),
         super::ImplSource::Object(_)
         | super::ImplSource::AutoImpl(..)
         | super::ImplSource::Param(..)
@@ -1254,6 +1300,26 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
     // We get here from `poly_project_and_unify_type` which replaces bound vars
     // with placeholders, so dummy is okay here.
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+}
+
+fn confirm_pointee_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    _: ImplSourcePointeeData,
+) -> Progress<'tcx> {
+    let tcx = selcx.tcx();
+
+    let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
+    let substs = tcx.mk_substs([self_ty.into()].iter());
+
+    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+
+    let predicate = ty::ProjectionPredicate {
+        projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },
+        ty: self_ty.ptr_metadata_ty(tcx),
+    };
+
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

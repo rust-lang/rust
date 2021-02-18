@@ -48,6 +48,17 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`from_raw_parts`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (*const (), <T as super::Pointee>::Metadata) {
+        (self.cast(), metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
     /// must be used instead.
@@ -905,9 +916,14 @@ impl<T> *const [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { Repr { rust: self }.raw }.len
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { Repr { rust: self }.raw }.len
+        }
+        #[cfg(not(bootstrap))]
+        metadata(self)
     }
 
     /// Returns a raw pointer to the slice's buffer.

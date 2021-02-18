@@ -2133,6 +2133,54 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    pub fn ptr_metadata_ty(&'tcx self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        // FIXME: should this normalize?
+        let tail = tcx.struct_tail_without_normalization(self);
+        match tail.kind() {
+            // Sized types
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Bool
+            | ty::Float(_)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::RawPtr(..)
+            | ty::Char
+            | ty::Ref(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Array(..)
+            | ty::Closure(..)
+            | ty::Never
+            | ty::Error(_)
+            | ty::Foreign(..)
+            // If returned by `struct_tail_without_normalization` this is a unit struct
+            // without any fields, or not a struct, and therefore is Sized.
+            | ty::Adt(..)
+            // If returned by `struct_tail_without_normalization` this is the empty tuple,
+            // a.k.a. unit type, which is Sized
+            | ty::Tuple(..) => tcx.types.unit,
+
+            ty::Str | ty::Slice(_) => tcx.types.usize,
+            ty::Dynamic(..) => {
+                let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
+                tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()])
+            },
+
+            ty::Projection(_)
+            | ty::Param(_)
+            | ty::Opaque(..)
+            | ty::Infer(ty::TyVar(_))
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`ptr_metadata_ty` applied to unexpected type: {:?}", tail)
+            }
+        }
+    }
+
     /// When we create a closure, we record its kind (i.e., what trait
     /// it implements) into its `ClosureSubsts` using a type
     /// parameter. This is kind of a phantom type, except that the

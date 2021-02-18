@@ -275,6 +275,7 @@
 #![feature(int_error_matching)]
 #![feature(integer_atomics)]
 #![feature(into_future)]
+#![cfg_attr(not(bootstrap), feature(intra_doc_pointers))]
 #![feature(lang_items)]
 #![feature(link_args)]
 #![feature(linkage)]

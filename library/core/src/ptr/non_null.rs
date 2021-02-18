@@ -175,6 +175,37 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
+    /// Performs the same functionality as [`std::ptr::from_raw_parts`], except that a
+    /// `NonNull` pointer is returned, as opposed to a raw `*const` pointer.
+    ///
+    /// See the documentation of [`std::ptr::from_raw_parts`] for more details.
+    ///
+    /// [`std::ptr::from_raw_parts`]: crate::ptr::from_raw_parts
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[inline]
+    pub const fn from_raw_parts(
+        data_address: NonNull<()>,
+        metadata: <T as super::Pointee>::Metadata,
+    ) -> NonNull<T> {
+        // SAFETY: The result of `ptr::from::raw_parts_mut` is non-null because `data_address` is.
+        unsafe {
+            NonNull::new_unchecked(super::from_raw_parts_mut(data_address.as_ptr(), metadata))
+        }
+    }
+
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`NonNull::from_raw_parts`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
+        (self.cast(), super::metadata(self.as_ptr()))
+    }
+
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
