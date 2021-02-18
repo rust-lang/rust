@@ -302,6 +302,7 @@
 #![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(ready_macro)]
+#![cfg_attr(not(bootstrap), feature(round_to_even))]
 #![feature(rustc_attrs)]
 #![feature(rustc_private)]
 #![feature(shrink_to)]
