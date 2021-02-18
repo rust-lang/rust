@@ -269,7 +269,7 @@ that use diagnostic items. This happens very rarely.
 
 ### What is a 'sysroot'?
 
-When you build a project with cargo, the build artifacts for dependendencies
+When you build a project with cargo, the build artifacts for dependencies
 are normally stored in `target/debug/deps`. This only contains dependencies cargo
 knows about; in particular, it doesn't have the standard library. Where do
 `std` or `proc_macro` come from? It comes from the **sysroot**, the root
