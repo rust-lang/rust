@@ -340,7 +340,7 @@ declare_clippy_lint! {
     /// ```
     pub WHILE_LET_ON_ITERATOR,
     style,
-    "using a while-let loop instead of a for loop on an iterator"
+    "using a `while let` loop instead of a for loop on an iterator"
 }
 
 declare_clippy_lint! {
