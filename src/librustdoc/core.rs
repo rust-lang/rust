@@ -161,7 +161,7 @@ impl<'tcx> DocContext<'tcx> {
             }
             Entry::Occupied(e) => e.into_mut(),
         };
-        *def_index = DefIndex::from(*def_index + 1);
+        *def_index = *def_index + 1;
 
         DefId { krate: crate_num, index: *def_index }
     }
