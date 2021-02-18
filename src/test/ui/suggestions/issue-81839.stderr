@@ -1,0 +1,27 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/issue-81839.rs:11:14
+   |
+LL | /     match num {
+LL | |         1 => {
+LL | |             cx.answer_str("hi");
+   | |             --------------------
+   | |             |                  |
+   | |             |                  help: consider removing this semicolon
+   | |             this is found to be of type `()`
+LL | |         }
+LL | |         _ => cx.answer_str("hi"),
+   | |              ^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+LL | |     }
+   | |_____- `match` arms have incompatible types
+   | 
+  ::: $DIR/auxiliary/issue-81839.rs:6:49
+   |
+LL |       pub async fn answer_str(&self, _s: &str) -> Test {
+   |                                                   ---- the `Output` of this `async fn`'s found opaque type
+   |
+   = note:     expected type `()`
+           found opaque type `impl Future`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
