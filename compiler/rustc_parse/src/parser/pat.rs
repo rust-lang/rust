@@ -19,14 +19,14 @@ const WHILE_PARSING_OR_MSG: &str = "while parsing this or-pattern starting here"
 
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq, Clone, Copy)]
-pub(super) enum GateOr {
+pub enum GateOr {
     Yes,
     No,
 }
 
 /// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
-pub(super) enum RecoverComma {
+pub enum RecoverComma {
     Yes,
     No,
 }
@@ -37,80 +37,57 @@ impl<'a> Parser<'a> {
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
     /// at the top level. Used when parsing the parameters of lambda expressions,
     /// functions, function pointers, and `pat` macro fragments.
-    pub fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
+    pub fn parse_pat_no_top_alt(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
-    /// Entry point to the main pattern parser.
+    /// Parses a pattern.
+    ///
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
-    pub(super) fn parse_top_pat(
-        &mut self,
-        gate_or: GateOr,
-        rc: RecoverComma,
-    ) -> PResult<'a, P<Pat>> {
-        // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
-        let gated_leading_vert = self.eat_or_separator(None) && gate_or == GateOr::Yes;
-        let leading_vert_span = self.prev_token.span;
-
-        // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, rc)?;
-
-        // If we parsed a leading `|` which should be gated,
-        // and no other gated or-pattern has been parsed thus far,
-        // then we should really gate the leading `|`.
-        // This complicated procedure is done purely for diagnostics UX.
-        if gated_leading_vert && self.sess.gated_spans.is_ungated(sym::or_patterns) {
-            self.sess.gated_spans.gate(sym::or_patterns, leading_vert_span);
-        }
-
-        Ok(pat)
-    }
-
-    /// Parse the pattern for a function or function pointer parameter.
-    /// Special recovery is provided for or-patterns and leading `|`.
-    pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {
-        self.recover_leading_vert(None, "not allowed in a parameter pattern");
-        let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, RecoverComma::No)?;
-
-        if let PatKind::Or(..) = &pat.kind {
-            self.ban_illegal_fn_param_or_pat(&pat);
-        }
-
-        Ok(pat)
-    }
-
-    /// Ban `A | B` immediately in a parameter pattern and suggest wrapping in parens.
-    fn ban_illegal_fn_param_or_pat(&self, pat: &Pat) {
-        let msg = "wrap the pattern in parenthesis";
-        let fix = format!("({})", pprust::pat_to_string(pat));
-        self.struct_span_err(pat.span, "an or-pattern parameter must be wrapped in parenthesis")
-            .span_suggestion(pat.span, msg, fix, Applicability::MachineApplicable)
-            .emit();
-    }
-
-    /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
-    /// Corresponds to `pat<allow_top_alt>` in RFC 2535.
-    fn parse_pat_with_or(
+    /// Used for parsing patterns in all cases when `pat<no_top_alt>` is not used.
+    ///
+    /// Note that after the FCP in <https://github.com/rust-lang/rust/issues/81415>,
+    /// a leading vert is allowed in nested or-patterns, too. This allows us to
+    /// simplify the grammar somewhat.
+    pub fn parse_pat_allow_top_alt(
         &mut self,
         expected: Expected,
         gate_or: GateOr,
         rc: RecoverComma,
     ) -> PResult<'a, P<Pat>> {
+        // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
+        let leading_vert_span =
+            if self.eat_or_separator(None) { Some(self.prev_token.span) } else { None };
+
         // Parse the first pattern (`p_0`).
-        let first_pat = self.parse_pat(expected)?;
+        let first_pat = self.parse_pat_no_top_alt(expected)?;
         self.maybe_recover_unexpected_comma(first_pat.span, rc, gate_or)?;
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
         if !self.check(&token::BinOp(token::Or)) && self.token != token::OrOr {
+            // If we parsed a leading `|` which should be gated,
+            // then we should really gate the leading `|`.
+            // This complicated procedure is done purely for diagnostics UX.
+            if let Some(leading_vert_span) = leading_vert_span {
+                if gate_or == GateOr::Yes && self.sess.gated_spans.is_ungated(sym::or_patterns) {
+                    self.sess.gated_spans.gate(sym::or_patterns, leading_vert_span);
+                }
+
+                // If there was a leading vert, treat this as an or-pattern. This improves
+                // diagnostics.
+                let span = leading_vert_span.to(self.prev_token.span);
+                return Ok(self.mk_pat(span, PatKind::Or(vec![first_pat])));
+            }
+
             return Ok(first_pat);
         }
 
         // Parse the patterns `p_1 | ... | p_n` where `n > 0`.
-        let lo = first_pat.span;
+        let lo = leading_vert_span.unwrap_or(first_pat.span);
         let mut pats = vec![first_pat];
         while self.eat_or_separator(Some(lo)) {
-            let pat = self.parse_pat(expected).map_err(|mut err| {
+            let pat = self.parse_pat_no_top_alt(expected).map_err(|mut err| {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
@@ -125,6 +102,62 @@ impl<'a> Parser<'a> {
         }
 
         Ok(self.mk_pat(or_pattern_span, PatKind::Or(pats)))
+    }
+
+    /// Parse the pattern for a function or function pointer parameter.
+    pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {
+        // We actually do _not_ allow top-level or-patterns in function params, but we use
+        // `parse_pat_allow_top_alt` anyway so that we can detect when a user tries to use it. This
+        // allows us to print a better error message.
+        //
+        // In order to get good UX, we first recover in the case of a leading vert for an illegal
+        // top-level or-pat. Normally, this means recovering both `|` and `||`, but in this case,
+        // a leading `||` probably doesn't indicate an or-pattern attempt, so we handle that
+        // separately.
+        if let token::OrOr = self.token.kind {
+            let span = self.token.span;
+            let mut err = self.struct_span_err(span, "unexpected `||` before function parameter");
+            err.span_suggestion(
+                span,
+                "remove the `||`",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+            err.note("alternatives in or-patterns are separated with `|`, not `||`");
+            err.emit();
+            self.bump();
+        }
+
+        let pat = self.parse_pat_allow_top_alt(PARAM_EXPECTED, GateOr::No, RecoverComma::No)?;
+
+        if let PatKind::Or(..) = &pat.kind {
+            self.ban_illegal_fn_param_or_pat(&pat);
+        }
+
+        Ok(pat)
+    }
+
+    /// Ban `A | B` immediately in a parameter pattern and suggest wrapping in parens.
+    fn ban_illegal_fn_param_or_pat(&self, pat: &Pat) {
+        // If all we have a leading vert, then print a special message. This is the case if
+        // `parse_pat_allow_top_alt` returns an or-pattern with one variant.
+        let (msg, fix) = match &pat.kind {
+            PatKind::Or(pats) if pats.len() == 1 => {
+                let msg = "remove the leading `|`";
+                let fix = pprust::pat_to_string(pat);
+                (msg, fix)
+            }
+
+            _ => {
+                let msg = "wrap the pattern in parentheses";
+                let fix = format!("({})", pprust::pat_to_string(pat));
+                (msg, fix)
+            }
+        };
+
+        self.struct_span_err(pat.span, "an or-pattern parameter must be wrapped in parentheses")
+            .span_suggestion(pat.span, msg, fix, Applicability::MachineApplicable)
+            .emit();
     }
 
     /// Eat the or-pattern `|` separator.
@@ -179,7 +212,7 @@ impl<'a> Parser<'a> {
 
     /// We have parsed `||` instead of `|`. Error and suggest `|` instead.
     fn ban_unexpected_or_or(&mut self, lo: Option<Span>) {
-        let mut err = self.struct_span_err(self.token.span, "unexpected token `||` after pattern");
+        let mut err = self.struct_span_err(self.token.span, "unexpected token `||` in pattern");
         err.span_suggestion(
             self.token.span,
             "use a single `|` to separate multiple alternative patterns",
@@ -244,28 +277,12 @@ impl<'a> Parser<'a> {
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(token::Paren)) {
-            self.parse_pat(None)?;
+            self.parse_pat_no_top_alt(None)?;
             if !self.eat(&token::Comma) {
                 return Ok(());
             }
         }
         Ok(())
-    }
-
-    /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
-    /// See `parse_pat_with_or` for details on parsing or-patterns.
-    fn parse_pat_with_or_inner(&mut self) -> PResult<'a, P<Pat>> {
-        self.recover_leading_vert(None, "only allowed in a top-level pattern");
-        self.parse_pat_with_or(None, GateOr::Yes, RecoverComma::No)
-    }
-
-    /// Recover if `|` or `||` is here.
-    /// The user is thinking that a leading `|` is allowed in this position.
-    fn recover_leading_vert(&mut self, lo: Option<Span>, ctx: &str) {
-        if let token::BinOp(token::Or) | token::OrOr = self.token.kind {
-            self.ban_illegal_vert(lo, "leading", ctx);
-            self.bump();
-        }
     }
 
     /// A `|` or possibly `||` token shouldn't be here. Ban it.
@@ -305,8 +322,9 @@ impl<'a> Parser<'a> {
             self.parse_pat_tuple_or_parens()?
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
-            let (pats, _) =
-                self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat_with_or_inner())?;
+            let (pats, _) = self.parse_delim_comma_seq(token::Bracket, |p| {
+                p.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)
+            })?;
             PatKind::Slice(pats)
         } else if self.check(&token::DotDot) && !self.is_pat_range_end_start(1) {
             // A rest pattern `..`.
@@ -429,7 +447,7 @@ impl<'a> Parser<'a> {
 
         // At this point we attempt to parse `@ $pat_rhs` and emit an error.
         self.bump(); // `@`
-        let mut rhs = self.parse_pat(None)?;
+        let mut rhs = self.parse_pat_no_top_alt(None)?;
         let sp = lhs.span.to(rhs.span);
 
         if let PatKind::Ident(_, _, ref mut sub @ None) = rhs.kind {
@@ -518,8 +536,9 @@ impl<'a> Parser<'a> {
 
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
-        let (fields, trailing_comma) =
-            self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
+        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
+            p.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)
+        })?;
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
@@ -548,7 +567,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the pattern we hope to be an identifier.
-        let mut pat = self.parse_pat(Some("identifier"))?;
+        let mut pat = self.parse_pat_no_top_alt(Some("identifier"))?;
 
         // If we don't have `mut $ident (@ pat)?`, error.
         if let PatKind::Ident(BindingMode::ByValue(m @ Mutability::Not), ..) = &mut pat.kind {
@@ -793,7 +812,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self, binding_mode: BindingMode) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
-            Some(self.parse_pat(Some("binding pattern"))?)
+            Some(self.parse_pat_no_top_alt(Some("binding pattern"))?)
         } else {
             None
         };
@@ -832,7 +851,9 @@ impl<'a> Parser<'a> {
         if qself.is_some() {
             return self.error_qpath_before_pat(&path, "(");
         }
-        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
+        let (fields, _) = self.parse_paren_comma_seq(|p| {
+            p.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)
+        })?;
         Ok(PatKind::TupleStruct(path, fields))
     }
 
@@ -998,7 +1019,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_with_or_inner()?;
+            let pat = self.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::No)?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {

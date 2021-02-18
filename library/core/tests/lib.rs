@@ -65,6 +65,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(option_result_unwrap_unchecked)]
+#![feature(result_into_ok_or_err)]
 #![feature(option_unwrap_none)]
 #![feature(peekable_peek_mut)]
 #![feature(once_cell)]

@@ -180,7 +180,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     debug!("seed place {:?}", place);
 
                     let upvar_id = ty::UpvarId::new(*var_hir_id, local_def_id);
-                    let capture_kind = self.init_capture_kind(capture_clause, upvar_id, span);
+                    let capture_kind =
+                        self.init_capture_kind_for_place(&place, capture_clause, upvar_id, span);
                     let fake_info = ty::CaptureInfo {
                         capture_kind_expr_id: None,
                         path_expr_id: None,
@@ -205,11 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If we have an origin, store it.
             if let Some(origin) = delegate.current_origin.clone() {
                 let origin = if self.tcx.features().capture_disjoint_fields {
-                    origin
+                    (origin.0, restrict_capture_precision(origin.1))
                 } else {
-                    // FIXME(project-rfc-2229#31): Once the changes to support reborrowing are
-                    //                             made, make sure we are selecting and restricting
-                    //                             the origin correctly.
                     (origin.0, Place { projections: vec![], ..origin.1 })
                 };
 
@@ -449,7 +447,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            let place = restrict_capture_precision(place, capture_info.capture_kind);
+            let place = restrict_capture_precision(place);
 
             let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
                 None => {
@@ -897,15 +895,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn init_capture_kind(
+    fn init_capture_kind_for_place(
         &self,
+        place: &Place<'tcx>,
         capture_clause: hir::CaptureBy,
         upvar_id: ty::UpvarId,
         closure_span: Span,
     ) -> ty::UpvarCapture<'tcx> {
         match capture_clause {
-            hir::CaptureBy::Value => ty::UpvarCapture::ByValue(None),
-            hir::CaptureBy::Ref => {
+            // In case of a move closure if the data is accessed through a reference we
+            // want to capture by ref to allow precise capture using reborrows.
+            //
+            // If the data will be moved out of this place, then the place will be truncated
+            // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
+            // the closure.
+            hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
+                ty::UpvarCapture::ByValue(None)
+            }
+            hir::CaptureBy::Value | hir::CaptureBy::Ref => {
                 let origin = UpvarRegion(upvar_id, closure_span);
                 let upvar_region = self.next_region_var(origin);
                 let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow, region: upvar_region };
@@ -1109,12 +1116,25 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, mode
         );
 
-        // we only care about moves
-        match mode {
-            euv::Copy => {
+        match (self.capture_clause, mode) {
+            // In non-move closures, we only care about moves
+            (hir::CaptureBy::Ref, euv::Copy) => return,
+
+            // We want to capture Copy types that read through a ref via a reborrow
+            (hir::CaptureBy::Value, euv::Copy)
+                if place_with_id.place.deref_tys().any(ty::TyS::is_ref) =>
+            {
                 return;
             }
-            euv::Move => {}
+
+            (hir::CaptureBy::Ref, euv::Move) | (hir::CaptureBy::Value, euv::Move | euv::Copy) => {}
+        };
+
+        let place = truncate_capture_for_move(place_with_id.place.clone());
+        let place_with_id = PlaceWithHirId { place: place.clone(), hir_id: place_with_id.hir_id };
+
+        if !self.capture_information.contains_key(&place) {
+            self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
 
         let tcx = self.fcx.tcx;
@@ -1128,13 +1148,15 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         let usage_span = tcx.hir().span(diag_expr_id);
 
-        // To move out of an upvar, this must be a FnOnce closure
-        self.adjust_closure_kind(
-            upvar_id.closure_expr_id,
-            ty::ClosureKind::FnOnce,
-            usage_span,
-            place_with_id.place.clone(),
-        );
+        if matches!(mode, euv::Move) {
+            // To move out of an upvar, this must be a FnOnce closure
+            self.adjust_closure_kind(
+                upvar_id.closure_expr_id,
+                ty::ClosureKind::FnOnce,
+                usage_span,
+                place.clone(),
+            );
+        }
 
         let capture_info = ty::CaptureInfo {
             capture_kind_expr_id: Some(diag_expr_id),
@@ -1317,8 +1339,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         if let PlaceBase::Upvar(upvar_id) = place_with_id.place.base {
             assert_eq!(self.closure_def_id.expect_local(), upvar_id.closure_expr_id);
 
-            let capture_kind =
-                self.fcx.init_capture_kind(self.capture_clause, upvar_id, self.closure_span);
+            let capture_kind = self.fcx.init_capture_kind_for_place(
+                &place_with_id.place,
+                self.capture_clause,
+                upvar_id,
+                self.closure_span,
+            );
 
             let expr_id = Some(diag_expr_id);
             let capture_info = ty::CaptureInfo {
@@ -1392,15 +1418,10 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 }
 
 /// Truncate projections so that following rules are obeyed by the captured `place`:
-///
-/// - No Derefs in move closure, this will result in value behind a reference getting moved.
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No Index projections are captured, since arrays are captured completely.
-fn restrict_capture_precision<'tcx>(
-    mut place: Place<'tcx>,
-    capture_kind: ty::UpvarCapture<'tcx>,
-) -> Place<'tcx> {
+fn restrict_capture_precision<'tcx>(mut place: Place<'tcx>) -> Place<'tcx> {
     if place.projections.is_empty() {
         // Nothing to do here
         return place;
@@ -1412,7 +1433,6 @@ fn restrict_capture_precision<'tcx>(
     }
 
     let mut truncated_length = usize::MAX;
-    let mut first_deref_projection = usize::MAX;
 
     for (i, proj) in place.projections.iter().enumerate() {
         if proj.ty.is_unsafe_ptr() {
@@ -1426,27 +1446,26 @@ fn restrict_capture_precision<'tcx>(
                 truncated_length = truncated_length.min(i);
                 break;
             }
-            ProjectionKind::Deref => {
-                // We only drop Derefs in case of move closures
-                // There might be an index projection or raw ptr ahead, so we don't stop here.
-                first_deref_projection = first_deref_projection.min(i);
-            }
+            ProjectionKind::Deref => {}
             ProjectionKind::Field(..) => {} // ignore
             ProjectionKind::Subslice => {}  // We never capture this
         }
     }
 
-    let length = place
-        .projections
-        .len()
-        .min(truncated_length)
-        // In case of capture `ByValue` we want to not capture derefs
-        .min(match capture_kind {
-            ty::UpvarCapture::ByValue(..) => first_deref_projection,
-            ty::UpvarCapture::ByRef(..) => usize::MAX,
-        });
+    let length = place.projections.len().min(truncated_length);
 
     place.projections.truncate(length);
+
+    place
+}
+
+/// Truncates a place so that the resultant capture doesn't move data out of a reference
+fn truncate_capture_for_move(mut place: Place<'tcx>) -> Place<'tcx> {
+    if let Some(i) = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref) {
+        // We only drop Derefs in case of move closures
+        // There might be an index projection or raw ptr ahead, so we don't stop here.
+        place.projections.truncate(i);
+    }
 
     place
 }

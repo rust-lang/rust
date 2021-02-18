@@ -320,6 +320,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<IndexVec<mir::Local, Vec<PerLocalVarDebugInfo<'tcx, Bx::DIVariable>>>> {
         let full_debug_info = self.cx.sess().opts.debuginfo == DebugInfo::Full;
 
+        let target_is_msvc = self.cx.sess().target.is_like_msvc;
+
         if !full_debug_info && self.cx.sess().fewer_names() {
             return None;
         }
@@ -341,11 +343,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             && var.source_info.scope == mir::OUTERMOST_SOURCE_SCOPE
                         {
                             let arg_index = place.local.index() - 1;
-
-                            // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
-                            // offset in closures to account for the hidden environment?
-                            // Also, is this `+ 1` needed at all?
-                            VariableKind::ArgumentVariable(arg_index + 1)
+                            if target_is_msvc {
+                                // Rust compiler decomposes every &str or slice argument into two components:
+                                // a pointer to the memory address where the data is stored and a usize representing
+                                // the length of the str (or slice). These components will later be used to reconstruct
+                                // the original argument inside the body of the function that owns it (see the
+                                // definition of debug_introduce_local for more details).
+                                //
+                                // Since the original argument is declared inside a function rather than being passed
+                                // in as an argument, it must be marked as a LocalVariable for MSVC debuggers to visualize
+                                // its data correctly. (See issue #81894 for an in-depth description of the problem).
+                                match *var_ty.kind() {
+                                    ty::Ref(_, inner_type, _) => match *inner_type.kind() {
+                                        ty::Slice(_) | ty::Str => VariableKind::LocalVariable,
+                                        _ => VariableKind::ArgumentVariable(arg_index + 1),
+                                    },
+                                    _ => VariableKind::ArgumentVariable(arg_index + 1),
+                                }
+                            } else {
+                                // FIXME(eddyb) shouldn't `ArgumentVariable` indices be
+                                // offset in closures to account for the hidden environment?
+                                // Also, is this `+ 1` needed at all?
+                                VariableKind::ArgumentVariable(arg_index + 1)
+                            }
                         } else {
                             VariableKind::LocalVariable
                         };

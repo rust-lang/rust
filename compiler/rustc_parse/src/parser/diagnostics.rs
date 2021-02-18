@@ -1654,7 +1654,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat(Some("argument name"))?;
+        let pat = self.parse_pat_no_top_alt(Some("argument name"))?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 

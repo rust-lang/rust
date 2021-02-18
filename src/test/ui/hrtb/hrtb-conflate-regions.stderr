@@ -1,16 +1,11 @@
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-conflate-regions.rs:27:10
    |
-LL | / trait Foo<X> {
-LL | |     fn foo(&self, x: X) { }
-LL | | }
-   | |_- trait `Foo` defined here
-...
-LL |   fn b() { want_foo2::<SomeStruct>(); }
-   |            ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+LL | fn b() { want_foo2::<SomeStruct>(); }
+   |          ^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
    = note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>`, for any two lifetimes `'0` and `'1`...
-   = note: ...but `SomeStruct` actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
+   = note: ...but it actually implements `Foo<(&'2 isize, &'2 isize)>`, for some specific lifetime `'2`
 
 error: aborting due to previous error
 

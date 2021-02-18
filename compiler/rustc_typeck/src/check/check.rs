@@ -7,8 +7,9 @@ use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ItemKind, Node};
+use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -513,10 +514,11 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         }
     }
 
-    #[derive(Debug)]
     struct ProhibitOpaqueVisitor<'tcx> {
         opaque_identity_ty: Ty<'tcx>,
         generics: &'tcx ty::Generics,
+        tcx: TyCtxt<'tcx>,
+        selftys: Vec<(Span, Option<String>)>,
     }
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
@@ -533,6 +535,29 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         }
     }
 
+    impl Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+        type Map = rustc_middle::hir::map::Map<'tcx>;
+
+        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
+            hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+        }
+
+        fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+            match arg.kind {
+                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
+                    [PathSegment { res: Some(Res::SelfTy(_, impl_ref)), .. }] => {
+                        let impl_ty_name =
+                            impl_ref.map(|(def_id, _)| self.tcx.def_path_str(def_id));
+                        self.selftys.push((path.span, impl_ty_name));
+                    }
+                    _ => {}
+                },
+                _ => {}
+            }
+            hir::intravisit::walk_ty(self, arg);
+        }
+    }
+
     if let ItemKind::OpaqueTy(hir::OpaqueTy {
         origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
         ..
@@ -544,17 +569,20 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 InternalSubsts::identity_for_item(tcx, def_id.to_def_id()),
             ),
             generics: tcx.generics_of(def_id),
+            tcx,
+            selftys: vec![],
         };
         let prohibit_opaque = tcx
             .explicit_item_bounds(def_id)
             .iter()
             .try_for_each(|(predicate, _)| predicate.visit_with(&mut visitor));
         debug!(
-            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor={:?}",
-            prohibit_opaque, visitor
+            "check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}, visitor.opaque_identity_ty={:?}, visitor.generics={:?}",
+            prohibit_opaque, visitor.opaque_identity_ty, visitor.generics
         );
 
         if let Some(ty) = prohibit_opaque.break_value() {
+            visitor.visit_item(&item);
             let is_async = match item.kind {
                 ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
                     matches!(origin, hir::OpaqueTyOrigin::AsyncFn)
@@ -571,15 +599,13 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
                 if is_async { "async fn" } else { "impl Trait" },
             );
 
-            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(span) {
-                if snippet == "Self" {
-                    err.span_suggestion(
-                        span,
-                        "consider spelling out the type instead",
-                        format!("{:?}", ty),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+            for (span, name) in visitor.selftys {
+                err.span_suggestion(
+                    span,
+                    "consider spelling out the type instead",
+                    name.unwrap_or_else(|| format!("{:?}", ty)),
+                    Applicability::MaybeIncorrect,
+                );
             }
             err.emit();
         }

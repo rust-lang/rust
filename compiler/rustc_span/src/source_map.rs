@@ -778,16 +778,35 @@ impl SourceMap {
         self.span_until_char(sp, '{')
     }
 
-    /// Returns a new span representing just the start point of this span.
+    /// Returns a new span representing just the first character of the given span.
     pub fn start_point(&self, sp: Span) -> Span {
-        let pos = sp.lo().0;
-        let width = self.find_width_of_character_at_span(sp, false);
-        let corrected_start_position = pos.checked_add(width).unwrap_or(pos);
-        let end_point = BytePos(cmp::max(corrected_start_position, sp.lo().0));
-        sp.with_hi(end_point)
+        let width = {
+            let sp = sp.data();
+            let local_begin = self.lookup_byte_offset(sp.lo);
+            let start_index = local_begin.pos.to_usize();
+            let src = local_begin.sf.external_src.borrow();
+
+            let snippet = if let Some(ref src) = local_begin.sf.src {
+                Some(&src[start_index..])
+            } else if let Some(src) = src.get_source() {
+                Some(&src[start_index..])
+            } else {
+                None
+            };
+
+            match snippet {
+                None => 1,
+                Some(snippet) => match snippet.chars().next() {
+                    None => 1,
+                    Some(c) => c.len_utf8(),
+                },
+            }
+        };
+
+        sp.with_hi(BytePos(sp.lo().0 + width as u32))
     }
 
-    /// Returns a new span representing just the end point of this span.
+    /// Returns a new span representing just the last character of this span.
     pub fn end_point(&self, sp: Span) -> Span {
         let pos = sp.hi().0;
 
@@ -816,7 +835,8 @@ impl SourceMap {
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt())
     }
 
-    /// Finds the width of a character, either before or after the provided span.
+    /// Finds the width of the character, either before or after the end of provided span,
+    /// depending on the `forwards` parameter.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         let sp = sp.data();
         if sp.lo == sp.hi {
@@ -863,11 +883,9 @@ impl SourceMap {
         // We need to extend the snippet to the end of the src rather than to end_index so when
         // searching forwards for boundaries we've got somewhere to search.
         let snippet = if let Some(ref src) = local_begin.sf.src {
-            let len = src.len();
-            &src[start_index..len]
+            &src[start_index..]
         } else if let Some(src) = src.get_source() {
-            let len = src.len();
-            &src[start_index..len]
+            &src[start_index..]
         } else {
             return 1;
         };
