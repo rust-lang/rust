@@ -43,7 +43,7 @@ where
             info!("fully_perform({:?})", self);
         }
 
-        scrape_region_constraints(infcx, || Ok((self.closure)(infcx)?))
+        scrape_region_constraints(infcx, || (self.closure)(infcx))
     }
 }
 
