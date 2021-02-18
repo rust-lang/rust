@@ -87,6 +87,27 @@ impl f64 {
         unsafe { intrinsics::roundf64(self) }
     }
 
+    /// Returns the nearest integer to a number. Round half-way cases to the
+    /// nearest even integer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![cfg_attr(not(bootstrap), feature(round_to_even))]
+    /// let f = 3.3_f64;
+    /// let g = -3.3_f64;
+    ///
+    /// assert_eq!(f.round_to_even(), 3.0);
+    /// assert_eq!(g.round_to_even(), -3.0);
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "round_to_even", issue = "none")]
+    #[inline]
+    pub fn round_to_even(self) -> f64 {
+        unsafe { intrinsics::roundevenf64(self) }
+    }
+
     /// Returns the integer part of a number.
     ///
     /// # Examples
