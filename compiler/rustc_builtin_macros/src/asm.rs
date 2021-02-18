@@ -7,7 +7,10 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{
+    symbol::{kw, sym, Symbol},
+    BytePos,
+};
 use rustc_span::{InnerSpan, Span};
 
 struct AsmArgs {
@@ -465,6 +468,54 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         for piece in unverified_pieces {
             match piece {
                 parse::Piece::String(s) => {
+                    if let Some(idx) = s.find(".intel_syntax") {
+                        let mut end = idx + ".intel_syntax".len();
+                        if let Some(prefix_idx) = s.split_at(end).1.find("noprefix") {
+                            // Should be a space and it should be immediately after
+                            if prefix_idx == 1 {
+                                end += " noprefix".len();
+                            }
+                        }
+
+                        let syntax_span =
+                            template_span.from_inner(InnerSpan::new(idx + 1, end + 1));
+                        let mut err = ecx.struct_span_err(syntax_span, "intel sytnax is the default syntax, and trying to use this directive may cause issues");
+                        err.span_suggestion(
+                            syntax_span,
+                            "Remove this assembler directive",
+                            s.replace(&s[idx..end], "").to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    }
+
+                    if let Some(idx) = s.find(".att_syntax") {
+                        let mut end = idx + ".att_syntax".len();
+                        if let Some(prefix_idx) = s.split_at(end).1.find("noprefix") {
+                            // Should be a space and it should be immediately after
+                            if prefix_idx == 1 {
+                                end += " noprefix".len();
+                            }
+                        }
+
+                        let syntax_span =
+                            template_span.from_inner(InnerSpan::new(idx + 1, end + 1));
+                        let mut err = ecx.struct_span_err(syntax_span, "using the .att_syntax directive may cause issues, use the att_syntax option instead");
+                        let asm_end = sp.hi() - BytePos(2);
+                        let suggestions = vec![
+                            (syntax_span, "".to_string()),
+                            (
+                                Span::new(asm_end, asm_end, sp.ctxt()),
+                                ", options(att_syntax)".to_string(),
+                            ),
+                        ];
+                        err.multipart_suggestion(
+                            "Remove the assembler directive and replace it with options(att_syntax)",
+                            suggestions,
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    }
                     template.push(ast::InlineAsmTemplatePiece::String(s.to_string()))
                 }
                 parse::Piece::NextArgument(arg) => {
