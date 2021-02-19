@@ -229,10 +229,19 @@ impl Crate {
         // "loop" the index within 0..thread_limit
         let target_dir_index = index % thread_limit;
         let perc = ((index * 100) as f32 / total_crates_to_lint as f32) as u8;
-        println!(
-            "{}/{} {}% Linting {} {} in target dir {:?}",
-            index, total_crates_to_lint, perc, &self.name, &self.version, target_dir_index
-        );
+
+        if thread_limit == 1 {
+            println!(
+                "{}/{} {}% Linting {} {}",
+                index, total_crates_to_lint, perc, &self.name, &self.version
+            );
+        } else {
+            println!(
+                "{}/{} {}% Linting {} {} in target dir {:?}",
+                index, total_crates_to_lint, perc, &self.name, &self.version, target_dir_index
+            );
+        }
+
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
@@ -492,8 +501,23 @@ pub fn run(clap_config: &ArgMatches) {
         // This helps when we check many small crates with dep-trees that don't have a lot of branches in
         // order to achive some kind of parallelism
 
-        // Rayon seems to return thread count so half that for core count
-        let num_cpus: usize = rayon::current_num_threads() / 2;
+        // by default, use a single thread
+        let num_cpus = match clap_config.value_of("threads") {
+            Some(threads) => {
+                let threads: usize = threads
+                    .parse()
+                    .expect(&format!("Failed to parse '{}' to a digit", threads));
+                if threads == 0 {
+                    // automatic choice
+                    // Rayon seems to return thread count so half that for core count
+                    (rayon::current_num_threads() / 2) as usize
+                } else {
+                    threads
+                }
+            },
+            // no -j passed, use a single thread
+            None => 1,
+        };
 
         let num_crates = crates.len();
 
