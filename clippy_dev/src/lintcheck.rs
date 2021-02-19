@@ -472,21 +472,23 @@ pub fn run(clap_config: &ArgMatches) {
     } else {
         let counter = std::sync::atomic::AtomicUsize::new(0);
 
-        // Ask rayon for cpu (actually thread)count.
-        // Use one target dir for each cpu so that we can run N clippys in parallel.
+        // Ask rayon for thread count. Assume that half of that is the number of physical cores
+        // Use one target dir for each core so that we can run N clippys in parallel.
         // We need to use different target dirs because cargo would lock them for a single build otherwise,
         // killing the parallelism. However this also means that deps will only be reused half/a
         // quarter of the time which might result in a longer wall clock runtime
 
-        // Rayon seems to return thread count so half that for core count
+        // This helps when we check many small crates with dep-trees that don't have a lot of branches in
+        // order to achive some kind of parallelism
 
-        let num_threads: usize = rayon::current_num_threads() / 2;
+        // Rayon seems to return thread count so half that for core count
+        let num_cpus: usize = rayon::current_num_threads() / 2;
 
         // check all crates (default)
         crates
             .into_par_iter()
             .map(|krate| krate.download_and_extract())
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_threads))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus))
             .flatten()
             .collect()
     };
