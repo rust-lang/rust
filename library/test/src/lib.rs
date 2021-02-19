@@ -353,12 +353,13 @@ where
             }
 
             let mut completed_test = res.unwrap();
-            let running_test = running_tests.remove(&completed_test.desc).unwrap();
-            if let Some(join_handle) = running_test.join_handle {
-                if let Err(_) = join_handle.join() {
-                    if let TrOk = completed_test.result {
-                        completed_test.result =
-                            TrFailedMsg("panicked after reporting success".to_string());
+            if let Some(running_test) = running_tests.remove(&completed_test.desc) {
+                if let Some(join_handle) = running_test.join_handle {
+                    if let Err(_) = join_handle.join() {
+                        if let TrOk = completed_test.result {
+                            completed_test.result =
+                                TrFailedMsg("panicked after reporting success".to_string());
+                        }
                     }
                 }
             }
