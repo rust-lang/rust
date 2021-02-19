@@ -40,6 +40,7 @@
 #include "llvm/IR/Value.h"
 
 #include "llvm/IR/Dominators.h"
+#include "llvm/Analysis/LoopInfo.h"
 
 #include "TypeTree.h"
 
@@ -174,7 +175,6 @@ private:
 
   std::map<llvm::Value *, std::pair<bool, bool>> mriseen;
   bool mustRemainInteger(llvm::Value *val, bool *returned = nullptr);
-
 public:
   /// Calling context
   const FnTypeInfo fntypeinfo;
@@ -203,6 +203,8 @@ public:
 
   std::shared_ptr<llvm::DominatorTree> DT;
 
+  std::shared_ptr<llvm::LoopInfo> LI;
+
   FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
@@ -211,6 +213,7 @@ public:
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
                std::shared_ptr<llvm::DominatorTree> DT,
+               std::shared_ptr<llvm::LoopInfo> LI,
                uint8_t direction = BOTH, bool PHIRecur = false);
 
   /// Get the current results for a given value

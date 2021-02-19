@@ -129,7 +129,8 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(false), DT(std::make_shared<DominatorTree>(*fn.Function)) {
+      PHIRecur(false), DT(std::make_shared<DominatorTree>(*fn.Function)),
+      LI(std::make_shared<LoopInfo>(*DT)) {
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
@@ -156,10 +157,11 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
 TypeAnalyzer::TypeAnalyzer(
     const FnTypeInfo &fn, TypeAnalysis &TA,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-    std::shared_ptr<llvm::DominatorTree> DT, uint8_t direction, bool PHIRecur)
+    std::shared_ptr<llvm::DominatorTree> DT, std::shared_ptr<llvm::LoopInfo> LI, 
+    uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(PHIRecur), DT(DT) {
+      PHIRecur(PHIRecur), DT(DT), LI(LI) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 }
@@ -310,7 +312,7 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
     // Just analyze this new "instruction" and none of the others
     {
       TypeAnalyzer tmpAnalysis(TA.fntypeinfo, TA.interprocedural,
-                               TA.notForAnalysis, TA.DT);
+                               TA.notForAnalysis, TA.DT, TA.LI);
       tmpAnalysis.visit(*I);
       Result = tmpAnalysis.getAnalysis(I);
     }
@@ -715,7 +717,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // the incoming operands are integral
 
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN,
+                                     notForAnalysis, DT, LI, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
@@ -747,7 +749,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // Assume that this is an integer, does that mean we can prove that
             // the incoming operands are integral
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, DOWN,
+                                     notForAnalysis, DT, LI, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
@@ -1088,21 +1090,15 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     TypeTree upVal = getAnalysis(&phi);
     // only propagate anything's up if there is one
     // incoming value
-    bool multipleValues = false;
-    Value *value = nullptr;
-    for (auto &op : phi.incoming_values()) {
-      if (value == nullptr) {
-        value = op;
-      } else if (value != op) {
-        multipleValues = true;
-        break;
-      }
-    }
-    if (multipleValues) {
+    if (phi.getNumIncomingValues() >= 2) {
       upVal = upVal.PurgeAnything();
     }
-    for (auto &op : phi.incoming_values()) {
-      updateAnalysis(op, upVal, &phi);
+    auto L = LI->getLoopFor(phi.getParent());
+    bool isHeader = L && L->getHeader() == phi.getParent();
+    for (size_t i=0, end = phi.getNumIncomingValues(); i < end; ++i) {
+      if (!isHeader || !L->contains(phi.getIncomingBlock(i))) {
+        updateAnalysis(phi.getIncomingValue(i), upVal, &phi);
+      }
     }
   }
 

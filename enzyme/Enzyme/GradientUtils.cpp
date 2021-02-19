@@ -1358,6 +1358,7 @@ bool GradientUtils::legalRecompute(const Value *val,
     }
 
     if (orig) {
+      assert(can_modref_map);
       auto found = can_modref_map->find(const_cast<Instruction *>(orig));
       if (found == can_modref_map->end()) {
         llvm::errs() << "can_modref_map:\n";

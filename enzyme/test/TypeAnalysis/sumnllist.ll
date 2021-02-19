@@ -46,17 +46,17 @@ attributes #4 = { nounwind }
 ; TODO nicely present recursive structure
 
 ; CHECK: sum_list - {} |{}:{}
-; CHECK-NEXT: %struct.n* %node: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer, [-1,8,0]:Float@double, [-1,8,8]:Pointer, [-1,8,8,0]:Float@double, [-1,8,8,8]:Pointer, [-1,8,8,8,0]:Float@double, [-1,8,8,8,8]:Pointer, [-1,8,8,8,8,0]:Float@double, [-1,8,8,8,8,8]:Pointer}
+; CHECK-NEXT: %struct.n* %node: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for: {}
 ; CHECK-NEXT: for
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %l1, %for ], [ %node, %entry ]: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer, [-1,8,0]:Float@double, [-1,8,8]:Pointer, [-1,8,8,0]:Float@double, [-1,8,8,8]:Pointer, [-1,8,8,8,0]:Float@double, [-1,8,8,8,8]:Pointer, [-1,8,8,8,8,0]:Float@double, [-1,8,8,8,8,8]:Pointer}
+; CHECK-NEXT:   %val.020 = phi %struct.n* [ %l1, %for ], [ %node, %entry ]: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer}
 ; CHECK-NEXT:   %sum.019 = phi double [ %add, %for ], [ 0.000000e+00, %entry ]: {[-1]:Float@double}
 ; CHECK-NEXT:   %values = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 0: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT:   %l0 = load double, double* %values, align 8, !tbaa !2: {[-1]:Float@double}
 ; CHECK-NEXT:   %add = fadd fast double %l0, %sum.019: {[-1]:Float@double}
-; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@double, [-1,0,8]:Pointer, [-1,0,8,0]:Float@double, [-1,0,8,8]:Pointer, [-1,0,8,8,0]:Float@double, [-1,0,8,8,8]:Pointer, [-1,0,8,8,8,0]:Float@double, [-1,0,8,8,8,8]:Pointer}
-; CHECK-NEXT:   %l1 = load %struct.n*, %struct.n** %next, align 8, !tbaa !6: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer, [-1,8,0]:Float@double, [-1,8,8]:Pointer, [-1,8,8,0]:Float@double, [-1,8,8,8]:Pointer, [-1,8,8,8,0]:Float@double, [-1,8,8,8,8]:Pointer, [-1,8,8,8,8,0]:Float@double, [-1,8,8,8,8,8]:Pointer}
+; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1: {[-1]:Pointer, [-1,0]:Pointer}
+; CHECK-NEXT:   %l1 = load %struct.n*, %struct.n** %next, align 8, !tbaa !6: {[-1]:Pointer}
 ; CHECK-NEXT:   %cmp = icmp eq %struct.n* %l1, null: {[-1]:Integer}
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for: {}
 ; CHECK-NEXT: for.cond.cleanup
