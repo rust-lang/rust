@@ -43,6 +43,8 @@ crate fn render<T: Print, S: Print>(
     style_files: &[StylePath],
 ) -> String {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
+    let content = Buffer::html().to_display(t);
+    let sidebar = Buffer::html().to_display(sidebar);
     let mut result = String::with_capacity(4096);
     write!(
         &mut result,
@@ -67,24 +69,26 @@ crate fn render<T: Print, S: Print>(
     )
     .unwrap();
 
-    for e in style_files
+    for (theme, disabled) in style_files
         .iter()
         .filter_map(|t| {
             if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
         })
         .filter_map(|t| if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None })
-        .map(|t| {
-            format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
-                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
-                if t.1 { "disabled" } else { "" },
-                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
-            )
-        })
     {
-        write!(&mut result, "{}", e).unwrap();
+        write!(&mut result, r#"<link rel="stylesheet" type="text/css" href=""#).unwrap();
+        write!(&mut result, "{}", Escape(static_root_path)).unwrap();
+        write!(&mut result, "{}", Escape(theme)).unwrap();
+        write!(&mut result, "{}", Escape(page.resource_suffix)).unwrap();
+        write!(
+            &mut result,
+            ".css\" {} {}>",
+            if disabled { "disabled" } else { "" },
+            if theme == "light" { "id=\"themeStyle\"" } else { "" }
+        )
+        .unwrap();
     }
-    writeln!(&mut result, "<script id=\"default-settings\"").unwrap();
+    write!(&mut result, "<script id=\"default-settings\"").unwrap();
 
     for (k, v) in layout.default_settings.iter() {
         write!(&mut result, r#" data-{}="{}""#, k.replace('-', "_"), Escape(v)).unwrap();
@@ -195,7 +199,7 @@ crate fn render<T: Print, S: Print>(
                 <div>",
         static_root_path = static_root_path,
         suffix = page.resource_suffix,
-        sidebar = Buffer::html().to_display(sidebar),
+        sidebar = sidebar
     )
     .unwrap();
 
@@ -239,7 +243,7 @@ crate fn render<T: Print, S: Print>(
         suffix = page.resource_suffix,
         root_path = page.root_path,
         after_content = layout.external_html.after_content,
-        content = Buffer::html().to_display(t),
+        content = content,
         krate = layout.krate,
     )
     .unwrap();
