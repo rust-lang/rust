@@ -82,8 +82,9 @@ crate fn render<T: Print, S: Print>(
             )
         })
     {
-        write!(&mut result, "{}<script id=\"default-settings\"", e).unwrap();
+        write!(&mut result, "{}", e).unwrap();
     }
+    writeln!(&mut result, "<script id=\"default-settings\"").unwrap();
 
     for (k, v) in layout.default_settings.iter() {
         write!(&mut result, r#" data-{}="{}""#, k.replace('-', "_"), Escape(v)).unwrap();
