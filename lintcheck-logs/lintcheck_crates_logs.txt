@@ -1,4 +1,4 @@
-clippy 0.1.52 (2f815ecd0 2021-02-18)
+clippy 0.1.52 (bb5f9d18a 2021-02-19)
 
 cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.categories` metadata"
 cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.keywords` metadata"

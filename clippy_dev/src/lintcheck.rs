@@ -222,12 +222,17 @@ impl Crate {
         cargo_clippy_path: &PathBuf,
         target_dir_index: &AtomicUsize,
         thread_limit: usize,
+        total_crates_to_lint: usize,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
-        let idx = target_dir_index.fetch_add(1, Ordering::SeqCst);
+        let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
         // "loop" the index within 0..thread_limit
-        let idx = idx % thread_limit;
-        println!("Linting {} {} in target dir {:?}", &self.name, &self.version, idx);
+        let target_dir_index = index % thread_limit;
+        let perc = ((index * 100) as f32 / total_crates_to_lint as f32) as u8;
+        println!(
+            "{}/{} {}% Linting {} {} in target dir {:?}",
+            index, total_crates_to_lint, perc, &self.name, &self.version, target_dir_index
+        );
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
@@ -244,7 +249,10 @@ impl Crate {
 
         let all_output = std::process::Command::new(&cargo_clippy_path)
             // use the looping index to create individual target dirs
-            .env("CARGO_TARGET_DIR", shared_target_dir.join(format!("_{:?}", idx)))
+            .env(
+                "CARGO_TARGET_DIR",
+                shared_target_dir.join(format!("_{:?}", target_dir_index)),
+            )
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
             .args(&args)
@@ -466,7 +474,7 @@ pub fn run(clap_config: &ArgMatches) {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1))
             .flatten()
             .collect()
     } else {
@@ -484,11 +492,13 @@ pub fn run(clap_config: &ArgMatches) {
         // Rayon seems to return thread count so half that for core count
         let num_cpus: usize = rayon::current_num_threads() / 2;
 
+        let num_crates = crates.len();
+
         // check all crates (default)
         crates
             .into_par_iter()
             .map(|krate| krate.download_and_extract())
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
             .flatten()
             .collect()
     };
