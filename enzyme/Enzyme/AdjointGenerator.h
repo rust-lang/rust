@@ -1526,12 +1526,14 @@ public:
               vd = TypeTree(BaseType::Integer).Only(0);
               goto known;
             }
-            if (auto ST = dyn_cast<StructType>(PT->getElementType())) {
-              if (ST->getNumElements() &&
-                  ST->getElementType(0)->isIntOrIntVectorTy()) {
-                vd = TypeTree(BaseType::Integer).Only(0);
-                goto known;
-              }
+            auto ET = PT->getElementType();
+            while (auto ST = dyn_cast<StructType>(ET)) {
+              if (!ST->getNumElements()) break;
+              ET = ST->getElementType(0);
+            }
+            if (ET->isIntOrIntVectorTy()) {
+              vd = TypeTree(BaseType::Integer).Only(0);
+              goto known;
             }
           }
         }
