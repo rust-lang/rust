@@ -1839,10 +1839,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
                     .span;
                 if !span.is_dummy() {
                     let loc = cx.lookup_debug_loc(span.lo());
-                    return Some(SourceInfo {
-                        file: file_metadata(cx, &loc.file),
-                        line: loc.line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
-                    });
+                    return Some(SourceInfo { file: file_metadata(cx, &loc.file), line: loc.line });
                 }
             }
             _ => {}
@@ -2481,7 +2478,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         let loc = cx.lookup_debug_loc(span.lo());
         (file_metadata(cx, &loc.file), loc.line)
     } else {
-        (unknown_file_metadata(cx), None)
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
@@ -2504,7 +2501,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
             linkage_name.as_ptr().cast(),
             linkage_name.len(),
             file_metadata,
-            line_number.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
+            line_number,
             type_metadata,
             is_local_to_unit,
             global,
