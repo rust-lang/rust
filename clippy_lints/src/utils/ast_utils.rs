@@ -241,9 +241,12 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_generics(lg, rg)
                 && both(lb, rb, |l, r| eq_block(l, r))
         }
-        (Mod(l), Mod(r)) => {
-            l.inline == r.inline && over(&l.items, &r.items, |l, r| eq_item(l, r, eq_item_kind))
-        }
+        (Mod(lu, lmk), Mod(ru, rmk)) => lu == ru && match (lmk, rmk) {
+            (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) =>
+                linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind)),
+            (ModKind::Unloaded, ModKind::Unloaded) => true,
+            _ => false,
+        },
         (ForeignMod(l), ForeignMod(r)) => {
             both(&l.abi, &r.abi, |l, r| eq_str_lit(l, r))
                 && over(&l.items, &r.items, |l, r| eq_item(l, r, eq_foreign_item_kind))
