@@ -44,7 +44,7 @@ pub fn inject(
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
         let ident = if rust_2018 { Ident::new(name, span) } else { Ident::new(name, call_site) };
-        krate.module.items.insert(
+        krate.items.insert(
             0,
             cx.item(
                 span,
@@ -79,7 +79,7 @@ pub fn inject(
         })),
     );
 
-    krate.module.items.insert(0, use_item);
+    krate.items.insert(0, use_item);
 
     krate
 }

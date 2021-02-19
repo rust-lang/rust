@@ -9,7 +9,7 @@ use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{GenericArg, MacArgs};
+use rustc_ast::{GenericArg, MacArgs, ModKind};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -87,7 +87,6 @@ pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
-    is_expanded: bool,
 }
 
 crate const INDENT_UNIT: usize = 4;
@@ -103,12 +102,8 @@ pub fn print_crate<'a>(
     is_expanded: bool,
     edition: Edition,
 ) -> String {
-    let mut s = State {
-        s: pp::mk_printer(),
-        comments: Some(Comments::new(sm, filename, input)),
-        ann,
-        is_expanded,
-    };
+    let mut s =
+        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann };
 
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
@@ -132,7 +127,10 @@ pub fn print_crate<'a>(
         }
     }
 
-    s.print_mod(&krate.module, &krate.attrs);
+    s.print_inner_attributes(&krate.attrs);
+    for item in &krate.items {
+        s.print_item(item);
+    }
     s.print_remaining_comments();
     s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
@@ -853,7 +851,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false }
+        State { s: pp::mk_printer(), comments: None, ann: &NoAnn }
     }
 
     // Synthesizes a comment that was not textually present in the original source
@@ -889,13 +887,6 @@ impl<'a> State<'a> {
 
     crate fn commasep_exprs(&mut self, b: Breaks, exprs: &[P<ast::Expr>]) {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
-    }
-
-    pub fn print_mod(&mut self, _mod: &ast::Mod, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
-        for item in &_mod.items {
-            self.print_item(item);
-        }
     }
 
     crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
@@ -1139,23 +1130,29 @@ impl<'a> State<'a> {
                 let body = body.as_deref();
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
-            ast::ItemKind::Mod(ref _mod) => {
+            ast::ItemKind::Mod(unsafety, ref mod_kind) => {
                 self.head(self.to_string(|s| {
                     s.print_visibility(&item.vis);
-                    s.print_unsafety(_mod.unsafety);
+                    s.print_unsafety(unsafety);
                     s.word("mod");
                 }));
                 self.print_ident(item.ident);
 
-                if _mod.inline || self.is_expanded {
-                    self.nbsp();
-                    self.bopen();
-                    self.print_mod(_mod, &item.attrs);
-                    self.bclose(item.span);
-                } else {
-                    self.s.word(";");
-                    self.end(); // end inner head-block
-                    self.end(); // end outer head-block
+                match mod_kind {
+                    ModKind::Loaded(items, ..) => {
+                        self.nbsp();
+                        self.bopen();
+                        self.print_inner_attributes(&item.attrs);
+                        for item in items {
+                            self.print_item(item);
+                        }
+                        self.bclose(item.span);
+                    }
+                    ModKind::Unloaded => {
+                        self.s.word(";");
+                        self.end(); // end inner head-block
+                        self.end(); // end outer head-block
+                    }
                 }
             }
             ast::ItemKind::ForeignMod(ref nmod) => {

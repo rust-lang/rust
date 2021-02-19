@@ -7,8 +7,8 @@ use rustc_span::symbol::Ident;
 use rustc_span::with_default_session_globals;
 
 // This version doesn't care about getting comments or doc-strings in.
-fn fake_print_crate(s: &mut pprust::State<'_>, krate: &ast::Crate) {
-    s.print_mod(&krate.module, &krate.attrs)
+fn print_crate_items(krate: &ast::Crate) -> String {
+    krate.items.iter().map(|i| pprust::item_to_string(i)).collect::<Vec<_>>().join(" ")
 }
 
 // Change every identifier to "zz".
@@ -46,7 +46,7 @@ fn ident_transformation() {
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
-            pprust::to_string(|s| fake_print_crate(s, &krate)),
+            print_crate_items(&krate),
             "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string()
         );
     })
@@ -66,7 +66,7 @@ fn ident_transformation_in_defs() {
         assert_pred!(
             matches_codepattern,
             "matches_codepattern",
-            pprust::to_string(|s| fake_print_crate(s, &krate)),
+            print_crate_items(&krate),
             "macro_rules! zz{(zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+))}".to_string()
         );
     })

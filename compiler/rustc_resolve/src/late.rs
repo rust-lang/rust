@@ -1023,7 +1023,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(..) | ItemKind::ForeignMod(_) => {
                 self.with_scope(item.id, |this| {
                     visit::walk_item(this, item);
                 });

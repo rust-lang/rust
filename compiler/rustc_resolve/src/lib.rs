@@ -11,6 +11,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(bool_to_option)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(nll)]
@@ -23,11 +24,12 @@ use Determinacy::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::{ItemKind, Path};
+use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -59,6 +61,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
+use std::ops::ControlFlow;
 use std::{cmp, fmt, iter, ptr};
 use tracing::debug;
 
@@ -283,28 +286,21 @@ struct UsePlacementFinder {
 impl UsePlacementFinder {
     fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        visit::walk_crate(&mut finder, krate);
+        if let ControlFlow::Continue(..) = finder.check_mod(&krate.items, CRATE_NODE_ID) {
+            visit::walk_crate(&mut finder, krate);
+        }
         (finder.span, finder.found_use)
     }
-}
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
-    fn visit_mod(
-        &mut self,
-        module: &'tcx ast::Mod,
-        _: Span,
-        _: &[ast::Attribute],
-        node_id: NodeId,
-    ) {
+    fn check_mod(&mut self, items: &[P<ast::Item>], node_id: NodeId) -> ControlFlow<()> {
         if self.span.is_some() {
-            return;
+            return ControlFlow::Break(());
         }
         if node_id != self.target_module {
-            visit::walk_mod(self, module);
-            return;
+            return ControlFlow::Continue(());
         }
         // find a use statement
-        for item in &module.items {
+        for item in items {
             match item.kind {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
@@ -312,7 +308,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if !item.span.from_expansion() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
-                        return;
+                        return ControlFlow::Break(());
                     }
                 }
                 // don't place use before extern crate
@@ -337,6 +333,18 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 }
             }
         }
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_item(&mut self, item: &'tcx ast::Item) {
+        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
+            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
+                return;
+            }
+        }
+        visit::walk_item(self, item);
     }
 }
 

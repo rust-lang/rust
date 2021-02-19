@@ -25,11 +25,9 @@ use tracing::debug;
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
-        let lo = self.token.span;
-        let (module, attrs) = self.parse_mod(&token::Eof, Unsafe::No)?;
-        let span = lo.to(self.token.span);
+        let (attrs, items, span) = self.parse_mod(&token::Eof)?;
         let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
-        Ok(ast::Crate { attrs, module, span, proc_macros })
+        Ok(ast::Crate { attrs, items, span, proc_macros })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
@@ -37,35 +35,26 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
-        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
-            (Mod { inner: Span::default(), unsafety, items: Vec::new(), inline: false }, Vec::new())
+        let mod_kind = if self.eat(&token::Semi) {
+            ModKind::Unloaded
         } else {
             self.expect(&token::OpenDelim(token::Brace))?;
-            self.parse_mod(&token::CloseDelim(token::Brace), unsafety)?
+            let (mut inner_attrs, items, inner_span) =
+                self.parse_mod(&token::CloseDelim(token::Brace))?;
+            attrs.append(&mut inner_attrs);
+            ModKind::Loaded(items, Inline::Yes, inner_span)
         };
-        attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(module)))
+        Ok((id, ItemKind::Mod(unsafety, mod_kind)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-        unsafety: Unsafe,
-    ) -> PResult<'a, (Mod, Vec<Attribute>)> {
+    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, Span)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
-        let module = self.parse_mod_items(term, lo, unsafety)?;
-        Ok((module, attrs))
-    }
 
-    /// Given a termination token, parses all of the items in a module.
-    fn parse_mod_items(
-        &mut self,
-        term: &TokenKind,
-        inner_lo: Span,
-        unsafety: Unsafe,
-    ) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
@@ -82,9 +71,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
-
-        Ok(Mod { inner: inner_lo.to(hi), unsafety, items, inline: true })
+        Ok((attrs, items, lo.to(self.prev_token.span)))
     }
 }
 

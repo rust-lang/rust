@@ -188,13 +188,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_ident, ident);
     }
 
-    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, _a: &[ast::Attribute], n: ast::NodeId) {
-        run_early_pass!(self, check_mod, m, s, n);
-        self.check_id(n);
-        ast_visit::walk_mod(self, m);
-        run_early_pass!(self, check_mod_post, m, s, n);
-    }
-
     fn visit_local(&mut self, l: &'a ast::Local) {
         self.with_lint_attrs(l.id, &l.attrs, |cx| {
             run_early_pass!(cx, check_local, l);
