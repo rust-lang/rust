@@ -357,7 +357,7 @@ impl Clean<Lifetime> for hir::Lifetime {
                 | rl::Region::LateBound(_, node_id, _)
                 | rl::Region::Free(_, node_id),
             ) => {
-                if let Some(lt) = cx.lt_substs.borrow().get(&node_id).cloned() {
+                if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
                     return lt;
                 }
             }
@@ -644,7 +644,7 @@ impl Clean<Generics> for hir::Generics<'_> {
                 match param.kind {
                     GenericParamDefKind::Lifetime => unreachable!(),
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
-                        cx.impl_trait_bounds.borrow_mut().insert(did.into(), bounds.clone());
+                        cx.impl_trait_bounds.insert(did.into(), bounds.clone());
                     }
                     GenericParamDefKind::Const { .. } => unreachable!(),
                 }
@@ -803,7 +803,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 unreachable!();
             }
 
-            cx.impl_trait_bounds.borrow_mut().insert(param, bounds);
+            cx.impl_trait_bounds.insert(param, bounds);
         }
 
         // Now that `cx.impl_trait_bounds` is populated, we can process
@@ -1291,10 +1291,10 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     match qpath {
         hir::QPath::Resolved(None, ref path) => {
             if let Res::Def(DefKind::TyParam, did) = path.res {
-                if let Some(new_ty) = cx.ty_substs.borrow().get(&did).cloned() {
+                if let Some(new_ty) = cx.ty_substs.get(&did).cloned() {
                     return new_ty;
                 }
-                if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did.into()) {
+                if let Some(bounds) = cx.impl_trait_bounds.remove(&did.into()) {
                     return ImplTrait(bounds);
                 }
             }
@@ -1304,7 +1304,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 // Substitute private type aliases
                 if let Some(def_id) = def_id.as_local() {
                     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                    if !cx.renderinfo.borrow().access_levels.is_exported(def_id.to_def_id()) {
+                    if !cx.renderinfo.access_levels.is_exported(def_id.to_def_id()) {
                         alias = Some(&cx.tcx.hir().expect_item(hir_id).kind);
                     }
                 }
@@ -1651,7 +1651,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Projection(ref data) => data.clean(cx),
 
             ty::Param(ref p) => {
-                if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&p.index.into()) {
+                if let Some(bounds) = cx.impl_trait_bounds.remove(&p.index.into()) {
                     ImplTrait(bounds)
                 } else {
                     Generic(p.name)

@@ -25,7 +25,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
     crate fn new(cx: &'a mut crate::core::DocContext<'tcx>) -> LibEmbargoVisitor<'a, 'tcx> {
         LibEmbargoVisitor {
             tcx: cx.tcx,
-            access_levels: &mut cx.renderinfo.get_mut().access_levels,
+            access_levels: &mut cx.renderinfo.access_levels,
             prev_level: Some(AccessLevel::Public),
             visited_mods: FxHashSet::default(),
         }

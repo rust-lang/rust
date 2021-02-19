@@ -23,10 +23,9 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let krate = cx.tcx.hir().krate();
     let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
 
-    let mut r = cx.renderinfo.get_mut();
-    r.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    r.owned_box_did = cx.tcx.lang_items().owned_box();
+    cx.renderinfo.deref_trait_did = cx.tcx.lang_items().deref_trait();
+    cx.renderinfo.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+    cx.renderinfo.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
@@ -494,10 +493,10 @@ crate fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R
 where
     F: FnOnce(&mut DocContext<'_>) -> R,
 {
-    let old_bounds = mem::take(&mut *cx.impl_trait_bounds.get_mut());
+    let old_bounds = mem::take(&mut cx.impl_trait_bounds);
     let r = f(cx);
-    assert!(cx.impl_trait_bounds.borrow().is_empty());
-    *cx.impl_trait_bounds.get_mut() = old_bounds;
+    assert!(cx.impl_trait_bounds.is_empty());
+    cx.impl_trait_bounds = old_bounds;
     r
 }
 
