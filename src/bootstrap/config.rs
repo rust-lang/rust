@@ -161,6 +161,7 @@ pub struct Config {
     pub verbose_tests: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
+    pub print_step_rusage: bool,
     pub missing_tools: bool,
 
     // Fallback musl-root for all targets
@@ -380,6 +381,7 @@ struct Build {
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
     print_step_timings: Option<bool>,
+    print_step_rusage: Option<bool>,
     check_stage: Option<u32>,
     doc_stage: Option<u32>,
     build_stage: Option<u32>,
@@ -679,6 +681,7 @@ impl Config {
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
+        set(&mut config.print_step_rusage, build.print_step_rusage);
 
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
