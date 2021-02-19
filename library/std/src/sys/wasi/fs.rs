@@ -558,12 +558,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     let (original, original_file) = open_parent(original)?;
     let (link, link_file) = open_parent(link)?;
     // Pass 0 as the flags argument, meaning don't follow symlinks.
-    original.link(
-        0,
-        osstr2str(original_file.as_ref())?,
-        &link,
-        osstr2str(link_file.as_ref())?,
-    )
+    original.link(0, osstr2str(original_file.as_ref())?, &link, osstr2str(link_file.as_ref())?)
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
