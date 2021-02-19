@@ -38,7 +38,7 @@ use std::path::Path;
 use crate::utils::internal_lints::is_lint_ref_type;
 use crate::utils::{
     get_enclosing_body, get_parent_expr_for_hir, last_path_segment, match_function_call, match_qpath, match_type,
-    path_to_local_id, paths, span_lint, walk_ptrs_ty_depth,
+    path_to_local_id, paths, span_lint, walk_ptrs_ty_depth, get_parent_expr
 };
 
 /// This is the output file of the lint collector.
@@ -478,7 +478,7 @@ impl<'a, 'hir> ValueTracker<'a, 'hir> {
                     self.value_mutations.push(ApplicabilityModifier::Producer(path));
                 } else {
                     let msg = format!(
-                        "Unsupported Call expression at: {}",
+                        "Unsupported assign Call expression at: {}",
                         SerializableSpan::from_span(self.cx, func_expr.span)
                     );
                     self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
@@ -486,7 +486,7 @@ impl<'a, 'hir> ValueTracker<'a, 'hir> {
             },
             hir::ExprKind::MethodCall(..) => {
                 let msg = format!(
-                    "Unsupported MethodCall expression at: {}",
+                    "Unsupported assign MethodCall expression at: {}",
                     SerializableSpan::from_span(self.cx, expr.span)
                 );
                 self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
@@ -518,8 +518,51 @@ impl<'a, 'hir> ValueTracker<'a, 'hir> {
             // hir::ExprKind::Index(expr, expr) => not supported
             _ => {
                 let msg = format!(
-                    "Unexpected expression at: {}",
+                    "Unexpected assign expression at: {}",
                     SerializableSpan::from_span(self.cx, expr.span)
+                );
+                self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+            },
+        }
+    }
+
+    fn process_borrow_expr(&mut self, access_hir_id: hir::HirId) {
+        let borrower: &rustc_hir::Expr<'_>;
+        if let Some(addr_of_expr) = get_parent_expr_for_hir(self.cx, access_hir_id) {
+            if let Some(borrower_expr) = get_parent_expr(self.cx, addr_of_expr) {
+                borrower = borrower_expr
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+
+        match &borrower.kind {
+            hir::ExprKind::Call(func_expr, ..) => {
+                // We only deal with resolved paths as this is the usual case. Other expression kinds like closures
+                // etc. are hard to track but might be a worthy improvement in the future
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = func_expr.kind {
+                    self.value_mutations.push(ApplicabilityModifier::Modifier(path));
+                } else {
+                    let msg = format!(
+                        "Unsupported borrow in Call at: {}",
+                        SerializableSpan::from_span(self.cx, func_expr.span)
+                    );
+                    self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+                }
+            },
+            hir::ExprKind::MethodCall(..) => {
+                let msg = format!(
+                    "Unsupported borrow in MethodCall at: {}",
+                    SerializableSpan::from_span(self.cx, borrower.span)
+                );
+                self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
+            },
+            _ => {
+                let msg = format!(
+                    "Unexpected borrow at: {}",
+                    SerializableSpan::from_span(self.cx, borrower.span)
                 );
                 self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
             },
@@ -541,11 +584,7 @@ impl<'a, 'hir> Delegate<'hir> for ValueTracker<'a, 'hir> {
     fn borrow(&mut self, _place_with_id: &PlaceWithHirId<'hir>, expr_id: hir::HirId, bk: BorrowKind) {
         if self.is_value_expr(expr_id) {
             if let BorrowKind::MutBorrow = bk {
-                // TODO xFrednet 2021-02-17: Save the function
-                if let Some(hir::Node::Expr(expr)) = self.cx.tcx.hir().find(expr_id) {
-                    let span = SerializableSpan::from_span(self.cx, expr.span);
-                    log_to_file(&format!("- &mut     {}\n", span));
-                }
+                self.process_borrow_expr(expr_id);
             }
         }
     }
