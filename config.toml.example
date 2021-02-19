@@ -518,7 +518,7 @@ changelog-seen = 2
 # This is an array of the codegen backends that will be compiled for the rustc
 # that's being compiled. The default is to only build the LLVM codegen backend,
 # and currently the only standard options supported are `"llvm"` and `"cranelift"`.
-#codegen-backends = ["llvm"]
+#codegen-backends = ["llvm", "cranelift"]
 
 # Indicates whether LLD will be compiled and made available in the sysroot for
 # rustc to execute.

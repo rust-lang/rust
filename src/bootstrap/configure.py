@@ -344,7 +344,7 @@ for key in known_args:
     elif option.name == 'target':
         set('build.target', value.split(','))
     elif option.name == 'full-tools':
-        set('rust.codegen-backends', ['llvm'])
+        set('rust.codegen-backends', ['llvm', 'cranelift'])
         set('rust.lld', True)
         set('rust.llvm-tools', True)
         set('build.extended', True)
