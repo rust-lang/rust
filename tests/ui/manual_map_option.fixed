@@ -32,9 +32,18 @@ fn main() {
 
     Some(0).map(|x| x + x);
 
-    Some(String::new()).as_mut().map(|x| x.push_str(""));
+    #[warn(clippy::option_map_unit_fn)]
+    match &mut Some(String::new()) {
+        Some(x) => Some(x.push_str("")),
+        None => None,
+    };
 
-    Some(String::new()).as_ref().map(|x| &**x);
+    #[allow(clippy::option_map_unit_fn)]
+    {
+        Some(String::new()).as_mut().map(|x| x.push_str(""));
+    }
+
+    Some(String::new()).as_ref().map(|x| x.len());
 
     Some(String::new()).as_ref().map(|x| x.is_empty());
 

@@ -1,10 +1,14 @@
-use crate::utils::{
-    is_type_diagnostic_item, match_def_path, paths, peel_hir_expr_refs, peel_mid_ty_refs_is_mutable,
-    snippet_with_applicability, span_lint_and_sugg,
+use crate::{
+    map_unit_fn::OPTION_MAP_UNIT_FN,
+    matches::MATCH_AS_REF,
+    utils::{
+        is_allowed, is_type_diagnostic_item, match_def_path, match_var, paths, peel_hir_expr_refs,
+        peel_mid_ty_refs_is_mutable, snippet_with_applicability, span_lint_and_sugg,
+    },
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Mutability, Pat, PatKind, Path, QPath};
+use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Mutability, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -37,6 +41,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ManualMap => [MANUAL_MAP]);
 
 impl LateLintPass<'_> for ManualMap {
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
@@ -88,14 +93,17 @@ impl LateLintPass<'_> for ManualMap {
                 None => return,
             };
 
+            if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
+                && !is_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
+            {
+                return;
+            }
+
             // Determine which binding mode to use.
             let explicit_ref = some_pat.contains_explicit_ref_binding();
-            let binding_mutability = explicit_ref.or(if ty_ref_count != pat_ref_count {
-                Some(ty_mutability)
-            } else {
-                None
-            });
-            let as_ref_str = match binding_mutability {
+            let binding_ref = explicit_ref.or_else(|| (ty_ref_count != pat_ref_count).then(|| ty_mutability));
+
+            let as_ref_str = match binding_ref {
                 Some(Mutability::Mut) => ".as_mut()",
                 Some(Mutability::Not) => ".as_ref()",
                 None => "",
@@ -118,6 +126,13 @@ impl LateLintPass<'_> for ManualMap {
                 if let Some(func) = can_pass_as_func(cx, some_binding, some_expr) {
                     snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
                 } else {
+                    if match_var(some_expr, some_binding.name)
+                        && !is_allowed(cx, MATCH_AS_REF, expr.hir_id)
+                        && binding_ref.is_some()
+                    {
+                        return;
+                    }
+
                     // `ref` and `ref mut` annotations were handled earlier.
                     let annotation = if matches!(annotation, BindingAnnotation::Mutable) {
                         "mut "
@@ -161,10 +176,7 @@ impl LateLintPass<'_> for ManualMap {
 fn can_pass_as_func(cx: &LateContext<'tcx>, binding: Ident, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
-            if matches!(arg.kind,
-                ExprKind::Path(QPath::Resolved(None, Path { segments: [path], ..}))
-                if path.ident == binding
-            ) && cx.typeck_results().expr_adjustments(arg).is_empty() =>
+            if match_var(arg, binding.name) && cx.typeck_results().expr_adjustments(arg).is_empty() =>
         {
             Some(func)
         },

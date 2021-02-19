@@ -66,13 +66,22 @@ fn main() {
         &&_ => None,
     };
 
+    #[warn(clippy::option_map_unit_fn)]
     match &mut Some(String::new()) {
         Some(x) => Some(x.push_str("")),
         None => None,
     };
 
+    #[allow(clippy::option_map_unit_fn)]
+    {
+        match &mut Some(String::new()) {
+            Some(x) => Some(x.push_str("")),
+            None => None,
+        };
+    }
+
     match &mut Some(String::new()) {
-        Some(ref x) => Some(&**x),
+        Some(ref x) => Some(x.len()),
         None => None,
     };
 

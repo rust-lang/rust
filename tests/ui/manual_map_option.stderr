@@ -101,25 +101,25 @@ LL | |     };
    | |_____^ help: try this: `Some(0).map(|x| x + x)`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:69:5
+  --> $DIR/manual_map_option.rs:77:9
    |
-LL | /     match &mut Some(String::new()) {
-LL | |         Some(x) => Some(x.push_str("")),
-LL | |         None => None,
-LL | |     };
-   | |_____^ help: try this: `Some(String::new()).as_mut().map(|x| x.push_str(""))`
+LL | /         match &mut Some(String::new()) {
+LL | |             Some(x) => Some(x.push_str("")),
+LL | |             None => None,
+LL | |         };
+   | |_________^ help: try this: `Some(String::new()).as_mut().map(|x| x.push_str(""))`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:74:5
+  --> $DIR/manual_map_option.rs:83:5
    |
 LL | /     match &mut Some(String::new()) {
-LL | |         Some(ref x) => Some(&**x),
+LL | |         Some(ref x) => Some(x.len()),
 LL | |         None => None,
 LL | |     };
-   | |_____^ help: try this: `Some(String::new()).as_ref().map(|x| &**x)`
+   | |_____^ help: try this: `Some(String::new()).as_ref().map(|x| x.len())`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:79:5
+  --> $DIR/manual_map_option.rs:88:5
    |
 LL | /     match &mut &Some(String::new()) {
 LL | |         Some(x) => Some(x.is_empty()),
@@ -128,7 +128,7 @@ LL | |     };
    | |_____^ help: try this: `Some(String::new()).as_ref().map(|x| x.is_empty())`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:84:5
+  --> $DIR/manual_map_option.rs:93:5
    |
 LL | /     match Some((0, 1, 2)) {
 LL | |         Some((x, y, z)) => Some(x + y + z),
@@ -137,7 +137,7 @@ LL | |     };
    | |_____^ help: try this: `Some((0, 1, 2)).map(|(x, y, z)| x + y + z)`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:89:5
+  --> $DIR/manual_map_option.rs:98:5
    |
 LL | /     match Some([1, 2, 3]) {
 LL | |         Some([first, ..]) => Some(first),
@@ -146,7 +146,7 @@ LL | |     };
    | |_____^ help: try this: `Some([1, 2, 3]).map(|[first, ..]| first)`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option.rs:94:5
+  --> $DIR/manual_map_option.rs:103:5
    |
 LL | /     match &Some((String::new(), "test")) {
 LL | |         Some((x, y)) => Some((y, x)),
