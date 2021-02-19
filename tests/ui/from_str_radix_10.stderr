@@ -28,7 +28,7 @@ error: this call to `from_str_radix` can be replaced with a call to `str::parse`
   --> $DIR/from_str_radix_10.rs:32:5
    |
 LL |     u16::from_str_radix(&("10".to_owned() + "5"), 10)?;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&("10".to_owned() + "5")).parse::<u16>()`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(("10".to_owned() + "5")).parse::<u16>()`
 
 error: this call to `from_str_radix` can be replaced with a call to `str::parse`
   --> $DIR/from_str_radix_10.rs:33:5
@@ -42,5 +42,11 @@ error: this call to `from_str_radix` can be replaced with a call to `str::parse`
 LL |     i32::from_str_radix(string, 10)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `string.parse::<i32>()`
 
-error: aborting due to 7 previous errors
+error: this call to `from_str_radix` can be replaced with a call to `str::parse`
+  --> $DIR/from_str_radix_10.rs:39:5
+   |
+LL |     i32::from_str_radix(&stringier, 10)?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `stringier.parse::<i32>()`
+
+error: aborting due to 8 previous errors
 

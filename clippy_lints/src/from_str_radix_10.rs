@@ -1,9 +1,12 @@
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::*;
+use rustc_hir::{def, Expr, ExprKind, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
+use crate::utils::is_type_diagnostic_item;
 use crate::utils::span_lint_and_sugg;
 use crate::utils::sugg::Sugg;
 
@@ -40,8 +43,7 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if_chain! {
             if let ExprKind::Call(maybe_path, arguments) = &exp.kind;
-            if let ExprKind::Path(qpath) = &maybe_path.kind;
-            if let QPath::TypeRelative(ty, pathseg) = &qpath;
+            if let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind;
 
             // check if the first part of the path is some integer primitive
             if let TyKind::Path(ty_qpath) = &ty.kind;
@@ -59,9 +61,20 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
             if let rustc_ast::ast::LitKind::Int(10, _) = lit.node;
 
             then {
+                let expr = if let ExprKind::AddrOf(_, _, expr) = &arguments[0].kind {
+                    let ty = cx.typeck_results().expr_ty(expr);
+                    if is_ty_stringish(cx, ty) {
+                        expr
+                    } else {
+                        &arguments[0]
+                    }
+                } else {
+                    &arguments[0]
+                };
+
                 let sugg = Sugg::hir_with_applicability(
                     cx,
-                    &arguments[0],
+                    expr,
                     "<string>",
                     &mut Applicability::MachineApplicable
                 ).maybe_par();
@@ -78,4 +91,9 @@ impl LateLintPass<'tcx> for FromStrRadix10 {
             }
         }
     }
+}
+
+/// Checks if a Ty is `String` or `&str`
+fn is_ty_stringish(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    is_type_diagnostic_item(cx, ty, sym::string_type) || is_type_diagnostic_item(cx, ty, sym::str)
 }

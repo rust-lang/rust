@@ -35,6 +35,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let string = "300";
     i32::from_str_radix(string, 10)?;
 
+    let stringier = "400".to_string();
+    i32::from_str_radix(&stringier, 10)?;
+
     // none of these should trigger the lint
     u16::from_str_radix("20", 3)?;
     i32::from_str_radix("45", 12)?;
