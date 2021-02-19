@@ -1814,14 +1814,12 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `irrefutable_let_patterns` lint detects detects [irrefutable
-    /// patterns] in [`if let`] and [`while let`] statements.
-    ///
-    ///
+    /// The `irrefutable_let_patterns` lint detects [irrefutable patterns]
+    /// in [`if let`]s, [`while let`]s, and `if let` guards.
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```
     /// if let _ = 123 {
     ///     println!("always runs!");
     /// }

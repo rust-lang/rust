@@ -1,22 +1,36 @@
 error: irrefutable `if let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:4:5
+  --> $DIR/deny-irrefutable-let-patterns.rs:7:5
    |
 LL |     if let _ = 5 {}
    |     ^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/deny-irrefutable-let-patterns.rs:1:9
+  --> $DIR/deny-irrefutable-let-patterns.rs:4:9
    |
 LL | #![deny(irrefutable_let_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
 
 error: irrefutable `while let` pattern
-  --> $DIR/deny-irrefutable-let-patterns.rs:6:5
+  --> $DIR/deny-irrefutable-let-patterns.rs:9:5
    |
 LL | /     while let _ = 5 {
 LL | |         break;
 LL | |     }
    | |_____^
+   |
+   = note: this pattern will always match, so the loop will never exit
+   = help: consider instead using a `loop { ... }` with a `let` inside it
 
-error: aborting due to 2 previous errors
+error: irrefutable `if let` guard pattern
+  --> $DIR/deny-irrefutable-let-patterns.rs:14:18
+   |
+LL |         _ if let _ = 2 => {}
+   |                  ^
+   |
+   = note: this pattern will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
+
+error: aborting due to 3 previous errors
 
