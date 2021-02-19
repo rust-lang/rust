@@ -1,4 +1,4 @@
-error: irrefutable `if let` guard
+error: irrefutable `if let` guard pattern
   --> $DIR/warns.rs:7:24
    |
 LL |         Some(x) if let () = x => {}
@@ -9,6 +9,8 @@ note: the lint level is defined here
    |
 LL | #[deny(irrefutable_let_patterns)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this pattern will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
 
 error: unreachable pattern
   --> $DIR/warns.rs:16:25

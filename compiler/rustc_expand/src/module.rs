@@ -1,4 +1,5 @@
-use rustc_ast::{token, Attribute, Mod, Unsafe};
+use rustc_ast::ptr::P;
+use rustc_ast::{token, Attribute, Item};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
@@ -42,11 +43,10 @@ crate fn parse_external_mod(
     sess: &Session,
     id: Ident,
     span: Span, // The span to blame on errors.
-    unsafety: Unsafe,
     Directory { mut ownership, path }: Directory,
     attrs: &mut Vec<Attribute>,
     pop_mod_stack: &mut bool,
-) -> (Mod, Directory) {
+) -> (Vec<P<Item>>, Span, Directory) {
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: PResult<'_, _> = try {
         // Extract the file path and the new ownership.
@@ -62,26 +62,22 @@ crate fn parse_external_mod(
 
         // Actually parse the external file as a module.
         let mut parser = new_parser_from_file(&sess.parse_sess, &mp.path, Some(span));
-        let mut module = parser.parse_mod(&token::Eof, unsafety)?;
-        module.0.inline = false;
-        module
+        let (mut inner_attrs, items, inner_span) = parser.parse_mod(&token::Eof)?;
+        attrs.append(&mut inner_attrs);
+        (items, inner_span)
     };
     // (1) ...instead, we return a dummy module.
-    let (module, mut new_attrs) = result.map_err(|mut err| err.emit()).unwrap_or_else(|_| {
-        let module = Mod { inner: Span::default(), unsafety, items: Vec::new(), inline: false };
-        (module, Vec::new())
-    });
-    attrs.append(&mut new_attrs);
+    let (items, inner_span) = result.map_err(|mut err| err.emit()).unwrap_or_default();
 
-    // Extract the directory path for submodules of `module`.
-    let path = sess.source_map().span_to_unmapped_path(module.inner);
+    // Extract the directory path for submodules of  the module.
+    let path = sess.source_map().span_to_unmapped_path(inner_span);
     let mut path = match path {
         FileName::Real(name) => name.into_local_path(),
         other => PathBuf::from(other.to_string()),
     };
     path.pop();
 
-    (module, Directory { ownership, path })
+    (items, inner_span, Directory { ownership, path })
 }
 
 fn error_on_circular_module<'a>(

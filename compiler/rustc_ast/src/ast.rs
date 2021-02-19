@@ -486,8 +486,8 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub module: Mod,
     pub attrs: Vec<Attribute>,
+    pub items: Vec<P<Item>>,
     pub span: Span,
     /// The order of items in the HIR is unrelated to the order of
     /// items in the AST. However, we generate proc macro harnesses
@@ -2299,21 +2299,22 @@ impl FnRetTy {
     }
 }
 
-/// Module declaration.
-///
-/// E.g., `mod foo;` or `mod foo { .. }`.
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+pub enum Inline {
+    Yes,
+    No,
+}
+
+/// Module item kind.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Mod {
-    /// A span from the first token past `{` to the last token until `}`.
-    /// For `mod foo;`, the inner span ranges from the first token
-    /// to the last token in the external file.
-    pub inner: Span,
-    /// `unsafe` keyword accepted syntactically for macro DSLs, but not
-    /// semantically by Rust.
-    pub unsafety: Unsafe,
-    pub items: Vec<P<Item>>,
-    /// `true` for `mod foo { .. }`; `false` for `mod foo;`.
-    pub inline: bool,
+pub enum ModKind {
+    /// Module with inlined definition `mod foo { ... }`,
+    /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
+    /// The inner span is from the first token past `{` to the last token until `}`,
+    /// or from the first to the last token in the loaded file.
+    Loaded(Vec<P<Item>>, Inline, Span),
+    /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
+    Unloaded,
 }
 
 /// Foreign module declaration.
@@ -2710,7 +2711,9 @@ pub enum ItemKind {
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
-    Mod(Mod),
+    /// `unsafe` keyword on modules is accepted syntactically for macro DSLs, but not
+    /// semantically by Rust.
+    Mod(Unsafe, ModKind),
     /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.

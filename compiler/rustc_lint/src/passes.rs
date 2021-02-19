@@ -160,8 +160,6 @@ macro_rules! early_lint_methods {
             fn check_ident(a: Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
-            fn check_mod(a: &ast::Mod, b: Span, c: ast::NodeId);
-            fn check_mod_post(a: &ast::Mod, b: Span, c: ast::NodeId);
             fn check_foreign_item(a: &ast::ForeignItem);
             fn check_foreign_item_post(a: &ast::ForeignItem);
             fn check_item(a: &ast::Item);

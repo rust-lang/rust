@@ -2081,6 +2081,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {
                 self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
+                // Avoid expressions without types during writeback (#78653).
+                self.check_expr(value);
                 self.tcx.mk_unit()
             }
         }

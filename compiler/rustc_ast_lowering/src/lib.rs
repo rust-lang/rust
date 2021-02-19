@@ -560,7 +560,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
-        let module = self.lower_mod(&c.module);
+        let module = self.lower_mod(&c.items, c.span);
         let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
         let proc_macros =
@@ -608,7 +608,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
         let id = hir::ItemId { def_id: item.def_id };
         self.items.insert(id, item);
-        self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
+        self.modules.entry(self.current_module).or_default().items.insert(id);
         id
     }
 

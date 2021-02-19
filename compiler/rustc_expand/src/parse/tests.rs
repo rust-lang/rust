@@ -309,8 +309,8 @@ fn out_of_line_mod() {
         .unwrap()
         .unwrap();
 
-        if let ast::ItemKind::Mod(ref m) = item.kind {
-            assert!(m.items.len() == 2);
+        if let ast::ItemKind::Mod(_, ref mod_kind) = item.kind {
+            assert!(matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2));
         } else {
             panic!();
         }

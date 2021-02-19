@@ -1023,7 +1023,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             }
 
-            ItemKind::Mod(_) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(..) | ItemKind::ForeignMod(_) => {
                 self.with_scope(item.id, |this| {
                     visit::walk_item(this, item);
                 });
@@ -1801,7 +1801,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         crate_lint: CrateLint,
     ) -> PartialRes {
         tracing::debug!(
-            "smart_resolve_path_fragment(id={:?},qself={:?},path={:?}",
+            "smart_resolve_path_fragment(id={:?}, qself={:?}, path={:?})",
             id,
             qself,
             path
@@ -1841,11 +1841,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             // Before we start looking for candidates, we have to get our hands
             // on the type user is trying to perform invocation on; basically:
-            // we're transforming `HashMap::new` into just `HashMap`
-            let path = if let Some((_, path)) = path.split_last() {
-                path
-            } else {
-                return Some(parent_err);
+            // we're transforming `HashMap::new` into just `HashMap`.
+            let path = match path.split_last() {
+                Some((_, path)) if !path.is_empty() => path,
+                _ => return Some(parent_err),
             };
 
             let (mut err, candidates) =

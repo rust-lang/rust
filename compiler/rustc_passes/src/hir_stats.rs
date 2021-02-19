@@ -124,11 +124,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: hir::HirId) {
-        self.record("Mod", Id::None, m);
-        hir_visit::walk_mod(self, m, n)
-    }
-
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
         self.record("ForeignItem", Id::Node(i.hir_id()), i);
         hir_visit::walk_foreign_item(self, i)
@@ -252,11 +247,6 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 }
 
 impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _a: &[ast::Attribute], _n: NodeId) {
-        self.record("Mod", Id::None, m);
-        ast_visit::walk_mod(self, m)
-    }
-
     fn visit_foreign_item(&mut self, i: &'v ast::ForeignItem) {
         self.record("ForeignItem", Id::None, i);
         ast_visit::walk_foreign_item(self, i)
