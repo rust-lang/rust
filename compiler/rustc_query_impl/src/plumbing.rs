@@ -631,10 +631,12 @@ macro_rules! define_queries_struct {
         }
 
         impl QueryEngine<'tcx> for Queries<'tcx> {
-            #[cfg(parallel_compiler)]
-            unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry) {
-                let tcx = QueryCtxt { tcx, queries: self };
-                rustc_query_system::query::deadlock(tcx, registry)
+            unsafe fn deadlock(&'tcx self, _tcx: TyCtxt<'tcx>, _registry: &rustc_rayon_core::Registry) {
+                #[cfg(parallel_compiler)]
+                {
+                    let tcx = QueryCtxt { tcx: _tcx, queries: self };
+                    rustc_query_system::query::deadlock(tcx, _registry)
+                }
             }
 
             fn encode_query_results(
