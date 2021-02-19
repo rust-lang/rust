@@ -9,6 +9,19 @@ APT_ARCH=$3
 BINUTILS=2.28.1
 GCC=6.5.0
 
+# Choose correct target based on the $ARCH
+case "$ARCH" in
+x86_64)
+  TARGET=x86_64-pc-solaris2.10
+  ;;
+sparcv9)
+  TARGET=sparcv9-sun-solaris2.10
+  ;;
+*)
+  printf 'ERROR: unknown architecture: %s\n' "$ARCH"
+  exit 1
+esac
+
 # First up, build binutils
 mkdir binutils
 cd binutils
@@ -16,7 +29,7 @@ cd binutils
 curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.xz | tar xJf -
 mkdir binutils-build
 cd binutils-build
-hide_output ../binutils-$BINUTILS/configure --target=$ARCH-sun-solaris2.10
+hide_output ../binutils-$BINUTILS/configure --target=$TARGET
 hide_output make -j10
 hide_output make install
 
@@ -62,13 +75,13 @@ patch -p0  << 'EOF'
 -extern size_t strnlen(const char *, size_t);
 EOF
 
-mkdir                  /usr/local/$ARCH-sun-solaris2.10/usr
-mv usr/include         /usr/local/$ARCH-sun-solaris2.10/usr/include
-mv usr/lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.10/lib
-mv     lib/$LIB_ARCH/* /usr/local/$ARCH-sun-solaris2.10/lib
+mkdir                  /usr/local/$TARGET/usr
+mv usr/include         /usr/local/$TARGET/usr/include
+mv usr/lib/$LIB_ARCH/* /usr/local/$TARGET/lib
+mv     lib/$LIB_ARCH/* /usr/local/$TARGET/lib
 
-ln -s usr/include /usr/local/$ARCH-sun-solaris2.10/sys-include
-ln -s usr/include /usr/local/$ARCH-sun-solaris2.10/include
+ln -s usr/include /usr/local/$TARGET/sys-include
+ln -s usr/include /usr/local/$TARGET/include
 
 cd ..
 rm -rf solaris
@@ -84,7 +97,7 @@ mkdir ../gcc-build
 cd ../gcc-build
 hide_output ../gcc-$GCC/configure \
   --enable-languages=c,c++        \
-  --target=$ARCH-sun-solaris2.10  \
+  --target=$TARGET                \
   --with-gnu-as                   \
   --with-gnu-ld                   \
   --disable-multilib              \
