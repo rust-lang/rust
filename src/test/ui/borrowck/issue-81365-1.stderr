@@ -9,6 +9,11 @@ LL |         first;
    |         ----- borrow later used here
    |
    = note: borrow occurs due to deref coercion to `DerefTarget`
+note: deref defined here
+  --> $DIR/issue-81365-1.rs:12:5
+   |
+LL |     type Target = DerefTarget;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

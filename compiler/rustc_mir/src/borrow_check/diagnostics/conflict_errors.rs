@@ -1568,6 +1568,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         "borrow occurs due to deref coercion to `{}`",
                         deref_target_ty
                     ));
+                    err.span_note(tcx.def_span(instance.def_id()), "deref defined here");
                 }
             }
         }

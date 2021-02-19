@@ -9,6 +9,11 @@ LL |         first;
    |         ----- borrow later used here
    |
    = note: borrow occurs due to deref coercion to `Container`
+note: deref defined here
+  --> $DIR/issue-81365-3.rs:23:5
+   |
+LL |     type Target = Container;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
