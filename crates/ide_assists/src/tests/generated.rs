@@ -147,12 +147,12 @@ fn doctest_apply_demorgan() {
         "apply_demorgan",
         r#####"
 fn main() {
-    if x != 4 ||$0 !y {}
+    if x != 4 ||$0 y < 3 {}
 }
 "#####,
         r#####"
 fn main() {
-    if !(x == 4 && y) {}
+    if !(x == 4 && !(y < 3)) {}
 }
 "#####,
     )

@@ -7,18 +7,17 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 // Apply https://en.wikipedia.org/wiki/De_Morgan%27s_laws[De Morgan's law].
 // This transforms expressions of the form `!l || !r` into `!(l && r)`.
 // This also works with `&&`. This assist can only be applied with the cursor
-// on either `||` or `&&`, with both operands being a negation of some kind.
-// This means something of the form `!x` or `x != y`.
+// on either `||` or `&&`.
 //
 // ```
 // fn main() {
-//     if x != 4 ||$0 !y {}
+//     if x != 4 ||$0 y < 3 {}
 // }
 // ```
 // ->
 // ```
 // fn main() {
-//     if !(x == 4 && y) {}
+//     if !(x == 4 && !(y < 3)) {}
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {

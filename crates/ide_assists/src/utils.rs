@@ -217,11 +217,8 @@ fn invert_special_case(expr: &ast::Expr) -> Option<ast::Expr> {
         ast::Expr::BinExpr(bin) => match bin.op_kind()? {
             ast::BinOp::NegatedEqualityTest => bin.replace_op(T![==]).map(|it| it.into()),
             ast::BinOp::EqualityTest => bin.replace_op(T![!=]).map(|it| it.into()),
-            // Parenthesize composite boolean expressions before prefixing `!`
-            ast::BinOp::BooleanAnd | ast::BinOp::BooleanOr => {
-                Some(make::expr_prefix(T![!], make::expr_paren(expr.clone())))
-            }
-            _ => None,
+            // Parenthesize other expressions before prefixing `!`
+            _ => Some(make::expr_prefix(T![!], make::expr_paren(expr.clone()))),
         },
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;
