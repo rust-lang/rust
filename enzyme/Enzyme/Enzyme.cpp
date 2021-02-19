@@ -884,6 +884,71 @@ public:
     // auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
 
     bool changed = false;
+
+    std::vector<GlobalVariable *> globalsToErase;
+    for (GlobalVariable &g : M.globals()) {
+      if (g.getName().contains("__enzyme_register_gradient")) {
+        if (g.hasInitializer()) {
+          if (auto CA = dyn_cast<ConstantAggregate>(g.getInitializer())) {
+            if (CA->getNumOperands() != 3) {
+              llvm::errs() << M << "\n";
+              llvm::errs() << "Use of __enzyme_register_gradient must be a "
+                              "constant of size 3 "
+                           << g << "\n";
+              llvm_unreachable("__enzyme_register_gradient");
+            } else {
+              Function *Fs[3];
+              for (size_t i = 0; i < 3; i++) {
+                Value *V = CA->getOperand(i);
+                while (auto CE = dyn_cast<ConstantExpr>(V)) {
+                  V = CE->getOperand(0);
+                }
+                if (auto CA = dyn_cast<ConstantAggregate>(V))
+                  V = CA->getOperand(0);
+                while (auto CE = dyn_cast<ConstantExpr>(V)) {
+                  V = CE->getOperand(0);
+                }
+                if (auto F = dyn_cast<Function>(V)) {
+                  Fs[i] = F;
+                } else {
+                  llvm::errs() << M << "\n";
+                  llvm::errs()
+                      << "Param of __enzyme_register_gradient must be a "
+                         "function"
+                      << g << "\n"
+                      << *V << "\n";
+                  llvm_unreachable("__enzyme_register_gradient");
+                }
+              }
+              Fs[0]->setMetadata(
+                  "enzyme_augment",
+                  llvm::MDTuple::get(Fs[0]->getContext(),
+                                     {llvm::ValueAsMetadata::get(Fs[1])}));
+              Fs[0]->setMetadata(
+                  "enzyme_gradient",
+                  llvm::MDTuple::get(Fs[0]->getContext(),
+                                     {llvm::ValueAsMetadata::get(Fs[2])}));
+            }
+          } else {
+            llvm::errs() << M << "\n";
+            llvm::errs() << "Use of __enzyme_register_gradient must be a "
+                            "constant aggregate "
+                         << g << "\n";
+            llvm_unreachable("__enzyme_register_gradient");
+          }
+        } else {
+          llvm::errs() << M << "\n";
+          llvm::errs() << "Use of __enzyme_register_gradient must be a "
+                          "constant array of size 3 "
+                       << g << "\n";
+          llvm_unreachable("__enzyme_register_gradient");
+        }
+        globalsToErase.push_back(&g);
+      }
+    }
+    for (auto g : globalsToErase) {
+      g->eraseFromParent();
+    }
     for (Function &F : M) {
       if (F.getName() == "__enzyme_float" || F.getName() == "__enzyme_double" ||
           F.getName() == "__enzyme_integer" ||

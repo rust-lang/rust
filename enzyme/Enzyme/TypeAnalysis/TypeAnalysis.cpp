@@ -2882,7 +2882,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 
-    if (!ci->empty()) {
+    if (!ci->empty() && !hasMetadata(ci, "enzyme_gradient")) {
       visitIPOCall(call, *ci);
     }
   }

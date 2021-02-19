@@ -1118,10 +1118,6 @@ const AugmentedReturn &CreateAugmentedPrimal(
       report_fatal_error(
           "unknown augment for noninvertible function -- metadata incorrect");
     }
-    std::map<AugmentedStruct, int> returnMapping;
-    returnMapping[AugmentedStruct::Tape] = 0;
-    returnMapping[AugmentedStruct::Return] = 1;
-    returnMapping[AugmentedStruct::DifferentialReturn] = 2;
 
     auto md2 = cast<MDTuple>(md);
     assert(md2->getNumOperands() == 1);
@@ -1129,46 +1125,42 @@ const AugmentedReturn &CreateAugmentedPrimal(
     auto foundcalled = cast<Function>(gvemd->getValue());
 
     if (foundcalled->getReturnType() == todiff->getReturnType()) {
-      FunctionType *FTy = FunctionType::get(
-          StructType::get(todiff->getContext(),
-                          {StructType::get(todiff->getContext(), {}),
-                           foundcalled->getReturnType()}),
-          foundcalled->getFunctionType()->params(),
-          foundcalled->getFunctionType()->isVarArg());
-      Function *NewF = Function::Create(
-          FTy, Function::LinkageTypes::InternalLinkage,
-          "fixaugmented_" + todiff->getName(), todiff->getParent());
-      NewF->setAttributes(foundcalled->getAttributes());
-      if (NewF->hasFnAttribute(Attribute::NoInline)) {
-        NewF->removeFnAttr(Attribute::NoInline);
-      }
-      for (auto i = foundcalled->arg_begin(), j = NewF->arg_begin();
-           i != foundcalled->arg_end();) {
-        j->setName(i->getName());
-        if (j->hasAttribute(Attribute::Returned))
-          j->removeAttr(Attribute::Returned);
-        if (j->hasAttribute(Attribute::StructRet))
-          j->removeAttr(Attribute::StructRet);
-        ++i;
-        ++j;
-      }
-      BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
-      IRBuilder<> bb(BB);
-      SmallVector<Value *, 4> args;
-      for (auto &a : NewF->args())
-        args.push_back(&a);
-      auto cal = bb.CreateCall(foundcalled, args);
-      cal->setCallingConv(foundcalled->getCallingConv());
-      auto ut = UndefValue::get(NewF->getReturnType());
-      auto val = bb.CreateInsertValue(ut, cal, {1u});
-      bb.CreateRet(val);
+      std::map<AugmentedStruct, int> returnMapping;
+      returnMapping[AugmentedStruct::Return] = -1;
       return insert_or_assign<CacheKey, AugmentedReturn>(
                  cachedfunctions, tup,
-                 AugmentedReturn(NewF, nullptr, {}, returnMapping, {}, {}))
+                 AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
+                                 {}))
           ->second;
     }
 
-    // assert(st->getNumElements() > 0);
+    if (auto ST = dyn_cast<StructType>(foundcalled->getReturnType())) {
+      if (ST->getNumElements() == 3) {
+        std::map<AugmentedStruct, int> returnMapping;
+        returnMapping[AugmentedStruct::Tape] = 0;
+        returnMapping[AugmentedStruct::Return] = 1;
+        returnMapping[AugmentedStruct::DifferentialReturn] = 2;
+        return insert_or_assign<CacheKey, AugmentedReturn>(
+                   cachedfunctions, tup,
+                   AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
+                                   {}))
+            ->second;
+      }
+      if (ST->getNumElements() == 2) {
+        std::map<AugmentedStruct, int> returnMapping;
+        returnMapping[AugmentedStruct::Return] = 0;
+        returnMapping[AugmentedStruct::DifferentialReturn] = 1;
+        return insert_or_assign<CacheKey, AugmentedReturn>(
+                   cachedfunctions, tup,
+                   AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
+                                   {}))
+            ->second;
+      }
+    }
+
+    std::map<AugmentedStruct, int> returnMapping;
+    returnMapping[AugmentedStruct::Tape] = -1;
+
     return insert_or_assign<CacheKey, AugmentedReturn>(
                cachedfunctions, tup,
                AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {}))
@@ -2233,7 +2225,7 @@ Function *CreatePrimalAndGradient(
     }
 
     auto st = dyn_cast<StructType>(foundcalled->getReturnType());
-    bool wrongRet = st == nullptr;
+    bool wrongRet = st == nullptr && !foundcalled->getReturnType()->isVoidTy();
     if (wrongRet || !hasTape) {
       FunctionType *FTy =
           FunctionType::get(StructType::get(todiff->getContext(), {res.second}),

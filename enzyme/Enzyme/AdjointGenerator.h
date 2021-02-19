@@ -1528,7 +1528,8 @@ public:
             }
             auto ET = PT->getElementType();
             while (auto ST = dyn_cast<StructType>(ET)) {
-              if (!ST->getNumElements()) break;
+              if (!ST->getNumElements())
+                break;
               ET = ST->getElementType(0);
             }
             if (ET->isIntOrIntVectorTy()) {
@@ -3812,6 +3813,8 @@ public:
           augmentcall->setName(orig->getName() + "_augmented");
 
         if (tapeIdx.hasValue()) {
+          llvm::errs() << " " << *augmentcall << " " << tapeIdx.getValue()
+                       << "\n";
           tape = (tapeIdx.getValue() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
