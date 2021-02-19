@@ -38,6 +38,7 @@ use rustc_target::abi::{LayoutOf, Primitive, Size};
 use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
+use std::num::NonZeroU32;
 use tracing::debug;
 
 mod create_scope_map;
@@ -224,9 +225,9 @@ pub struct DebugLoc {
     /// Information about the original source file.
     pub file: Lrc<SourceFile>,
     /// The (1-based) line number.
-    pub line: Option<u32>,
+    pub line: Option<NonZeroU32>,
     /// The (1-based) column number.
-    pub col: Option<u32>,
+    pub col: Option<NonZeroU32>,
 }
 
 impl CodegenCx<'ll, '_> {
@@ -243,7 +244,7 @@ impl CodegenCx<'ll, '_> {
                 let line = (line + 1) as u32;
                 let col = (pos - line_pos).to_u32() + 1;
 
-                (file, Some(line), Some(col))
+                (file, NonZeroU32::new(line), NonZeroU32::new(col))
             }
             Err(file) => (file, None, None),
         };
@@ -358,9 +359,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 linkage_name.as_ptr().cast(),
                 linkage_name.len(),
                 file_metadata,
-                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
+                loc.line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
                 function_type_metadata,
-                scope_line.unwrap_or(UNKNOWN_LINE_NUMBER),
+                scope_line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
                 flags,
                 spflags,
                 maybe_definition_llfn,
@@ -552,8 +553,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         unsafe {
             llvm::LLVMRustDIBuilderCreateDebugLocation(
-                line.unwrap_or(UNKNOWN_LINE_NUMBER),
-                col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
+                line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
+                col.map_or(UNKNOWN_COLUMN_NUMBER, |n| n.get()),
                 scope,
                 inlined_at,
             )
@@ -606,7 +607,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 name.as_ptr().cast(),
                 name.len(),
                 file_metadata,
-                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
+                loc.line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
                 type_metadata,
                 true,
                 DIFlags::FlagZero,

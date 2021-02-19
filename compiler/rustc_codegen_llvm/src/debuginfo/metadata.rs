@@ -1841,7 +1841,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
                     let loc = cx.lookup_debug_loc(span.lo());
                     return Some(SourceInfo {
                         file: file_metadata(cx, &loc.file),
-                        line: loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
+                        line: loc.line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
                     });
                 }
             }
@@ -2504,7 +2504,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
             linkage_name.as_ptr().cast(),
             linkage_name.len(),
             file_metadata,
-            line_number.unwrap_or(UNKNOWN_LINE_NUMBER),
+            line_number.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
             type_metadata,
             is_local_to_unit,
             global,

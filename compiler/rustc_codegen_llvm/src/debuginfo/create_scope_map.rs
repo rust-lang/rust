@@ -102,8 +102,8 @@ fn make_mir_scope(
                 DIB(cx),
                 parent_scope.dbg_scope.unwrap(),
                 file_metadata,
-                loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
-                loc.col.unwrap_or(UNKNOWN_COLUMN_NUMBER),
+                loc.line.map_or(UNKNOWN_LINE_NUMBER, |n| n.get()),
+                loc.col.map_or(UNKNOWN_COLUMN_NUMBER, |n| n.get()),
             )
         },
     };
