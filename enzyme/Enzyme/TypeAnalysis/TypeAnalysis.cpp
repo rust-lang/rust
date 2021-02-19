@@ -1037,6 +1037,12 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
       return;
   }
 
+  TypeTree upTree;
+  TypeTree downTree;
+
+  auto gepData0 = getAnalysis(&gep).Data0();
+  auto pointerData0 = pointerAnalysis.Data0();
+
   for (auto vec : getSet(idnext, idnext.size() - 1)) {
     auto g2 = GetElementPtrInst::Create(nullptr, gep.getOperand(0), vec);
 #if LLVM_VERSION_MAJOR > 6
@@ -1062,23 +1068,19 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
                 8;
     }
 
-    auto unmerged = pointerAnalysis.Data0()
-                        .ShiftIndices(DL, /*init offset*/ off,
-                                      /*max size*/ maxSize, /*newoffset*/ 0)
-                        .Only(-1);
-
     if (direction & UP)
-      updateAnalysis(&gep, unmerged, &gep);
-
-    auto merged = getAnalysis(&gep)
-                      .Data0()
-                      .ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
-                                    /*new offset*/ off)
-                      .Only(-1);
+      upTree |=
+          pointerData0.ShiftIndices(DL, /*init offset*/ off,
+                                    /*max size*/ maxSize, /*newoffset*/ 0);
 
     if (direction & DOWN)
-      updateAnalysis(gep.getPointerOperand(), merged, &gep);
+      downTree |= gepData0.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
+                                        /*new offset*/ off);
   }
+  if (direction & UP)
+    updateAnalysis(&gep, upTree.Only(-1), &gep);
+  if (direction & DOWN)
+    updateAnalysis(gep.getPointerOperand(), downTree.Only(-1), &gep);
 }
 
 void TypeAnalyzer::visitPHINode(PHINode &phi) {

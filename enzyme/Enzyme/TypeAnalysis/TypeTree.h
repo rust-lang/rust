@@ -406,11 +406,9 @@ public:
         for (size_t i = 1; i < pair.first.size(); ++i)
           next.push_back(pair.first[i]);
         // We do insertion like this to force an error
-        // on the |= operation if there is an incompatible
+        // on the orIn operation if there is an incompatible
         // merge. The insert operation does not error.
-        TypeTree SubResult;
-        SubResult.insert(next, pair.second);
-        Result |= SubResult;
+        Result.orIn(next, pair.second);
       }
     }
 
@@ -429,7 +427,7 @@ public:
   TypeTree Clear(size_t start, size_t end, size_t len) const {
     TypeTree Result;
 
-    // Note that below do insertion with the |= operator
+    // Note that below do insertion with the orIn operator
     // to force an error if there is an incompatible
     // merge. The insert operation does not error.
 
@@ -439,25 +437,21 @@ public:
       if (pair.first[0] == -1) {
         // For "all index" calculations, explicitly
         // add mappings for regions in range
-        TypeTree SubResult;
         auto next = pair.first;
         for (size_t i = 0; i < start; ++i) {
           next[0] = i;
-          SubResult.insert(next, pair.second);
+          Result.orIn(next, pair.second);
         }
         for (size_t i = end; i < len; ++i) {
           next[0] = i;
-          SubResult.insert(next, pair.second);
+          Result.orIn(next, pair.second);
         }
-        Result |= SubResult;
       } else if ((size_t)pair.first[0] < start ||
                  ((size_t)pair.first[0] >= end &&
                   (size_t)pair.first[0] < len)) {
         // Otherwise simply check that the given offset is in range
 
-        TypeTree SubResult;
-        SubResult.insert(pair.first, pair.second);
-        Result |= SubResult;
+        Result.insert(pair.first, pair.second);
       }
     }
 
@@ -763,17 +757,15 @@ public:
         chunk = dl.getPointerSizeInBits() / 8;
       }
 
-      TypeTree dat2;
       if (next[0] == -1 && maxSize != -1) {
         auto offincr = (chunk - offset % chunk) % chunk;
         for (int i = offincr; i < maxSize; i += chunk) {
           next[0] = i + addOffset;
-          dat2.insert(next, pair.second);
+          Result.orIn(next, pair.second);
         }
       } else {
-        dat2.insert(next, pair.second);
+        Result.orIn(next, pair.second);
       }
-      Result |= dat2;
     }
 
     return Result;
@@ -828,6 +820,177 @@ public:
     return true;
   }
 
+  bool checkedOrIn(const std::vector<int> &Seq, ConcreteType RHS,
+                   bool PointerIntSame, bool &LegalOr) {
+    assert(RHS != BaseType::Unknown);
+    ConcreteType CT = operator[](Seq);
+
+    bool subchanged = CT.checkedOrIn(RHS, PointerIntSame, LegalOr);
+    assert(LegalOr);
+    if (!subchanged)
+      return false;
+
+    if (Seq.size() > 0) {
+      // check pointer abilities from before
+      {
+        std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
+        auto found = mapping.find(tmp);
+        if (found != mapping.end()) {
+          if (!(found->second == BaseType::Pointer ||
+                found->second == BaseType::Anything)) {
+            LegalOr = false;
+            return false;
+          }
+        }
+      }
+
+      // if there's an existing ending -1 that clobbers, don't insert
+      {
+        std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
+        tmp.push_back(-1);
+        auto found = mapping.find(tmp);
+        if (found != mapping.end()) {
+          // Already exists as is, we should have
+          // skipped this case as subchanged == true
+          assert(found->second != CT);
+
+          // Already an anything at -1, no need to insert
+          if (found->second == BaseType::Anything)
+            return false;
+
+          // We are updating this to be an anything
+          if (CT == BaseType::Anything && Seq.back() == -1) {
+            found->second = CT;
+            return true;
+          }
+
+          if (PointerIntSame && ((CT == BaseType::Pointer &&
+                                  found->second == BaseType::Integer) ||
+                                 (CT == BaseType::Integer &&
+                                  found->second == BaseType::Pointer))) {
+            return false;
+          }
+
+          if (CT != BaseType::Anything && found->second != BaseType::Anything) {
+            LegalOr = false;
+            return false;
+          }
+        }
+      }
+
+      // if there's an existing starting -1 that clobbers, don't insert
+      {
+        std::vector<int> tmp(Seq.begin(), Seq.end());
+        tmp[0] = -1;
+        auto found = mapping.find(tmp);
+        if (found != mapping.end()) {
+          // Already exists as is, we should have
+          // skipped this case as subchanged == true
+          assert(found->second != CT);
+
+          // Already an anything at -1, no need to insert
+          if (found->second == BaseType::Anything)
+            return false;
+
+          // We are updating this to be an anything
+          if (CT == BaseType::Anything && Seq[0] == -1) {
+            found->second = CT;
+            return true;
+          }
+
+          if (PointerIntSame && ((CT == BaseType::Pointer &&
+                                  found->second == BaseType::Integer) ||
+                                 (CT == BaseType::Integer &&
+                                  found->second == BaseType::Pointer))) {
+            return false;
+          }
+
+          if (CT != BaseType::Anything && found->second != BaseType::Anything) {
+            LegalOr = false;
+            return false;
+          }
+        }
+      }
+
+      // if this is a ending -1, remove other elems if no more info
+      if (Seq.back() == -1) {
+        std::set<std::vector<int>> toremove;
+        for (const auto &pair : mapping) {
+          if (pair.first.size() == Seq.size()) {
+            bool matches = true;
+            for (unsigned i = 0; i < pair.first.size() - 1; ++i) {
+              if (pair.first[i] != Seq[i]) {
+                matches = false;
+                break;
+              }
+            }
+            if (!matches)
+              continue;
+
+            if (CT == BaseType::Anything || CT == pair.second) {
+              // previous equivalent values or values overwritten by
+              // an anything are removed
+              toremove.insert(pair.first);
+            } else if (CT != BaseType::Anything &&
+                       pair.second == BaseType::Anything) {
+              // keep lingering anythings if not being overwritten
+            } else {
+              LegalOr = false;
+              return false;
+            }
+          }
+        }
+        for (const auto &val : toremove) {
+          mapping.erase(val);
+        }
+      }
+
+      // if this is a starting -1, remove other -1's
+      if (Seq[0] == -1) {
+        std::set<std::vector<int>> toremove;
+        for (const auto &pair : mapping) {
+          if (pair.first.size() == Seq.size()) {
+            bool matches = true;
+            for (unsigned i = 1; i < pair.first.size(); ++i) {
+              if (pair.first[i] != Seq[i]) {
+                matches = false;
+                break;
+              }
+            }
+            if (!matches)
+              continue;
+
+            if (CT == BaseType::Anything || CT == pair.second) {
+              // previous equivalent values or values overwritten by
+              // an anything are removed
+              toremove.insert(pair.first);
+            } else if (CT != BaseType::Anything &&
+                       pair.second == BaseType::Anything) {
+              // keep lingering anythings if not being overwritten
+            } else {
+              LegalOr = false;
+              return false;
+            }
+          }
+        }
+
+        for (const auto &val : toremove) {
+          mapping.erase(val);
+        }
+      }
+    }
+
+    return insert(Seq, CT);
+  }
+
+  bool orIn(const std::vector<int> &Seq, ConcreteType RHS,
+            bool PointerIntSame = false) {
+    bool LegalOr = true;
+    bool Result = checkedOrIn(Seq, RHS, PointerIntSame, LegalOr);
+    assert(LegalOr);
+    return Result;
+  }
+
   /// Set this to the logical or of itself and RHS, returning whether this value
   /// changed Setting `PointerIntSame` considers pointers and integers as
   /// equivalent If this is an illegal operation, `LegalOr` will be set to false
@@ -847,171 +1010,7 @@ public:
     }
 
     for (auto &pair : RHS.mapping) {
-      assert(pair.second != BaseType::Unknown);
-      ConcreteType CT = operator[](pair.first);
-
-      bool subchanged = CT.checkedOrIn(pair.second, PointerIntSame, LegalOr);
-
-      if (!subchanged)
-        continue;
-
-      const auto &Seq = pair.first;
-
-      if (Seq.size() > 0) {
-        // check pointer abilities from before
-        {
-          std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
-          auto found = mapping.find(tmp);
-          if (found != mapping.end()) {
-            if (!(found->second == BaseType::Pointer ||
-                  found->second == BaseType::Anything)) {
-              LegalOr = false;
-              return changed;
-            }
-          }
-        }
-
-        // if there's an existing ending -1 that clobbers, don't insert
-        {
-          std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
-          tmp.push_back(-1);
-          auto found = mapping.find(tmp);
-          if (found != mapping.end()) {
-            // Already exists as is, we should have
-            // skipped this case as subchanged == true
-            assert(found->second != CT);
-
-            // Already an anything at -1, no need to insert
-            if (found->second == BaseType::Anything)
-              continue;
-
-            // We are updating this to be an anything
-            if (CT == BaseType::Anything && Seq.back() == -1) {
-              found->second = CT;
-              changed = true;
-              continue;
-            }
-
-            if (PointerIntSame && ((CT == BaseType::Pointer &&
-                                    found->second == BaseType::Integer) ||
-                                   (CT == BaseType::Integer &&
-                                    found->second == BaseType::Pointer))) {
-              continue;
-            }
-
-            if (CT != BaseType::Anything &&
-                found->second != BaseType::Anything) {
-              LegalOr = false;
-              return changed;
-            }
-          }
-        }
-
-        // if there's an existing starting -1 that clobbers, don't insert
-        {
-          std::vector<int> tmp(Seq.begin(), Seq.end());
-          tmp[0] = -1;
-          auto found = mapping.find(tmp);
-          if (found != mapping.end()) {
-            // Already exists as is, we should have
-            // skipped this case as subchanged == true
-            assert(found->second != CT);
-
-            // Already an anything at -1, no need to insert
-            if (found->second == BaseType::Anything)
-              continue;
-
-            // We are updating this to be an anything
-            if (CT == BaseType::Anything && Seq[0] == -1) {
-              found->second = CT;
-              changed = true;
-              continue;
-            }
-
-            if (PointerIntSame && ((CT == BaseType::Pointer &&
-                                    found->second == BaseType::Integer) ||
-                                   (CT == BaseType::Integer &&
-                                    found->second == BaseType::Pointer))) {
-              continue;
-            }
-
-            if (CT != BaseType::Anything &&
-                found->second != BaseType::Anything) {
-              LegalOr = false;
-              return changed;
-            }
-          }
-        }
-
-        // if this is a ending -1, remove other elems if no more info
-        if (Seq.back() == -1) {
-          std::set<std::vector<int>> toremove;
-          for (const auto &pair : mapping) {
-            if (pair.first.size() == Seq.size()) {
-              bool matches = true;
-              for (unsigned i = 0; i < pair.first.size() - 1; ++i) {
-                if (pair.first[i] != Seq[i]) {
-                  matches = false;
-                  break;
-                }
-              }
-              if (!matches)
-                continue;
-
-              if (CT == BaseType::Anything || CT == pair.second) {
-                // previous equivalent values or values overwritten by
-                // an anything are removed
-                toremove.insert(pair.first);
-              } else if (CT != BaseType::Anything &&
-                         pair.second == BaseType::Anything) {
-                // keep lingering anythings if not being overwritten
-              } else {
-                LegalOr = false;
-                return changed;
-              }
-            }
-          }
-          for (const auto &val : toremove) {
-            mapping.erase(val);
-          }
-        }
-
-        // if this is a starting -1, remove other -1's
-        if (Seq[0] == -1) {
-          std::set<std::vector<int>> toremove;
-          for (const auto &pair : mapping) {
-            if (pair.first.size() == Seq.size()) {
-              bool matches = true;
-              for (unsigned i = 1; i < pair.first.size(); ++i) {
-                if (pair.first[i] != Seq[i]) {
-                  matches = false;
-                  break;
-                }
-              }
-              if (!matches)
-                continue;
-
-              if (CT == BaseType::Anything || CT == pair.second) {
-                // previous equivalent values or values overwritten by
-                // an anything are removed
-                toremove.insert(pair.first);
-              } else if (CT != BaseType::Anything &&
-                         pair.second == BaseType::Anything) {
-                // keep lingering anythings if not being overwritten
-              } else {
-                LegalOr = false;
-                return changed;
-              }
-            }
-          }
-
-          for (const auto &val : toremove) {
-            mapping.erase(val);
-          }
-        }
-      }
-
-      changed |= insert(pair.first, CT);
+      changed |= checkedOrIn(pair.first, pair.second, PointerIntSame, LegalOr);
     }
     return changed;
   }

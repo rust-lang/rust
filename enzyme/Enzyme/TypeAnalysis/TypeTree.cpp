@@ -56,12 +56,9 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
   TypeTree Result;
 
   for (auto &pair : mapping) {
-
-    TypeTree SubResult;
-
     if (pair.first.size() == 0) {
-      SubResult.insert(pair.first, pair.second);
-      goto add;
+      Result.orIn(pair.first, pair.second);
+      continue;
     }
 
     assert(!isa<FunctionType>(From) && !isa<FunctionType>(To));
@@ -75,35 +72,35 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
 
       // Case where pair.first[0] == -1
       if (Fromsize == 0 || Tosize == 0) {
-        SubResult.insert(pair.first, pair.second);
-        goto add;
+        Result.orIn(pair.first, pair.second);
+        continue;
       }
 
       // If the sizes are the same, whatever the original one is okay [ since
       // tomemory[ i*sizeof(from) ] indeed the start of an object of type to
       // since tomemory is "aligned" to type to
       if (Fromsize == Tosize) {
-        SubResult.insert(pair.first, pair.second);
-        goto add;
+        Result.orIn(pair.first, pair.second);
+        continue;
       }
 
       // If the offset is a fixed (non-repeating) value, it's to include
       // directly.
       if (pair.first[0] != -1) {
-        SubResult.insert(pair.first, pair.second);
-        goto add;
+        Result.orIn(pair.first, pair.second);
+        continue;
       } else {
 
         if (Fromsize < Tosize) {
           if (Tosize % Fromsize == 0) {
             // TODO should really be at each offset do a -1
-            SubResult.insert(pair.first, pair.second);
-            goto add;
+            Result.insert(pair.first, pair.second);
+            continue;
           } else {
             auto tmp(pair.first);
             tmp[0] = 0;
-            SubResult.insert(tmp, pair.second);
-            goto add;
+            Result.insert(tmp, pair.second);
+            continue;
           }
         } else {
           // fromsize > tosize
@@ -111,15 +108,11 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
           // fromsize
           auto tmp(pair.first);
           tmp[0] = 0;
-          SubResult.insert(tmp, pair.second);
-          goto add;
+          Result.insert(tmp, pair.second);
+          continue;
         }
       }
     }
-
-    continue;
-  add:;
-    Result |= SubResult;
   }
   return Result;
 }
