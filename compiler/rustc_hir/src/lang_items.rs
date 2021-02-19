@@ -45,20 +45,25 @@ macro_rules! language_item_table {
             /// A representation of all the valid language items in Rust.
             #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {
-                $($variant,)*
+                $(
+                    #[doc = concat!("The `", stringify!($name), "` lang item.")]
+                    $variant,
+                )*
             }
         }
 
         impl LangItem {
             /// Returns the `name` symbol in `#[lang = "$name"]`.
-            /// For example, `LangItem::EqTraitLangItem`,
-            /// that is `#[lang = "eq"]` would result in `sym::eq`.
+            /// For example, [`LangItem::PartialEq`]`.name()`
+            /// would result in [`sym::eq`] since it is `#[lang = "eq"]`.
             pub fn name(self) -> Symbol {
                 match self {
                     $( LangItem::$variant => $name, )*
                 }
             }
 
+            /// The [group](LangItemGroup) that this lang item belongs to,
+            /// or `None` if it doesn't belong to a group.
             pub fn group(self) -> Option<LangItemGroup> {
                 use LangItemGroup::*;
                 match self {
@@ -67,15 +72,16 @@ macro_rules! language_item_table {
             }
         }
 
+        /// All of the language items in the current crate, defined or not.
         #[derive(HashStable_Generic, Debug)]
         pub struct LanguageItems {
-            /// Mappings from lang items to their possibly found `DefId`s.
-            /// The index corresponds to the order in `LangItem`.
+            /// Mappings from lang items to their possibly found [`DefId`]s.
+            /// The index corresponds to the order in [`LangItem`].
             pub items: Vec<Option<DefId>>,
             /// Lang items that were not found during collection.
             pub missing: Vec<LangItem>,
-            /// Mapping from `LangItemGroup` discriminants to all
-            /// `DefId`s of lang items in that group.
+            /// Mapping from [`LangItemGroup`] discriminants to all
+            /// [`DefId`]s of lang items in that group.
             pub groups: [Vec<DefId>; NUM_GROUPS],
         }
 
@@ -103,13 +109,13 @@ macro_rules! language_item_table {
                 self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
             }
 
+            /// Returns the [`DefId`]s of all lang items in a group.
             pub fn group(&self, group: LangItemGroup) -> &[DefId] {
                 self.groups[group as usize].as_ref()
             }
 
             $(
-                /// Returns the corresponding `DefId` for the lang item if it
-                /// exists.
+                #[doc = concat!("Returns the [`DefId`] of the `", stringify!($name), "` lang item if it is defined.")]
                 #[allow(dead_code)]
                 pub fn $method(&self) -> Option<DefId> {
                     self.items[LangItem::$variant as usize]
@@ -140,7 +146,7 @@ impl<CTX> HashStable<CTX> for LangItem {
 ///
 /// About the `check_name` argument: passing in a `Session` would be simpler,
 /// because then we could call `Session::check_name` directly. But we want to
-/// avoid the need for `librustc_hir` to depend on `librustc_session`, so we
+/// avoid the need for `rustc_hir` to depend on `rustc_session`, so we
 /// use a closure instead.
 pub fn extract<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<(Symbol, Span)>
 where
