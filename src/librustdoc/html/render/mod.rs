@@ -181,7 +181,7 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx
     }
 
-    fn sess(&self) -> &Session {
+    fn sess(&self) -> &'tcx Session {
         &self.shared.tcx.sess
     }
 }

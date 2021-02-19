@@ -90,7 +90,7 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 }
 
 fn external_generic_args(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     trait_did: Option<DefId>,
     has_self: bool,
     bindings: Vec<TypeBinding>,
@@ -142,7 +142,7 @@ fn external_generic_args(
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
 pub(super) fn external_path(
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
     name: Symbol,
     trait_did: Option<DefId>,
     has_self: bool,
@@ -214,7 +214,7 @@ crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     s
 }
 
-crate fn build_deref_target_impls(cx: &DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
+crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
     let tcx = cx.tcx;
 
     for item in items {
@@ -241,7 +241,7 @@ crate trait ToSource {
 
 impl ToSource for rustc_span::Span {
     fn to_src(&self, cx: &DocContext<'_>) -> String {
-        debug!("converting span {:?} to snippet", self.clean(cx));
+        debug!("converting span {:?} to snippet", self);
         let sn = match cx.sess().source_map().span_to_snippet(*self) {
             Ok(x) => x,
             Err(_) => String::new(),
@@ -407,7 +407,7 @@ crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-crate fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
+crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Type {
     debug!("resolve_type({:?},{:?})", path, id);
 
     let is_generic = match path.res {
@@ -421,12 +421,12 @@ crate fn resolve_type(cx: &DocContext<'_>, path: Path, id: hir::HirId) -> Type {
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
     };
-    let did = register_res(&*cx, path.res);
+    let did = register_res(cx, path.res);
     ResolvedPath { path, param_names: None, did, is_generic }
 }
 
 crate fn get_auto_trait_and_blanket_impls(
-    cx: &DocContext<'tcx>,
+    cx: &mut DocContext<'tcx>,
     ty: Ty<'tcx>,
     param_env_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
@@ -439,11 +439,11 @@ crate fn get_auto_trait_and_blanket_impls(
         .sess()
         .prof
         .generic_activity("get_blanket_impls")
-        .run(|| BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id));
+        .run(|| BlanketImplFinder { cx }.get_blanket_impls(ty, param_env_def_id));
     auto_impls.into_iter().chain(blanket_impls)
 }
 
-crate fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
+crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
@@ -483,21 +483,21 @@ crate fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
     did
 }
 
-crate fn resolve_use_source(cx: &DocContext<'_>, path: Path) -> ImportSource {
+crate fn resolve_use_source(cx: &mut DocContext<'_>, path: Path) -> ImportSource {
     ImportSource {
         did: if path.res.opt_def_id().is_none() { None } else { Some(register_res(cx, path.res)) },
         path,
     }
 }
 
-crate fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
+crate fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R
 where
-    F: FnOnce() -> R,
+    F: FnOnce(&mut DocContext<'_>) -> R,
 {
-    let old_bounds = mem::take(&mut *cx.impl_trait_bounds.borrow_mut());
-    let r = f();
+    let old_bounds = mem::take(&mut *cx.impl_trait_bounds.get_mut());
+    let r = f(cx);
     assert!(cx.impl_trait_bounds.borrow().is_empty());
-    *cx.impl_trait_bounds.borrow_mut() = old_bounds;
+    *cx.impl_trait_bounds.get_mut() = old_bounds;
     r
 }
 

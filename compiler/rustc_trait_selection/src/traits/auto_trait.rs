@@ -77,7 +77,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        auto_trait_callback: impl Fn(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
+        mut auto_trait_callback: impl FnMut(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 

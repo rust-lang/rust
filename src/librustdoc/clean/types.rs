@@ -130,7 +130,7 @@ impl Item {
         hir_id: hir::HirId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
     }
@@ -139,7 +139,7 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
@@ -936,7 +936,7 @@ crate enum GenericBound {
 }
 
 impl GenericBound {
-    crate fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
+    crate fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);

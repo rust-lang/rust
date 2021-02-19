@@ -10,17 +10,13 @@ use rustc_span::DUMMY_SP;
 use super::*;
 
 crate struct BlanketImplFinder<'a, 'tcx> {
-    crate cx: &'a core::DocContext<'tcx>,
+    crate cx: &'a mut core::DocContext<'tcx>,
 }
 
 impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
-    crate fn new(cx: &'a core::DocContext<'tcx>) -> Self {
-        BlanketImplFinder { cx }
-    }
-
     // FIXME(eddyb) figure out a better way to pass information about
     // parametrization of `ty` than `param_env_def_id`.
-    crate fn get_blanket_impls(&self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
+    crate fn get_blanket_impls(&mut self, ty: Ty<'tcx>, param_env_def_id: DefId) -> Vec<Item> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_blanket_impls({:?})", ty);
