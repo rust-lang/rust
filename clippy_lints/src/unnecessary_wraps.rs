@@ -48,7 +48,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub UNNECESSARY_WRAPS,
-    complexity,
+    pedantic,
     "functions that only return `Ok` or `Some`"
 }
 
