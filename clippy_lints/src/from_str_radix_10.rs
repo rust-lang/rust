@@ -19,7 +19,9 @@ declare_clippy_lint! {
     /// (and in most cases, the turbofish can be removed), which reduces code length
     /// and complexity.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:**
+    /// This lint may suggest using (&<expression>).parse() instead of <expression>.parse() directly
+    /// in some cases, which is correct but adds unnecessary complexity to the code.
     ///
     /// **Example:**
     ///
