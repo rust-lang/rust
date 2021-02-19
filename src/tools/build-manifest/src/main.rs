@@ -372,6 +372,7 @@ impl Builder {
                 "llvm-tools-preview",
                 "rust-analysis",
                 "miri-preview",
+                "rustc-codegen-cranelift-preview",
             ],
         );
 
