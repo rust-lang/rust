@@ -1146,10 +1146,21 @@ const AugmentedReturn &CreateAugmentedPrimal(
                                    {}))
             ->second;
       }
-      if (ST->getNumElements() == 2) {
+      if (ST->getNumElements() == 2 &&
+          ST->getElementType(0) == ST->getElementType(1)) {
         std::map<AugmentedStruct, int> returnMapping;
         returnMapping[AugmentedStruct::Return] = 0;
         returnMapping[AugmentedStruct::DifferentialReturn] = 1;
+        return insert_or_assign<CacheKey, AugmentedReturn>(
+                   cachedfunctions, tup,
+                   AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
+                                   {}))
+            ->second;
+      }
+      if (ST->getNumElements() == 2) {
+        std::map<AugmentedStruct, int> returnMapping;
+        returnMapping[AugmentedStruct::Tape] = 0;
+        returnMapping[AugmentedStruct::Return] = 1;
         return insert_or_assign<CacheKey, AugmentedReturn>(
                    cachedfunctions, tup,
                    AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {},
@@ -2205,14 +2216,14 @@ Function *CreatePrimalAndGradient(
       subretType = DIFFE_TYPE::CONSTANT;
     auto res = getDefaultFunctionTypeForGradient(todiff->getFunctionType(),
                                                  /*retType*/ subretType);
-
+    assert(augmenteddata);
     if (foundcalled->arg_size() == res.first.size() + 1 /*tape*/) {
       auto lastarg = foundcalled->arg_end();
       lastarg--;
       res.first.push_back(lastarg->getType());
       hasTape = true;
     } else if (foundcalled->arg_size() == res.first.size()) {
-      res.first.push_back(StructType::get(todiff->getContext(), {}));
+      // res.first.push_back(StructType::get(todiff->getContext(), {}));
     } else {
       llvm::errs() << "expected args: [";
       for (auto a : res.first) {
@@ -2226,7 +2237,8 @@ Function *CreatePrimalAndGradient(
 
     auto st = dyn_cast<StructType>(foundcalled->getReturnType());
     bool wrongRet = st == nullptr && !foundcalled->getReturnType()->isVoidTy();
-    if (wrongRet || !hasTape) {
+    if (wrongRet) {
+      // if (wrongRet || !hasTape) {
       FunctionType *FTy =
           FunctionType::get(StructType::get(todiff->getContext(), {res.second}),
                             res.first, todiff->getFunctionType()->isVarArg());
@@ -2252,9 +2264,9 @@ Function *CreatePrimalAndGradient(
       SmallVector<Value *, 4> args;
       for (auto &a : NewF->args())
         args.push_back(&a);
-      if (!hasTape) {
-        args.pop_back();
-      }
+      // if (!hasTape) {
+      //  args.pop_back();
+      //}
       auto cal = bb.CreateCall(foundcalled, args);
       cal->setCallingConv(foundcalled->getCallingConv());
       Value *val = cal;
