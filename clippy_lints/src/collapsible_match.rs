@@ -96,12 +96,12 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
                 cx,
                 COLLAPSIBLE_MATCH,
                 expr.span,
-                "Unnecessary nested match",
+                "unnecessary nested match",
                 |diag| {
                     let mut help_span = MultiSpan::from_spans(vec![binding_span, non_wild_inner_arm.pat.span]);
-                    help_span.push_span_label(binding_span, "Replace this binding".into());
+                    help_span.push_span_label(binding_span, "replace this binding".into());
                     help_span.push_span_label(non_wild_inner_arm.pat.span, "with this pattern".into());
-                    diag.span_help(help_span, "The outer pattern can be modified to include the inner pattern.");
+                    diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );
         }
