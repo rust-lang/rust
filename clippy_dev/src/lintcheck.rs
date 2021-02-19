@@ -295,13 +295,13 @@ fn filter_clippy_warnings(line: &str) -> bool {
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
-    let output = Command::new("cargo")
+    let status = Command::new("cargo")
         .arg("build")
-        .output()
+        .status()
         .expect("Failed to build clippy!");
-    if !output.status.success() {
-        eprintln!("Failed to compile Clippy");
-        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr))
+    if !status.success() {
+        eprintln!("Error: Failed to compile Clippy!");
+        std::process::exit(1);
     }
 }
 
