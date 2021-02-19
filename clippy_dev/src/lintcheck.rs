@@ -39,7 +39,7 @@ struct TomlCrate {
 
 /// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
 /// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
-#[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
 enum CrateSource {
     CratesIo {
         name: String,
@@ -376,6 +376,9 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
+    // sort the crates
+    crate_sources.sort();
+
     (toml_filename, crate_sources)
 }
 
