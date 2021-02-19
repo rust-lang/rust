@@ -280,6 +280,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let field_names: Vec<_> =
                     (0..adt_def.variants[variant_index].fields.len()).map(Field::new).collect();
 
+                // ROX: This is probably here the function record/struct update pattern is done.
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, base));
 

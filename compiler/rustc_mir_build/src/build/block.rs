@@ -94,6 +94,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )
                     );
                 }
+                // ROX:
+                //
+                // Where the handling of destructure patterns start
+                //
+                // let (a, b, c, _ ) = something
+                //
+                // (a, b, c, _) is the pattern
+                // something is the initializer
                 StmtKind::Let { remainder_scope, init_scope, pattern, initializer, lint_level } => {
                     let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
@@ -125,6 +133,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             ArmHasGuard(false),
                                             Some((None, initializer_span)),
                                         );
+                                        // This is where we get into pattern handling of the let
+                                        // statement
                                         this.expr_into_pattern(block, pattern.clone(), init)
                                     })
                                 }

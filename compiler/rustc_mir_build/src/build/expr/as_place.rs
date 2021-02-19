@@ -10,6 +10,7 @@ use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
+use rustc_middle::ty::AdtDef;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
@@ -17,7 +18,7 @@ use rustc_target::abi::VariantIdx;
 use rustc_index::vec::Idx;
 
 /// The "outermost" place that holds this value.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 crate enum PlaceBase {
     /// Denotes the start of a `Place`.
     Local(Local),
@@ -67,7 +68,7 @@ crate enum PlaceBase {
 ///
 /// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 crate struct PlaceBuilder<'tcx> {
     base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
@@ -292,6 +293,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         }
     }
 
+    /// ROX: Function that will be called when we really do need a place
     fn expect_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
@@ -319,15 +321,22 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.project(PlaceElem::Field(f, ty))
     }
 
-    fn deref(self) -> Self {
+    crate fn deref(self) -> Self {
         self.project(PlaceElem::Deref)
+    }
+
+    crate fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Self {
+        self.project(PlaceElem::Downcast(
+            Some(adt_def.variants[variant_index].ident.name),
+            variant_index,
+        ))
     }
 
     fn index(self, index: Local) -> Self {
         self.project(PlaceElem::Index(index))
     }
 
-    fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
+    crate fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
         self.projection.push(elem);
         self
     }
@@ -367,6 +376,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
+    // ROX: As place builder
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
     crate fn as_place_builder(
@@ -613,13 +623,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // The "retagging" transformation (for Stacked Borrows) relies on this.
         let idx = unpack!(block = self.as_temp(block, temp_lifetime, index, Mutability::Not,));
 
-        block = self.bounds_check(
-            block,
-            base_place.clone().into_place(self.tcx, self.typeck_results),
-            idx,
-            expr_span,
-            source_info,
-        );
+        block = self.bounds_check(block, base_place.clone(), idx, expr_span, source_info);
 
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
@@ -640,7 +644,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn bounds_check(
         &mut self,
         block: BasicBlock,
-        slice: Place<'tcx>,
+        slice: PlaceBuilder<'tcx>,
         index: Local,
         expr_span: Span,
         source_info: SourceInfo,
@@ -652,7 +656,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let lt = self.temp(bool_ty, expr_span);
 
         // len = len(slice)
-        self.cfg.push_assign(block, source_info, len, Rvalue::Len(slice));
+        self.cfg.push_assign(
+            block,
+            source_info,
+            len,
+            Rvalue::Len(slice.clone().into_place(self.tcx, self.typeck_results)),
+        );
         // lt = idx < len
         self.cfg.push_assign(
             block,
