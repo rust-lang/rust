@@ -1,6 +1,9 @@
 //! Look up accessible paths for items.
 use either::Either;
-use hir::{AsAssocItem, AssocItem, Crate, MacroDef, Module, ModuleDef, PrefixKind, Semantics};
+use hir::{
+    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, PathResolution,
+    PrefixKind, Semantics,
+};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -145,7 +148,6 @@ impl ImportAssets {
         prefixed: Option<hir::PrefixKind>,
     ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
         let current_crate = self.module_with_candidate.krate();
-        let import_candidate = &self.import_candidate;
 
         let imports_for_candidate_name = match self.name_to_import() {
             NameToImport::Exact(exact_name) => {
@@ -157,7 +159,7 @@ impl ImportAssets {
             // and https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Fwg-rls-2.2E0/topic/Blanket.20trait.20impls.20lookup
             // for the details
             NameToImport::Fuzzy(fuzzy_name) => {
-                let (assoc_item_search, limit) = if import_candidate.is_trait_candidate() {
+                let (assoc_item_search, limit) = if self.import_candidate.is_trait_candidate() {
                     (AssocItemSearch::AssocItemsOnly, None)
                 } else {
                     (AssocItemSearch::Exclude, Some(DEFAULT_QUERY_SEARCH_LIMIT))
@@ -172,59 +174,108 @@ impl ImportAssets {
             }
         };
 
-        let db = sema.db;
-        let mut res =
-            applicable_defs(import_candidate, current_crate, db, imports_for_candidate_name)
-                .filter_map(|candidate| {
-                    let item: hir::ItemInNs = candidate.clone().either(Into::into, Into::into);
-
-                    let item_to_search = if import_candidate.is_trait_candidate() {
-                        let canidate_trait = match candidate {
-                            Either::Left(module_def) => {
-                                module_def.as_assoc_item(db)?.containing_trait(db)
-                            }
-                            _ => None,
-                        }?;
-                        ModuleDef::from(canidate_trait).into()
-                    } else {
-                        item
-                    };
-                    let mod_path = if let Some(prefix_kind) = prefixed {
-                        self.module_with_candidate.find_use_path_prefixed(
-                            db,
-                            item_to_search,
-                            prefix_kind,
-                        )
-                    } else {
-                        self.module_with_candidate.find_use_path(db, item_to_search)
-                    };
-
-                    mod_path.zip(Some(item))
-                })
-                .filter(|(use_path, _)| use_path.len() > 1)
-                .collect::<Vec<_>>();
+        let mut res = self
+            .applicable_defs(sema, prefixed, imports_for_candidate_name)
+            .filter(|(use_path, _)| use_path.len() > 1)
+            .collect::<Vec<_>>();
         res.sort_by_cached_key(|(path, _)| path.clone());
         res
     }
+
+    fn applicable_defs<'a>(
+        &self,
+        sema: &'a Semantics<RootDatabase>,
+        prefixed: Option<hir::PrefixKind>,
+        unfiltered_imports: Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a>,
+    ) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
+        let current_crate = self.module_with_candidate.krate();
+        let db = sema.db;
+
+        match &self.import_candidate {
+            ImportCandidate::Path(path_candidate) => path_applicable_defs(
+                sema,
+                path_candidate,
+                unfiltered_imports,
+                self.module_with_candidate,
+                prefixed,
+            ),
+            ImportCandidate::TraitAssocItem(trait_candidate) => trait_applicable_defs(
+                db,
+                current_crate,
+                trait_candidate,
+                true,
+                unfiltered_imports,
+                self.module_with_candidate,
+                prefixed,
+            ),
+            ImportCandidate::TraitMethod(trait_candidate) => trait_applicable_defs(
+                db,
+                current_crate,
+                trait_candidate,
+                false,
+                unfiltered_imports,
+                self.module_with_candidate,
+                prefixed,
+            ),
+        }
+    }
 }
 
-fn applicable_defs<'a>(
-    import_candidate: &ImportCandidate,
-    current_crate: Crate,
-    db: &RootDatabase,
-    unfiltered_imports: Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a>,
-) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a> {
-    // TODO kb this needs to consider various path prefixes, etc.
-    let receiver_ty = match import_candidate {
-        ImportCandidate::Path(_) => return unfiltered_imports,
-        ImportCandidate::TraitAssocItem(candidate) | ImportCandidate::TraitMethod(candidate) => {
-            &candidate.receiver_ty
+fn path_applicable_defs<'a>(
+    sema: &'a Semantics<RootDatabase>,
+    path_candidate: &PathImportCandidate,
+    unfiltered_defs: Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a>,
+    module_with_candidate: Module,
+    prefixed: Option<hir::PrefixKind>,
+) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
+    let applicable_defs = unfiltered_defs
+        .map(|candidate| candidate.either(ItemInNs::from, ItemInNs::from))
+        .filter_map(move |item_to_search| {
+            get_mod_path(sema.db, item_to_search, &module_with_candidate, prefixed)
+                .zip(Some(item_to_search))
+        });
+
+    let unresolved_qualifier = match &path_candidate.unresolved_qualifier {
+        Some(qualifier) => qualifier,
+        None => {
+            // TODO kb too many boxes tossed around
+            return Box::new(applicable_defs);
         }
     };
 
+    // TODO kb filter out items: found path should end with `qualifier::Name` or `qualifier::Something` for fuzzy search case.
+
+    // TODO kb find a way to turn a qualifier into the corresponding ModuleDef. Maybe through the unfiltered data?
+    if let Some(qualifier_start_resolution) = resolve_qualifier_start(sema, unresolved_qualifier) {
+        // TODO kb ascend until an unresolved segment part appears
+    } else {
+        // first segment is already unresolved, need to turn it into ModuleDef somehow
+    }
+
+    return Box::new(applicable_defs);
+}
+
+fn resolve_qualifier_start(
+    sema: &Semantics<RootDatabase>,
+    qualifier: &ast::Path,
+) -> Option<PathResolution> {
+    let qualifier_start = qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
+    let qualifier_start_path = qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
+    sema.resolve_path(&qualifier_start_path)
+}
+
+fn trait_applicable_defs<'a>(
+    db: &'a RootDatabase,
+    current_crate: Crate,
+    trait_candidate: &TraitImportCandidate,
+    trait_assoc_item: bool,
+    unfiltered_defs: Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a>,
+    module_with_candidate: Module,
+    prefixed: Option<hir::PrefixKind>,
+) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
     let mut required_assoc_items = FxHashSet::default();
 
-    let trait_candidates = unfiltered_imports
+    let trait_candidates = unfiltered_defs
         .filter_map(|input| match input {
             Either::Left(module_def) => module_def.as_assoc_item(db),
             _ => None,
@@ -238,9 +289,8 @@ fn applicable_defs<'a>(
 
     let mut applicable_defs = FxHashSet::default();
 
-    match import_candidate {
-        ImportCandidate::Path(_) => unreachable!(),
-        ImportCandidate::TraitAssocItem(_) => receiver_ty.iterate_path_candidates(
+    if trait_assoc_item {
+        trait_candidate.receiver_ty.iterate_path_candidates(
             db,
             current_crate,
             &trait_candidates,
@@ -252,12 +302,13 @@ fn applicable_defs<'a>(
                             return None;
                         }
                     }
-                    applicable_defs.insert(Either::Left(assoc_to_module_def(assoc)));
+                    applicable_defs.insert(assoc_to_module_def(assoc));
                 }
                 None::<()>
             },
-        ),
-        ImportCandidate::TraitMethod(_) => receiver_ty.iterate_method_candidates(
+        )
+    } else {
+        trait_candidate.receiver_ty.iterate_method_candidates(
             db,
             current_crate,
             &trait_candidates,
@@ -265,14 +316,38 @@ fn applicable_defs<'a>(
             |_, function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
-                    applicable_defs.insert(Either::Left(assoc_to_module_def(assoc)));
+                    applicable_defs.insert(assoc_to_module_def(assoc));
                 }
                 None::<()>
             },
-        ),
+        )
     };
 
-    Box::new(applicable_defs.into_iter())
+    Box::new(
+        applicable_defs
+            .into_iter()
+            .filter_map(move |candidate| {
+                let canidate_trait = candidate.as_assoc_item(db)?.containing_trait(db)?;
+                Some(ItemInNs::from(ModuleDef::from(canidate_trait)))
+            })
+            .filter_map(move |item_to_search| {
+                get_mod_path(db, item_to_search, &module_with_candidate, prefixed)
+                    .zip(Some(item_to_search))
+            }),
+    )
+}
+
+fn get_mod_path(
+    db: &RootDatabase,
+    item_to_search: ItemInNs,
+    module_with_candidate: &Module,
+    prefixed: Option<hir::PrefixKind>,
+) -> Option<ModPath> {
+    if let Some(prefix_kind) = prefixed {
+        module_with_candidate.find_use_path_prefixed(db, item_to_search, prefix_kind)
+    } else {
+        module_with_candidate.find_use_path(db, item_to_search)
+    }
 }
 
 fn assoc_to_module_def(assoc: AssocItem) -> ModuleDef {
