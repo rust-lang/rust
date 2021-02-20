@@ -11,8 +11,9 @@ use crate::cmp::Ordering;
 use crate::convert::{Infallible, TryFrom};
 use crate::fmt;
 use crate::hash::{self, Hash};
+use crate::iter::TrustedLen;
 use crate::marker::Unsize;
-use crate::mem::MaybeUninit;
+use crate::mem::{self, MaybeUninit};
 use crate::ops::{Index, IndexMut};
 use crate::slice::{Iter, IterMut};
 
@@ -426,41 +427,13 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(y, [6, 9, 3, 3]);
     /// ```
     #[unstable(feature = "array_map", issue = "75243")]
-    pub fn map<F, U>(self, mut f: F) -> [U; N]
+    pub fn map<F, U>(self, f: F) -> [U; N]
     where
         F: FnMut(T) -> U,
     {
-        struct Guard<T, const N: usize> {
-            dst: *mut T,
-            initialized: usize,
-        }
-
-        impl<T, const N: usize> Drop for Guard<T, N> {
-            fn drop(&mut self) {
-                debug_assert!(self.initialized <= N);
-
-                let initialized_part =
-                    crate::ptr::slice_from_raw_parts_mut(self.dst, self.initialized);
-                // SAFETY: this raw slice will contain only initialized objects
-                // that's why, it is allowed to drop it.
-                unsafe {
-                    crate::ptr::drop_in_place(initialized_part);
-                }
-            }
-        }
-        let mut dst = MaybeUninit::uninit_array::<N>();
-        let mut guard: Guard<U, N> =
-            Guard { dst: MaybeUninit::slice_as_mut_ptr(&mut dst), initialized: 0 };
-        for (src, dst) in IntoIter::new(self).zip(&mut dst) {
-            dst.write(f(src));
-            guard.initialized += 1;
-        }
-        // FIXME: Convert to crate::mem::transmute once it works with generics.
-        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
-        crate::mem::forget(guard);
-        // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type.
-        unsafe { crate::mem::transmute_copy::<_, [U; N]>(&dst) }
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut IntoIter::new(self).map(f)) }
     }
 
     /// 'Zips up' two arrays into a single array of pairs.
@@ -481,15 +454,11 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_zip", issue = "80094")]
     pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
-        let mut dst = MaybeUninit::uninit_array::<N>();
-        for (i, (lhs, rhs)) in IntoIter::new(self).zip(IntoIter::new(rhs)).enumerate() {
-            dst[i].write((lhs, rhs));
-        }
-        // FIXME: Convert to crate::mem::transmute once it works with generics.
-        // unsafe { crate::mem::transmute::<[MaybeUninit<U>; N], [U; N]>(dst) }
-        // SAFETY: At this point we've properly initialized the whole array
-        // and we just need to cast it to the correct type.
-        unsafe { crate::mem::transmute_copy::<_, [(T, U); N]>(&dst) }
+        let mut iter = IntoIter::new(self).zip(IntoIter::new(rhs));
+
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut iter) }
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
@@ -535,16 +504,9 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn each_ref(&self) -> [&T; N] {
-        // Unlike in `map`, we don't need a guard here, as dropping a reference
-        // is a noop.
-        let mut out = MaybeUninit::uninit_array::<N>();
-        for (src, dst) in self.iter().zip(&mut out) {
-            dst.write(src);
-        }
-
-        // SAFETY: All elements of `dst` are properly initialized and
-        // `MaybeUninit<T>` has the same layout as `T`, so this cast is valid.
-        unsafe { (&mut out as *mut _ as *mut [&T; N]).read() }
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut self.iter()) }
     }
 
     /// Borrows each element mutably and returns an array of mutable references
@@ -564,15 +526,103 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_methods", issue = "76118")]
     pub fn each_mut(&mut self) -> [&mut T; N] {
-        // Unlike in `map`, we don't need a guard here, as dropping a reference
-        // is a noop.
-        let mut out = MaybeUninit::uninit_array::<N>();
-        for (src, dst) in self.iter_mut().zip(&mut out) {
-            dst.write(src);
-        }
-
-        // SAFETY: All elements of `dst` are properly initialized and
-        // `MaybeUninit<T>` has the same layout as `T`, so this cast is valid.
-        unsafe { (&mut out as *mut _ as *mut [&mut T; N]).read() }
+        // SAFETY: we know for certain that this iterator will yield exactly `N`
+        // items.
+        unsafe { collect_into_array_unchecked(&mut self.iter_mut()) }
     }
+}
+
+/// Pulls `N` items from `iter` and returns them as an array. If the iterator
+/// yields fewer than `N` items, this function exhibits undefined behavior.
+///
+/// See [`collect_into_array`] for more information.
+///
+///
+/// # Safety
+///
+/// It is up to the caller to guarantee that `iter` yields at least `N` items.
+/// Violating this condition causes undefined behavior.
+unsafe fn collect_into_array_unchecked<I, const N: usize>(iter: &mut I) -> [I::Item; N]
+where
+    // Note: `TrustedLen` here is somewhat of an experiment. This is just an
+    // internal function, so feel free to remove if this bound turns out to be a
+    // bad idea. In that case, remember to also remove the lower bound
+    // `debug_assert!` below!
+    I: Iterator + TrustedLen,
+{
+    debug_assert!(N <= iter.size_hint().1.unwrap_or(usize::MAX));
+    debug_assert!(N <= iter.size_hint().0);
+
+    match collect_into_array(iter) {
+        Some(array) => array,
+        // SAFETY: covered by the function contract.
+        None => unsafe { crate::hint::unreachable_unchecked() },
+    }
+}
+
+/// Pulls `N` items from `iter` and returns them as an array. If the iterator
+/// yields fewer than `N` items, `None` is returned and all already yielded
+/// items are dropped.
+///
+/// Since the iterator is passed as mutable reference and this function calls
+/// `next` at most `N` times, the iterator can still be used afterwards to
+/// retrieve the remaining items.
+///
+/// If `iter.next()` panicks, all items already yielded by the iterator are
+/// dropped.
+fn collect_into_array<I, const N: usize>(iter: &mut I) -> Option<[I::Item; N]>
+where
+    I: Iterator,
+{
+    if N == 0 {
+        // SAFETY: An empty array is always inhabited and has no validity invariants.
+        return unsafe { Some(mem::zeroed()) };
+    }
+
+    struct Guard<T, const N: usize> {
+        ptr: *mut T,
+        initialized: usize,
+    }
+
+    impl<T, const N: usize> Drop for Guard<T, N> {
+        fn drop(&mut self) {
+            debug_assert!(self.initialized <= N);
+
+            let initialized_part = crate::ptr::slice_from_raw_parts_mut(self.ptr, self.initialized);
+
+            // SAFETY: this raw slice will contain only initialized objects.
+            unsafe {
+                crate::ptr::drop_in_place(initialized_part);
+            }
+        }
+    }
+
+    let mut array = MaybeUninit::uninit_array::<N>();
+    let mut guard: Guard<_, N> =
+        Guard { ptr: MaybeUninit::slice_as_mut_ptr(&mut array), initialized: 0 };
+
+    while let Some(item) = iter.next() {
+        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
+        // loop and the loop is aborted once it reaches N (which is
+        // `array.len()`).
+        unsafe {
+            array.get_unchecked_mut(guard.initialized).write(item);
+        }
+        guard.initialized += 1;
+
+        // Check if the whole array was initialized.
+        if guard.initialized == N {
+            mem::forget(guard);
+
+            // SAFETY: the condition above asserts that all elements are
+            // initialized.
+            let out = unsafe { MaybeUninit::array_assume_init(array) };
+            return Some(out);
+        }
+    }
+
+    // This is only reached if the iterator is exhausted before
+    // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
+    // dropping all already initialized elements.
+    None
 }
