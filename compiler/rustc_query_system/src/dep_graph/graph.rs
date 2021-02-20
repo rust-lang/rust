@@ -43,15 +43,32 @@ impl std::convert::From<DepNodeIndex> for QueryInvocationId {
 }
 
 struct DepGraphData<K: DepKind> {
-    /// The new encoding of the dependency graph, optimized for red/green
-    /// tracking. The `current` field is the dependency graph of only the
-    /// current compilation session: We don't merge the previous dep-graph into
-    /// current one anymore, but we do reference shared data to save space.
-    current: CurrentDepGraph,
-
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
     previous: RwLock<SerializedDepGraph<K>>,
+
+    /// Used to trap when a specific edge is added to the graph.
+    /// This is used for debug purposes and is only active with `debug_assertions`.
+    #[allow(dead_code)]
+    forbidden_edge: Option<EdgeFilter>,
+
+    /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
+    /// their edges. This has the beneficial side-effect that multiple anonymous
+    /// nodes can be coalesced into one without changing the semantics of the
+    /// dependency graph. However, the merging of nodes can lead to a subtle
+    /// problem during red-green marking: The color of an anonymous node from
+    /// the current session might "shadow" the color of the node with the same
+    /// ID from the previous session. In order to side-step this problem, we make
+    /// sure that anonymous `NodeId`s allocated in different sessions don't overlap.
+    /// This is implemented by mixing a session-key into the ID fingerprint of
+    /// each anon node. The session-key is just a random number generated when
+    /// the `DepGraph` is created.
+    anon_id_seed: Fingerprint,
+
+    /// These are simple counters that are for profiling and
+    /// debugging and only active with `debug_assertions`.
+    total_read_count: AtomicU64,
+    total_duplicate_read_count: AtomicU64,
 
     /// A set of loaded diagnostics that is in the progress of being emitted.
     emitting_diagnostics: Lock<FxHashSet<DepNodeIndex>>,
@@ -80,13 +97,70 @@ impl<K: DepKind> DepGraph<K> {
         prev_graph: SerializedDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
     ) -> DepGraph<K> {
-        let prev_graph_node_count = prev_graph.serialized_node_count();
+        let _prev_graph_node_count = prev_graph.serialized_node_count();
+
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
+        let mut stable_hasher = StableHasher::new();
+        nanos.hash(&mut stable_hasher);
+
+        let forbidden_edge = if cfg!(debug_assertions) {
+            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+                Ok(s) => match EdgeFilter::new(&s) {
+                    Ok(f) => Some(f),
+                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                },
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+
+        /*
+        // Pre-allocate the dep node structures. We over-allocate a little so
+        // that we hopefully don't have to re-allocate during this compilation
+        // session. The over-allocation for new nodes is 2% plus a small
+        // constant to account for the fact that in very small crates 2% might
+        // not be enough. The allocation for red and green node data doesn't
+        // include a constant, as we don't want to allocate anything for these
+        // structures during full incremental builds, where they aren't used.
+        //
+        // These estimates are based on the distribution of node and edge counts
+        // seen in rustc-perf benchmarks, adjusted somewhat to account for the
+        // fact that these benchmarks aren't perfectly representative.
+        //
+        // FIXME Use a collection type that doesn't copy node and edge data and
+        // grow multiplicatively on reallocation. Without such a collection or
+        // solution having the same effect, there is a performance hazard here
+        // in both time and space, as growing these collections means copying a
+        // large amount of data and doubling already large buffer capacities. A
+        // solution for this will also mean that it's less important to get
+        // these estimates right.
+        let new_node_count_estimate = (prev_graph_node_count * 2) / 100 + 200;
+        let red_node_count_estimate = (prev_graph_node_count * 3) / 100;
+        let light_green_node_count_estimate = (prev_graph_node_count * 25) / 100;
+        let total_node_count_estimate = prev_graph_node_count + new_node_count_estimate;
+
+        let average_edges_per_node_estimate = 6;
+        let unshared_edge_count_estimate = average_edges_per_node_estimate
+            * (new_node_count_estimate + red_node_count_estimate + light_green_node_count_estimate);
+        */
+
+        // We store a large collection of these in `prev_index_to_index` during
+        // non-full incremental builds, and want to ensure that the element size
+        // doesn't inadvertently increase.
+        static_assert_size!(Option<DepNodeIndex>, 4);
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
-                current: CurrentDepGraph::new(prev_graph_node_count),
+                anon_id_seed: stable_hasher.finish(),
+                forbidden_edge,
+                total_read_count: AtomicU64::new(0),
+                total_duplicate_read_count: AtomicU64::new(0),
                 emitting_diagnostics: Default::default(),
                 previous: RwLock::new(prev_graph),
             })),
@@ -239,7 +313,7 @@ impl<K: DepKind> DepGraph<K> {
                 // Fingerprint::combine() is faster than sending Fingerprint
                 // through the StableHasher (at least as long as StableHasher
                 // is so slow).
-                hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
+                hash: data.anon_id_seed.combine(hasher.finish()).into(),
             };
 
             let mut previous = data.previous.write();
@@ -272,7 +346,7 @@ impl<K: DepKind> DepGraph<K> {
                     let mut task_deps = task_deps.lock();
                     let task_deps = &mut *task_deps;
                     if cfg!(debug_assertions) {
-                        data.current.total_read_count.fetch_add(1, Relaxed);
+                        data.total_read_count.fetch_add(1, Relaxed);
                     }
 
                     // As long as we only have a low number of reads we can avoid doing a hash
@@ -293,7 +367,7 @@ impl<K: DepKind> DepGraph<K> {
                         #[cfg(debug_assertions)]
                         {
                             if let Some(target) = task_deps.node {
-                                if let Some(ref forbidden_edge) = data.current.forbidden_edge {
+                                if let Some(ref forbidden_edge) = data.forbidden_edge {
                                     let src = self.dep_node_of(dep_node_index);
                                     if forbidden_edge.test(&src, &target) {
                                         panic!("forbidden edge {:?} -> {:?} created", src, target)
@@ -302,7 +376,7 @@ impl<K: DepKind> DepGraph<K> {
                             }
                         }
                     } else if cfg!(debug_assertions) {
-                        data.current.total_duplicate_read_count.fetch_add(1, Relaxed);
+                        data.total_duplicate_read_count.fetch_add(1, Relaxed);
                     }
                 }
             })
@@ -687,7 +761,6 @@ impl<K: DepKind> DepGraph<K> {
 
         let data = self.data.as_ref().unwrap();
         let prev = &data.previous.read();
-        let current = &data.current;
 
         let mut stats: FxHashMap<_, Stat<K>> = FxHashMap::with_hasher(Default::default());
 
@@ -721,8 +794,8 @@ impl<K: DepKind> DepGraph<K> {
         eprintln!("[incremental] Total Edge Count: {}", total_edge_count);
 
         if cfg!(debug_assertions) {
-            let total_edge_reads = current.total_read_count.load(Relaxed);
-            let total_duplicate_edge_reads = current.total_duplicate_read_count.load(Relaxed);
+            let total_edge_reads = data.total_read_count.load(Relaxed);
+            let total_duplicate_edge_reads = data.total_duplicate_read_count.load(Relaxed);
 
             eprintln!("[incremental] Total Edge Reads: {}", total_edge_reads);
             eprintln!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
@@ -817,125 +890,6 @@ pub struct WorkProduct {
 // Index type for `DepNodeData`'s edges.
 rustc_index::newtype_index! {
     struct EdgeIndex { .. }
-}
-
-/// `CurrentDepGraph` stores the dependency graph for the current session. It
-/// will be populated as we run queries or tasks. We never remove nodes from the
-/// graph: they are only added.
-///
-/// The nodes in it are identified by a `DepNodeIndex`. Internally, this maps to
-/// a `HybridIndex`, which identifies which collection in the `data` field
-/// contains a node's data. Which collection is used for a node depends on
-/// whether the node was present in the `SerializedDepGraph`, and if so, the color
-/// of the node. Each type of node can share more or less data with the previous
-/// graph. When possible, we can store just the index of the node in the
-/// previous graph, rather than duplicating its data in our own collections.
-/// This is important, because these graph structures are some of the largest in
-/// the compiler.
-///
-/// For the same reason, we also avoid storing `DepNode`s more than once as map
-/// keys. The `new_node_to_index` map only contains nodes not in the previous
-/// graph, and we map nodes in the previous graph to indices via a two-step
-/// mapping. `SerializedDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
-/// and the `prev_index_to_index` vector (which is more compact and faster than
-/// using a map) maps from `SerializedDepNodeIndex` to `DepNodeIndex`.
-///
-/// This struct uses three locks internally. The `data`, `new_node_to_index`,
-/// and `prev_index_to_index` fields are locked separately. Operations that take
-/// a `DepNodeIndex` typically just access the `data` field.
-///
-/// We only need to manipulate at most two locks simultaneously:
-/// `new_node_to_index` and `data`, or `prev_index_to_index` and `data`. When
-/// manipulating both, we acquire `new_node_to_index` or `prev_index_to_index`
-/// first, and `data` second.
-pub(super) struct CurrentDepGraph {
-    /// Used to trap when a specific edge is added to the graph.
-    /// This is used for debug purposes and is only active with `debug_assertions`.
-    #[allow(dead_code)]
-    forbidden_edge: Option<EdgeFilter>,
-
-    /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
-    /// their edges. This has the beneficial side-effect that multiple anonymous
-    /// nodes can be coalesced into one without changing the semantics of the
-    /// dependency graph. However, the merging of nodes can lead to a subtle
-    /// problem during red-green marking: The color of an anonymous node from
-    /// the current session might "shadow" the color of the node with the same
-    /// ID from the previous session. In order to side-step this problem, we make
-    /// sure that anonymous `NodeId`s allocated in different sessions don't overlap.
-    /// This is implemented by mixing a session-key into the ID fingerprint of
-    /// each anon node. The session-key is just a random number generated when
-    /// the `DepGraph` is created.
-    anon_id_seed: Fingerprint,
-
-    /// These are simple counters that are for profiling and
-    /// debugging and only active with `debug_assertions`.
-    total_read_count: AtomicU64,
-    total_duplicate_read_count: AtomicU64,
-}
-
-impl CurrentDepGraph {
-    fn new(_prev_graph_node_count: usize) -> CurrentDepGraph {
-        use std::time::{SystemTime, UNIX_EPOCH};
-
-        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        let nanos = duration.as_secs() * 1_000_000_000 + duration.subsec_nanos() as u64;
-        let mut stable_hasher = StableHasher::new();
-        nanos.hash(&mut stable_hasher);
-
-        let forbidden_edge = if cfg!(debug_assertions) {
-            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-                Ok(s) => match EdgeFilter::new(&s) {
-                    Ok(f) => Some(f),
-                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-                },
-                Err(_) => None,
-            }
-        } else {
-            None
-        };
-
-        /*
-        // Pre-allocate the dep node structures. We over-allocate a little so
-        // that we hopefully don't have to re-allocate during this compilation
-        // session. The over-allocation for new nodes is 2% plus a small
-        // constant to account for the fact that in very small crates 2% might
-        // not be enough. The allocation for red and green node data doesn't
-        // include a constant, as we don't want to allocate anything for these
-        // structures during full incremental builds, where they aren't used.
-        //
-        // These estimates are based on the distribution of node and edge counts
-        // seen in rustc-perf benchmarks, adjusted somewhat to account for the
-        // fact that these benchmarks aren't perfectly representative.
-        //
-        // FIXME Use a collection type that doesn't copy node and edge data and
-        // grow multiplicatively on reallocation. Without such a collection or
-        // solution having the same effect, there is a performance hazard here
-        // in both time and space, as growing these collections means copying a
-        // large amount of data and doubling already large buffer capacities. A
-        // solution for this will also mean that it's less important to get
-        // these estimates right.
-        let new_node_count_estimate = (prev_graph_node_count * 2) / 100 + 200;
-        let red_node_count_estimate = (prev_graph_node_count * 3) / 100;
-        let light_green_node_count_estimate = (prev_graph_node_count * 25) / 100;
-        let total_node_count_estimate = prev_graph_node_count + new_node_count_estimate;
-
-        let average_edges_per_node_estimate = 6;
-        let unshared_edge_count_estimate = average_edges_per_node_estimate
-            * (new_node_count_estimate + red_node_count_estimate + light_green_node_count_estimate);
-        */
-
-        // We store a large collection of these in `prev_index_to_index` during
-        // non-full incremental builds, and want to ensure that the element size
-        // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
-
-        CurrentDepGraph {
-            anon_id_seed: stable_hasher.finish(),
-            forbidden_edge,
-            total_read_count: AtomicU64::new(0),
-            total_duplicate_read_count: AtomicU64::new(0),
-        }
-    }
 }
 
 /// The capacity of the `reads` field `SmallVec`
