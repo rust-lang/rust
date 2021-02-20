@@ -1,4 +1,4 @@
-use ast::edit::IndentLevel;
+use ast::{edit::IndentLevel, VisibilityOwner};
 use ide_db::base_db::AnchoredPathBuf;
 use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
@@ -36,6 +36,8 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
 
     let module_def = ctx.sema.to_def(&module_ast)?;
     let parent_module = module_def.parent(ctx.db())?;
+    let vis_str =
+        if let Some(v) = module_ast.visibility() { v.to_string() + " " } else { "".to_string() };
 
     acc.add(
         AssistId("move_module_to_file", AssistKind::RefactorExtract),
@@ -59,7 +61,10 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
                 items
             };
 
-            builder.replace(module_ast.syntax().text_range(), format!("mod {};", module_name));
+            builder.replace(
+                module_ast.syntax().text_range(),
+                format!("{}mod {};", vis_str, module_name),
+            );
 
             let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
             builder.create_file(dst, contents);
@@ -133,6 +138,42 @@ mod inner;
 fn g() {}
 //- /submodule/inner.rs
 fn f() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_public() {
+        check_assist(
+            move_module_to_file,
+            r#"
+pub mod $0tests {
+    #[test] fn t() {}
+}
+"#,
+            r#"
+//- /main.rs
+pub mod tests;
+//- /tests.rs
+#[test] fn t() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_public_crate() {
+        check_assist(
+            move_module_to_file,
+            r#"
+pub(crate) mod $0tests {
+    #[test] fn t() {}
+}
+"#,
+            r#"
+//- /main.rs
+pub(crate) mod tests;
+//- /tests.rs
+#[test] fn t() {}
 "#,
         );
     }
