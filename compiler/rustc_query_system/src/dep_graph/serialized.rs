@@ -509,70 +509,52 @@ impl<K: DepKind> CurrentDepGraph<K> {
 impl<E: Encoder, K: DepKind + Encodable<E>> Encodable<E> for CurrentDepGraph<K> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         let remap = self.compression_map();
-        let node_count = remap.iter().flatten().count();
-
-        // Back-copy the nodes and fingerprints.
-        let (nodes, fingerprints) = {
-            let mut nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>> =
-                IndexVec::with_capacity(node_count);
-            let mut fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint> =
-                IndexVec::with_capacity(node_count);
-
-            for index in self.live_serialized_indices() {
-                nodes.push(self.serialized.nodes[index]);
-                fingerprints.push(self.serialized.fingerprints[index]);
-            }
-            nodes.extend(self.nodes.iter().copied());
-            fingerprints.extend(self.fingerprints.iter().copied());
-
-            (nodes, fingerprints)
-        };
-
-        // Reconstruct the edges vector since it may be out of order.
-        // We only store the start indices, since the end is the next's start.
-        let (new_indices, new_edges) = {
-            let mut new_indices: IndexVec<SerializedDepNodeIndex, u32> =
-                IndexVec::with_capacity(node_count);
-            let mut new_edges: Vec<SerializedDepNodeIndex> = Vec::with_capacity(
-                self.serialized.edge_list_data.len() + self.edge_list_data.len(),
-            );
-
-            for index in self.live_serialized_indices() {
-                new_indices.push(new_edges.len().try_into().unwrap());
-                let edges = self.serialized_edges(index);
-                new_edges.extend(edges.iter().map(|i| {
-                    remap[*i]
-                        .unwrap_or_else(|| panic!("Unknown remap for {:?} while {:?}", *i, index))
-                }));
-            }
-            for index in self.nodes.indices() {
-                new_indices.push(new_edges.len().try_into().unwrap());
-                new_edges.extend(self.new_edges(index).iter().map(|i| {
-                    remap[*i]
-                        .unwrap_or_else(|| panic!("Unknown remap for {:?} while {:?}", *i, index))
-                }));
-            }
-
-            (new_indices, new_edges)
-        };
-
-        debug_assert_eq!(node_count, nodes.len());
-        debug_assert_eq!(node_count, fingerprints.len());
-        debug_assert_eq!(node_count, new_indices.len());
-
-        let mut index = FxHashMap::default();
-        for (idx, &dep_node) in nodes.iter_enumerated() {
-            debug!("ENCODE index={:?} node={:?}", idx, dep_node);
-            let _o = index.insert(dep_node, idx);
-            debug_assert_eq!(_o, None);
-        }
-        let _ = index;
+        let live_indices = || remap.iter_enumerated().filter_map(|(s, &n)| Some((s, n?)));
+        let node_count = live_indices().count();
+        let edge_count = self.edge_count();
 
         e.emit_struct("SerializedDepGraph", 4, |e| {
-            e.emit_struct_field("nodes", 0, |e| nodes.encode(e))?;
-            e.emit_struct_field("fingerprints", 1, |e| fingerprints.encode(e))?;
-            e.emit_struct_field("edge_list_indices", 2, |e| new_indices.encode(e))?;
-            e.emit_struct_field("edge_list_data", 3, |e| new_edges.encode(e))?;
+            e.emit_struct_field("nodes", 0, |e| {
+                e.emit_seq(node_count, |e| {
+                    for (index, new_index) in live_indices() {
+                        let node = self.dep_node_of(index);
+                        e.emit_seq_elt(new_index.index(), |e| node.encode(e))?;
+                    }
+                    Ok(())
+                })
+            })?;
+            e.emit_struct_field("fingerprints", 1, |e| {
+                e.emit_seq(node_count, |e| {
+                    for (index, new_index) in live_indices() {
+                        let node = self.fingerprint_of(index);
+                        e.emit_seq_elt(new_index.index(), |e| node.encode(e))?;
+                    }
+                    Ok(())
+                })
+            })?;
+
+            // Reconstruct the edges vector since it may be out of order.
+            // We only store the start indices, since the end is the next's start.
+            let mut new_indices: IndexVec<SerializedDepNodeIndex, u32> =
+                IndexVec::from_elem_n(0u32, node_count);
+            e.emit_struct_field("edge_list_data", 2, |e| {
+                e.emit_seq(edge_count, |e| {
+                    let mut pos: u32 = 0;
+                    for (new_index, edges) in self.edge_map().enumerate() {
+                        // Reconstruct the edges vector since it may be out of order.
+                        // We only store the end indices, since the start can be reconstructed.
+                        for &edge in edges {
+                            let edge = remap[edge].unwrap();
+                            e.emit_seq_elt(pos as usize, |e| edge.encode(e))?;
+                            pos += 1;
+                        }
+                        new_indices[SerializedDepNodeIndex::new(new_index)] = pos;
+                    }
+                    debug_assert_eq!(pos as usize, edge_count);
+                    Ok(())
+                })
+            })?;
+            e.emit_struct_field("edge_list_ends", 3, |e| new_indices.encode(e))?;
             Ok(())
         })
     }
@@ -602,19 +584,48 @@ impl<D: Decoder, K: DepKind + Decodable<D>> Decodable<D> for SerializedDepGraph<
     fn decode(d: &mut D) -> Result<SerializedDepGraph<K>, D::Error> {
         d.read_struct("SerializedDepGraph", 4, |d| {
             let nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>> =
-                d.read_struct_field("nodes", 0, Decodable::decode)?;
-            let fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint> =
-                d.read_struct_field("fingerprints", 1, Decodable::decode)?;
-            let mut edge_list_indices: IndexVec<SerializedDepNodeIndex, u32> =
-                d.read_struct_field("edge_list_indices", 2, Decodable::decode)?;
-            let edge_list_data: Vec<DepNodeIndex> =
-                d.read_struct_field("edge_list_data", 3, Decodable::decode)?;
-
-            edge_list_indices.push(edge_list_data.len().try_into().unwrap());
-            let edge_list_indices = IndexVec::from_fn_n(
-                |i| (ColorAndOffset::unknown(edge_list_indices[i]), edge_list_indices[i + 1]),
-                edge_list_indices.len() - 1,
-            );
+                d.read_struct_field("nodes", 0, |d| {
+                    d.read_seq(|d, len| {
+                        let mut nodes = IndexVec::with_capacity(len);
+                        for i in 0..len {
+                            let node = d.read_seq_elt(i, Decodable::decode)?;
+                            nodes.push(node);
+                        }
+                        Ok(nodes)
+                    })
+                })?;
+            let fingerprints = d.read_struct_field("fingerprints", 1, |d| {
+                d.read_seq(|d, len| {
+                    let mut fingerprints = IndexVec::with_capacity(len);
+                    for i in 0..len {
+                        let fingerprint = d.read_seq_elt(i, Decodable::decode)?;
+                        fingerprints.push(fingerprint);
+                    }
+                    Ok(fingerprints)
+                })
+            })?;
+            let edge_list_data = d.read_struct_field("edge_list_data", 2, |d| {
+                d.read_seq(|d, len| {
+                    let mut edges = Vec::with_capacity(len);
+                    for i in 0..len {
+                        let edge = d.read_seq_elt(i, Decodable::decode)?;
+                        edges.push(edge);
+                    }
+                    Ok(edges)
+                })
+            })?;
+            let edge_list_indices = d.read_struct_field("edge_list_ends", 3, |d| {
+                d.read_seq(|d, len| {
+                    let mut indices = IndexVec::with_capacity(len);
+                    let mut start: u32 = 0;
+                    for i in 0..len {
+                        let end: u32 = d.read_seq_elt(i, Decodable::decode)?;
+                        indices.push((ColorAndOffset::unknown(start), end));
+                        start = end;
+                    }
+                    Ok(indices)
+                })
+            })?;
 
             Ok(SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data })
         })
