@@ -10,6 +10,7 @@ doctest = false
 [dependencies]
 libc = "0.2"
 tracing = "0.1"
+rustc-rayon-core = "0.3.0"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
@@ -30,6 +31,7 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_codegen_llvm = { path = "../rustc_codegen_llvm", optional = true }
 rustc_hir = { path = "../rustc_hir" }
+rustc_index = { path = "../rustc_index" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_mir = { path = "../rustc_mir" }
 rustc_mir_build = { path = "../rustc_mir_build" }
@@ -39,6 +41,7 @@ rustc_lint = { path = "../rustc_lint" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
 rustc_privacy = { path = "../rustc_privacy" }
+rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }

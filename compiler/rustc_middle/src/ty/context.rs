@@ -14,7 +14,7 @@ use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::traits;
-use crate::ty::query::{self, TyCtxtAt};
+use crate::ty::query::{self, OnDiskCache, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
@@ -962,7 +962,13 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
     pub(crate) definitions: &'tcx Definitions,
 
-    pub queries: query::Queries<'tcx>,
+    /// This provides access to the incremental compilation on-disk cache for query results.
+    /// Do not access this directly. It is only meant to be used by
+    /// `DepGraph::try_mark_green()` and the query infrastructure.
+    /// This is `None` if we are not incremental compilation mode
+    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+
+    pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
 
     maybe_unused_trait_imports: FxHashSet<LocalDefId>,
@@ -1103,14 +1109,13 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_global_ctxt(
         s: &'tcx Session,
         lint_store: Lrc<dyn Any + sync::Send + sync::Sync>,
-        local_providers: ty::query::Providers,
-        extern_providers: ty::query::Providers,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         definitions: &'tcx Definitions,
         dep_graph: DepGraph,
-        on_disk_query_result_cache: Option<query::OnDiskCache<'tcx>>,
+        on_disk_cache: Option<query::OnDiskCache<'tcx>>,
+        queries: &'tcx dyn query::QueryEngine<'tcx>,
         crate_name: &str,
         output_filenames: &OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1122,10 +1127,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
         let cstore = resolutions.cstore;
-        let crates = cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
-        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
-        providers[LOCAL_CRATE] = local_providers;
 
         let mut trait_map: FxHashMap<_, FxHashMap<_, _>> = FxHashMap::default();
         for (hir_id, v) in krate.trait_map.iter() {
@@ -1154,7 +1155,8 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_prelude: resolutions.extern_prelude,
             untracked_crate: krate,
             definitions,
-            queries: query::Queries::new(providers, extern_providers, on_disk_query_result_cache),
+            on_disk_cache,
+            queries,
             query_caches: query::QueryCaches::default(),
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
@@ -1320,7 +1322,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
-        self.queries.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
+        self.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also

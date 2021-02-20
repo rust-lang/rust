@@ -97,7 +97,7 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::Cache(args, block))
         } else if modifier == "load_cached" {
             // Parse a load_cached modifier like:
-            // `load_cached(tcx, id) { tcx.queries.on_disk_cache.try_load_query_result(tcx, id) }`
+            // `load_cached(tcx, id) { tcx.on_disk_cache.try_load_query_result(tcx, id) }`
             let args;
             parenthesized!(args in input);
             let tcx = args.parse()?;
@@ -344,7 +344,6 @@ fn add_query_description_impl(
     impls: &mut proc_macro2::TokenStream,
 ) {
     let name = &query.name;
-    let arg = &query.arg;
     let key = &query.key.0;
 
     // Find out if we should cache the query on disk
@@ -354,7 +353,7 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    #tcx: TyCtxt<'tcx>,
+                    #tcx: QueryCtxt<'tcx>,
                     #id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
                     #block
@@ -365,10 +364,10 @@ fn add_query_description_impl(
             quote! {
                 #[inline]
                 fn try_load_from_disk(
-                    tcx: TyCtxt<'tcx>,
+                    tcx: QueryCtxt<'tcx>,
                     id: SerializedDepNodeIndex
                 ) -> Option<Self::Value> {
-                    tcx.queries.on_disk_cache.as_ref().and_then(|c| c.try_load_query_result(tcx, id))
+                    tcx.on_disk_cache.as_ref()?.try_load_query_result(*tcx, id)
                 }
             }
         };
@@ -393,7 +392,7 @@ fn add_query_description_impl(
             #[inline]
             #[allow(unused_variables, unused_braces)]
             fn cache_on_disk(
-                #tcx: TyCtxt<'tcx>,
+                #tcx: QueryCtxt<'tcx>,
                 #key: &Self::Key,
                 #value: Option<&Self::Value>
             ) -> bool {
@@ -414,16 +413,14 @@ fn add_query_description_impl(
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(
-            #tcx: TyCtxt<'tcx>,
-            #key: #arg,
-        ) -> String {
-            ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc))
+        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
+            let (#tcx, #key) = (*tcx, key);
+            ::rustc_middle::ty::print::with_no_trimmed_paths(|| format!(#desc).into())
         }
     };
 
     impls.extend(quote! {
-        impl<'tcx> QueryDescription<TyCtxt<'tcx>> for queries::#name<'tcx> {
+        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::#name<'tcx> {
             #desc
             #cache
         }
@@ -498,6 +495,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     TokenStream::from(quote! {
+        #[macro_export]
         macro_rules! rustc_query_append {
             ([$($macro:tt)*][$($other:tt)*]) => {
                 $($macro)* {
@@ -517,12 +515,15 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 );
             }
         }
+        #[macro_export]
         macro_rules! rustc_cached_queries {
             ($($macro:tt)*) => {
                 $($macro)*(#cached_queries);
             }
         }
-
-        #query_description_stream
+        #[macro_export]
+        macro_rules! rustc_query_description {
+            () => { #query_description_stream }
+        }
     })
 }

@@ -1,7 +1,7 @@
-use crate::ty::query::queries;
-use crate::ty::TyCtxt;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_query_system::query::{QueryAccessors, QueryCache, QueryCacheStore};
+use rustc_middle::ty::query::query_storage;
+use rustc_middle::ty::TyCtxt;
+use rustc_query_system::query::{QueryCache, QueryCacheStore};
 
 use std::any::type_name;
 use std::mem;
@@ -125,7 +125,7 @@ macro_rules! print_stats {
 
             $(
                 queries.push(stats::<
-                    <queries::$name<'_> as QueryAccessors<TyCtxt<'_>>>::Cache,
+                    query_storage::$name<'_>,
                 >(
                     stringify!($name),
                     &tcx.query_caches.$name,

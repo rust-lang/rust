@@ -1,27 +1,3 @@
-use crate::dep_graph::SerializedDepNodeIndex;
-use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
-};
-use crate::ty::query::queries;
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_query_system::query::QueryDescription;
-
-use rustc_span::symbol::Symbol;
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
-
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -125,11 +101,6 @@ rustc_queries! {
         desc { |tcx| "computing generics of `{}`", tcx.def_path_str(key) }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { key.is_local() }
-        load_cached(tcx, id) {
-            let generics: Option<ty::Generics> = tcx.queries.on_disk_cache.as_ref()
-                                                    .and_then(|c| c.try_load_query_result(tcx, id));
-            generics
-        }
     }
 
     /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
@@ -702,8 +673,8 @@ rustc_queries! {
         cache_on_disk_if { true }
         load_cached(tcx, id) {
             let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                .queries.on_disk_cache.as_ref()
-                .and_then(|c| c.try_load_query_result(tcx, id));
+                .on_disk_cache.as_ref()
+                .and_then(|c| c.try_load_query_result(*tcx, id));
 
             typeck_results.map(|x| &*tcx.arena.alloc(x))
         }

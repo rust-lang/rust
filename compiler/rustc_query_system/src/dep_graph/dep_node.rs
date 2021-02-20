@@ -79,7 +79,7 @@ impl<K: DepKind> DepNode<K> {
 
     pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
     where
-        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Ctxt: super::DepContext<DepKind = K>,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);

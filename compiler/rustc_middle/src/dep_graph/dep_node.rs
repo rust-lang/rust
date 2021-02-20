@@ -62,7 +62,6 @@ use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use rustc_hir::HirId;
 use rustc_span::symbol::Symbol;
-use rustc_span::DUMMY_SP;
 use std::hash::Hash;
 
 pub use rustc_query_system::dep_graph::{DepContext, DepNodeParams};
@@ -91,53 +90,6 @@ pub struct DepKindStruct {
     // FIXME: Make this a simple boolean once DepNodeParams::can_reconstruct_query_key
     // can be made a specialized associated const.
     can_reconstruct_query_key: fn() -> bool,
-
-    /// The red/green evaluation system will try to mark a specific DepNode in the
-    /// dependency graph as green by recursively trying to mark the dependencies of
-    /// that `DepNode` as green. While doing so, it will sometimes encounter a `DepNode`
-    /// where we don't know if it is red or green and we therefore actually have
-    /// to recompute its value in order to find out. Since the only piece of
-    /// information that we have at that point is the `DepNode` we are trying to
-    /// re-evaluate, we need some way to re-run a query from just that. This is what
-    /// `force_from_dep_node()` implements.
-    ///
-    /// In the general case, a `DepNode` consists of a `DepKind` and an opaque
-    /// GUID/fingerprint that will uniquely identify the node. This GUID/fingerprint
-    /// is usually constructed by computing a stable hash of the query-key that the
-    /// `DepNode` corresponds to. Consequently, it is not in general possible to go
-    /// back from hash to query-key (since hash functions are not reversible). For
-    /// this reason `force_from_dep_node()` is expected to fail from time to time
-    /// because we just cannot find out, from the `DepNode` alone, what the
-    /// corresponding query-key is and therefore cannot re-run the query.
-    ///
-    /// The system deals with this case letting `try_mark_green` fail which forces
-    /// the root query to be re-evaluated.
-    ///
-    /// Now, if `force_from_dep_node()` would always fail, it would be pretty useless.
-    /// Fortunately, we can use some contextual information that will allow us to
-    /// reconstruct query-keys for certain kinds of `DepNode`s. In particular, we
-    /// enforce by construction that the GUID/fingerprint of certain `DepNode`s is a
-    /// valid `DefPathHash`. Since we also always build a huge table that maps every
-    /// `DefPathHash` in the current codebase to the corresponding `DefId`, we have
-    /// everything we need to re-run the query.
-    ///
-    /// Take the `mir_promoted` query as an example. Like many other queries, it
-    /// just has a single parameter: the `DefId` of the item it will compute the
-    /// validated MIR for. Now, when we call `force_from_dep_node()` on a `DepNode`
-    /// with kind `MirValidated`, we know that the GUID/fingerprint of the `DepNode`
-    /// is actually a `DefPathHash`, and can therefore just look up the corresponding
-    /// `DefId` in `tcx.def_path_hash_to_def_id`.
-    ///
-    /// When you implement a new query, it will likely have a corresponding new
-    /// `DepKind`, and you'll have to support it here in `force_from_dep_node()`. As
-    /// a rule of thumb, if your query takes a `DefId` or `LocalDefId` as sole parameter,
-    /// then `force_from_dep_node()` should not fail for it. Otherwise, you can just
-    /// add it to the "We don't have enough information to reconstruct..." group in
-    /// the match below.
-    pub(super) force_from_dep_node: fn(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool,
-
-    /// Invoke a query to put the on-disk cached value in memory.
-    pub(super) try_load_from_on_disk_cache: fn(TyCtxt<'_>, &DepNode),
 }
 
 impl std::ops::Deref for DepKind {
@@ -196,8 +148,7 @@ macro_rules! contains_eval_always_attr {
 #[allow(non_upper_case_globals)]
 pub mod dep_kind {
     use super::*;
-    use crate::ty::query::{queries, query_keys};
-    use rustc_query_system::query::{force_query, QueryDescription};
+    use crate::ty::query::query_keys;
 
     // We use this for most things when incr. comp. is turned off.
     pub const Null: DepKindStruct = DepKindStruct {
@@ -206,8 +157,6 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || true,
-        force_from_dep_node: |_, dep_node| bug!("force_from_dep_node: encountered {:?}", dep_node),
-        try_load_from_on_disk_cache: |_, _| {},
     };
 
     pub const TraitSelect: DepKindStruct = DepKindStruct {
@@ -216,8 +165,6 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || true,
-        force_from_dep_node: |_, _| false,
-        try_load_from_on_disk_cache: |_, _| {},
     };
 
     pub const CompileCodegenUnit: DepKindStruct = DepKindStruct {
@@ -226,8 +173,6 @@ pub mod dep_kind {
         is_eval_always: false,
 
         can_reconstruct_query_key: || false,
-        force_from_dep_node: |_, _| false,
-        try_load_from_on_disk_cache: |_, _| {},
     };
 
     macro_rules! define_query_dep_kinds {
@@ -246,59 +191,11 @@ pub mod dep_kind {
                         ::can_reconstruct_query_key()
                 }
 
-                fn recover<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> Option<query_keys::$variant<'tcx>> {
-                    <query_keys::$variant<'_> as DepNodeParams<TyCtxt<'_>>>::recover(tcx, dep_node)
-                }
-
-                fn force_from_dep_node(tcx: TyCtxt<'_>, dep_node: &DepNode) -> bool {
-                    if is_anon {
-                        return false;
-                    }
-
-                    if !can_reconstruct_query_key() {
-                        return false;
-                    }
-
-                    if let Some(key) = recover(tcx, dep_node) {
-                        force_query::<queries::$variant<'_>, _>(
-                            tcx,
-                            key,
-                            DUMMY_SP,
-                            *dep_node
-                        );
-                        return true;
-                    }
-
-                    false
-                }
-
-                fn try_load_from_on_disk_cache(tcx: TyCtxt<'_>, dep_node: &DepNode) {
-                    if is_anon {
-                        return
-                    }
-
-                    if !can_reconstruct_query_key() {
-                        return
-                    }
-
-                    debug_assert!(tcx.dep_graph
-                                     .node_color(dep_node)
-                                     .map(|c| c.is_green())
-                                     .unwrap_or(false));
-
-                    let key = recover(tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
-                    if queries::$variant::cache_on_disk(tcx, &key, None) {
-                        let _ = tcx.$variant(key);
-                    }
-                }
-
                 DepKindStruct {
                     has_params,
                     is_anon,
                     is_eval_always,
                     can_reconstruct_query_key,
-                    force_from_dep_node,
-                    try_load_from_on_disk_cache,
                 }
             };)*
         );
@@ -314,7 +211,12 @@ macro_rules! define_dep_nodes {
         $variant:ident $(( $tuple_arg_ty:ty $(,)? ))*
       ,)*
     ) => (
-        static DEP_KINDS: &[DepKindStruct] = &[ $(dep_kind::$variant),* ];
+        #[macro_export]
+        macro_rules! make_dep_kind_array {
+            ($mod:ident) => {[ $(($mod::$variant),)* ]};
+        }
+
+        static DEP_KINDS: &[DepKindStruct] = &make_dep_kind_array!(dep_kind);
 
         /// This enum serves as an index into the `DEP_KINDS` array.
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -414,10 +316,7 @@ impl DepNodeExt for DepNode {
     /// has been removed.
     fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if self.kind.can_reconstruct_query_key() {
-            tcx.queries
-                .on_disk_cache
-                .as_ref()?
-                .def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
+            tcx.on_disk_cache.as_ref()?.def_path_hash_to_def_id(tcx, DefPathHash(self.hash.into()))
         } else {
             None
         }
@@ -472,7 +371,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for DefId {
         // we will use the old DefIndex as an initial guess for
         // a lookup into the crate metadata.
         if !self.is_local() {
-            if let Some(cache) = &tcx.queries.on_disk_cache {
+            if let Some(cache) = &tcx.on_disk_cache {
                 cache.store_foreign_def_id_hash(*self, hash);
             }
         }
