@@ -48,13 +48,14 @@ pub struct Command {
 pub enum CommandKind {
     Has,
     Count,
+    Is,
 }
 
 impl CommandKind {
     fn validate(&self, args: &[String], command_num: usize, lineno: usize) -> bool {
         let count = match self {
             CommandKind::Has => (1..=3).contains(&args.len()),
-            CommandKind::Count => 3 == args.len(),
+            CommandKind::Count | CommandKind::Is => 3 == args.len(),
         };
 
         if !count {
@@ -83,6 +84,7 @@ impl fmt::Display for CommandKind {
         let text = match self {
             CommandKind::Has => "has",
             CommandKind::Count => "count",
+            CommandKind::Is => "is",
         };
         write!(f, "{}", text)
     }
@@ -127,6 +129,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
         let cmd = match cmd {
             "has" => CommandKind::Has,
             "count" => CommandKind::Count,
+            "is" => CommandKind::Is,
             _ => {
                 print_err(&format!("Unrecognized command name `@{}`", cmd), lineno);
                 errors = true;
@@ -180,6 +183,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
 /// Performs the actual work of ensuring a command passes. Generally assumes the command
 /// is syntactically valid.
 fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
+    // FIXME: Be more granular about why, (eg syntax error, count not equal)
     let result = match command.kind {
         CommandKind::Has => {
             match command.args.len() {
@@ -217,6 +221,18 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let val = cache.get_value(&command.args[0])?;
             match select(&val, &command.args[1]) {
                 Ok(results) => results.len() == expected,
+                Err(_) => false,
+            }
+        }
+        CommandKind::Is => {
+            // @has <path> <jsonpath> <value> = check *exactly one* item matched by path, and it equals value
+            assert_eq!(command.args.len(), 3);
+            let val = cache.get_value(&command.args[0])?;
+            match select(&val, &command.args[1]) {
+                Ok(results) => {
+                    let pat: Value = serde_json::from_str(&command.args[2]).unwrap();
+                    results.len() == 1 && *results[0] == pat
+                }
                 Err(_) => false,
             }
         }
