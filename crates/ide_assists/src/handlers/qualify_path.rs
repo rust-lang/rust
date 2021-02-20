@@ -45,7 +45,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) => {
-            if candidate.qualifier.is_some() {
+            if candidate.unresolved_qualifier.is_some() {
                 cov_mark::hit!(qualify_path_qualifier_start);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
@@ -192,7 +192,7 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
 fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
     match candidate {
         ImportCandidate::Path(candidate) => {
-            if candidate.qualifier.is_some() {
+            if candidate.unresolved_qualifier.is_some() {
                 format!("Qualify with `{}`", &import)
             } else {
                 format!("Qualify as `{}`", &import)

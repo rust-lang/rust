@@ -221,41 +221,6 @@ mod tests {
     }
 
     #[test]
-    fn auto_imports_are_merged() {
-        check_assist(
-            auto_import,
-            r"
-            use PubMod::PubStruct1;
-
-            struct Test {
-                test: Pub$0Struct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
-            }
-            ",
-            r"
-            use PubMod::{PubStruct1, PubStruct2};
-
-            struct Test {
-                test: PubStruct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
-            }
-            ",
-        );
-    }
-
-    #[test]
     fn applicable_when_found_multiple_imports() {
         check_assist(
             auto_import,

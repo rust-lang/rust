@@ -168,15 +168,15 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
             ctx.path_qual.clone(),
             fuzzy_name,
             &ctx.sema,
-        );
+        )?;
 
-        if matches!(assets_for_path.as_ref()?.import_candidate(), ImportCandidate::Path(_))
+        if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
             && fuzzy_name_length < 2
         {
             cov_mark::hit!(ignore_short_input_for_path);
             None
         } else {
-            assets_for_path
+            Some(assets_for_path)
         }
     }
 }
@@ -771,6 +771,37 @@ use crate::foo::bar;
 fn main() {
     Item
 }"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_qualifiers() {
+        check_edit(
+            "Item",
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+fn main() {
+    bar::Ite$0
+}
+"#,
+            r#"
+use foo::bar;
+
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+fn main() {
+    bar::Item
+}
+"#,
         );
     }
 }
