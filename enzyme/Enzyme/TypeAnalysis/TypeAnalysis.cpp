@@ -2320,7 +2320,21 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
   }
 
-  if (Function *ci = call.getCalledFunction()) {
+  Function *ci = call.getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+  if (auto castinst = dyn_cast<ConstantExpr>(call.getCalledOperand()))
+#else
+  if (auto castinst = dyn_cast<ConstantExpr>(call.getCalledValue()))
+#endif
+  {
+    if (castinst->isCast())
+      if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+        ci = fn;
+      }
+  }
+
+  if (ci) {
 
 #define CONSIDER(fn)                                                           \
   if (ci->getName() == #fn) {                                                  \
