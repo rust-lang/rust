@@ -3417,7 +3417,7 @@ impl<T> Foo<T$0> {}
                 ```
                 "#]],
         );
-        // lifetimes aren't being substituted yet
+        // lifetimes bounds arent being tracked yet
         check(
             r#"
 struct Foo<T>(T);
@@ -3427,7 +3427,7 @@ impl<T: 'static> Foo<T$0> {}
                 *T*
 
                 ```rust
-                T: {error}
+                T
                 ```
                 "#]],
         );

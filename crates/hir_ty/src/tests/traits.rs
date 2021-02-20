@@ -1409,10 +1409,10 @@ fn weird_bounds() {
         fn test(a: impl Trait + 'lifetime, b: impl 'lifetime, c: impl (Trait), d: impl ('lifetime), e: impl ?Sized, f: impl Trait + ?Sized) {}
         "#,
         expect![[r#"
-            23..24 'a': impl Trait + {error}
-            50..51 'b': impl {error}
+            23..24 'a': impl Trait
+            50..51 'b': impl 
             69..70 'c': impl Trait
-            86..87 'd': impl {error}
+            86..87 'd': impl 
             107..108 'e': impl {error}
             123..124 'f': impl Trait + {error}
             147..149 '{}': ()

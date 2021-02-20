@@ -1114,14 +1114,14 @@ fn method_on_dyn_impl() {
 trait Foo {}
 
 impl Foo for u32 {}
-impl dyn Foo {
+impl dyn Foo + '_ {
     pub fn dyn_foo(&self) -> u32 {
         0
     }
 }
 
 fn main() {
-    let f = &42u32 as &dyn Foo<u32>;
+    let f = &42u32 as &dyn Foo;
     f.dyn_foo();
   // ^u32
 }

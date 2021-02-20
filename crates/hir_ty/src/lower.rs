@@ -655,17 +655,6 @@ impl TraitRef {
     ) -> Substs {
         substs_from_path_segment(ctx, segment, Some(resolved.into()), false)
     }
-
-    pub(crate) fn from_type_bound(
-        ctx: &TyLoweringContext<'_>,
-        bound: &TypeBound,
-        self_ty: Ty,
-    ) -> Option<TraitRef> {
-        match bound {
-            TypeBound::Path(path) => TraitRef::from_path(ctx, path, Some(self_ty)),
-            TypeBound::Lifetime(_) | TypeBound::Error => None,
-        }
-    }
 }
 
 impl GenericPredicate {
@@ -705,13 +694,22 @@ impl GenericPredicate {
         bound: &'a TypeBound,
         self_ty: Ty,
     ) -> impl Iterator<Item = GenericPredicate> + 'a {
-        let trait_ref = TraitRef::from_type_bound(ctx, bound, self_ty);
-        iter::once(trait_ref.clone().map_or(GenericPredicate::Error, GenericPredicate::Implemented))
-            .chain(
-                trait_ref
-                    .into_iter()
-                    .flat_map(move |tr| assoc_type_bindings_from_type_bound(ctx, bound, tr)),
-            )
+        let mut bindings = None;
+        let trait_ref = match bound {
+            TypeBound::Path(path) => {
+                bindings = TraitRef::from_path(ctx, path, Some(self_ty));
+                Some(
+                    bindings.clone().map_or(GenericPredicate::Error, GenericPredicate::Implemented),
+                )
+            }
+            TypeBound::Lifetime(_) => None,
+            TypeBound::Error => Some(GenericPredicate::Error),
+        };
+        trait_ref.into_iter().chain(
+            bindings
+                .into_iter()
+                .flat_map(move |tr| assoc_type_bindings_from_type_bound(ctx, bound, tr)),
+        )
     }
 }
 
