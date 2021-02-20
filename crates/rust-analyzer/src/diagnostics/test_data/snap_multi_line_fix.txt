@@ -2,6 +2,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/src/main.rs",
@@ -31,6 +33,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "rust-lang.github.io",
@@ -55,6 +59,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/src/main.rs",
@@ -78,6 +84,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/src/main.rs",
@@ -107,6 +115,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/src/main.rs",
@@ -136,6 +146,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "rust-lang.github.io",
@@ -160,6 +172,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/src/main.rs",
@@ -189,6 +203,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/src/main.rs",
@@ -218,6 +234,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "rust-lang.github.io",
@@ -242,6 +260,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/src/main.rs",
@@ -281,6 +301,8 @@
                             {
                                 Url {
                                     scheme: "file",
+                                    username: "",
+                                    password: None,
                                     host: None,
                                     port: None,
                                     path: "/test/src/main.rs",

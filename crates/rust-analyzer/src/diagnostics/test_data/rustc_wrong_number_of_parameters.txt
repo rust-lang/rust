@@ -2,6 +2,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/compiler/ty/select.rs",
@@ -31,6 +33,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "doc.rust-lang.org",
@@ -55,6 +59,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/compiler/ty/select.rs",
@@ -84,6 +90,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/compiler/ty/select.rs",
@@ -113,6 +121,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "doc.rust-lang.org",
@@ -137,6 +147,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/compiler/ty/select.rs",

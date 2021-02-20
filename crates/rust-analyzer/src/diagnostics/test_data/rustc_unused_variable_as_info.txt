@@ -2,6 +2,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/driver/subcommand/repl.rs",
@@ -38,6 +40,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/driver/subcommand/repl.rs",
@@ -71,6 +75,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/driver/subcommand/repl.rs",
@@ -107,6 +113,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/driver/subcommand/repl.rs",
@@ -146,6 +154,8 @@
                             {
                                 Url {
                                     scheme: "file",
+                                    username: "",
+                                    password: None,
                                     host: None,
                                     port: None,
                                     path: "/test/driver/subcommand/repl.rs",
