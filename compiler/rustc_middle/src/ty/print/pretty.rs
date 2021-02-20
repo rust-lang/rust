@@ -1018,7 +1018,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Int(int), ty::RawPtr(_)) => {
+            (Scalar::Int(int), ty::RawPtr(_) | ty::FnPtr(_)) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1030,15 +1030,18 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                // FIXME: this can ICE when the ptr is dangling or points to a non-function.
-                // We should probably have a helper method to share code with the "Byte strings"
+                // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
-                self = self.typed_value(
-                    |this| this.print_value_path(instance.def_id(), instance.substs),
-                    |this| this.print_type(ty),
-                    " as ",
-                )?;
+                match self.tcx().get_global_alloc(ptr.alloc_id) {
+                    Some(GlobalAlloc::Function(instance)) => {
+                        self = self.typed_value(
+                            |this| this.print_value_path(instance.def_id(), instance.substs),
+                            |this| this.print_type(ty),
+                            " as ",
+                        )?;
+                    }
+                    _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
+                }
             }
             // For function type zsts just printing the path is enough
             (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {

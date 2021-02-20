@@ -112,7 +112,7 @@ impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
                 }
                 ScalarMaybeUninit::Uninit => cx.typed_value(
                     |mut this| {
-                        this.write_str("{uninit ")?;
+                        this.write_str("uninit ")?;
                         Ok(this)
                     },
                     |this| this.print_type(ty),
