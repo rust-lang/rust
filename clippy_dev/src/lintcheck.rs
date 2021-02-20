@@ -11,9 +11,11 @@ use crate::clippy_project_root;
 
 use std::collections::HashMap;
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{env, fmt, fs::write, path::PathBuf};
 
 use clap::ArgMatches;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -37,7 +39,7 @@ struct TomlCrate {
 
 /// Represents an archive we download from crates.io, or a git repo, or a local repo/folder
 /// Once processed (downloaded/extracted/cloned/copied...), this will be translated into a `Crate`
-#[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, Hash, PartialEq, Ord, PartialOrd)]
 enum CrateSource {
     CratesIo {
         name: String,
@@ -215,11 +217,34 @@ impl CrateSource {
 impl Crate {
     /// Run `cargo clippy` on the `Crate` and collect and return all the lint warnings that clippy
     /// issued
-    fn run_clippy_lints(&self, cargo_clippy_path: &PathBuf) -> Vec<ClippyWarning> {
-        println!("Linting {} {}...", &self.name, &self.version);
+    fn run_clippy_lints(
+        &self,
+        cargo_clippy_path: &PathBuf,
+        target_dir_index: &AtomicUsize,
+        thread_limit: usize,
+        total_crates_to_lint: usize,
+    ) -> Vec<ClippyWarning> {
+        // advance the atomic index by one
+        let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
+        // "loop" the index within 0..thread_limit
+        let target_dir_index = index % thread_limit;
+        let perc = ((index * 100) as f32 / total_crates_to_lint as f32) as u8;
+
+        if thread_limit == 1 {
+            println!(
+                "{}/{} {}% Linting {} {}",
+                index, total_crates_to_lint, perc, &self.name, &self.version
+            );
+        } else {
+            println!(
+                "{}/{} {}% Linting {} {} in target dir {:?}",
+                index, total_crates_to_lint, perc, &self.name, &self.version, target_dir_index
+            );
+        }
+
         let cargo_clippy_path = std::fs::canonicalize(cargo_clippy_path).unwrap();
 
-        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir/");
+        let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
         let mut args = vec!["--", "--message-format=json", "--", "--cap-lints=warn"];
 
@@ -232,7 +257,11 @@ impl Crate {
         }
 
         let all_output = std::process::Command::new(&cargo_clippy_path)
-            .env("CARGO_TARGET_DIR", shared_target_dir)
+            // use the looping index to create individual target dirs
+            .env(
+                "CARGO_TARGET_DIR",
+                shared_target_dir.join(format!("_{:?}", target_dir_index)),
+            )
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
             .args(&args)
@@ -283,13 +312,13 @@ fn filter_clippy_warnings(line: &str) -> bool {
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
-    let output = Command::new("cargo")
+    let status = Command::new("cargo")
         .arg("build")
-        .output()
+        .status()
         .expect("Failed to build clippy!");
-    if !output.status.success() {
-        eprintln!("Failed to compile Clippy");
-        eprintln!("stderr: {}", String::from_utf8_lossy(&output.stderr))
+    if !status.success() {
+        eprintln!("Error: Failed to compile Clippy!");
+        std::process::exit(1);
     }
 }
 
@@ -356,6 +385,9 @@ fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
             unreachable!("Failed to translate TomlCrate into CrateSource!");
         }
     });
+    // sort the crates
+    crate_sources.sort();
+
     (toml_filename, crate_sources)
 }
 
@@ -454,15 +486,46 @@ pub fn run(clap_config: &ArgMatches) {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1))
             .flatten()
             .collect()
     } else {
+        let counter = std::sync::atomic::AtomicUsize::new(0);
+
+        // Ask rayon for thread count. Assume that half of that is the number of physical cores
+        // Use one target dir for each core so that we can run N clippys in parallel.
+        // We need to use different target dirs because cargo would lock them for a single build otherwise,
+        // killing the parallelism. However this also means that deps will only be reused half/a
+        // quarter of the time which might result in a longer wall clock runtime
+
+        // This helps when we check many small crates with dep-trees that don't have a lot of branches in
+        // order to achive some kind of parallelism
+
+        // by default, use a single thread
+        let num_cpus = match clap_config.value_of("threads") {
+            Some(threads) => {
+                let threads: usize = threads
+                    .parse()
+                    .expect(&format!("Failed to parse '{}' to a digit", threads));
+                if threads == 0 {
+                    // automatic choice
+                    // Rayon seems to return thread count so half that for core count
+                    (rayon::current_num_threads() / 2) as usize
+                } else {
+                    threads
+                }
+            },
+            // no -j passed, use a single thread
+            None => 1,
+        };
+
+        let num_crates = crates.len();
+
         // check all crates (default)
         crates
-            .into_iter()
+            .into_par_iter()
             .map(|krate| krate.download_and_extract())
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path))
+            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
             .flatten()
             .collect()
     };
