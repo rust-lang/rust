@@ -1852,6 +1852,10 @@ impl Span {
         self.0
     }
 
+    crate fn is_dummy(&self) -> bool {
+        self.0.is_dummy()
+    }
+
     crate fn filename(&self, sess: &Session) -> FileName {
         sess.source_map().span_to_filename(self.0)
     }
