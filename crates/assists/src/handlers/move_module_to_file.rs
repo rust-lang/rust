@@ -1,5 +1,6 @@
-use ast::edit::IndentLevel;
+use ast::{edit::IndentLevel, VisibilityOwner};
 use ide_db::base_db::AnchoredPathBuf;
+use stdx::format_to;
 use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
     AstNode, TextRange,
@@ -59,7 +60,13 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
                 items
             };
 
-            builder.replace(module_ast.syntax().text_range(), format!("mod {};", module_name));
+            let mut buf = String::new();
+            if let Some(v) = module_ast.visibility() {
+                format_to!(buf, "{} ", v);
+            }
+            format_to!(buf, "mod {};", module_name);
+
+            builder.replace(module_ast.syntax().text_range(), buf);
 
             let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
             builder.create_file(dst, contents);
@@ -133,6 +140,42 @@ mod inner;
 fn g() {}
 //- /submodule/inner.rs
 fn f() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_public() {
+        check_assist(
+            move_module_to_file,
+            r#"
+pub mod $0tests {
+    #[test] fn t() {}
+}
+"#,
+            r#"
+//- /main.rs
+pub mod tests;
+//- /tests.rs
+#[test] fn t() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_public_crate() {
+        check_assist(
+            move_module_to_file,
+            r#"
+pub(crate) mod $0tests {
+    #[test] fn t() {}
+}
+"#,
+            r#"
+//- /main.rs
+pub(crate) mod tests;
+//- /tests.rs
+#[test] fn t() {}
 "#,
         );
     }
