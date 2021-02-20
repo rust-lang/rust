@@ -122,8 +122,8 @@ pub fn format(build: &Build, check: bool) {
         WalkBuilder::new(src.clone()).types(matcher).overrides(ignore_fmt).build_parallel();
 
     // there is a lot of blocking involved in spawning a child process and reading files to format.
-    // spawn more processes than available cores to keep the CPU busy
-    let max_processes = num_cpus::get() * 2;
+    // spawn more processes than available concurrency to keep the CPU busy
+    let max_processes = build.jobs() as usize * 2;
 
     // spawn child processes on a separate thread so we can batch entries we have received from ignore
     let thread = std::thread::spawn(move || {
@@ -135,7 +135,7 @@ pub fn format(build: &Build, check: bool) {
             let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);
             children.push_back(child);
 
-            if children.len() > max_processes {
+            if children.len() >= max_processes {
                 // await oldest child
                 children.pop_front().unwrap()();
             }
