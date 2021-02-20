@@ -204,7 +204,8 @@ out a longer explanation of a given error.
 ## `--test`: build a test harness
 
 When compiling this crate, `rustc` will ignore your `main` function
-and instead produce a test harness.
+and instead produce a test harness. See the [Tests chapter](tests/index.md)
+for more information about tests.
 
 <a id="option-target"></a>
 ## `--target`: select a target triple to build
