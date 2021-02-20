@@ -15,7 +15,7 @@ macro_rules! arena_types {
             // AdtDef are interned and compared by address
             [] adt_def: rustc_middle::ty::AdtDef,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<$tcx>>,
-            [decode] mir: rustc_middle::mir::Body<$tcx>,
+            [] mir: rustc_middle::mir::Body<$tcx>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
                     rustc_index::vec::IndexVec<
@@ -23,16 +23,16 @@ macro_rules! arena_types {
                         rustc_middle::mir::Body<$tcx>
                     >
                 >,
-            [decode] promoted:
+            [] promoted:
                 rustc_index::vec::IndexVec<
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<$tcx>
                 >,
-            [decode] typeck_results: rustc_middle::ty::TypeckResults<$tcx>,
-            [decode] borrowck_result:
+            [] typeck_results: rustc_middle::ty::TypeckResults<$tcx>,
+            [] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<$tcx>,
-            [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
-            [decode] code_region: rustc_middle::mir::coverage::CodeRegion,
+            [] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
+            [] code_region: rustc_middle::mir::coverage::CodeRegion,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             // Required for the incremental on-disk cache
             [few] mir_keys: rustc_hir::def_id::DefIdSet,
@@ -99,11 +99,11 @@ macro_rules! arena_types {
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `librustc_middle` arena (for decoding MIR)
-            [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
+            [] asm_template: rustc_ast::InlineAsmTemplatePiece,
 
             // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
-            [decode] span: rustc_span::Span,
-            [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
+            [] span: rustc_span::Span,
+            [] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
         ], $tcx);
     )
 }

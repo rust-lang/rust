@@ -6,7 +6,7 @@ use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty, TyInterner};
 use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
+use rustc_data_structures::sync::{Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Diagnostic;
@@ -741,10 +741,10 @@ where
 impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
-    #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
+    // #[inline]
+    // fn tcx(&self) -> TyCtxt<'tcx> {
+    //     self.tcx
+    // }
 
     #[inline]
     fn interner(&self) -> TyInterner<'tcx> {
@@ -769,18 +769,18 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
     {
-        let tcx = self.tcx();
+        let mut interner = self.interner();
 
         let cache_key =
             ty::CReaderCacheKey { cnum: CrateNum::ReservedForIncrCompCache, pos: shorthand };
 
-        if let Some(&ty) = tcx.ty_rcache.borrow().get(&cache_key) {
+        if let Some(ty) = interner.get_cached_ty(cache_key) {
             return Ok(ty);
         }
 
         let ty = or_insert_with(self)?;
         // This may overwrite the entry, but it should overwrite with the same value.
-        tcx.ty_rcache.borrow_mut().insert_same(cache_key, ty);
+        interner.insert_same_cached_ty(cache_key, ty);
         Ok(ty)
     }
 

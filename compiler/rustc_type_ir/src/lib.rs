@@ -11,6 +11,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use smallvec::SmallVec;
 use std::fmt;
+use std::iter::IntoIterator;
 use std::mem::discriminant;
 
 pub trait Interner {
@@ -24,13 +25,16 @@ pub trait Interner {
     type BinderPredicateKind;
 
     type Ty;
+    type ListType;
     type TyKind;
-    type Allocation;
-    type AllocationId;
+    type TypeKey;
 
+    type AllocationId;
+    type Allocation;
     type InternedAllocation;
-    type Instance;
+
     type DefId;
+    type Instance;
 
     type CanonicalVarInfo;
     type ListCanonicalVarInfo;
@@ -40,30 +44,173 @@ pub trait Interner {
 
     type Const;
     type InternedConst;
-    type DefPathHash;
 
+    type PlaceElem;
+    type ListPlaceElem;
+
+    type DefPathHash;
+    type AdtDef;
+
+    type SymbolName;
+
+    type Mir;
+    type AllocatedMir;
+    type AllocatedMirSlice;
+
+    type Promoted;
+    type AllocatedPromoted;
+    type AllocatedPromotedSlice;
+
+    type TypeCheckResults;
+    type AllocatedTypeCheckResults;
+    type AllocatedTypeCheckResultsSlice;
+
+    type BorrowCheckResult;
+    type AllocatedBorrowCheckResult;
+    type AllocatedBorrowCheckResultSlice;
+
+    type CodeRegion;
+    type AllocatedCodeRegion;
+    type AllocatedCodeRegionSlice;
+
+    type UnsafetyCheckResult;
+    type AllocatedUnsafetyCheckResult;
+    type AllocatedUnsafetyCheckResultSlice;
+
+    type Span;
+    type AllocatedSpan;
+    type AllocatedSpanSlice;
+
+    type UsedTraitsImports;
+    type AllocatedUsedTraitsImports;
+    type AllocatedUsedTraitsImportsSlice;
+
+    type AsmTemplate;
+    type AllocatedAsmTemplate;
+    type AllocatedAsmTemplateSlice;
+
+    type PredicateSpan;
+    type AllocatedPredicateSpanSlice;
+
+    type Node;
+    type AllocatedNodeSlice;
+
+    type NodeId;
+    type AllocatedNodeIdSlice;
+
+    fn alloc_mir(self, value: Self::Mir) -> Self::AllocatedMir;
+    fn alloc_mir_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::Mir>,
+    ) -> Self::AllocatedMirSlice;
+
+    fn alloc_promoted(self, value: Self::Promoted) -> Self::AllocatedPromoted;
+    fn alloc_promoted_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::Promoted>,
+    ) -> Self::AllocatedPromotedSlice;
+
+    fn alloc_type_check_results(
+        self,
+        value: Self::TypeCheckResults,
+    ) -> Self::AllocatedTypeCheckResults;
+    fn alloc_type_check_results_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::TypeCheckResults>,
+    ) -> Self::AllocatedTypeCheckResultsSlice;
+
+    fn alloc_borrowck_result(
+        self,
+        value: Self::BorrowCheckResult,
+    ) -> Self::AllocatedBorrowCheckResult;
+    fn alloc_borrowck_result_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::BorrowCheckResult>,
+    ) -> Self::AllocatedBorrowCheckResultSlice;
+
+    fn alloc_unsafety_check_result(
+        self,
+        value: Self::UnsafetyCheckResult,
+    ) -> Self::AllocatedUnsafetyCheckResult;
+    fn alloc_unsafety_check_result_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::UnsafetyCheckResult>,
+    ) -> Self::AllocatedUnsafetyCheckResultSlice;
+
+    fn alloc_code_region(self, value: Self::CodeRegion) -> Self::AllocatedCodeRegion;
+    fn alloc_code_region_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::CodeRegion>,
+    ) -> Self::AllocatedCodeRegionSlice;
+
+    fn alloc_span(self, value: Self::Span) -> Self::AllocatedSpan;
+    fn alloc_span_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::Span>,
+    ) -> Self::AllocatedSpanSlice;
+
+    fn alloc_used_trait_imports(
+        self,
+        value: Self::UsedTraitsImports,
+    ) -> Self::AllocatedUsedTraitsImports;
+    fn alloc_used_trait_imports_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::UsedTraitsImports>,
+    ) -> Self::AllocatedUsedTraitsImportsSlice;
+
+    fn alloc_asm_template(self, value: Self::AsmTemplate) -> Self::AllocatedAsmTemplate;
+    fn alloc_asm_template_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::AsmTemplate>,
+    ) -> Self::AllocatedAsmTemplateSlice;
+
+    fn alloc_predicate_span_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::PredicateSpan>,
+    ) -> Self::AllocatedPredicateSpanSlice;
+    fn alloc_node_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::Node>,
+    ) -> Self::AllocatedNodeSlice;
+    fn alloc_node_id_from_iter(
+        self,
+        iter: impl IntoIterator<Item = Self::NodeId>,
+    ) -> Self::AllocatedNodeIdSlice;
+
+    fn get_cached_ty(&self, k: Self::TypeKey) -> Option<Self::Ty>;
+    fn insert_same_cached_ty(&mut self, key: Self::TypeKey, value: Self::Ty);
+    fn insert_cached_ty(&mut self, key: Self::TypeKey, value: Self::Ty) -> Option<Self::Ty>;
+    fn adt_def(self, def_id: Self::DefId) -> Self::AdtDef;
+    fn mk_symbol_name(self, name: &str) -> Self::SymbolName;
     fn mk_predicate(self, binder: Self::BinderPredicateKind) -> Self::Predicate;
     fn mk_ty(self, st: Self::TyKind) -> Self::Ty;
     fn mk_substs<I: InternAs<[Self::GenericArg], Self::ListGenericArg>>(self, iter: I)
     -> I::Output;
-    fn intern_const_alloc(self, alloc: Self::Allocation) -> Self::InternedAllocation;
-    fn reserve_alloc_id(self) -> Self::AllocationId;
-    fn set_alloc_id_same_memory(self, id: Self::AllocationId, mem: Self::InternedAllocation);
-    fn create_fn_alloc(self, instance: Self::Instance) -> Self::AllocationId;
-    fn create_static_alloc(self, static_id: Self::DefId) -> Self::AllocationId;
-    fn intern_canonical_var_infos(
-        self,
-        ts: &[Self::CanonicalVarInfo],
-    ) -> Self::ListCanonicalVarInfo;
     fn mk_poly_existential_predicates<
         I: InternAs<[Self::ExistentialPredicate], Self::ListExistentialPredicate>,
     >(
         self,
         iter: I,
     ) -> I::Output;
+    fn mk_type_list<I: InternAs<[Self::Ty], Self::ListType>>(self, iter: I) -> I::Output;
+    fn mk_place_elems<I: InternAs<[Self::PlaceElem], Self::ListPlaceElem>>(
+        self,
+        iter: I,
+    ) -> I::Output;
     fn mk_region(self, kind: Self::RegionKind) -> Self::Region;
     fn mk_const(self, c: Self::Const) -> Self::InternedConst;
+    fn intern_const_alloc(self, alloc: Self::Allocation) -> Self::InternedAllocation;
+    fn intern_canonical_var_infos(
+        self,
+        ts: &[Self::CanonicalVarInfo],
+    ) -> Self::ListCanonicalVarInfo;
+    fn reserve_alloc_id(self) -> Self::AllocationId;
+    fn set_alloc_id_same_memory(self, id: Self::AllocationId, mem: Self::InternedAllocation);
+    fn create_fn_alloc(self, instance: Self::Instance) -> Self::AllocationId;
+    fn create_static_alloc(self, static_id: Self::DefId) -> Self::AllocationId;
     fn def_path_hash_to_def_id(self, hash: Self::DefPathHash) -> Option<Self::DefId>;
+
+    // arena methods
 }
 
 pub trait InternAs<T: ?Sized, R> {

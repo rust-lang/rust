@@ -27,7 +27,7 @@ use rustc_middle::middle::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
-use rustc_middle::ty::{self, codec::TyDecoder, Ty, TyCtxt, TyInterner};
+use rustc_middle::ty::{self, codec::TyDecoder, Interner, Ty, TyCtxt, TyInterner};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
@@ -244,10 +244,6 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
 }
 
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext")
-    }
-
     fn cdata(&self) -> CrateMetadataRef<'a> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
@@ -276,13 +272,8 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext")
-    }
-
-    #[inline]
     fn interner(&self) -> TyInterner<'tcx> {
-        self.tcx().interner()
+        self.tcx.expect("missing TyCtxt in DecodeContext").interner()
     }
 
     #[inline]
@@ -303,16 +294,16 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
     {
-        let tcx = self.tcx();
+        let mut interner = self.interner();
 
         let key = ty::CReaderCacheKey { cnum: self.cdata().cnum, pos: shorthand };
 
-        if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
+        if let Some(ty) = interner.get_cached_ty(key) {
             return Ok(ty);
         }
 
         let ty = or_insert_with(self)?;
-        tcx.ty_rcache.borrow_mut().insert(key, ty);
+        interner.insert_cached_ty(key, ty);
         Ok(ty)
     }
 
