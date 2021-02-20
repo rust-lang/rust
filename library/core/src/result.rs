@@ -1650,28 +1650,3 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Result<T, F> {
         }
     }
 }
-
-mod sadness {
-    use super::*;
-
-    /// This is a remnant of the old `NoneError` which is never going to be stabilized.
-    /// It's here as a snapshot of an oversight that allowed this to work in the past,
-    /// so we're stuck supporting it even though we'd really rather not.
-    #[unstable(feature = "legacy_try_trait", issue = "none")]
-    #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-    pub struct PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult;
-
-    #[unstable(feature = "try_trait_v2", issue = "42327")]
-    impl<T, E> ops::FromResidual<Option<!>> for Result<T, E>
-    where
-        E: From<PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>,
-    {
-        fn from_residual(x: Option<!>) -> Self {
-            match x {
-                None => Err(From::from(
-                    PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult,
-                )),
-            }
-        }
-    }
-}

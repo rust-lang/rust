@@ -1,14 +1,15 @@
-error[E0277]: `?` couldn't convert the error to `()`
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/option-to-result.rs:5:5
    |
-LL | fn test_result() -> Result<(),()> {
-   |                     ------------- expected `()` because of this
-LL |     let a:Option<()> = Some(());
-LL |     a?;
-   |     ^^ the trait `From<result::sadness::PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>` is not implemented for `()`
+LL | / fn test_result() -> Result<(),()> {
+LL | |     let a:Option<()> = Some(());
+LL | |     a?;
+   | |     ^^ cannot use the `?` operator in a function that returns `Result<(), ()>`
+LL | |     Ok(())
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required because of the requirements on the impl of `FromResidual<Option<!>>` for `Result<(), ()>`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `Result<(), ()>`
    = note: required by `from_residual`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)

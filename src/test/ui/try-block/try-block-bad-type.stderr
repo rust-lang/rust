@@ -10,31 +10,31 @@ LL |         Err("")?;
    = note: required because of the requirements on the impl of `FromResidual<Result<!, &str>>` for `Result<u32, TryFromSliceError>`
    = note: required by `from_residual`
 
-error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Ok == &str`
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try2021>::Ok == &str`
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
    |         ^^ expected `i32`, found `&str`
 
-error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Ok == ()`
+error[E0271]: type mismatch resolving `<Result<i32, i32> as Try2021>::Ok == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
    |                                       ^ expected `i32`, found `()`
 
-error[E0277]: the trait bound `(): Try` is not satisfied
+error[E0277]: the trait bound `(): Try2021` is not satisfied
   --> $DIR/try-block-bad-type.rs:17:25
    |
 LL |     let res: () = try { };
-   |                         ^ the trait `Try` is not implemented for `()`
+   |                         ^ the trait `Try2021` is not implemented for `()`
    |
    = note: required by `from_output`
 
-error[E0277]: the trait bound `i32: Try` is not satisfied
+error[E0277]: the trait bound `i32: Try2021` is not satisfied
   --> $DIR/try-block-bad-type.rs:20:26
    |
 LL |     let res: i32 = try { 5 };
-   |                          ^ the trait `Try` is not implemented for `i32`
+   |                          ^ the trait `Try2021` is not implemented for `i32`
    |
    = note: required by `from_output`
 

@@ -2,7 +2,7 @@ fn main(){ }
 
 fn test_result() -> Result<(),()> {
     let a:Option<()> = Some(());
-    a?;//~ ERROR `?` couldn't convert the error to `()`
+    a?;//~ ERROR the `?` operator can only be used in a function that returns `Result` or `Option`
     Ok(())
 }
 
