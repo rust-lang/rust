@@ -1240,14 +1240,13 @@ impl Step for CodegenBackend {
             .strip_prefix(builder.sysroot_libdir_relative(compiler))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
-        let backends_dst = tarball.image_dir().join("lib").join(&backends_rel);
+        let backends_dst = PathBuf::from("lib").join(&backends_rel);
 
-        t!(fs::create_dir_all(&backends_dst));
         let backend_name = format!("rustc_codegen_{}", backend);
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
             if file_name.to_str().unwrap().contains(&backend_name) {
-                tarball.add_file(backends_src.join(file_name), backends_rel, 0o644);
+                tarball.add_file(backends_src.join(file_name), &backends_dst, 0o644);
             }
         }
 
@@ -1401,8 +1400,11 @@ impl Step for Extended {
         let miri_installer = builder.ensure(Miri { compiler, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
-        let rustc_codegen_cranelift_installer =
-            builder.ensure(CodegenBackend { compiler, target, backend: INTERNER.intern_str("cranelift") });
+        let rustc_codegen_cranelift_installer = builder.ensure(CodegenBackend {
+            compiler,
+            target,
+            backend: INTERNER.intern_str("cranelift"),
+        });
 
         let docs_installer = builder.ensure(Docs { host: target });
         let std_installer = builder.ensure(Std { compiler, target });
