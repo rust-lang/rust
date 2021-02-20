@@ -12,15 +12,17 @@ use syntax::{
 
 use crate::FileRange;
 
-// Feature: Extend Selection
+// Feature: Expand and Shrink Selection
 //
-// Extends the current selection to the encompassing syntactic construct
+// Extends or shrinks the current selection to the encompassing syntactic construct
 // (expression, statement, item, module, etc). It works with multiple cursors.
+//
+// This is a standard LSP feature and not a protocol extension.
 //
 // |===
 // | Editor  | Shortcut
 //
-// | VS Code | kbd:[Ctrl+Shift+→]
+// | VS Code | kbd:[Alt+Shift+→], kbd:[Alt+Shift+←]
 // |===
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
