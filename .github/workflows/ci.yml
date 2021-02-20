@@ -40,16 +40,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
+          - name: i686-gnu-nopt
             os: ubuntu-latest-xl
             env: {}
-          - name: x86_64-gnu-llvm-9
-            os: ubuntu-latest-xl
-            env: {}
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-latest-xl
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

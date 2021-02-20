@@ -277,15 +277,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-llvm-9
-            <<: *job-linux-xl
-
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+          - name: i686-gnu-nopt
             <<: *job-linux-xl
 
   auto:
