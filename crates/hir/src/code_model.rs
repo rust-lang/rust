@@ -28,7 +28,7 @@ use hir_expand::{
 };
 use hir_ty::{
     autoderef,
-    display::{write_bounds_like_dyn_trait, HirDisplayError, HirFormatter},
+    display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
@@ -1379,8 +1379,7 @@ impl HirDisplay for TypeParam {
         let substs = Substs::type_params(f.db, self.id.parent);
         let predicates = bounds.iter().cloned().map(|b| b.subst(&substs)).collect::<Vec<_>>();
         if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write!(f, ": ")?;
-            write_bounds_like_dyn_trait(&predicates, f)?;
+            write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
         }
         Ok(())
     }
