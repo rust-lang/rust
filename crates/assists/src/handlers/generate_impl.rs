@@ -122,6 +122,31 @@ mod tests {
                 $0
             }"#,
         );
+
+        check_assist(
+            generate_impl,
+            r#"pub trait Trait {}
+struct Struct<T>$0
+where
+    T: Trait,
+{
+    inner: T,
+}"#,
+            r#"pub trait Trait {}
+struct Struct<T>
+where
+    T: Trait,
+{
+    inner: T,
+}
+
+impl<T> Struct<T>
+where
+    T: Trait,
+{
+    $0
+}"#,
+        );
     }
 
     #[test]

@@ -421,7 +421,14 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
         format_to!(buf, "<{}>", lifetime_params.chain(type_params).format(", "))
     }
 
-    format_to!(buf, " {{\n{}\n}}", code);
+    match adt.where_clause() {
+        Some(where_clause) => {
+            format_to!(buf, "\n{}\n{{\n{}\n}}", where_clause, code);
+        }
+        None => {
+            format_to!(buf, " {{\n{}\n}}", code);
+        }
+    }
 
     buf
 }
