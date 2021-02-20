@@ -41,7 +41,7 @@ For the second group, the change would be subjected to quite a bit of scrutiny a
 The new API needs to be right (or at least easy to change later).
 The actual implementation doesn't matter that much.
 It's very important to minimize the amount of changed lines of code for changes of the second kind.
-Often, you start doing a change of the first kind, only to realise that you need to elevate to a change of the second kind.
+Often, you start doing a change of the first kind, only to realize that you need to elevate to a change of the second kind.
 In this case, we'll probably ask you to split API changes into a separate PR.
 
 Changes of the third group should be pretty rare, so we don't specify any specific process for them.
@@ -102,7 +102,7 @@ Of course, applying Clippy suggestions is welcome as long as they indeed improve
 ## Minimal Tests
 
 Most tests in rust-analyzer start with a snippet of Rust code.
-This snippets should be minimal -- if you copy-paste a snippet of real code into the tests, make sure to remove everything which could be removed.
+These snippets should be minimal -- if you copy-paste a snippet of real code into the tests, make sure to remove everything which could be removed.
 
 It also makes sense to format snippets more compactly (for example, by placing enum definitions like `enum E { Foo, Bar }` on a single line),
 as long as they are still readable.
@@ -227,7 +227,7 @@ if idx >= len {
 }
 ```
 
-**Rationale:** its useful to see the invariant relied upon by the rest of the function clearly spelled out.
+**Rationale:** it's useful to see the invariant relied upon by the rest of the function clearly spelled out.
 
 ## Assertions
 
