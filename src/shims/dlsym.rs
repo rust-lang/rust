@@ -32,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dlsym: Dlsym,
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
-        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         match dlsym {

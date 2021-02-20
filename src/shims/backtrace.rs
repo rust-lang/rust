@@ -13,11 +13,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn handle_miri_get_backtrace(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>
+        dest: &PlaceTy<'tcx, Tag>
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        let &[flags] = check_arg_count(args)?;
+        let &[ref flags] = check_arg_count(args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {
@@ -59,8 +59,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Write pointers into array
         let alloc = this.allocate(this.layout_of(array_ty).unwrap(), MiriMemoryKind::Rust.into());
         for (i, ptr) in ptrs.into_iter().enumerate() {
-            let place = this.mplace_index(alloc, i as u64)?;
-            this.write_immediate_to_mplace(ptr.into(), place)?;
+            let place = this.mplace_index(&alloc, i as u64)?;
+            this.write_immediate_to_mplace(ptr.into(), &place)?;
         }
 
         this.write_immediate(Immediate::new_slice(alloc.ptr.into(), len.try_into().unwrap(), this), dest)?;
@@ -70,11 +70,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn handle_miri_resolve_frame(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>
+        dest: &PlaceTy<'tcx, Tag>
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        let &[ptr, flags] = check_arg_count(args)?;
+        let &[ref ptr, ref flags] = check_arg_count(args)?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {
@@ -125,15 +125,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        this.write_immediate(name_alloc.to_ref(), this.mplace_field(dest, 0)?.into())?;
-        this.write_immediate(filename_alloc.to_ref(), this.mplace_field(dest, 1)?.into())?;
-        this.write_scalar(lineno_alloc, this.mplace_field(dest, 2)?.into())?;
-        this.write_scalar(colno_alloc, this.mplace_field(dest, 3)?.into())?;
+        this.write_immediate(name_alloc.to_ref(), &this.mplace_field(&dest, 0)?.into())?;
+        this.write_immediate(filename_alloc.to_ref(), &this.mplace_field(&dest, 1)?.into())?;
+        this.write_scalar(lineno_alloc, &this.mplace_field(&dest, 2)?.into())?;
+        this.write_scalar(colno_alloc, &this.mplace_field(&dest, 3)?.into())?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
-            this.write_scalar(fn_ptr, this.mplace_field(dest, 4)?.into())?;
+            this.write_scalar(fn_ptr, &this.mplace_field(&dest, 4)?.into())?;
         }
 
         Ok(())

@@ -28,15 +28,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         instance: ty::Instance<'tcx>,
         abi: Abi,
         args: &[OpTy<'tcx, Tag>],
-        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
-        trace!("eval_fn_call: {:#?}, {:?}", instance, ret.map(|p| *p.0));
+        trace!("eval_fn_call: {:#?}, {:?}", instance, ret.map(|p| p.0));
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let &[ptr, align] = check_arg_count(args)?;
+            let &[ref ptr, ref align] = check_arg_count(args)?;
             if this.align_offset(ptr, align, ret, unwind)? {
                 return Ok(None);
             }
@@ -61,9 +61,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the actual MIR of `align_offset`.
     fn align_offset(
         &mut self,
-        ptr_op: OpTy<'tcx, Tag>,
-        align_op: OpTy<'tcx, Tag>,
-        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        ptr_op: &OpTy<'tcx, Tag>,
+        align_op: &OpTy<'tcx, Tag>,
+        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();

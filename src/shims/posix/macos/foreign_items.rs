@@ -11,7 +11,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>,
+        dest: &PlaceTy<'tcx, Tag>,
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
@@ -26,37 +26,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // File related shims
             "close" | "close$NOCANCEL" => {
-                let &[result] = check_arg_count(args)?;
+                let &[ref result] = check_arg_count(args)?;
                 let result = this.close(result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "stat" | "stat$INODE64" => {
-                let &[path, buf] = check_arg_count(args)?;
+                let &[ref path, ref buf] = check_arg_count(args)?;
                 let result = this.macos_stat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "lstat" | "lstat$INODE64" => {
-                let &[path, buf] = check_arg_count(args)?;
+                let &[ref path, ref buf] = check_arg_count(args)?;
                 let result = this.macos_lstat(path, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fstat" | "fstat$INODE64" => {
-                let &[fd, buf] = check_arg_count(args)?;
+                let &[ref fd, ref buf] = check_arg_count(args)?;
                 let result = this.macos_fstat(fd, buf)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir" | "opendir$INODE64" => {
-                let &[name] = check_arg_count(args)?;
+                let &[ref name] = check_arg_count(args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir_r" | "readdir_r$INODE64" => {
-                let &[dirp, entry, result] = check_arg_count(args)?;
+                let &[ref dirp, ref entry, ref result] = check_arg_count(args)?;
                 let result = this.macos_readdir_r(dirp, entry, result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "ftruncate" => {
-                let &[fd, length] = check_arg_count(args)?;
+                let &[ref fd, ref length] = check_arg_count(args)?;
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -69,7 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Time related shims
             "gettimeofday" => {
-                let &[tv, tz] = check_arg_count(args)?;
+                let &[ref tv, ref tz] = check_arg_count(args)?;
                 let result = this.gettimeofday(tv, tz)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -80,7 +80,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "mach_timebase_info" => {
-                let &[info] = check_arg_count(args)?;
+                let &[ref info] = check_arg_count(args)?;
                 let result = this.mach_timebase_info(info)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             },
@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Thread-local storage
             "_tlv_atexit" => {
-                let &[dtor, data] = check_arg_count(args)?;
+                let &[ref dtor, ref data] = check_arg_count(args)?;
                 let dtor = this.read_scalar(dtor)?.check_init()?;
                 let dtor = this.memory.get_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?.check_init()?;
@@ -107,13 +107,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
-                let &[thread] = check_arg_count(args)?;
+                let &[ref thread] = check_arg_count(args)?;
                 this.read_scalar(thread)?.to_machine_usize(this)?;
                 let stack_addr = Scalar::from_uint(STACK_ADDR, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
-                let &[thread] = check_arg_count(args)?;
+                let &[ref thread] = check_arg_count(args)?;
                 this.read_scalar(thread)?.to_machine_usize(this)?;
                 let stack_size = Scalar::from_uint(STACK_SIZE, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
@@ -121,7 +121,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "pthread_setname_np" => {
-                let &[name] = check_arg_count(args)?;
+                let &[ref name] = check_arg_count(args)?;
                 let name = this.read_scalar(name)?.check_init()?;
                 this.pthread_setname_np(name)?;
             }
@@ -130,7 +130,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These shims are enabled only when the caller is in the standard library.
             "mmap" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
-                let &[addr, _, _, _, _, _] = check_arg_count(args)?;
+                let &[ref addr, _, _, _, _, _] = check_arg_count(args)?;
                 let addr = this.read_scalar(addr)?.check_init()?;
                 this.write_scalar(addr, dest)?;
             }

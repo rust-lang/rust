@@ -245,7 +245,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.call_function(
             thread_callback,
             &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
-            Some(ret_place),
+            Some(&ret_place),
             StackPopCleanup::None { cleanup: true },
         )?;
 
@@ -267,7 +267,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.call_function(
                 instance,
                 &[data.into()],
-                Some(ret_place),
+                Some(&ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
 
@@ -307,7 +307,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.call_function(
                 instance,
                 &[ptr.into()],
-                Some(ret_place),
+                Some(&ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
 

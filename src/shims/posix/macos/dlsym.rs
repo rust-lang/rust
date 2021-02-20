@@ -28,7 +28,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         dlsym: Dlsym,
         args: &[OpTy<'tcx, Tag>],
-        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (dest, ret) = ret.expect("we don't support any diverging dlsym");
@@ -36,7 +36,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         match dlsym {
             Dlsym::getentropy => {
-                let &[ptr, len] = check_arg_count(args)?;
+                let &[ref ptr, ref len] = check_arg_count(args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
                 let len = this.read_scalar(len)?.to_machine_usize(this)?;
                 this.gen_random(ptr, len)?;
@@ -44,7 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        trace!("{:?}", this.dump_place(*dest));
+        trace!("{:?}", this.dump_place(**dest));
         this.go_to_block(ret);
         Ok(())
     }

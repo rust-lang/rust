@@ -7,7 +7,7 @@ use std::time::{Instant, SystemTime};
 pub fn futex<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
     args: &[OpTy<'tcx, Tag>],
-    dest: PlaceTy<'tcx, Tag>,
+    dest: &PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
     // The amount of arguments used depends on the type of futex operation.
     // The full futex syscall takes six arguments (excluding the syscall
@@ -24,9 +24,9 @@ pub fn futex<'tcx>(
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (int *addr, int op, int val).
     // We checked above that these definitely exist.
-    let addr = this.read_immediate(args[1])?;
-    let op = this.read_scalar(args[2])?.to_i32()?;
-    let val = this.read_scalar(args[3])?.to_i32()?;
+    let addr = this.read_immediate(&args[1])?;
+    let op = this.read_scalar(&args[2])?.to_i32()?;
+    let val = this.read_scalar(&args[3])?.to_i32()?;
 
     // The raw pointer value is used to identify the mutex.
     // Not all mutex operations actually read from this address or even require this address to exist.
@@ -51,7 +51,7 @@ pub fn futex<'tcx>(
             if args.len() < 5 {
                 throw_ub_format!("incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5", args.len());
             }
-            let timeout = args[4];
+            let timeout = &args[4];
             let timeout_time = if this.is_null(this.read_scalar(timeout)?.check_init()?)? {
                 None
             } else {
@@ -88,7 +88,7 @@ pub fn futex<'tcx>(
             // SeqCst is total order over all operations.
             // FIXME: check if this should be changed when weak memory orders are added.
             let futex_val = this.read_scalar_at_offset_atomic(
-                addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::SeqCst
+                &addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::SeqCst
             )?.to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
@@ -98,6 +98,7 @@ pub fn futex<'tcx>(
                 this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
                 // This callback will override the return value when the timeout triggers.
+                let dest = *dest;
                 if let Some(timeout_time) = timeout_time {
                     this.register_timeout_callback(
                         thread,
@@ -107,7 +108,7 @@ pub fn futex<'tcx>(
                             this.futex_remove_waiter(futex_ptr, thread);
                             let etimedout = this.eval_libc("ETIMEDOUT")?;
                             this.set_last_error(etimedout)?;
-                            this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
+                            this.write_scalar(Scalar::from_machine_isize(-1, this), &dest)?;
                             Ok(())
                         }),
                     );
