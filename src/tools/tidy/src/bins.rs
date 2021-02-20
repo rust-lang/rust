@@ -32,9 +32,12 @@ pub fn check(path: &Path, output: &Path, bad: &mut bool) {
     // readily create a file there to test.
     //
     // See #36706 and #74753 for context.
-    let mut temp_path = path.join("tidy-test-file");
+    //
+    // We also add the thread ID to avoid threads trampling on each others files.
+    let file_name = format!("t{}.tidy-test-file", std::thread::current().id().as_u64());
+    let mut temp_path = path.join(&file_name);
     match fs::File::create(&temp_path).or_else(|_| {
-        temp_path = output.join("tidy-test-file");
+        temp_path = output.join(&file_name);
         fs::File::create(&temp_path)
     }) {
         Ok(file) => {

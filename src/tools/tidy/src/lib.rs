@@ -4,6 +4,7 @@
 //! to be used by tools.
 
 #![cfg_attr(bootstrap, feature(str_split_once))]
+#![feature(thread_id_value)]
 
 use std::fs::File;
 use std::io::Read;
@@ -54,6 +55,12 @@ pub mod unit_tests;
 pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {
+    // Filter out temporary files used by the bins module to probe the filesystem
+    match path.extension() {
+        Some(ext) if ext == "tidy-test-file" => return true,
+        _ => {}
+    }
+
     let skip = [
         "compiler/rustc_codegen_cranelift",
         "src/llvm-project",

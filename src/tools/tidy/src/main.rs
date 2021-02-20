@@ -6,9 +6,11 @@
 
 use tidy::*;
 
+use crossbeam_utils::thread::scope;
 use std::env;
 use std::path::PathBuf;
 use std::process;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 fn main() {
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
@@ -22,45 +24,68 @@ fn main() {
 
     let args: Vec<String> = env::args().skip(1).collect();
 
-    let mut bad = false;
     let verbose = args.iter().any(|s| *s == "--verbose");
 
-    // Checks over tests.
-    debug_artifacts::check(&src_path, &mut bad);
-    ui_tests::check(&src_path, &mut bad);
+    let bad = std::sync::Arc::new(AtomicBool::new(false));
 
-    // Checks that only make sense for the compiler.
-    errors::check(&compiler_path, &mut bad);
-    error_codes_check::check(&src_path, &mut bad);
+    scope(|s| {
+        macro_rules! check {
+            ($p:ident $(, $args:expr)* ) => {
+                s.spawn(|_| {
+                    let mut flag = false;
+                    $p::check($($args),* , &mut flag);
+                    if (flag) {
+                        bad.store(true, Ordering::Relaxed);
+                    }
+                });
+            }
+        }
 
-    // Checks that only make sense for the std libs.
-    pal::check(&library_path, &mut bad);
+        // Checks that are done on the cargo workspace.
+        check!(deps, &root_path, &cargo);
+        check!(extdeps, &root_path);
 
-    // Checks that need to be done for both the compiler and std libraries.
-    unit_tests::check(&src_path, &mut bad);
-    unit_tests::check(&compiler_path, &mut bad);
-    unit_tests::check(&library_path, &mut bad);
+        // Checks over tests.
+        check!(debug_artifacts, &src_path);
+        check!(ui_tests, &src_path);
 
-    bins::check(&src_path, &output_directory, &mut bad);
-    bins::check(&compiler_path, &output_directory, &mut bad);
-    bins::check(&library_path, &output_directory, &mut bad);
+        // Checks that only make sense for the compiler.
+        check!(errors, &compiler_path);
+        check!(error_codes_check, &src_path);
 
-    style::check(&src_path, &mut bad);
-    style::check(&compiler_path, &mut bad);
-    style::check(&library_path, &mut bad);
+        // Checks that only make sense for the std libs.
+        check!(pal, &library_path);
 
-    edition::check(&src_path, &mut bad);
-    edition::check(&compiler_path, &mut bad);
-    edition::check(&library_path, &mut bad);
+        // Checks that need to be done for both the compiler and std libraries.
+        check!(unit_tests, &src_path);
+        check!(unit_tests, &compiler_path);
+        check!(unit_tests, &library_path);
 
-    let collected = features::check(&src_path, &compiler_path, &library_path, &mut bad, verbose);
-    unstable_book::check(&src_path, collected, &mut bad);
+        check!(bins, &src_path, &output_directory);
+        check!(bins, &compiler_path, &output_directory);
+        check!(bins, &library_path, &output_directory);
 
-    // Checks that are done on the cargo workspace.
-    deps::check(&root_path, &cargo, &mut bad);
-    extdeps::check(&root_path, &mut bad);
+        check!(style, &src_path);
+        check!(style, &compiler_path);
+        check!(style, &library_path);
 
-    if bad {
+        check!(edition, &src_path);
+        check!(edition, &compiler_path);
+        check!(edition, &library_path);
+
+        let collected = {
+            let mut flag = false;
+            let r = features::check(&src_path, &compiler_path, &library_path, &mut flag, verbose);
+            if flag {
+                bad.store(true, Ordering::Relaxed);
+            }
+            r
+        };
+        check!(unstable_book, &src_path, collected);
+    })
+    .unwrap();
+
+    if bad.load(Ordering::Relaxed) {
         eprintln!("some tidy checks failed");
         process::exit(1);
     }

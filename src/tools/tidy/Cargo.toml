@@ -10,6 +10,7 @@ cargo_metadata = "0.11"
 regex = "1"
 lazy_static = "1"
 walkdir = "2"
+crossbeam-utils = "0.8.0"
 
 [[bin]]
 name = "rust-tidy"
