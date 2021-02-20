@@ -37,15 +37,6 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
     )
 }
 
-fn base_expr<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-    loop {
-        match expr.kind {
-            hir::ExprKind::Field(base, ..) => expr = base,
-            _ => return expr,
-        }
-    }
-}
-
 struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<hir::HirId>,
     tcx: TyCtxt<'tcx>,
@@ -140,6 +131,22 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             ty::Tuple(..) => {}
             _ => span_bug!(lhs.span, "named field access on non-ADT"),
+        }
+    }
+
+    fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if self
+            .typeck_results()
+            .expr_adjustments(expr)
+            .iter()
+            .any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(_)))
+        {
+            self.visit_expr(expr);
+        } else if let hir::ExprKind::Field(base, ..) = expr.kind {
+            // Ignore write to field
+            self.handle_assign(base);
+        } else {
+            self.visit_expr(expr);
         }
     }
 
@@ -272,8 +279,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
                 self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprKind::Assign(ref left, ref right, ..) => {
-                // Ignore write to field
-                self.visit_expr(base_expr(left));
+                self.handle_assign(left);
                 self.visit_expr(right);
                 return;
             }
