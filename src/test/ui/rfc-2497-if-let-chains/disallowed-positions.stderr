@@ -560,7 +560,7 @@ LL |     if (let 0 = 0)? {}
    = help: the trait `Try2021` is not implemented for `bool`
    = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:46:8
    |
 LL | / fn nested_within_if_expr() {
@@ -575,7 +575,7 @@ LL | |     if let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromTryResidual<_>` is not implemented for `()`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
    = note: required by `from_residual`
 
 error[E0308]: mismatched types
@@ -748,7 +748,7 @@ LL |     while (let 0 = 0)? {}
    = help: the trait `Try2021` is not implemented for `bool`
    = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:110:11
    |
 LL | / fn nested_within_while_expr() {
@@ -763,7 +763,7 @@ LL | |     while let true = let true = true {}
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromTryResidual<_>` is not implemented for `()`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
    = note: required by `from_residual`
 
 error[E0308]: mismatched types
@@ -927,7 +927,7 @@ LL |     (let 0 = 0)?;
    = help: the trait `Try2021` is not implemented for `bool`
    = note: required by `branch`
 
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/disallowed-positions.rs:183:5
    |
 LL | / fn outside_if_and_while_expr() {
@@ -942,7 +942,7 @@ LL | |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromTryResidual<_>` is not implemented for `()`
+   = help: the trait `FromResidual<_>` is not implemented for `()`
    = note: required by `from_residual`
 
 error[E0308]: mismatched types

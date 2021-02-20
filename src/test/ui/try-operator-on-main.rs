@@ -7,7 +7,7 @@ use std::ops::Try;
 
 fn main() {
     // error for a `Try` type on a non-`Try` fn
-    std::fs::File::open("foo")?; //~ ERROR the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
+    std::fs::File::open("foo")?; //~ ERROR the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
 
     // a non-`Try` type on a non-`Try` fn
     ()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`

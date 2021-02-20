@@ -114,7 +114,7 @@ impl<C, B> ops::GetCorrespondingTryType<C> for ControlFlow<B, !> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<B, C> ops::FromTryResidual for ControlFlow<B, C> {
+impl<B, C> ops::FromResidual for ControlFlow<B, C> {
     fn from_residual(x: <Self as ops::Try2021>::Residual) -> Self {
         match x {
             ControlFlow::Break(r) => ControlFlow::Break(r),

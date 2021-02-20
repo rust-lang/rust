@@ -174,7 +174,7 @@ impl<T, E> ops::Try2021 for Poll<Result<T, E>> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Poll<Result<T, F>> {
+impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Result<T, F>> {
     fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Err(From::from(e))),
@@ -252,7 +252,7 @@ impl<T, E> GetCorrespondingTryType<Poll<Option<T>>> for PollOptionResultHolder<E
 */
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
+impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Poll<Option<Result<T, F>>> {
     fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Some(Err(From::from(e)))),

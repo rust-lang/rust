@@ -3,7 +3,7 @@
 #![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
 
-use std::ops::{ControlFlow, Try, FromTryResidual};
+use std::ops::{ControlFlow, Try, FromResidual};
 
 pub fn simple_fold<A, T>(
     iter: impl Iterator<Item = T>,

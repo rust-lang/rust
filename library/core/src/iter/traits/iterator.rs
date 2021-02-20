@@ -5,7 +5,7 @@
 use crate::cmp::{self, Ordering};
 use crate::ops::{self, Add, ControlFlow, Try};
 #[cfg(not(bootstrap))]
-use crate::ops::FromTryResidual;
+use crate::ops::FromResidual;
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};

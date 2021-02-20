@@ -1,4 +1,4 @@
-error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromTryResidual`)
+error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-control-flow-in-result.rs:11:5
    |
 LL | / fn demo() -> Result<(), ()> {
@@ -8,7 +8,7 @@ LL | |     Ok(())
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromTryResidual<ControlFlow<(), !>>` is not implemented for `std::result::Result<(), ()>`
+   = help: the trait `FromResidual<ControlFlow<(), !>>` is not implemented for `std::result::Result<(), ()>`
    = note: required by `from_residual`
 
 error: aborting due to previous error

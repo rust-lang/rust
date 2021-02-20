@@ -6,7 +6,7 @@
 #![feature(try_trait_v2)]
 
 use std::convert::Infallible;
-use std::ops::{ControlFlow, Try2015, Try2021, FromTryResidual};
+use std::ops::{ControlFlow, Try2015, Try2021, FromResidual};
 
 enum MyResult<T, U> {
     Awesome(T),
@@ -48,7 +48,7 @@ impl<U, V> Try2021 for MyResult<U, V> {
     }
 }
 
-impl<U, V, W: From<V>> FromTryResidual<MyResult<Infallible, V>> for MyResult<U, W> {
+impl<U, V, W: From<V>> FromResidual<MyResult<Infallible, V>> for MyResult<U, W> {
     fn from_residual(x: MyResult<Infallible, V>) -> Self {
         match x {
             MyResult::Terrible(e) => MyResult::Terrible(From::from(e)),
@@ -57,7 +57,7 @@ impl<U, V, W: From<V>> FromTryResidual<MyResult<Infallible, V>> for MyResult<U, 
     }
 }
 
-impl<U, V, W: From<V>> FromTryResidual<Result<!, V>> for MyResult<U, W> {
+impl<U, V, W: From<V>> FromResidual<Result<!, V>> for MyResult<U, W> {
     fn from_residual(x: Result<!, V>) -> Self {
         match x {
             Err(e) => MyResult::Terrible(From::from(e)),
@@ -66,7 +66,7 @@ impl<U, V, W: From<V>> FromTryResidual<Result<!, V>> for MyResult<U, W> {
     }
 }
 
-impl<U, V, W: From<V>> FromTryResidual<MyResult<Infallible, V>> for Result<U, W> {
+impl<U, V, W: From<V>> FromResidual<MyResult<Infallible, V>> for Result<U, W> {
     fn from_residual(x: MyResult<Infallible, V>) -> Self {
         match x {
             MyResult::Terrible(e) => Err(From::from(e)),

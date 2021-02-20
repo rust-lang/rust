@@ -4,7 +4,7 @@
 #![feature(try_trait_v2)]
 
 use std::num::NonZeroI32;
-use std::ops::{ControlFlow, Try, FromTryResidual};
+use std::ops::{ControlFlow, Try, FromResidual};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -32,13 +32,13 @@ impl Try for ResultCode {
     }
 }
 
-impl FromTryResidual for ResultCode {
+impl FromResidual for ResultCode {
     fn from_residual(r: ResultCodeResidual) -> Self {
         ResultCode(r.0.into())
     }
 }
 
-impl<T, E: From<FancyError>> FromTryResidual<ResultCodeResidual> for Result<T, E> {
+impl<T, E: From<FancyError>> FromResidual<ResultCodeResidual> for Result<T, E> {
     fn from_residual(r: ResultCodeResidual) -> Self {
         Err(FancyError(format!("Something fancy about {} at {:?}", r.0, std::time::SystemTime::now())).into())
     }

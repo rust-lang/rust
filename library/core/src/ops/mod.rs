@@ -185,7 +185,7 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 pub use self::r#try::Try2015;
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub use self::r#try::{GetCorrespondingTryType, FromTryResidual, Try2021};
+pub use self::r#try::{GetCorrespondingTryType, FromResidual, Try2021};
 
 #[cfg(bootstrap)]
 #[unstable(feature = "try_trait_v2", issue = "42327")]

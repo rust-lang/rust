@@ -85,7 +85,7 @@ pub trait Try2015 {
     )
 )]
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub trait Try2021: FromTryResidual {
+pub trait Try2021: FromResidual {
     /// The type of the value consumed or produced when not short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "42327")]
     // Temporarily using `Ok` still so I don't need to change the bounds in the library
@@ -117,7 +117,7 @@ pub trait Try2021: FromTryResidual {
     {
         match self.branch() {
             ControlFlow::Continue(c) => Try2021::from_output(f(c)),
-            ControlFlow::Break(r) => FromTryResidual::from_residual(r),
+            ControlFlow::Break(r) => FromResidual::from_residual(r),
         }
     }
 }
@@ -132,12 +132,12 @@ pub trait Try2021: FromTryResidual {
     all(from_method = "from_residual", from_desugaring = "QuestionMark"),
     message = "the `?` operator can only be used in {ItemContext} \
                     that returns `Result` or `Option` \
-                    (or another type that implements `{FromTryResidual}`)",
+                    (or another type that implements `{FromResidual}`)",
     label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
     enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
 ))]
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-pub trait FromTryResidual<Residual = <Self as Try2021>::Residual> {
+pub trait FromResidual<Residual = <Self as Try2021>::Residual> {
     /// Recreate the `Try` type from a related residual
     #[cfg_attr(not(bootstrap), lang = "from_holder")]
     #[unstable(feature = "try_trait_v2", issue = "42327")]

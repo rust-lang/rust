@@ -1755,7 +1755,7 @@ impl<T> ops::GetCorrespondingTryType<T> for Option<!> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T> ops::FromTryResidual for Option<T> {
+impl<T> ops::FromResidual for Option<T> {
     fn from_residual(x: <Self as ops::Try2021>::Residual) -> Self {
         match x {
             None => None,

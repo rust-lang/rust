@@ -1643,7 +1643,7 @@ impl<T, E> ops::GetCorrespondingTryType<T> for Result<!, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "42327")]
-impl<T, E, F: From<E>> ops::FromTryResidual<Result<!, E>> for Result<T, F> {
+impl<T, E, F: From<E>> ops::FromResidual<Result<!, E>> for Result<T, F> {
     fn from_residual(x: Result<!, E>) -> Self {
         match x {
             Err(e) => Err(From::from(e)),
@@ -1662,7 +1662,7 @@ mod sadness {
     pub struct PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult;
 
     #[unstable(feature = "try_trait_v2", issue = "42327")]
-    impl<T, E> ops::FromTryResidual<Option<!>> for Result<T, E>
+    impl<T, E> ops::FromResidual<Option<!>> for Result<T, E>
     where
         E: From<PleaseCallTheOkOrMethodToUseQuestionMarkOnOptionsInAMethodThatReturnsResult>,
     {
