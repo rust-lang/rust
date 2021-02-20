@@ -12,7 +12,7 @@ import { PersistentState } from './persistent_state';
 import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
 import { setContextValue } from './util';
-import { exec } from 'child_process';
+import { exec, spawnSync } from 'child_process';
 
 let ctx: Ctx | undefined;
 
@@ -297,7 +297,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         "arm64 linux": "aarch64-unknown-linux-gnu",
         "arm64 darwin": "aarch64-apple-darwin",
     };
-    const platform = platforms[`${process.arch} ${process.platform}`];
+    let platform = platforms[`${process.arch} ${process.platform}`];
     if (platform === undefined) {
         await vscode.window.showErrorMessage(
             "Unfortunately we don't ship binaries for your platform yet. " +
@@ -308,6 +308,9 @@ async function getServer(config: Config, state: PersistentState): Promise<string
             "will consider it."
         );
         return undefined;
+    }
+    if (platform === "x86_64-unknown-linux-gnu" && isMusl()) {
+        platform = "x86_64-unknown-linux-musl";
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
     const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
@@ -363,6 +366,13 @@ async function isNixOs(): Promise<boolean> {
     } catch (e) {
         return false;
     }
+}
+
+function isMusl(): boolean {
+    // We can detect Alpine by checking `/etc/os-release` but not Void Linux musl.
+    // Instead, we run `ldd` since it advertises the libc which it belongs to.
+    const res = spawnSync("ldd", ["--version"]);
+    return res.stderr != null && res.stderr.indexOf("musl libc") >= 0;
 }
 
 async function downloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
