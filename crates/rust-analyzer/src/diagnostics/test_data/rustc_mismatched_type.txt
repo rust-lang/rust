@@ -2,6 +2,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/runtime/compiler_support.rs",
@@ -31,6 +33,8 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        username: "",
+                        password: None,
                         host: Some(
                             Domain(
                                 "doc.rust-lang.org",

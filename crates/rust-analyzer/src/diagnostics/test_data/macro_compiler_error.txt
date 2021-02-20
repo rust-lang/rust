@@ -2,6 +2,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/crates/hir_def/src/path.rs",
@@ -34,6 +36,8 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                username: "",
+                                password: None,
                                 host: None,
                                 port: None,
                                 path: "/test/crates/hir_def/src/data.rs",
@@ -63,6 +67,8 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            username: "",
+            password: None,
             host: None,
             port: None,
             path: "/test/crates/hir_def/src/data.rs",
