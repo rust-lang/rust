@@ -889,6 +889,29 @@ impl<T> BinaryHeap<T> {
         self.data.shrink_to(min_capacity)
     }
 
+    /// Returns a slice of all values in the underlying vector, in arbitrary
+    /// order.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(binary_heap_as_slice)]
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
+    /// let slice = heap.as_slice();
+    ///
+    /// // Will print in some order
+    /// for x in slice {
+    ///     println!("{}", x);
+    /// }
+    /// ```
+    #[unstable(feature = "binary_heap_as_slice", issue = "82331")]
+    pub fn as_slice(&self) -> &[T] {
+        self.data.as_slice()
+    }
+
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///
