@@ -467,8 +467,7 @@ impl HirDisplay for ApplicationTy {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.subst(&self.parameters);
-                        write!(f, "impl ")?;
-                        write_bounds_like_dyn_trait(&bounds.value, f)?;
+                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
@@ -548,10 +547,10 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        write!(f, "impl ")?;
                         let bounds = f.db.generic_predicates_for_param(*id);
                         let substs = Substs::type_params_for_generics(&generics);
-                        write_bounds_like_dyn_trait(
+                        write_bounds_like_dyn_trait_with_prefix(
+                            "impl",
                             &bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(),
                             f,
                         )?;
@@ -560,8 +559,7 @@ impl HirDisplay for Ty {
             }
             Ty::Bound(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
             Ty::Dyn(predicates) => {
-                write!(f, "dyn ")?;
-                write_bounds_like_dyn_trait(predicates, f)?;
+                write_bounds_like_dyn_trait_with_prefix("dyn", predicates, f)?;
             }
             Ty::Opaque(opaque_ty) => {
                 match opaque_ty.opaque_ty_id {
@@ -572,8 +570,7 @@ impl HirDisplay for Ty {
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
                         let bounds = data.subst(&opaque_ty.parameters);
-                        write!(f, "impl ")?;
-                        write_bounds_like_dyn_trait(&bounds.value, f)?;
+                        write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                     }
                     OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "{{async block}}")?;
@@ -627,7 +624,21 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
     ArrayVec::from(fn_traits).into_iter().flatten().flat_map(|it| it.as_trait())
 }
 
-pub fn write_bounds_like_dyn_trait(
+pub fn write_bounds_like_dyn_trait_with_prefix(
+    prefix: &str,
+    predicates: &[GenericPredicate],
+    f: &mut HirFormatter,
+) -> Result<(), HirDisplayError> {
+    write!(f, "{}", prefix)?;
+    if !predicates.is_empty() {
+        write!(f, " ")?;
+        write_bounds_like_dyn_trait(predicates, f)
+    } else {
+        Ok(())
+    }
+}
+
+fn write_bounds_like_dyn_trait(
     predicates: &[GenericPredicate],
     f: &mut HirFormatter,
 ) -> Result<(), HirDisplayError> {
