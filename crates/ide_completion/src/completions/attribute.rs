@@ -101,6 +101,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     ),
     attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
     attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
+    attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
     attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
@@ -471,6 +472,7 @@ struct Test {}
                 at export_name = "…"
                 at doc(alias = "…")
                 at doc = "…"
+                at doc(hidden)
                 at forbid(…)
                 at ignore = "…"
                 at inline
@@ -519,6 +521,7 @@ struct Test {}
                 at export_name = "…"
                 at doc(alias = "…")
                 at doc = "…"
+                at doc(hidden)
                 at feature(…)
                 at forbid(…)
                 at global_allocator
