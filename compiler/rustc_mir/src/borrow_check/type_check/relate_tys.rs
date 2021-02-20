@@ -24,7 +24,7 @@ pub(super) fn relate_types<'tcx>(
     b: Ty<'tcx>,
     locations: Locations,
     category: ConstraintCategory,
-    borrowck_context: Option<&mut BorrowCheckContext<'_, 'tcx>>,
+    borrowck_context: &mut BorrowCheckContext<'_, 'tcx>,
 ) -> Fallible<()> {
     debug!("relate_types(a={:?}, v={:?}, b={:?}, locations={:?})", a, v, b, locations);
     TypeRelating::new(
@@ -38,7 +38,7 @@ pub(super) fn relate_types<'tcx>(
 
 struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
-    borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+    borrowck_context: &'me mut BorrowCheckContext<'bccx, 'tcx>,
 
     param_env: ty::ParamEnv<'tcx>,
 
@@ -52,7 +52,7 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
         infcx: &'me InferCtxt<'me, 'tcx>,
-        borrowck_context: Option<&'me mut BorrowCheckContext<'bccx, 'tcx>>,
+        borrowck_context: &'me mut BorrowCheckContext<'bccx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
@@ -71,20 +71,12 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     }
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {
-        if self.borrowck_context.is_some() {
-            let origin = NllRegionVariableOrigin::Existential { from_forall };
-            self.infcx.next_nll_region_var(origin)
-        } else {
-            self.infcx.tcx.lifetimes.re_erased
-        }
+        let origin = NllRegionVariableOrigin::Existential { from_forall };
+        self.infcx.next_nll_region_var(origin)
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        if let Some(borrowck_context) = &mut self.borrowck_context {
-            borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
-        } else {
-            self.infcx.tcx.lifetimes.re_erased
-        }
+        self.borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
@@ -100,17 +92,15 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         sub: ty::Region<'tcx>,
         info: ty::VarianceDiagInfo<'tcx>,
     ) {
-        if let Some(borrowck_context) = &mut self.borrowck_context {
-            let sub = borrowck_context.universal_regions.to_region_vid(sub);
-            let sup = borrowck_context.universal_regions.to_region_vid(sup);
-            borrowck_context.constraints.outlives_constraints.push(OutlivesConstraint {
-                sup,
-                sub,
-                locations: self.locations,
-                category: self.category,
-                variance_info: info,
-            });
-        }
+        let sub = self.borrowck_context.universal_regions.to_region_vid(sub);
+        let sup = self.borrowck_context.universal_regions.to_region_vid(sup);
+        self.borrowck_context.constraints.outlives_constraints.push(OutlivesConstraint {
+            sup,
+            sub,
+            locations: self.locations,
+            category: self.category,
+            variance_info: info,
+        });
     }
 
     // We don't have to worry about the equality of consts during borrow checking
