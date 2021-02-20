@@ -676,9 +676,7 @@ pub mod coverageinfo {
     /// array", encoded separately), and source location (start and end positions of the represented
     /// code region).
     ///
-    /// Aligns with [llvm::coverage::CounterMappingRegion](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L224-L227)
-    /// Important: The Rust struct layout (order and types of fields) must match its C++
-    /// counterpart.
+    /// Matches LLVMRustCounterMappingRegion.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub struct CounterMappingRegion {
@@ -1796,7 +1794,7 @@ extern "C" {
         NumVirtualFileMappingIDs: c_uint,
         Expressions: *const coverage_map::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *mut coverageinfo::CounterMappingRegion,
+        MappingRegions: *const coverageinfo::CounterMappingRegion,
         NumMappingRegions: c_uint,
         BufferOut: &RustString,
     );

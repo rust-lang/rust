@@ -162,7 +162,7 @@ pub(crate) fn write_filenames_section_to_buffer<'a>(
 pub(crate) fn write_mapping_to_buffer(
     virtual_file_mapping: Vec<u32>,
     expressions: Vec<CounterExpression>,
-    mut mapping_regions: Vec<CounterMappingRegion>,
+    mapping_regions: Vec<CounterMappingRegion>,
     buffer: &RustString,
 ) {
     unsafe {
@@ -171,7 +171,7 @@ pub(crate) fn write_mapping_to_buffer(
             virtual_file_mapping.len() as c_uint,
             expressions.as_ptr(),
             expressions.len() as c_uint,
-            mapping_regions.as_mut_ptr(),
+            mapping_regions.as_ptr(),
             mapping_regions.len() as c_uint,
             buffer,
         );
