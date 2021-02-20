@@ -534,12 +534,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
+        let description = krate
+            .module
+            .as_ref()
+            .and_then(|item| Some(plain_text_summary(item.doc_value()?.as_str())))
+            .unwrap_or_else(|| String::from("List of all items in this crate"));
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
             static_root_path: self.shared.static_root_path.as_deref(),
-            description: "List of all items in this crate",
+            description: description.as_str(),
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
             extra_scripts: &[],
@@ -1548,7 +1553,10 @@ impl Context<'_> {
         }
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = if it.is_crate() {
+        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));
+        let desc = if let Some(desc) = desc {
+            desc
+        } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
         } else {
             format!(
