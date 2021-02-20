@@ -110,7 +110,10 @@ pub trait Try2021: FromResidual {
 
     /// Demonstration that this is usable for different-return-type scenarios (like `Iterator::try_find`).
     #[unstable(feature = "try_trait_v2", issue = "42327")]
-    fn map<T>(self, f: impl FnOnce(Self::Ok) -> T) -> <Self::Residual as GetCorrespondingTryType<T>>::Output
+    fn map<T>(
+        self,
+        f: impl FnOnce(Self::Ok) -> T,
+    ) -> <Self::Residual as GetCorrespondingTryType<T>>::Output
     where
         Self: Try2021,
         Self::Residual: GetCorrespondingTryType<T>,

@@ -40,7 +40,12 @@ impl FromResidual for ResultCode {
 
 impl<T, E: From<FancyError>> FromResidual<ResultCodeResidual> for Result<T, E> {
     fn from_residual(r: ResultCodeResidual) -> Self {
-        Err(FancyError(format!("Something fancy about {} at {:?}", r.0, std::time::SystemTime::now())).into())
+        Err(FancyError(format!(
+            "Something fancy about {} at {:?}",
+            r.0,
+            std::time::SystemTime::now()
+        ))
+        .into())
     }
 }
 
