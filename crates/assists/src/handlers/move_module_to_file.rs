@@ -1,5 +1,6 @@
 use ast::{edit::IndentLevel, VisibilityOwner};
 use ide_db::base_db::AnchoredPathBuf;
+use stdx::format_to;
 use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
     AstNode, TextRange,
@@ -36,8 +37,6 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
 
     let module_def = ctx.sema.to_def(&module_ast)?;
     let parent_module = module_def.parent(ctx.db())?;
-    let vis_str =
-        if let Some(v) = module_ast.visibility() { v.to_string() + " " } else { "".to_string() };
 
     acc.add(
         AssistId("move_module_to_file", AssistKind::RefactorExtract),
@@ -61,10 +60,13 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
                 items
             };
 
-            builder.replace(
-                module_ast.syntax().text_range(),
-                format!("{}mod {};", vis_str, module_name),
-            );
+            let mut buf = String::new();
+            if let Some(v) = module_ast.visibility() {
+                format_to!(buf, "{} ", v);
+            }
+            format_to!(buf, "mod {};", module_name);
+
+            builder.replace(module_ast.syntax().text_range(), buf);
 
             let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
             builder.create_file(dst, contents);
