@@ -3,30 +3,35 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
 	src: url("SourceSerifPro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
@@ -35,6 +40,7 @@
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
 	src: url("SourceCodePro-Regular.woff") format('woff');
+	font-display: swap;
 }
 
 *:not(body) {

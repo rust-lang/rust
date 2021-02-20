@@ -82,7 +82,7 @@ crate fn render<T: Print, S: Print>(
     <div class=\"theme-picker\">\
         <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\">\
             <img src=\"{static_root_path}brush{suffix}.svg\" \
-                 width=\"18\" \
+                 width=\"18\" height=\"18\" \
                  alt=\"Pick another theme!\">\
         </button>\
         <div id=\"theme-choices\" role=\"menu\"></div>\
@@ -102,7 +102,7 @@ crate fn render<T: Print, S: Print>(
                 <button type=\"button\" class=\"help-button\">?</button>
                 <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
-                         width=\"18\" \
+                         width=\"18\" height=\"18\" \
                          alt=\"Change settings\">\
                 </a>\
             </div>\
