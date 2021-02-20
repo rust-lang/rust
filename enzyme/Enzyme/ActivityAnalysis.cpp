@@ -465,6 +465,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       isa<BasicBlock>(Val)) {
     return true;
   }
+  if (isa<InlineAsm>(Val)) {
+    llvm::errs() << *TR.info.Function << "\n";
+    llvm::errs() << *Val << "\n";
+  }
   assert(!isa<InlineAsm>(Val));
 
   if (auto II = dyn_cast<IntrinsicInst>(Val)) {

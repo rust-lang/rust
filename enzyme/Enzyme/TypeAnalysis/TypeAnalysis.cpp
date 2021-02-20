@@ -157,7 +157,7 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
 TypeAnalyzer::TypeAnalyzer(
     const FnTypeInfo &fn, TypeAnalysis &TA,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-    std::shared_ptr<llvm::DominatorTree> DT, std::shared_ptr<llvm::LoopInfo> LI, 
+    std::shared_ptr<llvm::DominatorTree> DT, std::shared_ptr<llvm::LoopInfo> LI,
     uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
@@ -1095,7 +1095,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     }
     auto L = LI->getLoopFor(phi.getParent());
     bool isHeader = L && L->getHeader() == phi.getParent();
-    for (size_t i=0, end = phi.getNumIncomingValues(); i < end; ++i) {
+    for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i) {
       if (!isHeader || !L->contains(phi.getIncomingBlock(i))) {
         updateAnalysis(phi.getIncomingValue(i), upVal, &phi);
       }

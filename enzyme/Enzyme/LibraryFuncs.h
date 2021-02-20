@@ -305,26 +305,98 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
                                         llvm::Instruction *maybeWriter) {
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-    if (call->getCalledFunction() &&
-        isCertainMallocOrFree(call->getCalledFunction())) {
+    Function *called = call->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast()) {
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          called = fn;
+        }
+      }
+    }
+    if (called && isCertainMallocOrFree(called)) {
       return false;
+    }
+    if (called && isMemFreeLibMFunction(called->getName())) {
+      return false;
+    }
+    if (auto II = dyn_cast<IntrinsicInst>(call)) {
+      if (II->getIntrinsicID() == Intrinsic::stacksave)
+        return false;
+      if (II->getIntrinsicID() == Intrinsic::stackrestore)
+        return false;
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
-    if (call->getCalledFunction() &&
-        isCertainMallocOrFree(call->getCalledFunction())) {
+    Function *called = call->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast()) {
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          called = fn;
+        }
+      }
+    }
+    if (called && isCertainMallocOrFree(called)) {
       return false;
+    }
+    if (called && isMemFreeLibMFunction(called->getName())) {
+      return false;
+    }
+    if (auto II = dyn_cast<IntrinsicInst>(call)) {
+      if (II->getIntrinsicID() == Intrinsic::stacksave)
+        return false;
+      if (II->getIntrinsicID() == Intrinsic::stackrestore)
+        return false;
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-    if (call->getCalledFunction() &&
-        isCertainMallocOrFree(call->getCalledFunction())) {
+    Function *called = call->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast()) {
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          called = fn;
+        }
+      }
+    }
+    if (called && isCertainMallocOrFree(called)) {
+      return false;
+    }
+    if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-    if (call->getCalledFunction() &&
-        isCertainMallocOrFree(call->getCalledFunction())) {
+    Function *called = call->getCalledFunction();
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast()) {
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+          called = fn;
+        }
+      }
+    }
+    if (called && isCertainMallocOrFree(called)) {
+      return false;
+    }
+    if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
   }
@@ -360,8 +432,6 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
   }
 
   if (auto cb = dyn_cast<CallInst>(maybeReader)) {
-    // llvm::errs() << " considering: " << *cb << " and: " << *maybeWriter <<
-    // "\n";
     return isModOrRefSet(AA.getModRefInfo(maybeWriter, cb));
   }
   if (auto cb = dyn_cast<InvokeInst>(maybeReader)) {
