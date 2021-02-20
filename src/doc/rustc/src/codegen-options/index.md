@@ -299,9 +299,9 @@ opt-level=0`](#opt-level)). That is:
 * When `-C lto` is not specified:
   * `codegen-units=1`: disable LTO.
   * `opt-level=0`: disable LTO.
-* When `-C lto=true`:
-  * `lto=true`: 16 codegen units, perform fat LTO across crates.
-  * `codegen-units=1` + `lto=true`: 1 codegen unit, fat LTO across crates.
+* When `-C lto` is specified:
+  * `lto`: 16 codegen units, perform fat LTO across crates.
+  * `codegen-units=1` + `lto`: 1 codegen unit, fat LTO across crates.
 
 See also [linker-plugin-lto](#linker-plugin-lto) for cross-language LTO.
 
