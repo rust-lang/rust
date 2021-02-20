@@ -4,11 +4,11 @@ error[E0063]: missing field `x` in initializer of `SingleFoo`
 LL |     let w = SingleFoo { };
    |             ^^^^^^^^^ missing `x`
 
-error[E0063]: missing fields `y`, `z` in initializer of `PluralFoo`
+error[E0063]: missing fields `y` and `z` in initializer of `PluralFoo`
   --> $DIR/E0063.rs:34:13
    |
 LL |     let x = PluralFoo {x: 1};
-   |             ^^^^^^^^^ missing `y`, `z`
+   |             ^^^^^^^^^ missing `y` and `z`
 
 error[E0063]: missing fields `a`, `b`, `y` and 1 other field in initializer of `TruncatedFoo`
   --> $DIR/E0063.rs:36:13
