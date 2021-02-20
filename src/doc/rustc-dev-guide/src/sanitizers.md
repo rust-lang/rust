@@ -51,7 +51,7 @@ libraries. Highlight of the most important aspects of the implementation:
    relative to default system root, so that this process is not affected
    by sysroot overrides used for example by cargo `-Z build-std` functionality.
 
-[compiler-rt]: https://github.com/llvm/llvm-project/tree/master/compiler-rt
+[compiler-rt]: https://github.com/llvm/llvm-project/tree/main/compiler-rt
 [sanitizer-build]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/bootstrap/native.rs#L566-L624
 [sanitizer-copy]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/bootstrap/compile.rs#L270-L304
 [sanitizer-attribute]: https://github.com/rust-lang/rust/blob/a29424a2265411dda7d7446516ac5fd7499e2b55/src/librustc_codegen_llvm/attributes.rs#L49-L72

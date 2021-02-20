@@ -122,7 +122,7 @@ basically packs the C code from `compiler-rt` into a Rust crate.
 In order for `profiler_builtins` to be built, `profiler = true` must be set
 in `rustc`'s `config.toml`.
 
-[compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/master/compiler-rt/lib/profile
+[compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
 
 ## Testing PGO
 
