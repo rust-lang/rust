@@ -352,14 +352,6 @@ where
                         error
                     ),
                 );
-                // Some errors shouldn't come up because creating them causes
-                // an allocation, which we should avoid. When that happens,
-                // dedicated error variants should be introduced instead.
-                assert!(
-                    !error.kind().allocates(),
-                    "interning encountered allocating error: {}",
-                    error
-                );
             }
         }
     }
