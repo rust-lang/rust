@@ -1018,7 +1018,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Int(int), ty::RawPtr(_)) => {
+            (Scalar::Int(int), ty::RawPtr(_) | ty::FnPtr(_)) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1040,8 +1040,7 @@ pub trait PrettyPrinter<'tcx>:
                             " as ",
                         )?;
                     }
-                    Some(_) => p!("<non-executable memory>"),
-                    None => p!("<dangling pointer>"),
+                    _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
                 }
             }
             // For function type zsts just printing the path is enough
