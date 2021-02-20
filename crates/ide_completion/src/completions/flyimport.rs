@@ -53,6 +53,7 @@ use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
 };
+use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxNode, T};
 use test_utils::mark;
 
@@ -91,8 +92,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         position_for_import(ctx, Some(import_assets.import_candidate()))?,
         &ctx.sema,
     )?;
+
+    let scope_definitions = scope_definitions(ctx);
     let mut all_mod_paths = import_assets
-        .search_for_relative_paths(&ctx.sema)
+        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
         .into_iter()
         .map(|(mod_path, item_in_ns)| {
             let scope_item = match item_in_ns {
@@ -102,6 +105,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             };
             (mod_path, scope_item)
         })
+        .filter(|(_, proposed_def)| !scope_definitions.contains(proposed_def))
         .collect::<Vec<_>>();
     all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
         compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
@@ -123,6 +127,14 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         render_resolution_with_import(RenderContext::new(ctx), import_edit, &definition)
     }));
     Some(())
+}
+
+fn scope_definitions(ctx: &CompletionContext) -> FxHashSet<ScopeDef> {
+    let mut scope_definitions = FxHashSet::default();
+    ctx.scope.process_all_names(&mut |_, scope_def| {
+        scope_definitions.insert(scope_def);
+    });
+    scope_definitions
 }
 
 pub(crate) fn position_for_import<'a>(
@@ -192,7 +204,7 @@ mod tests {
 
     use crate::{
         item::CompletionKind,
-        test_utils::{check_edit, completion_list},
+        test_utils::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -683,6 +695,84 @@ use stdi$0
 fn main() {}
 "#,
             expect![[]],
+        );
+    }
+
+    #[test]
+    fn prefix_config_usage() {
+        let fixture = r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+use crate::foo::bar;
+
+fn main() {
+    Ite$0
+}"#;
+        let mut config = TEST_CONFIG;
+
+        config.insert_use.prefix_kind = hir::PrefixKind::ByCrate;
+        check_edit_with_config(
+            config.clone(),
+            "Item",
+            fixture,
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+use crate::foo::bar::{self, Item};
+
+fn main() {
+    Item
+}"#,
+        );
+
+        config.insert_use.prefix_kind = hir::PrefixKind::BySelf;
+        check_edit_with_config(
+            config.clone(),
+            "Item",
+            fixture,
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+use crate::foo::bar;
+
+use self::foo::bar::Item;
+
+fn main() {
+    Item
+}"#,
+        );
+
+        config.insert_use.prefix_kind = hir::PrefixKind::Plain;
+        check_edit_with_config(
+            config,
+            "Item",
+            fixture,
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+    }
+}
+
+use foo::bar::Item;
+
+use crate::foo::bar;
+
+fn main() {
+    Item
+}"#,
         );
     }
 }
