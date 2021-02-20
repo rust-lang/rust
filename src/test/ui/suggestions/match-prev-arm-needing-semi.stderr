@@ -24,13 +24,10 @@ help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy().await,
    |                               ^^^^^^
-help: consider removing this semicolon and boxing the expressions
+help: consider removing this semicolon
    |
-LL |             Box::new(async_dummy())
-LL |
-LL |         }
-LL |         false => Box::new(async_dummy()),
-   |
+LL |             async_dummy()
+   |                         --
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-prev-arm-needing-semi.rs:39:18
