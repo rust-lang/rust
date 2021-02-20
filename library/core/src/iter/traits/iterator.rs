@@ -1312,7 +1312,13 @@ pub trait Iterator {
     ///
     /// On iteration, the closure will be applied to each element of the
     /// iterator and the return value from the closure, an [`Option`], is
-    /// yielded by the iterator.
+    /// yielded by the iterator. Thus, if `None` is returned from the closure,
+    /// the iteration will short-circuit and finish.
+    ///
+    /// `scan()` is able to take a mutable reference as it's initial value. This
+    /// allows you to mutate data outside of the iterator. This is handy if you
+    /// want to gather some data along side your iteration, or perform some
+    /// check after the iteration has finished.
     ///
     /// # Examples
     ///
@@ -1333,6 +1339,67 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(-2));
     /// assert_eq!(iter.next(), Some(-6));
     /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Short-circuiting an iteration if a timeout occurs:
+    ///
+    /// ```
+    /// let a = [200, 200, 200, 408, 408, 408, 200, 200];
+    /// let responses: Vec<u32> = a
+    ///     .iter()
+    ///     // If we get `408` 3 times in a row, stop the iteration.
+    ///     .scan(0, |timeout, &resp| {
+    ///         if resp == 408 {
+    ///             *timeout += 1;
+    ///         } else {
+    ///             *timeout = 0;
+    ///         }
+    ///
+    ///         if *timeout >= 3 {
+    ///             None
+    ///         } else {
+    ///             Some(resp)
+    ///         }
+    ///     })
+    ///     .collect();
+    ///
+    /// assert_eq!(responses, vec![200, 200, 200, 408, 408]);
+    /// ```
+    ///
+    /// Short-circuiting an iteration when an `Err` has occurred, returning the
+    /// data up to the `Err`, with the ability to handle the `Result` after the
+    /// iteration has completed:
+    ///
+    /// ```
+    /// let a: Vec<Result<u32, &str>> = vec![
+    ///     Ok(1),
+    ///     Ok(2),
+    ///     Ok(3),
+    ///     Err("Stop the bus!"),
+    ///     Ok(5),
+    ///     Ok(6),
+    ///     Ok(7),
+    /// ];
+    ///
+    /// // A `Result` to store whether an `Err` has occurred.
+    /// let mut result: Result<(), &str> = Ok(());
+    ///
+    /// let nums: Vec<u32> = a
+    ///     .iter()
+    ///     // Passing in a mutable reference to mutate our `result` variable.
+    ///     .scan(&mut result, |res, num| match num {
+    ///         Ok(num) => Some(*num),
+    ///         Err(e) => {
+    ///             **res = Err(e);
+    ///             None
+    ///         }
+    ///     })
+    ///     .collect();
+    ///
+    /// // Check `result` and handle the error if necessary.
+    ///
+    /// assert_eq!(nums, vec![1, 2, 3]);
+    /// assert_eq!(result, Err("Stop the bus!"));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
