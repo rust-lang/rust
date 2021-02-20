@@ -3,17 +3,24 @@
 fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
     debug x => _1;                       // in scope 0 at $DIR/simplify_try.rs:7:17: 7:18
     let mut _0: std::result::Result<u32, i32>; // return place in scope 0 at $DIR/simplify_try.rs:7:41: 7:57
+    let mut _2: std::ops::ControlFlow<std::result::Result<!, i32>, u32>; // in scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+    let mut _3: std::result::Result<u32, i32>; // in scope 0 at $DIR/simplify_try.rs:8:13: 8:14
+    let mut _4: isize;                   // in scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+    let mut _5: std::result::Result<!, i32>; // in scope 0 at $DIR/simplify_try.rs:8:14: 8:15
     scope 1 {
         debug y => ((_0 as Ok).0: u32);  // in scope 1 at $DIR/simplify_try.rs:8:9: 8:10
     }
     scope 2 {
-        debug err => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify_try.rs:8:14: 8:15
+        debug holder => _5;              // in scope 2 at $DIR/simplify_try.rs:8:14: 8:15
         scope 3 {
-            scope 7 (inlined <i32 as From<i32>>::from) { // at $DIR/simplify_try.rs:8:14: 8:15
-                debug t => ((_0 as Err).0: i32); // in scope 7 at $DIR/simplify_try.rs:8:14: 8:15
-            }
-            scope 8 (inlined <Result<u32, i32> as Try>::from_error) { // at $DIR/simplify_try.rs:8:13: 8:15
-                debug v => ((_0 as Err).0: i32); // in scope 8 at $DIR/simplify_try.rs:8:13: 8:15
+            scope 9 (inlined <Result<u32, i32> as FromResidual<Result<!, i32>>>::from_residual) { // at $DIR/simplify_try.rs:8:13: 8:15
+                debug x => _5;           // in scope 9 at $DIR/simplify_try.rs:8:13: 8:15
+                scope 10 {
+                    debug e => ((_0 as Err).0: i32); // in scope 10 at $DIR/simplify_try.rs:8:13: 8:15
+                    scope 11 (inlined <i32 as From<i32>>::from) { // at $DIR/simplify_try.rs:8:13: 8:15
+                        debug t => ((_0 as Err).0: i32); // in scope 11 at $DIR/simplify_try.rs:8:13: 8:15
+                    }
+                }
             }
         }
     }
@@ -22,12 +29,59 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
         scope 5 {
         }
     }
-    scope 6 (inlined <Result<u32, i32> as Try>::into_result) { // at $DIR/simplify_try.rs:8:13: 8:15
-        debug self => _0;                // in scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+    scope 6 (inlined <Result<u32, i32> as Try>::branch) { // at $DIR/simplify_try.rs:8:13: 8:15
+        debug self => _3;                // in scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+        let mut _6: isize;               // in scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+        scope 7 {
+            debug c => ((_2 as Continue).0: u32); // in scope 7 at $DIR/simplify_try.rs:8:13: 8:15
+        }
+        scope 8 {
+            debug e => ((((_2 as Break).0: std::result::Result<!, i32>) as Err).0: i32); // in scope 8 at $DIR/simplify_try.rs:8:13: 8:15
+        }
     }
 
     bb0: {
-        _0 = _1;                         // scope 0 at $DIR/simplify_try.rs:8:13: 8:14
+        StorageLive(_3);                 // scope 0 at $DIR/simplify_try.rs:8:13: 8:14
+        _3 = _1;                         // scope 0 at $DIR/simplify_try.rs:8:13: 8:14
+        StorageLive(_6);                 // scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+        _6 = discriminant(_3);           // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+        switchInt(move _6) -> [0_isize: bb6, 1_isize: bb4, otherwise: bb5]; // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+    }
+
+    bb1: {
+        StorageDead(_6);                 // scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+        StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:8:14: 8:15
+        _4 = discriminant(_2);           // scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+        switchInt(move _4) -> [0_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+    }
+
+    bb2: {
+        ((_0 as Ok).0: u32) = ((_2 as Continue).0: u32); // scope 0 at $DIR/simplify_try.rs:8:13: 8:15
+        discriminant(_0) = 0;            // scope 1 at $DIR/simplify_try.rs:9:5: 9:10
         return;                          // scope 0 at $DIR/simplify_try.rs:10:2: 10:2
+    }
+
+    bb3: {
+        _5 = ((_2 as Break).0: std::result::Result<!, i32>); // scope 0 at $DIR/simplify_try.rs:8:14: 8:15
+        ((_0 as Err).0: i32) = move ((_5 as Err).0: i32); // scope 9 at $DIR/simplify_try.rs:8:13: 8:15
+        discriminant(_0) = 1;            // scope 10 at $DIR/simplify_try.rs:8:13: 8:15
+        return;                          // scope 0 at $DIR/simplify_try.rs:10:2: 10:2
+    }
+
+    bb4: {
+        ((((_2 as Break).0: std::result::Result<!, i32>) as Err).0: i32) = move ((_3 as Err).0: i32); // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+        discriminant(((_2 as Break).0: std::result::Result<!, i32>)) = 1; // scope 8 at $DIR/simplify_try.rs:8:13: 8:15
+        discriminant(_2) = 1;            // scope 8 at $DIR/simplify_try.rs:8:13: 8:15
+        goto -> bb1;                     // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+    }
+
+    bb5: {
+        unreachable;                     // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+    }
+
+    bb6: {
+        ((_2 as Continue).0: u32) = move ((_3 as Ok).0: u32); // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
+        discriminant(_2) = 0;            // scope 7 at $DIR/simplify_try.rs:8:13: 8:15
+        goto -> bb1;                     // scope 6 at $DIR/simplify_try.rs:8:13: 8:15
     }
 }
