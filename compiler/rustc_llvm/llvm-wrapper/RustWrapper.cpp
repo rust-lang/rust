@@ -207,6 +207,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::InaccessibleMemOnly;
   case SanitizeHWAddress:
     return Attribute::SanitizeHWAddress;
+  case WillReturn:
+    return Attribute::WillReturn;
   }
   report_fatal_error("bad AttributeKind");
 }

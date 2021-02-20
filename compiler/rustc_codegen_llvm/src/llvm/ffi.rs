@@ -132,6 +132,7 @@ pub enum Attribute {
     ReadNone = 26,
     InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
+    WillReturn = 29,
 }
 
 /// LLVMIntPredicate
