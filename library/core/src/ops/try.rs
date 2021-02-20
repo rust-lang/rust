@@ -123,6 +123,15 @@ pub trait Try2021: FromResidual {
             ControlFlow::Break(r) => FromResidual::from_residual(r),
         }
     }
+
+    /// Hack so that calls to `Try::into_result` keep building on nightly for a while
+    #[unstable(feature = "try_trait", issue = "42327")]
+    fn into_result(self) -> Result<<Self as Try2015>::Ok, <Self as Try2015>::Error>
+    where
+        Self: Try2015,
+    {
+        <Self as Try2015>::into_result(self)
+    }
 }
 
 /// Allows you to pick with other types can be converted into your `Try` type.
