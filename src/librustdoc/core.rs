@@ -32,6 +32,7 @@ use std::{
 };
 
 use crate::clean;
+use crate::clean::inline::build_external_trait;
 use crate::clean::{AttributesExt, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
@@ -530,6 +531,16 @@ crate fn run_global_ctxt(
         module_trait_cache: RefCell::new(FxHashMap::default()),
         cache: Cache::default(),
     };
+
+    // Small hack to force the Sized trait to be present.
+    //
+    // Note that in case of `#![no_core]`, the trait is not available.
+    if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
+        let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
+        sized_trait.is_auto = true;
+        ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
+    }
+
     debug!("crate: {:?}", tcx.hir().krate());
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
