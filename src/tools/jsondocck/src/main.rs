@@ -49,6 +49,7 @@ pub enum CommandKind {
     Has,
     Count,
     Is,
+    Set,
 }
 
 impl CommandKind {
@@ -56,6 +57,7 @@ impl CommandKind {
         let count = match self {
             CommandKind::Has => (1..=3).contains(&args.len()),
             CommandKind::Count | CommandKind::Is => 3 == args.len(),
+            CommandKind::Set => 4 == args.len(),
         };
 
         if !count {
@@ -85,6 +87,7 @@ impl fmt::Display for CommandKind {
             CommandKind::Has => "has",
             CommandKind::Count => "count",
             CommandKind::Is => "is",
+            CommandKind::Set => "set",
         };
         write!(f, "{}", text)
     }
@@ -130,6 +133,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
             "has" => CommandKind::Has,
             "count" => CommandKind::Count,
             "is" => CommandKind::Is,
+            "set" => CommandKind::Set,
             _ => {
                 print_err(&format!("Unrecognized command name `@{}`", cmd), lineno);
                 errors = true;
@@ -232,6 +236,23 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 Ok(results) => {
                     let pat: Value = serde_json::from_str(&command.args[2]).unwrap();
                     results.len() == 1 && *results[0] == pat
+                }
+                Err(_) => false,
+            }
+        }
+        // FIXME, Figure out semantics for @!set
+        CommandKind::Set => {
+            // @set <name> = <path> <jsonpath>
+            assert_eq!(command.args.len(), 4);
+            assert_eq!(command.args[1], "=", "Expected an `=`");
+            let val = cache.get_value(&command.args[2])?;
+
+            match select(&val, &command.args[3]) {
+                Ok(results) => {
+                    assert_eq!(results.len(), 1);
+                    let r = cache.variables.insert(command.args[0].clone(), results[0].clone());
+                    assert!(r.is_none(), "Name collision");
+                    true
                 }
                 Err(_) => false,
             }
