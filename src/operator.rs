@@ -8,8 +8,8 @@ pub trait EvalContextExt<'tcx> {
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Tag>,
-        right: ImmTy<'tcx, Tag>,
+        left: &ImmTy<'tcx, Tag>,
+        right: &ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)>;
 
     fn ptr_eq(&self, left: Scalar<Tag>, right: Scalar<Tag>) -> InterpResult<'tcx, bool>;
@@ -19,8 +19,8 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
     fn binary_ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Tag>,
-        right: ImmTy<'tcx, Tag>,
+        left: &ImmTy<'tcx, Tag>,
+        right: &ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::BinOp::*;
 
@@ -30,7 +30,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
             Eq | Ne => {
                 // This supports fat pointers.
                 #[rustfmt::skip]
-                let eq = match (*left, *right) {
+                let eq = match (**left, **right) {
                     (Immediate::Scalar(left), Immediate::Scalar(right)) => {
                         self.ptr_eq(left.check_init()?, right.check_init()?)?
                     }

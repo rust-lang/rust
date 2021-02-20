@@ -16,8 +16,8 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn clock_gettime(
         &mut self,
-        clk_id_op: OpTy<'tcx, Tag>,
-        tp_op: OpTy<'tcx, Tag>,
+        clk_id_op: &OpTy<'tcx, Tag>,
+        tp_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -47,15 +47,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_int_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
         ];
 
-        this.write_packed_immediates(tp, &imms)?;
+        this.write_packed_immediates(&tp, &imms)?;
 
         Ok(0)
     }
 
     fn gettimeofday(
         &mut self,
-        tv_op: OpTy<'tcx, Tag>,
-        tz_op: OpTy<'tcx, Tag>,
+        tv_op: &OpTy<'tcx, Tag>,
+        tz_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -81,13 +81,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_int_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
         ];
 
-        this.write_packed_immediates(tv, &imms)?;
+        this.write_packed_immediates(&tv, &imms)?;
 
         Ok(0)
     }
 
     #[allow(non_snake_case)]
-    fn GetSystemTimeAsFileTime(&mut self, LPFILETIME_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
+    fn GetSystemTimeAsFileTime(&mut self, LPFILETIME_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
@@ -110,12 +110,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_uint_checked(dwLowDateTime, DWORD_tylayout)?,
             immty_from_uint_checked(dwHighDateTime, DWORD_tylayout)?,
         ];
-        this.write_packed_immediates(this.deref_operand(LPFILETIME_op)?, &imms)?;
+        this.write_packed_immediates(&this.deref_operand(LPFILETIME_op)?, &imms)?;
         Ok(())
     }
 
     #[allow(non_snake_case)]
-    fn QueryPerformanceCounter(&mut self, lpPerformanceCount_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn QueryPerformanceCounter(&mut self, lpPerformanceCount_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
@@ -126,12 +126,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let duration = Instant::now().duration_since(this.machine.time_anchor);
         let qpc = i64::try_from(duration.as_nanos())
             .map_err(|_| err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported"))?;
-        this.write_scalar(Scalar::from_i64(qpc), this.deref_operand(lpPerformanceCount_op)?.into())?;
+        this.write_scalar(Scalar::from_i64(qpc), &this.deref_operand(lpPerformanceCount_op)?.into())?;
         Ok(-1) // return non-zero on success
     }
 
     #[allow(non_snake_case)]
-    fn QueryPerformanceFrequency(&mut self, lpFrequency_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn QueryPerformanceFrequency(&mut self, lpFrequency_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
@@ -142,7 +142,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // is consistent across all processors.
         // Miri emulates a "hardware" performance counter with a resolution of 1ns,
         // and thus 10^9 counts per second.
-        this.write_scalar(Scalar::from_i64(1_000_000_000), this.deref_operand(lpFrequency_op)?.into())?;
+        this.write_scalar(Scalar::from_i64(1_000_000_000), &this.deref_operand(lpFrequency_op)?.into())?;
         Ok(-1) // Return non-zero on success
     }
 
@@ -159,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported").into())
     }
 
-    fn mach_timebase_info(&mut self, info_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("macos", "mach_timebase_info");
@@ -175,14 +175,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             immty_from_int_checked(denom, this.machine.layouts.u32)?
         ];
 
-        this.write_packed_immediates(info, &imms)?;
+        this.write_packed_immediates(&info, &imms)?;
         Ok(0) // KERN_SUCCESS
     }
 
     fn nanosleep(
         &mut self,
-        req_op: OpTy<'tcx, Tag>,
-        _rem: OpTy<'tcx, Tag>,
+        req_op: &OpTy<'tcx, Tag>,
+        _rem: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         // Signal handlers are not supported, so rem will never be written to.
 

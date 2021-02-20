@@ -13,7 +13,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         link_name: &str,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>,
+        dest: &PlaceTy<'tcx, Tag>,
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
@@ -30,28 +30,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These symbols have different names on Linux and macOS, which is the only reason they are not
             // in the `posix` module.
             "close" => {
-                let &[fd] = check_arg_count(args)?;
+                let &[ref fd] = check_arg_count(args)?;
                 let result = this.close(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir" => {
-                let &[name] = check_arg_count(args)?;
+                let &[ref name] = check_arg_count(args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir64_r" => {
-                let &[dirp, entry, result] = check_arg_count(args)?;
+                let &[ref dirp, ref entry, ref result] = check_arg_count(args)?;
                 let result = this.linux_readdir64_r(dirp, entry, result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "ftruncate64" => {
-                let &[fd, length] = check_arg_count(args)?;
+                let &[ref fd, ref length] = check_arg_count(args)?;
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             // Linux-only
             "posix_fadvise" => {
-                let &[fd, offset, len, advice] = check_arg_count(args)?;
+                let &[ref fd, ref offset, ref len, ref advice] = check_arg_count(args)?;
                 this.read_scalar(fd)?.to_i32()?;
                 this.read_scalar(offset)?.to_machine_isize(this)?;
                 this.read_scalar(len)?.to_machine_isize(this)?;
@@ -60,7 +60,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "sync_file_range" => {
-                let &[fd, offset, nbytes, flags] = check_arg_count(args)?;
+                let &[ref fd, ref offset, ref nbytes, ref flags] = check_arg_count(args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Time related shims
             "clock_gettime" => {
                 // This is a POSIX function but it has only been tested on linux.
-                let &[clk_id, tp] = check_arg_count(args)?;
+                let &[ref clk_id, ref tp] = check_arg_count(args)?;
                 let result = this.clock_gettime(clk_id, tp)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -76,18 +76,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Querying system information
             "pthread_attr_getstack" => {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
-                let &[attr_place, addr_place, size_place] = check_arg_count(args)?;
+                let &[ref attr_place, ref addr_place, ref size_place] = check_arg_count(args)?;
                 this.deref_operand(attr_place)?;
                 let addr_place = this.deref_operand(addr_place)?;
                 let size_place = this.deref_operand(size_place)?;
 
                 this.write_scalar(
                     Scalar::from_uint(STACK_ADDR, this.pointer_size()),
-                    addr_place.into(),
+                    &addr_place.into(),
                 )?;
                 this.write_scalar(
                     Scalar::from_uint(STACK_SIZE, this.pointer_size()),
-                    size_place.into(),
+                    &size_place.into(),
                 )?;
 
                 // Return success (`0`).
@@ -96,17 +96,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "prctl" => {
-                let &[option, arg2, arg3, arg4, arg5] = check_arg_count(args)?;
+                let &[ref option, ref arg2, ref arg3, ref arg4, ref arg5] = check_arg_count(args)?;
                 let result = this.prctl(option, arg2, arg3, arg4, arg5)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_setclock" => {
-                let &[attr, clock_id] = check_arg_count(args)?;
+                let &[ref attr, ref clock_id] = check_arg_count(args)?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_getclock" => {
-                let &[attr, clock_id] = check_arg_count(args)?;
+                let &[ref attr, ref clock_id] = check_arg_count(args)?;
                 let result = this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
@@ -137,7 +137,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if args.is_empty() {
                     throw_ub_format!("incorrect number of arguments for syscall: got 0, expected at least 1");
                 }
-                match this.read_scalar(args[0])?.to_machine_usize(this)? {
+                match this.read_scalar(&args[0])?.to_machine_usize(this)? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                     // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
@@ -145,7 +145,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         if args.len() < 4 {
                             throw_ub_format!("incorrect number of arguments for `getrandom` syscall: got {}, expected at least 4", args.len());
                         }
-                        getrandom(this, args[1], args[2], args[3], dest)?;
+                        getrandom(this, &args[1], &args[2], &args[3], dest)?;
                     }
                     // `statx` is used by `libstd` to retrieve metadata information on `linux`
                     // instead of using `stat`,`lstat` or `fstat` as on `macos`.
@@ -154,7 +154,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         if args.len() < 6 {
                             throw_ub_format!("incorrect number of arguments for `statx` syscall: got {}, expected at least 6", args.len());
                         }
-                        let result = this.linux_statx(args[1], args[2], args[3], args[4], args[5])?;
+                        let result = this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
                         this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
                     }
                     // `futex` is used by some synchonization primitives.
@@ -167,11 +167,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscelanneous
             "getrandom" => {
-                let &[ptr, len, flags] = check_arg_count(args)?;
+                let &[ref ptr, ref len, ref flags] = check_arg_count(args)?;
                 getrandom(this, ptr, len, flags, dest)?;
             }
             "sched_getaffinity" => {
-                let &[pid, cpusetsize, mask] = check_arg_count(args)?;
+                let &[ref pid, ref cpusetsize, ref mask] = check_arg_count(args)?;
                 this.read_scalar(pid)?.to_i32()?;
                 this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
                 this.deref_operand(mask)?;
@@ -184,7 +184,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
-                let &[_thread, _attr] = check_arg_count(args)?;
+                let &[ref _thread, ref _attr] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
 
@@ -198,10 +198,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 // Shims the linux `getrandom` syscall.
 fn getrandom<'tcx>(
     this: &mut MiriEvalContext<'_, 'tcx>,
-    ptr: OpTy<'tcx, Tag>,
-    len: OpTy<'tcx, Tag>,
-    flags: OpTy<'tcx, Tag>,
-    dest: PlaceTy<'tcx, Tag>,
+    ptr: &OpTy<'tcx, Tag>,
+    len: &OpTy<'tcx, Tag>,
+    flags: &OpTy<'tcx, Tag>,
+    dest: &PlaceTy<'tcx, Tag>,
 ) -> InterpResult<'tcx> {
     let ptr = this.read_scalar(ptr)?.check_init()?;
     let len = this.read_scalar(len)?.to_machine_usize(this)?;

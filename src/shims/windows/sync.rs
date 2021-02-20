@@ -5,7 +5,7 @@ use crate::*;
 
 fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
     ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    lock_op: OpTy<'tcx, Tag>,
+    lock_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, RwLockId> {
     let id = ecx.read_scalar_at_offset(lock_op, 0, ecx.machine.layouts.u32)?.to_u32()?;
     if id == 0 {
@@ -24,7 +24,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn AcquireSRWLockExclusive(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
@@ -49,7 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn TryAcquireSRWLockExclusive(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, u8> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
@@ -67,7 +67,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn ReleaseSRWLockExclusive(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
@@ -84,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn AcquireSRWLockShared(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn TryAcquireSRWLockShared(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, u8> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn ReleaseSRWLockShared(
         &mut self,
-        lock_op: OpTy<'tcx, Tag>,
+        lock_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;

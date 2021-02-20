@@ -69,7 +69,7 @@ impl<'tcx> EnvVars<'tcx> {
         }
         // Deallocate environ var list.
         let environ = ecx.machine.env_vars.environ.unwrap();
-        let old_vars_ptr = ecx.read_scalar(environ.into())?.check_init()?;
+        let old_vars_ptr = ecx.read_scalar(&environ.into())?.check_init()?;
         ecx.memory.deallocate(ecx.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
         Ok(())
     }
@@ -99,7 +99,7 @@ fn alloc_env_var_as_wide_str<'mir, 'tcx>(
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn getenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
+    fn getenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(target_os == "linux" || target_os == "macos", "`getenv` is only available for the UNIX target family");
@@ -118,9 +118,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
-        buf_op: OpTy<'tcx, Tag>,   // LPWSTR
-        size_op: OpTy<'tcx, Tag>,  // DWORD
+        name_op: &OpTy<'tcx, Tag>,  // LPCWSTR
+        buf_op: &OpTy<'tcx, Tag>,   // LPWSTR
+        size_op: &OpTy<'tcx, Tag>,  // DWORD
     ) -> InterpResult<'tcx, u32> { // Returns DWORD (u32 in Windows)
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetEnvironmentVariableW");
@@ -169,7 +169,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn FreeEnvironmentStringsW(&mut self, env_block_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn FreeEnvironmentStringsW(&mut self, env_block_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "FreeEnvironmentStringsW");
 
@@ -181,8 +181,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn setenv(
         &mut self,
-        name_op: OpTy<'tcx, Tag>,
-        value_op: OpTy<'tcx, Tag>,
+        name_op: &OpTy<'tcx, Tag>,
+        value_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         let mut this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
@@ -218,8 +218,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn SetEnvironmentVariableW(
         &mut self,
-        name_op: OpTy<'tcx, Tag>,  // LPCWSTR
-        value_op: OpTy<'tcx, Tag>, // LPCWSTR
+        name_op: &OpTy<'tcx, Tag>,  // LPCWSTR
+        value_op: &OpTy<'tcx, Tag>, // LPCWSTR
     ) -> InterpResult<'tcx, i32> {
         let mut this = self.eval_context_mut();
         this.assert_target_os("windows", "SetEnvironmentVariableW");
@@ -256,7 +256,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn unsetenv(&mut self, name_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn unsetenv(&mut self, name_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(target_os == "linux" || target_os == "macos", "`unsetenv` is only available for the UNIX target family");
@@ -286,8 +286,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     fn getcwd(
         &mut self,
-        buf_op: OpTy<'tcx, Tag>,
-        size_op: OpTy<'tcx, Tag>,
+        buf_op: &OpTy<'tcx, Tag>,
+        size_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
@@ -295,8 +295,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("`getcwd`")?;
 
-        let buf = this.read_scalar(buf_op)?.check_init()?;
-        let size = this.read_scalar(size_op)?.to_machine_usize(&*this.tcx)?;
+        let buf = this.read_scalar(&buf_op)?.check_init()?;
+        let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
         // If we cannot get the current directory, we return null
         match env::current_dir() {
             Ok(cwd) => {
@@ -314,8 +314,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn GetCurrentDirectoryW(
         &mut self,
-        size_op: OpTy<'tcx, Tag>, // DWORD
-        buf_op: OpTy<'tcx, Tag>,  // LPTSTR
+        size_op: &OpTy<'tcx, Tag>, // DWORD
+        buf_op: &OpTy<'tcx, Tag>,  // LPTSTR
     ) -> InterpResult<'tcx, u32> {
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentDirectoryW");
@@ -334,7 +334,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn chdir(&mut self, path_op: OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn chdir(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         let target_os = &this.tcx.sess.target.os;
         assert!(target_os == "linux" || target_os == "macos", "`getcwd` is only available for the UNIX target family");
@@ -355,7 +355,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[allow(non_snake_case)]
     fn SetCurrentDirectoryW (
         &mut self,
-        path_op: OpTy<'tcx, Tag>   // LPCTSTR
+        path_op: &OpTy<'tcx, Tag>   // LPCTSTR
     ) -> InterpResult<'tcx, i32> { // Returns BOOL (i32 in Windows)
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetCurrentDirectoryW");
@@ -379,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         // Deallocate the old environ list, if any.
         if let Some(environ) = this.machine.env_vars.environ {
-            let old_vars_ptr = this.read_scalar(environ.into())?.check_init()?;
+            let old_vars_ptr = this.read_scalar(&environ.into())?.check_init()?;
             this.memory.deallocate(this.force_ptr(old_vars_ptr)?, None, MiriMemoryKind::Env.into())?;
         } else {
             // No `environ` allocated yet, let's do that.
@@ -399,12 +399,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             this.layout_of(tcx.mk_array(tcx.types.usize, u64::try_from(vars.len()).unwrap()))?;
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Env.into());
         for (idx, var) in vars.into_iter().enumerate() {
-            let place = this.mplace_field(vars_place, idx)?;
-            this.write_scalar(var, place.into())?;
+            let place = this.mplace_field(&vars_place, idx)?;
+            this.write_scalar(var, &place.into())?;
         }
         this.write_scalar(
             vars_place.ptr,
-            this.machine.env_vars.environ.unwrap().into(),
+            &this.machine.env_vars.environ.unwrap().into(),
         )?;
 
         Ok(())
