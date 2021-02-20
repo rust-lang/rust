@@ -2076,7 +2076,7 @@ impl Callable {
 }
 
 /// For IDE only
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),

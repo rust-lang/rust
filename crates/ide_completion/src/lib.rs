@@ -151,7 +151,7 @@ pub fn resolve_completion_edits(
     let import_path = imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
         .filter_map(|candidate| {
             let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
-            current_module.find_use_path(db, item)
+            current_module.find_use_path_prefixed(db, item, config.insert_use.prefix_kind)
         })
         .find(|mod_path| mod_path.to_string() == full_import_path)?;
 
