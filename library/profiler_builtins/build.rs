@@ -26,6 +26,7 @@ fn main() {
         "InstrProfilingPlatformWindows.c",
         "InstrProfilingUtil.c",
         "InstrProfilingValue.c",
+        "InstrProfilingVersionVar.c",
         "InstrProfilingWriter.c",
         // This file was renamed in LLVM 10.
         "InstrProfilingRuntime.cc",
