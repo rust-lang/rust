@@ -812,7 +812,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_build {
+    let at_path = if verbose {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""

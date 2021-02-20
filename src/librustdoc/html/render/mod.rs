@@ -1638,6 +1638,9 @@ impl Context<'_> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     fn src_href(&self, item: &clean::Item) -> Option<String> {
+        if item.source.is_dummy() {
+            return None;
+        }
         let mut root = self.root_path();
         let mut path = String::new();
         let cnum = item.source.cnum(self.sess());
