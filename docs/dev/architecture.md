@@ -209,7 +209,7 @@ If you want to use IDE parts of rust-analyzer via LSP, custom flatbuffers-based 
 The API uses editor's terminology, it talks about offsets and string labels rather than in terms of definitions or types.
 It is effectively the view in MVC and viewmodel in [MVVM](https://en.wikipedia.org/wiki/Model%E2%80%93view%E2%80%93viewmodel).
 All arguments and return types are conceptually serializable.
-In particular, syntax tress and and hir types are generally absent from the API (but are used heavily in the implementation).
+In particular, syntax tress and hir types are generally absent from the API (but are used heavily in the implementation).
 Shout outs to LSP developers for popularizing the idea that "UI" is a good place to draw a boundary at.
 
 `ide` is also the first crate which has the notion of change over time.
@@ -230,7 +230,7 @@ This crate defines the `rust-analyzer` binary, so it is the **entry point**.
 It implements the language server.
 
 **Architecture Invariant:** `rust-analyzer` is the only crate that knows about LSP and JSON serialization.
-If you want to expose a datastructure `X` from ide to LSP, don't make it serializable.
+If you want to expose a data structure `X` from ide to LSP, don't make it serializable.
 Instead, create a serializable counterpart in `rust-analyzer` crate and manually convert between the two.
 
 `GlobalState` is the state of the server.
@@ -418,7 +418,7 @@ We use `always` and `never` macros instead of `assert` to gracefully recover fro
 
 ### Observability
 
-rust-analyzer is a long-running process, so its important to understand what's going on inside.
+rust-analyzer is a long-running process, so it is important to understand what's going on inside.
 We have several instruments for that.
 
 The event loop that runs rust-analyzer is very explicit.
