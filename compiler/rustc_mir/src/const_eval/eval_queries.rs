@@ -56,7 +56,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.push_stack_frame(
         cid.instance,
         body,
-        Some(ret.into()),
+        Some(&ret.into()),
         StackPopCleanup::None { cleanup: false },
     )?;
 
@@ -72,7 +72,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(ecx, intern_kind, ret)?;
+    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -105,7 +105,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 /// type system.
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
-    op: OpTy<'tcx>,
+    op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
@@ -137,7 +137,7 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace(ecx)
     };
 
-    let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
+    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
@@ -155,12 +155,12 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Ok(mplace) => to_const_value(mplace),
+        Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
+                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.check_init().unwrap() {
@@ -201,7 +201,7 @@ fn turn_into_const_value<'tcx>(
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
     // Turn this into a proper constant.
-    op_to_const(&ecx, mplace.into())
+    op_to_const(&ecx, &mplace.into())
 }
 
 pub fn eval_to_const_value_raw_provider<'tcx>(
@@ -348,7 +348,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         Some(_) => CtfeValidationMode::Regular, // a `static`
                         None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
                     };
-                    ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                    ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
                     inner = true;
                 }
             };

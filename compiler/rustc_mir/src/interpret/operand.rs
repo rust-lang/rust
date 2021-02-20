@@ -32,6 +32,9 @@ pub enum Immediate<Tag = ()> {
     ScalarPair(ScalarMaybeUninit<Tag>, ScalarMaybeUninit<Tag>),
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Immediate, 56);
+
 impl<Tag> From<ScalarMaybeUninit<Tag>> for Immediate<Tag> {
     #[inline(always)]
     fn from(val: ScalarMaybeUninit<Tag>) -> Self {
@@ -91,6 +94,9 @@ pub struct ImmTy<'tcx, Tag = ()> {
     imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
+
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 
 impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -156,6 +162,9 @@ pub struct OpTy<'tcx, Tag = ()> {
     pub layout: TyAndLayout<'tcx>,
 }
 
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 80);
+
 impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
     #[inline(always)]
@@ -168,6 +177,13 @@ impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
         OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout }
+    }
+}
+
+impl<'tcx, Tag: Copy> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+    #[inline(always)]
+    fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
     }
 }
 
@@ -222,7 +238,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn force_op_ptr(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match op.try_as_mplace(self) {
             Ok(mplace) => Ok(self.force_mplace_ptr(mplace)?.into()),
@@ -234,7 +250,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
@@ -295,14 +311,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// in a `Immediate`, not on which data is stored there currently.
     pub(crate) fn try_read_immediate(
         &self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
         Ok(match src.try_as_mplace(self) {
-            Ok(mplace) => {
+            Ok(ref mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
                     Ok(val)
                 } else {
-                    Err(mplace)
+                    Err(*mplace)
                 }
             }
             Err(val) => Ok(val),
@@ -313,7 +329,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn read_immediate(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
         if let Ok(imm) = self.try_read_immediate(op)? {
             Ok(imm)
@@ -325,13 +341,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<M::PointerTag>> {
         Ok(self.read_immediate(op)?.to_scalar_or_uninit())
     }
 
     // Turn the wide MPlace into a string (must already be dereferenced!)
-    pub fn read_str(&self, mplace: MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
+    pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len))?;
         let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
@@ -341,11 +357,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Projection functions
     pub fn operand_field(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace(self) {
-            Ok(mplace) => {
+            Ok(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
@@ -379,7 +395,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn operand_index(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
         index: u64,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         if let Ok(index) = usize::try_from(index) {
@@ -388,28 +404,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             // Indexing into a big array. This must be an mplace.
             let mplace = op.assert_mem_place(self);
-            Ok(self.mplace_index(mplace, index)?.into())
+            Ok(self.mplace_index(&mplace, index)?.into())
         }
     }
 
     pub fn operand_downcast(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
         Ok(match op.try_as_mplace(self) {
-            Ok(mplace) => self.mplace_downcast(mplace, variant)?.into(),
+            Ok(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
                 let layout = op.layout.for_variant(self, variant);
-                OpTy { layout, ..op }
+                OpTy { layout, ..*op }
             }
         })
     }
 
     pub fn operand_projection(
         &self,
-        base: OpTy<'tcx, M::PointerTag>,
+        base: &OpTy<'tcx, M::PointerTag>,
         proj_elem: mir::PlaceElem<'tcx>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc_middle::mir::ProjectionElem::*;
@@ -421,7 +437,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The rest should only occur as mplace, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
                 let mplace = base.assert_mem_place(self);
-                self.mplace_projection(mplace, proj_elem)?.into()
+                self.mplace_projection(&mplace, proj_elem)?.into()
             }
         })
     }
@@ -453,9 +469,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn place_to_op(
         &self,
-        place: PlaceTy<'tcx, M::PointerTag>,
+        place: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match *place {
+        let op = match **place {
             Place::Ptr(mplace) => Operand::Indirect(mplace),
             Place::Local { frame, local } => {
                 *self.access_local(&self.stack()[frame], local, None)?
@@ -480,7 +496,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let op = place
             .projection
             .iter()
-            .try_fold(base_op, |op, elem| self.operand_projection(op, elem))?;
+            .try_fold(base_op, |op, elem| self.operand_projection(&op, elem))?;
 
         trace!("eval_place_to_op: got {:?}", *op);
         // Sanity-check the type we ended up with.
@@ -590,7 +606,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Read discriminant, return the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
-        op: OpTy<'tcx, M::PointerTag>,
+        op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", op.layout);
         // Get type and layout of the discriminant.
@@ -636,7 +652,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
-        let tag_val = self.read_immediate(self.operand_field(op, tag_field)?)?;
+        let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
         let tag_val = tag_val.to_scalar()?;
@@ -690,7 +706,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         let tag_val = ImmTy::from_uint(tag_bits, tag_layout);
                         let niche_start_val = ImmTy::from_uint(niche_start, tag_layout);
                         let variant_index_relative_val =
-                            self.binary_op(mir::BinOp::Sub, tag_val, niche_start_val)?;
+                            self.binary_op(mir::BinOp::Sub, &tag_val, &niche_start_val)?;
                         let variant_index_relative = variant_index_relative_val
                             .to_scalar()?
                             .assert_bits(tag_val.layout.size);

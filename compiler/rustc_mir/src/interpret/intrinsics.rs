@@ -115,7 +115,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
@@ -143,9 +143,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::min_align_of_val | sym::size_of_val => {
                 // Avoid `deref_operand` -- this is not a deref, the ptr does not have to be
                 // dereferencable!
-                let place = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
-                    .size_and_align_of_mplace(place)?
+                    .size_and_align_of_mplace(&place)?
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
 
                 let result = match intrinsic_name {
@@ -177,7 +177,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
                 let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
                 let val = self.const_to_op(&const_, None)?;
-                self.copy_op(val, dest)?;
+                self.copy_op(&val, dest)?;
             }
 
             sym::ctpop
@@ -189,7 +189,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bitreverse => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let val = self.read_scalar(args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?.check_init()?;
                 let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     Abi::Scalar(ref scalar) => scalar.value,
@@ -212,22 +212,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(out_val, dest)?;
             }
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
-                let lhs = self.read_immediate(args[0])?;
-                let rhs = self.read_immediate(args[1])?;
+                let lhs = self.read_immediate(&args[0])?;
+                let rhs = self.read_immediate(&args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::add_with_overflow => BinOp::Add,
                     sym::sub_with_overflow => BinOp::Sub,
                     sym::mul_with_overflow => BinOp::Mul,
                     _ => bug!("Already checked for int ops"),
                 };
-                self.binop_with_overflow(bin_op, lhs, rhs, dest)?;
+                self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
-                let l = self.read_immediate(args[0])?;
-                let r = self.read_immediate(args[1])?;
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
                 let is_add = intrinsic_name == sym::saturating_add;
-                let (val, overflowed, _ty) =
-                    self.overflowing_binary_op(if is_add { BinOp::Add } else { BinOp::Sub }, l, r)?;
+                let (val, overflowed, _ty) = self.overflowing_binary_op(
+                    if is_add { BinOp::Add } else { BinOp::Sub },
+                    &l,
+                    &r,
+                )?;
                 let val = if overflowed {
                     let num_bits = l.layout.size.bits();
                     if l.layout.abi.is_signed() {
@@ -269,8 +272,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(val, dest)?;
             }
             sym::discriminant_value => {
-                let place = self.deref_operand(args[0])?;
-                let discr_val = self.read_discriminant(place.into())?.0;
+                let place = self.deref_operand(&args[0])?;
+                let discr_val = self.read_discriminant(&place.into())?.0;
                 self.write_scalar(discr_val, dest)?;
             }
             sym::unchecked_shl
@@ -280,8 +283,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::unchecked_mul
             | sym::unchecked_div
             | sym::unchecked_rem => {
-                let l = self.read_immediate(args[0])?;
-                let r = self.read_immediate(args[1])?;
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
                 let bin_op = match intrinsic_name {
                     sym::unchecked_shl => BinOp::Shl,
                     sym::unchecked_shr => BinOp::Shr,
@@ -292,7 +295,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     sym::unchecked_rem => BinOp::Rem,
                     _ => bug!("Already checked for int ops"),
                 };
-                let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
+                let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, &l, &r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
@@ -308,9 +311,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val = self.read_scalar(args[0])?.check_init()?;
+                let val = self.read_scalar(&args[0])?.check_init()?;
                 let val_bits = self.force_bits(val, layout.size)?;
-                let raw_shift = self.read_scalar(args[1])?.check_init()?;
+                let raw_shift = self.read_scalar(&args[1])?.check_init()?;
                 let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
                 let width_bits = u128::from(layout.size.bits());
                 let shift_bits = raw_shift_bits % width_bits;
@@ -327,15 +330,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::copy | sym::copy_nonoverlapping => {
                 let elem_ty = instance.substs.type_at(0);
                 let elem_layout = self.layout_of(elem_ty)?;
-                let count = self.read_scalar(args[2])?.to_machine_usize(self)?;
+                let count = self.read_scalar(&args[2])?.to_machine_usize(self)?;
                 let elem_align = elem_layout.align.abi;
 
                 let size = elem_layout.size.checked_mul(count, self).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
                 })?;
-                let src = self.read_scalar(args[0])?.check_init()?;
+                let src = self.read_scalar(&args[0])?.check_init()?;
                 let src = self.memory.check_ptr_access(src, size, elem_align)?;
-                let dest = self.read_scalar(args[1])?.check_init()?;
+                let dest = self.read_scalar(&args[1])?.check_init()?;
                 let dest = self.memory.check_ptr_access(dest, size, elem_align)?;
 
                 if let (Some(src), Some(dest)) = (src, dest) {
@@ -348,16 +351,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             sym::offset => {
-                let ptr = self.read_scalar(args[0])?.check_init()?;
-                let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
+                let ptr = self.read_scalar(&args[0])?.check_init()?;
+                let offset_count = self.read_scalar(&args[1])?.to_machine_isize(self)?;
                 let pointee_ty = substs.type_at(0);
 
                 let offset_ptr = self.ptr_offset_inbounds(ptr, pointee_ty, offset_count)?;
                 self.write_scalar(offset_ptr, dest)?;
             }
             sym::arith_offset => {
-                let ptr = self.read_scalar(args[0])?.check_init()?;
-                let offset_count = self.read_scalar(args[1])?.to_machine_isize(self)?;
+                let ptr = self.read_scalar(&args[0])?.check_init()?;
+                let offset_count = self.read_scalar(&args[1])?.to_machine_isize(self)?;
                 let pointee_ty = substs.type_at(0);
 
                 let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
@@ -366,8 +369,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(offset_ptr, dest)?;
             }
             sym::ptr_offset_from => {
-                let a = self.read_immediate(args[0])?.to_scalar()?;
-                let b = self.read_immediate(args[1])?.to_scalar()?;
+                let a = self.read_immediate(&args[0])?.to_scalar()?;
+                let b = self.read_immediate(&args[1])?.to_scalar()?;
 
                 // Special case: if both scalars are *equal integers*
                 // and not NULL, we pretend there is an allocation of size 0 right there,
@@ -406,16 +409,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
                     let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
                     let (val, _overflowed, _ty) =
-                        self.overflowing_binary_op(BinOp::Sub, a_offset, b_offset)?;
+                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
                     let pointee_layout = self.layout_of(substs.type_at(0))?;
                     let val = ImmTy::from_scalar(val, isize_layout);
                     let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
-                    self.exact_div(val, size, dest)?;
+                    self.exact_div(&val, &size, dest)?;
                 }
             }
 
             sym::transmute => {
-                self.copy_op_transmute(args[0], dest)?;
+                self.copy_op_transmute(&args[0], dest)?;
             }
             sym::assert_inhabited => {
                 let ty = instance.substs.type_at(0);
@@ -434,9 +437,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             sym::simd_insert => {
-                let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
-                let elem = args[2];
-                let input = args[0];
+                let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
+                let elem = &args[2];
+                let input = &args[0];
                 let (len, e_ty) = input.layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
@@ -458,12 +461,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for i in 0..len {
                     let place = self.place_index(dest, i)?;
-                    let value = if i == index { elem } else { self.operand_index(input, i)? };
-                    self.copy_op(value, place)?;
+                    let value = if i == index { *elem } else { self.operand_index(input, i)? };
+                    self.copy_op(&value, &place)?;
                 }
             }
             sym::simd_extract => {
-                let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
+                let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let (len, e_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
                 assert!(
                     index < len,
@@ -477,14 +480,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "Return type `{}` must match vector element type `{}`",
                     dest.layout.ty, e_ty
                 );
-                self.copy_op(self.operand_index(args[0], index)?, dest)?;
+                self.copy_op(&self.operand_index(&args[0], index)?, dest)?;
             }
             sym::likely | sym::unlikely => {
                 // These just return their argument
-                self.copy_op(args[0], dest)?;
+                self.copy_op(&args[0], dest)?;
             }
             sym::assume => {
-                let cond = self.read_scalar(args[0])?.check_init()?.to_bool()?;
+                let cond = self.read_scalar(&args[0])?.check_init()?.to_bool()?;
                 if !cond {
                     throw_ub_format!("`assume` intrinsic called with `false`");
                 }
@@ -492,21 +495,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => return Ok(false),
         }
 
-        trace!("{:?}", self.dump_place(*dest));
+        trace!("{:?}", self.dump_place(**dest));
         self.go_to_block(ret);
         Ok(true)
     }
 
     pub fn exact_div(
         &mut self,
-        a: ImmTy<'tcx, M::PointerTag>,
-        b: ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        a: &ImmTy<'tcx, M::PointerTag>,
+        b: &ImmTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
-        let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
+        let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
         if overflow || res.assert_bits(a.layout.size) != 0 {
             // Then, check if `b` is -1, which is the "MIN / -1" case.
             let minus1 = Scalar::from_int(-1, dest.layout.size);
@@ -518,7 +521,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
-        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
+        self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
     }
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its

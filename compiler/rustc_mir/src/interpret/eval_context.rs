@@ -548,8 +548,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// This can fail to provide an answer for extern types.
     pub(super) fn size_and_align_of(
         &self,
-        metadata: MemPlaceMeta<M::PointerTag>,
-        layout: TyAndLayout<'tcx>,
+        metadata: &MemPlaceMeta<M::PointerTag>,
+        layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
             return Ok(Some((layout.size, layout.align.abi)));
@@ -577,24 +577,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
-                    Some(size_and_align) => size_and_align,
-                    None => {
-                        // A field with extern type.  If this field is at offset 0, we behave
-                        // like the underlying extern type.
-                        // FIXME: Once we have made decisions for how to handle size and alignment
-                        // of `extern type`, this should be adapted.  It is just a temporary hack
-                        // to get some code to work that probably ought to work.
-                        if sized_size == Size::ZERO {
-                            return Ok(None);
-                        } else {
-                            span_bug!(
-                                self.cur_span(),
-                                "Fields cannot be extern types, unless they are at offset 0"
-                            )
+                let (unsized_size, unsized_align) =
+                    match self.size_and_align_of(metadata, &field)? {
+                        Some(size_and_align) => size_and_align,
+                        None => {
+                            // A field with extern type.  If this field is at offset 0, we behave
+                            // like the underlying extern type.
+                            // FIXME: Once we have made decisions for how to handle size and alignment
+                            // of `extern type`, this should be adapted.  It is just a temporary hack
+                            // to get some code to work that probably ought to work.
+                            if sized_size == Size::ZERO {
+                                return Ok(None);
+                            } else {
+                                span_bug!(
+                                    self.cur_span(),
+                                    "Fields cannot be extern types, unless they are at offset 0"
+                                )
+                            }
                         }
-                    }
-                };
+                    };
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
@@ -645,16 +646,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(mplace.meta, mplace.layout)
+        self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
 
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
         body: &'mir mir::Body<'tcx>,
-        return_place: Option<PlaceTy<'tcx, M::PointerTag>>,
+        return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         // first push a stack frame so we have access to the local substs
@@ -662,7 +663,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             body,
             loc: Err(body.span), // Span used for errors caused during preamble.
             return_to_block,
-            return_place,
+            return_place: return_place.copied(),
             // empty local array, we fill it in below, after we are inside the stack frame and
             // all methods actually know about the frame
             locals: IndexVec::new(),
@@ -777,10 +778,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         if !unwinding {
             // Copy the return value to the caller's stack frame.
-            if let Some(return_place) = frame.return_place {
+            if let Some(ref return_place) = frame.return_place {
                 let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op_transmute(op, return_place)?;
-                trace!("{:?}", self.dump_place(*return_place));
+                self.copy_op_transmute(&op, return_place)?;
+                trace!("{:?}", self.dump_place(**return_place));
             } else {
                 throw_ub!(Unreachable);
             }
