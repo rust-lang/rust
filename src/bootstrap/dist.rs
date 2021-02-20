@@ -1417,6 +1417,8 @@ impl Step for Extended {
         let miri_installer = builder.ensure(Miri { compiler, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
+        let rustc_codegen_cranelift_installer =
+            builder.ensure(CodegenBackend { compiler, target, backend: INTERNER.intern_str("cranelift") });
 
         let docs_installer = builder.ensure(Docs { host: target });
         let std_installer = builder.ensure(Std { compiler, target });
@@ -1445,6 +1447,7 @@ impl Step for Extended {
         if let Some(analysis_installer) = analysis_installer {
             tarballs.push(analysis_installer);
         }
+        tarballs.push(rustc_codegen_cranelift_installer);
         tarballs.push(std_installer.expect("missing std"));
         if let Some(docs_installer) = docs_installer {
             tarballs.push(docs_installer);
@@ -1558,6 +1561,7 @@ impl Step for Extended {
             if miri_installer.is_some() {
                 prepare("miri");
             }
+            prepare("rustc-codegen-cranelift");
 
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
@@ -1629,6 +1633,7 @@ impl Step for Extended {
             if miri_installer.is_some() {
                 prepare("miri");
             }
+            prepare("rustc-codegen-cranelift");
             if target.contains("windows-gnu") {
                 prepare("rust-mingw");
             }
@@ -1816,6 +1821,23 @@ impl Step for Extended {
                     .arg("-t")
                     .arg(etc.join("msi/remove-duplicates.xsl")),
             );
+            builder.run(
+                Command::new(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("rustc-codegen-cranelift")
+                    .args(&heat_flags)
+                    .arg("-cg")
+                    .arg("RustcCodegenCraneliftGroup")
+                    .arg("-dr")
+                    .arg("RustcCodegenCranelift")
+                    .arg("-var")
+                    .arg("var.RustcCodegenCraneliftDir")
+                    .arg("-out")
+                    .arg(exe.join("RustcCodegenCraneliftGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl")),
+            );
             if target.contains("windows-gnu") {
                 builder.run(
                     Command::new(&heat)
@@ -1845,6 +1867,7 @@ impl Step for Extended {
                     .arg("-dCargoDir=cargo")
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
+                    .arg("-dRustcCodegenCraneliftDir=rustc-codegen-cranelift")
                     .arg("-dClippyDir=clippy")
                     .arg("-arch")
                     .arg(&arch)
@@ -1881,6 +1904,7 @@ impl Step for Extended {
             if rust_demangler_installer.is_some() {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
+            candle("RustcCodegenCraneliftGroup".as_ref());
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
             }
@@ -1919,6 +1943,7 @@ impl Step for Extended {
                 .arg("StdGroup.wixobj")
                 .arg("AnalysisGroup.wixobj")
                 .arg("ClippyGroup.wixobj")
+                .arg("RustcCodegenCraneliftGroup.wixobj")
                 .current_dir(&exe);
 
             if rls_installer.is_some() {
