@@ -89,9 +89,7 @@ impl OverlayKind {
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
-            OverlayKind::RustcCodegenCranelift => builder
-                .rustc_codegen_cranelift_info
-                .version(builder, &builder.release_num("rustc_codegen_cranelift")),
+            OverlayKind::RustcCodegenCranelift => builder.rust_version(),
         }
     }
 }
