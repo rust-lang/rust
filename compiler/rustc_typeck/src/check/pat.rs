@@ -1256,8 +1256,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "tuple variant `{}` written as struct variant",
                     path
                 );
-                err.span_suggestion(
-                    qpath.span().shrink_to_hi().until(pat.span),
+                err.span_suggestion_verbose(
+                    qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
                     "use the tuple variant pattern syntax instead",
                     format!("({})", self.get_suggested_tuple_struct_pattern(fields, variant)),
                     Applicability::MaybeIncorrect,
@@ -1416,8 +1416,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect,
                 )
             };
-            err.span_suggestion(
-                qpath.span().shrink_to_hi().until(pat.span),
+            err.span_suggestion_verbose(
+                qpath.span().shrink_to_hi().to(pat.span.shrink_to_hi()),
                 "use the tuple variant pattern syntax instead",
                 format!("({})", sugg),
                 appl,
