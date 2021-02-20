@@ -7,7 +7,7 @@ LL |     Err(5)?;
    |     ^^^^^^^ the trait `From<{integer}>` is not implemented for `()`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required because of the requirements on the impl of `FromResidual<std::result::Result<!, {integer}>>` for `std::result::Result<i32, ()>`
+   = note: required because of the requirements on the impl of `FromResidual<Result<!, {integer}>>` for `Result<i32, ()>`
    = note: required by `from_residual`
 
 error: aborting due to previous error

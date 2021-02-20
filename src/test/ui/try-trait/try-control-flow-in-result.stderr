@@ -3,12 +3,12 @@ error[E0277]: the `?` operator can only be used in a function that returns `Resu
    |
 LL | / fn demo() -> Result<(), ()> {
 LL | |     returns_control_flow()?;
-   | |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `std::result::Result<(), ()>`
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `Result<(), ()>`
 LL | |     Ok(())
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<ControlFlow<(), !>>` is not implemented for `std::result::Result<(), ()>`
+   = help: the trait `FromResidual<ControlFlow<(), !>>` is not implemented for `Result<(), ()>`
    = note: required by `from_residual`
 
 error: aborting due to previous error
