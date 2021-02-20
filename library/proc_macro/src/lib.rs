@@ -842,10 +842,17 @@ impl fmt::Debug for Punct {
     }
 }
 
-#[stable(feature = "proc_macro_punct_eq", since = "1.49.0")]
+#[stable(feature = "proc_macro_punct_eq", since = "1.50.0")]
 impl PartialEq<char> for Punct {
     fn eq(&self, rhs: &char) -> bool {
         self.as_char() == *rhs
+    }
+}
+
+#[stable(feature = "proc_macro_punct_eq_flipped", since = "1.52.0")]
+impl PartialEq<Punct> for char {
+    fn eq(&self, rhs: &Punct) -> bool {
+        *self == rhs.as_char()
     }
 }
 
