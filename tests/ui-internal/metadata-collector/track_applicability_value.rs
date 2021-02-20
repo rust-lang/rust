@@ -23,6 +23,8 @@ fn modifier_fn(applicability: &mut Applicability) {
     }
 }
 
+fn consumer_fn(_applicability: Applicability) {}
+
 struct Muh;
 
 impl Muh {
@@ -43,4 +45,6 @@ fn main() {
     };
 
     modifier_fn(&mut applicability);
+
+    consumer_fn(applicability);
 }

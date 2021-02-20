@@ -37,8 +37,8 @@ use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
 use crate::utils::{
-    get_enclosing_body, get_parent_expr_for_hir, last_path_segment, match_function_call, match_qpath, match_type,
-    path_to_local_id, paths, span_lint, walk_ptrs_ty_depth, get_parent_expr
+    get_enclosing_body, get_parent_expr, get_parent_expr_for_hir, last_path_segment, match_function_call, match_qpath,
+    match_type, path_to_local_id, paths, span_lint, walk_ptrs_ty_depth,
 };
 
 /// This is the output file of the lint collector.
@@ -202,39 +202,19 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
     /// ```
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if_chain! {
+            // item validation
             if let ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind;
             if is_lint_ref_type(cx, ty);
             let expr = &cx.tcx.hir().body(body_id).value;
             if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
             if let ExprKind::Struct(_, _, _) = inner_exp.kind;
+            // blacklist check
+            let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+            if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
+            // metadata extraction
+            if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
+            if let Some(docs) = extract_attr_docs_or_lint(cx, item);
             then {
-                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
-                if BLACK_LISTED_LINTS.contains(&lint_name.as_str()) {
-                    return;
-                }
-
-                let group: String;
-                let result = cx.lint_store.check_lint_name(lint_name.as_str(), Some(sym::clippy));
-                if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
-                    if let Some(group_some) = get_lint_group(cx, lint_lst[0]) {
-                        group = group_some;
-                    } else {
-                        lint_collection_error_item(cx, item, "Unable to determine lint group");
-                        return;
-                    }
-                } else {
-                    lint_collection_error_item(cx, item, "Unable to find lint in lint_store");
-                    return;
-                }
-
-                let docs: String;
-                if let Some(docs_some) = extract_attr_docs(item) {
-                    docs = docs_some;
-                } else {
-                    lint_collection_error_item(cx, item, "could not collect the lint documentation");
-                    return;
-                };
-
                 self.lints.push(LintMetadata::new(
                     lint_name,
                     SerializableSpan::from_item(cx, item),
@@ -301,7 +281,7 @@ impl<'tcx> LateLintPass<'tcx> for MetadataCollector {
                 let span = SerializableSpan::from_span(cx, local.span);
                 let local_str = crate::utils::snippet(cx, local.span, "_");
                 log_to_file(&format!("{} -- {}\n", local_str, span));
-                
+
                 let value_hir_id = local.pat.hir_id;
                 let mut tracker = ValueTracker::new(cx, value_hir_id);
                 if let Some(init_expr) = local.init {
@@ -342,8 +322,19 @@ fn get_local_type<'a>(cx: &'a LateContext<'_>, local: &'a hir::Local<'_>) -> Opt
     None
 }
 
+// ==================================================================
+// Lint definition extraction
+// ==================================================================
+
 fn sym_to_string(sym: Symbol) -> String {
     sym.as_str().to_string()
+}
+
+fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
+    extract_attr_docs(item).or_else(|| {
+        lint_collection_error_item(cx, item, "could not collect the lint documentation");
+        None
+    })
 }
 
 /// This function collects all documentation that has been added to an item using
@@ -365,6 +356,19 @@ fn extract_attr_docs(item: &Item<'_>) -> Option<String> {
             acc.push('\n');
             acc
         })
+}
+
+fn get_lint_group_or_lint(cx: &LateContext<'_>, lint_name: &str, item: &'tcx Item<'_>) -> Option<String> {
+    let result = cx.lint_store.check_lint_name(lint_name, Some(sym::clippy));
+    if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
+        get_lint_group(cx, lint_lst[0]).or_else(|| {
+            lint_collection_error_item(cx, item, "Unable to determine lint group");
+            None
+        })
+    } else {
+        lint_collection_error_item(cx, item, "Unable to find lint in lint_store");
+        None
+    }
 }
 
 fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
@@ -526,19 +530,8 @@ impl<'a, 'hir> ValueTracker<'a, 'hir> {
         }
     }
 
-    fn process_borrow_expr(&mut self, access_hir_id: hir::HirId) {
-        let borrower: &rustc_hir::Expr<'_>;
-        if let Some(addr_of_expr) = get_parent_expr_for_hir(self.cx, access_hir_id) {
-            if let Some(borrower_expr) = get_parent_expr(self.cx, addr_of_expr) {
-                borrower = borrower_expr
-            } else {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        match &borrower.kind {
+    fn process_borrow_expr(&mut self, borrower_expr: &'hir rustc_hir::Expr<'hir>) {
+        match &borrower_expr.kind {
             hir::ExprKind::Call(func_expr, ..) => {
                 // We only deal with resolved paths as this is the usual case. Other expression kinds like closures
                 // etc. are hard to track but might be a worthy improvement in the future
@@ -555,18 +548,24 @@ impl<'a, 'hir> ValueTracker<'a, 'hir> {
             hir::ExprKind::MethodCall(..) => {
                 let msg = format!(
                     "Unsupported borrow in MethodCall at: {}",
-                    SerializableSpan::from_span(self.cx, borrower.span)
+                    SerializableSpan::from_span(self.cx, borrower_expr.span)
                 );
                 self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
             },
             _ => {
                 let msg = format!(
                     "Unexpected borrow at: {}",
-                    SerializableSpan::from_span(self.cx, borrower.span)
+                    SerializableSpan::from_span(self.cx, borrower_expr.span)
                 );
                 self.value_mutations.push(ApplicabilityModifier::Unknown(msg));
             },
         }
+    }
+
+    fn process_consume_expr(&mut self, consume_expr: &'hir rustc_hir::Expr<'hir>) {
+        // We are only interested in lint emissions. Other types like assignments might be
+        // interesting for further use or improvement but are to complex for now.
+        if let hir::ExprKind::Call(func_expr, ..) = &consume_expr.kind {}
     }
 }
 
@@ -574,17 +573,20 @@ impl<'a, 'hir> Delegate<'hir> for ValueTracker<'a, 'hir> {
     fn consume(&mut self, _place_with_id: &PlaceWithHirId<'hir>, expr_id: hir::HirId, _: ConsumeMode) {
         if self.is_value_expr(expr_id) {
             // TODO xFrednet 2021-02-17: Check if lint emission and extract lint ID
-            if let Some(hir::Node::Expr(expr)) = self.cx.tcx.hir().find(expr_id) {
-                let span = SerializableSpan::from_span(self.cx, expr.span);
-                log_to_file(&format!("- consume {}\n", span));
+            if let Some(expr) = get_parent_expr_for_hir(self.cx, expr_id) {
+                log_to_file(&format!("- consume {:?}\n", expr));
             }
         }
     }
 
     fn borrow(&mut self, _place_with_id: &PlaceWithHirId<'hir>, expr_id: hir::HirId, bk: BorrowKind) {
-        if self.is_value_expr(expr_id) {
-            if let BorrowKind::MutBorrow = bk {
-                self.process_borrow_expr(expr_id);
+        if_chain! {
+            if self.is_value_expr(expr_id);
+            if let BorrowKind::MutBorrow = bk;
+            if let Some(addr_of_expr) = get_parent_expr_for_hir(self.cx, expr_id);
+            if let Some(borrower_expr) = get_parent_expr(self.cx, addr_of_expr);
+            then {
+                self.process_borrow_expr(borrower_expr);
             }
         }
     }
