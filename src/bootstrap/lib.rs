@@ -240,7 +240,6 @@ pub struct Build {
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
-    rustc_codegen_cranelift_info: channel::GitInfo,
     in_tree_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
@@ -368,8 +367,6 @@ impl Build {
         let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
         let miri_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/miri"));
         let rustfmt_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rustfmt"));
-        let rustc_codegen_cranelift_info =
-            channel::GitInfo::new(ignore_git, &src.join("compiler/rustc_codegen_cranelift"));
 
         // we always try to use git for LLVM builds
         let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
@@ -432,7 +429,6 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
-            rustc_codegen_cranelift_info,
             in_tree_llvm_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
