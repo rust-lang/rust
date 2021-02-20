@@ -381,11 +381,20 @@ impl ast::RecordPatField {
         if let Some(name_ref) = self.name_ref() {
             return Some(NameOrNameRef::NameRef(name_ref));
         }
-        if let Some(ast::Pat::IdentPat(pat)) = self.pat() {
-            let name = pat.name()?;
-            return Some(NameOrNameRef::Name(name));
+        match self.pat() {
+            Some(ast::Pat::IdentPat(pat)) => {
+                let name = pat.name()?;
+                Some(NameOrNameRef::Name(name))
+            }
+            Some(ast::Pat::BoxPat(pat)) => match pat.pat() {
+                Some(ast::Pat::IdentPat(pat)) => {
+                    let name = pat.name()?;
+                    Some(NameOrNameRef::Name(name))
+                }
+                _ => None,
+            },
+            _ => None,
         }
-        None
     }
 }
 
