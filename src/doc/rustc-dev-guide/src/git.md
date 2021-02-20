@@ -101,7 +101,7 @@ If you renamed your fork, you can change the URL like this:
 git remote set-url personal <URL>
 ```
 
-where the <URL> is your new fork.
+where the `<URL>` is your new fork.
 
 ### I see 'Untracked Files: src/stdarch'?
 
