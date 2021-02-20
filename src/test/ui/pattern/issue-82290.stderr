@@ -1,0 +1,20 @@
+error: `let` expressions are not supported here
+  --> $DIR/issue-82290.rs:4:16
+   |
+LL |     if true && let x = 1 {
+   |                ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: as well as when nested within `&&` and parenthesis in those conditions
+
+warning: the feature `let_chains` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-82290.rs:1:12
+   |
+LL | #![feature(let_chains)]
+   |            ^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
+
+error: aborting due to previous error; 1 warning emitted
+
