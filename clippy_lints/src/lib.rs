@@ -221,6 +221,7 @@ mod if_let_some_result;
 mod if_not_else;
 mod implicit_return;
 mod implicit_saturating_sub;
+mod inconsistent_struct_constructor;
 mod indexing_slicing;
 mod infinite_iter;
 mod inherent_impl;
@@ -656,6 +657,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_not_else::IF_NOT_ELSE,
         &implicit_return::IMPLICIT_RETURN,
         &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
+        &inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
         &indexing_slicing::INDEXING_SLICING,
         &indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         &infinite_iter::INFINITE_ITER,
@@ -1036,6 +1038,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box implicit_return::ImplicitReturn);
     store.register_late_pass(|| box implicit_saturating_sub::ImplicitSaturatingSub);
     store.register_late_pass(|| box default_numeric_fallback::DefaultNumericFallback);
+    store.register_late_pass(|| box inconsistent_struct_constructor::InconsistentStructConstructor);
 
     let msrv = conf.msrv.as_ref().and_then(|s| {
         parse_msrv(s, None, None).or_else(|| {
@@ -1485,6 +1488,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&identity_op::IDENTITY_OP),
         LintId::of(&if_let_mutex::IF_LET_MUTEX),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
+        LintId::of(&inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
         LintId::of(&indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(&infinite_iter::INFINITE_ITER),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
@@ -1737,6 +1741,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&functions::MUST_USE_UNIT),
         LintId::of(&functions::RESULT_UNIT_ERR),
         LintId::of(&if_let_some_result::IF_LET_SOME_RESULT),
+        LintId::of(&inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
         LintId::of(&inherent_to_string::INHERENT_TO_STRING),
         LintId::of(&len_zero::COMPARISON_TO_EMPTY),
         LintId::of(&len_zero::LEN_WITHOUT_IS_EMPTY),
