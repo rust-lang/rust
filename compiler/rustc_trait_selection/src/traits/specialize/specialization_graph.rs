@@ -343,9 +343,11 @@ impl GraphExt for Graph {
                     }
 
                     // Set G's parent to N and N's parent to P.
-                    for &grand_child_to_be in &grand_children_to_be {
-                        self.parent.insert(grand_child_to_be, impl_def_id);
-                    }
+                    self.parent.extend(
+                        grand_children_to_be
+                            .iter()
+                            .map(|&grand_child_to_be| (grand_child_to_be, impl_def_id)),
+                    );
                     self.parent.insert(impl_def_id, parent);
 
                     // Add G as N's child.

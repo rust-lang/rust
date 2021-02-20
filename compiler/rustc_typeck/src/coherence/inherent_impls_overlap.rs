@@ -207,9 +207,8 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                                 };
                                 let (_id, region) = connected_regions.iter().next().unwrap();
                                 // Update the connected region ids
-                                for ident in region.idents.iter() {
-                                    connected_region_ids.insert(*ident, id_to_set);
-                                }
+                                connected_region_ids
+                                    .extend(region.idents.iter().map(|&ident| (ident, id_to_set)));
                             }
                             _ => {
                                 // We have multiple connected regions to merge.
@@ -236,9 +235,8 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
                                     }
                                     let r = connected_regions.remove(&id).unwrap();
                                     // Update the connected region ids
-                                    for ident in r.idents.iter() {
-                                        connected_region_ids.insert(*ident, id_to_set);
-                                    }
+                                    connected_region_ids
+                                        .extend(r.idents.iter().map(|&ident| (ident, id_to_set)));
                                     region.idents.extend_from_slice(&r.idents);
                                     region.impl_blocks.extend(r.impl_blocks);
                                 }

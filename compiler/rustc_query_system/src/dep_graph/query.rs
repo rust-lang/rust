@@ -15,10 +15,10 @@ impl<K: DepKind> DepGraphQuery<K> {
         edge_list_data: &[usize],
     ) -> DepGraphQuery<K> {
         let mut graph = Graph::with_capacity(nodes.len(), edge_list_data.len());
-        let mut indices = FxHashMap::default();
-        for node in nodes {
-            indices.insert(*node, graph.add_node(*node));
-        }
+        let indices = nodes
+            .iter()
+            .map(|&node| (node, graph.add_node(node)))
+            .collect::<FxHashMap<DepNode<K>, NodeIndex>>();
 
         for (source, &(start, end)) in edge_list_indices.iter().enumerate() {
             for &target in &edge_list_data[start..end] {

@@ -2668,21 +2668,13 @@ impl<A: ToJson> ToJson for Vec<A> {
 
 impl<T: ToString, A: ToJson> ToJson for BTreeMap<T, A> {
     fn to_json(&self) -> Json {
-        let mut d = BTreeMap::new();
-        for (key, value) in self {
-            d.insert(key.to_string(), value.to_json());
-        }
-        Json::Object(d)
+        Json::Object(self.iter().map(|(k, v)| (k.to_string(), v.to_json())).collect())
     }
 }
 
 impl<A: ToJson> ToJson for HashMap<string::String, A> {
     fn to_json(&self) -> Json {
-        let mut d = BTreeMap::new();
-        for (key, value) in self {
-            d.insert((*key).clone(), value.to_json());
-        }
-        Json::Object(d)
+        Json::Object(self.iter().map(|(k, v)| (k.clone(), v.to_json())).collect())
     }
 }
 
