@@ -316,9 +316,9 @@ impl Inliner<'tcx> {
         }
 
         let mut threshold = if hinted {
-            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
-            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_threshold.unwrap_or(50)
         };
 
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
