@@ -2,6 +2,7 @@ use jsonpath_lib::select;
 use lazy_static::lazy_static;
 use regex::{Regex, RegexBuilder};
 use serde_json::Value;
+use std::borrow::Cow;
 use std::{env, fmt, fs};
 
 mod cache;
@@ -207,15 +208,8 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                     let val = cache.get_value(&command.args[0])?;
                     match select(&val, &command.args[1]) {
                         Ok(results) => {
-                            // FIXME: Share the pat getting code with the `Is` branch.
-                            let v_holder;
-                            let pat: &Value = if command.args[2].starts_with("$") {
-                                &cache.variables[&command.args[2][1..]]
-                            } else {
-                                v_holder = serde_json::from_str(&command.args[2]).unwrap();
-                                &v_holder
-                            };
-                            results.contains(pat)
+                            let pat = string_to_value(&command.args[2], cache);
+                            results.contains(&pat.as_ref())
                         }
                         Err(_) => false,
                     }
@@ -240,14 +234,8 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let val = cache.get_value(&command.args[0])?;
             match select(&val, &command.args[1]) {
                 Ok(results) => {
-                    let v_holder;
-                    let pat: &Value = if command.args[2].starts_with("$") {
-                        &cache.variables[&command.args[2][1..]]
-                    } else {
-                        v_holder = serde_json::from_str(&command.args[2]).unwrap();
-                        &v_holder
-                    };
-                    results.len() == 1 && results[0] == pat
+                    let pat = string_to_value(&command.args[2], cache);
+                    results.len() == 1 && results[0] == pat.as_ref()
                 }
                 Err(_) => false,
             }
@@ -294,5 +282,13 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
         }
     } else {
         Ok(())
+    }
+}
+
+fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
+    if s.starts_with("$") {
+        Cow::Borrowed(&cache.variables[&s[1..]])
+    } else {
+        Cow::Owned(serde_json::from_str(s).unwrap())
     }
 }
