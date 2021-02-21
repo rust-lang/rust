@@ -1,4 +1,4 @@
-use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MinifyingSugg};
+use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_enclosing_block, higher, is_type_diagnostic_item, path_to_local, snippet, span_lint_and_sugg, sugg,
@@ -192,6 +192,76 @@ fn build_manual_memcpy_suggestion<'tcx>(
         src_offset.maybe_par(),
         src_limit.maybe_par()
     )
+}
+
+/// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
+/// and also, it avoids subtracting a variable from the same one by replacing it with `0`.
+/// it exists for the convenience of the overloaded operators while normal functions can do the
+/// same.
+#[derive(Clone)]
+struct MinifyingSugg<'a>(Sugg<'a>);
+
+impl<'a> MinifyingSugg<'a> {
+    fn as_str(&self) -> &str {
+        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
+        s.as_ref()
+    }
+
+    fn into_sugg(self) -> Sugg<'a> {
+        self.0
+    }
+}
+
+impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
+    fn from(sugg: Sugg<'a>) -> Self {
+        Self(sugg)
+    }
+}
+
+impl std::ops::Add for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self.clone(),
+            (_, _) => (&self.0 + &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Sub for &MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self.clone(),
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (&self.0 - &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            ("0", _) => rhs.clone(),
+            (_, "0") => self,
+            (_, _) => (self.0 + &rhs.0).into(),
+        }
+    }
+}
+
+impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
+    type Output = MinifyingSugg<'static>;
+    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
+        match (self.as_str(), rhs.as_str()) {
+            (_, "0") => self,
+            ("0", _) => (-rhs.0.clone()).into(),
+            (x, y) if x == y => sugg::ZERO.into(),
+            (_, _) => (self.0 - &rhs.0).into(),
+        }
+    }
 }
 
 /// a wrapper around `MinifyingSugg`, which carries a operator like currying

@@ -15,8 +15,7 @@ mod utils;
 mod while_let_loop;
 mod while_let_on_iterator;
 
-use crate::utils::sugg::Sugg;
-use crate::utils::{higher, sugg};
+use crate::utils::higher;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -595,74 +594,4 @@ fn check_for_loop<'tcx>(
     for_single_element_loop::check_for_single_element_loop(cx, pat, arg, body, expr);
     same_item_push::detect_same_item_push(cx, pat, arg, body, expr);
     manual_flatten::check_manual_flatten(cx, pat, arg, body, span);
-}
-
-/// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
-/// and also, it avoids subtracting a variable from the same one by replacing it with `0`.
-/// it exists for the convenience of the overloaded operators while normal functions can do the
-/// same.
-#[derive(Clone)]
-struct MinifyingSugg<'a>(Sugg<'a>);
-
-impl<'a> MinifyingSugg<'a> {
-    fn as_str(&self) -> &str {
-        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
-        s.as_ref()
-    }
-
-    fn into_sugg(self) -> Sugg<'a> {
-        self.0
-    }
-}
-
-impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
-    fn from(sugg: Sugg<'a>) -> Self {
-        Self(sugg)
-    }
-}
-
-impl std::ops::Add for &MinifyingSugg<'static> {
-    type Output = MinifyingSugg<'static>;
-    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
-            ("0", _) => rhs.clone(),
-            (_, "0") => self.clone(),
-            (_, _) => (&self.0 + &rhs.0).into(),
-        }
-    }
-}
-
-impl std::ops::Sub for &MinifyingSugg<'static> {
-    type Output = MinifyingSugg<'static>;
-    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
-            (_, "0") => self.clone(),
-            ("0", _) => (-rhs.0.clone()).into(),
-            (x, y) if x == y => sugg::ZERO.into(),
-            (_, _) => (&self.0 - &rhs.0).into(),
-        }
-    }
-}
-
-impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
-    type Output = MinifyingSugg<'static>;
-    fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
-            ("0", _) => rhs.clone(),
-            (_, "0") => self,
-            (_, _) => (self.0 + &rhs.0).into(),
-        }
-    }
-}
-
-impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
-    type Output = MinifyingSugg<'static>;
-    fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
-            (_, "0") => self,
-            ("0", _) => (-rhs.0.clone()).into(),
-            (x, y) if x == y => sugg::ZERO.into(),
-            (_, _) => (self.0 - &rhs.0).into(),
-        }
-    }
 }
