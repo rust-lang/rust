@@ -22,9 +22,9 @@ There are a few basic ideas in this effort:
 
 [`rayon`]: https://crates.io/crates/rayon
 
-As of May 2020 <!-- date: 2020-05 -->, much of this effort is on hold due to
-lack of manpower. We have a working prototype with promising performance gains
-in many cases. However, there are two blockers:
+As of February 2021 <!-- date: 2021-02 -->, much of this effort is on hold due
+to lack of manpower. We have a working prototype with promising performance
+gains in many cases. However, there are two blockers:
 
 - It's not clear what invariants need to be upheld that might not hold in the
   face of concurrency. An auditing effort was underway, but seems to have

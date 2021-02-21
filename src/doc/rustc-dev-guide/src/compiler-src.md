@@ -21,10 +21,6 @@ containing the compiler, the standard libraries (`core`, `alloc`, `std`,
 `proc_macro`, etc), and `rustdoc`, along with the build system and a bunch of
 tools and submodules for building a full Rust distribution.
 
-As of August 2020 <!-- date: 2020-08 -->, this structure is gradually undergoing
-some transformation to make it a bit less monolithic and more approachable,
-especially to newcomers.
-
 The repository consists of three main directories:
 
 - `compiler/` contains the source code for `rustc`. It consists of many crates
