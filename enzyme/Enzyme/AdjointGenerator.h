@@ -3891,8 +3891,6 @@ public:
           augmentcall->setName(orig->getName() + "_augmented");
 
         if (tapeIdx.hasValue()) {
-          llvm::errs() << " " << *augmentcall << " " << tapeIdx.getValue()
-                       << "\n";
           tape = (tapeIdx.getValue() == -1)
                      ? augmentcall
                      : BuilderZ.CreateExtractValue(
@@ -4035,12 +4033,16 @@ public:
           gutils->invertedPointers[orig] = newip;
         } else {
           gutils->invertedPointers.erase(orig);
+          if (placeholder == &*BuilderZ.GetInsertPoint()) {
+            BuilderZ.SetInsertPoint(placeholder->getNextNode());
+          }
           gutils->erase(placeholder);
         }
       }
 
       if (fnandtapetype && fnandtapetype->tapeType &&
           Mode != DerivativeMode::Forward) {
+        assert(tape);
         auto tapep = BuilderZ.CreatePointerCast(
             tape, PointerType::getUnqual(fnandtapetype->tapeType));
         auto truetape = BuilderZ.CreateLoad(tapep, "tapeld");

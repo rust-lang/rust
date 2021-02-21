@@ -326,6 +326,9 @@ uint8_t EnzymeMergeTypeTree(CTypeTreeRef dst, CTypeTreeRef src) {
 void EnzymeTypeTreeOnlyEq(CTypeTreeRef CTT, int64_t x) {
   *(TypeTree *)CTT = ((TypeTree *)CTT)->Only(x);
 }
+void EnzymeTypeTreeData0Eq(CTypeTreeRef CTT) {
+  *(TypeTree *)CTT = ((TypeTree *)CTT)->Data0();
+}
 void EnzymeTypeTreeShiftIndiciesEq(CTypeTreeRef CTT, const char *datalayout,
                                    int64_t offset, int64_t maxSize,
                                    uint64_t addOffset) {

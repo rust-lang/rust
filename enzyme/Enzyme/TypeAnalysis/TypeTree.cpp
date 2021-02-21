@@ -63,6 +63,13 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
 
     assert(!isa<FunctionType>(From) && !isa<FunctionType>(To));
 
+    // If the offset is a fixed (non-repeating) value, it's to include
+    // directly.
+    if (pair.first[0] != -1) {
+      Result.orIn(pair.first, pair.second);
+      continue;
+    }
+
     // Only consider casts of non-opaque types
     // This requirement exists because we need the sizes
     // of types to ensure bounds are appropriately applied
@@ -84,33 +91,25 @@ TypeTree TypeTree::KeepForCast(const llvm::DataLayout &DL, llvm::Type *From,
         continue;
       }
 
-      // If the offset is a fixed (non-repeating) value, it's to include
-      // directly.
-      if (pair.first[0] != -1) {
-        Result.orIn(pair.first, pair.second);
-        continue;
-      } else {
-
-        if (Fromsize < Tosize) {
-          if (Tosize % Fromsize == 0) {
-            // TODO should really be at each offset do a -1
-            Result.insert(pair.first, pair.second);
-            continue;
-          } else {
-            auto tmp(pair.first);
-            tmp[0] = 0;
-            Result.insert(tmp, pair.second);
-            continue;
-          }
+      if (Fromsize < Tosize) {
+        if (Tosize % Fromsize == 0) {
+          // TODO should really be at each offset do a -1
+          Result.insert(pair.first, pair.second);
+          continue;
         } else {
-          // fromsize > tosize
-          // TODO should really insert all indices which are multiples of
-          // fromsize
           auto tmp(pair.first);
           tmp[0] = 0;
           Result.insert(tmp, pair.second);
           continue;
         }
+      } else {
+        // fromsize > tosize
+        // TODO should really insert all indices which are multiples of
+        // fromsize
+        auto tmp(pair.first);
+        tmp[0] = 0;
+        Result.insert(tmp, pair.second);
+        continue;
       }
     }
   }

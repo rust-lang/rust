@@ -2165,8 +2165,6 @@ Function *CreatePrimalAndGradient(
   // Whether we shuold actually return the value
   bool returnValue = returnUsed && topLevel;
 
-  bool hasTape = false;
-
   // TODO change this to go by default function type assumptions
   bool hasconstant = false;
   for (auto v : constant_args) {
@@ -2204,7 +2202,6 @@ Function *CreatePrimalAndGradient(
       auto lastarg = foundcalled->arg_end();
       lastarg--;
       res.first.push_back(lastarg->getType());
-      hasTape = true;
     } else if (foundcalled->arg_size() == res.first.size()) {
       // res.first.push_back(StructType::get(todiff->getContext(), {}));
     } else {

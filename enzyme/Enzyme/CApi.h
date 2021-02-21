@@ -83,6 +83,7 @@ void EnzymeFreeTypeTree(CTypeTreeRef CTT);
 uint8_t EnzymeSetTypeTree(CTypeTreeRef dst, CTypeTreeRef src);
 uint8_t EnzymeMergeTypeTree(CTypeTreeRef dst, CTypeTreeRef src);
 void EnzymeTypeTreeOnlyEq(CTypeTreeRef dst, int64_t x);
+void EnzymeTypeTreeData0Eq(CTypeTreeRef dst);
 void EnzymeTypeTreeShiftIndiciesEq(CTypeTreeRef dst, const char *datalayout,
                                    int64_t offset, int64_t maxSize,
                                    uint64_t addOffset);
