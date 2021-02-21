@@ -1153,7 +1153,6 @@ struct InferBorrowKind<'a, 'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
-    // [FIXME] RFC2229 Change Vec to FxHashSet
     fake_reads: FxHashSet<Place<'tcx>>, // these need to be fake read.
 }
 
@@ -1416,9 +1415,9 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn fake_read(&mut self, place: PlaceWithHirId<'tcx>) {
-        if let PlaceBase::Upvar(_) = place.place.base {
-            self.fake_reads.insert(place.place);
+    fn fake_read(&mut self, place: Place<'tcx>) {
+        if let PlaceBase::Upvar(_) = place.base {
+            self.fake_reads.insert(place);
         }
     }
 

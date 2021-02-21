@@ -5,7 +5,7 @@
 pub use self::ConsumeMode::*;
 
 // Export these here so that Clippy can use them.
-pub use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId, Projection};
+pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -54,7 +54,7 @@ pub trait Delegate<'tcx> {
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
     // [FIXME] RFC2229 This should also affect clippy ref: https://github.com/sexxi-goose/rust/pull/27
-    fn fake_read(&mut self, place: PlaceWithHirId<'tcx>);
+    fn fake_read(&mut self, place: Place<'tcx>);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -558,7 +558,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
 
-        self.delegate.fake_read(discr_place.clone());
+        self.delegate.fake_read(discr_place.place.clone());
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
@@ -620,8 +620,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
-        debug!("walk_captures({:?})", closure_expr);
-
         // Over here we walk a closure that is nested inside the current body
         // If the current body is a closure, then we also want to report back any fake reads,
         // starting off of variables that are captured by our parent as well.
@@ -634,6 +632,32 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.tcx().type_of(self.body_owner.to_def_id()).kind(),
             ty::Closure(..) | ty::Generator(..)
         );
+
+        // [FIXME] RFC2229 Closures within closures don't work
+        if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
+            for fake_read in fake_reads.iter() {
+                // Use this as a reference for if we should promote the fake read
+                match fake_read.base {
+                    PlaceBase::Upvar(upvar_id) => {
+                        if upvars.map_or(body_owner_is_closure, |upvars| {
+                            !upvars.contains_key(&upvar_id.var_path.hir_id)
+                        }) {
+                            // The nested closure might be capturing the current (enclosing) closure's local variables.
+                            // We check if the root variable is ever mentioned within the enclosing closure, if not
+                            // then for the current body (if it's a closure) these aren't captures, we will ignore them.
+                            continue;
+                        }
+                    }
+                    _ => {
+                        bug!(
+                            "Do not know how to get HirId out of Rvalue and StaticItem {:?}",
+                            fake_read.base
+                        );
+                    }
+                };
+                self.delegate.fake_read(fake_read.clone());
+            }
+        }
 
         if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
         {
@@ -663,12 +687,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         place_base,
                         place.projections.clone(),
                     );
-
-                    // [FIXME] RFC2229 We want to created another loop that iterates mc.typeck_results.fake_reads()
-                    // [FIXME] RFC2229 Add tests for nested closures
-                    if body_owner_is_closure {
-                        self.delegate.fake_read(place_with_id.clone());
-                    }
 
                     match capture_info.capture_kind {
                         ty::UpvarCapture::ByValue(_) => {

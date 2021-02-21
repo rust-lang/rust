@@ -1,0 +1,110 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/destructure-pattern-closure-within-closure.rs:9:13
+   |
+LL |     let a = #[rustc_capture_analysis] || {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/destructure-pattern-closure-within-closure.rs:12:17
+   |
+LL |         let c = #[rustc_capture_analysis] ||  {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/destructure-pattern-closure-within-closure.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error: First Pass analysis includes:
+  --> $DIR/destructure-pattern-closure-within-closure.rs:12:43
+   |
+LL |           let c = #[rustc_capture_analysis] ||  {
+   |  ___________________________________________^
+LL | |             let (_, t2) = t;
+LL | |             println!("{}", t2);
+LL | |         };
+   | |_________^
+   |
+note: Capturing t[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:13:27
+   |
+LL |             let (_, t2) = t;
+   |                           ^
+
+error: Min Capture analysis includes:
+  --> $DIR/destructure-pattern-closure-within-closure.rs:12:43
+   |
+LL |           let c = #[rustc_capture_analysis] ||  {
+   |  ___________________________________________^
+LL | |             let (_, t2) = t;
+LL | |             println!("{}", t2);
+LL | |         };
+   | |_________^
+   |
+note: Min Capture t[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:13:27
+   |
+LL |             let (_, t2) = t;
+   |                           ^
+
+error: First Pass analysis includes:
+  --> $DIR/destructure-pattern-closure-within-closure.rs:9:39
+   |
+LL |       let a = #[rustc_capture_analysis] || {
+   |  _______________________________________^
+LL | |         let (_, g2) = g;
+LL | |         println!("{}", g2);
+LL | |         let c = #[rustc_capture_analysis] ||  {
+...  |
+LL | |         c();
+LL | |     };
+   | |_____^
+   |
+note: Capturing g[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:10:23
+   |
+LL |         let (_, g2) = g;
+   |                       ^
+note: Capturing t[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:13:27
+   |
+LL |             let (_, t2) = t;
+   |                           ^
+
+error: Min Capture analysis includes:
+  --> $DIR/destructure-pattern-closure-within-closure.rs:9:39
+   |
+LL |       let a = #[rustc_capture_analysis] || {
+   |  _______________________________________^
+LL | |         let (_, g2) = g;
+LL | |         println!("{}", g2);
+LL | |         let c = #[rustc_capture_analysis] ||  {
+...  |
+LL | |         c();
+LL | |     };
+   | |_____^
+   |
+note: Min Capture g[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:10:23
+   |
+LL |         let (_, g2) = g;
+   |                       ^
+note: Min Capture t[(1, 0)] -> ByValue
+  --> $DIR/destructure-pattern-closure-within-closure.rs:13:27
+   |
+LL |             let (_, t2) = t;
+   |                           ^
+
+error: aborting due to 6 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0658`.
