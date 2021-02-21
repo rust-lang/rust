@@ -894,10 +894,26 @@ pub trait ResolverExpand {
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ModuleData {
+    /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,
-    pub directory: PathBuf,
+    /// Stack of paths to files loaded by out-of-line module items,
+    /// used to detect and report recursive module inclusions.
+    pub file_path_stack: Vec<PathBuf>,
+    /// Directory to search child module files in,
+    /// often (but not necessarily) the parent of the top file path on the `file_path_stack`.
+    pub dir_path: PathBuf,
+}
+
+impl ModuleData {
+    pub fn with_dir_path(&self, dir_path: PathBuf) -> ModuleData {
+        ModuleData {
+            mod_path: self.mod_path.clone(),
+            file_path_stack: self.file_path_stack.clone(),
+            dir_path,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -946,7 +962,7 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
-                module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
+                module: Default::default(),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
