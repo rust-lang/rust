@@ -1035,15 +1035,15 @@ pub fn find_transparency(
 pub fn allow_internal_unstable<'a>(
     sess: &'a Session,
     attrs: &'a [Attribute],
-) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    Some(allow_unstable(sess, attrs, sym::allow_internal_unstable))
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable(sess, attrs, sym::allow_internal_unstable)
 }
 
 pub fn rustc_allow_const_fn_unstable<'a>(
     sess: &'a Session,
     attrs: &'a [Attribute],
-) -> Option<impl Iterator<Item = Symbol> + 'a> {
-    Some(allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable))
+) -> impl Iterator<Item = Symbol> + 'a {
+    allow_unstable(sess, attrs, sym::rustc_allow_const_fn_unstable)
 }
 
 fn allow_unstable<'a>(
