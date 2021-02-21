@@ -154,9 +154,9 @@ Note that by default, `x.py setup` will use CI-built LLVM if available for your
 platform so that you don't need to build LLVM in addition to building the
 compiler. In some circumstances, such as when updating the version of LLVM used
 by `rustc`, you may want to temporarily disable this feature. See the ["Updating
-LLVM"] for more.
+LLVM" section] for more.
 
-["Updating LLVM"]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
+["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
 
 ### x.py Intro
 

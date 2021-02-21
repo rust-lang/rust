@@ -66,9 +66,9 @@ Example PRs look like:
 
 ## Feature updates
 
-> Note that this information is as of the time of this writing (December 2018
-> <!-- date: 2018-12 -->. The process for updating LLVM changes with practically
-> all LLVM updates, so this may be out of date!
+> Note that this information is as of the time of this writing <!-- date:
+2018-12 --> (December 2018). The process for updating LLVM changes with
+practically all LLVM updates, so this may be out of date!
 
 Unlike bugfixes, updating to pick up a new feature of LLVM typically requires a
 lot more work. This is where we can't reasonably cherry-pick commits backwards
