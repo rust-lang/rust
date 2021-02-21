@@ -2500,26 +2500,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     analyzeFuncTypes<__VA_ARGS__>(::fn, call, *this);                          \
     return;                                                                    \
   }
-    // All these are always valid => no direction check
-    // CONSIDER(malloc)
-    // TODO consider handling other allocation functions integer inputs
-    if (isAllocationFunction(*ci, interprocedural.TLI)) {
-      size_t Idx = 0;
-      for (auto &Arg : ci->args()) {
-        if (Arg.getType()->isIntegerTy()) {
-          updateAnalysis(call.getOperand(Idx),
-                         TypeTree(BaseType::Integer).Only(-1), &call);
-        }
-        Idx++;
-      }
-      assert(ci->getReturnType()->isPointerTy());
-      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
-      return;
-    }
-    if (ci->getName().startswith("_ZN3std2io5stdio6_print") ||
-        ci->getName().startswith("_ZN4core3fmt")) {
-      return;
-    }
+
     auto customrule = interprocedural.CustomRules.find(ci->getName().str());
     if (customrule != interprocedural.CustomRules.end()) {
       auto returnAnalysis = getAnalysis(&call);
@@ -2542,6 +2523,26 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
         updateAnalysis(arg, args[argnum], &call);
         argnum++;
       }
+      return;
+    }
+    // All these are always valid => no direction check
+    // CONSIDER(malloc)
+    // TODO consider handling other allocation functions integer inputs
+    if (isAllocationFunction(*ci, interprocedural.TLI)) {
+      size_t Idx = 0;
+      for (auto &Arg : ci->args()) {
+        if (Arg.getType()->isIntegerTy()) {
+          updateAnalysis(call.getOperand(Idx),
+                         TypeTree(BaseType::Integer).Only(-1), &call);
+        }
+        Idx++;
+      }
+      assert(ci->getReturnType()->isPointerTy());
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      return;
+    }
+    if (ci->getName().startswith("_ZN3std2io5stdio6_print") ||
+        ci->getName().startswith("_ZN4core3fmt")) {
       return;
     }
     /// MPI

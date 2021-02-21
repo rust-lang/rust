@@ -23,6 +23,7 @@
 //===----------------------------------------------------------------------===//
 #include "CApi.h"
 #include "EnzymeLogic.h"
+#include "LibraryFuncs.h"
 #include "SCEV/TargetLibraryInfo.h"
 
 #include "llvm/ADT/Triple.h"
@@ -182,6 +183,23 @@ void FreeTypeAnalysis(EnzymeTypeAnalysisRef TAR) {
   delete &TA->TLI.Impl;
   delete &TA->TLI;
   delete TA;
+}
+
+void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
+                                     CustomShadowFree FHandle) {
+  shadowHandlers[std::string(Name)] =
+      [=](IRBuilder<> &B, CallInst *CI,
+          ArrayRef<Value *> Args) -> llvm::Value * {
+    SmallVector<LLVMValueRef, 3> refs;
+    for (auto a : Args)
+      refs.push_back(wrap(a));
+    return unwrap(AHandle(wrap(&B), wrap(CI), Args.size(), refs.data()));
+  };
+  shadowErasers[std::string(Name)] = [=](IRBuilder<> &B, Value *ToFree,
+                                         Function *AllocF) -> llvm::CallInst * {
+    return cast_or_null<CallInst>(
+        unwrap(FHandle(wrap(&B), wrap(ToFree), wrap(AllocF))));
+  };
 }
 
 LLVMValueRef EnzymeCreatePrimalAndGradient(

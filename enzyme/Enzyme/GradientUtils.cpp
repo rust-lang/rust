@@ -45,6 +45,13 @@
 
 #include <algorithm>
 
+std::map<std::string, std::function<llvm::Value *(IRBuilder<> &, CallInst *,
+                                                  ArrayRef<Value *>)>>
+    shadowHandlers;
+std::map<std::string,
+         std::function<llvm::CallInst *(IRBuilder<> &, Value *, Function *)>>
+    shadowErasers;
+
 llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
                    cl::desc("Use new cache decision algorithm"));

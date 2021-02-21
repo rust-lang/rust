@@ -28,6 +28,15 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 
+extern std::map<std::string, std::function<llvm::Value *(
+                                 llvm::IRBuilder<> &, llvm::CallInst *,
+                                 llvm::ArrayRef<llvm::Value *>)>>
+    shadowHandlers;
+extern std::map<std::string,
+                std::function<llvm::CallInst *(
+                    llvm::IRBuilder<> &, llvm::Value *, llvm::Function *)>>
+    shadowErasers;
+
 /// Return whether a given function is a known C/C++ memory allocation function
 /// For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
 static inline bool isAllocationFunction(const llvm::Function &F,
@@ -38,6 +47,9 @@ static inline bool isAllocationFunction(const llvm::Function &F,
     return true;
   if (F.getName() == "julia.gc_alloc_obj")
     return true;
+  if (shadowHandlers.find(F.getName().str()) != shadowHandlers.end())
+    return true;
+
   using namespace llvm;
   llvm::LibFunc libfunc;
   if (!TLI.getLibFunc(F, libfunc))
@@ -193,8 +205,12 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
       allocationfn.getName() == "__rust_alloc_zeroed") {
     llvm_unreachable("todo - hook in rust allocation fns");
   }
-  if (allocationfn.getName() == "julia.gc_alloc_obj") {
+  if (allocationfn.getName() == "julia.gc_alloc_obj")
     return nullptr;
+
+  if (shadowErasers.find(allocationfn.getName().str()) != shadowErasers.end()) {
+    return shadowErasers[allocationfn.getName().str()](builder, tofree,
+                                                       &allocationfn);
   }
 
   llvm::LibFunc libfunc;

@@ -73,6 +73,12 @@ using namespace llvm;
 
 enum class DerivativeMode { Forward, Reverse, Both };
 
+#include "llvm-c/Core.h"
+
+extern std::map<std::string, std::function<llvm::Value *(
+                                 IRBuilder<> &, CallInst *, ArrayRef<Value *>)>>
+    shadowHandlers;
+
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
   case DerivativeMode::Forward:
@@ -525,6 +531,22 @@ public:
     for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
       args.push_back(getNewFromOriginal(orig->getArgOperand(i)));
     }
+
+    if (shadowHandlers.find(orig->getCalledFunction()->getName().str()) !=
+        shadowHandlers.end()) {
+      Value *anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
+          bb, orig, args);
+      invertedPointers[orig] = anti;
+      // assert(placeholder != anti);
+      bb.SetInsertPoint(placeholder->getNextNode());
+      replaceAWithB(placeholder, anti);
+      erase(placeholder);
+
+      anti = cacheForReverse(bb, anti, idx);
+      invertedPointers[orig] = anti;
+      return anti;
+    }
+
     Value *anti =
         bb.CreateCall(orig->getCalledFunction(), args, orig->getName() + "'mi");
     cast<CallInst>(anti)->setAttributes(orig->getAttributes());
@@ -575,16 +597,22 @@ public:
                       *orig);
         }
       }
-      auto dst_arg = bb.CreateBitCast(
-          anti, Type::getInt8PtrTy(orig->getContext(),
-                                   anti->getType()->getPointerAddressSpace()));
+
+      Value *dst_arg = anti;
+
+      dst_arg = bb.CreateBitCast(
+          dst_arg,
+          Type::getInt8PtrTy(orig->getContext(),
+                             anti->getType()->getPointerAddressSpace()));
+
       auto val_arg = ConstantInt::get(Type::getInt8Ty(orig->getContext()), 0);
       Value *size;
       // todo check if this memset is legal and if a write barrier is needed
-      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj")
+      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
         size = args[1];
-      else
+      } else {
         size = args[0];
+      }
       auto len_arg =
           bb.CreateZExtOrTrunc(size, Type::getInt64Ty(orig->getContext()));
       auto volatile_arg = ConstantInt::getFalse(orig->getContext());
