@@ -187,7 +187,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
 /// Performs the actual work of ensuring a command passes. Generally assumes the command
 /// is syntactically valid.
 fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
-    // FIXME: Be more granular about why, (eg syntax error, count not equal)
+    // FIXME: Be more granular about why, (e.g. syntax error, count not equal)
     let result = match command.kind {
         CommandKind::Has => {
             match command.args.len() {
@@ -215,7 +215,7 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                                 v_holder = serde_json::from_str(&command.args[2]).unwrap();
                                 &v_holder
                             };
-                            !results.is_empty() && results.into_iter().any(|val| val == pat)
+                            results.contains(pat)
                         }
                         Err(_) => false,
                     }
@@ -263,7 +263,7 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 Ok(results) => {
                     assert_eq!(results.len(), 1);
                     let r = cache.variables.insert(command.args[0].clone(), results[0].clone());
-                    assert!(r.is_none(), "Name collision");
+                    assert!(r.is_none(), "Name collision: {} is duplicated", command.args[0]);
                     true
                 }
                 Err(_) => false,
