@@ -55,6 +55,8 @@ pub fn from(s: &str) -> usize {
             }
         } else if c.is_lowercase() {
             down = true;
+        } else if c.is_uppercase() {
+            last_i = i;
         } else {
             return last_i;
         }
@@ -70,12 +72,16 @@ mod test {
     fn from_full() {
         assert_eq!(from("AbcDef"), 0);
         assert_eq!(from("Abc"), 0);
+        assert_eq!(from("ABcd"), 0);
+        assert_eq!(from("ABcdEf"), 0);
+        assert_eq!(from("AabABcd"), 0);
     }
 
     #[test]
     fn from_partial() {
         assert_eq!(from("abcDef"), 3);
         assert_eq!(from("aDbc"), 1);
+        assert_eq!(from("aabABcd"), 3);
     }
 
     #[test]
