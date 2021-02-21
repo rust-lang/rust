@@ -6,7 +6,6 @@
 
 mod conversions;
 
-use std::cell::RefCell;
 use std::fs::File;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -31,7 +30,7 @@ crate struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// A mapping of IDs that contains all local items for this crate which gets output as a top
     /// level field of the JSON blob.
-    index: Rc<RefCell<FxHashMap<types::Id, types::Item>>>,
+    index: FxHashMap<types::Id, types::Item>,
     /// The directory where the blob will be written to.
     out_path: PathBuf,
     cache: Rc<Cache>,
@@ -141,7 +140,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok((
             JsonRenderer {
                 tcx,
-                index: Rc::new(RefCell::new(FxHashMap::default())),
+                index: FxHashMap::default(),
                 out_path: options.output,
                 cache: Rc::new(cache),
             },
@@ -165,7 +164,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id)
             }
-            let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
+            let removed = self.index.insert(from_def_id(id), new_item.clone());
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique.
             if let Some(old_item) = removed {
@@ -203,7 +202,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         _diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
         debug!("Done with crate");
-        let mut index = (*self.index).clone().into_inner();
+        let mut index = self.index.clone();
         index.extend(self.get_trait_items());
         // This needs to be the default HashMap for compatibility with the public interface for
         // rustdoc-json
