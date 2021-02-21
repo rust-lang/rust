@@ -9,6 +9,7 @@
 
 // @has 'foo/foo_mod/index.html' '//meta[@name="description"]/@content' \
 //   'First paragraph description.'
+// @!has - '//meta[@name="description"]/@content' 'Second paragraph'
 /// First paragraph description.
 ///
 /// Second paragraph should not show up.
