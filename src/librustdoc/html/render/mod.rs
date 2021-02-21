@@ -44,7 +44,6 @@ use std::rc::Rc;
 use std::str;
 use std::string::ToString;
 use std::sync::mpsc::{channel, Receiver};
-use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
@@ -111,7 +110,7 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     crate render_redirect_pages: bool,
-    crate shared: Arc<SharedContext<'tcx>>,
+    crate shared: Rc<SharedContext<'tcx>>,
     /// The [`Cache`] used during rendering.
     ///
     /// Ideally the cache would be in [`SharedContext`], but it's mutated
@@ -517,16 +516,16 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            shared: Arc::new(scx),
+            shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
 
         CURRENT_DEPTH.with(|s| s.set(0));
 
         // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-        Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
         write_shared(&cx, &krate, index, &md_opts)?;
-        Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
         Ok((cx, krate))
     }
 
@@ -599,7 +598,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
         // Flush pending errors.
-        Arc::get_mut(&mut self.shared).unwrap().fs.close();
+        Rc::get_mut(&mut self.shared).unwrap().fs.close();
         let nb_errors = self.shared.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
