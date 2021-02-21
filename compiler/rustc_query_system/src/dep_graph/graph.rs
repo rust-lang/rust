@@ -16,7 +16,9 @@ use std::sync::atomic::Ordering::Relaxed;
 
 use super::debug::EdgeFilter;
 use super::query::DepGraphQuery;
-use super::serialized::{DepNodeColor, DepNodeIndex, SerializedDepGraph, SerializedDepNodeIndex};
+use super::serialized::{
+    CurrentDepGraph, DepNodeColor, DepNodeIndex, SerializedDepGraph, SerializedDepNodeIndex,
+};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
 
@@ -45,7 +47,7 @@ impl std::convert::From<DepNodeIndex> for QueryInvocationId {
 struct DepGraphData<K: DepKind> {
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: RwLock<SerializedDepGraph<K>>,
+    previous: RwLock<CurrentDepGraph<K>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
@@ -97,8 +99,6 @@ impl<K: DepKind> DepGraph<K> {
         prev_graph: SerializedDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
     ) -> DepGraph<K> {
-        let _prev_graph_node_count = prev_graph.serialized_node_count();
-
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -118,41 +118,6 @@ impl<K: DepKind> DepGraph<K> {
             None
         };
 
-        /*
-        // Pre-allocate the dep node structures. We over-allocate a little so
-        // that we hopefully don't have to re-allocate during this compilation
-        // session. The over-allocation for new nodes is 2% plus a small
-        // constant to account for the fact that in very small crates 2% might
-        // not be enough. The allocation for red and green node data doesn't
-        // include a constant, as we don't want to allocate anything for these
-        // structures during full incremental builds, where they aren't used.
-        //
-        // These estimates are based on the distribution of node and edge counts
-        // seen in rustc-perf benchmarks, adjusted somewhat to account for the
-        // fact that these benchmarks aren't perfectly representative.
-        //
-        // FIXME Use a collection type that doesn't copy node and edge data and
-        // grow multiplicatively on reallocation. Without such a collection or
-        // solution having the same effect, there is a performance hazard here
-        // in both time and space, as growing these collections means copying a
-        // large amount of data and doubling already large buffer capacities. A
-        // solution for this will also mean that it's less important to get
-        // these estimates right.
-        let new_node_count_estimate = (prev_graph_node_count * 2) / 100 + 200;
-        let red_node_count_estimate = (prev_graph_node_count * 3) / 100;
-        let light_green_node_count_estimate = (prev_graph_node_count * 25) / 100;
-        let total_node_count_estimate = prev_graph_node_count + new_node_count_estimate;
-
-        let average_edges_per_node_estimate = 6;
-        let unshared_edge_count_estimate = average_edges_per_node_estimate
-            * (new_node_count_estimate + red_node_count_estimate + light_green_node_count_estimate);
-        */
-
-        // We store a large collection of these in `prev_index_to_index` during
-        // non-full incremental builds, and want to ensure that the element size
-        // doesn't inadvertently increase.
-        static_assert_size!(Option<DepNodeIndex>, 4);
-
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
@@ -162,7 +127,7 @@ impl<K: DepKind> DepGraph<K> {
                 total_read_count: AtomicU64::new(0),
                 total_duplicate_read_count: AtomicU64::new(0),
                 emitting_diagnostics: Default::default(),
-                previous: RwLock::new(prev_graph),
+                previous: RwLock::new(CurrentDepGraph::new(prev_graph)),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
         }
@@ -627,21 +592,13 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert!(!dep_node.kind.is_eval_always());
         debug_assert_eq!(data.previous.read().index_to_node(prev_dep_node_index), *dep_node);
 
-        // Do not keep a reference to the borrowed `previous` graph,
-        // because the recursive calls.
-        let prev_deps: Vec<_> =
-            data.previous.read().edge_targets_from_serialized(prev_dep_node_index).collect();
-        debug!(
-            "try_mark_previous_green({:?}) --- {:?} -- deps={:?}",
-            dep_node,
-            prev_dep_node_index,
-            prev_deps
-                .iter()
-                .map(|&d| (d, data.previous.read().index_to_node(d)))
-                .collect::<Vec<_>>(),
-        );
-
-        for dep_dep_node_index in prev_deps {
+        let prev_deps = data.previous.read().color_or_edges(prev_dep_node_index);
+        let prev_deps = match prev_deps {
+            Err(prev_deps) => prev_deps,
+            Ok(DepNodeColor::Green) => return Some(prev_dep_node_index.rejuvenate()),
+            Ok(DepNodeColor::Red) | Ok(DepNodeColor::New) => return None,
+        };
+        for &dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
         }
 
@@ -764,7 +721,7 @@ impl<K: DepKind> DepGraph<K> {
 
         let mut stats: FxHashMap<_, Stat<K>> = FxHashMap::with_hasher(Default::default());
 
-        for index in prev.indices() {
+        for index in prev.live_indices() {
             let kind = prev.dep_node_of(index).kind;
             let edge_count = prev.edge_targets_from(index).len();
 
