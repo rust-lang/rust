@@ -129,7 +129,6 @@ impl<'tcx> DebugContext<'tcx> {
 
     pub(super) fn create_debug_lines(
         &mut self,
-        isa: &dyn cranelift_codegen::isa::TargetIsa,
         symbol: usize,
         entry_id: UnitEntryId,
         context: &Context,
@@ -138,7 +137,6 @@ impl<'tcx> DebugContext<'tcx> {
     ) -> CodeOffset {
         let tcx = self.tcx;
         let line_program = &mut self.dwarf.unit.line_program;
-        let func = &context.func;
 
         let line_strings = &mut self.dwarf.line_strings;
         let mut last_span = None;
@@ -202,42 +200,21 @@ impl<'tcx> DebugContext<'tcx> {
 
         let mut func_end = 0;
 
-        if let Some(ref mcr) = &context.mach_compile_result {
-            for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
-                line_program.row().address_offset = u64::from(start);
-                if !loc.is_default() {
-                    let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
-                    create_row_for_span(line_program, source_info.span);
-                } else {
-                    create_row_for_span(line_program, function_span);
-                }
-                func_end = end;
+        let mcr = context.mach_compile_result.as_ref().unwrap();
+        for &MachSrcLoc { start, end, loc } in mcr.buffer.get_srclocs_sorted() {
+            line_program.row().address_offset = u64::from(start);
+            if !loc.is_default() {
+                let source_info = *source_info_set.get_index(loc.bits() as usize).unwrap();
+                create_row_for_span(line_program, source_info.span);
+            } else {
+                create_row_for_span(line_program, function_span);
             }
-
-            line_program.end_sequence(u64::from(func_end));
-
-            func_end = mcr.buffer.total_size();
-        } else {
-            let encinfo = isa.encoding_info();
-            let mut blocks = func.layout.blocks().collect::<Vec<_>>();
-            blocks.sort_by_key(|block| func.offsets[*block]); // Ensure inst offsets always increase
-
-            for block in blocks {
-                for (offset, inst, size) in func.inst_offsets(block, &encinfo) {
-                    let srcloc = func.srclocs[inst];
-                    line_program.row().address_offset = u64::from(offset);
-                    if !srcloc.is_default() {
-                        let source_info =
-                            *source_info_set.get_index(srcloc.bits() as usize).unwrap();
-                        create_row_for_span(line_program, source_info.span);
-                    } else {
-                        create_row_for_span(line_program, function_span);
-                    }
-                    func_end = offset + size;
-                }
-            }
-            line_program.end_sequence(u64::from(func_end));
+            func_end = end;
         }
+
+        line_program.end_sequence(u64::from(func_end));
+
+        let func_end = mcr.buffer.total_size();
 
         assert_ne!(func_end, 0);
 

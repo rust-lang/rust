@@ -252,17 +252,12 @@ impl<'tcx> DebugContext<'tcx> {
             AttributeValue::StringRef(name_id),
         );
 
-        let end =
-            self.create_debug_lines(isa, symbol, entry_id, context, mir.span, source_info_set);
+        let end = self.create_debug_lines(symbol, entry_id, context, mir.span, source_info_set);
 
         self.unit_range_list.0.push(Range::StartLength {
             begin: Address::Symbol { symbol, addend: 0 },
             length: u64::from(end),
         });
-
-        if isa.get_mach_backend().is_some() {
-            return; // Not yet implemented for the AArch64 backend.
-        }
 
         let func_entry = self.dwarf.unit.get_mut(entry_id);
         // Gdb requires both DW_AT_low_pc and DW_AT_high_pc. Otherwise the DW_TAG_subprogram is skipped.

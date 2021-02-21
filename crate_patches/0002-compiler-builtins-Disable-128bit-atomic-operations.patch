@@ -1,0 +1,48 @@
+From 1d574bf5e32d51641dcacaf8ef777e95b44f6f2a Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 18 Feb 2021 18:30:55 +0100
+Subject: [PATCH] Disable 128bit atomic operations
+
+Cranelift doesn't support them yet
+---
+ src/mem/mod.rs | 12 ------------
+ 1 file changed, 12 deletions(-)
+
+diff --git a/src/mem/mod.rs b/src/mem/mod.rs
+index 107762c..2d1ae10 100644
+--- a/src/mem/mod.rs
++++ b/src/mem/mod.rs
+@@ -137,10 +137,6 @@ intrinsics! {
+     pub extern "C" fn __llvm_memcpy_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
+         memcpy_element_unordered_atomic(dest, src, bytes);
+     }
+-    #[cfg(target_has_atomic_load_store = "128")]
+-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
+-        memcpy_element_unordered_atomic(dest, src, bytes);
+-    }
+ 
+     #[cfg(target_has_atomic_load_store = "8")]
+     pub extern "C" fn __llvm_memmove_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
+@@ -158,10 +154,6 @@ intrinsics! {
+     pub extern "C" fn __llvm_memmove_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
+         memmove_element_unordered_atomic(dest, src, bytes);
+     }
+-    #[cfg(target_has_atomic_load_store = "128")]
+-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
+-        memmove_element_unordered_atomic(dest, src, bytes);
+-    }
+ 
+     #[cfg(target_has_atomic_load_store = "8")]
+     pub extern "C" fn __llvm_memset_element_unordered_atomic_1(s: *mut u8, c: u8, bytes: usize) -> () {
+@@ -179,8 +171,4 @@ intrinsics! {
+     pub extern "C" fn __llvm_memset_element_unordered_atomic_8(s: *mut u64, c: u8, bytes: usize) -> () {
+         memset_element_unordered_atomic(s, c, bytes);
+     }
+-    #[cfg(target_has_atomic_load_store = "128")]
+-    pub extern "C" fn __llvm_memset_element_unordered_atomic_16(s: *mut u128, c: u8, bytes: usize) -> () {
+-        memset_element_unordered_atomic(s, c, bytes);
+-    }
+ }
+-- 
+2.26.2.7.g19db9cfb68
+

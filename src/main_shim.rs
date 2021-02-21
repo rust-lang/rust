@@ -9,7 +9,6 @@ pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
     unwind_context: &mut UnwindContext<'_>,
-    use_jit: bool,
 ) {
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
@@ -33,7 +32,6 @@ pub(crate) fn maybe_create_entry_wrapper(
         unwind_context,
         main_def_id,
         use_start_lang_item,
-        use_jit,
     );
 
     fn create_entry_fn(
@@ -42,7 +40,6 @@ pub(crate) fn maybe_create_entry_wrapper(
         unwind_context: &mut UnwindContext<'_>,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
-        use_jit: bool,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -85,8 +82,6 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.switch_to_block(block);
             let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
-
-            crate::atomic_shim::init_global_lock(m, &mut bcx, use_jit);
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
