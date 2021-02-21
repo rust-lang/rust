@@ -167,9 +167,7 @@ impl Pointer {
     ) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
-            PointerBase::Stack(stack_slot) => {
-                fx.bcx.ins().stack_load(ty, stack_slot, self.offset)
-            }
+            PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_load(ty, stack_slot, self.offset),
             PointerBase::Dangling(_align) => unreachable!(),
         }
     }

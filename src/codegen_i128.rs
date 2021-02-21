@@ -11,7 +11,11 @@ pub(crate) fn maybe_codegen<'tcx>(
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
 ) -> Option<CValue<'tcx>> {
-    if lhs.layout().ty != fx.tcx.types.u128 && lhs.layout().ty != fx.tcx.types.i128 {
+    if lhs.layout().ty != fx.tcx.types.u128
+        && lhs.layout().ty != fx.tcx.types.i128
+        && rhs.layout().ty != fx.tcx.types.u128
+        && rhs.layout().ty != fx.tcx.types.i128
+    {
         return None;
     }
 
