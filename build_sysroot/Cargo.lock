@@ -31,15 +31,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alloc_system"
-version = "0.0.0"
-dependencies = [
- "compiler_builtins",
- "core",
- "libc",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -258,7 +249,6 @@ name = "sysroot"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "alloc_system",
  "compiler_builtins",
  "core",
  "std",

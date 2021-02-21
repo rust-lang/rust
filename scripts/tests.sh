@@ -34,6 +34,9 @@ function no_sysroot_tests() {
 }
 
 function base_sysroot_tests() {
+    echo "[AOT] alloc_system"
+    $MY_RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
+
     echo "[AOT] alloc_example"
     $MY_RUSTC example/alloc_example.rs --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/alloc_example

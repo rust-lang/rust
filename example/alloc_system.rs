@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![no_std]
-#![feature(allocator_api)]
+#![feature(allocator_api, rustc_private)]
 #![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
