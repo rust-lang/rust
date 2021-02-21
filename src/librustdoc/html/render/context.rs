@@ -44,15 +44,20 @@ use crate::html::{layout, sources};
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    crate current: Vec<String>,
+    pub(super) current: Vec<String>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
-    crate dst: PathBuf,
+    pub(super) dst: PathBuf,
     /// A flag, which when `true`, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
-    crate render_redirect_pages: bool,
-    crate shared: Rc<SharedContext<'tcx>>,
+    pub(super) render_redirect_pages: bool,
+    /// Shared mutable state.
+    ///
+    /// Issue for improving the situation: [#82381][]
+    ///
+    /// [#82381]: https://github.com/rust-lang/rust/issues/82381
+    pub(super) shared: Rc<SharedContext<'tcx>>,
     /// The [`Cache`] used during rendering.
     ///
     /// Ideally the cache would be in [`SharedContext`], but it's mutated
@@ -62,7 +67,7 @@ crate struct Context<'tcx> {
     /// It's immutable once in `Context`, so it's not as bad that it's not in
     /// `SharedContext`.
     // FIXME: move `cache` to `SharedContext`
-    crate cache: Rc<Cache>,
+    pub(super) cache: Rc<Cache>,
 }
 
 impl<'tcx> Context<'tcx> {
