@@ -233,7 +233,13 @@ impl<'tcx> CValue<'tcx> {
         layout: TyAndLayout<'tcx>,
         const_val: ty::ScalarInt,
     ) -> CValue<'tcx> {
-        assert_eq!(const_val.size(), layout.size);
+        assert_eq!(
+            const_val.size(),
+            layout.size,
+            "{:#?}: {:?}",
+            const_val,
+            layout
+        );
         use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
 
         let clif_ty = fx.clif_type(layout.ty).unwrap();

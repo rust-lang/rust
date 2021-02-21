@@ -627,50 +627,22 @@ fn codegen_stmt<'tcx>(
                             ty::Uint(_) | ty::Int(_) => {}
                             _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
+                        let to_clif_ty = fx.clif_type(to_ty).unwrap();
 
-                        use rustc_target::abi::{Int, TagEncoding, Variants};
+                        let discriminant = crate::discriminant::codegen_get_discriminant(
+                            fx,
+                            operand,
+                            fx.layout_of(operand.layout().ty.discriminant_ty(fx.tcx)),
+                        )
+                        .load_scalar(fx);
 
-                        match operand.layout().variants {
-                            Variants::Single { index } => {
-                                let discr = operand
-                                    .layout()
-                                    .ty
-                                    .discriminant_for_variant(fx.tcx, index)
-                                    .unwrap();
-                                let discr = if discr.ty.is_signed() {
-                                    fx.layout_of(discr.ty).size.sign_extend(discr.val)
-                                } else {
-                                    discr.val
-                                };
-                                let discr = discr.into();
-
-                                let discr = CValue::const_val(fx, fx.layout_of(to_ty), discr);
-                                lval.write_cvalue(fx, discr);
-                            }
-                            Variants::Multiple {
-                                ref tag,
-                                tag_field,
-                                tag_encoding: TagEncoding::Direct,
-                                variants: _,
-                            } => {
-                                let cast_to = fx.clif_type(dest_layout.ty).unwrap();
-
-                                // Read the tag/niche-encoded discriminant from memory.
-                                let encoded_discr =
-                                    operand.value_field(fx, mir::Field::new(tag_field));
-                                let encoded_discr = encoded_discr.load_scalar(fx);
-
-                                // Decode the discriminant (specifically if it's niche-encoded).
-                                let signed = match tag.value {
-                                    Int(_, signed) => signed,
-                                    _ => false,
-                                };
-                                let val = clif_intcast(fx, encoded_discr, cast_to, signed);
-                                let val = CValue::by_val(val, dest_layout);
-                                lval.write_cvalue(fx, val);
-                            }
-                            Variants::Multiple { .. } => unreachable!(),
-                        }
+                        let res = crate::cast::clif_intcast(
+                            fx,
+                            discriminant,
+                            to_clif_ty,
+                            to_ty.is_signed(),
+                        );
+                        lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
