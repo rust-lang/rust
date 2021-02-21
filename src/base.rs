@@ -74,7 +74,12 @@ pub(crate) fn codegen_fn<'tcx>(
             .is_uninhabited()
     });
 
-    if arg_uninhabited {
+    if !crate::constant::check_constants(&mut fx) {
+        fx.bcx
+            .append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
+        crate::trap::trap_unreachable(&mut fx, "compilation should have been aborted");
+    } else if arg_uninhabited {
         fx.bcx
             .append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
@@ -205,8 +210,6 @@ pub(crate) fn verify_func(
 }
 
 fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
-    crate::constant::check_constants(fx);
-
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);

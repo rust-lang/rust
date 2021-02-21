@@ -36,7 +36,8 @@ impl ConstantCx {
     }
 }
 
-pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
+pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) -> bool {
+    let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
         let const_ = fx.monomorphize(constant.literal);
         match const_.val {
@@ -46,6 +47,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
                     fx.tcx
                         .const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None)
                 {
+                    all_constants_ok = false;
                     match err {
                         ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
                             fx.tcx
@@ -69,6 +71,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) {
             | ConstKind::Error(_) => unreachable!("{:?}", const_),
         }
     }
+    all_constants_ok
 }
 
 pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
@@ -134,14 +137,7 @@ pub(crate) fn codegen_constant<'tcx>(
             {
                 Ok(const_val) => const_val,
                 Err(_) => {
-                    fx.tcx
-                        .sess
-                        .span_err(constant.span, "erroneous constant encountered");
-                    return crate::trap::trap_unreachable_ret_value(
-                        fx,
-                        fx.layout_of(const_.ty),
-                        "erroneous constant encountered",
-                    );
+                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
                 }
             }
         }
