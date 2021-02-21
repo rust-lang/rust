@@ -760,9 +760,9 @@ pub enum FpCategory {
 
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
-    fn min_value() -> Self;
-    fn max_value() -> Self;
-    fn from_u32(u: u32) -> Self;
+    const SIGNED: bool;
+    const ZERO: Self;
+    const MAX: Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
@@ -782,13 +782,10 @@ macro_rules! from_str_radix_int_impl {
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 macro_rules! doit {
-    ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
-        #[inline]
-        fn min_value() -> Self { Self::MIN }
-        #[inline]
-        fn max_value() -> Self { Self::MAX }
-        #[inline]
-        fn from_u32(u: u32) -> Self { u as Self }
+    ($sized:literal | $($t:ty)*) => ($(impl FromStrRadixHelper for $t {
+        const SIGNED: bool = $sized;
+        const ZERO: Self = 0 as Self;
+        const MAX: Self = Self::MAX;
         #[inline]
         fn checked_mul(&self, other: u32) -> Option<Self> {
             Self::checked_mul(*self, other as Self)
@@ -803,8 +800,10 @@ macro_rules! doit {
         }
     })*)
 }
-doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+doit! { true | i8 i16 i32 i64 i128 isize }
+doit! { false | u8 u16 u32 u64 u128 usize }
 
+#[inline]
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
@@ -819,8 +818,6 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         return Err(PIE { kind: Empty });
     }
 
-    let is_signed_ty = T::from_u32(0) > T::min_value();
-
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
     // other than a valid ascii digit for the given radix, including the first-byte
@@ -832,11 +829,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             return Err(PIE { kind: InvalidDigit });
         }
         b'+' => (true, &src[1..]),
-        b'-' if is_signed_ty => (false, &src[1..]),
+        b'-' if T::SIGNED => (false, &src[1..]),
         _ => (true, src),
     };
 
-    let mut result = T::from_u32(0);
+    let mut result = T::ZERO;
     if is_positive {
         // The number is positive
         for &c in digits {

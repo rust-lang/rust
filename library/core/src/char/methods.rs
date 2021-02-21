@@ -336,15 +336,14 @@ impl char {
         // the `radix` is constant and 10 or smaller
         let val = if likely(radix <= 10) {
             // If not a digit, a number greater than radix will be created.
-            (self as u32).wrapping_sub('0' as u32)
+            (self as u8).wrapping_sub(b'0')
         } else {
             match self {
-                '0'..='9' => self as u32 - '0' as u32,
-                'a'..='z' => self as u32 - 'a' as u32 + 10,
-                'A'..='Z' => self as u32 - 'A' as u32 + 10,
+                '0'..='9' => self as u8 - b'0',
+                'a'..='z' | 'A'..='Z' => (self as u8 | 32) - b'a' + 10,
                 _ => return None,
             }
-        };
+        } as u32;
 
         if val < radix { Some(val) } else { None }
     }
