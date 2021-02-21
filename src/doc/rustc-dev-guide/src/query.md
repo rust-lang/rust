@@ -223,7 +223,7 @@ Let's go over them one by one:
 - **Query modifiers:** various flags and options that customize how the
   query is processed (mostly with respect to [incremental compilation][incrcomp]).
 
-[Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/keys/trait.Key.html
+[Key]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_impl/keys/trait.Key.html
 [incrcomp]: queries/incremental-compilation-in-detail.html#query-modifiers
 
 So, to add a query:
@@ -262,7 +262,7 @@ Implementing this trait is optional if the query key is `DefId`, but
 if you *don't* implement it, you get a pretty generic error ("processing `foo`...").
 You can put new impls into the `config` module. They look something like this:
 
-[QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/trait.QueryConfig.html
+[QueryConfig]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryConfig.html
 [QueryDescription]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_system/query/config/trait.QueryDescription.html
 
 ```rust,ignore
