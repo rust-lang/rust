@@ -201,12 +201,10 @@ impl<M: Module> FunctionCx<'_, '_, M> {
 }
 
 pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
-    cfg!(debug_assertions)
-        || tcx
-            .sess
-            .opts
-            .output_types
-            .contains_key(&OutputType::LlvmAssembly)
+    tcx.sess
+        .opts
+        .output_types
+        .contains_key(&OutputType::LlvmAssembly)
 }
 
 pub(crate) fn write_ir_file<'tcx>(
