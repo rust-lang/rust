@@ -53,32 +53,30 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
-        match (&($left), &($right)) {
+        match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
@@ -104,17 +102,17 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
@@ -123,13 +121,11 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
