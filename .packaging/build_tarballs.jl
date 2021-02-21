@@ -38,7 +38,7 @@ ninja -C build -j ${nproc} install
 
 # The products that we will ensure are always built
 products = Product[
-    LibraryProduct(["libEnzyme-9", "libEnzyme"], :libEnzyme),
+    LibraryProduct(["libEnzyme-11", "libEnzyme"], :libEnzyme),
 ]
 
 dependencies = [

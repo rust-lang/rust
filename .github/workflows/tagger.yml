@@ -31,11 +31,11 @@ jobs:
       run: |
           cd ygg
           git rm -rf E/Enzyme
-          mkdir -p E/Enzyme/Enzyme@9
+          mkdir -p E/Enzyme/Enzyme@11
           cd E/Enzyme
-          cp ../../../enz/.packaging/build_tarballs.jl Enzyme@9/build_tarballs.jl
-          sed "s~%ENZYME_VERSION%~${GITHUB_REF}~g" Enzyme@9/build_tarballs.jl -i
-          sed "s~%ENZYME_HASH%~${GITHUB_SHA}~g" Enzyme@9/build_tarballs.jl -i
+          cp ../../../enz/.packaging/build_tarballs.jl Enzyme@11/build_tarballs.jl
+          sed "s~%ENZYME_VERSION%~${GITHUB_REF}~g" Enzyme@11/build_tarballs.jl -i
+          sed "s~%ENZYME_HASH%~${GITHUB_SHA}~g" Enzyme@11/build_tarballs.jl -i
           git add Enzyme@9
     - name: Create Pull Request
       id: cpr
