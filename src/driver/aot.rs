@@ -139,8 +139,8 @@ fn module_codegen(
             MonoItem::Static(def_id) => {
                 crate::constant::codegen_static(&mut cx.constants_cx, def_id)
             }
-            MonoItem::GlobalAsm(hir_id) => {
-                let item = cx.tcx.hir().expect_item(hir_id);
+            MonoItem::GlobalAsm(item_id) => {
+                let item = cx.tcx.hir().item(item_id);
                 if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
                     cx.global_asm.push_str(&*asm.as_str());
                     cx.global_asm.push_str("\n\n");
@@ -433,9 +433,5 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         cgu.name()
     );
 
-    if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
-        CguReuse::PreLto
-    } else {
-        CguReuse::No
-    }
+    if tcx.try_mark_green(&dep_node) { CguReuse::PreLto } else { CguReuse::No }
 }
