@@ -534,17 +534,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
-        let description = krate
-            .module
-            .as_ref()
-            .and_then(|item| Some(plain_text_summary(item.doc_value()?.as_str())))
-            .unwrap_or_else(|| String::from("List of all items in this crate"));
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
             static_root_path: self.shared.static_root_path.as_deref(),
-            description: description.as_str(),
+            description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
             extra_scripts: &[],
