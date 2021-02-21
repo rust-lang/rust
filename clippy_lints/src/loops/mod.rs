@@ -1,5 +1,5 @@
+mod explicit_counter_loop;
 mod for_loop_arg;
-mod for_loop_explicit_counter;
 mod for_loop_over_map_kv;
 mod for_loop_range;
 mod for_mut_range_bound;
@@ -11,27 +11,20 @@ mod needless_collect;
 mod never_loop;
 mod same_item_push;
 mod utils;
+mod while_let_on_iterator;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_enclosing_block, get_trait_def_id, higher, implements_trait, is_in_panic_handler, is_no_std_crate,
-    is_refutable, last_path_segment, match_trait_method, path_to_local, path_to_local_id, paths,
-    snippet_with_applicability, span_lint_and_help, span_lint_and_sugg, sugg,
+    higher, is_in_panic_handler, is_no_std_crate, snippet_with_applicability, span_lint_and_help, span_lint_and_sugg,
+    sugg,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, PatKind, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, LoopSource, MatchSource, Pat, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::sym;
-use utils::{
-    get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor, LoopNestVisitor, Nesting,
-};
+use utils::{get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for for-loops that manually copy items between
@@ -625,54 +618,8 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
                 }
             }
         }
-        if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.kind {
-            let pat = &arms[0].pat.kind;
-            if let (
-                &PatKind::TupleStruct(ref qpath, ref pat_args, _),
-                &ExprKind::MethodCall(ref method_path, _, ref method_args, _),
-            ) = (pat, &match_expr.kind)
-            {
-                let iter_expr = &method_args[0];
 
-                // Don't lint when the iterator is recreated on every iteration
-                if_chain! {
-                    if let ExprKind::MethodCall(..) | ExprKind::Call(..) = iter_expr.kind;
-                    if let Some(iter_def_id) = get_trait_def_id(cx, &paths::ITERATOR);
-                    if implements_trait(cx, cx.typeck_results().expr_ty(iter_expr), iter_def_id, &[]);
-                    then {
-                        return;
-                    }
-                }
-
-                let lhs_constructor = last_path_segment(qpath);
-                if method_path.ident.name == sym::next
-                    && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.ident.name == sym::Some
-                    && (pat_args.is_empty()
-                        || !is_refutable(cx, &pat_args[0])
-                            && !is_used_inside(cx, iter_expr, &arms[0].body)
-                            && !is_iterator_used_after_while_let(cx, iter_expr)
-                            && !is_nested(cx, expr, &method_args[0]))
-                {
-                    let mut applicability = Applicability::MachineApplicable;
-                    let iterator = snippet_with_applicability(cx, method_args[0].span, "_", &mut applicability);
-                    let loop_var = if pat_args.is_empty() {
-                        "_".to_string()
-                    } else {
-                        snippet_with_applicability(cx, pat_args[0].span, "_", &mut applicability).into_owned()
-                    };
-                    span_lint_and_sugg(
-                        cx,
-                        WHILE_LET_ON_ITERATOR,
-                        expr.span.with_hi(match_expr.span.hi()),
-                        "this loop could be written as a `for` loop",
-                        "try",
-                        format!("for {} in {}", loop_var, iterator),
-                        applicability,
-                    );
-                }
-            }
-        }
+        while_let_on_iterator::check_while_let_on_iterator(cx, expr);
 
         if let Some((cond, body)) = higher::while_loop(&expr) {
             infinite_loop::check_infinite_loop(cx, cond, body);
@@ -693,7 +640,7 @@ fn check_for_loop<'tcx>(
     let is_manual_memcpy_triggered = manual_memcpy::detect_manual_memcpy(cx, pat, arg, body, expr);
     if !is_manual_memcpy_triggered {
         for_loop_range::check_for_loop_range(cx, pat, arg, body, expr);
-        for_loop_explicit_counter::check_for_loop_explicit_counter(cx, pat, arg, body, expr);
+        explicit_counter_loop::check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     }
     for_loop_arg::check_for_loop_arg(cx, pat, arg, expr);
     for_loop_over_map_kv::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
@@ -773,61 +720,6 @@ impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     }
 }
 
-fn is_used_inside<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, container: &'tcx Expr<'_>) -> bool {
-    let def_id = match path_to_local(expr) {
-        Some(id) => id,
-        None => return false,
-    };
-    if let Some(used_mutably) = mutated_variables(container, cx) {
-        if used_mutably.contains(&def_id) {
-            return true;
-        }
-    }
-    false
-}
-
-fn is_iterator_used_after_while_let<'tcx>(cx: &LateContext<'tcx>, iter_expr: &'tcx Expr<'_>) -> bool {
-    let def_id = match path_to_local(iter_expr) {
-        Some(id) => id,
-        None => return false,
-    };
-    let mut visitor = VarUsedAfterLoopVisitor {
-        def_id,
-        iter_expr_id: iter_expr.hir_id,
-        past_while_let: false,
-        var_used_after_while_let: false,
-    };
-    if let Some(enclosing_block) = get_enclosing_block(cx, def_id) {
-        walk_block(&mut visitor, enclosing_block);
-    }
-    visitor.var_used_after_while_let
-}
-
-struct VarUsedAfterLoopVisitor {
-    def_id: HirId,
-    iter_expr_id: HirId,
-    past_while_let: bool,
-    var_used_after_while_let: bool,
-}
-
-impl<'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.past_while_let {
-            if path_to_local_id(expr, self.def_id) {
-                self.var_used_after_while_let = true;
-            }
-        } else if self.iter_expr_id == expr.hir_id {
-            self.past_while_let = true;
-        }
-        walk_expr(self, expr);
-    }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-}
-
 /// If a block begins with a statement (possibly a `let` binding) and has an
 /// expression, return it.
 fn extract_expr_from_first_stmt<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
@@ -861,55 +753,5 @@ fn is_simple_break_expr(expr: &Expr<'_>) -> bool {
         ExprKind::Break(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
         ExprKind::Block(ref b, _) => extract_first_expr(b).map_or(false, |subexpr| is_simple_break_expr(subexpr)),
         _ => false,
-    }
-}
-
-fn is_nested(cx: &LateContext<'_>, match_expr: &Expr<'_>, iter_expr: &Expr<'_>) -> bool {
-    if_chain! {
-        if let Some(loop_block) = get_enclosing_block(cx, match_expr.hir_id);
-        let parent_node = cx.tcx.hir().get_parent_node(loop_block.hir_id);
-        if let Some(Node::Expr(loop_expr)) = cx.tcx.hir().find(parent_node);
-        then {
-            return is_loop_nested(cx, loop_expr, iter_expr)
-        }
-    }
-    false
-}
-
-fn is_loop_nested(cx: &LateContext<'_>, loop_expr: &Expr<'_>, iter_expr: &Expr<'_>) -> bool {
-    let mut id = loop_expr.hir_id;
-    let iter_id = if let Some(id) = path_to_local(iter_expr) {
-        id
-    } else {
-        return true;
-    };
-    loop {
-        let parent = cx.tcx.hir().get_parent_node(id);
-        if parent == id {
-            return false;
-        }
-        match cx.tcx.hir().find(parent) {
-            Some(Node::Expr(expr)) => {
-                if let ExprKind::Loop(..) = expr.kind {
-                    return true;
-                };
-            },
-            Some(Node::Block(block)) => {
-                let mut block_visitor = LoopNestVisitor {
-                    hir_id: id,
-                    iterator: iter_id,
-                    nesting: Nesting::Unknown,
-                };
-                walk_block(&mut block_visitor, block);
-                if block_visitor.nesting == Nesting::RuledOut {
-                    return false;
-                }
-            },
-            Some(Node::Stmt(_)) => (),
-            _ => {
-                return false;
-            },
-        }
-        id = parent;
     }
 }
