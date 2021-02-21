@@ -5,8 +5,8 @@ use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 
-pub mod find_anon_type;
 mod different_lifetimes;
+pub mod find_anon_type;
 mod named_anon_conflict;
 mod placeholder_error;
 mod static_impl_trait;
