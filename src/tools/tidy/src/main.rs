@@ -75,9 +75,14 @@ fn main() {
         check!(unit_tests, &compiler_path);
         check!(unit_tests, &library_path);
 
-        check!(bins, &src_path, &output_directory);
-        check!(bins, &compiler_path, &output_directory);
-        check!(bins, &library_path, &output_directory);
+        if bins::check_filesystem_support(
+            &[&src_path, &compiler_path, &library_path],
+            &output_directory,
+        ) {
+            check!(bins, &src_path);
+            check!(bins, &compiler_path);
+            check!(bins, &library_path);
+        }
 
         check!(style, &src_path);
         check!(style, &compiler_path);
