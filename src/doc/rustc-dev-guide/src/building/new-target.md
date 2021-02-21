@@ -24,6 +24,34 @@ git add llvm_target
 git commit -m 'Use my custom LLVM'
 ```
 
+### Using pre-built LLVM
+
+If you have a local LLVM checkout that is already built, you may be
+able to configure Rust to treat your build as the [system LLVM][sysllvm]
+to avoid redundant builds.
+
+You can tell Rust to use a pre-built version of LLVM using the `target` section
+of `config.toml`:
+
+```toml
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/path/to/llvm/llvm-7.0.1/bin/llvm-config"
+```
+
+If you are attempting to use a system LLVM, we have observed the following paths
+before, though they may be different from your system:
+
+- `/usr/bin/llvm-config-8`
+- `/usr/lib/llvm-8/bin/llvm-config`
+
+Note that you need to have the LLVM `FileCheck` tool installed, which is used
+for codegen tests. This tool is normally built with LLVM, but if you use your
+own preinstalled LLVM, you will need to provide `FileCheck` in some other way.
+On Debian-based systems, you can install the `llvm-N-tools` package (where `N`
+is the LLVM version number, e.g. `llvm-8-tools`). Alternately, you can specify
+the path to `FileCheck` with the `llvm-filecheck` config item in `config.toml`
+or you can disable codegen test with the `codegen-tests` item in `config.toml`.
+
 ## Creating a target specification
 
 You should start with a target JSON file. You can see the specification
