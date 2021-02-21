@@ -1,3 +1,5 @@
+pub mod wrapping;
+
 /// The addition operator `+`.
 ///
 /// Note that `Rhs` is `Self` by default, but this is not mandatory. For

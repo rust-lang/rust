@@ -155,6 +155,9 @@ pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 pub use self::arith::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 
+#[unstable(feature = "op_wrapping_assign_traits", issue = "none")]
+pub use self::arith::wrapping::{WrappingAdd, WrappingAddAssign};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::bit::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
