@@ -24,8 +24,6 @@ impl CompletedTest {
     }
 }
 
-unsafe impl Send for CompletedTest {}
-
 #[derive(Debug, Clone)]
 pub enum TestEvent {
     TeFiltered(Vec<TestDesc>),

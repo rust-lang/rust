@@ -3,7 +3,7 @@
 #![feature(try_blocks)]
 
 pub fn main() {
-    let res: Result<u32, i32> = try {
+    let res: Result<u32, std::array::TryFromSliceError> = try {
         Err("")?; //~ ERROR `?` couldn't convert the error
         5
     };
