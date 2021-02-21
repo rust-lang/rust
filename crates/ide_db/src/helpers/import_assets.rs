@@ -1,8 +1,8 @@
 //! Look up accessible paths for items.
 use either::Either;
 use hir::{
-    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, PathResolution,
-    PrefixKind, Semantics,
+    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, PrefixKind,
+    Semantics,
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
@@ -192,7 +192,7 @@ impl ImportAssets {
         let db = sema.db;
 
         match &self.import_candidate {
-            ImportCandidate::Path(path_candidate) => Box::new(path_applicable_defs(
+            ImportCandidate::Path(path_candidate) => Box::new(path_applicable_items(
                 sema,
                 path_candidate,
                 unfiltered_defs
@@ -223,37 +223,28 @@ impl ImportAssets {
     }
 }
 
-fn path_applicable_defs<'a>(
+fn path_applicable_items<'a>(
     sema: &'a Semantics<RootDatabase>,
     path_candidate: &PathImportCandidate,
     unfiltered_defs: impl Iterator<Item = (ModPath, ItemInNs)> + 'a,
-) -> impl Iterator<Item = (ModPath, ItemInNs)> + 'a {
+) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
     let unresolved_qualifier = match &path_candidate.unresolved_qualifier {
         Some(qualifier) => qualifier,
         None => {
-            return unfiltered_defs;
+            return Box::new(unfiltered_defs);
         }
     };
 
-    // TODO kb filter out items: found path should end with `qualifier::Name` or `qualifier::Something` for fuzzy search case.
+    let qualifier_string = unresolved_qualifier.to_string();
+    Box::new(unfiltered_defs.filter(move |(candidate_path, _)| {
+        let mut candidate_qualifier = candidate_path.clone();
+        candidate_qualifier.pop_segment();
 
-    // TODO kb find a way to turn a qualifier into the corresponding ModuleDef. Maybe through the unfiltered data?
-    if let Some(qualifier_start_resolution) = resolve_qualifier_start(sema, unresolved_qualifier) {
-        // TODO kb ascend until an unresolved segment part appears
-    } else {
-        // first segment is already unresolved, need to turn it into ModuleDef somehow
-    }
-
-    return unfiltered_defs;
-}
-
-fn resolve_qualifier_start(
-    sema: &Semantics<RootDatabase>,
-    qualifier: &ast::Path,
-) -> Option<PathResolution> {
-    let qualifier_start = qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
-    let qualifier_start_path = qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
-    sema.resolve_path(&qualifier_start_path)
+        // TODO kb
+        // * take 1st segment of `unresolved_qualifier` and return it instead of the original `ItemInNs`
+        // * Update `ModPath`: pop until 1st segment of `unresolved_qualifier` reached (do not rely on name comparison, nested mod names can repeat)
+        candidate_qualifier.to_string().ends_with(&qualifier_string)
+    }))
 }
 
 fn trait_applicable_defs<'a>(
