@@ -78,10 +78,10 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                         usage_node.syntax().parent().and_then(ast::Expr::cast);
                     let usage_parent = match usage_parent_option {
                         Some(u) => u,
-                        None => return Ok(false),
+                        None => return Some(false),
                     };
 
-                    Ok(!matches!(
+                    Some(!matches!(
                         (&initializer_expr, usage_parent),
                         (ast::Expr::CallExpr(_), _)
                             | (ast::Expr::IndexExpr(_), _)
@@ -107,10 +107,10 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                             | (_, ast::Expr::MatchExpr(_))
                     ))
                 })
-                .collect::<Result<_, _>>()
+                .collect::<Option<_>>()
                 .map(|b| (file_id, b))
         })
-        .collect::<Result<FxHashMap<_, Vec<_>>, _>>()?;
+        .collect::<Option<FxHashMap<_, Vec<_>>>>()?;
 
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
