@@ -113,20 +113,4 @@ intrinsics! {
     pub extern "C" fn __lshrti3(a: u128, b: u32) -> u128 {
         a.lshr(b)
     }
-
-    pub extern "C" fn __rust_i128_shlo(a: i128, b: u128) -> (i128, bool) {
-        (__ashlti3(a as _, b as _) as _, b >= 128)
-    }
-
-    pub extern "C" fn __rust_u128_shlo(a: u128, b: u128) -> (u128, bool) {
-        (__ashlti3(a, b as _), b >= 128)
-    }
-
-    pub extern "C" fn __rust_i128_shro(a: i128, b: u128) -> (i128, bool) {
-        (__ashrti3(a, b as _), b >= 128)
-    }
-
-    pub extern "C" fn __rust_u128_shro(a: u128, b: u128) -> (u128, bool) {
-        (__lshrti3(a, b as _), b >= 128)
-    }
 }
