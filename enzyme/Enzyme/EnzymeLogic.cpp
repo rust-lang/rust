@@ -355,9 +355,10 @@ void calculateUnusedValuesInFunction(
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        return is_value_needed_in_reverse<Primal>(
+        auto needed = is_value_needed_in_reverse<Primal>(
             TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
             PrimalSeen, oldUnreachable);
+        return needed;
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {

@@ -1728,6 +1728,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           // If & against 0b10000000000, the result is a float
           bool validXor = false;
           if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+            if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CI->getType()))
+              continue;
             if (CI->isZero()) {
               validXor = true;
             } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
@@ -1735,6 +1737,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             }
           } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
             validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+              continue;
             for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
               auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
               if (!(CI.isNullValue() || CI.isMinSignedValue())) {
@@ -1743,6 +1748,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             }
           } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
             validXor = true;
+            if (dl.getTypeSizeInBits(FT) !=
+                dl.getTypeSizeInBits(CV->getElementType()))
+              continue;
             for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
               auto CI = CV->getElementAsAPInt(i);
               if (!(CI.isNullValue() || CI.isMinSignedValue())) {
@@ -1754,6 +1762,75 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
             updateAnalysis(I.getOperand(1 - i), TypeTree(FT).Only(-1), &I);
           }
         }
+      break;
+    case BinaryOperator::Or:
+      for (int i = 0; i < 2; ++i) {
+        Type *FT = nullptr;
+        if (!(FT = getAnalysis(&I).IsAllFloat(size)))
+          continue;
+        // If | against a number only or'ing the exponent, the result is a float
+        bool validXor = false;
+        if (auto CIT = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CIT->getType()))
+            continue;
+          auto CI = CIT->getValue();
+          if (CI.isNullValue()) {
+            validXor = true;
+          } else if (
+              !CI.isNegative() &&
+              ((FT->isFloatTy() &&
+                (CI & ~0b01111111100000000000000000000000ULL).isNullValue()) ||
+               (FT->isDoubleTy() &&
+                (CI &
+                 ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                    .isNullValue()))) {
+            validXor = true;
+          }
+        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+          validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+            continue;
+          for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+            auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+            if (CI.isNullValue()) {
+            } else if (
+                !CI.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (CI & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (CI &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+            } else
+              validXor = false;
+          }
+        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+          validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getElementType()))
+            continue;
+          for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+            auto CI = CV->getElementAsAPInt(i);
+            if (CI.isNullValue()) {
+            } else if (
+                !CI.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (CI & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (CI &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+            } else
+              validXor = false;
+          }
+        }
+        if (validXor) {
+          updateAnalysis(I.getOperand(1 - i), TypeTree(FT).Only(-1), &I);
+        }
+      }
       break;
     default:
       break;
@@ -1811,6 +1888,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
         // If & against 0b10000000000, the result is a float
         bool validXor = false;
         if (auto CI = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CI->getType()))
+            continue;
           if (CI->isZero()) {
             validXor = true;
           } else if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
@@ -1818,6 +1897,9 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           }
         } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
           validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+            continue;
           for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
             auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
             if (!(CI.isNullValue() || CI.isMinSignedValue())) {
@@ -1826,11 +1908,82 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
           }
         } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
           validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getElementType()))
+            continue;
           for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
             auto CI = CV->getElementAsAPInt(i);
             if (!(CI.isNullValue() || CI.isMinSignedValue())) {
               validXor = false;
             }
+          }
+        }
+        if (validXor) {
+          Result = ConcreteType(FT);
+        }
+      }
+    } else if (I.getOpcode() == BinaryOperator::Or) {
+      for (int i = 0; i < 2; ++i) {
+        Type *FT;
+        if (!(FT = getAnalysis(I.getOperand(1 - i)).IsAllFloat(size)))
+          continue;
+        // If & against 0b10000000000, the result is a float
+        bool validXor = false;
+        if (auto CIT = dyn_cast<ConstantInt>(I.getOperand(i))) {
+          if (dl.getTypeSizeInBits(FT) != dl.getTypeSizeInBits(CIT->getType()))
+            continue;
+          auto CI = CIT->getValue();
+          if (CI.isNullValue()) {
+            validXor = true;
+          } else if (
+              !CI.isNegative() &&
+              ((FT->isFloatTy() &&
+                (CI & ~0b01111111100000000000000000000000ULL).isNullValue()) ||
+               (FT->isDoubleTy() &&
+                (CI &
+                 ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                    .isNullValue()))) {
+            validXor = true;
+          }
+        } else if (auto CV = dyn_cast<ConstantVector>(I.getOperand(i))) {
+          validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getOperand(i)->getType()))
+            continue;
+          for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
+            auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
+            if (CI.isNullValue()) {
+            } else if (
+                !CI.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (CI & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (CI &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+            } else
+              validXor = false;
+          }
+        } else if (auto CV = dyn_cast<ConstantDataVector>(I.getOperand(i))) {
+          validXor = true;
+          if (dl.getTypeSizeInBits(FT) !=
+              dl.getTypeSizeInBits(CV->getElementType()))
+            continue;
+          for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
+            auto CI = CV->getElementAsAPInt(i);
+            if (CI.isNullValue()) {
+            } else if (
+                !CI.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (CI & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (CI &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+            } else
+              validXor = false;
           }
         }
         if (validXor) {
@@ -2685,6 +2838,10 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                          TypeTree(BaseType::Pointer).Only(-1), &call);
         }
         Idx++;
+      }
+      if (!ci->getReturnType()->isVoidTy()) {
+        updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
+        return;
       }
       assert(ci->getReturnType()->isVoidTy());
       return;

@@ -242,8 +242,7 @@ bool is_value_needed_in_reverse(
           needed = true;
         if (!needed)
           continue;
-      } else
-        continue;
+      }
     }
 
     // We don't need only the indices of a GEP to compute the adjoint of a GEP
@@ -273,7 +272,6 @@ bool is_value_needed_in_reverse(
     if (isa<StoreInst>(use)) {
       continue;
     }
-
     // May need the primal version if active use of inactive value
     // which is non floating point
     if (isa<PHINode>(use) || isa<CastInst>(use)) {
@@ -333,7 +331,6 @@ bool is_value_needed_in_reverse(
       }
       continue;
     }
-
     if (auto inst = dyn_cast<Instruction>(use))
       if (gutils->isConstantInstruction(const_cast<Instruction *>(inst)) &&
           gutils->isConstantValue(const_cast<Instruction *>(inst)))

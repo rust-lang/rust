@@ -1154,7 +1154,8 @@ public:
             FT = VectorType::get(FT, CV->getType()->getNumElements());
 #endif
           }
-          if (CI) {
+          if (CI && dl.getTypeSizeInBits(eFT) ==
+                        dl.getTypeSizeInBits(CI->getType())) {
             if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
               setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
               auto neg = Builder2.CreateFNeg(Builder2.CreateBitCast(idiff, FT));
@@ -1166,6 +1167,9 @@ public:
 
           if (auto CV = dyn_cast<ConstantVector>(BO.getOperand(i))) {
             bool validXor = true;
+            if (dl.getTypeSizeInBits(eFT) !=
+                dl.getTypeSizeInBits(CV->getOperand(0)->getType()))
+              validXor = false;
             for (size_t i = 0, end = CV->getNumOperands(); i < end; ++i) {
               auto CI = dyn_cast<ConstantInt>(CV->getOperand(i))->getValue();
               if (!(CI.isNullValue() || CI.isMinSignedValue())) {
@@ -1194,6 +1198,9 @@ public:
             }
           } else if (auto CV = dyn_cast<ConstantDataVector>(BO.getOperand(i))) {
             bool validXor = true;
+            if (dl.getTypeSizeInBits(eFT) !=
+                dl.getTypeSizeInBits(CV->getElementType()))
+              validXor = false;
             for (size_t i = 0, end = CV->getNumElements(); i < end; ++i) {
               auto CI = CV->getElementAsAPInt(i);
               if (!(CI.isNullValue() || CI.isMinSignedValue())) {
@@ -1218,6 +1225,77 @@ public:
                       i);
               }
               addToDiffe(BO.getOperand(1 - i), V, Builder2, FT);
+              return;
+            }
+          }
+        }
+      goto def;
+    }
+    case Instruction::Or: {
+      auto &dl = gutils->oldFunc->getParent()->getDataLayout();
+      auto size = dl.getTypeSizeInBits(BO.getType()) / 8;
+
+      auto FT = TR.query(&BO).IsAllFloat(size);
+      auto eFT = FT;
+      // If & against 0b10000000000 and a float the result is a float
+      if (FT)
+        for (int i = 0; i < 2; ++i) {
+          auto CI = dyn_cast<ConstantInt>(BO.getOperand(i));
+          if (auto CV = dyn_cast<ConstantVector>(BO.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+#if LLVM_VERSION_MAJOR >= 13
+            FT = VectorType::get(FT, CV->getType()->getElementCount());
+#else
+            FT = VectorType::get(FT, CV->getType()->getNumElements());
+#endif
+          }
+          if (auto CV = dyn_cast<ConstantDataVector>(BO.getOperand(i))) {
+            CI = dyn_cast_or_null<ConstantInt>(CV->getSplatValue());
+#if LLVM_VERSION_MAJOR >= 13
+            FT = VectorType::get(FT, CV->getType()->getElementCount());
+#else
+            FT = VectorType::get(FT, CV->getType()->getNumElements());
+#endif
+          }
+          if (CI && dl.getTypeSizeInBits(eFT) ==
+                        dl.getTypeSizeInBits(CI->getType())) {
+            auto AP = CI->getValue();
+            bool validXor = false;
+            if (AP.isNullValue()) {
+              validXor = true;
+            } else if (
+                !AP.isNegative() &&
+                ((FT->isFloatTy() &&
+                  (AP & ~0b01111111100000000000000000000000ULL)
+                      .isNullValue()) ||
+                 (FT->isDoubleTy() &&
+                  (AP &
+                   ~0b0111111111110000000000000000000000000000000000000000000000000000ULL)
+                      .isNullValue()))) {
+              validXor = true;
+            }
+            if (validXor) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              auto arg = lookup(
+                  gutils->getNewFromOriginal(BO.getOperand(1 - i)), Builder2);
+              auto prev = Builder2.CreateOr(arg, BO.getOperand(i));
+              prev = Builder2.CreateSub(prev, arg, "", /*NUW*/ true,
+                                        /*NSW*/ false);
+              uint64_t num = 0;
+              if (FT->isFloatTy()) {
+                num = 127ULL << 23;
+              } else {
+                assert(FT->isDoubleTy());
+                num = 1023ULL << 52;
+              }
+              prev = Builder2.CreateAdd(
+                  prev, ConstantInt::get(prev->getType(), num, false), "",
+                  /*NUW*/ true, /*NSW*/ true);
+              prev = Builder2.CreateBitCast(
+                  Builder2.CreateFMul(Builder2.CreateBitCast(idiff, FT),
+                                      Builder2.CreateBitCast(prev, FT)),
+                  prev->getType());
+              addToDiffe(BO.getOperand(1 - i), prev, Builder2, FT);
               return;
             }
           }
