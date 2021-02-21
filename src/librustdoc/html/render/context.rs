@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -31,7 +31,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
-use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::markdown::{self, plain_text_summary, ErrorCodes};
 use crate::html::{layout, sources};
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -53,20 +53,16 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     crate render_redirect_pages: bool,
-    /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
-    /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
-    /// the crate.
-    crate redirections: Option<Rc<RefCell<FxHashMap<String, String>>>>,
-    /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: Rc<RefCell<IdMap>>,
-    /// Tracks section IDs for `Deref` targets so they match in both the main
-    /// body and the sidebar.
-    pub(super) deref_id_map: Rc<RefCell<FxHashMap<DefId, String>>>,
     crate shared: Arc<SharedContext<'tcx>>,
-    all: Rc<RefCell<AllTypes>>,
-    /// Storage for the errors produced while generating documentation so they
-    /// can be printed together at the end.
-    crate errors: Rc<Receiver<String>>,
+    /// The [`Cache`] used during rendering.
+    ///
+    /// Ideally the cache would be in [`SharedContext`], but it's mutated
+    /// between when the `SharedContext` is created and when `Context`
+    /// is created, so more refactoring would be needed.
+    ///
+    /// It's immutable once in `Context`, so it's not as bad that it's not in
+    /// `SharedContext`.
+    // FIXME: move `cache` to `SharedContext`
     crate cache: Rc<Cache>,
 }
 
@@ -91,7 +87,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     pub(super) fn derive_id(&self, id: String) -> String {
-        let mut map = self.id_map.borrow_mut();
+        let mut map = self.shared.id_map.borrow_mut();
         map.derive(id)
     }
 
@@ -149,8 +145,8 @@ impl<'tcx> Context<'tcx> {
         };
 
         {
-            self.id_map.borrow_mut().reset();
-            self.id_map.borrow_mut().populate(&INITIAL_IDS);
+            self.shared.id_map.borrow_mut().reset();
+            self.shared.id_map.borrow_mut().populate(&INITIAL_IDS);
         }
 
         if !self.render_redirect_pages {
@@ -169,7 +165,7 @@ impl<'tcx> Context<'tcx> {
                     path.push('/');
                 }
                 path.push_str(&item_path(ty, names.last().unwrap()));
-                match self.redirections {
+                match self.shared.redirections {
                     Some(ref redirections) => {
                         let mut current_path = String::new();
                         for name in &self.current {
@@ -383,6 +379,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             edition,
             codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
+            id_map: RefCell::new(id_map),
+            deref_id_map: RefCell::new(FxHashMap::default()),
+            all: RefCell::new(AllTypes::new()),
+            errors: receiver,
+            redirections: if generate_redirect_map { Some(Default::default()) } else { None },
         };
 
         // Add the default themes to the `Vec` of stylepaths
@@ -409,13 +410,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            id_map: Rc::new(RefCell::new(id_map)),
-            deref_id_map: Rc::new(RefCell::new(FxHashMap::default())),
             shared: Arc::new(scx),
-            all: Rc::new(RefCell::new(AllTypes::new())),
-            errors: Rc::new(receiver),
             cache: Rc::new(cache),
-            redirections: if generate_redirect_map { Some(Default::default()) } else { None },
         };
 
         CURRENT_DEPTH.with(|s| s.set(0));
@@ -464,7 +460,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         } else {
             String::new()
         };
-        let all = self.all.replace(AllTypes::new());
+        let all = self.shared.all.replace(AllTypes::new());
         let v = layout::render(
             &self.shared.layout,
             &page,
@@ -494,7 +490,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
-        if let Some(redirections) = self.redirections.take() {
+        if let Some(ref redirections) = self.shared.redirections {
             if !redirections.borrow().is_empty() {
                 let redirect_map_path =
                     self.dst.join(&*krate.name.as_str()).join("redirect-map.json");
@@ -506,7 +502,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Flush pending errors.
         Arc::get_mut(&mut self.shared).unwrap().fs.close();
-        let nb_errors = self.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
+        let nb_errors = self.shared.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {
@@ -585,13 +581,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(&joint_dst, buf.as_bytes())?;
 
             if !self.render_redirect_pages {
-                self.all.borrow_mut().append(full_path(self, &item), &item_type);
+                self.shared.all.borrow_mut().append(full_path(self, &item), &item_type);
             }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).
             if item_type == ItemType::Macro {
                 let redir_name = format!("{}.{}!.html", item_type, name);
-                if let Some(ref redirections) = self.redirections {
+                if let Some(ref redirections) = self.shared.redirections {
                     let crate_name = &self.shared.layout.krate;
                     redirections.borrow_mut().insert(
                         format!("{}/{}", crate_name, redir_name),

@@ -41,6 +41,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str;
 use std::string::ToString;
+use std::sync::mpsc::Receiver;
 
 use itertools::Itertools;
 use rustc_ast_pretty::pprust;
@@ -69,7 +70,7 @@ use crate::html::format::{
     PrintWithSpace, WhereClause,
 };
 use crate::html::layout;
-use crate::html::markdown::{self, ErrorCodes, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{self, ErrorCodes, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -119,6 +120,19 @@ crate struct SharedContext<'tcx> {
     crate edition: Edition,
     crate codes: ErrorCodes,
     playground: Option<markdown::Playground>,
+    /// The map used to ensure all generated 'id=' attributes are unique.
+    id_map: RefCell<IdMap>,
+    /// Tracks section IDs for `Deref` targets so they match in both the main
+    /// body and the sidebar.
+    deref_id_map: RefCell<FxHashMap<DefId, String>>,
+    all: RefCell<AllTypes>,
+    /// Storage for the errors produced while generating documentation so they
+    /// can be printed together at the end.
+    crate errors: Receiver<String>,
+    /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
+    /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
+    /// the crate.
+    crate redirections: Option<RefCell<FxHashMap<String, String>>>,
 }
 
 impl SharedContext<'_> {
@@ -635,7 +649,7 @@ fn render_markdown(
     prefix: &str,
     is_hidden: bool,
 ) {
-    let mut ids = cx.id_map.borrow_mut();
+    let mut ids = cx.shared.id_map.borrow_mut();
     write!(
         w,
         "<div class=\"docblock{}\">{}{}</div>",
@@ -795,7 +809,7 @@ fn short_item_info(
 
         if let Some(note) = note {
             let note = note.as_str();
-            let mut ids = cx.id_map.borrow_mut();
+            let mut ids = cx.shared.id_map.borrow_mut();
             let html = MarkdownHtml(
                 &note,
                 &mut ids,
@@ -834,7 +848,7 @@ fn short_item_info(
         message.push_str(&format!(" ({})", feature));
 
         if let Some(unstable_reason) = reason {
-            let mut ids = cx.id_map.borrow_mut();
+            let mut ids = cx.shared.id_map.borrow_mut();
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
@@ -1174,7 +1188,8 @@ fn render_assoc_items(
                     type_.print(cx.cache())
                 )));
                 debug!("Adding {} to deref id map", type_.print(cx.cache()));
-                cx.deref_id_map
+                cx.shared
+                    .deref_id_map
                     .borrow_mut()
                     .insert(type_.def_id_full(cx.cache()).unwrap(), id.clone());
                 write!(
@@ -1481,7 +1496,7 @@ fn render_impl(
         }
 
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            let mut ids = cx.id_map.borrow_mut();
+            let mut ids = cx.shared.id_map.borrow_mut();
             write!(
                 w,
                 "<div class=\"docblock\">{}</div>",
@@ -2030,7 +2045,7 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
                 .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut, c))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
-                let deref_id_map = cx.deref_id_map.borrow();
+                let deref_id_map = cx.shared.deref_id_map.borrow();
                 let id = deref_id_map
                     .get(&real_target.def_id_full(cx.cache()).unwrap())
                     .expect("Deref section without derived id");
