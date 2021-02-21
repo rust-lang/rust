@@ -1,3 +1,4 @@
+use super::SAME_ITEM_PUSH;
 use crate::utils::{implements_trait, is_type_diagnostic_item, snippet_with_macro_callsite, span_lint_and_help};
 use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
@@ -22,7 +23,7 @@ pub(super) fn detect_same_item_push<'tcx>(
 
         span_lint_and_help(
             cx,
-            super::SAME_ITEM_PUSH,
+            SAME_ITEM_PUSH,
             vec.span,
             "it looks like the same item is being pushed into this Vec",
             None,

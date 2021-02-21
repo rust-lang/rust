@@ -1,3 +1,4 @@
+use super::FOR_KV_MAP;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{is_type_diagnostic_item, match_type, multispan_sugg, paths, snippet, span_lint_and_then, sugg};
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
@@ -37,7 +38,7 @@ pub(super) fn check_for_loop_over_map_kv<'tcx>(
             if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(
                     cx,
-                    super::FOR_KV_MAP,
+                    FOR_KV_MAP,
                     expr.span,
                     &format!("you seem to want to iterate on a map's {}s", kind),
                     |diag| {

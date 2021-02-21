@@ -1,3 +1,4 @@
+use super::NEEDLESS_COLLECT;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     is_type_diagnostic_item, match_trait_method, match_type, path_to_local_id, paths, snippet, span_lint_and_sugg,
@@ -35,7 +36,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(
                         cx,
-                        super::NEEDLESS_COLLECT,
+                        NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         "replace with",
@@ -47,7 +48,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(
                         cx,
-                        super::NEEDLESS_COLLECT,
+                        NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         "replace with",
@@ -60,7 +61,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_then(
                         cx,
-                        super::NEEDLESS_COLLECT,
+                        NEEDLESS_COLLECT,
                         span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {

@@ -1,4 +1,4 @@
-use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor};
+use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_enclosing_block, higher, is_type_diagnostic_item, path_to_local, snippet, span_lint_and_sugg, sugg,
@@ -84,7 +84,7 @@ pub(super) fn detect_manual_memcpy<'tcx>(
             if let Some(big_sugg) = big_sugg {
                 span_lint_and_sugg(
                     cx,
-                    super::MANUAL_MEMCPY,
+                    MANUAL_MEMCPY,
                     get_span_of_entire_for_loop(expr),
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",

@@ -1,4 +1,6 @@
-use super::{get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor};
+use super::{
+    get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP,
+};
 use crate::utils::{get_enclosing_block, is_integer_const, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -37,7 +39,7 @@ pub(super) fn check_for_loop_explicit_counter<'tcx>(
 
                     span_lint_and_sugg(
                         cx,
-                        super::EXPLICIT_COUNTER_LOOP,
+                        EXPLICIT_COUNTER_LOOP,
                         for_span.with_hi(arg.span.hi()),
                         &format!("the variable `{}` is used as a loop counter", name),
                         "consider using",

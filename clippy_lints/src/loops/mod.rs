@@ -2,19 +2,19 @@ mod empty_loop;
 mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
-mod for_loop_over_map_kv;
-mod for_loop_range;
+mod for_kv_map;
 mod for_loops_over_fallibles;
-mod for_mut_range_bound;
-mod for_single_element_loop;
-mod infinite_loop;
 mod iter_next_loop;
 mod manual_flatten;
 mod manual_memcpy;
+mod mut_range_bound;
 mod needless_collect;
+mod needless_range_loop;
 mod never_loop;
 mod same_item_push;
+mod single_element_loop;
 mod utils;
+mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
@@ -573,7 +573,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         while_let_on_iterator::check_while_let_on_iterator(cx, expr);
 
         if let Some((cond, body)) = higher::while_loop(&expr) {
-            infinite_loop::check_infinite_loop(cx, cond, body);
+            while_immutable_condition::check_infinite_loop(cx, cond, body);
         }
 
         needless_collect::check_needless_collect(expr, cx);
@@ -590,13 +590,13 @@ fn check_for_loop<'tcx>(
 ) {
     let is_manual_memcpy_triggered = manual_memcpy::detect_manual_memcpy(cx, pat, arg, body, expr);
     if !is_manual_memcpy_triggered {
-        for_loop_range::check_for_loop_range(cx, pat, arg, body, expr);
+        needless_range_loop::check_for_loop_range(cx, pat, arg, body, expr);
         explicit_counter_loop::check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     }
     check_for_loop_arg(cx, pat, arg, expr);
-    for_loop_over_map_kv::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
-    for_mut_range_bound::check_for_mut_range_bound(cx, arg, body);
-    for_single_element_loop::check_for_single_element_loop(cx, pat, arg, body, expr);
+    for_kv_map::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
+    mut_range_bound::check_for_mut_range_bound(cx, arg, body);
+    single_element_loop::check_for_single_element_loop(cx, pat, arg, body, expr);
     same_item_push::detect_same_item_push(cx, pat, arg, body, expr);
     manual_flatten::check_manual_flatten(cx, pat, arg, body, span);
 }

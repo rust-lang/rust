@@ -1,3 +1,4 @@
+use super::NEEDLESS_RANGE_LOOP;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
     contains_name, has_iter_method, higher, is_integer_const, match_trait_method, multispan_sugg, path_to_local_id,
@@ -142,7 +143,7 @@ pub(super) fn check_for_loop_range<'tcx>(
                 if visitor.nonindex {
                     span_lint_and_then(
                         cx,
-                        super::NEEDLESS_RANGE_LOOP,
+                        NEEDLESS_RANGE_LOOP,
                         expr.span,
                         &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
                         |diag| {
@@ -168,7 +169,7 @@ pub(super) fn check_for_loop_range<'tcx>(
 
                     span_lint_and_then(
                         cx,
-                        super::NEEDLESS_RANGE_LOOP,
+                        NEEDLESS_RANGE_LOOP,
                         expr.span,
                         &format!("the loop variable `{}` is only used to index `{}`", ident.name, indexed),
                         |diag| {

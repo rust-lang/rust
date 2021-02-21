@@ -1,3 +1,4 @@
+use super::WHILE_IMMUTABLE_CONDITION;
 use crate::consts::constant;
 use crate::utils::span_lint_and_then;
 use crate::utils::usage::mutated_variables;
@@ -43,7 +44,7 @@ pub(super) fn check_infinite_loop<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr
     if no_cond_variable_mutated && !mutable_static_in_cond {
         span_lint_and_then(
             cx,
-            super::WHILE_IMMUTABLE_CONDITION,
+            WHILE_IMMUTABLE_CONDITION,
             cond.span,
             "variables in the condition are not mutated in the loop body",
             |diag| {

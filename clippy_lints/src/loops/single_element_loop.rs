@@ -1,4 +1,4 @@
-use super::get_span_of_entire_for_loop;
+use super::{get_span_of_entire_for_loop, SINGLE_ELEMENT_LOOP};
 use crate::utils::{indent_of, single_segment_path, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -30,7 +30,7 @@ pub(super) fn check_for_single_element_loop<'tcx>(
 
             span_lint_and_sugg(
                 cx,
-                super::SINGLE_ELEMENT_LOOP,
+                SINGLE_ELEMENT_LOOP,
                 for_span,
                 "for loop over a single element",
                 "try",

@@ -1,3 +1,4 @@
+use super::MUT_RANGE_BOUND;
 use crate::utils::{higher, path_to_local, span_lint};
 use if_chain::if_chain;
 use rustc_hir::{BindingAnnotation, Expr, HirId, Node, PatKind};
@@ -27,7 +28,7 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
     if let Some(sp) = span {
         span_lint(
             cx,
-            super::MUT_RANGE_BOUND,
+            MUT_RANGE_BOUND,
             sp,
             "attempt to mutate range bound within loop; note that the range of the loop is unchanged",
         );

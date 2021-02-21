@@ -1,4 +1,5 @@
 use super::utils::make_iterator_snippet;
+use super::MANUAL_FLATTEN;
 use crate::utils::{is_ok_ctor, is_some_ctor, path_to_local_id, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -55,7 +56,7 @@ pub(super) fn check_manual_flatten<'tcx>(
 
                 span_lint_and_then(
                     cx,
-                    super::MANUAL_FLATTEN,
+                    MANUAL_FLATTEN,
                     span,
                     &msg,
                     |diag| {
