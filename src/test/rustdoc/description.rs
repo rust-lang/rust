@@ -6,6 +6,7 @@
 
 // @has 'foo/index.html' '//meta[@name="description"]/@content' \
 //   'Description test crate'
+// @!has - '//meta[@name="description"]/@content' 'should not show up'
 
 // @has 'foo/foo_mod/index.html' '//meta[@name="description"]/@content' \
 //   'First paragraph description.'
