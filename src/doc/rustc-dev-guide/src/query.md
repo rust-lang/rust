@@ -1,7 +1,7 @@
 # Queries: demand-driven compilation
 
 As described in [the high-level overview of the compiler][hl], the Rust compiler
-is still (as of January 2021 <!-- date: 2021-01 -->) transitioning from a
+is still (as of <!-- date: 2021-01 --> January 2021) transitioning from a
 traditional "pass-based" setup to a "demand-driven" system. **The Compiler Query
 System is the key to our new demand-driven organization.** The idea is pretty
 simple. You have various queries that compute things about the input – for

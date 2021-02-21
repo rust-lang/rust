@@ -1,7 +1,7 @@
 # Chalk-based trait solving
 
-[Chalk][chalk] is an experimental trait solver for Rust that is (as of January
-2021 <!-- date: 2021-01 -->) under development by the [Traits Working
+[Chalk][chalk] is an experimental trait solver for Rust that is (as of <!--
+date: 2021-01 --> January 2021) under development by the [Traits Working
 Group][wg]. Its goal is to enable a lot of trait system features and bug fixes
 that are hard to implement (e.g. GATs or specialization). If you would like to
 help in hacking on the new solver, you will find instructions for getting
