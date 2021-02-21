@@ -102,6 +102,7 @@
 #![feature(const_unreachable_unchecked)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_maybe_uninit_as_ptr)]
+#![feature(core_sealed)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
@@ -304,3 +305,11 @@ mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use core_arch::arch;
+
+mod sealed {
+    /// This trait being unreachable from outside the crate
+    /// prevents outside implementations of our extension traits.
+    /// This allows adding more trait methods in the future.
+    #[unstable(feature = "core_sealed", issue = "none")]
+    pub trait Sealed {}
+}
