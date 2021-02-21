@@ -26,10 +26,7 @@ use rustc_span::DUMMY_SP;
 
 use std::mem;
 use std::rc::Rc;
-use std::{
-    cell::{Cell, RefCell},
-    collections::hash_map::Entry,
-};
+use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
@@ -49,7 +46,7 @@ crate struct DocContext<'tcx> {
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
-    crate param_env: Cell<ParamEnv<'tcx>>,
+    crate param_env: ParamEnv<'tcx>,
     /// Later on moved into `cache`
     crate renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `cache`
@@ -89,9 +86,9 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     crate fn with_param_env<T, F: FnOnce(&mut Self) -> T>(&mut self, def_id: DefId, f: F) -> T {
-        let old_param_env = self.param_env.replace(self.tcx.param_env(def_id));
+        let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
         let ret = f(self);
-        self.param_env.set(old_param_env);
+        self.param_env = old_param_env;
         ret
     }
 
@@ -511,7 +508,7 @@ crate fn run_global_ctxt(
     let mut ctxt = DocContext {
         tcx,
         resolver,
-        param_env: Cell::new(ParamEnv::empty()),
+        param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         renderinfo: RefCell::new(renderinfo),
