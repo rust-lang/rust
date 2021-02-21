@@ -126,6 +126,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
         .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
+        .optopt("", "npm", "the name of npm", "PATH")
         .optopt("", "remote-test-client", "path to the remote test client", "PATH")
         .optopt(
             "",
@@ -264,6 +265,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
+        npm: matches.opt_str("npm"),
     }
 }
 

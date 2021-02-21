@@ -688,6 +688,78 @@ impl Step for RustdocJSNotStd {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocGUI {
+    pub target: TargetSelection,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocGUI {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/test/rustdoc-gui")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RustdocGUI { target: run.target, compiler });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        if let (Some(nodejs), Some(npm)) = (&builder.config.nodejs, &builder.config.npm) {
+            builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+
+            // The goal here is to check if the necessary packages are installed, and if not, we
+            // display a warning and move on.
+            let mut command = Command::new(&npm);
+            command.arg("list").arg("--depth=0");
+            let lines = command
+                .output()
+                .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
+                .unwrap_or(String::new());
+            if !lines.contains(&" browser-ui-test@") {
+                println!(
+                    "warning: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
+                     dependency is missing",
+                );
+                println!(
+                    "If you want to install the `{0}` dependency, run `npm install {0}`",
+                    "browser-ui-test",
+                );
+                return;
+            }
+
+            let out_dir = builder.test_out(self.target).join("rustdoc-gui");
+            let mut command = builder.rustdoc_cmd(self.compiler);
+            command.arg("src/test/rustdoc-gui/lib.rs").arg("-o").arg(&out_dir);
+            builder.run(&mut command);
+
+            for file in fs::read_dir("src/test/rustdoc-gui").unwrap() {
+                let file = file.unwrap();
+                let file_path = file.path();
+                let file_name = file.file_name();
+
+                if !file_name.to_str().unwrap().ends_with(".goml") {
+                    continue;
+                }
+                let mut command = Command::new(&nodejs);
+                command
+                    .arg("src/tools/rustdoc-gui/tester.js")
+                    .arg("--doc-folder")
+                    .arg(out_dir.join("test_docs"))
+                    .arg("--test-file")
+                    .arg(file_path);
+                builder.run(&mut command);
+            }
+        } else {
+            builder.info("No nodejs found, skipping \"src/test/rustdoc-gui\" tests");
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
@@ -1047,6 +1119,9 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
+        }
+        if let Some(ref npm) = builder.config.npm {
+            cmd.arg("--npm").arg(npm);
         }
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };

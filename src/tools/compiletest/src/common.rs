@@ -344,6 +344,8 @@ pub struct Config {
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
     pub nodejs: Option<String>,
+    /// Path to a npm executable. Used for rustdoc GUI tests
+    pub npm: Option<String>,
 }
 
 #[derive(Debug, Clone)]
