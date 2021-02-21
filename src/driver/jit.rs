@@ -209,6 +209,11 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
                 return None;
             }
+            if name.starts_with("rust_metadata_") {
+                // The metadata is part of a section that is not loaded by the dynamic linker in
+                // case of cg_llvm.
+                return None;
+            }
             let dlsym_name = if cfg!(target_os = "macos") {
                 // On macOS `dlsym` expects the name without leading `_`.
                 assert!(name.starts_with('_'), "{:?}", name);
