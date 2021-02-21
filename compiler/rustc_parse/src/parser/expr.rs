@@ -1041,7 +1041,7 @@ impl<'a> Parser<'a> {
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         if self.token.uninterpolated_span().rust_2018() && self.eat_keyword(kw::Await) {
-            return self.mk_await_expr(self_arg, lo);
+            return Ok(self.mk_await_expr(self_arg, lo));
         }
 
         let fn_span_lo = self.token.span;
@@ -2421,11 +2421,11 @@ impl<'a> Parser<'a> {
         ExprKind::Call(f, args)
     }
 
-    fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
         let span = lo.to(self.prev_token.span);
         let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), AttrVec::new());
         self.recover_from_await_method_call();
-        Ok(await_expr)
+        await_expr
     }
 
     crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
