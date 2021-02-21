@@ -168,13 +168,7 @@ impl Pointer {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
             PointerBase::Stack(stack_slot) => {
-                if ty == types::I128 || ty.is_vector() {
-                    // WORKAROUND for stack_load.i128 and stack_load.iXxY not being implemented
-                    let base_addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
-                    fx.bcx.ins().load(ty, flags, base_addr, self.offset)
-                } else {
-                    fx.bcx.ins().stack_load(ty, stack_slot, self.offset)
-                }
+                fx.bcx.ins().stack_load(ty, stack_slot, self.offset)
             }
             PointerBase::Dangling(_align) => unreachable!(),
         }
@@ -191,14 +185,7 @@ impl Pointer {
                 fx.bcx.ins().store(flags, value, base_addr, self.offset);
             }
             PointerBase::Stack(stack_slot) => {
-                let val_ty = fx.bcx.func.dfg.value_type(value);
-                if val_ty == types::I128 || val_ty.is_vector() {
-                    // WORKAROUND for stack_store.i128 and stack_store.iXxY not being implemented
-                    let base_addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
-                    fx.bcx.ins().store(flags, value, base_addr, self.offset);
-                } else {
-                    fx.bcx.ins().stack_store(value, stack_slot, self.offset);
-                }
+                fx.bcx.ins().stack_store(value, stack_slot, self.offset);
             }
             PointerBase::Dangling(_align) => unreachable!(),
         }
