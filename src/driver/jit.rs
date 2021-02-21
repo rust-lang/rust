@@ -78,7 +78,8 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                 }
                 MonoItem::GlobalAsm(item_id) => {
                     let item = cx.tcx.hir().item(item_id);
-                    tcx.sess.span_fatal(item.span, "Global asm is not supported in JIT mode");
+                    tcx.sess
+                        .span_fatal(item.span, "Global asm is not supported in JIT mode");
                 }
             }
         }

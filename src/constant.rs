@@ -137,7 +137,10 @@ pub(crate) fn codegen_constant<'tcx>(
             {
                 Ok(const_val) => const_val,
                 Err(_) => {
-                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
+                    span_bug!(
+                        constant.span,
+                        "erroneous constant not captured by required_consts"
+                    );
                 }
             }
         }
