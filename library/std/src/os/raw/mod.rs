@@ -39,7 +39,7 @@ macro_rules! type_alias {
         type_alias_no_nz! { $Docfile, $Alias = $Real; $( $Cfg )* }
 
         #[doc = concat!("Type alias for `NonZero` version of [`", stringify!($Alias), "`]")]
-        #[unstable(feature = "raw_os_nonzero", issue = "none")]
+        #[unstable(feature = "raw_os_nonzero", issue = "82363")]
         $( $Cfg )*
         pub type $NZAlias = $NZReal;
     }
