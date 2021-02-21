@@ -956,6 +956,51 @@ fn test() { foo.call(); }
 }
 
 #[test]
+fn super_trait_impl_return_trait_method_resolution() {
+    check_infer(
+        r#"
+        trait Base {
+            fn foo(self) -> usize;
+        }
+
+        trait Super : Base {}
+
+        fn base1() -> impl Base { loop {} }
+        fn super1() -> impl Super { loop {} }
+
+        fn test(base2: impl Base, super2: impl Super) {
+            base1().foo();
+            super1().foo();
+            base2.foo();
+            super2.foo();
+        }
+        "#,
+        expect![[r#"
+            24..28 'self': Self
+            90..101 '{ loop {} }': !
+            92..99 'loop {}': !
+            97..99 '{}': ()
+            128..139 '{ loop {} }': !
+            130..137 'loop {}': !
+            135..137 '{}': ()
+            149..154 'base2': impl Base
+            167..173 'super2': impl Super
+            187..264 '{     ...o(); }': ()
+            193..198 'base1': fn base1() -> impl Base
+            193..200 'base1()': impl Base
+            193..206 'base1().foo()': usize
+            212..218 'super1': fn super1() -> impl Super
+            212..220 'super1()': impl Super
+            212..226 'super1().foo()': usize
+            232..237 'base2': impl Base
+            232..243 'base2.foo()': usize
+            249..255 'super2': impl Super
+            249..261 'super2.foo()': usize
+        "#]],
+    );
+}
+
+#[test]
 fn method_resolution_non_parameter_type() {
     check_types(
         r#"
