@@ -472,7 +472,6 @@ impl<K: DepKind> DepGraph<K> {
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
     ) -> Option<()> {
-        let dep_dep_node = &data.previous.read().index_to_node(parent_dep_node_index);
         let dep_dep_node_color = data.previous.read().color_or_edges(parent_dep_node_index);
         let prev_deps = match dep_dep_node_color {
             Ok(DepNodeColor::Green) => {
@@ -481,7 +480,8 @@ impl<K: DepKind> DepGraph<K> {
                 // dependencies.
                 debug!(
                     "try_mark_parent_green({:?}) --- found dependency {:?} to be immediately green",
-                    dep_node, dep_dep_node,
+                    dep_node,
+                    data.previous.read().index_to_node(parent_dep_node_index)
                 );
                 return Some(());
             }
@@ -492,7 +492,8 @@ impl<K: DepKind> DepGraph<K> {
                 // with checking any of the other dependencies.
                 debug!(
                     "try_mark_parent_green({:?}) - END - dependency {:?} was immediately red",
-                    dep_node, dep_dep_node,
+                    dep_node,
+                    data.previous.read().index_to_node(parent_dep_node_index)
                 );
                 return None;
             }
@@ -502,11 +503,16 @@ impl<K: DepKind> DepGraph<K> {
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
         debug!(
-            "try_mark_parent_green({:?}) --- state of dependency {:?} ({}) \
+            "try_mark_parent_green({:?}) --- state of dependency {:?} \
                                  is unknown, trying to mark it green",
-            dep_node, dep_dep_node, dep_dep_node.hash,
+            dep_node,
+            {
+                let dep_dep_node = data.previous.read().index_to_node(parent_dep_node_index);
+                (dep_dep_node, dep_dep_node.hash)
+            }
         );
 
+        let dep_dep_node = &data.previous.read().index_to_node(parent_dep_node_index);
         let node_index =
             self.try_mark_previous_green(tcx, data, parent_dep_node_index, prev_deps, dep_dep_node);
         if node_index.is_some() {
