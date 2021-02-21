@@ -8,6 +8,8 @@
 mod macros;
 #[macro_use]
 mod permute;
+#[macro_use]
+mod transmute;
 
 mod fmt;
 mod intrinsics;

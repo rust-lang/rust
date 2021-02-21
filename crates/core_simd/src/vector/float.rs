@@ -1,5 +1,45 @@
 #![allow(non_camel_case_types)]
 
+/// Implements inherent methods for a float vector `$name` containing multiple
+/// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
+/// representation. Called from `define_float_vector!`.
+macro_rules! impl_float_vector {
+    { $name:ident, $type:ty, $bits_ty:ident } => {
+        impl_vector! { $name, $type }
+
+        impl<const LANES: usize> $name<LANES>
+        where
+            Self: crate::LanesAtMost64,
+            crate::$bits_ty<LANES>: crate::LanesAtMost64,
+        {
+            /// Raw transmutation to an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn to_bits(self) -> crate::$bits_ty<LANES> {
+                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<crate::$bits_ty<LANES>>());
+                unsafe { core::mem::transmute_copy(&self) }
+            }
+
+            /// Raw transmutation from an unsigned integer vector type with the
+            /// same size and number of lanes.
+            #[inline]
+            pub fn from_bits(bits: crate::$bits_ty<LANES>) -> Self {
+                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<crate::$bits_ty<LANES>>());
+                unsafe { core::mem::transmute_copy(&bits) }
+            }
+
+            /// Produces a vector where every lane has the absolute value of the
+            /// equivalently-indexed lane in `self`.
+            #[inline]
+            pub fn abs(self) -> Self {
+                let no_sign = crate::$bits_ty::splat(!0 >> 1);
+                Self::from_bits(self.to_bits() & no_sign)
+            }
+        }
+    };
+}
+
+
 /// A SIMD vector of containing `LANES` `f32` values.
 #[repr(simd)]
 pub struct SimdF32<const LANES: usize>([f32; LANES])

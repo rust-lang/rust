@@ -1,5 +1,32 @@
 #![allow(non_camel_case_types)]
 
+/// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
+macro_rules! impl_integer_vector {
+    { $name:ident, $type:ty } => {
+        impl_vector! { $name, $type }
+
+        impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost64 {}
+
+        impl<const LANES: usize> Ord for $name<LANES> where Self: crate::LanesAtMost64 {
+            #[inline]
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                // TODO use SIMD cmp
+                self.to_array().cmp(other.as_ref())
+            }
+        }
+
+        impl<const LANES: usize> core::hash::Hash for $name<LANES> where Self: crate::LanesAtMost64 {
+            #[inline]
+            fn hash<H>(&self, state: &mut H)
+            where
+                H: core::hash::Hasher
+            {
+                self.as_slice().hash(state)
+            }
+        }
+    }
+}
+
 /// A SIMD vector of containing `LANES` `isize` values.
 #[repr(simd)]
 pub struct SimdIsize<const LANES: usize>([isize; LANES])
