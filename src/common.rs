@@ -3,8 +3,6 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
-
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -172,51 +170,6 @@ pub(crate) fn codegen_icmp_imm(
     } else {
         let rhs = i64::try_from(rhs).expect("codegen_icmp_imm rhs out of range for <128bit int");
         fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
-    }
-}
-
-fn resolve_normal_value_imm(func: &Function, val: Value) -> Option<i64> {
-    if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
-        if let InstructionData::UnaryImm {
-            opcode: Opcode::Iconst,
-            imm,
-        } = func.dfg[inst]
-        {
-            Some(imm.into())
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
-    let (lsb, msb) = if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
-        if let InstructionData::Binary {
-            opcode: Opcode::Iconcat,
-            args: [lsb, msb],
-        } = func.dfg[inst]
-        {
-            (lsb, msb)
-        } else {
-            return None;
-        }
-    } else {
-        return None;
-    };
-
-    let lsb = u128::from(resolve_normal_value_imm(func, lsb)? as u64);
-    let msb = u128::from(resolve_normal_value_imm(func, msb)? as u64);
-
-    Some(msb << 64 | lsb)
-}
-
-pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
-    if func.dfg.value_type(val) == types::I128 {
-        resolve_128bit_value_imm(func, val)
-    } else {
-        resolve_normal_value_imm(func, val).map(|imm| u128::from(imm as u64))
     }
 }
 
