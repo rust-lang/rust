@@ -22,7 +22,6 @@ pub enum DirectoryOwnership {
         relative: Option<Ident>,
     },
     UnownedViaBlock,
-    UnownedViaMod,
 }
 
 /// Information about the path to a module.
@@ -134,23 +133,20 @@ fn submod_path<'a>(
     dir_path: &Path,
 ) -> PResult<'a, ModulePathSuccess> {
     if let Some(path) = submod_path_from_attr(sess, attrs, dir_path) {
-        let ownership = match path.file_name().and_then(|s| s.to_str()) {
-            // All `#[path]` files are treated as though they are a `mod.rs` file.
-            // This means that `mod foo;` declarations inside `#[path]`-included
-            // files are siblings,
-            //
-            // Note that this will produce weirdness when a file named `foo.rs` is
-            // `#[path]` included and contains a `mod foo;` declaration.
-            // If you encounter this, it's your own darn fault :P
-            Some(_) => DirectoryOwnership::Owned { relative: None },
-            _ => DirectoryOwnership::UnownedViaMod,
-        };
+        // All `#[path]` files are treated as though they are a `mod.rs` file.
+        // This means that `mod foo;` declarations inside `#[path]`-included
+        // files are siblings,
+        //
+        // Note that this will produce weirdness when a file named `foo.rs` is
+        // `#[path]` included and contains a `mod foo;` declaration.
+        // If you encounter this, it's your own darn fault :P
+        let ownership = DirectoryOwnership::Owned { relative: None };
         return Ok(ModulePathSuccess { ownership, path });
     }
 
     let relative = match ownership {
         DirectoryOwnership::Owned { relative } => relative,
-        DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
+        DirectoryOwnership::UnownedViaBlock => None,
     };
     let ModulePath { path_exists, name, result } =
         default_submod_path(&sess.parse_sess, id, span, relative, dir_path);
@@ -159,10 +155,6 @@ fn submod_path<'a>(
         DirectoryOwnership::UnownedViaBlock => {
             let _ = result.map_err(|mut err| err.cancel());
             error_decl_mod_in_block(&sess.parse_sess, span, path_exists, &name)
-        }
-        DirectoryOwnership::UnownedViaMod => {
-            let _ = result.map_err(|mut err| err.cancel());
-            error_cannot_declare_mod_here(&sess.parse_sess, span, path_exists, &name)
         }
     }
 }
@@ -178,41 +170,6 @@ fn error_decl_mod_in_block<'a, T>(
     if path_exists {
         let msg = format!("Maybe `use` the module `{}` instead of redeclaring it", name);
         err.span_note(span, &msg);
-    }
-    Err(err)
-}
-
-fn error_cannot_declare_mod_here<'a, T>(
-    sess: &'a ParseSess,
-    span: Span,
-    path_exists: bool,
-    name: &str,
-) -> PResult<'a, T> {
-    let mut err =
-        sess.span_diagnostic.struct_span_err(span, "cannot declare a new module at this location");
-    if !span.is_dummy() {
-        if let FileName::Real(src_name) = sess.source_map().span_to_filename(span) {
-            let src_path = src_name.into_local_path();
-            if let Some(stem) = src_path.file_stem() {
-                let mut dest_path = src_path.clone();
-                dest_path.set_file_name(stem);
-                dest_path.push("mod.rs");
-                err.span_note(
-                    span,
-                    &format!(
-                        "maybe move this module `{}` to its own directory via `{}`",
-                        src_path.display(),
-                        dest_path.display()
-                    ),
-                );
-            }
-        }
-    }
-    if path_exists {
-        err.span_note(
-            span,
-            &format!("... or maybe `use` the module `{}` instead of possibly redeclaring it", name),
-        );
     }
     Err(err)
 }
