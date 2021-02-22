@@ -129,6 +129,7 @@ crate struct Context<'tcx> {
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
+#[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(Context<'_>, 72);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
