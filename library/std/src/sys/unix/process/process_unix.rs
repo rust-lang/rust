@@ -542,3 +542,7 @@ impl fmt::Display for ExitStatus {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "process_unix/tests.rs"]
+mod tests;
