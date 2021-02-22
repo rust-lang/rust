@@ -735,7 +735,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     match work_item {
         WorkItem::Optimize(module) => execute_optimize_work_item(cgcx, module, module_config),
         WorkItem::CopyPostLtoArtifacts(module) => {
-            execute_copy_from_cache_work_item(cgcx, module, module_config)
+            Ok(execute_copy_from_cache_work_item(cgcx, module, module_config))
         }
         WorkItem::LTO(module) => execute_lto_work_item(cgcx, module, module_config),
     }
@@ -844,7 +844,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: CachedModuleCodegen,
     module_config: &ModuleConfig,
-) -> Result<WorkItemResult<B>, FatalError> {
+) -> WorkItemResult<B> {
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
     let mut object = None;
     if let Some(saved_file) = module.source.saved_file {
@@ -870,13 +870,13 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
 
-    Ok(WorkItemResult::Compiled(CompiledModule {
+    WorkItemResult::Compiled(CompiledModule {
         name: module.name,
         kind: ModuleKind::Regular,
         object,
         dwarf_object: None,
         bytecode: None,
-    }))
+    })
 }
 
 fn execute_lto_work_item<B: ExtraBackendMethods>(

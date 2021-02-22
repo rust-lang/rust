@@ -1202,12 +1202,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    fn parse_extern(&mut self) -> PResult<'a, Extern> {
-        Ok(if self.eat_keyword(kw::Extern) {
-            Extern::from_abi(self.parse_abi())
-        } else {
-            Extern::None
-        })
+    fn parse_extern(&mut self) -> Extern {
+        if self.eat_keyword(kw::Extern) { Extern::from_abi(self.parse_abi()) } else { Extern::None }
     }
 
     /// Parses a string literal as an ABI spec.

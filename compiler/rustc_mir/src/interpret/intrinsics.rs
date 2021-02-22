@@ -23,11 +23,7 @@ use super::{
 mod caller_location;
 mod type_name;
 
-fn numeric_intrinsic<'tcx, Tag>(
-    name: Symbol,
-    bits: u128,
-    kind: Primitive,
-) -> InterpResult<'tcx, Scalar<Tag>> {
+fn numeric_intrinsic<Tag>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Tag> {
     let size = match kind {
         Primitive::Int(integer, _) => integer.size(),
         _ => bug!("invalid `{}` argument: {:?}", name, bits),
@@ -41,7 +37,7 @@ fn numeric_intrinsic<'tcx, Tag>(
         sym::bitreverse => (bits << extra).reverse_bits(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
-    Ok(Scalar::from_uint(bits_out, size))
+    Scalar::from_uint(bits_out, size)
 }
 
 /// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
@@ -208,7 +204,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if nonzero && bits == 0 {
                     throw_ub_format!("`{}_nonzero` called on 0", intrinsic_name);
                 }
-                let out_val = numeric_intrinsic(intrinsic_name, bits, kind)?;
+                let out_val = numeric_intrinsic(intrinsic_name, bits, kind);
                 self.write_scalar(out_val, dest)?;
             }
             sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {

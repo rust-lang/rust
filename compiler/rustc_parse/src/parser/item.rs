@@ -1679,7 +1679,7 @@ impl<'a> Parser<'a> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
-        let ext = self.parse_extern()?;
+        let ext = self.parse_extern();
 
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);
