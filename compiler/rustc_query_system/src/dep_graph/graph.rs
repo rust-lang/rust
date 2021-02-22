@@ -449,20 +449,20 @@ impl<K: DepKind> DepGraph<K> {
 
         // Return None if the dep node didn't exist in the previous session
         let prev_index = data.previous.read().node_to_index_opt(dep_node)?;
-        let color = data.previous.read().color(prev_index);
+        let prev_deps = data.previous.read().color_or_edges(prev_index);
+        let prev_deps = match prev_deps {
+            Err(prev_deps) => prev_deps,
+            Ok(DepNodeColor::Green) => return Some((prev_index, prev_index.rejuvenate())),
+            Ok(DepNodeColor::Red) | Ok(DepNodeColor::New) => return None,
+        };
 
-        match color {
-            Some(DepNodeColor::Green) => Some((prev_index, prev_index.rejuvenate())),
-            Some(DepNodeColor::Red) | Some(DepNodeColor::New) => None,
-            None => {
-                // This DepNode and the corresponding query invocation existed
-                // in the previous compilation session too, so we can try to
-                // mark it as green by recursively marking all of its
-                // dependencies green.
-                self.try_mark_previous_green(tcx, data, prev_index, &dep_node)
-                    .map(|dep_node_index| (prev_index, dep_node_index))
-            }
-        }
+        // This DepNode and the corresponding query invocation existed
+        // in the previous compilation session too, so we can try to
+        // mark it as green by recursively marking all of its
+        // dependencies green.
+        let dep_node_index =
+            self.try_mark_previous_green(tcx, data, prev_index, prev_deps, &dep_node)?;
+        Some((prev_index, dep_node_index))
     }
 
     fn try_mark_parent_green<Ctxt: QueryContext<DepKind = K>>(
@@ -472,11 +472,10 @@ impl<K: DepKind> DepGraph<K> {
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
     ) -> Option<()> {
-        let dep_dep_node_color = data.previous.read().color(parent_dep_node_index);
         let dep_dep_node = &data.previous.read().index_to_node(parent_dep_node_index);
-
-        match dep_dep_node_color {
-            Some(DepNodeColor::Green) => {
+        let dep_dep_node_color = data.previous.read().color_or_edges(parent_dep_node_index);
+        let prev_deps = match dep_dep_node_color {
+            Ok(DepNodeColor::Green) => {
                 // This dependency has been marked as green before, we are
                 // still fine and can continue with checking the other
                 // dependencies.
@@ -486,7 +485,7 @@ impl<K: DepKind> DepGraph<K> {
                 );
                 return Some(());
             }
-            Some(DepNodeColor::Red) | Some(DepNodeColor::New) => {
+            Ok(DepNodeColor::Red) | Ok(DepNodeColor::New) => {
                 // We found a dependency the value of which has changed
                 // compared to the previous compilation session. We cannot
                 // mark the DepNode as green and also don't need to bother
@@ -497,8 +496,8 @@ impl<K: DepKind> DepGraph<K> {
                 );
                 return None;
             }
-            None => {}
-        }
+            Err(prev_deps) => prev_deps,
+        };
 
         // We don't know the state of this dependency. If it isn't
         // an eval_always node, let's try to mark it green recursively.
@@ -509,7 +508,7 @@ impl<K: DepKind> DepGraph<K> {
         );
 
         let node_index =
-            self.try_mark_previous_green(tcx, data, parent_dep_node_index, dep_dep_node);
+            self.try_mark_previous_green(tcx, data, parent_dep_node_index, prev_deps, dep_dep_node);
         if node_index.is_some() {
             debug!(
                 "try_mark_parent_green({:?}) --- managed to MARK dependency {:?} as green",
@@ -579,6 +578,7 @@ impl<K: DepKind> DepGraph<K> {
         tcx: Ctxt,
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
+        prev_deps: &[SerializedDepNodeIndex],
         dep_node: &DepNode<K>,
     ) -> Option<DepNodeIndex> {
         // We never try to mark eval_always nodes as green
@@ -592,12 +592,6 @@ impl<K: DepKind> DepGraph<K> {
         debug_assert!(!dep_node.kind.is_eval_always());
         debug_assert_eq!(data.previous.read().index_to_node(prev_dep_node_index), *dep_node);
 
-        let prev_deps = data.previous.read().color_or_edges(prev_dep_node_index);
-        let prev_deps = match prev_deps {
-            Err(prev_deps) => prev_deps,
-            Ok(DepNodeColor::Green) => return Some(prev_dep_node_index.rejuvenate()),
-            Ok(DepNodeColor::Red) | Ok(DepNodeColor::New) => return None,
-        };
         for &dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
         }
