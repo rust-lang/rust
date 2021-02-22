@@ -1,15 +1,15 @@
 use super::ScalarInt;
 use rustc_macros::HashStable;
 
-#[derive(Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
 #[derive(HashStable)]
-pub enum ValTree {
+pub enum ValTree<'tcx> {
     Leaf(ScalarInt),
-    Branch(Vec<ValTree>),
+    Branch(&'tcx [ValTree<'tcx>]),
 }
 
-impl ValTree {
+impl ValTree<'tcx> {
     pub fn zst() -> Self {
-        Self::Branch(Vec::new())
+        Self::Branch(&[])
     }
 }

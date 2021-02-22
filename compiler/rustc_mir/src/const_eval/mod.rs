@@ -43,7 +43,7 @@ pub(crate) fn const_to_valtree<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     raw: ConstAlloc<'tcx>,
-) -> Option<ty::ValTree> {
+) -> Option<ty::ValTree<'tcx>> {
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let place = ecx.raw_const_to_mplace(raw).unwrap();
     const_to_valtree_inner(&ecx, &place)
@@ -52,7 +52,7 @@ pub(crate) fn const_to_valtree<'tcx>(
 fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
-) -> Option<ty::ValTree> {
+) -> Option<ty::ValTree<'tcx>> {
     let branches = |n, variant| {
         let place = match variant {
             Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
@@ -64,7 +64,11 @@ fn const_to_valtree_inner<'tcx>(
             let field = ecx.mplace_field(&place, i).unwrap();
             const_to_valtree_inner(ecx, &field)
         });
-        Some(ty::ValTree::Branch(variant.into_iter().chain(fields).collect::<Option<_>>()?))
+        Some(ty::ValTree::Branch(
+            ecx.tcx
+                .arena
+                .alloc_from_iter(variant.into_iter().chain(fields).collect::<Option<Vec<_>>>()?),
+        ))
     };
     match place.layout.ty.kind() {
         ty::FnDef(..) => Some(ty::ValTree::zst()),

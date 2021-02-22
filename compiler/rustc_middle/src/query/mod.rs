@@ -789,7 +789,7 @@ rustc_queries! {
     /// return `None` if that is not possible.
     query const_to_valtree(
         key: ty::ParamEnvAnd<'tcx, ConstAlloc<'tcx>>
-    ) -> Option<ty::ValTree> {
+    ) -> Option<ty::ValTree<'tcx>> {
         desc { "destructure constant" }
     }
 
