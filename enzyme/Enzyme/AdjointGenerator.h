@@ -3462,6 +3462,26 @@ public:
       return;
     }
 
+    if (called && called->getName() == "julia.pointer_from_objref") {
+      eraseIfUnused(*orig);
+      if (gutils->isConstantValue(orig))
+        return;
+
+      IRBuilder<> Builder2(gutils->getNewFromOriginal(orig));
+      Value *ptrshadow =
+          gutils->invertPointerM(call.getArgOperand(0), Builder2);
+      Value *val =
+          Builder2.CreateCall(called, std::vector<Value *>({ptrshadow}));
+      assert(gutils->invertedPointers.count(orig));
+
+      auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);
+      gutils->invertedPointers.erase(orig);
+      gutils->invertedPointers[orig] = val;
+      gutils->replaceAWithB(placeholder, val);
+      gutils->erase(placeholder);
+      return;
+    }
+
     if (called && called->getName() == "posix_memalign") {
       if (gutils->invertedPointers.count(orig)) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[orig]);

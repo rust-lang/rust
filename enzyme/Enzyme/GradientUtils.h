@@ -534,13 +534,19 @@ public:
 
     if (shadowHandlers.find(orig->getCalledFunction()->getName().str()) !=
         shadowHandlers.end()) {
+      bb.SetInsertPoint(placeholder);
       Value *anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
           bb, orig, args);
       invertedPointers[orig] = anti;
       // assert(placeholder != anti);
-      bb.SetInsertPoint(placeholder->getNextNode());
+
+      bb.SetInsertPoint(placeholder);
+
       replaceAWithB(placeholder, anti);
       erase(placeholder);
+
+      if (auto inst = dyn_cast<Instruction>(anti))
+        bb.SetInsertPoint(inst);
 
       anti = cacheForReverse(bb, anti, idx);
       invertedPointers[orig] = anti;

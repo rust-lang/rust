@@ -1611,7 +1611,7 @@ bool GradientUtils::shouldRecompute(const Value *val,
           n == "__lgamma_r_finite" || n == "__lgammaf_r_finite" ||
           n == "__lgammal_r_finite" || n == "tanh" || n == "tanhf" ||
           n == "__pow_finite" || n == "__fd_sincos_1" ||
-          isMemFreeLibMFunction(n)) {
+          isMemFreeLibMFunction(n) || n == "julia.pointer_from_objref") {
         return true;
       }
     }
@@ -3012,7 +3012,16 @@ void GradientUtils::branchToCorrespondingTarget(
         if (subblock == nullptr)
           goto rnextpair;
 
+        if (!isa<BranchInst>(block->getTerminator()))
+          goto rnextpair;
+
+        if (!isa<BranchInst>(subblock->getTerminator()))
+          goto rnextpair;
+
         {
+          if (!isa<BranchInst>(block->getTerminator())) {
+            llvm::errs() << *block << "\n";
+          }
           auto bi1 = cast<BranchInst>(block->getTerminator());
 
           auto cond1 = lookupM(bi1->getCondition(), BuilderM);
