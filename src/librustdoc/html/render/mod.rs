@@ -526,14 +526,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         krate: &clean::Crate,
         diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
-        let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
+        let mut final_file = self.dst.join(&*krate.name.as_str());
+        final_file.push("all.html");
         let settings_file = self.dst.join("settings.html");
         let crate_name = krate.name;
 
-        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
@@ -1385,17 +1382,27 @@ enum Setting {
 }
 
 impl Setting {
-    fn display(&self, root_path: &str, suffix: &str) -> String {
+    fn display(&self, buffer: &mut String, root_path: &str, suffix: &str) {
         match *self {
-            Setting::Section { description, ref sub_settings } => format!(
-                "<div class=\"setting-line\">\
+            Setting::Section { description, ref sub_settings } => {
+                write!(
+                    buffer,
+                    "<div class=\"setting-line\">\
                      <div class=\"title\">{}</div>\
-                     <div class=\"sub-settings\">{}</div>
-                 </div>",
-                description,
-                sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
-            ),
-            Setting::Toggle { js_data_name, description, default_value } => format!(
+                     <div class=\"sub-settings\">",
+                    description
+                )
+                .unwrap();
+                sub_settings.iter().for_each(|s| s.display(buffer, root_path, suffix));
+                write!(
+                    buffer,
+                    "</div>
+                 </div>"
+                )
+                .unwrap();
+            }
+            Setting::Toggle { js_data_name, description, default_value } => write!(
+                buffer,
                 "<div class=\"setting-line\">\
                      <label class=\"toggle\">\
                      <input type=\"checkbox\" id=\"{}\" {}>\
@@ -1406,29 +1413,40 @@ impl Setting {
                 js_data_name,
                 if default_value { " checked" } else { "" },
                 description,
-            ),
-            Setting::Select { js_data_name, description, default_value, ref options } => format!(
-                "<div class=\"setting-line\">\
-                     <div>{}</div>\
-                     <label class=\"select-wrapper\">\
-                         <select id=\"{}\" autocomplete=\"off\">{}</select>\
-                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
-                     </label>\
-                 </div>",
-                description,
-                js_data_name,
-                options
-                    .iter()
-                    .map(|opt| format!(
+            )
+            .unwrap(),
+            Setting::Select { js_data_name, description, default_value, ref options } => {
+                write!(
+                    buffer,
+                    "<div class=\"setting-line\">\
+                 <div>{}</div>\
+                 <label class=\"select-wrapper\">\
+                     <select id=\"{}\" autocomplete=\"off\">",
+                    description, js_data_name,
+                )
+                .unwrap();
+
+                options.iter().for_each(|opt| {
+                    write!(
+                        buffer,
                         "<option value=\"{}\" {}>{}</option>",
                         opt.0,
                         if opt.0 == default_value { "selected" } else { "" },
                         opt.1,
-                    ))
-                    .collect::<String>(),
-                root_path,
-                suffix,
-            ),
+                    )
+                    .unwrap()
+                });
+
+                write!(
+                    buffer,
+                    "</select>\
+                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
+                     </label>\
+                 </div>",
+                    root_path, suffix,
+                )
+                .unwrap()
+            }
         }
     }
 }
@@ -1502,17 +1520,30 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
         ("line-numbers", "Show line numbers on code examples", false).into(),
         ("disable-shortcuts", "Disable keyboard shortcuts", false).into(),
     ];
+    let mut result = String::with_capacity(4096);
 
-    Ok(format!(
+    write!(
+        &mut result,
         "<h1 class=\"fqn\">\
             <span class=\"in-band\">Rustdoc settings</span>\
         </h1>\
-        <div class=\"settings\">{}</div>\
+        <div class=\"settings\">"
+    )
+    .unwrap();
+
+    for setting in settings.iter() {
+        setting.display(&mut result, root_path, suffix);
+    }
+
+    write!(
+        &mut result,
+        "</div>\
         <script src=\"{}settings{}.js\"></script>",
-        settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
-        root_path,
-        suffix
-    ))
+        root_path, suffix
+    )
+    .unwrap();
+
+    Ok(result)
 }
 
 impl Context<'_> {
