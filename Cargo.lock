@@ -592,6 +592,7 @@ dependencies = [
  "ide_assists",
  "ide_completion",
  "ide_db",
+ "ide_ssr",
  "indexmap",
  "itertools 0.10.0",
  "log",
@@ -600,7 +601,6 @@ dependencies = [
  "pulldown-cmark",
  "pulldown-cmark-to-cmark",
  "rustc-hash",
- "ssr",
  "stdx",
  "syntax",
  "test_utils",
@@ -660,6 +660,20 @@ dependencies = [
  "rayon",
  "rustc-hash",
  "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
+]
+
+[[package]]
+name = "ide_ssr"
+version = "0.0.0"
+dependencies = [
+ "expect-test",
+ "hir",
+ "ide_db",
+ "itertools 0.10.0",
+ "rustc-hash",
  "syntax",
  "test_utils",
  "text_edit",
@@ -1348,6 +1362,7 @@ dependencies = [
  "hir_ty",
  "ide",
  "ide_db",
+ "ide_ssr",
  "itertools 0.10.0",
  "jemallocator",
  "jod-thread",
@@ -1367,7 +1382,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
- "ssr",
  "stdx",
  "syntax",
  "test_utils",
@@ -1570,20 +1584,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "ssr"
-version = "0.0.0"
-dependencies = [
- "expect-test",
- "hir",
- "ide_db",
- "itertools 0.10.0",
- "rustc-hash",
- "syntax",
- "test_utils",
- "text_edit",
 ]
 
 [[package]]

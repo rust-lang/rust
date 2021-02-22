@@ -101,7 +101,7 @@ pub use ide_db::{
     symbol_index::Query,
     RootDatabase,
 };
-pub use ssr::SsrError;
+pub use ide_ssr::SsrError;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};
 
@@ -549,8 +549,9 @@ impl Analysis {
         selections: Vec<FileRange>,
     ) -> Cancelable<Result<SourceChange, SsrError>> {
         self.with_db(|db| {
-            let rule: ssr::SsrRule = query.parse()?;
-            let mut match_finder = ssr::MatchFinder::in_context(db, resolve_context, selections);
+            let rule: ide_ssr::SsrRule = query.parse()?;
+            let mut match_finder =
+                ide_ssr::MatchFinder::in_context(db, resolve_context, selections);
             match_finder.add_rule(rule)?;
             let edits = if parse_only { Default::default() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))

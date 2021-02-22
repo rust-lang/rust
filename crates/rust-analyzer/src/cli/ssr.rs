@@ -4,7 +4,7 @@ use crate::cli::{
     load_cargo::{load_workspace_at, LoadCargoConfig},
     Result,
 };
-use ssr::{MatchFinder, SsrPattern, SsrRule};
+use ide_ssr::{MatchFinder, SsrPattern, SsrRule};
 
 pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     use ide_db::base_db::SourceDatabaseExt;
