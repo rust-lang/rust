@@ -4,8 +4,8 @@ use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
-use rustc_span::source_map::{FileName, Span};
 use rustc_span::symbol::{sym, Ident};
+use rustc_span::Span;
 
 use std::path::{self, Path, PathBuf};
 
@@ -64,13 +64,8 @@ crate fn parse_external_mod(
     // (1) ...instead, we return a dummy module.
     let (items, inner_span, file_path) = result.map_err(|mut err| err.emit()).unwrap_or_default();
 
-    // Extract the directory path for submodules of  the module.
-    let path = sess.source_map().span_to_unmapped_path(inner_span);
-    let mut path = match path {
-        FileName::Real(name) => name.into_local_path(),
-        other => PathBuf::from(other.to_string()),
-    };
-    path.pop();
+    // Extract the directory path for submodules of the module.
+    let path = file_path.parent().unwrap_or(&file_path).to_owned();
 
     (items, inner_span, file_path, Directory { ownership, path })
 }
