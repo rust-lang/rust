@@ -235,7 +235,6 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time",
  "winapi",
 ]
 
@@ -1694,17 +1693,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "time"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
-dependencies = [
- "libc",
- "wasi",
- "winapi",
-]
-
-[[package]]
 name = "tinyvec"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1803,13 +1791,12 @@ dependencies = [
 
 [[package]]
 name = "tracing-tree"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "023e80cdb7c8468b7aade1d756afa2acbe2ae0a6142a25ec664b5239d6ef2794"
+checksum = "1a60657cfbf397c603257a8230b3f427e6a2a4e5911a59331b9bb4dffff5b608"
 dependencies = [
  "ansi_term",
  "atty",
- "chrono",
  "termcolor",
  "tracing",
  "tracing-log",
@@ -1927,12 +1914,6 @@ dependencies = [
  "winapi",
  "winapi-util",
 ]
-
-[[package]]
-name = "wasi"
-version = "0.10.0+wasi-snapshot-preview1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "winapi"
