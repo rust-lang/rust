@@ -36,7 +36,7 @@ jobs:
           cp ../../../enz/.packaging/build_tarballs.jl Enzyme@11/build_tarballs.jl
           sed "s~%ENZYME_VERSION%~${GITHUB_REF}~g" Enzyme@11/build_tarballs.jl -i
           sed "s~%ENZYME_HASH%~${GITHUB_SHA}~g" Enzyme@11/build_tarballs.jl -i
-          git add Enzyme@9
+          git add Enzyme@11
     - name: Create Pull Request
       id: cpr
       uses: peter-evans/create-pull-request@v3
