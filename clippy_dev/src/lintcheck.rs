@@ -310,6 +310,14 @@ fn filter_clippy_warnings(line: &str) -> bool {
     false
 }
 
+/// get the path to lintchecks crate sources .toml file, check LINTCHECK_TOML first but if it's
+/// empty use the default path
+fn lintcheck_config_toml() -> PathBuf {
+    PathBuf::from(
+        env::var("LINTCHECK_TOML").unwrap_or(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml").to_string()),
+    )
+}
+
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
     let status = Command::new("cargo")
@@ -324,9 +332,7 @@ fn build_clippy() {
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
 fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
-    let toml_path = PathBuf::from(
-        env::var("LINTCHECK_TOML").unwrap_or(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml").to_string()),
-    );
+    let toml_path = lintcheck_config_toml();
     // save it so that we can use the name of the sources.toml as name for the logfile later.
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
@@ -436,11 +442,49 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
         .collect::<String>()
 }
 
+/// check if the latest modification of the logfile is older than the modification date of the
+/// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
+fn lintcheck_needs_rerun() -> bool {
+    let clippy_modified: std::time::SystemTime = {
+        let mut times = ["target/debug/clippy-driver", "target/debug/cargo-clippy"]
+            .into_iter()
+            .map(|p| {
+                std::fs::metadata(p)
+                    .expect("failed to get metadata of file")
+                    .modified()
+                    .expect("failed to get modification date")
+            });
+        // the lates modification of either of the binaries
+        std::cmp::max(times.next().unwrap(), times.next().unwrap())
+    };
+
+    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_config_toml())
+        .expect("failed to get metadata of file")
+        .modified()
+        .expect("failed to get modification date");
+
+    // if clippys modification time is bigger (older) than the logs mod time, we need to rerun lintcheck
+    clippy_modified > logs_modified
+}
+
 /// lintchecks `main()` function
 pub fn run(clap_config: &ArgMatches) {
     println!("Compiling clippy...");
     build_clippy();
     println!("Done compiling");
+
+    // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
+    // refresh the logs
+    if lintcheck_needs_rerun() {
+        let shared_target_dir = "target/lintcheck/shared_target_dir";
+        if std::fs::metadata(&shared_target_dir)
+            .expect("failed to get metadata of shared target dir")
+            .is_dir()
+        {
+            println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
+            std::fs::remove_dir_all(&shared_target_dir).expect("failed to remove target/lintcheck/shared_target_dir");
+        }
+    }
 
     let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy")
         .canonicalize()
