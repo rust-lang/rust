@@ -22,5 +22,23 @@ error: field is never read: `f`
 LL |     f: i32,
    |     ^^^^^^
 
-error: aborting due to 3 previous errors
+error: field is never read: `y`
+  --> $DIR/write-only-field.rs:28:9
+   |
+LL |         y: bool,
+   |         ^^^^^^^
+
+error: field is never read: `u`
+  --> $DIR/write-only-field.rs:58:9
+   |
+LL |         u: u32,
+   |         ^^^^^^
+
+error: field is never read: `v`
+  --> $DIR/write-only-field.rs:59:9
+   |
+LL |         v: u32,
+   |         ^^^^^^
+
+error: aborting due to 6 previous errors
 
