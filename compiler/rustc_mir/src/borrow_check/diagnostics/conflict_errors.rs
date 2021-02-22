@@ -1542,8 +1542,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
         );
 
+        self.explain_deref_coercion(loan, &mut err);
+
+        err.buffer(&mut self.errors_buffer);
+    }
+
+    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
         let tcx = self.infcx.tcx;
-        // point out implicit deref coercion
         if let (
             Some(Terminator { kind: TerminatorKind::Call { from_hir_call: false, .. }, .. }),
             Some((method_did, method_substs)),
@@ -1572,8 +1577,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
         }
-
-        err.buffer(&mut self.errors_buffer);
     }
 
     /// Reports an illegal reassignment; for example, an assignment to
