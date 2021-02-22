@@ -11,7 +11,7 @@ use rustc_span::Span;
 use std::path::{self, Path, PathBuf};
 
 #[derive(Copy, Clone)]
-pub enum DirectoryOwnership {
+pub enum DirOwnership {
     Owned {
         // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
         relative: Option<Ident>,
@@ -29,8 +29,8 @@ pub struct ModulePath<'a> {
 
 // Public for rustfmt usage.
 pub struct ModulePathSuccess {
-    pub path: PathBuf,
-    pub ownership: DirectoryOwnership,
+    pub file_path: PathBuf,
+    pub dir_ownership: DirOwnership,
 }
 
 crate struct ParsedExternalMod {
@@ -38,31 +38,31 @@ crate struct ParsedExternalMod {
     pub inner_span: Span,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,
-    pub dir_ownership: DirectoryOwnership,
+    pub dir_ownership: DirOwnership,
 }
 
 crate fn parse_external_mod(
     sess: &Session,
-    id: Ident,
+    ident: Ident,
     span: Span, // The span to blame on errors.
     module: &ModuleData,
-    mut dir_ownership: DirectoryOwnership,
+    mut dir_ownership: DirOwnership,
     attrs: &mut Vec<Attribute>,
 ) -> ParsedExternalMod {
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: PResult<'_, _> = try {
         // Extract the file path and the new ownership.
-        let mp = submod_path(sess, id, span, &attrs, dir_ownership, &module.dir_path)?;
-        dir_ownership = mp.ownership;
+        let mp = mod_file_path(sess, ident, span, &attrs, &module.dir_path, dir_ownership)?;
+        dir_ownership = mp.dir_ownership;
 
         // Ensure file paths are acyclic.
-        error_on_circular_module(&sess.parse_sess, span, &mp.path, &module.file_path_stack)?;
+        error_on_circular_module(&sess.parse_sess, span, &mp.file_path, &module.file_path_stack)?;
 
         // Actually parse the external file as a module.
-        let mut parser = new_parser_from_file(&sess.parse_sess, &mp.path, Some(span));
+        let mut parser = new_parser_from_file(&sess.parse_sess, &mp.file_path, Some(span));
         let (mut inner_attrs, items, inner_span) = parser.parse_mod(&token::Eof)?;
         attrs.append(&mut inner_attrs);
-        (items, inner_span, mp.path)
+        (items, inner_span, mp.file_path)
     };
     // (1) ...instead, we return a dummy module.
     let (items, inner_span, file_path) = result.map_err(|mut err| err.emit()).unwrap_or_default();
@@ -76,32 +76,32 @@ crate fn parse_external_mod(
 fn error_on_circular_module<'a>(
     sess: &'a ParseSess,
     span: Span,
-    path: &Path,
+    file_path: &Path,
     file_path_stack: &[PathBuf],
 ) -> PResult<'a, ()> {
-    if let Some(i) = file_path_stack.iter().position(|p| *p == path) {
+    if let Some(i) = file_path_stack.iter().position(|p| *p == file_path) {
         let mut err = String::from("circular modules: ");
         for p in &file_path_stack[i..] {
             err.push_str(&p.to_string_lossy());
             err.push_str(" -> ");
         }
-        err.push_str(&path.to_string_lossy());
+        err.push_str(&file_path.to_string_lossy());
         return Err(sess.span_diagnostic.struct_span_err(span, &err[..]));
     }
     Ok(())
 }
 
-crate fn push_directory(
+crate fn mod_dir_path(
     sess: &Session,
-    id: Ident,
+    ident: Ident,
     attrs: &[Attribute],
     module: &ModuleData,
-    mut dir_ownership: DirectoryOwnership,
-) -> (PathBuf, DirectoryOwnership) {
+    mut dir_ownership: DirOwnership,
+) -> (PathBuf, DirOwnership) {
     let mut dir_path = module.dir_path.clone();
     if let Some(file_path) = sess.first_attr_value_str_by_name(attrs, sym::path) {
         dir_path.push(&*file_path.as_str());
-        dir_ownership = DirectoryOwnership::Owned { relative: None };
+        dir_ownership = DirOwnership::Owned { relative: None };
     } else {
         // We have to push on the current module name in the case of relative
         // paths in order to ensure that any additional module paths from inline
@@ -109,27 +109,27 @@ crate fn push_directory(
         //
         // For example, a `mod z { ... }` inside `x/y.rs` should set the current
         // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-        if let DirectoryOwnership::Owned { relative } = &mut dir_ownership {
+        if let DirOwnership::Owned { relative } = &mut dir_ownership {
             if let Some(ident) = relative.take() {
                 // Remove the relative offset.
                 dir_path.push(&*ident.as_str());
             }
         }
-        dir_path.push(&*id.as_str());
+        dir_path.push(&*ident.as_str());
     }
 
     (dir_path, dir_ownership)
 }
 
-fn submod_path<'a>(
+fn mod_file_path<'a>(
     sess: &'a Session,
-    id: Ident,
+    ident: Ident,
     span: Span,
     attrs: &[Attribute],
-    ownership: DirectoryOwnership,
     dir_path: &Path,
+    dir_ownership: DirOwnership,
 ) -> PResult<'a, ModulePathSuccess> {
-    if let Some(path) = submod_path_from_attr(sess, attrs, dir_path) {
+    if let Some(file_path) = mod_file_path_from_attr(sess, attrs, dir_path) {
         // All `#[path]` files are treated as though they are a `mod.rs` file.
         // This means that `mod foo;` declarations inside `#[path]`-included
         // files are siblings,
@@ -137,19 +137,19 @@ fn submod_path<'a>(
         // Note that this will produce weirdness when a file named `foo.rs` is
         // `#[path]` included and contains a `mod foo;` declaration.
         // If you encounter this, it's your own darn fault :P
-        let ownership = DirectoryOwnership::Owned { relative: None };
-        return Ok(ModulePathSuccess { ownership, path });
+        let dir_ownership = DirOwnership::Owned { relative: None };
+        return Ok(ModulePathSuccess { file_path, dir_ownership });
     }
 
-    let relative = match ownership {
-        DirectoryOwnership::Owned { relative } => relative,
-        DirectoryOwnership::UnownedViaBlock => None,
+    let relative = match dir_ownership {
+        DirOwnership::Owned { relative } => relative,
+        DirOwnership::UnownedViaBlock => None,
     };
     let ModulePath { path_exists, name, result } =
-        default_submod_path(&sess.parse_sess, id, span, relative, dir_path);
-    match ownership {
-        DirectoryOwnership::Owned { .. } => Ok(result?),
-        DirectoryOwnership::UnownedViaBlock => {
+        default_submod_path(&sess.parse_sess, ident, span, relative, dir_path);
+    match dir_ownership {
+        DirOwnership::Owned { .. } => Ok(result?),
+        DirOwnership::UnownedViaBlock => {
             let _ = result.map_err(|mut err| err.cancel());
             error_decl_mod_in_block(&sess.parse_sess, span, path_exists, &name)
         }
@@ -173,7 +173,7 @@ fn error_decl_mod_in_block<'a, T>(
 
 /// Derive a submodule path from the first found `#[path = "path_string"]`.
 /// The provided `dir_path` is joined with the `path_string`.
-pub(super) fn submod_path_from_attr(
+fn mod_file_path_from_attr(
     sess: &Session,
     attrs: &[Attribute],
     dir_path: &Path,
@@ -196,15 +196,15 @@ pub(super) fn submod_path_from_attr(
 // Public for rustfmt usage.
 pub fn default_submod_path<'a>(
     sess: &'a ParseSess,
-    id: Ident,
+    ident: Ident,
     span: Span,
     relative: Option<Ident>,
     dir_path: &Path,
 ) -> ModulePath<'a> {
     // If we're in a foo.rs file instead of a mod.rs file,
     // we need to look for submodules in
-    // `./foo/<id>.rs` and `./foo/<id>/mod.rs` rather than
-    // `./<id>.rs` and `./<id>/mod.rs`.
+    // `./foo/<ident>.rs` and `./foo/<ident>/mod.rs` rather than
+    // `./<ident>.rs` and `./<ident>/mod.rs`.
     let relative_prefix_string;
     let relative_prefix = if let Some(ident) = relative {
         relative_prefix_string = format!("{}{}", ident.name, path::MAIN_SEPARATOR);
@@ -213,7 +213,7 @@ pub fn default_submod_path<'a>(
         ""
     };
 
-    let mod_name = id.name.to_string();
+    let mod_name = ident.name.to_string();
     let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
     let secondary_path_str =
         format!("{}{}{}mod.rs", relative_prefix, mod_name, path::MAIN_SEPARATOR);
@@ -224,12 +224,12 @@ pub fn default_submod_path<'a>(
 
     let result = match (default_exists, secondary_exists) {
         (true, false) => Ok(ModulePathSuccess {
-            path: default_path,
-            ownership: DirectoryOwnership::Owned { relative: Some(id) },
+            file_path: default_path,
+            dir_ownership: DirOwnership::Owned { relative: Some(ident) },
         }),
         (false, true) => Ok(ModulePathSuccess {
-            path: secondary_path,
-            ownership: DirectoryOwnership::Owned { relative: None },
+            file_path: secondary_path,
+            dir_ownership: DirOwnership::Owned { relative: None },
         }),
         (false, false) => {
             let mut err = struct_span_err!(

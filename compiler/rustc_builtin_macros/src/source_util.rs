@@ -4,7 +4,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
-use rustc_expand::module::DirectoryOwnership;
+use rustc_expand::module::DirOwnership;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{self, new_parser_from_file};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
@@ -116,7 +116,7 @@ pub fn expand_include<'cx>(
     // `MacroExpander::fully_expand_fragment` later restores, so "stack discipline" is maintained.
     let dir_path = file.parent().unwrap_or(&file).to_owned();
     cx.current_expansion.module = Rc::new(cx.current_expansion.module.with_dir_path(dir_path));
-    cx.current_expansion.directory_ownership = DirectoryOwnership::Owned { relative: None };
+    cx.current_expansion.dir_ownership = DirOwnership::Owned { relative: None };
 
     struct ExpandResult<'a> {
         p: Parser<'a>,

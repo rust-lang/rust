@@ -3,7 +3,7 @@ use crate::config::StripUnconfigured;
 use crate::configure;
 use crate::hygiene::SyntaxContext;
 use crate::mbe::macro_rules::annotate_err_with_kind;
-use crate::module::{parse_external_mod, push_directory, DirectoryOwnership, ParsedExternalMod};
+use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
 use rustc_ast as ast;
@@ -1246,10 +1246,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_block(&mut self, block: &mut P<Block>) {
-        let old_directory_ownership = self.cx.current_expansion.directory_ownership;
-        self.cx.current_expansion.directory_ownership = DirectoryOwnership::UnownedViaBlock;
+        let orig_dir_ownership = mem::replace(
+            &mut self.cx.current_expansion.dir_ownership,
+            DirOwnership::UnownedViaBlock,
+        );
         noop_visit_block(block, self);
-        self.cx.current_expansion.directory_ownership = old_directory_ownership;
+        self.cx.current_expansion.dir_ownership = orig_dir_ownership;
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -1280,12 +1282,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let (file_path, dir_path, dir_ownership) = match mod_kind {
                     ModKind::Loaded(_, Inline::Yes, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
-                        let (dir_path, dir_ownership) = push_directory(
+                        let (dir_path, dir_ownership) = mod_dir_path(
                             &self.cx.sess,
                             ident,
                             &attrs,
                             &self.cx.current_expansion.module,
-                            self.cx.current_expansion.directory_ownership,
+                            self.cx.current_expansion.dir_ownership,
                         );
                         item.attrs = attrs;
                         (None, dir_path, dir_ownership)
@@ -1306,7 +1308,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             ident,
                             span,
                             &self.cx.current_expansion.module,
-                            self.cx.current_expansion.directory_ownership,
+                            self.cx.current_expansion.dir_ownership,
                             &mut attrs,
                         );
 
@@ -1334,12 +1336,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
                 let orig_dir_ownership =
-                    mem::replace(&mut self.cx.current_expansion.directory_ownership, dir_ownership);
+                    mem::replace(&mut self.cx.current_expansion.dir_ownership, dir_ownership);
 
                 let result = noop_flat_map_item(item, self);
 
                 // Restore the module info.
-                self.cx.current_expansion.directory_ownership = orig_dir_ownership;
+                self.cx.current_expansion.dir_ownership = orig_dir_ownership;
                 self.cx.current_expansion.module = orig_module;
 
                 result

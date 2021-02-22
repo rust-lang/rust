@@ -1,5 +1,5 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirectoryOwnership;
+use crate::module::DirOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
@@ -921,7 +921,7 @@ pub struct ExpansionData {
     pub id: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
-    pub directory_ownership: DirectoryOwnership,
+    pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
@@ -963,7 +963,7 @@ impl<'a> ExtCtxt<'a> {
                 id: ExpnId::root(),
                 depth: 0,
                 module: Default::default(),
-                directory_ownership: DirectoryOwnership::Owned { relative: None },
+                dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
             force_mode: false,
