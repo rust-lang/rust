@@ -139,6 +139,12 @@ fn main() {
     }
 
     if verbose > 1 {
+        let rust_env_vars =
+            env::vars().filter(|(k, _)| k.starts_with("RUST") || k.starts_with("CARGO"));
+        for (i, (k, v)) in rust_env_vars.enumerate() {
+            eprintln!("rustc env[{}]: {:?}={:?}", i, k, v);
+        }
+        eprintln!("rustc working directory: {}", env::current_dir().unwrap().display());
         eprintln!(
             "rustc command: {:?}={:?} {:?}",
             bootstrap::util::dylib_path_var(),
