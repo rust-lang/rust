@@ -6,8 +6,7 @@
 extern crate test_macros;
 
 #[derive(Empty)] //~ ERROR cannot determine resolution for the attribute macro `derive`
-#[empty_helper] //~ WARN derive helper attribute is used before it is introduced
-                //~| WARN this was previously accepted
+#[empty_helper] //~ ERROR cannot find attribute `empty_helper` in this scope
 struct Foo {}
 
 fn main() {}
