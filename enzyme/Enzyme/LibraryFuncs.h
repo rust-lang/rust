@@ -340,6 +340,8 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
+    if (called && called->getName() == "jl_array_copy")
+      return false;
     if (auto II = dyn_cast<IntrinsicInst>(call)) {
       if (II->getIntrinsicID() == Intrinsic::stacksave)
         return false;
@@ -394,6 +396,8 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
     if (called && isMemFreeLibMFunction(called->getName())) {
       return false;
     }
+    if (called && called->getName() == "jl_array_copy")
+      return false;
   }
   if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
     Function *called = call->getCalledFunction();

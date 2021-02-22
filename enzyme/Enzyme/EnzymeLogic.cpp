@@ -1193,6 +1193,10 @@ const AugmentedReturn &CreateAugmentedPrimal(
   // TODO actually populate unnecessaryInstructions with what can be
   // derived without activity info
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
+  for (auto BB : guaranteedUnreachable) {
+    for (auto &I : *BB)
+      unnecessaryInstructionsTmp.insert(&I);
+  }
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = compute_uncacheable_args_for_callsites(
           gutils->oldFunc, gutils->DT, TLI, unnecessaryInstructionsTmp, AA,
@@ -2304,6 +2308,10 @@ Function *CreatePrimalAndGradient(
   // TODO populate with actual unnecessaryInstructions once the dependency
   // cycle with activity analysis is removed
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructionsTmp;
+  for (auto BB : guaranteedUnreachable) {
+    for (auto &I : *BB)
+      unnecessaryInstructionsTmp.insert(&I);
+  }
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map

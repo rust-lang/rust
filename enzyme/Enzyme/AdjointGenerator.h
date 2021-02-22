@@ -108,14 +108,14 @@ public:
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
 
-    auto iload = gutils->getNewFromOriginal(&I);
+    auto iload = gutils->getNewFromOriginal((Value *)&I);
 
     if (used && check)
       return;
 
     PHINode *pn = nullptr;
-    if (!I.getType()->isVoidTy()) {
-      IRBuilder<> BuilderZ(iload);
+    if (!I.getType()->isVoidTy() && isa<Instruction>(iload)) {
+      IRBuilder<> BuilderZ(cast<Instruction>(iload));
       pn = BuilderZ.CreatePHI(I.getType(), 1,
                               (I.getName() + "_replacementA").str());
       gutils->fictiousPHIs.push_back(pn);
@@ -136,9 +136,11 @@ public:
 
     erased.insert(&I);
     if (erase) {
-      if (pn)
-        gutils->replaceAWithB(iload, pn);
-      gutils->erase(iload);
+      if (auto inst = dyn_cast<Instruction>(iload)) {
+        if (pn)
+          gutils->replaceAWithB(iload, pn);
+        gutils->erase(inst);
+      }
     }
   }
 

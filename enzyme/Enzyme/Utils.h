@@ -47,11 +47,17 @@
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
 
+#include <map>
 #include <set>
 
 #include "llvm/IR/DiagnosticInfo.h"
 
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
+extern std::map<std::string, std::function<llvm::Value *(
+                                 llvm::IRBuilder<> &, llvm::CallInst *,
+                                 llvm::ArrayRef<llvm::Value *>)>>
+    shadowHandlers;
 
 /// Print additional debug info relevant to performance
 extern llvm::cl::opt<bool> EnzymePrintPerf;
@@ -389,7 +395,8 @@ static inline bool isCertainMallocOrFree(llvm::Function *called) {
       called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "malloc" || called->getName() == "_Znwm" ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-      called->getName() == "free")
+      called->getName() == "free" ||
+      shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
     return true;
   switch (called->getIntrinsicID()) {
   case llvm::Intrinsic::dbg_declare:
@@ -449,7 +456,8 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
       called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "malloc" || called->getName() == "_Znwm" ||
       called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-      called->getName() == "free")
+      called->getName() == "free" ||
+      shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
     return true;
   switch (called->getIntrinsicID()) {
   case llvm::Intrinsic::dbg_declare:
