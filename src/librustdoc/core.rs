@@ -64,7 +64,7 @@ crate struct DocContext<'tcx> {
     crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefIndex>>,
+    crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
@@ -137,16 +137,14 @@ impl<'tcx> DocContext<'tcx> {
     /// [`RefCell`]: std::cell::RefCell
     /// [`Debug`]: std::fmt::Debug
     /// [`clean::Item`]: crate::clean::types::Item
-    crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let mut fake_ids = self.fake_def_ids.borrow_mut();
-
-        let def_index = match fake_ids.entry(crate_num) {
+    crate fn next_def_id(&mut self, crate_num: CrateNum) -> DefId {
+        let def_index = match self.fake_def_ids.entry(crate_num) {
             Entry::Vacant(e) => {
                 let num_def_idx = {
                     let num_def_idx = if crate_num == LOCAL_CRATE {
                         self.tcx.hir().definitions().def_path_table().num_def_ids()
                     } else {
-                        self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
+                        self.resolver.borrow_mut().access(|r| r.cstore().num_def_ids(crate_num))
                     };
 
                     DefIndex::from_usize(num_def_idx)
