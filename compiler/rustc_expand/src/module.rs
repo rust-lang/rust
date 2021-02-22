@@ -98,25 +98,26 @@ crate fn mod_dir_path(
     module: &ModuleData,
     mut dir_ownership: DirOwnership,
 ) -> (PathBuf, DirOwnership) {
-    let mut dir_path = module.dir_path.clone();
-    if let Some(file_path) = sess.first_attr_value_str_by_name(attrs, sym::path) {
-        dir_path.push(&*file_path.as_str());
-        dir_ownership = DirOwnership::Owned { relative: None };
-    } else {
-        // We have to push on the current module name in the case of relative
-        // paths in order to ensure that any additional module paths from inline
-        // `mod x { ... }` come after the relative extension.
-        //
-        // For example, a `mod z { ... }` inside `x/y.rs` should set the current
-        // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-        if let DirOwnership::Owned { relative } = &mut dir_ownership {
-            if let Some(ident) = relative.take() {
-                // Remove the relative offset.
-                dir_path.push(&*ident.as_str());
-            }
-        }
-        dir_path.push(&*ident.as_str());
+    if let Some(file_path) = mod_file_path_from_attr(sess, attrs, &module.dir_path) {
+        // For inline modules file path from `#[path]` is actually the directory path
+        // for historical reasons, so we don't pop the last segment here.
+        return (file_path, DirOwnership::Owned { relative: None });
     }
+
+    // We have to push on the current module name in the case of relative
+    // paths in order to ensure that any additional module paths from inline
+    // `mod x { ... }` come after the relative extension.
+    //
+    // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+    // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+    let mut dir_path = module.dir_path.clone();
+    if let DirOwnership::Owned { relative } = &mut dir_ownership {
+        if let Some(ident) = relative.take() {
+            // Remove the relative offset.
+            dir_path.push(&*ident.as_str());
+        }
+    }
+    dir_path.push(&*ident.as_str());
 
     (dir_path, dir_ownership)
 }
@@ -179,8 +180,7 @@ fn mod_file_path_from_attr(
     dir_path: &Path,
 ) -> Option<PathBuf> {
     // Extract path string from first `#[path = "path_string"]` attribute.
-    let path_string = sess.first_attr_value_str_by_name(attrs, sym::path)?;
-    let path_string = path_string.as_str();
+    let path_string = sess.first_attr_value_str_by_name(attrs, sym::path)?.as_str();
 
     // On windows, the base path might have the form
     // `\\?\foo\bar` in which case it does not tolerate
