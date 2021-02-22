@@ -4254,15 +4254,30 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     buffer.write_str("</div>");
 }
 
-fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
-    if used_links.insert(url.clone()) {
-        return url;
+fn get_next_url(buffer: &mut String, used_links: &mut FxHashSet<String>, mut url: String) {
+    if !used_links.contains(&url) {
+        buffer.push_str(&url);
+        used_links.insert(url);
+        return;
     }
     let mut add = 1;
-    while !used_links.insert(format!("{}-{}", url, add)) {
+    url.push_str("-0");
+    while {
+        let mut number = add;
+        let mut num_digits = 0;
+        while number != 0 {
+            number = number / 10;
+            num_digits += 1;
+        }
+        url.truncate(url.len() - num_digits);
+        write!(&mut url, "{}", add).unwrap();
+        used_links.contains(&url)
+    } {
         add += 1;
     }
-    format!("{}-{}", url, add)
+    buffer.push_str(&url);
+    let was_not_present = used_links.insert(url);
+    debug_assert!(was_not_present);
 }
 
 fn get_methods(
@@ -4277,11 +4292,12 @@ fn get_methods(
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || should_render_item(item, deref_mut, cache) {
-                    Some(format!(
-                        "<a href=\"#{}\">{}</a>",
-                        get_next_url(used_links, format!("method.{}", name)),
-                        name
-                    ))
+                    let mut result = String::with_capacity(64);
+                    write!(&mut result, "<a href=\"#").unwrap();
+                    get_next_url(&mut result, used_links, format!("method.{}", name));
+                    write!(&mut result, "\">{}</a>", name).unwrap();
+
+                    Some(result)
                 } else {
                     None
                 }
