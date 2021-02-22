@@ -11,7 +11,41 @@
 #[cfg(test)]
 mod tests;
 
-#[doc(include = "char.md")]
+use core::num::*;
+
+macro_rules! type_alias_no_nz {
+    {
+      $Docfile:tt, $Alias:ident = $Real:ty;
+      $( $Cfg:tt )*
+    } => {
+        #[doc(include = $Docfile)]
+        $( $Cfg )*
+        #[stable(feature = "raw_os", since = "1.1.0")]
+        pub type $Alias = $Real;
+    }
+}
+
+// To verify that the NonZero types in this file's macro invocations correspond
+//
+//  perl -n < library/std/src/os/raw/mod.rs -e 'next unless m/type_alias\!/; die "$_ ?" unless m/, (c_\w+) = (\w+), NonZero_(\w+) = NonZero(\w+)/; die "$_ ?" unless $3 eq $1 and $4 eq ucfirst $2'
+//
+// NB this does not check that the main c_* types are right.
+
+macro_rules! type_alias {
+    {
+      $Docfile:tt, $Alias:ident = $Real:ty, $NZAlias:ident = $NZReal:ty;
+      $( $Cfg:tt )*
+    } => {
+        type_alias_no_nz! { $Docfile, $Alias = $Real; $( $Cfg )* }
+
+        #[doc = concat!("Type alias for `NonZero` version of [`", stringify!($Alias), "`]")]
+        #[unstable(feature = "raw_os_nonzero", issue = "82363")]
+        $( $Cfg )*
+        pub type $NZAlias = $NZReal;
+    }
+}
+
+type_alias! { "char.md", c_char = u8, NonZero_c_char = NonZeroU8;
 #[cfg(any(
     all(
         target_os = "linux",
@@ -52,10 +86,8 @@ mod tests;
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64")
-))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_char = u8;
-#[doc(include = "char.md")]
+))]}
+type_alias! { "char.md", c_char = i8, NonZero_c_char = NonZeroI8;
 #[cfg(not(any(
     all(
         target_os = "linux",
@@ -96,55 +128,25 @@ pub type c_char = u8;
         )
     ),
     all(target_os = "fuchsia", target_arch = "aarch64")
-)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_char = i8;
-#[doc(include = "schar.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_schar = i8;
-#[doc(include = "uchar.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_uchar = u8;
-#[doc(include = "short.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_short = i16;
-#[doc(include = "ushort.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ushort = u16;
-#[doc(include = "int.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_int = i32;
-#[doc(include = "uint.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_uint = u32;
-#[doc(include = "long.md")]
-#[cfg(any(target_pointer_width = "32", windows))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_long = i32;
-#[doc(include = "ulong.md")]
-#[cfg(any(target_pointer_width = "32", windows))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulong = u32;
-#[doc(include = "long.md")]
-#[cfg(all(target_pointer_width = "64", not(windows)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_long = i64;
-#[doc(include = "ulong.md")]
-#[cfg(all(target_pointer_width = "64", not(windows)))]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulong = u64;
-#[doc(include = "longlong.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_longlong = i64;
-#[doc(include = "ulonglong.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_ulonglong = u64;
-#[doc(include = "float.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_float = f32;
-#[doc(include = "double.md")]
-#[stable(feature = "raw_os", since = "1.1.0")]
-pub type c_double = f64;
+)))]}
+type_alias! { "schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
+type_alias! { "uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
+type_alias! { "short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
+type_alias! { "ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
+type_alias! { "int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
+type_alias! { "uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
+type_alias! { "long.md", c_long = i32, NonZero_c_long = NonZeroI32;
+#[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "ulong.md", c_ulong = u32, NonZero_c_ulong = NonZeroU32;
+#[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "long.md", c_long = i64, NonZero_c_long = NonZeroI64;
+#[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "ulong.md", c_ulong = u64, NonZero_c_ulong = NonZeroU64;
+#[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "longlong.md", c_longlong = i64, NonZero_c_longlong = NonZeroI64; }
+type_alias! { "ulonglong.md", c_ulonglong = u64, NonZero_c_ulonglong = NonZeroU64; }
+type_alias_no_nz! { "float.md", c_float = f32; }
+type_alias_no_nz! { "double.md", c_double = f64; }
 
 #[stable(feature = "raw_os", since = "1.1.0")]
 #[doc(no_inline)]
