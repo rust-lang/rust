@@ -1,0 +1,28 @@
+error: cannot find attribute `dummy` in this scope
+  --> $DIR/derive-helper-legacy-spurious.rs:3:4
+   |
+LL | #![dummy]
+   |    ^^^^^
+
+error: cannot determine resolution for the attribute macro `derive`
+  --> $DIR/derive-helper-legacy-spurious.rs:8:3
+   |
+LL | #[derive(Empty)]
+   |   ^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/derive-helper-legacy-spurious.rs:9:3
+   |
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+   |
+   = note: `#[warn(legacy_derive_helpers)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
