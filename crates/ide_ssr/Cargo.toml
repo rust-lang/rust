@@ -1,5 +1,5 @@
 [package]
-name = "ssr"
+name = "ide_ssr"
 version = "0.0.0"
 description = "Structural search and replace of Rust code"
 license = "MIT OR Apache-2.0"

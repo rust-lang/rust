@@ -27,8 +27,8 @@ ide_db = { path = "../ide_db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 test_utils = { path = "../test_utils", version = "0.0.0" }
-assists = { path = "../assists", version = "0.0.0" }
-ssr = { path = "../ssr", version = "0.0.0" }
+ide_assists = { path = "../ide_assists", version = "0.0.0" }
+ide_ssr = { path = "../ide_ssr", version = "0.0.0" }
 ide_completion = { path = "../ide_completion", version = "0.0.0" }
 
 # ide should depend only on the top-level `hir` package. if you need

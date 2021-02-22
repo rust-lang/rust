@@ -53,7 +53,7 @@ cfg = { path = "../cfg", version = "0.0.0" }
 toolchain = { path = "../toolchain", version = "0.0.0" }
 
 # This should only be used in CLI
-ssr = { path = "../ssr", version = "0.0.0" }
+ide_ssr = { path = "../ide_ssr", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
 hir_ty = { path = "../hir_ty", version = "0.0.0" }

@@ -1,5 +1,5 @@
 [package]
-name = "assists"
+name = "ide_assists"
 version = "0.0.0"
 description = "TBD"
 license = "MIT OR Apache-2.0"

@@ -1,8 +1,8 @@
 use std::fmt;
 
-use assists::utils::test_related_attribute;
 use cfg::CfgExpr;
 use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
+use ide_assists::utils::test_related_attribute;
 use ide_db::{defs::Definition, RootDatabase, SymbolKind};
 use itertools::Itertools;
 use syntax::{

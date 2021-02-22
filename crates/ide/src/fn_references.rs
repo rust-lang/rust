@@ -1,8 +1,8 @@
 //! This module implements a methods and free functions search in the specified file.
 //! We have to skip tests, so cannot reuse file_structure module.
 
-use assists::utils::test_related_attribute;
 use hir::Semantics;
+use ide_assists::utils::test_related_attribute;
 use ide_db::RootDatabase;
 use syntax::{ast, ast::NameOwner, AstNode, SyntaxNode};
 

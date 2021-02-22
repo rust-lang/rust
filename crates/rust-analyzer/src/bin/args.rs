@@ -6,9 +6,9 @@
 use std::{env, path::PathBuf};
 
 use anyhow::{bail, format_err, Result};
+use ide_ssr::{SsrPattern, SsrRule};
 use pico_args::Arguments;
 use rust_analyzer::cli::{AnalysisStatsCmd, BenchCmd, BenchWhat, Position, Verbosity};
-use ssr::{SsrPattern, SsrRule};
 use vfs::AbsPathBuf;
 
 pub(crate) struct Args {

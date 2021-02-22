@@ -1,4 +1,4 @@
-use assists::utils::extract_trivial_expression;
+use ide_assists::utils::extract_trivial_expression;
 use itertools::Itertools;
 use syntax::{
     algo::non_trivia_sibling,
