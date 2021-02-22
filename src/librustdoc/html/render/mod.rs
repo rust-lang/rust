@@ -1548,7 +1548,10 @@ impl Context<'_> {
         }
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = if it.is_crate() {
+        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));
+        let desc = if let Some(desc) = desc {
+            desc
+        } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
         } else {
             format!(
