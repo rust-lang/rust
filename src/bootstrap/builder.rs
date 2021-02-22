@@ -440,6 +440,7 @@ impl<'a> Builder<'a> {
                 test::CompiletestTest,
                 test::RustdocJSStd,
                 test::RustdocJSNotStd,
+                test::RustdocGUI,
                 test::RustdocTheme,
                 test::RustdocUi,
                 test::RustdocJson,
