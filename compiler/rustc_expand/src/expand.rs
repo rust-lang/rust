@@ -1280,8 +1280,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             }
             ast::ItemKind::Mod(_, ref mut mod_kind) if ident != Ident::invalid() => {
                 let (file_path, dir_path, dir_ownership) = match mod_kind {
-                    ModKind::Loaded(_, Inline::Yes, _) => {
+                    ModKind::Loaded(_, inline, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
+                        assert!(
+                            *inline == Inline::Yes,
+                            "`mod` item is loaded from a file for the second time"
+                        );
                         let (dir_path, dir_ownership) = mod_dir_path(
                             &self.cx.sess,
                             ident,
@@ -1292,11 +1296,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         item.attrs = attrs;
                         (None, dir_path, dir_ownership)
                     }
-                    ModKind::Loaded(_, Inline::No, _) => {
-                        panic!("`mod` item is loaded from a file for the second time")
-                    }
                     ModKind::Unloaded => {
                         // We have an outline `mod foo;` so we need to parse the file.
+                        let old_attrs_len = attrs.len();
                         let ParsedExternalMod {
                             mut items,
                             inner_span,
@@ -1318,8 +1320,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
                         *mod_kind = ModKind::Loaded(items, Inline::No, inner_span);
                         item.attrs = attrs;
-                        // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
-                        item = configure!(self, item);
+                        if item.attrs.len() > old_attrs_len {
+                            // If we loaded an out-of-line module and added some inner attributes,
+                            // then we need to re-configure it.
+                            // FIXME: Attributes also need to be recollected
+                            // for resolution and expansion.
+                            item = configure!(self, item);
+                        }
                         (Some(file_path), dir_path, dir_ownership)
                     }
                 };
