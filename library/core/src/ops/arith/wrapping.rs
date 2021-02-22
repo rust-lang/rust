@@ -37,7 +37,12 @@ macro_rules! add_impl {
                 }
             }
 
-            forward_ref_binop! { impl WrappingAdd, wrapping_add for $T, $T }
+            forward_ref_binop! {
+                impl WrappingAdd,
+                wrapping_add for $T,
+                $T,
+                #[unstable(feature = "wrapping_add", issue = "none")]
+            }
         )+
     };
 }
@@ -76,7 +81,12 @@ macro_rules! add_assign_impl {
                 }
             }
 
-            forward_ref_op_assign! { impl WrappingAddAssign, wrapping_add_assign for $T, $T }
+            forward_ref_op_assign! {
+                impl WrappingAddAssign,
+                wrapping_add_assign for $T,
+                $T,
+                #[unstable(feature = "wrapping_add", issue = "none")]
+            }
         )+
     };
 }
