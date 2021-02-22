@@ -61,6 +61,7 @@ use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
+use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
 #[cfg(test)]
 mod tests;
@@ -535,7 +536,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                 cvt(copy_file_range(INVALID_FD, ptr::null_mut(), INVALID_FD, ptr::null_mut(), 1, 0))
             };
 
-            if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(libc::EBADF))) {
+            if matches!(result.map_err(|e| e.raw_os_error()), Err(Some(EBADF))) {
                 HAS_COPY_FILE_RANGE.store(AVAILABLE, Ordering::Relaxed);
             } else {
                 HAS_COPY_FILE_RANGE.store(UNAVAILABLE, Ordering::Relaxed);
@@ -573,19 +574,20 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
             Err(err) => {
                 return match err.raw_os_error() {
                     // when file offset + max_length > u64::MAX
-                    Some(libc::EOVERFLOW) => CopyResult::Fallback(written),
-                    Some(
-                        libc::ENOSYS | libc::EXDEV | libc::EINVAL | libc::EPERM | libc::EOPNOTSUPP,
-                    ) => {
+                    Some(EOVERFLOW) => CopyResult::Fallback(written),
+                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) => {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
                         // - copy_file_range is broken in various ways on RHEL/CentOS 7 (EOPNOTSUPP)
                         // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
+                        // - the writer fd was opened with O_APPEND (EBADF²)
                         //
                         // ¹ these cases should be detected by the initial probe but we handle them here
                         //   anyway in case syscall interception changes during runtime
+                        // ² actually invalid file descriptors would cause this too, but in that case
+                        //   the fallback code path is expected to encounter the same error again
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
@@ -649,7 +651,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
             Ok(ret) => written += ret as u64,
             Err(err) => {
                 return match err.raw_os_error() {
-                    Some(libc::ENOSYS | libc::EPERM) => {
+                    Some(ENOSYS | EPERM) => {
                         // syscall not supported (ENOSYS)
                         // syscall is disallowed, e.g. by seccomp (EPERM)
                         match mode {
@@ -659,12 +661,12 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    Some(libc::EINVAL) => {
+                    Some(EINVAL) => {
                         // splice/sendfile do not support this particular file descriptor (EINVAL)
                         assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
-                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == libc::EOVERFLOW => {
+                    Some(os_err) if mode == SpliceMode::Sendfile && os_err == EOVERFLOW => {
                         CopyResult::Fallback(written)
                     }
                     _ => CopyResult::Error(err, written),
