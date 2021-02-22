@@ -5,7 +5,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AstLike, Attribute, NodeId, PatKind};
+use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -925,6 +925,9 @@ pub struct ExpansionData {
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
+type OnExternModLoaded<'a> =
+    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
+
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
@@ -942,7 +945,7 @@ pub struct ExtCtxt<'a> {
     /// Called directly after having parsed an external `mod foo;` in expansion.
     ///
     /// `Ident` is the module name.
-    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
+    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -950,7 +953,7 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
+        extern_mod_loaded: OnExternModLoaded<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
