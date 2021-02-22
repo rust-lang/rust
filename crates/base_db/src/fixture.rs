@@ -67,7 +67,7 @@ use test_utils::{
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::CrateName, Change, CrateGraph, CrateId, Edition, Env, FileId, FilePosition,
+    input::CrateName, Change, CrateGraph, CrateId, Edition, Env, FileId, FilePosition, FileRange,
     SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
@@ -97,6 +97,15 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
             RangeOrOffset::Offset(it) => it,
         };
         (db, FilePosition { file_id, offset })
+    }
+
+    fn with_range(ra_fixture: &str) -> (Self, FileRange) {
+        let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
+        let range = match range_or_offset {
+            RangeOrOffset::Range(it) => it,
+            RangeOrOffset::Offset(_) => panic!(),
+        };
+        (db, FileRange { file_id, range })
     }
 
     fn with_range_or_offset(ra_fixture: &str) -> (Self, FileId, RangeOrOffset) {

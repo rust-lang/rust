@@ -58,6 +58,7 @@ name = "assists"
 version = "0.0.0"
 dependencies = [
  "either",
+ "expect-test",
  "hir",
  "ide_db",
  "itertools 0.10.0",

@@ -179,9 +179,7 @@ mod handlers {
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
             move_module_to_file::move_module_to_file,
-            extract_function::extract_function,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
-            extract_variable::extract_variable,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
             flip_binexpr::flip_binexpr,
@@ -229,12 +227,18 @@ mod handlers {
             unmerge_use::unmerge_use,
             unwrap_block::unwrap_block,
             wrap_return_type_in_result::wrap_return_type_in_result,
-            // These are manually sorted for better priorities
+            // These are manually sorted for better priorities. By default,
+            // priority is determined by the size of the target range (smaller
+            // target wins). If the ranges are equal, position in this list is
+            // used as a tie-breaker.
             add_missing_impl_members::add_missing_impl_members,
             add_missing_impl_members::add_missing_default_members,
             //
             replace_string_with_char::replace_string_with_char,
             raw_string::make_raw_string,
+            //
+            extract_variable::extract_variable,
+            extract_function::extract_function,
             // Are you sure you want to add new assist here, and not to the
             // sorted list above?
         ]
