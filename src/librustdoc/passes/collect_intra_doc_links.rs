@@ -1146,7 +1146,7 @@ impl LinkCollector<'_, '_> {
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
             };
             report_diagnostic(
-                self.cx,
+                self.cx.tcx,
                 BROKEN_INTRA_DOC_LINKS,
                 &msg,
                 &item,
@@ -1220,7 +1220,7 @@ impl LinkCollector<'_, '_> {
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
                         let span = super::source_span_for_markdown_range(
-                            self.cx,
+                            self.cx.tcx,
                             dox,
                             &ori_link.range,
                             &item.attrs,
@@ -1674,7 +1674,7 @@ impl Suggestion {
 /// parameter of the callback will contain it, and the primary span of the diagnostic will be set
 /// to it.
 fn report_diagnostic(
-    cx: &DocContext<'_>,
+    tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: &str,
     item: &Item,
@@ -1682,7 +1682,7 @@ fn report_diagnostic(
     link_range: &Range<usize>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
+    let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
@@ -1694,10 +1694,10 @@ fn report_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
+    tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(cx, dox, link_range, attrs);
+        let span = super::source_span_for_markdown_range(tcx, dox, link_range, attrs);
 
         if let Some(sp) = span {
             diag.set_span(sp);
@@ -1742,7 +1742,7 @@ fn resolution_failure(
 ) {
     let tcx = collector.cx.tcx;
     report_diagnostic(
-        collector.cx,
+        tcx,
         BROKEN_INTRA_DOC_LINKS,
         &format!("unresolved link to `{}`", path_str),
         item,
@@ -1973,7 +1973,7 @@ fn anchor_failure(
         ),
     };
 
-    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
@@ -2013,7 +2013,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -2066,7 +2066,7 @@ fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, li
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }
