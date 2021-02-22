@@ -257,7 +257,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
             then {
                 let index_used_directly = path_to_local_id(idx, self.var);
                 let indexed_indirectly = {
-                    let mut used_visitor = LocalUsedVisitor::new(self.var);
+                    let mut used_visitor = LocalUsedVisitor::new(self.cx, self.var);
                     walk_expr(&mut used_visitor, idx);
                     used_visitor.used
                 };
