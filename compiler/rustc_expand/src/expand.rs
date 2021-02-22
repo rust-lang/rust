@@ -3,7 +3,7 @@ use crate::config::StripUnconfigured;
 use crate::configure;
 use crate::hygiene::SyntaxContext;
 use crate::mbe::macro_rules::annotate_err_with_kind;
-use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
+use crate::module::{parse_external_mod, push_directory, DirectoryOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
 use rustc_ast as ast;
@@ -1277,28 +1277,36 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(_, ref mut mod_kind) if ident != Ident::invalid() => {
-                let dir = Directory {
-                    ownership: self.cx.current_expansion.directory_ownership,
-                    path: self.cx.current_expansion.module.dir_path.clone(),
-                };
-                let (file_path, Directory { ownership, path }) = match mod_kind {
+                let (file_path, dir_path, dir_ownership) = match mod_kind {
                     ModKind::Loaded(_, Inline::Yes, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
-                        let dir_path = push_directory(&self.cx.sess, ident, &attrs, dir);
+                        let (dir_path, dir_ownership) = push_directory(
+                            &self.cx.sess,
+                            ident,
+                            &attrs,
+                            &self.cx.current_expansion.module,
+                            self.cx.current_expansion.directory_ownership,
+                        );
                         item.attrs = attrs;
-                        (None, dir_path)
+                        (None, dir_path, dir_ownership)
                     }
                     ModKind::Loaded(_, Inline::No, _) => {
                         panic!("`mod` item is loaded from a file for the second time")
                     }
                     ModKind::Unloaded => {
                         // We have an outline `mod foo;` so we need to parse the file.
-                        let (items, inner_span, file_path, dir_path) = parse_external_mod(
+                        let ParsedExternalMod {
+                            items,
+                            inner_span,
+                            file_path,
+                            dir_path,
+                            dir_ownership,
+                        } = parse_external_mod(
                             &self.cx.sess,
                             ident,
                             span,
-                            &self.cx.current_expansion.module.file_path_stack,
-                            dir,
+                            &self.cx.current_expansion.module,
+                            self.cx.current_expansion.directory_ownership,
                             &mut attrs,
                         );
 
@@ -1312,12 +1320,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         item.attrs = krate.attrs;
                         // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
                         item = configure!(self, item);
-                        (Some(file_path), dir_path)
+                        (Some(file_path), dir_path, dir_ownership)
                     }
                 };
 
                 // Set the module info before we flat map.
-                let mut module = self.cx.current_expansion.module.with_dir_path(path);
+                let mut module = self.cx.current_expansion.module.with_dir_path(dir_path);
                 module.mod_path.push(ident);
                 if let Some(file_path) = file_path {
                     module.file_path_stack.push(file_path);
@@ -1326,7 +1334,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
                 let orig_dir_ownership =
-                    mem::replace(&mut self.cx.current_expansion.directory_ownership, ownership);
+                    mem::replace(&mut self.cx.current_expansion.directory_ownership, dir_ownership);
 
                 let result = noop_flat_map_item(item, self);
 

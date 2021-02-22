@@ -1,3 +1,4 @@
+use crate::base::ModuleData;
 use rustc_ast::ptr::P;
 use rustc_ast::{token, Attribute, Item};
 use rustc_errors::{struct_span_err, PResult};
@@ -8,12 +9,6 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 
 use std::path::{self, Path, PathBuf};
-
-#[derive(Clone)]
-pub struct Directory {
-    pub path: PathBuf,
-    pub ownership: DirectoryOwnership,
-}
 
 #[derive(Copy, Clone)]
 pub enum DirectoryOwnership {
@@ -38,22 +33,30 @@ pub struct ModulePathSuccess {
     pub ownership: DirectoryOwnership,
 }
 
+crate struct ParsedExternalMod {
+    pub items: Vec<P<Item>>,
+    pub inner_span: Span,
+    pub file_path: PathBuf,
+    pub dir_path: PathBuf,
+    pub dir_ownership: DirectoryOwnership,
+}
+
 crate fn parse_external_mod(
     sess: &Session,
     id: Ident,
     span: Span, // The span to blame on errors.
-    file_path_stack: &[PathBuf],
-    Directory { mut ownership, path }: Directory,
+    module: &ModuleData,
+    mut dir_ownership: DirectoryOwnership,
     attrs: &mut Vec<Attribute>,
-) -> (Vec<P<Item>>, Span, PathBuf, Directory) {
+) -> ParsedExternalMod {
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: PResult<'_, _> = try {
         // Extract the file path and the new ownership.
-        let mp = submod_path(sess, id, span, &attrs, ownership, &path)?;
-        ownership = mp.ownership;
+        let mp = submod_path(sess, id, span, &attrs, dir_ownership, &module.dir_path)?;
+        dir_ownership = mp.ownership;
 
         // Ensure file paths are acyclic.
-        error_on_circular_module(&sess.parse_sess, span, &mp.path, file_path_stack)?;
+        error_on_circular_module(&sess.parse_sess, span, &mp.path, &module.file_path_stack)?;
 
         // Actually parse the external file as a module.
         let mut parser = new_parser_from_file(&sess.parse_sess, &mp.path, Some(span));
@@ -65,9 +68,9 @@ crate fn parse_external_mod(
     let (items, inner_span, file_path) = result.map_err(|mut err| err.emit()).unwrap_or_default();
 
     // Extract the directory path for submodules of the module.
-    let path = file_path.parent().unwrap_or(&file_path).to_owned();
+    let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
 
-    (items, inner_span, file_path, Directory { ownership, path })
+    ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership }
 }
 
 fn error_on_circular_module<'a>(
@@ -92,11 +95,13 @@ crate fn push_directory(
     sess: &Session,
     id: Ident,
     attrs: &[Attribute],
-    Directory { mut ownership, mut path }: Directory,
-) -> Directory {
-    if let Some(filename) = sess.first_attr_value_str_by_name(attrs, sym::path) {
-        path.push(&*filename.as_str());
-        ownership = DirectoryOwnership::Owned { relative: None };
+    module: &ModuleData,
+    mut dir_ownership: DirectoryOwnership,
+) -> (PathBuf, DirectoryOwnership) {
+    let mut dir_path = module.dir_path.clone();
+    if let Some(file_path) = sess.first_attr_value_str_by_name(attrs, sym::path) {
+        dir_path.push(&*file_path.as_str());
+        dir_ownership = DirectoryOwnership::Owned { relative: None };
     } else {
         // We have to push on the current module name in the case of relative
         // paths in order to ensure that any additional module paths from inline
@@ -104,15 +109,16 @@ crate fn push_directory(
         //
         // For example, a `mod z { ... }` inside `x/y.rs` should set the current
         // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-        if let DirectoryOwnership::Owned { relative } = &mut ownership {
+        if let DirectoryOwnership::Owned { relative } = &mut dir_ownership {
             if let Some(ident) = relative.take() {
                 // Remove the relative offset.
-                path.push(&*ident.as_str());
+                dir_path.push(&*ident.as_str());
             }
         }
-        path.push(&*id.as_str());
+        dir_path.push(&*id.as_str());
     }
-    Directory { ownership, path }
+
+    (dir_path, dir_ownership)
 }
 
 fn submod_path<'a>(
