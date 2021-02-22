@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// struct HttpResponse;
     /// ```
     pub UPPER_CASE_ACRONYMS,
-    style,
+    pedantic,
     "capitalized acronyms are against the naming convention"
 }
 
