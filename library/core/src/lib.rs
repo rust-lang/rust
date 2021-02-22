@@ -276,9 +276,9 @@ pub mod alloc;
 
 // note: does not need to be public
 mod bool;
+mod sealed;
 mod tuple;
 mod unit;
-mod sealed;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
