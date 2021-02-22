@@ -1,5 +1,6 @@
 mod generated;
 
+use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
@@ -10,11 +11,11 @@ use ide_db::{
     source_change::FileSystemEdit,
     RootDatabase,
 };
+use stdx::{format_to, trim_indent};
 use syntax::TextRange;
-use test_utils::{assert_eq_text, extract_offset, extract_range};
+use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
-use stdx::{format_to, trim_indent};
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     snippet_cap: SnippetCap::new(true),
@@ -163,6 +164,22 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
     };
 }
 
+fn labels(assists: &[Assist]) -> String {
+    let mut labels = assists
+        .iter()
+        .map(|assist| {
+            let mut label = match &assist.group {
+                Some(g) => g.0.clone(),
+                None => assist.label.to_string(),
+            };
+            label.push('\n');
+            label
+        })
+        .collect::<Vec<_>>();
+    labels.dedup();
+    labels.into_iter().collect::<String>()
+}
+
 #[test]
 fn assist_order_field_struct() {
     let before = "struct Foo { $0bar: u32 }";
@@ -181,66 +198,78 @@ fn assist_order_field_struct() {
 
 #[test]
 fn assist_order_if_expr() {
-    let before = "
-    pub fn test_some_range(a: int) -> bool {
-        if let 2..6 = $05$0 {
-            true
-        } else {
-            false
-        }
-    }";
-    let (range, before) = extract_range(before);
-    let (db, file_id) = with_single_file(&before);
-    let frange = FileRange { file_id, range };
-    let assists = Assist::get(&db, &TEST_CONFIG, false, frange);
-    let mut assists = assists.iter();
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+pub fn test_some_range(a: int) -> bool {
+    if let 2..6 = $05$0 {
+        true
+    } else {
+        false
+    }
+}
+"#,
+    );
 
-    assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
-    assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
-    assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
+    let assists = Assist::get(&db, &TEST_CONFIG, false, frange);
+    let expected = labels(&assists);
+
+    expect![[r#"
+        Convert integer base
+        Extract into variable
+        Extract into function
+        Replace with match
+    "#]]
+    .assert_eq(&expected);
 }
 
 #[test]
 fn assist_filter_works() {
-    let before = "
-    pub fn test_some_range(a: int) -> bool {
-        if let 2..6 = $05$0 {
-            true
-        } else {
-            false
-        }
-    }";
-    let (range, before) = extract_range(before);
-    let (db, file_id) = with_single_file(&before);
-    let frange = FileRange { file_id, range };
-
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+pub fn test_some_range(a: int) -> bool {
+    if let 2..6 = $05$0 {
+        true
+    } else {
+        false
+    }
+}
+"#,
+    );
     {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::Refactor]);
 
         let assists = Assist::get(&db, &cfg, false, frange);
-        let mut assists = assists.iter();
+        let expected = labels(&assists);
 
-        assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
-        assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
-        assert_eq!(assists.next().expect("expected assist").label, "Replace with match");
+        expect![[r#"
+            Convert integer base
+            Extract into variable
+            Extract into function
+            Replace with match
+        "#]]
+        .assert_eq(&expected);
     }
 
     {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
         let assists = Assist::get(&db, &cfg, false, frange);
-        assert_eq!(assists.len(), 2);
+        let expected = labels(&assists);
 
-        let mut assists = assists.iter();
-        assert_eq!(assists.next().expect("expected assist").label, "Extract into function");
-        assert_eq!(assists.next().expect("expected assist").label, "Extract into variable");
+        expect![[r#"
+            Extract into variable
+            Extract into function
+        "#]]
+        .assert_eq(&expected);
     }
 
     {
         let mut cfg = TEST_CONFIG;
         cfg.allowed = Some(vec![AssistKind::QuickFix]);
         let assists = Assist::get(&db, &cfg, false, frange);
-        assert!(assists.is_empty(), "All asserts but quickfixes should be filtered out");
+        let expected = labels(&assists);
+
+        expect![[r#""#]].assert_eq(&expected);
     }
 }
