@@ -81,13 +81,9 @@ Cargo
 - [Added the `resolver` field to `Cargo.toml` to enable the new feature resolver
   and CLI option behavior.][cargo/8997] Version 2 of the feature resolver will try
   to avoid unifying features of dependencies where that unification could be unwanted.
-  Such as using the same dependency at build time (such as build scripts and
-  proc-macros). See the [Cargo book documentation][feature-resolver@2.0]
-  for more information on the feature.
-
-[feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
-[cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
-[cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
+  Such as using the same dependency with a `std` feature in a build scripts and
+  proc-macros, while using the `no-std` feature in the final binary. See the
+  [Cargo book documentation][feature-resolver@2.0] for more information on the feature.
 
 Rustdoc
 -------
@@ -145,6 +141,9 @@ Internal Only
 [80749]: https://github.com/rust-lang/rust/pull/80749
 [80662]: https://github.com/rust-lang/rust/pull/80662
 [77885]: https://github.com/rust-lang/rust/pull/77885
+[cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
+[cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
+[feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
 [`Once::call_once_force`]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#method.call_once_force
 [`sync::OnceState`]: https://doc.rust-lang.org/stable/std/sync/struct.OnceState.html
 [`panic::panic_any`]: https://doc.rust-lang.org/stable/std/panic/fn.panic_any.html
