@@ -30,7 +30,7 @@
           _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
           StorageLive(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:7:48: 7:49
           _5 = _2;                         // scope 0 at $DIR/lower_intrinsics.rs:7:48: 7:49
--         _3 = wrapping_add::<T>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
+-         _3 = std::intrinsics::wrapping_add::<T>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:7:14: 7:44
 -                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_add::<T>}, val: Value(Scalar(<ZST>)) }
