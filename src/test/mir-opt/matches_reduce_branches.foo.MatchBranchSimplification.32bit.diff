@@ -16,29 +16,31 @@
 +         _4 = move _3;                    // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
 +         _2 = Eq(_4, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         StorageDead(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
++         switchInt(move _2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
       }
   
       bb1: {
-          _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb2: {
-          _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb3: {
-          switchInt(move _2) -> [false: bb4, otherwise: bb5]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
-      }
-  
-      bb4: {
+-         _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-     }
+- 
+-     bb2: {
+-         _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-     }
+- 
+-     bb3: {
+-         switchInt(move _2) -> [false: bb4, otherwise: bb5]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+-     }
+- 
+-     bb4: {
           _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:9:6: 9:6
-          goto -> bb5;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+-         goto -> bb5;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
++         goto -> bb2;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
       }
   
-      bb5: {
+-     bb5: {
++     bb2: {
           StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/matches_reduce_branches.rs:10:2: 10:2
       }
