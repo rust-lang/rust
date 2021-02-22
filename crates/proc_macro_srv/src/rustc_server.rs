@@ -506,8 +506,7 @@ impl server::Literal for Rustc {
             }
         }
 
-        let text =
-            def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128};
+        let text = def_suffixed_integer! {kind, u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize};
 
         Literal { text: text.into(), id: tt::TokenId::unspecified() }
     }
