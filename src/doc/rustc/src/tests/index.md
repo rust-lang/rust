@@ -26,8 +26,9 @@ crate. The `--test` flag will make the following changes:
 * Links the executable with [`libtest`], the test harness that is part of the
   standard library, which handles running the tests.
 * Synthesizes a [`main` function] which will process command-line arguments
-  and run the tests. If the crate already has a `main` function, it will be
-  replaced.
+  and run the tests. This new `main` function will replace any existing `main`
+  function as the entry point of the executable, though the existing `main`
+  will still be compiled.
 * Enables the [`test` cfg option], which allows your code to use conditional
   compilation to detect if it is being built as a test.
 * Enables building of functions annotated with the [`test`][attribute-test]
@@ -83,11 +84,11 @@ behavior.
 
 ### Filters
 
-Bare arguments (those without a `-` prefix) are treated as filters which will
-only run tests whose name matches one of those strings. The filter will match
-any substring found in the full path of the test function. For example, if the
-test function `it_works` is located in the module `utils::paths::tests`, then
-any of the filters `works`, `path`, `utils::`, or
+Positional arguments (those without a `-` prefix) are treated as filters which
+will only run tests whose name matches one of those strings. The filter will
+match any substring found in the full path of the test function. For example,
+if the test function `it_works` is located in the module
+`utils::paths::tests`, then any of the filters `works`, `path`, `utils::`, or
 `utils::paths::tests::it_works` will match that test.
 
 See [Selection options](#selection-options) for more options to control which
@@ -230,7 +231,7 @@ Controls the format of the output. Valid options:
 
 #### `--logfile` _PATH_
 
-Writes the results to the tests to the given file.
+Writes the results of the tests to the given file.
 
 #### `--report-time` _FORMAT_
 
@@ -244,7 +245,7 @@ docs](../../unstable-book/compiler-flags/report-time.html) for more information.
 Some CLI options are added in an "unstable" state, where they are intended for
 experimentation and testing to determine if the option works correctly, has
 the right design, and is useful. The option may not work correctly, break, or
-change at at any time. To signal that you acknowledge that you are using an
+change at any time. To signal that you acknowledge that you are using an
 unstable option, they require passing the `-Z unstable-options` command-line
 flag.
 
