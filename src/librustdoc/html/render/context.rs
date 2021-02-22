@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::mpsc::channel;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -30,7 +30,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
-use crate::html::markdown::{self, plain_text_summary, ErrorCodes};
+use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::{layout, sources};
 
 /// Major driving force in all rustdoc rendering. This contains information
@@ -52,6 +52,11 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub(super) render_redirect_pages: bool,
+    /// The map used to ensure all generated 'id=' attributes are unique.
+    pub(super) id_map: RefCell<IdMap>,
+    /// Tracks section IDs for `Deref` targets so they match in both the main
+    /// body and the sidebar.
+    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
@@ -72,7 +77,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Context<'_>, 72);
+rustc_data_structures::static_assert_size!(Context<'_>, 152);
 
 impl<'tcx> Context<'tcx> {
     pub(super) fn path(&self, filename: &str) -> PathBuf {
@@ -95,7 +100,7 @@ impl<'tcx> Context<'tcx> {
     }
 
     pub(super) fn derive_id(&self, id: String) -> String {
-        let mut map = self.shared.id_map.borrow_mut();
+        let mut map = self.id_map.borrow_mut();
         map.derive(id)
     }
 
@@ -153,8 +158,8 @@ impl<'tcx> Context<'tcx> {
         };
 
         {
-            self.shared.id_map.borrow_mut().reset();
-            self.shared.id_map.borrow_mut().populate(&INITIAL_IDS);
+            self.id_map.borrow_mut().reset();
+            self.id_map.borrow_mut().populate(&INITIAL_IDS);
         }
 
         if !self.render_redirect_pages {
@@ -387,8 +392,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             edition,
             codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
-            id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
@@ -418,6 +421,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
+            id_map: RefCell::new(id_map),
+            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
