@@ -28,12 +28,4 @@ RUN sh /scripts/sccache.sh
 COPY host-x86_64/mingw-check/validate-toolstate.sh /scripts/
 
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
-ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
-           python3 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu --all-targets && \
-           python3 ../x.py build --stage 0 src/tools/build-manifest && \
-           python3 ../x.py test --stage 0 src/tools/compiletest && \
-           python3 ../x.py test --stage 2 src/tools/tidy && \
-           python3 ../x.py doc --stage 0 library/std && \
-           /scripts/validate-toolstate.sh && \
-           # Runs checks to ensure that there are no ES5 issues in our JS code.
-           es-check es5 ../src/librustdoc/html/static/*.js
+ENV SCRIPT /scripts/validate-toolstate.sh

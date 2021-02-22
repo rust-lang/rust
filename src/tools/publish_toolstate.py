@@ -87,6 +87,7 @@ def validate_maintainers(repo, github_token):
     url = 'https://api.github.com/repos/' \
         + '%s/collaborators?per_page=100' % repo # type: typing.Optional[str]
     while url is not None:
+        print('validate url %r' % (url,))
         response = urllib2.urlopen(urllib2.Request(url, headers={
             'Authorization': 'token ' + github_token,
             # Properly load nested teams.
@@ -97,6 +98,7 @@ def validate_maintainers(repo, github_token):
         url = None
         link_header = response.headers.get('Link')
         if link_header:
+            print('link_header=%r' % (link_header,))
             matches = next_link_re.match(link_header)
             if matches is not None:
                 url = matches.group(1)
@@ -104,6 +106,7 @@ def validate_maintainers(repo, github_token):
     errors = False
     for tool, maintainers in MAINTAINERS.items():
         for maintainer in maintainers:
+            print('check maintainer %r' % (maintainer,))
             if maintainer not in assignable:
                 errors = True
                 print(
@@ -296,6 +299,7 @@ try:
     if __name__ != '__main__':
         exit(0)
     repo = os.environ.get('TOOLSTATE_VALIDATE_MAINTAINERS_REPO')
+    print('validate repo %r' % (repo,))
     if repo:
         github_token = os.environ.get('TOOLSTATE_REPO_ACCESS_TOKEN')
         if github_token:
@@ -304,6 +308,8 @@ try:
             print('skipping toolstate maintainers validation since no GitHub token is present')
         # When validating maintainers don't run the full script.
         exit(0)
+    print('early exit')
+    exit(0)
 
     cur_commit = sys.argv[1]
     cur_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')

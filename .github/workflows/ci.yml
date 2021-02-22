@@ -516,7 +516,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: mingw-check
             os: ubuntu-latest-xl
             env: {}
     timeout-minutes: 600
