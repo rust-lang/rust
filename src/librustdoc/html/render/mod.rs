@@ -110,7 +110,11 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     render_redirect_pages: bool,
-    /// Shared mutable state. We should probably redesign this.
+    /// Shared mutable state.
+    ///
+    /// Issue for improving the situation: [#82381][]
+    ///
+    /// [#82381]: https://github.com/rust-lang/rust/issues/82381
     shared: Rc<SharedContext<'tcx>>,
     /// The [`Cache`] used during rendering.
     ///
@@ -127,7 +131,7 @@ crate struct Context<'tcx> {
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 rustc_data_structures::static_assert_size!(Context<'_>, 72);
 
-/// Shared mutable state in [`Context`]. We should probably redesign this.
+/// Shared mutable state used in [`Context`] and elsewhere.
 crate struct SharedContext<'tcx> {
     crate tcx: TyCtxt<'tcx>,
     /// The path to the crate root source minus the file name.
