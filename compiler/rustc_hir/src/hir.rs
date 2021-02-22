@@ -1,5 +1,4 @@
 // ignore-tidy-filelength
-use crate::def::{DefKind, Namespace, Res};
 use crate::def::{CtorKind, DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
@@ -1562,7 +1561,7 @@ impl Expr<'_> {
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
-            | ExprKind::Index(base, _) 
+            | ExprKind::Index(base, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _) => {
                 // This isn't exactly true for `Index` and all `Unnary`, but we are using this
