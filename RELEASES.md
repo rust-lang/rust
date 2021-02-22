@@ -4,8 +4,9 @@ Version 1.51.0 (2021-03-25)
 Language
 --------
 - [You can now parameterize items such as functions, traits, and `struct`s by constant
-  values in addition to by types.][79135] E.g. you can now write the following. Note:
-  Only values of primitive integers, `bool`, or `char` types are currently permitted.
+  values in addition to by types and lifetimes.][79135] Also known as "const generics"
+  E.g. you can now write the following. Note: Only values of primitive integers, 
+  `bool`, or `char` types are currently permitted.
   ```rust
   struct GenericArray<T, const LENGTH: usize> {
       inner: [T; LENGTH]
@@ -26,10 +27,11 @@ Language
 Compiler
 --------
 
-- [Added the `-Csplit-debuginfo` codegen option.][79570] This option controls whether
-  debug information is split across multiple files or packed into a single file.
-- [Added tier 3\* support for `aarch64_be-unknown-linux-gnu`, `aarch64-unknown-linux-gnu_ilp32`,
-  and `aarch64_be-unknown-linux-gnu_ilp32` targets.][81455]
+- [Added the `-Csplit-debuginfo` codegen option for macOS platforms.][79570]
+  This option controls whether debug information is split across multiple files
+  or packed into a single file. **Note** This option is unstable on other platforms.
+- [Added tier 3\* support for `aarch64_be-unknown-linux-gnu`,
+  `aarch64-unknown-linux-gnu_ilp32`, and `aarch64_be-unknown-linux-gnu_ilp32` targets.][81455]
 - [Added tier 3 support for `i386-unknown-linux-gnu` and `i486-unknown-linux-gnu` targets.][80662]
 - [The `target-cpu=native` option will now detect individual features of CPUs.][80749]
 - [Rust now uses `inline-asm` for stack probes when used with LLVM 11.0.1+][77885]
@@ -72,6 +74,21 @@ Stabilized APIs
 - [`sync::OnceState`]
 - [`task::Wake`]
 
+Cargo
+-----
+- [Added the `split-debuginfo` profile option to control the -Csplit-debuginfo
+  codegen option.][cargo/9112]
+- [Added the `resolver` field to `Cargo.toml` to enable the new feature resolver
+  and CLI option behavior.][cargo/8997] Version 2 of the feature resolver will try
+  to avoid unifying features of dependencies where that unification could be unwanted.
+  Such as using the same dependency at build time (such as build scripts and
+  proc-macros). See the [Cargo book documentation][feature-resolver@2.0]
+  for more information on the feature.
+
+[feature-resolver@2.0]: https://doc.rust-lang.org/nightly/cargo/reference/features.html#feature-resolver-version-2
+[cargo/8997]: https://github.com/rust-lang/cargo/pull/8997
+[cargo/9112]: https://github.com/rust-lang/cargo/pull/9112
+
 Rustdoc
 -------
 
@@ -94,7 +111,7 @@ Compatibility Notes
 -------------------
 
 - [Bumped the minimum `g++` for `linux-gnu` targets to `g++-8` from `g++-7`.][81521]
-- [WASI platforms no longer use the `wasm-bindgen` ABI.][79998]
+- [WASI platforms no longer use the `wasm-bindgen` ABI, and instead use the wasm32 ABI.][79998]
 - [`rustc` no longer promotes division, modulo and indexing operations to `const` that
   could fail.][80579]
 
