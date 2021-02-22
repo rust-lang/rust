@@ -5,7 +5,7 @@
 //! Portable SIMD module.
 
 #[macro_use]
-mod macros;
+mod first;
 #[macro_use]
 mod permute;
 #[macro_use]
