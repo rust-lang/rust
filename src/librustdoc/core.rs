@@ -76,7 +76,7 @@ crate struct DocContext<'tcx> {
     ///
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     /// `map<module, set<trait>>`
-    crate module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
+    crate module_trait_cache: FxHashMap<DefId, FxHashSet<DefId>>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -450,7 +450,7 @@ crate fn run_global_ctxt(
             .cloned()
             .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
             .collect(),
-        module_trait_cache: RefCell::new(FxHashMap::default()),
+        module_trait_cache: FxHashMap::default(),
         cache: Cache::new(access_levels, render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,
