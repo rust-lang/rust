@@ -1,6 +1,6 @@
 use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::{Add, AddAssign, Try};
+use crate::ops::Try;
 
 /// An iterator that yields the current count and the element during iteration.
 ///
@@ -39,11 +39,11 @@ where
     ///
     /// Might panic if the index of the element overflows a `usize`.
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         let a = self.iter.next()?;
         let i = self.count;
-        // Possible undefined overflow.
-        AddAssign::add_assign(&mut self.count, 1);
+        self.count += 1;
         Some((i, a))
     }
 
@@ -53,11 +53,11 @@ where
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn nth(&mut self, n: usize) -> Option<(usize, I::Item)> {
         let a = self.iter.nth(n)?;
-        // Possible undefined overflow.
-        let i = Add::add(self.count, n);
-        self.count = Add::add(i, 1);
+        let i = self.count + n;
+        self.count = i + 1;
         Some((i, a))
     }
 
@@ -78,10 +78,10 @@ where
             count: &'a mut usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> R + 'a,
         ) -> impl FnMut(Acc, T) -> R + 'a {
+            #[rustc_inherit_overflow_checks]
             move |acc, item| {
                 let acc = fold(acc, (*count, item));
-                // Possible undefined overflow.
-                AddAssign::add_assign(count, 1);
+                *count += 1;
                 acc
             }
         }
@@ -99,10 +99,10 @@ where
             mut count: usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
         ) -> impl FnMut(Acc, T) -> Acc {
+            #[rustc_inherit_overflow_checks]
             move |acc, item| {
                 let acc = fold(acc, (count, item));
-                // Possible undefined overflow.
-                AddAssign::add_assign(&mut count, 1);
+                count += 1;
                 acc
             }
         }
@@ -110,6 +110,7 @@ where
         self.iter.fold(init, enumerate(self.count, fold))
     }
 
+    #[rustc_inherit_overflow_checks]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> <Self as Iterator>::Item
     where
         Self: TrustedRandomAccess,
@@ -117,7 +118,7 @@ where
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.
         let value = unsafe { try_get_unchecked(&mut self.iter, idx) };
-        (Add::add(self.count, idx), value)
+        (self.count + idx, value)
     }
 }
 
