@@ -842,5 +842,144 @@ impl<I: Idx> FnMut<(usize,)> for IntoIdx<I> {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct IndexArray<I: Idx, T> {
+    pub raw: Box<[T]>,
+    _marker: PhantomData<fn(&I)>,
+}
+
+// Whether `IndexArray` is `Send` depends only on the data,
+// not the phantom data.
+unsafe impl<I: Idx, T> Send for IndexArray<I, T> where T: Send {}
+
+impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexArray<I, T> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&self.raw, s)
+    }
+}
+
+impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for &IndexArray<I, T> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&self.raw, s)
+    }
+}
+
+impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexArray<I, T> {
+    fn decode(d: &mut D) -> Result<Self, D::Error> {
+        Decodable::decode(d).map(|v| IndexArray { raw: v, _marker: PhantomData })
+    }
+}
+
+impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexArray<I, T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.raw, fmt)
+    }
+}
+
+impl<I: Idx, T> IndexArray<I, T> {
+    #[inline]
+    pub fn new() -> Self {
+        IndexArray { raw: Box::default(), _marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn from_raw(raw: Box<[T]>) -> Self {
+        IndexArray { raw, _marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn from_vec(raw: Vec<T>) -> Self {
+        IndexArray { raw: raw.into(), _marker: PhantomData }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.raw.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.raw.is_empty()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> slice::Iter<'_, T> {
+        self.raw.iter()
+    }
+
+    #[inline]
+    pub fn iter_enumerated(&self) -> Enumerated<I, slice::Iter<'_, T>> {
+        self.raw.iter().enumerate().map(IntoIdx { _marker: PhantomData })
+    }
+
+    #[inline]
+    pub fn indices(&self) -> iter::Map<Range<usize>, IntoIdx<I>> {
+        (0..self.len()).map(IntoIdx { _marker: PhantomData })
+    }
+
+    #[inline]
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
+        self.raw.iter_mut()
+    }
+
+    #[inline]
+    pub fn iter_enumerated_mut(&mut self) -> Enumerated<I, slice::IterMut<'_, T>> {
+        self.raw.iter_mut().enumerate().map(IntoIdx { _marker: PhantomData })
+    }
+}
+
+impl<I: Idx, T> Index<I> for IndexArray<I, T> {
+    type Output = T;
+
+    #[inline]
+    fn index(&self, index: I) -> &T {
+        &self.raw[index.index()]
+    }
+}
+
+impl<I: Idx, T> IndexMut<I> for IndexArray<I, T> {
+    #[inline]
+    fn index_mut(&mut self, index: I) -> &mut T {
+        &mut self.raw[index.index()]
+    }
+}
+
+impl<I: Idx, T> Default for IndexArray<I, T> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<I: Idx, T> FromIterator<T> for IndexArray<I, T> {
+    #[inline]
+    fn from_iter<J>(iter: J) -> Self
+    where
+        J: IntoIterator<Item = T>,
+    {
+        IndexArray { raw: FromIterator::from_iter(iter), _marker: PhantomData }
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a IndexArray<I, T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.raw.iter()
+    }
+}
+
+impl<'a, I: Idx, T> IntoIterator for &'a mut IndexArray<I, T> {
+    type Item = &'a mut T;
+    type IntoIter = slice::IterMut<'a, T>;
+
+    #[inline]
+    fn into_iter(self) -> slice::IterMut<'a, T> {
+        self.raw.iter_mut()
+    }
+}
+
 #[cfg(test)]
 mod tests;
