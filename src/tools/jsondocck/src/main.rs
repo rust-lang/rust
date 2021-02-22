@@ -197,22 +197,15 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 // @has <path> <jsonpath> = check path exists
                 2 => {
                     let val = cache.get_value(&command.args[0])?;
-
-                    match select(&val, &command.args[1]) {
-                        Ok(results) => !results.is_empty(),
-                        Err(_) => false,
-                    }
+                    let results = select(&val, &command.args[1]).unwrap();
+                    !results.is_empty()
                 }
                 // @has <path> <jsonpath> <value> = check *any* item matched by path equals value
                 3 => {
                     let val = cache.get_value(&command.args[0])?;
-                    match select(&val, &command.args[1]) {
-                        Ok(results) => {
-                            let pat = string_to_value(&command.args[2], cache);
-                            results.contains(&pat.as_ref())
-                        }
-                        Err(_) => false,
-                    }
+                    let results = select(&val, &command.args[1]).unwrap();
+                    let pat = string_to_value(&command.args[2], cache);
+                    results.contains(&pat.as_ref())
                 }
                 _ => unreachable!(),
             }
@@ -223,38 +216,37 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let expected: usize = command.args[2].parse().unwrap();
 
             let val = cache.get_value(&command.args[0])?;
-            match select(&val, &command.args[1]) {
-                Ok(results) => results.len() == expected,
-                Err(_) => false,
-            }
+            let results = select(&val, &command.args[1]).unwrap();
+            results.len() == expected
         }
         CommandKind::Is => {
             // @has <path> <jsonpath> <value> = check *exactly one* item matched by path, and it equals value
             assert_eq!(command.args.len(), 3);
             let val = cache.get_value(&command.args[0])?;
-            match select(&val, &command.args[1]) {
-                Ok(results) => {
-                    let pat = string_to_value(&command.args[2], cache);
-                    results.len() == 1 && results[0] == pat.as_ref()
-                }
-                Err(_) => false,
-            }
+            let results = select(&val, &command.args[1]).unwrap();
+            let pat = string_to_value(&command.args[2], cache);
+            results.len() == 1 && results[0] == pat.as_ref()
         }
-        // FIXME, Figure out semantics for @!set
         CommandKind::Set => {
             // @set <name> = <path> <jsonpath>
             assert_eq!(command.args.len(), 4);
             assert_eq!(command.args[1], "=", "Expected an `=`");
             let val = cache.get_value(&command.args[2])?;
-
-            match select(&val, &command.args[3]) {
-                Ok(results) => {
-                    assert_eq!(results.len(), 1);
+            let results = select(&val, &command.args[3]).unwrap();
+            assert_eq!(results.len(), 1);
+            match results.len() {
+                0 => false,
+                1 => {
                     let r = cache.variables.insert(command.args[0].clone(), results[0].clone());
                     assert!(r.is_none(), "Name collision: {} is duplicated", command.args[0]);
                     true
                 }
-                Err(_) => false,
+                _ => {
+                    panic!(
+                        "Got multiple results in `@set` for `{}`: {:?}",
+                        &command.args[3], results
+                    );
+                }
             }
         }
     };
