@@ -13,7 +13,23 @@ declare_clippy_lint! {
     /// **What it does:** Checks for struct constructors where the order of the field init
     /// shorthand in the constructor is inconsistent with the order in the struct definition.
     ///
-    /// **Why is this bad?** It decreases readability and consistency.
+    /// **Why is this bad?** Since the order of fields in a constructor doesn't affect the
+    /// resulted instance as the below example indicates,
+    ///
+    /// ```rust
+    /// #[derive(Debug, PartialEq, Eq)]
+    /// struct Foo {
+    ///     x: i32,
+    ///     y: i32,
+    /// }
+    /// let x = 1;
+    /// let y = 2;
+    ///
+    /// // This assertion never fails.
+    /// assert_eq!(Foo { x, y }, Foo { y, x });
+    /// ```
+    ///
+    /// inconsistent order means nothing and just decreases readability and consistency.
     ///
     /// **Known problems:** None.
     ///
@@ -74,12 +90,12 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                 for ident in idents {
                     fields_snippet.push_str(&format!("{}, ", ident));
                 }
-                fields_snippet.push_str(&format!("{}", last_ident));
+                fields_snippet.push_str(&last_ident.to_string());
 
                 let base_snippet = if let Some(base) = base {
                         format!(", ..{}", snippet(cx, base.span, ".."))
                     } else {
-                        "".to_string()
+                        String::new()
                     };
 
                 let sugg = format!("{} {{ {}{} }}",
