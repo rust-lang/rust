@@ -130,6 +130,7 @@ impl IntegerExt for Integer {
 
         if repr.c() {
             match &tcx.sess.target.arch[..] {
+                "hexagon" => min_from_extern = Some(I8),
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
