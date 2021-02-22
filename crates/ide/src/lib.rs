@@ -82,8 +82,8 @@ pub use crate::{
         HlRange,
     },
 };
-pub use assists::{Assist, AssistConfig, AssistId, AssistKind};
 pub use hir::{Documentation, Semantics};
+pub use ide_assists::{Assist, AssistConfig, AssistId, AssistKind};
 pub use ide_completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionScore, ImportEdit,
     InsertTextFormat,

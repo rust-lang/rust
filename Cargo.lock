@@ -54,23 +54,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 
 [[package]]
-name = "assists"
-version = "0.0.0"
-dependencies = [
- "either",
- "expect-test",
- "hir",
- "ide_db",
- "itertools 0.10.0",
- "profile",
- "rustc-hash",
- "stdx",
- "syntax",
- "test_utils",
- "text_edit",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -602,11 +585,11 @@ dependencies = [
 name = "ide"
 version = "0.0.0"
 dependencies = [
- "assists",
  "cfg",
  "either",
  "expect-test",
  "hir",
+ "ide_assists",
  "ide_completion",
  "ide_db",
  "indexmap",
@@ -623,6 +606,23 @@ dependencies = [
  "test_utils",
  "text_edit",
  "url",
+]
+
+[[package]]
+name = "ide_assists"
+version = "0.0.0"
+dependencies = [
+ "either",
+ "expect-test",
+ "hir",
+ "ide_db",
+ "itertools 0.10.0",
+ "profile",
+ "rustc-hash",
+ "stdx",
+ "syntax",
+ "test_utils",
+ "text_edit",
 ]
 
 [[package]]
