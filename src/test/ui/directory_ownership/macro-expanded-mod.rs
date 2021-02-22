@@ -2,7 +2,7 @@
 
 macro_rules! mod_decl {
     ($i:ident) => {
-        mod $i; //~ ERROR Cannot declare a non-inline module inside a block
+        mod $i; //~ ERROR cannot declare a non-inline module inside a block
     };
 }
 
