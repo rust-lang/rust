@@ -124,6 +124,9 @@ crate struct Context<'tcx> {
     cache: Rc<Cache>,
 }
 
+// `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
+rustc_data_structures::static_assert_size!(Context<'_>, 72);
+
 /// Shared mutable state in [`Context`]. We should probably redesign this.
 crate struct SharedContext<'tcx> {
     crate tcx: TyCtxt<'tcx>,
