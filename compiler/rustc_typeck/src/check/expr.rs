@@ -1348,7 +1348,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         remaining_fields: FxHashMap<Ident, (usize, &ty::FieldDef)>,
     ) {
-        let tcx = self.tcx;
         let len = remaining_fields.len();
 
         let mut displayable_field_names =
@@ -1356,25 +1355,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         displayable_field_names.sort();
 
-        let truncated_fields_error = if len <= 3 {
-            String::new()
-        } else {
-            format!(" and {} other field{}", (len - 3), if len - 3 == 1 { "" } else { "s" })
+        let mut truncated_fields_error = String::new();
+        let remaining_fields_names = match &displayable_field_names[..] {
+            [field1] => format!("`{}`", field1),
+            [field1, field2] => format!("`{}` and `{}`", field1, field2),
+            [field1, field2, field3] => format!("`{}`, `{}` and `{}`", field1, field2, field3),
+            _ => {
+                truncated_fields_error =
+                    format!(" and {} other field{}", len - 3, pluralize!(len - 3));
+                displayable_field_names
+                    .iter()
+                    .take(3)
+                    .map(|n| format!("`{}`", n))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
         };
 
-        let remaining_fields_names = displayable_field_names
-            .iter()
-            .take(3)
-            .map(|n| format!("`{}`", n))
-            .collect::<Vec<_>>()
-            .join(", ");
-
         struct_span_err!(
-            tcx.sess,
+            self.tcx.sess,
             span,
             E0063,
             "missing field{} {}{} in initializer of `{}`",
-            pluralize!(remaining_fields.len()),
+            pluralize!(len),
             remaining_fields_names,
             truncated_fields_error,
             adt_ty

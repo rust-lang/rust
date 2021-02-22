@@ -26,10 +26,7 @@ use rustc_span::DUMMY_SP;
 
 use std::mem;
 use std::rc::Rc;
-use std::{
-    cell::{Cell, RefCell},
-    collections::hash_map::Entry,
-};
+use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
@@ -49,7 +46,7 @@ crate struct DocContext<'tcx> {
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
-    crate param_env: Cell<ParamEnv<'tcx>>,
+    crate param_env: ParamEnv<'tcx>,
     /// Later on moved into `cache`
     crate renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `cache`
@@ -67,7 +64,7 @@ crate struct DocContext<'tcx> {
     crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefIndex>>,
+    crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
@@ -89,9 +86,9 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     crate fn with_param_env<T, F: FnOnce(&mut Self) -> T>(&mut self, def_id: DefId, f: F) -> T {
-        let old_param_env = self.param_env.replace(self.tcx.param_env(def_id));
+        let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
         let ret = f(self);
-        self.param_env.set(old_param_env);
+        self.param_env = old_param_env;
         ret
     }
 
@@ -140,16 +137,14 @@ impl<'tcx> DocContext<'tcx> {
     /// [`RefCell`]: std::cell::RefCell
     /// [`Debug`]: std::fmt::Debug
     /// [`clean::Item`]: crate::clean::types::Item
-    crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let mut fake_ids = self.fake_def_ids.borrow_mut();
-
-        let def_index = match fake_ids.entry(crate_num) {
+    crate fn next_def_id(&mut self, crate_num: CrateNum) -> DefId {
+        let def_index = match self.fake_def_ids.entry(crate_num) {
             Entry::Vacant(e) => {
                 let num_def_idx = {
                     let num_def_idx = if crate_num == LOCAL_CRATE {
                         self.tcx.hir().definitions().def_path_table().num_def_ids()
                     } else {
-                        self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
+                        self.resolver.borrow_mut().access(|r| r.cstore().num_def_ids(crate_num))
                     };
 
                     DefIndex::from_usize(num_def_idx)
@@ -511,7 +506,7 @@ crate fn run_global_ctxt(
     let mut ctxt = DocContext {
         tcx,
         resolver,
-        param_env: Cell::new(ParamEnv::empty()),
+        param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
         renderinfo: RefCell::new(renderinfo),

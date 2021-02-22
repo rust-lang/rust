@@ -230,6 +230,7 @@ fn test_plain_text_summary() {
     t("code `let x = i32;` ...", "code `let x = i32;` ...");
     t("type `Type<'static>` ...", "type `Type<'static>` ...");
     t("# top header", "top header");
+    t("# top header\n\nfollowed by some text", "top header");
     t("## header", "header");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
