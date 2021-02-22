@@ -531,7 +531,7 @@ where
         base.offset(from_offset, meta, layout, self)
     }
 
-    pub(super) fn mplace_downcast(
+    pub(crate) fn mplace_downcast(
         &self,
         base: &MPlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,

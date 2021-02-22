@@ -10,9 +10,11 @@ use rustc_macros::HashStable;
 
 mod int;
 mod kind;
+mod valtree;
 
 pub use int::*;
 pub use kind::*;
+pub use valtree::*;
 
 /// Typed constant value.
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]

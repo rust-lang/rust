@@ -55,7 +55,7 @@ pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
-pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt};
+pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt, ValTree};
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorInteriorTypeCause, GlobalCtxt,

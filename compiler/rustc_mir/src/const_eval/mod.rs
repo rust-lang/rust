@@ -3,12 +3,15 @@
 use std::convert::TryFrom;
 
 use rustc_hir::Mutability;
-use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{
+    mir::{self, interpret::ConstAlloc},
+    ty::ScalarInt,
+};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, MemPlaceMeta, Scalar,
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, MPlaceTy, MemPlaceMeta, Scalar,
 };
 
 mod error;
@@ -33,6 +36,91 @@ pub(crate) fn const_caller_location(
         bug!("intern_const_alloc_recursive should not error in this case")
     }
     ConstValue::Scalar(loc_place.ptr)
+}
+
+/// Convert an evaluated constant to a type level constant
+pub(crate) fn const_to_valtree<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    raw: ConstAlloc<'tcx>,
+) -> Option<ty::ValTree> {
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let place = ecx.raw_const_to_mplace(raw).unwrap();
+    const_to_valtree_inner(&ecx, &place)
+}
+
+fn const_to_valtree_inner<'tcx>(
+    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    place: &MPlaceTy<'tcx>,
+) -> Option<ty::ValTree> {
+    let branches = |n, variant| {
+        let place = match variant {
+            Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
+            None => *place,
+        };
+        let variant =
+            variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
+        let fields = (0..n).map(|i| {
+            let field = ecx.mplace_field(&place, i).unwrap();
+            const_to_valtree_inner(ecx, &field)
+        });
+        Some(ty::ValTree::Branch(variant.into_iter().chain(fields).collect::<Option<_>>()?))
+    };
+    match place.layout.ty.kind() {
+        ty::FnDef(..) => Some(ty::ValTree::zst()),
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+            let val = ecx.read_immediate(&place.into()).unwrap();
+            let val = val.to_scalar().unwrap();
+            Some(ty::ValTree::Leaf(val.assert_int()))
+        }
+
+        // Raw pointers are not allowed in type level constants, as raw pointers cannot be treated
+        // like references. If we looked behind the raw pointer, we may be breaking the meaning of
+        // the raw pointer. Equality on raw pointers is performed on the pointer and not on the pointee,
+        // and we cannot guarantee any kind of pointer stability in the type system.
+        // Technically we could allow function pointers, but they are not guaranteed to be the
+        // same as the function pointers at runtime.
+        ty::FnPtr(_) | ty::RawPtr(_) => None,
+        ty::Ref(..) => unimplemented!("need to use deref_const"),
+
+        ty::Dynamic(..) => unimplemented!(
+            "for trait objects we must look at the vtable and figure out the real type"
+        ),
+
+        ty::Slice(_) | ty::Str => {
+            unimplemented!("need to find the backing data of the slice/str and recurse on that")
+        }
+        ty::Tuple(substs) => branches(substs.len(), None),
+        ty::Array(_, len) => branches(usize::try_from(len.eval_usize(ecx.tcx.tcx, ecx.param_env)).unwrap(), None),
+
+        ty::Adt(def, _) => {
+            if def.variants.is_empty() {
+                // Uninhabited
+                return None;
+            }
+
+            let variant = ecx.read_discriminant(&place.into()).unwrap().1;
+
+            branches(def.variants[variant].fields.len(), Some(variant))
+        }
+
+        ty::Never
+        | ty::Error(_)
+        | ty::Foreign(..)
+        | ty::Infer(ty::FreshIntTy(_))
+        | ty::Infer(ty::FreshFloatTy(_))
+        | ty::Projection(..)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Placeholder(..)
+        // FIXME(oli-obk): we could look behind opaque types
+        | ty::Opaque(..)
+        | ty::Infer(_)
+        // FIXME(oli-obk): we can probably encode closures just like structs
+        | ty::Closure(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..) => None,
+    }
 }
 
 /// This function uses `unwrap` copiously, because an already validated constant
