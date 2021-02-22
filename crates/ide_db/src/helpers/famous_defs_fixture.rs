@@ -1,5 +1,15 @@
 //- /libcore.rs crate:core
 //! Signatures of traits, types and functions from the core lib for use in tests.
+pub mod cmp {
+
+    pub trait Ord {
+        fn cmp(&self, other: &Self) -> Ordering;
+        fn max(self, other: Self) -> Self;
+        fn min(self, other: Self) -> Self;
+        fn clamp(self, min: Self, max: Self) -> Self;
+    }
+}
+
 pub mod convert {
     pub trait From<T> {
         fn from(t: T) -> Self;
@@ -109,6 +119,7 @@ pub mod option {
 
 pub mod prelude {
     pub use crate::{
+        cmp::Ord,
         convert::From,
         default::Default,
         iter::{IntoIterator, Iterator},

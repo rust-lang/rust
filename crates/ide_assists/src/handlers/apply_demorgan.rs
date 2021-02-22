@@ -11,13 +11,13 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 //
 // ```
 // fn main() {
-//     if x != 4 ||$0 y < 3 {}
+//     if x != 4 ||$0 y < 3.14 {}
 // }
 // ```
 // ->
 // ```
 // fn main() {
-//     if !(x == 4 && !(y < 3)) {}
+//     if !(x == 4 && !(y < 3.14)) {}
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
@@ -32,11 +32,11 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
     let lhs = expr.lhs()?;
     let lhs_range = lhs.syntax().text_range();
-    let not_lhs = invert_boolean_expression(lhs);
+    let not_lhs = invert_boolean_expression(&ctx.sema, lhs);
 
     let rhs = expr.rhs()?;
     let rhs_range = rhs.syntax().text_range();
-    let not_rhs = invert_boolean_expression(rhs);
+    let not_rhs = invert_boolean_expression(&ctx.sema, rhs);
 
     acc.add(
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
