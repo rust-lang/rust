@@ -1,5 +1,6 @@
 mod append;
 mod borrow;
+mod fix;
 pub mod map;
 mod mem;
 mod merge_iter;
