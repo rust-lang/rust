@@ -9,7 +9,7 @@ want to watch [Salsa In More
 Depth](https://www.youtube.com/watch?v=i_IhACacPRY), also by Niko
 Matsakis.
 
-> As of January 2021 <!-- date: 2021-01 -->, although Salsa is inspired by
+> As of <!-- date: 2021-01 --> January 2021, although Salsa is inspired by
 > (among other things) rustc's query system, it is not used directly in rustc.
 > It _is_ used in chalk and extensively in `rust-analyzer`, but there are no
 > medium or long-term concrete plans to integrate it into the compiler.

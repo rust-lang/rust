@@ -17,7 +17,7 @@ First, we have the lint declarations themselves: this is where the name and defa
 other metadata come from. These are normally defined by way of the [`declare_lint!`] macro, which
 boils down to a static with type `&rustc_session::lint::Lint`.
 
-As of January 2021 <!-- date: 2021-01 -->, we lint against direct declarations
+As of <!-- date: 2021-01 --> January 2021, we lint against direct declarations
 without the use of the macro today (although this may change in the future, as
 the macro is somewhat unwieldy to add new fields to, like all macros by
 example).

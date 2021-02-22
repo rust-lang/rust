@@ -3,7 +3,7 @@
 Most of the compiler is not parallel. This represents an opportunity for
 improving compiler performance.
 
-As of January 2021 <!-- date: 2021-01 -->, work on explicitly parallelizing the
+As of <!-- date: 2021-01 --> January 2021, work on explicitly parallelizing the
 compiler has stalled. There is a lot of design and correctness work that needs
 to be done.
 
@@ -22,7 +22,7 @@ There are a few basic ideas in this effort:
 
 [`rayon`]: https://crates.io/crates/rayon
 
-As of February 2021 <!-- date: 2021-02 -->, much of this effort is on hold due
+As of <!-- date: 2021-02 --> February 2021, much of this effort is on hold due
 to lack of manpower. We have a working prototype with promising performance
 gains in many cases. However, there are two blockers:
 

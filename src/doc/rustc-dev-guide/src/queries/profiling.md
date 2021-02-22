@@ -89,7 +89,7 @@ The trace of the queries has a formal structure; see
 We style this formal structure as follows:
 
 - **Timed passes:** Green boxes, when present (via `-Z time-passes`), represent
-  _timed passes_ in the compiler. As of January 2021 <!-- date: 2021-01 -->
+  _timed passes_ in the compiler. As of <!-- date: 2021-01 --> January 2021
   these passes are not queries, but may be replaced by queries in future versions.
 - **Labels:** Some green and red boxes are labeled with text. Where they are
   present, the labels give the following information:

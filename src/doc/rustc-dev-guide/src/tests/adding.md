@@ -339,8 +339,8 @@ The error levels that you can have are:
 
 ## Revisions
 
-Certain classes of tests support "revisions" (as of February 2021 <!-- date:
-2021-02 -->, this includes compile-fail, run-fail, and incremental, though
+Certain classes of tests support "revisions" (as of <!-- date: 2021-02 -->
+February 2021, this includes compile-fail, run-fail, and incremental, though
 incremental tests are somewhat different). Revisions allow a single test file to
 be used for multiple tests. This is done by adding a special header at the top
 of the file:

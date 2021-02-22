@@ -7,7 +7,7 @@
 > top-level directory has separate directories for the compiler, build-system,
 > std libs, etc, rather than one huge `src/` directory.
 >
-> As of January 2021 <!-- date: 2021-01 -->, the standard libraries have been
+> As of <!-- date: 2021-01 --> January 2021, the standard libraries have been
 > moved to `library/` and the crates that make up the `rustc` compiler itself
 > have been moved to `compiler/`.
 

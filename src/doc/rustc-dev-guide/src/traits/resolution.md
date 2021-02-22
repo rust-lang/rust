@@ -120,7 +120,7 @@ the obligation contains unbound inference variables.
 
 The subroutines that decide whether a particular impl/where-clause/etc applies
 to a particular obligation are collectively referred to as the process of
-_matching_. As of January 2021 <!-- date: 2021-01 -->, this amounts to unifying
+_matching_. As of <!-- date: 2021-01 --> January 2021, this amounts to unifying
 the `Self` types, but in the future we may also recursively consider some of the
 nested obligations, in the case of an impl.
 

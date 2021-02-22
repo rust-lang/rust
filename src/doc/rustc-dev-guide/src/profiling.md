@@ -89,6 +89,6 @@ The llvm-lines output is affected by several options.
 `optimize = false` increases it from 2.1GB to 3.5GB and `codegen-units = 0` to 4.1GB.
 
 MIR optimizations have little impact. Compared to the default `RUSTFLAGS="-Z
-mir-opt-level=1"`, level 0 adds 0.3GB and level 2 removes 0.2GB. As of January
-2021 <!-- date: 2021-01 -->, inlining currently only happens in LLVM but this
-might change in the future.
+mir-opt-level=1"`, level 0 adds 0.3GB and level 2 removes 0.2GB.
+As of <!-- date: 2021-01 --> January 2021, inlining currently only happens in
+LLVM but this might change in the future.

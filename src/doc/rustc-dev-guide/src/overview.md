@@ -249,10 +249,10 @@ to remain to ensure that unreachable functions still have their errors emitted.
 Moreover, the compiler wasn't originally built to use a query system; the query
 system has been retrofitted into the compiler, so parts of it are not query-fied
 yet. Also, LLVM isn't our code, so that isn't querified either. The plan is to
-eventually query-fy all of the steps listed in the previous section, but as of
-February 2021 <!-- date: 2021-02 -->, only the steps between HIR and LLVM IR are
-query-fied. That is, lexing, parsing, name resolution, and macro expansion are
-done all at once for the whole program.
+eventually query-fy all of the steps listed in the previous section,
+but as of <!-- date: 2021-02 --> February 2021, only the steps between HIR and
+LLVM IR are query-fied. That is, lexing, parsing, name resolution, and macro
+expansion are done all at once for the whole program.
 
 One other thing to mention here is the all-important "typing context",
 [`TyCtxt`], which is a giant struct that is at the center of all things.
