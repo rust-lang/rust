@@ -4,12 +4,14 @@ use rustc_hir::{
     Expr, ExprKind,
 };
 use rustc_lint::LateContext;
-use rustc_middle::{hir::map::Map, ty, ty::Ty};
+use rustc_middle::hir::map::Map;
 use rustc_span::source_map::Span;
 
-use crate::utils::{match_trait_method, match_type, paths, snippet, span_lint_and_then};
-
 use if_chain::if_chain;
+
+use crate::utils::{has_iter_method, match_trait_method, paths, snippet, span_lint_and_then};
+
+use super::EXCESSIVE_FOR_EACH;
 
 pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_>]]) {
     if args.len() < 2 {
@@ -25,8 +27,8 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
     let iter_receiver = &args[1][0];
 
     if_chain! {
+        if has_iter_method(cx, cx.typeck_results().expr_ty(iter_receiver)).is_some();
         if match_trait_method(cx, expr, &paths::ITERATOR);
-        if is_target_ty(cx, cx.typeck_results().expr_ty(iter_receiver));
         if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
         let body = cx.tcx.hir().body(body_id);
         if let ExprKind::Block(..) = body.value.kind;
@@ -34,64 +36,31 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
             let mut ret_collector = RetCollector::new();
             ret_collector.visit_expr(&body.value);
 
-            // Skip the lint if `return` is used in `Loop` to avoid a suggest using `'label`.
+            // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
             if ret_collector.ret_in_loop {
                 return;
             }
 
-            let sugg =
-                format!("for {} in {} {{ .. }}", snippet(cx, body.params[0].pat.span, ""), snippet(cx, for_each_receiver.span, ""));
+            let sugg = format!(
+                "for {} in {} {{ .. }}",
+                snippet(cx, body.params[0].pat.span, ""),
+                snippet(cx, for_each_receiver.span, "")
+            );
 
-            let mut notes = vec![];
-            for span in ret_collector.spans {
-                let note = format!("change `return` to `continue` in the loop body");
-                notes.push((span, note));
-            }
-
-            span_lint_and_then(cx,
-                      super::EXCESSIVE_FOR_EACH,
-                      expr.span,
-                      "excessive use of `for_each`",
-                      |diag| {
-                          diag.span_suggestion(expr.span, "try", sugg, Applicability::HasPlaceholders);
-                          for note in notes {
-                              diag.span_note(note.0, &note.1);
-                          }
-                      }
-                );
+            span_lint_and_then(
+                cx,
+                EXCESSIVE_FOR_EACH,
+                expr.span,
+                "excessive use of `for_each`",
+                |diag| {
+                    diag.span_suggestion(expr.span, "try", sugg, Applicability::HasPlaceholders);
+                    for span in ret_collector.spans {
+                        diag.span_note(span, "change `return` to `continue` in the loop body");
+                    }
+                }
+            )
         }
     }
-}
-
-type PathSegment = &'static [&'static str];
-
-const TARGET_ITER_RECEIVER_TY: &[PathSegment] = &[
-    &paths::VEC,
-    &paths::VEC_DEQUE,
-    &paths::LINKED_LIST,
-    &paths::HASHMAP,
-    &paths::BTREEMAP,
-    &paths::HASHSET,
-    &paths::BTREESET,
-    &paths::BINARY_HEAP,
-];
-
-fn is_target_ty(cx: &LateContext<'_>, expr_ty: Ty<'_>) -> bool {
-    let expr_ty = expr_ty.peel_refs();
-    for target in TARGET_ITER_RECEIVER_TY {
-        if match_type(cx, expr_ty, target) {
-            return true;
-        }
-    }
-
-    if_chain! {
-        if matches!(expr_ty.kind(), ty::Slice(_) | ty::Array(..));
-        then {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// This type plays two roles.
