@@ -1613,17 +1613,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
 
 [[package]]
-name = "jemalloc-sys"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d3b9f3f5c9b31aa0f5ed3260385ac205db665baa41d49bb8338008ae94ede45"
-dependencies = [
- "cc",
- "fs_extra",
- "libc",
-]
-
-[[package]]
 name = "jobserver"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3406,9 +3395,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
- "jemalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]
@@ -5064,6 +5053,17 @@ dependencies = [
 [[package]]
 name = "tier-check"
 version = "0.1.0"
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.4.1+5.2.1-patched"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a26331b05179d4cb505c8d6814a7e18d298972f0a551b0e3cefccff927f86d3"
+dependencies = [
+ "cc",
+ "fs_extra",
+ "libc",
+]
 
 [[package]]
 name = "time"
