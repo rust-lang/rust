@@ -1,19 +1,5 @@
 use crate::sealed::Sealed;
 
-macro_rules! sealed_impl {
-    ($($T:ty)+) => {
-        $(
-            #[unstable(feature = "core_sealed", issue = "none")]
-            impl Sealed for $T {}
-
-            #[unstable(feature = "core_sealed", issue = "none")]
-            impl Sealed for &'_ $T {}
-        )+
-    };
-}
-
-sealed_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
-
 /// The trait corresponds to wrapping add arithmetics.
 ///
 /// # Notes

@@ -278,6 +278,7 @@ pub mod alloc;
 mod bool;
 mod tuple;
 mod unit;
+mod sealed;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
@@ -305,11 +306,3 @@ mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use core_arch::arch;
-
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "core_sealed", issue = "none")]
-    pub trait Sealed {}
-}
