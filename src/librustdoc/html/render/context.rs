@@ -70,6 +70,10 @@ crate struct Context<'tcx> {
     pub(super) cache: Rc<Cache>,
 }
 
+// `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Context<'_>, 72);
+
 impl<'tcx> Context<'tcx> {
     pub(super) fn path(&self, filename: &str) -> PathBuf {
         // We use splitn vs Path::extension here because we might get a filename
