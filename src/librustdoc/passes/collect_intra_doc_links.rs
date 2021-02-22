@@ -1203,7 +1203,10 @@ impl LinkCollector<'_, '_> {
                     // for discussion on the matter.
                     verify(kind, id)?;
 
+                    // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
+                    // However I'm not sure how to check that across crates.
                     if prim == PrimitiveType::RawPointer
+                        && item.def_id.is_local()
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
                         let span = super::source_span_for_markdown_range(
