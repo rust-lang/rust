@@ -119,12 +119,12 @@ fn module_codegen(
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let module = new_module(tcx, cgu_name.as_str().to_string());
+    let mut module = new_module(tcx, cgu_name.as_str().to_string());
 
     let mut cx = crate::CodegenCx::new(
         tcx,
         backend_config,
-        module,
+        &mut module,
         tcx.sess.opts.debuginfo != DebugInfo::None,
     );
     super::predefine_mono_items(&mut cx, &mono_items);
@@ -150,7 +150,7 @@ fn module_codegen(
             }
         }
     }
-    let (mut module, global_asm, debug, mut unwind_context) =
+    let (global_asm, debug, mut unwind_context) =
         tcx.sess.time("finalize CodegenCx", || cx.finalize());
     crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut unwind_context);
 

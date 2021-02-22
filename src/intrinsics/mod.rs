@@ -153,12 +153,12 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
     }
 }
 
-fn simd_for_each_lane<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, M>,
+        &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -182,13 +182,13 @@ fn simd_for_each_lane<'tcx, M: Module>(
     }
 }
 
-fn simd_pair_for_each_lane<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_pair_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, M>,
+        &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -215,11 +215,11 @@ fn simd_pair_for_each_lane<'tcx, M: Module>(
     }
 }
 
-fn simd_reduce<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_reduce<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, TyAndLayout<'tcx>, Value, Value) -> Value,
+    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     let lane_layout = fx.layout_of(lane_ty);
@@ -236,11 +236,11 @@ fn simd_reduce<'tcx, M: Module>(
     ret.write_cvalue(fx, res);
 }
 
-fn simd_reduce_bool<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_reduce_bool<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, Value, Value) -> Value,
+    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
@@ -259,7 +259,7 @@ fn simd_reduce_bool<'tcx, M: Module>(
 }
 
 fn bool_to_zero_or_max_uint<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     val: Value,
 ) -> CValue<'tcx> {
@@ -393,7 +393,7 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
 }
 
 pub(crate) fn codegen_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,

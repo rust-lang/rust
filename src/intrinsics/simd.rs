@@ -4,7 +4,7 @@ use super::*;
 use crate::prelude::*;
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,

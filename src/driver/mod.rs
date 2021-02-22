@@ -43,7 +43,7 @@ pub(crate) fn codegen_crate(
 }
 
 fn predefine_mono_items<'tcx>(
-    cx: &mut crate::CodegenCx<'tcx, impl Module>,
+    cx: &mut crate::CodegenCx<'_, 'tcx>,
     mono_items: &[(MonoItem<'tcx>, (RLinkage, Visibility))],
 ) {
     cx.tcx.sess.time("predefine functions", || {

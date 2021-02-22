@@ -57,7 +57,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         .into_iter()
         .collect::<Vec<(_, (_, _))>>();
 
-    let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
+    let mut cx = crate::CodegenCx::new(tcx, backend_config, &mut jit_module, false);
 
     super::time(tcx, "codegen mono items", || {
         super::predefine_mono_items(&mut cx, &mono_items);
@@ -85,7 +85,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         }
     });
 
-    let (mut jit_module, global_asm, _debug, mut unwind_context) =
+    let (global_asm, _debug, mut unwind_context) =
         tcx.sess.time("finalize CodegenCx", || cx.finalize());
     jit_module.finalize_definitions();
 
@@ -145,21 +145,20 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
             let jit_module = jit_module.as_mut().unwrap();
             let backend_config =
                 BACKEND_CONFIG.with(|backend_config| backend_config.borrow().clone().unwrap());
-            let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
 
             let name = tcx.symbol_name(instance).name.to_string();
-            let sig = crate::abi::get_function_sig(tcx, cx.module.isa().triple(), instance);
-            let func_id = cx
-                .module
+            let sig = crate::abi::get_function_sig(tcx, jit_module.isa().triple(), instance);
+            let func_id = jit_module
                 .declare_function(&name, Linkage::Export, &sig)
                 .unwrap();
-            cx.module.prepare_for_function_redefine(func_id).unwrap();
+            jit_module.prepare_for_function_redefine(func_id).unwrap();
 
+            let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module, false);
             tcx.sess.time("codegen fn", || {
                 crate::base::codegen_fn(&mut cx, instance, Linkage::Export)
             });
 
-            let (jit_module, global_asm, _debug_context, unwind_context) = cx.finalize();
+            let (global_asm, _debug_context, unwind_context) = cx.finalize();
             assert!(global_asm.is_empty());
             jit_module.finalize_definitions();
             std::mem::forget(unsafe { unwind_context.register_jit(&jit_module) });
@@ -233,7 +232,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     imported_symbols
 }
 
-pub(super) fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx, impl Module>, inst: Instance<'tcx>) {
+pub(super) fn codegen_shim<'tcx>(cx: &mut CodegenCx<'_, 'tcx>, inst: Instance<'tcx>) {
     let tcx = cx.tcx;
 
     let pointer_type = cx.module.target_config().pointer_type();

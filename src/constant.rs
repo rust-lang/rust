@@ -28,7 +28,7 @@ enum TodoItem {
 }
 
 impl ConstantCx {
-    pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut impl Module) {
+    pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut dyn Module) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
@@ -36,7 +36,7 @@ impl ConstantCx {
     }
 }
 
-pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, impl Module>) -> bool {
+pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
         let const_ = fx.monomorphize(constant.literal);
@@ -79,11 +79,11 @@ pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
 }
 
 pub(crate) fn codegen_tls_ref<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, &mut fx.cx.module, def_id, false);
+    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("tls {:?}", def_id));
@@ -92,11 +92,11 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 }
 
 fn codegen_static_ref<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, &mut fx.cx.module, def_id, false);
+    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
     fx.add_comment(local_data_id, format!("{:?}", def_id));
@@ -113,7 +113,7 @@ fn codegen_static_ref<'tcx>(
 }
 
 pub(crate) fn codegen_constant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let const_ = fx.monomorphize(constant.literal);
@@ -155,7 +155,7 @@ pub(crate) fn codegen_constant<'tcx>(
 }
 
 pub(crate) fn codegen_const_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     const_val: ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
@@ -189,11 +189,8 @@ pub(crate) fn codegen_const_value<'tcx>(
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
                             fx.cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
-                            let data_id = data_id_for_alloc_id(
-                                &mut fx.cx.module,
-                                ptr.alloc_id,
-                                alloc.mutability,
-                            );
+                            let data_id =
+                                data_id_for_alloc_id(fx.cx.module, ptr.alloc_id, alloc.mutability);
                             let local_data_id =
                                 fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
@@ -202,15 +199,14 @@ pub(crate) fn codegen_const_value<'tcx>(
                         }
                         Some(GlobalAlloc::Function(instance)) => {
                             let func_id =
-                                crate::abi::import_function(fx.tcx, &mut fx.cx.module, instance);
+                                crate::abi::import_function(fx.tcx, fx.cx.module, instance);
                             let local_func_id =
                                 fx.cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                             fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
                             assert!(fx.tcx.is_static(def_id));
-                            let data_id =
-                                data_id_for_static(fx.tcx, &mut fx.cx.module, def_id, false);
+                            let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
                             let local_data_id =
                                 fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             #[cfg(debug_assertions)]
@@ -249,12 +245,12 @@ pub(crate) fn codegen_const_value<'tcx>(
 }
 
 fn pointer_for_allocation<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
     fx.cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-    let data_id = data_id_for_alloc_id(&mut fx.cx.module, alloc_id, alloc.mutability);
+    let data_id = data_id_for_alloc_id(fx.cx.module, alloc_id, alloc.mutability);
 
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     #[cfg(debug_assertions)]
@@ -264,7 +260,7 @@ fn pointer_for_allocation<'tcx>(
 }
 
 fn data_id_for_alloc_id(
-    module: &mut impl Module,
+    module: &mut dyn Module,
     alloc_id: AllocId,
     mutability: rustc_hir::Mutability,
 ) -> DataId {
@@ -280,7 +276,7 @@ fn data_id_for_alloc_id(
 
 fn data_id_for_static(
     tcx: TyCtxt<'_>,
-    module: &mut impl Module,
+    module: &mut dyn Module,
     def_id: DefId,
     definition: bool,
 ) -> DataId {
@@ -355,7 +351,7 @@ fn data_id_for_static(
     }
 }
 
-fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut impl Module, cx: &mut ConstantCx) {
+fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut ConstantCx) {
     while let Some(todo_item) = cx.todo.pop() {
         let (data_id, alloc, section_name) = match todo_item {
             TodoItem::Alloc(alloc_id) => {
@@ -456,7 +452,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut impl Module, cx: &mut Constan
 }
 
 pub(crate) fn mir_operand_get_const_val<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Module>,
+    fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> Option<&'tcx Const<'tcx>> {
     match operand {

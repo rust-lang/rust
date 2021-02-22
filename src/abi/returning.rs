@@ -8,7 +8,7 @@ use smallvec::{smallvec, SmallVec};
 
 /// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Module>,
+    fx: &FunctionCx<'_, '_, 'tcx>,
     func: &mir::Operand<'tcx>,
     args: &[mir::Operand<'tcx>],
 ) -> bool {
@@ -58,7 +58,7 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
 /// Return a place where the return value of the current function can be written to. If necessary
 /// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
@@ -120,11 +120,11 @@ pub(super) fn codegen_return_param<'tcx>(
 
 /// Invokes the closure with if necessary a value representing the return pointer. When the closure
 /// returns the call return value(s) if any are written to the correct place.
-pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+pub(super) fn codegen_with_call_return_arg<'tcx, T>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
-    f: impl FnOnce(&mut FunctionCx<'_, 'tcx, M>, Option<Value>) -> (Inst, T),
+    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> (Inst, T),
 ) -> (Inst, T) {
     let return_ptr = match ret_arg_abi.mode {
         PassMode::Ignore => None,
@@ -193,7 +193,7 @@ pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
 }
 
 /// Codegen a return instruction with the right return value(s) if any.
-pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Module>) {
+pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
     match fx.fn_abi.as_ref().unwrap().ret.mode {
         PassMode::Ignore
         | PassMode::Indirect {

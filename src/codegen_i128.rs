@@ -5,7 +5,7 @@ use cranelift_codegen::ir::ArgumentPurpose;
 use crate::prelude::*;
 
 pub(crate) fn maybe_codegen<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     checked: bool,
     lhs: CValue<'tcx>,
