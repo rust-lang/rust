@@ -1651,7 +1651,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
-        let Range { start, end } = range.assert_len(len);
+        let Range { start, end } = slice::range(range, ..len);
 
         unsafe {
             // set self.vec length's to start, to be safe in case Drain is leaked
@@ -2037,11 +2037,11 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let range = src.assert_len(self.len());
+        let range = slice::range(src, ..self.len());
         self.reserve(range.len());
 
         // SAFETY:
-        // - `assert_len` guarantees  that the given range is valid for indexing self
+        // - `slice::range` guarantees  that the given range is valid for indexing self
         unsafe {
             self.spec_extend_from_within(range);
         }
