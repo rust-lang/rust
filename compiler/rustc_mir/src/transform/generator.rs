@@ -1007,9 +1007,9 @@ fn insert_panic_block<'tcx>(
     assert_block
 }
 
-fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
+fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
     // Returning from a function with an uninhabited return type is undefined behavior.
-    if body.return_ty().conservative_is_privately_uninhabited(tcx) {
+    if tcx.conservative_is_privately_uninhabited(param_env.and(body.return_ty())) {
         return false;
     }
 
@@ -1320,7 +1320,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // `storage_liveness` tells us which locals have live storage at suspension points
         let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
 
-        let can_return = can_return(tcx, body);
+        let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
 
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
