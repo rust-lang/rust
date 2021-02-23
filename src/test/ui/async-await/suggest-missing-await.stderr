@@ -29,7 +29,7 @@ help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
    |            ^^^^^^
-help: try adding a semicolon
+help: consider using a semicolon here
    |
 LL |     dummy();
    |            ^

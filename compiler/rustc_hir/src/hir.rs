@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{DefKind, Namespace, Res};
+use crate::def::{CtorKind, DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -1575,6 +1575,63 @@ impl Expr<'_> {
             expr = inner;
         }
         expr
+    }
+
+    pub fn can_have_side_effects(&self) -> bool {
+        match self.peel_drop_temps().kind {
+            ExprKind::Path(_) | ExprKind::Lit(_) => false,
+            ExprKind::Type(base, _)
+            | ExprKind::Unary(_, base)
+            | ExprKind::Field(base, _)
+            | ExprKind::Index(base, _)
+            | ExprKind::AddrOf(.., base)
+            | ExprKind::Cast(base, _) => {
+                // This isn't exactly true for `Index` and all `Unnary`, but we are using this
+                // method exclusively for diagnostics and there's a *cultural* pressure against
+                // them being used only for its side-effects.
+                base.can_have_side_effects()
+            }
+            ExprKind::Struct(_, fields, init) => fields
+                .iter()
+                .map(|field| field.expr)
+                .chain(init.into_iter())
+                .all(|e| e.can_have_side_effects()),
+
+            ExprKind::Array(args)
+            | ExprKind::Tup(args)
+            | ExprKind::Call(
+                Expr {
+                    kind:
+                        ExprKind::Path(QPath::Resolved(
+                            None,
+                            Path { res: Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), .. },
+                        )),
+                    ..
+                },
+                args,
+            ) => args.iter().all(|arg| arg.can_have_side_effects()),
+            ExprKind::If(..)
+            | ExprKind::Match(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Call(..)
+            | ExprKind::Closure(..)
+            | ExprKind::Block(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Break(..)
+            | ExprKind::Continue(..)
+            | ExprKind::Ret(..)
+            | ExprKind::Loop(..)
+            | ExprKind::Assign(..)
+            | ExprKind::InlineAsm(..)
+            | ExprKind::LlvmInlineAsm(..)
+            | ExprKind::AssignOp(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::Box(..)
+            | ExprKind::Binary(..)
+            | ExprKind::Yield(..)
+            | ExprKind::DropTemps(..)
+            | ExprKind::Err => true,
+        }
     }
 }
 

@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if call_is_multiline {
                                 err.span_suggestion(
                                     callee.span.shrink_to_hi(),
-                                    "try adding a semicolon",
+                                    "consider using a semicolon here",
                                     ";".to_owned(),
                                     Applicability::MaybeIncorrect,
                                 );
