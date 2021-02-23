@@ -515,11 +515,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             all: Rc::new(RefCell::new(AllTypes::new())),
             errors: Rc::new(receiver),
             cache: Rc::new(cache),
-            redirections: if generate_redirect_map {
-                Some(Rc::new(RefCell::new(FxHashMap::default())))
-            } else {
-                None
-            },
+            redirections: if generate_redirect_map { Some(Default::default()) } else { None },
         };
 
         CURRENT_DEPTH.with(|s| s.set(0));
@@ -683,9 +679,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
             let item_type = item.type_();
-            let file_name = item_path(item_type, &name.as_str());
+            let file_name = &item_path(item_type, &name.as_str());
             self.shared.ensure_dir(&self.dst)?;
-            let joint_dst = self.dst.join(&file_name);
+            let joint_dst = self.dst.join(file_name);
             self.shared.fs.write(&joint_dst, buf.as_bytes())?;
 
             if !self.render_redirect_pages {
@@ -702,7 +698,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                         format!("{}/{}", crate_name, file_name),
                     );
                 } else {
-                    let v = layout::redirect(&file_name);
+                    let v = layout::redirect(file_name);
                     let redir_dst = self.dst.join(redir_name);
                     self.shared.fs.write(&redir_dst, v.as_bytes())?;
                 }
