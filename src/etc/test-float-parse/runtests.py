@@ -77,7 +77,7 @@ Windows) the worker processes are leaked and stick around forever.
 They're only a few megabytes each, but still, this script should not be run
 if you aren't prepared to manually kill a lot of orphaned processes.
 """
-from __future__ import print_function
+
 import sys
 import os.path
 import time

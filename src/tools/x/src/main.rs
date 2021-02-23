@@ -4,7 +4,7 @@
 //! However, since `exec` isn't available on Windows, we indirect through
 //! `exec_or_status`, which will call `exec` on unix and `status` on Windows.
 //!
-//! We use `python`, `python3`, or `python2` as the python interpreter to run
+//! We use `python` or `python3` as the python interpreter to run
 //! `x.py`, in that order of preference.
 
 use std::{
@@ -13,7 +13,6 @@ use std::{
 };
 
 const PYTHON: &str = "python";
-const PYTHON2: &str = "python2";
 const PYTHON3: &str = "python3";
 
 fn python() -> &'static str {
@@ -22,7 +21,6 @@ fn python() -> &'static str {
         None => return PYTHON,
     };
 
-    let mut python2 = false;
     let mut python3 = false;
 
     for dir in env::split_paths(&val) {
@@ -30,16 +28,16 @@ fn python() -> &'static str {
             return PYTHON;
         }
 
-        python2 |= dir.join(PYTHON2).exists();
         python3 |= dir.join(PYTHON3).exists();
     }
 
     if python3 {
         PYTHON3
-    } else if python2 {
-        PYTHON2
-    } else {
+    } else if PYTHON {
         PYTHON
+    } else {
+        eprintln!("Python3 is required to build rustc");
+        process::exit(1);
     }
 }
 

@@ -2,14 +2,13 @@
 
 # ignore-tidy-linelength
 
-from __future__ import absolute_import, division, print_function
+import bootstrap
 import sys
 import os
 rust_dir = os.path.dirname(os.path.abspath(__file__))
 rust_dir = os.path.dirname(rust_dir)
 rust_dir = os.path.dirname(rust_dir)
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
-import bootstrap
 
 
 class Option(object):
@@ -36,24 +35,34 @@ o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
 o("parallel-compiler", "rust.parallel-compiler", "build a multi-threaded rustc")
-o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
-o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
+o("verbose-tests", "rust.verbose-tests",
+  "enable verbose output when running tests")
+o("ccache", "llvm.ccache",
+  "invoke gcc/clang via ccache to reuse object files between builds")
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
 o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
 v("local-rust-root", None, "set prefix for local rust binary")
-o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version")
-o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM")
-o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
+o("local-rebuild", "build.local-rebuild",
+  "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version")
+o("llvm-static-stdcpp", "llvm.static-libstdcpp",
+  "statically link to libstdc++ for LLVM")
+o("llvm-link-shared", "llvm.link-shared",
+  "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
-o("llvm-version-check", "llvm.version-check", "check if the LLVM version is supported, build anyway")
+o("llvm-version-check", "llvm.version-check",
+  "check if the LLVM version is supported, build anyway")
 o("codegen-tests", "rust.codegen-tests", "run the src/test/codegen tests")
 o("option-checking", None, "complain about unrecognized options in this configure script")
-o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
+o("ninja", "llvm.ninja",
+  "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
 o("vendor", "build.vendor", "enable usage of vendored Rust crates")
-o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, msan, tsan)")
-o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
-o("cargo-native-static", "build.cargo-native-static", "static native libraries in cargo")
+o("sanitizers", "build.sanitizers",
+  "build the sanitizer runtimes (asan, lsan, msan, tsan)")
+o("dist-src", "rust.dist-src",
+  "when building tarballs enables building a source tarball")
+o("cargo-native-static", "build.cargo-native-static",
+  "static native libraries in cargo")
 o("profiler", "build.profiler", "build the profiler runtime")
 o("full-tools", None, "enable all tools")
 o("lld", "rust.lld", "build lld")
@@ -73,13 +82,19 @@ o("optimize", "rust.optimize", "build optimized rust code")
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
-o("llvm-release-debuginfo", "llvm.release-debuginfo", "build LLVM with debugger metadata")
+o("llvm-release-debuginfo", "llvm.release-debuginfo",
+  "build LLVM with debugger metadata")
 v("debuginfo-level", "rust.debuginfo-level", "debuginfo level for Rust code")
-v("debuginfo-level-rustc", "rust.debuginfo-level-rustc", "debuginfo level for the compiler")
-v("debuginfo-level-std", "rust.debuginfo-level-std", "debuginfo level for the standard library")
-v("debuginfo-level-tools", "rust.debuginfo-level-tools", "debuginfo level for the tools")
-v("debuginfo-level-tests", "rust.debuginfo-level-tests", "debuginfo level for the test suites run with compiletest")
-v("save-toolstates", "rust.save-toolstates", "save build and test status of external tools into this file")
+v("debuginfo-level-rustc", "rust.debuginfo-level-rustc",
+  "debuginfo level for the compiler")
+v("debuginfo-level-std", "rust.debuginfo-level-std",
+  "debuginfo level for the standard library")
+v("debuginfo-level-tools", "rust.debuginfo-level-tools",
+  "debuginfo level for the tools")
+v("debuginfo-level-tests", "rust.debuginfo-level-tests",
+  "debuginfo level for the test suites run with compiletest")
+v("save-toolstates", "rust.save-toolstates",
+  "save build and test status of external tools into this file")
 
 v("prefix", "install.prefix", "set installation prefix")
 v("localstatedir", "install.localstatedir", "local state directory")
@@ -146,7 +161,8 @@ v("qemu-riscv64-rootfs", "target.riscv64gc-unknown-linux-gnu.qemu-rootfs",
 v("experimental-targets", "llvm.experimental-targets",
   "experimental LLVM targets to build")
 v("release-channel", "rust.channel", "the name of the release channel to build")
-v("release-description", "rust.description", "optional descriptive string for version output")
+v("release-description", "rust.description",
+  "optional descriptive string for version output")
 v("dist-compression-formats", None,
   "comma-separated list of compression formats to use")
 
@@ -155,8 +171,10 @@ v("default-linker", "rust.default-linker", "the default linker")
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
-o("manage-submodules", "build.submodules", "let the build manage the git submodules")
-o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two")
+o("manage-submodules", "build.submodules",
+  "let the build manage the git submodules")
+o("full-bootstrap", "build.full-bootstrap",
+  "build three compilers instead of two")
 o("extended", "build.extended", "build an extended rust tool set")
 
 v("tools", None, "List of extended tools will be installed")
@@ -185,9 +203,11 @@ if '--help' in sys.argv or '-h' in sys.argv:
             # no one needs to know about these obscure options
             continue
         if option.value:
-            print('\t{:30} {}'.format('--{}=VAL'.format(option.name), option.desc))
+            print('\t{:30} {}'.format(
+                '--{}=VAL'.format(option.name), option.desc))
         else:
-            print('\t{:30} {}'.format('--enable-{}'.format(option.name), option.desc))
+            print('\t{:30} {}'.format(
+                '--enable-{}'.format(option.name), option.desc))
     print('')
     print('This configure script is a thin configuration shim over the true')
     print('configuration system, `config.toml`. You can explore the comments')
@@ -376,7 +396,8 @@ for line in open(rust_dir + '/config.toml.example').read().split("\n"):
         if cur_section.startswith('target'):
             cur_section = 'target'
         elif '.' in cur_section:
-            raise RuntimeError("don't know how to deal with section: {}".format(cur_section))
+            raise RuntimeError(
+                "don't know how to deal with section: {}".format(cur_section))
         sections[cur_section] = [line]
         section_order.append(cur_section)
     else:
@@ -395,7 +416,8 @@ if 'target' in config:
         configured_targets.append(target)
 for target in configured_targets:
     targets[target] = sections['target'][:]
-    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
+    targets[target][0] = targets[target][0].replace(
+        "x86_64-unknown-linux-gnu", target)
 
 
 def is_number(value):

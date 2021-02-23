@@ -13,7 +13,6 @@ The representation ([u64], [i16]) instead of the more natural [(u64, i16)]
 is used because (u64, i16) has a ton of padding which would make the table
 even larger, and it's already uncomfortably large (6 KiB).
 """
-from __future__ import print_function
 from math import ceil, log
 from fractions import Fraction
 from collections import namedtuple

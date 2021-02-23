@@ -6,8 +6,6 @@
 # It gets called from `src/ci/publish_toolstate.sh` when a new commit lands on `master`
 # (i.e., after it passed all checks on `auto`).
 
-from __future__ import print_function
-
 import sys
 import re
 import os
@@ -62,6 +60,7 @@ REPOS = {
     'rustc-dev-guide': 'https://github.com/rust-lang/rustc-dev-guide',
 }
 
+
 def load_json_from_response(resp):
     content = resp.read()
     if isinstance(content, bytes):
@@ -69,6 +68,7 @@ def load_json_from_response(resp):
     else:
         print("Refusing to decode " + str(type(content)) + " to str")
     return json.loads(content)
+
 
 def validate_maintainers(repo, github_token):
     '''Ensure all maintainers are assignable on a GitHub repo'''
@@ -83,7 +83,8 @@ def validate_maintainers(repo, github_token):
             # Properly load nested teams.
             'Accept': 'application/vnd.github.hellcat-preview+json',
         }))
-        assignable.extend(user['login'] for user in load_json_from_response(response))
+        assignable.extend(user['login']
+                          for user in load_json_from_response(response))
         # Load the next page if available
         url = None
         link_header = response.headers.get('Link')
@@ -213,7 +214,8 @@ def update_latest(
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                maintainers = ' '.join('@'+name for name in MAINTAINERS.get(tool, ()))
+                maintainers = ' '.join(
+                    '@'+name for name in MAINTAINERS.get(tool, ()))
                 # comparing the strings, but they are ordered appropriately:
                 # "test-pass" > "test-fail" > "build-fail"
                 if new > old:
@@ -243,8 +245,10 @@ def update_latest(
             if create_issue_for_status is not None:
                 try:
                     issue(
-                        tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
-                        relevant_pr_number, relevant_pr_user, LABELS.get(tool, ''),
+                        tool, create_issue_for_status, MAINTAINERS.get(
+                            tool, ''),
+                        relevant_pr_number, relevant_pr_user, LABELS.get(
+                            tool, ''),
                     )
                 except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better
@@ -252,7 +256,8 @@ def update_latest(
                     print("HTTPError when creating issue for status regression: {0}\n{1}"
                           .format(e, e.read()))
                 except IOError as e:
-                    print("I/O error when creating issue for status regression: {0}".format(e))
+                    print(
+                        "I/O error when creating issue for status regression: {0}".format(e))
                 except:
                     print("Unexpected error when creating issue for status regression: {0}"
                           .format(sys.exc_info()[0]))
@@ -284,7 +289,8 @@ try:
         if github_token:
             validate_maintainers(repo, github_token)
         else:
-            print('skipping toolstate maintainers validation since no GitHub token is present')
+            print(
+                'skipping toolstate maintainers validation since no GitHub token is present')
         # When validating maintainers don't run the full script.
         exit(0)
 

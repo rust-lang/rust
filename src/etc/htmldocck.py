@@ -101,8 +101,6 @@ checks if the given file does not exist, for example.
 
 """
 
-from __future__ import absolute_import, print_function, unicode_literals
-
 import codecs
 import io
 import sys
@@ -126,7 +124,7 @@ except ImportError:
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
 VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
-                     'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'}
+                 'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'}
 
 # Python 2 -> 3 compatibility
 try:
@@ -141,6 +139,7 @@ class CustomHTMLParser(HTMLParser):
     this is possible because we are dealing with very regular HTML from
     rustdoc; we only have to deal with i) void elements and ii) empty
     attributes."""
+
     def __init__(self, target=None):
         HTMLParser.__init__(self)
         self.__builder = target or ET.TreeBuilder()
@@ -166,7 +165,8 @@ class CustomHTMLParser(HTMLParser):
         self.__builder.data(unichr(name2codepoint[name]))
 
     def handle_charref(self, name):
-        code = int(name[1:], 16) if name.startswith(('x', 'X')) else int(name, 10)
+        code = int(name[1:], 16) if name.startswith(
+            ('x', 'X')) else int(name, 10)
         self.__builder.data(unichr(code))
 
     def close(self):
@@ -250,7 +250,8 @@ def get_commands(template):
             try:
                 args = shlex.split(args)
             except UnicodeEncodeError:
-                args = [arg.decode('utf-8') for arg in shlex.split(args.encode('utf-8'))]
+                args = [arg.decode('utf-8')
+                        for arg in shlex.split(args.encode('utf-8'))]
             yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1, context=line)
 
 
@@ -275,7 +276,8 @@ def normalize_xpath(path):
     elif path.startswith('.//'):
         return path
     else:
-        raise InvalidCheck('Non-absolute XPath is not supported due to implementation issues')
+        raise InvalidCheck(
+            'Non-absolute XPath is not supported due to implementation issues')
 
 
 class CachedFiles(object):
@@ -291,7 +293,8 @@ class CachedFiles(object):
             self.last_path = path
             return path
         elif self.last_path is None:
-            raise InvalidCheck('Tried to use the previous path in the first command')
+            raise InvalidCheck(
+                'Tried to use the previous path in the first command')
         else:
             return self.last_path
 
@@ -322,7 +325,8 @@ class CachedFiles(object):
             try:
                 tree = ET.fromstringlist(f.readlines(), CustomHTMLParser())
             except Exception as e:
-                raise RuntimeError('Cannot parse an HTML file {!r}: {}'.format(path, e))
+                raise RuntimeError(
+                    'Cannot parse an HTML file {!r}: {}'.format(path, e))
             self.trees[path] = tree
             return self.trees[path]
 
@@ -420,7 +424,8 @@ def check_command(c, cache):
                     ret = False
             elif len(c.args) == 2:  # @has/matches <path> <pat> = string test
                 cerr = "`PATTERN` did not match"
-                ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
+                ret = check_string(cache.get_file(
+                    c.args[0]), c.args[1], regexp)
             elif len(c.args) == 3:  # @has/matches <path> <pat> <match> = XML tree test
                 cerr = "`XPATH PATTERN` did not match"
                 tree = cache.get_tree(c.args[0])
@@ -432,18 +437,22 @@ def check_command(c, cache):
                     pat = c.args[1]
                     if pat.endswith('/text()'):
                         pat = pat[:-7]
-                    ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
+                    ret = check_tree_text(cache.get_tree(
+                        c.args[0]), pat, c.args[2], regexp)
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck(
+                    'Invalid number of @{} arguments'.format(c.cmd))
 
         elif c.cmd == 'count':  # count test
             if len(c.args) == 3:  # @count <path> <pat> <count> = count test
                 expected = int(c.args[2])
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
-                cerr = "Expected {} occurrences but found {}".format(expected, found)
+                cerr = "Expected {} occurrences but found {}".format(
+                    expected, found)
                 ret = expected == found
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck(
+                    'Invalid number of @{} arguments'.format(c.cmd))
         elif c.cmd == 'has-dir':  # has-dir test
             if len(c.args) == 1:  # @has-dir <path> = has-dir test
                 try:
@@ -453,7 +462,8 @@ def check_command(c, cache):
                     cerr = str(err)
                     ret = False
             else:
-                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+                raise InvalidCheck(
+                    'Invalid number of @{} arguments'.format(c.cmd))
         elif c.cmd == 'valid-html':
             raise InvalidCheck('Unimplemented @valid-html')
 

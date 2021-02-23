@@ -40,7 +40,8 @@ if command -v python > /dev/null; then
 elif command -v python3 > /dev/null; then
     PYTHON="python3"
 else
-    PYTHON="python2"
+    echo "Python3 is required to run rustc" 1>&2
+    exit 1
 fi
 
 if ! isCI || isCiBranch auto || isCiBranch beta; then

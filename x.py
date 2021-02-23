@@ -2,7 +2,6 @@
 
 # This file is only a "symlink" to bootstrap.py, all logic should go there.
 
-import bootstrap
 import os
 import sys
 
@@ -24,4 +23,5 @@ if sys.version_info.major < 3:
 rust_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
 
+import bootstrap
 bootstrap.main()
