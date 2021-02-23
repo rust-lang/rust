@@ -17,6 +17,6 @@ fn main() {
         assert_eq!(byte, 0);
     }
     let v = unsafe { *z.offset(first_undef) };
-    if v == 0 {}
+    if v == 0 { println!("it is zero"); }
     //~^ ERROR this operation requires initialized memory
 }
