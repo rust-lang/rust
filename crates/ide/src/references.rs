@@ -1224,4 +1224,29 @@ fn test() {}
             "#]],
         );
     }
+
+    #[test]
+    fn test_const_in_pattern() {
+        check(
+            r#"
+const A$0: i32 = 42;
+
+fn main() {
+    match A {
+        A => (),
+        _ => (),
+    }
+    if let A = A {}
+}
+"#,
+            expect![[r#"
+                A Const FileId(0) 0..18 6..7
+
+                FileId(0) 42..43
+                FileId(0) 54..55
+                FileId(0) 97..98
+                FileId(0) 101..102
+            "#]],
+        );
+    }
 }
