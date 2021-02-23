@@ -1,4 +1,4 @@
-error: All if blocks contain the same code at the start and the end. Here at the start:
+error: all if blocks contain the same code at the start and the end. Here at the start
   --> $DIR/shared_at_top_and_bot.rs:16:5
    |
 LL | /     if x == 7 {
@@ -12,26 +12,26 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: And here at the end:
+note: and here at the end
   --> $DIR/shared_at_top_and_bot.rs:28:5
    |
 LL | /         let _u = 9;
 LL | |     }
    | |_____^
-help: Consider moving the start statements out like this:
+help: consider moving the start statements out like this
    |
 LL |     let t = 7;
 LL |     let _overlap_start = t * 2;
 LL |     let _overlap_end = 2 * t;
 LL |     if x == 7 {
    |
-help: And consider moving the end statements out like this:
+help: and consider moving the end statements out like this
    |
 LL |     }
 LL |     let _u = 9;
    |
 
-error: All if blocks contain the same code at the start and the end. Here at the start:
+error: all if blocks contain the same code at the start and the end. Here at the start
   --> $DIR/shared_at_top_and_bot.rs:32:5
    |
 LL | /     if x == 99 {
@@ -40,7 +40,7 @@ LL | |         let _overlap_start = r;
 LL | |         let _overlap_middle = r * r;
    | |____________________________________^
    |
-note: And here at the end:
+note: and here at the end
   --> $DIR/shared_at_top_and_bot.rs:43:5
    |
 LL | /         let _overlap_end = r * r * r;
@@ -48,21 +48,21 @@ LL | |         let z = "end";
 LL | |     }
    | |_____^
    = warning: Some moved values might need to be renamed to avoid wrong references.
-help: Consider moving the start statements out like this:
+help: consider moving the start statements out like this
    |
 LL |     let r = 7;
 LL |     let _overlap_start = r;
 LL |     let _overlap_middle = r * r;
 LL |     if x == 99 {
    |
-help: And consider moving the end statements out like this:
+help: and consider moving the end statements out like this
    |
 LL |     }
 LL |     let _overlap_end = r * r * r;
 LL |     let z = "end";
    |
 
-error: All if blocks contain the same code at the start and the end. Here at the start:
+error: all if blocks contain the same code at the start and the end. Here at the start
   --> $DIR/shared_at_top_and_bot.rs:61:5
    |
 LL | /     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
@@ -71,7 +71,7 @@ LL | |         let b = 0xffff00ff;
 LL | |         let e_id = gen_id(a, b);
    | |________________________________^
    |
-note: And here at the end:
+note: and here at the end
   --> $DIR/shared_at_top_and_bot.rs:81:5
    |
 LL | /         let pack = DataPack {
@@ -83,14 +83,14 @@ LL | |         process_data(pack);
 LL | |     }
    | |_____^
    = warning: Some moved values might need to be renamed to avoid wrong references.
-help: Consider moving the start statements out like this:
+help: consider moving the start statements out like this
    |
 LL |     let a = 0xcafe;
 LL |     let b = 0xffff00ff;
 LL |     let e_id = gen_id(a, b);
 LL |     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
    |
-help: And consider moving the end statements out like this:
+help: and consider moving the end statements out like this
    |
 LL |     }
 LL |     let pack = DataPack {
@@ -100,51 +100,51 @@ LL |         some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
 LL |     };
  ...
 
-error: All if blocks contain the same code at the start and the end. Here at the start:
+error: all if blocks contain the same code at the start and the end. Here at the start
   --> $DIR/shared_at_top_and_bot.rs:94:5
    |
 LL | /     let _ = if x == 7 {
 LL | |         let _ = 19;
    | |___________________^
    |
-note: And here at the end:
+note: and here at the end
   --> $DIR/shared_at_top_and_bot.rs:103:5
    |
 LL | /         x << 2
 LL | |     };
    | |_____^
    = note: The end suggestion probably needs some adjustments to use the expression result correctly.
-help: Consider moving the start statements out like this:
+help: consider moving the start statements out like this
    |
 LL |     let _ = 19;
 LL |     let _ = if x == 7 {
    |
-help: And consider moving the end statements out like this:
+help: and consider moving the end statements out like this
    |
 LL |     }
 LL |     x << 2;
    |
 
-error: All if blocks contain the same code at the start and the end. Here at the start:
+error: all if blocks contain the same code at the start and the end. Here at the start
   --> $DIR/shared_at_top_and_bot.rs:106:5
    |
 LL | /     if x == 9 {
 LL | |         let _ = 17;
    | |___________________^
    |
-note: And here at the end:
+note: and here at the end
   --> $DIR/shared_at_top_and_bot.rs:115:5
    |
 LL | /         x * 4
 LL | |     }
    | |_____^
    = note: The end suggestion probably needs some adjustments to use the expression result correctly.
-help: Consider moving the start statements out like this:
+help: consider moving the start statements out like this
    |
 LL |     let _ = 17;
 LL |     if x == 9 {
    |
-help: And consider moving the end statements out like this:
+help: and consider moving the end statements out like this
    |
 LL |     }
 LL |     x * 4

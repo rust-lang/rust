@@ -109,23 +109,6 @@ fn trigger_other_lint() {
         let _ = "This is a string";
     }
 
-    // More complex same blocks
-    if x == 17 {
-        #[derive(Debug)]
-        struct Duck {
-            num: u64,
-        };
-        let pet = Duck { num: 18 };
-        println!("{:?}", pet);
-    } else {
-        #[derive(Debug)]
-        struct Duck {
-            num: u64,
-        };
-        let pet = Duck { num: 18 };
-        println!("{:?}", pet);
-    }
-
     // Only same expression
     let _ = if x == 6 { 7 } else { 7 };
 

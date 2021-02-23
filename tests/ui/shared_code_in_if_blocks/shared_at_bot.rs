@@ -4,7 +4,6 @@
 // This tests the shared_code_in_if_blocks lint at the end of blocks
 
 fn simple_examples() {
-    // TODO xFrednet 2021-01-06: Test with const literals at the end
     let x = 1;
 
     let _ = if x == 7 {
@@ -45,8 +44,8 @@ fn simple_examples() {
         println!("This is also eq with the else block");
         println!("Same end of block");
     } else {
-        println!("Same end of block");
         println!("This is also eq with the else block");
+        println!("Same end of block");
     }
 
     // Use of outer scope value
@@ -69,21 +68,11 @@ fn simple_examples() {
         );
     }
 
-    // TODO xFrednet 2021-01.13: Fix lint for `if let`
-    let index = Some(8);
-    if let Some(index) = index {
-        println!("The index is: {}", index);
-
-        println!("Same end of block");
-    } else {
-        println!("Same end of block");
-    }
-
     if x == 9 {
         if x == 8 {
             // No parent!!
-            println!("Hello World");
             println!("---");
+            println!("Hello World");
         } else {
             println!("Hello World");
         }

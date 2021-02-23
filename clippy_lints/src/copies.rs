@@ -295,11 +295,21 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> (usize,
         let l_stmts = win[0].stmts;
         let r_stmts = win[1].stmts;
 
+        // `SpanlessEq` now keeps track of the locals and is therefore context sensitive clippy#6752.
+        // The comparison therefor needs to be done in a way that builds the correct context.
         let mut evaluator = SpanlessEq::new(cx);
+        let mut evaluator = evaluator.inter_expr();
+
         let current_start_eq = count_eq(&mut l_stmts.iter(), &mut r_stmts.iter(), |l, r| evaluator.eq_stmt(l, r));
-        let current_end_eq = count_eq(&mut l_stmts.iter().rev(), &mut r_stmts.iter().rev(), |l, r| {
-            evaluator.eq_stmt(l, r)
-        });
+
+        let current_end_eq = {
+            // We skip the middle statements which can't be equal
+            let end_comparison_count = l_stmts.len().min(r_stmts.len()) - current_start_eq;
+            let it1 = l_stmts.iter().skip(l_stmts.len() - end_comparison_count);
+            let it2 = r_stmts.iter().skip(r_stmts.len() - end_comparison_count);
+            it1.zip(it2)
+                .fold(0, |acc, (l, r)| if evaluator.eq_stmt(l, r) { acc + 1 } else { 0 })
+        };
         let block_expr_eq = both(&win[0].expr, &win[1].expr, |l, r| evaluator.eq_expr(l, r));
 
         // IF_SAME_THEN_ELSE
@@ -458,8 +468,8 @@ fn emit_shared_code_in_if_blocks_lint(
     // Emit lint
     if suggestions.len() == 1 {
         let (place_str, span, sugg) = suggestions.pop().unwrap();
-        let msg = format!("All if blocks contain the same code at the {}", place_str);
-        let help = format!("Consider moving the {} statements out like this", place_str);
+        let msg = format!("all if blocks contain the same code at the {}", place_str);
+        let help = format!("consider moving the {} statements out like this", place_str);
         span_lint_and_then(cx, SHARED_CODE_IN_IF_BLOCKS, span, msg.as_str(), |diag| {
             diag.span_suggestion(span, help.as_str(), sugg, Applicability::Unspecified);
 
@@ -472,20 +482,20 @@ fn emit_shared_code_in_if_blocks_lint(
             cx,
             SHARED_CODE_IN_IF_BLOCKS,
             start_span,
-            "All if blocks contain the same code at the start and the end. Here at the start:",
+            "all if blocks contain the same code at the start and the end. Here at the start",
             move |diag| {
-                diag.span_note(end_span, "And here at the end:");
+                diag.span_note(end_span, "and here at the end");
 
                 diag.span_suggestion(
                     start_span,
-                    "Consider moving the start statements out like this:",
+                    "consider moving the start statements out like this",
                     start_sugg,
                     Applicability::Unspecified,
                 );
 
                 diag.span_suggestion(
                     end_span,
-                    "And consider moving the end statements out like this:",
+                    "and consider moving the end statements out like this",
                     end_sugg,
                     Applicability::Unspecified,
                 );
