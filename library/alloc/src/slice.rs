@@ -92,6 +92,8 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use core::slice::range;
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub use core::slice::ArrayChunks;
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -220,6 +222,7 @@ mod hack {
 }
 
 #[lang = "slice_alloc"]
+#[cfg_attr(not(test), rustc_diagnostic_item = "slice")]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Sorts the slice.

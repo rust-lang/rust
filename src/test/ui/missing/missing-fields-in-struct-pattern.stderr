@@ -2,7 +2,12 @@ error[E0769]: tuple variant `S` written as struct variant
   --> $DIR/missing-fields-in-struct-pattern.rs:4:12
    |
 LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
-   |            ^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `S(a, b, c, d)`
+   |            ^^^^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |     if let S(a, b, c, d) = S(1, 2, 3, 4) {
+   |             ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

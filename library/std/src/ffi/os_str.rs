@@ -71,6 +71,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
@@ -93,6 +94,7 @@ impl crate::sealed::Sealed for OsString {}
 ///
 /// [`&str`]: str
 /// [conversions]: super#conversions
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies

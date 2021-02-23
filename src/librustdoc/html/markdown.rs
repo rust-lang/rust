@@ -52,11 +52,12 @@ pub(crate) fn opts() -> Options {
         | Options::ENABLE_FOOTNOTES
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_TASKLISTS
+        | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// A subset of [`opts()`] used for rendering summaries.
 pub(crate) fn summary_opts() -> Options {
-    Options::ENABLE_STRIKETHROUGH
+    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to

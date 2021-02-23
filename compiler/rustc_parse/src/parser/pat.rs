@@ -1028,7 +1028,7 @@ impl<'a> Parser<'a> {
             let boxed_span = self.token.span;
             let is_ref = self.eat_keyword(kw::Ref);
             let is_mut = self.eat_keyword(kw::Mut);
-            let fieldname = self.parse_ident()?;
+            let fieldname = self.parse_field_name()?;
             hi = self.prev_token.span;
 
             let bind_type = match (is_ref, is_mut) {

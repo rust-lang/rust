@@ -561,7 +561,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
-                    self.suggest_semicolon_at_end(expr.span, err);
+                    if expr.can_have_side_effects() {
+                        self.suggest_semicolon_at_end(expr.span, err);
+                    }
                 });
             }
             hir::StmtKind::Semi(ref expr) => {

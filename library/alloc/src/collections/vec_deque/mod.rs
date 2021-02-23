@@ -1063,7 +1063,7 @@ impl<T> VecDeque<T> {
     where
         R: RangeBounds<usize>,
     {
-        let Range { start, end } = range.assert_len(self.len());
+        let Range { start, end } = slice::range(range, ..self.len());
         let tail = self.wrap_add(self.tail, start);
         let head = self.wrap_add(self.tail, end);
         (tail, head)

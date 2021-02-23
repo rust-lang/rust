@@ -152,6 +152,9 @@ impl isize {
      usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
+
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
@@ -195,7 +198,7 @@ impl u8 {
     #[inline]
     pub fn to_ascii_uppercase(&self) -> u8 {
         // Unset the fifth bit if this is a lowercase letter
-        *self & !((self.is_ascii_lowercase() as u8) << 5)
+        *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -218,7 +221,13 @@ impl u8 {
     #[inline]
     pub fn to_ascii_lowercase(&self) -> u8 {
         // Set the fifth bit if this is an uppercase letter
-        *self | ((self.is_ascii_uppercase() as u8) << 5)
+        *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
+    }
+
+    /// Assumes self is ascii
+    #[inline]
+    pub(crate) fn ascii_change_case_unchecked(&self) -> u8 {
+        *self ^ ASCII_CASE_MASK
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
