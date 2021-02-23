@@ -224,6 +224,11 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
                                                          /*addOffset*/ Off);
       Off += ObjSize;
     }
+    if (TA.fntypeinfo.Function->getParent()
+                          ->getDataLayout()
+                          .getTypeSizeInBits(CA->getType()) >= 16) {
+      Result.ReplaceIntWithAnything();
+    }
     return Result;
   }
 
@@ -264,6 +269,11 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
       Result |= getConstantAnalysis(Op, TA).ShiftIndices(DL, /*init offset*/ 0,
                                                          /*maxSize*/ ObjSize,
                                                          /*addOffset*/ Off);
+    }
+    if (TA.fntypeinfo.Function->getParent()
+                          ->getDataLayout()
+                          .getTypeSizeInBits(CD->getType()) >= 16) {
+      Result.ReplaceIntWithAnything();
     }
     return Result;
   }
@@ -2005,6 +2015,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
+  if (!(direction & UP)) return;
+
   // If memcpy / memmove of pointer, we can propagate type information from src
   // to dst up to the length and vice versa
   size_t sz = 1;
@@ -2021,15 +2033,24 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
 
   TypeTree res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
-  res |= res2;
 
-  if (direction & UP) {
-    updateAnalysis(MTI.getArgOperand(0), res, &MTI);
-    updateAnalysis(MTI.getArgOperand(1), res, &MTI);
-    for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
-      updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
-                     &MTI);
-    }
+  bool Legal = true;
+  res.checkedOrIn(res2, /*PointerIntSame*/false, Legal);
+  if (!Legal) {
+    dump();
+    llvm::errs() << MTI << "\n";
+    llvm::errs() << "Illegal orIn: " << res.str() << " right: " << res2.str()
+                  << "\n";
+    llvm::errs() << *MTI.getArgOperand(0) << " " << getAnalysis(MTI.getArgOperand(0)).str() << "\n";
+    llvm::errs() << *MTI.getArgOperand(1) << " " << getAnalysis(MTI.getArgOperand(1)).str() << "\n";
+    assert(0 && "Performed illegal visitMemTransferInst::orIn");
+    llvm_unreachable("Performed illegal visitMemTransferInst::orIn");
+  }
+  updateAnalysis(MTI.getArgOperand(0), res, &MTI);
+  updateAnalysis(MTI.getArgOperand(1), res, &MTI);
+  for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
+    updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
+                    &MTI);
   }
 }
 

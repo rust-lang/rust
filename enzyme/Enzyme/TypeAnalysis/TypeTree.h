@@ -782,6 +782,15 @@ public:
     return dat;
   }
 
+  /// Replace all integer subtypes with anything
+  void ReplaceIntWithAnything() {
+    for (auto &pair : mapping) {
+      if (pair.second == BaseType::Integer) {
+        pair.second = BaseType::Anything;
+      }
+    }
+  }
+
   /// Keep only mappings where the type is an `Anything`
   TypeTree JustAnything() const {
     TypeTree dat;
@@ -826,9 +835,10 @@ public:
     ConcreteType CT = operator[](Seq);
 
     bool subchanged = CT.checkedOrIn(RHS, PointerIntSame, LegalOr);
-    assert(LegalOr);
     if (!subchanged)
       return false;
+    if (!LegalOr)
+      return subchanged;
 
     if (Seq.size() > 0) {
       // check pointer abilities from before

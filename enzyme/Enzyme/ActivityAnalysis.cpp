@@ -113,7 +113,8 @@ std::set<std::string> KnownInactiveFunctions = {"__assert_fail",
                                                 "MPI_Get_processor_name",
                                                 "MPI_Finalize",
                                                 "_msize",
-                                                "ftnio_fmt_write64"};
+                                                "ftnio_fmt_write64",
+                                                "f90_strcmp_klen"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
 /// This tool can only be used when in DOWN mode
