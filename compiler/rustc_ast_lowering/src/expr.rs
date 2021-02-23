@@ -347,8 +347,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         macro_rules! make_if {
             ($opt:expr) => {{
+                let cond = self.lower_expr(cond);
                 let then_expr = self.lower_block_expr(then);
-                hir::ExprKind::If(self.lower_expr(cond), self.arena.alloc(then_expr), $opt)
+                hir::ExprKind::If(cond, self.arena.alloc(then_expr), $opt)
             }};
         }
         if let Some(rslt) = else_opt {
