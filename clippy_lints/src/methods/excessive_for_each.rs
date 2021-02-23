@@ -66,6 +66,13 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
 /// This type plays two roles.
 /// 1. Collect spans of `return` in the closure body.
 /// 2. Detect use of `return` in `Loop` in the closure body.
+///
+/// NOTE: The functionality of this type is similar to
+/// [`crate::utilts::visitors::find_all_ret_expressions`], but we can't use
+/// `find_all_ret_expressions` instead of this type. The reasons are:
+/// 1. `find_all_ret_expressions` passes the argument of `ExprKind::Ret` to a callback, but what we
+///    need here is `ExprKind::Ret` itself.
+/// 2. We can't trace current loop depth with `find_all_ret_expressions`.
 struct RetCollector {
     spans: Vec<Span>,
     ret_in_loop: bool,
