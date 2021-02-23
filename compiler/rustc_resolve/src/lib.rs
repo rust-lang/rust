@@ -1076,6 +1076,10 @@ impl ResolverAstLowering for Resolver<'_> {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
 
+    fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
+        self.cstore().item_attrs(def_id, sess)
+    }
+
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).cloned()
     }

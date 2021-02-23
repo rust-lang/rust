@@ -91,6 +91,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::naked) {
                 self.check_naked(hir_id, attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_legacy_const_generics) {
+                self.check_rustc_legacy_const_generics(&attr, span, target, item)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -714,6 +716,79 @@ impl CheckAttrVisitor<'tcx> {
                 })) = item
                 {
                     let arg_count = decl.inputs.len() as u128;
+                    if *val >= arg_count {
+                        let span = meta.span();
+                        self.tcx
+                            .sess
+                            .struct_span_err(span, "index exceeds number of arguments")
+                            .span_label(
+                                span,
+                                format!(
+                                    "there {} only {} argument{}",
+                                    if arg_count != 1 { "are" } else { "is" },
+                                    arg_count,
+                                    pluralize!(arg_count)
+                                ),
+                            )
+                            .emit();
+                        return false;
+                    }
+                } else {
+                    bug!("should be a function item");
+                }
+            } else {
+                invalid_args.push(meta.span());
+            }
+        }
+
+        if !invalid_args.is_empty() {
+            self.tcx
+                .sess
+                .struct_span_err(invalid_args, "arguments should be non-negative integers")
+                .emit();
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
+    fn check_rustc_legacy_const_generics(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) -> bool {
+        let is_function = matches!(target, Target::Fn | Target::Method(..) | Target::ForeignFn);
+        if !is_function {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a function")
+                .span_label(*span, "not a function")
+                .emit();
+            return false;
+        }
+
+        let list = match attr.meta_item_list() {
+            // The attribute form is validated on AST.
+            None => return false,
+            Some(it) => it,
+        };
+
+        let mut invalid_args = vec![];
+        for meta in list {
+            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
+                if let Some(ItemLike::Item(Item {
+                    kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
+                    ..
+                }))
+                | Some(ItemLike::ForeignItem(ForeignItem {
+                    kind: ForeignItemKind::Fn(decl, _, generics),
+                    ..
+                })) = item
+                {
+                    let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
                     if *val >= arg_count {
                         let span = meta.span();
                         self.tcx

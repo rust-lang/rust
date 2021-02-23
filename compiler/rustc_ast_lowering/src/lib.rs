@@ -175,6 +175,8 @@ pub trait ResolverAstLowering {
 
     fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
 
+    fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute>;
+
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 
@@ -2824,6 +2826,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 "extern declarations without an explicit ABI are deprecated",
                 BuiltinLintDiagnostics::MissingAbi(span, default),
             )
+        }
+    }
+
+    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> {
+        if let Some(_local_def_id) = def_id.as_local() {
+            // TODO: This doesn't actually work, items doesn't include everything?
+            //self.items[&hir::ItemId { def_id: local_def_id }].attrs.into()
+            Vec::new()
+        } else {
+            self.resolver.item_attrs(def_id, self.sess)
         }
     }
 }
