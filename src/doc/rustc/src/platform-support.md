@@ -208,6 +208,7 @@ target | std | host | notes
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
+`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 2.6.32, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 `sparc64-unknown-openbsd` | ? |  |
