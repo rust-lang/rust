@@ -775,18 +775,92 @@ fn main() {
     }
 
     #[test]
-    fn unresolved_qualifiers() {
+    fn unresolved_qualifier() {
+        check_edit(
+            "Item",
+            r#"
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub struct Item;
+        }
+    }
+}
+
+fn main() {
+    bar::baz::Ite$0
+}
+"#,
+            r#"
+use foo::bar;
+
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub struct Item;
+        }
+    }
+}
+
+fn main() {
+    bar::baz::Item
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_assoc_item_container() {
+        check_edit(
+            "Item",
+            r#"
+mod foo {
+    pub struct Item;
+
+    impl Item {
+        pub const TEST_ASSOC: usize = 3;
+    }
+}
+
+fn main() {
+    Item::TEST_A$0;
+}
+"#,
+            r#"
+use foo::Item;
+
+mod foo {
+    pub struct Item;
+
+    impl Item {
+        pub const TEST_ASSOC: usize = 3;
+    }
+}
+
+fn main() {
+    Item::TEST_ASSOC
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_assoc_item_container_with_path() {
         check_edit(
             "Item",
             r#"
 mod foo {
     pub mod bar {
         pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
     }
 }
 
 fn main() {
-    bar::Ite$0
+    bar::Item::TEST_A$0;
 }
 "#,
             r#"
@@ -795,11 +869,15 @@ use foo::bar;
 mod foo {
     pub mod bar {
         pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
     }
 }
 
 fn main() {
-    bar::Item
+    bar::Item::TEST_ASSOC
 }
 "#,
         );

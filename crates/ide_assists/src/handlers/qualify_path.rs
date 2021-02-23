@@ -1,7 +1,10 @@
 use std::iter;
 
 use hir::AsAssocItem;
-use ide_db::helpers::{import_assets::ImportCandidate, mod_path_to_ast};
+use ide_db::helpers::{
+    import_assets::{ImportCandidate, Qualifier},
+    mod_path_to_ast,
+};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -45,7 +48,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) => {
-            if candidate.unresolved_qualifier.is_some() {
+            if !matches!(candidate.qualifier, Qualifier::Absent) {
                 cov_mark::hit!(qualify_path_qualifier_start);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
@@ -192,7 +195,7 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
 fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
     match candidate {
         ImportCandidate::Path(candidate) => {
-            if candidate.unresolved_qualifier.is_some() {
+            if !matches!(candidate.qualifier, Qualifier::Absent) {
                 format!("Qualify with `{}`", &import)
             } else {
                 format!("Qualify as `{}`", &import)

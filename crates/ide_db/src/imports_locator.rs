@@ -40,6 +40,7 @@ pub fn find_exact_imports<'a>(
     ))
 }
 
+#[derive(Debug)]
 pub enum AssocItemSearch {
     Include,
     Exclude,

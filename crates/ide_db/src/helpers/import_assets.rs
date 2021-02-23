@@ -1,8 +1,8 @@
 //! Look up accessible paths for items.
 use either::Either;
 use hir::{
-    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, PrefixKind,
-    Semantics,
+    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, Name,
+    PrefixKind, Semantics,
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
@@ -34,8 +34,14 @@ pub struct TraitImportCandidate {
 
 #[derive(Debug)]
 pub struct PathImportCandidate {
-    pub unresolved_qualifier: Option<ast::Path>,
+    pub qualifier: Qualifier,
     pub name: NameToImport,
+}
+
+#[derive(Debug)]
+pub enum Qualifier {
+    Absent,
+    FirstSegmentUnresolved(ast::PathSegment, ast::Path),
 }
 
 #[derive(Debug)]
@@ -162,8 +168,9 @@ impl ImportAssets {
                 let (assoc_item_search, limit) = if self.import_candidate.is_trait_candidate() {
                     (AssocItemSearch::AssocItemsOnly, None)
                 } else {
-                    (AssocItemSearch::Exclude, Some(DEFAULT_QUERY_SEARCH_LIMIT))
+                    (AssocItemSearch::Include, Some(DEFAULT_QUERY_SEARCH_LIMIT))
                 };
+
                 imports_locator::find_similar_imports(
                     sema,
                     current_crate,
@@ -192,17 +199,16 @@ impl ImportAssets {
         let db = sema.db;
 
         match &self.import_candidate {
-            ImportCandidate::Path(path_candidate) => Box::new(path_applicable_items(
-                sema,
-                path_candidate,
-                unfiltered_defs
-                    .into_iter()
-                    .map(|def| def.either(ItemInNs::from, ItemInNs::from))
-                    .filter_map(move |item_to_search| {
-                        get_mod_path(db, item_to_search, &self.module_with_candidate, prefixed)
-                            .zip(Some(item_to_search))
-                    }),
-            )),
+            ImportCandidate::Path(path_candidate) => Box::new(
+                path_applicable_items(
+                    db,
+                    path_candidate,
+                    &self.module_with_candidate,
+                    prefixed,
+                    unfiltered_defs,
+                )
+                .into_iter(),
+            ),
             ImportCandidate::TraitAssocItem(trait_candidate) => Box::new(
                 trait_applicable_defs(db, current_crate, trait_candidate, true, unfiltered_defs)
                     .into_iter()
@@ -224,27 +230,110 @@ impl ImportAssets {
 }
 
 fn path_applicable_items<'a>(
-    sema: &'a Semantics<RootDatabase>,
-    path_candidate: &PathImportCandidate,
-    unfiltered_defs: impl Iterator<Item = (ModPath, ItemInNs)> + 'a,
-) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
-    let unresolved_qualifier = match &path_candidate.unresolved_qualifier {
-        Some(qualifier) => qualifier,
-        None => {
-            return Box::new(unfiltered_defs);
+    db: &'a RootDatabase,
+    path_candidate: &'a PathImportCandidate,
+    module_with_candidate: &hir::Module,
+    prefixed: Option<hir::PrefixKind>,
+    unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a,
+) -> FxHashSet<(ModPath, ItemInNs)> {
+    let applicable_items = unfiltered_defs
+        .filter_map(|def| {
+            let (assoc_original, candidate) = match def {
+                Either::Left(module_def) => match module_def.as_assoc_item(db) {
+                    Some(assoc_item) => match assoc_item.container(db) {
+                        hir::AssocItemContainer::Trait(trait_) => {
+                            (Some(module_def), ItemInNs::from(ModuleDef::from(trait_)))
+                        }
+                        hir::AssocItemContainer::Impl(impl_) => (
+                            Some(module_def),
+                            ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?)),
+                        ),
+                    },
+                    None => (None, ItemInNs::from(module_def)),
+                },
+                Either::Right(macro_def) => (None, ItemInNs::from(macro_def)),
+            };
+            Some((assoc_original, candidate))
+        })
+        .filter_map(|(assoc_original, candidate)| {
+            get_mod_path(db, candidate, module_with_candidate, prefixed)
+                .zip(Some((assoc_original, candidate)))
+        });
+
+    let (unresolved_first_segment, unresolved_qualifier) = match &path_candidate.qualifier {
+        Qualifier::Absent => {
+            return applicable_items
+                .map(|(candidate_path, (_, candidate))| (candidate_path, candidate))
+                .collect();
         }
+        Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => (first_segment, qualifier),
     };
 
-    let qualifier_string = unresolved_qualifier.to_string();
-    Box::new(unfiltered_defs.filter(move |(candidate_path, _)| {
-        let mut candidate_qualifier = candidate_path.clone();
-        candidate_qualifier.pop_segment();
+    // TODO kb need to remove turbofish from the qualifier, maybe use the segments instead?
+    let unresolved_qualifier_string = unresolved_qualifier.to_string();
+    let unresolved_first_segment_string = unresolved_first_segment.to_string();
 
-        // TODO kb
-        // * take 1st segment of `unresolved_qualifier` and return it instead of the original `ItemInNs`
-        // * Update `ModPath`: pop until 1st segment of `unresolved_qualifier` reached (do not rely on name comparison, nested mod names can repeat)
-        candidate_qualifier.to_string().ends_with(&qualifier_string)
-    }))
+    applicable_items
+        .filter(|(candidate_path, _)| {
+            let candidate_path_string = candidate_path.to_string();
+            candidate_path_string.contains(&unresolved_qualifier_string)
+                && candidate_path_string.contains(&unresolved_first_segment_string)
+        })
+        // TODO kb need to adjust the return type: I get the results rendered rather badly
+        .filter_map(|(candidate_path, (assoc_original, candidate))| {
+            if let Some(assoc_original) = assoc_original {
+                if item_name(db, candidate)?.to_string() == unresolved_first_segment_string {
+                    return Some((candidate_path, ItemInNs::from(assoc_original)));
+                }
+            }
+
+            let matching_module =
+                module_with_matching_name(db, &unresolved_first_segment_string, candidate)?;
+            let path = get_mod_path(
+                db,
+                ItemInNs::from(ModuleDef::from(matching_module)),
+                module_with_candidate,
+                prefixed,
+            )?;
+            Some((path, candidate))
+        })
+        .collect()
+}
+
+fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
+    match item {
+        ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).name(db),
+        ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
+        ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
+    }
+}
+
+fn item_module(db: &RootDatabase, item: ItemInNs) -> Option<Module> {
+    match item {
+        ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).module(db),
+        ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).module(db),
+        ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).module(db),
+    }
+}
+
+fn module_with_matching_name(
+    db: &RootDatabase,
+    unresolved_first_segment_string: &str,
+    candidate: ItemInNs,
+) -> Option<Module> {
+    let mut current_module = item_module(db, candidate);
+    while let Some(module) = current_module {
+        match module.name(db) {
+            Some(module_name) => {
+                if module_name.to_string().as_str() == unresolved_first_segment_string {
+                    return Some(module);
+                }
+            }
+            None => {}
+        }
+        current_module = module.parent(db);
+    }
+    None
 }
 
 fn trait_applicable_defs<'a>(
@@ -367,10 +456,20 @@ fn path_import_candidate(
 ) -> Option<ImportCandidate> {
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
-            None => ImportCandidate::Path(PathImportCandidate {
-                unresolved_qualifier: Some(qualifier),
-                name,
-            }),
+            None => {
+                let qualifier_start =
+                    qualifier.syntax().descendants().find_map(ast::PathSegment::cast)?;
+                let qualifier_start_path =
+                    qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
+                if sema.resolve_path(&qualifier_start_path).is_none() {
+                    ImportCandidate::Path(PathImportCandidate {
+                        qualifier: Qualifier::FirstSegmentUnresolved(qualifier_start, qualifier),
+                        name,
+                    })
+                } else {
+                    return None;
+                }
+            }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(assoc_item_path))) => {
                 ImportCandidate::TraitAssocItem(TraitImportCandidate {
                     receiver_ty: assoc_item_path.ty(sema.db),
@@ -379,6 +478,6 @@ fn path_import_candidate(
             }
             Some(_) => return None,
         },
-        None => ImportCandidate::Path(PathImportCandidate { unresolved_qualifier: None, name }),
+        None => ImportCandidate::Path(PathImportCandidate { qualifier: Qualifier::Absent, name }),
     })
 }
