@@ -134,7 +134,8 @@ impl SourceCollector<'_, '_> {
             "",
             |buf: &mut _| print_src(buf, contents, self.scx.edition),
             &self.scx.style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p, href);
         Ok(())

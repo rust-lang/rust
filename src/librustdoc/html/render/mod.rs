@@ -562,7 +562,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             sidebar,
             |buf: &mut Buffer| all.print(buf),
             &self.shared.style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
         // Generating settings page.
@@ -583,7 +584,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &self.shared.style_files,
             )?,
             &style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
         // Flush pending errors.
@@ -1090,7 +1092,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                     })
                     .collect::<String>()
             );
-            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
+            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files)
+                .expect("Failed to render layout");
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
     }
@@ -1615,6 +1618,7 @@ impl Context<'_> {
                 |buf: &mut _| print_item(self, it, buf),
                 &self.shared.style_files,
             )
+            .expect("Failed to render layout")
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {

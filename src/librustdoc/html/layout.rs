@@ -41,11 +41,11 @@ crate fn render<T: Print, S: Print>(
     sidebar: S,
     t: T,
     style_files: &[StylePath],
-) -> String {
+) -> Result<String, std::fmt::Error> {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     let content = Buffer::html().to_display(t);
     let sidebar = Buffer::html().to_display(sidebar);
-    let mut result = String::with_capacity(4096);
+    let mut result = String::with_capacity(4096 + content.len() + sidebar.len());
     write!(
         &mut result,
         "<!DOCTYPE html>\
@@ -66,8 +66,7 @@ crate fn render<T: Print, S: Print>(
         title = page.title,
         static_root_path = static_root_path,
         suffix = page.resource_suffix,
-    )
-    .unwrap();
+    )?;
 
     for (theme, disabled) in style_files
         .iter()
@@ -76,22 +75,21 @@ crate fn render<T: Print, S: Print>(
         })
         .filter_map(|t| if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None })
     {
-        write!(&mut result, r#"<link rel="stylesheet" type="text/css" href=""#).unwrap();
-        write!(&mut result, "{}", Escape(static_root_path)).unwrap();
-        write!(&mut result, "{}", Escape(theme)).unwrap();
-        write!(&mut result, "{}", Escape(page.resource_suffix)).unwrap();
+        write!(&mut result, r#"<link rel="stylesheet" type="text/css" href=""#)?;
+        write!(&mut result, "{}", Escape(static_root_path))?;
+        write!(&mut result, "{}", Escape(theme))?;
+        write!(&mut result, "{}", Escape(page.resource_suffix))?;
         write!(
             &mut result,
             ".css\" {} {}>",
             if disabled { "disabled" } else { "" },
             if theme == "light" { "id=\"themeStyle\"" } else { "" }
-        )
-        .unwrap();
+        )?;
     }
-    write!(&mut result, "<script id=\"default-settings\"").unwrap();
+    write!(&mut result, "<script id=\"default-settings\"")?;
 
     for (k, v) in layout.default_settings.iter() {
-        write!(&mut result, r#" data-{}="{}""#, k.replace('-', "_"), Escape(v)).unwrap();
+        write!(&mut result, r#" data-{}="{}""#, k.replace('-', "_"), Escape(v))?;
     }
 
     write!(
@@ -101,8 +99,7 @@ crate fn render<T: Print, S: Print>(
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>",
         static_root_path = static_root_path,
         suffix = page.resource_suffix,
-    )
-    .unwrap();
+    )?;
 
     if layout.css_file_extension.is_some() {
         write!(
@@ -112,8 +109,7 @@ crate fn render<T: Print, S: Print>(
                        href=\"{static_root_path}theme{suffix}.css\">",
             static_root_path = static_root_path,
             suffix = page.resource_suffix
-        )
-        .unwrap();
+        )?;
     }
 
     if layout.favicon.is_empty() {
@@ -124,10 +120,9 @@ crate fn render<T: Print, S: Print>(
 <link rel="alternate icon" type="image/png" href="{static_root_path}favicon-32x32{suffix}.png">"##,
             static_root_path = static_root_path,
             suffix = page.resource_suffix
-        )
-        .unwrap();
+        )?;
     } else {
-        write!(&mut result, r#"<link rel="shortcut icon" href="{}">"#, layout.favicon).unwrap();
+        write!(&mut result, r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)?;
     }
 
     write!(
@@ -153,8 +148,7 @@ crate fn render<T: Print, S: Print>(
         css_class = page.css_class,
         in_header = layout.external_html.in_header,
         before_content = layout.external_html.before_content,
-    )
-    .unwrap();
+    )?;
 
     if layout.logo.is_empty() {
         write!(
@@ -166,8 +160,7 @@ crate fn render<T: Print, S: Print>(
             path = ensure_trailing_slash(&layout.krate),
             static_root_path = static_root_path,
             suffix = page.resource_suffix
-        )
-        .unwrap();
+        )?;
     } else {
         write!(
             &mut result,
@@ -176,8 +169,7 @@ crate fn render<T: Print, S: Print>(
             root = page.root_path,
             path = ensure_trailing_slash(&layout.krate),
             logo = layout.logo
-        )
-        .unwrap();
+        )?;
     }
 
     write!(
@@ -200,8 +192,7 @@ crate fn render<T: Print, S: Print>(
         static_root_path = static_root_path,
         suffix = page.resource_suffix,
         sidebar = sidebar
-    )
-    .unwrap();
+    )?;
 
     if layout.generate_search_filter {
         write!(
@@ -210,8 +201,7 @@ crate fn render<T: Print, S: Print>(
                  <option value=\"All crates\">All crates</option>\
              </select>\
              "
-        )
-        .unwrap();
+        )?;
     }
 
     write!(
@@ -245,16 +235,15 @@ crate fn render<T: Print, S: Print>(
         after_content = layout.external_html.after_content,
         content = content,
         krate = layout.krate,
-    )
-    .unwrap();
+    )?;
+
     for e in page.static_extra_scripts.iter() {
         write!(
             &mut result,
             "<script src=\"{static_root_path}{extra_script}.js\"></script>",
             static_root_path = static_root_path,
             extra_script = e
-        )
-        .unwrap();
+        )?;
     }
     for e in page.extra_scripts.iter() {
         write!(
@@ -262,8 +251,7 @@ crate fn render<T: Print, S: Print>(
             "<script src=\"{root_path}{extra_script}.js\"></script>",
             root_path = page.root_path,
             extra_script = e
-        )
-        .unwrap();
+        )?;
     }
 
     write!(
@@ -274,9 +262,9 @@ crate fn render<T: Print, S: Print>(
 </html>",
         suffix = page.resource_suffix,
         root_path = page.root_path
-    )
-    .unwrap();
-    result
+    )?;
+
+    Ok(result)
 }
 
 crate fn redirect(url: &str) -> String {
