@@ -2,25 +2,26 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, RwLock};
+use rustc_data_structures::sync::{AtomicU32, Lock, Lrc, RwLock};
 use rustc_data_structures::unlikely;
 use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_serialize::{Encodable, Encoder};
 
 use smallvec::{smallvec, SmallVec};
-use std::env;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering::Relaxed;
 
-use super::debug::EdgeFilter;
 use super::query::DepGraphQuery;
 use super::serialized::{
     CurrentDepGraph, DepNodeColor, DepNodeIndex, SerializedDepGraph, SerializedDepNodeIndex,
 };
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
+
+#[cfg(debug_assertions)]
+use {super::debug::EdgeFilter, rustc_data_structures::sync::AtomicU64, std::env};
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -49,11 +50,6 @@ struct DepGraphData<K: DepKind> {
     /// nodes and edges as well as all fingerprints of nodes that have them.
     previous: RwLock<CurrentDepGraph<K>>,
 
-    /// Used to trap when a specific edge is added to the graph.
-    /// This is used for debug purposes and is only active with `debug_assertions`.
-    #[allow(dead_code)]
-    forbidden_edge: Option<EdgeFilter>,
-
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
     /// nodes can be coalesced into one without changing the semantics of the
@@ -67,11 +63,6 @@ struct DepGraphData<K: DepKind> {
     /// the `DepGraph` is created.
     anon_id_seed: Fingerprint,
 
-    /// These are simple counters that are for profiling and
-    /// debugging and only active with `debug_assertions`.
-    total_read_count: AtomicU64,
-    total_duplicate_read_count: AtomicU64,
-
     /// A set of loaded diagnostics that is in the progress of being emitted.
     emitting_diagnostics: Lock<FxHashSet<DepNodeIndex>>,
 
@@ -82,6 +73,18 @@ struct DepGraphData<K: DepKind> {
     previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
+
+    /// Used to trap when a specific edge is added to the graph.
+    /// This is used for debug purposes and is only active with `debug_assertions`.
+    #[cfg(debug_assertions)]
+    forbidden_edge: Option<EdgeFilter>,
+
+    /// These are simple counters that are for profiling and
+    /// debugging and only active with `debug_assertions`.
+    #[cfg(debug_assertions)]
+    total_read_count: AtomicU64,
+    #[cfg(debug_assertions)]
+    total_duplicate_read_count: AtomicU64,
 }
 
 pub fn hash_result<HashCtxt, R>(hcx: &mut HashCtxt, result: &R) -> Option<Fingerprint>
@@ -106,28 +109,28 @@ impl<K: DepKind> DepGraph<K> {
         let mut stable_hasher = StableHasher::new();
         nanos.hash(&mut stable_hasher);
 
-        let forbidden_edge = if cfg!(debug_assertions) {
-            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-                Ok(s) => match EdgeFilter::new(&s) {
-                    Ok(f) => Some(f),
-                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-                },
-                Err(_) => None,
-            }
-        } else {
-            None
+        #[cfg(debug_assertions)]
+        let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+            Ok(s) => match EdgeFilter::new(&s) {
+                Ok(f) => Some(f),
+                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+            },
+            Err(_) => None,
         };
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
+                previous: RwLock::new(CurrentDepGraph::new(prev_graph)),
+                emitting_diagnostics: Default::default(),
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
                 anon_id_seed: stable_hasher.finish(),
+                #[cfg(debug_assertions)]
                 forbidden_edge,
+                #[cfg(debug_assertions)]
                 total_read_count: AtomicU64::new(0),
+                #[cfg(debug_assertions)]
                 total_duplicate_read_count: AtomicU64::new(0),
-                emitting_diagnostics: Default::default(),
-                previous: RwLock::new(CurrentDepGraph::new(prev_graph)),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
         }
@@ -305,14 +308,13 @@ impl<K: DepKind> DepGraph<K> {
 
     #[inline]
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
-        if let Some(ref data) = self.data {
+        if let Some(ref _data) = self.data {
             K::read_deps(|task_deps| {
                 if let Some(task_deps) = task_deps {
                     let mut task_deps = task_deps.lock();
                     let task_deps = &mut *task_deps;
-                    if cfg!(debug_assertions) {
-                        data.total_read_count.fetch_add(1, Relaxed);
-                    }
+                    #[cfg(debug_assertions)]
+                    _data.total_read_count.fetch_add(1, Relaxed);
 
                     // As long as we only have a low number of reads we can avoid doing a hash
                     // insert and potentially allocating/reallocating the hashmap
@@ -330,18 +332,17 @@ impl<K: DepKind> DepGraph<K> {
                         }
 
                         #[cfg(debug_assertions)]
-                        {
-                            if let Some(target) = task_deps.node {
-                                if let Some(ref forbidden_edge) = data.forbidden_edge {
-                                    let src = self.dep_node_of(dep_node_index);
-                                    if forbidden_edge.test(&src, &target) {
-                                        panic!("forbidden edge {:?} -> {:?} created", src, target)
-                                    }
+                        if let Some(target) = task_deps.node {
+                            if let Some(ref forbidden_edge) = _data.forbidden_edge {
+                                let src = self.dep_node_of(dep_node_index);
+                                if forbidden_edge.test(&src, &target) {
+                                    panic!("forbidden edge {:?} -> {:?} created", src, target)
                                 }
                             }
                         }
-                    } else if cfg!(debug_assertions) {
-                        data.total_duplicate_read_count.fetch_add(1, Relaxed);
+                    } else {
+                        #[cfg(debug_assertions)]
+                        _data.total_duplicate_read_count.fetch_add(1, Relaxed);
                     }
                 }
             })
@@ -750,7 +751,8 @@ impl<K: DepKind> DepGraph<K> {
         eprintln!("[incremental] Total Node Count: {}", total_node_count);
         eprintln!("[incremental] Total Edge Count: {}", total_edge_count);
 
-        if cfg!(debug_assertions) {
+        #[cfg(debug_assertions)]
+        {
             let total_edge_reads = data.total_read_count.load(Relaxed);
             let total_duplicate_edge_reads = data.total_duplicate_read_count.load(Relaxed);
 
