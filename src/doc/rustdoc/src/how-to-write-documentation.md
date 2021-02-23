@@ -101,7 +101,7 @@ what an item is, how it is used, and for what purpose it exists.
 Let's see an example coming from the [standard library] by taking a look at the
 [`std::env::args()`][env::args] function:
 
-``````text
+``````markdown
 Returns the arguments which this program was started with (normally passed
 via the command line).
 
@@ -135,7 +135,7 @@ for argument in env::args() {
 
 Everything before the first empty line will be reused to describe the component
 in searches and module overviews.  For example, the function `std::env::args()`
-above will be shown on the [`std::env`] module documentation.  It is good
+above will be shown on the [`std::env`] module documentation. It is good
 practice to keep the summary to one line: concise writing is a goal of good
 documentation.
 
@@ -153,9 +153,10 @@ and finally provides a code example.
 
 ## Markdown
 
-`rustdoc` uses the [CommonMark markdown specification]. You might be
-interested into taking a look at their website to see what's possible to do.
- - [commonmark quick reference]
+`rustdoc` uses the [CommonMark Markdown specification]. You might be
+interested in taking a look at their website to see what's possible:
+
+ - [CommonMark quick reference]
  - [current spec]
 
 In addition to the standard CommonMark syntax, `rustdoc` supports several
@@ -239,6 +240,21 @@ This will render as
 </ul>
 
 See the specification for the [task list extension] for more details.
+
+### Smart punctuation
+
+Some ASCII punctuation sequences will be automatically turned into fancy Unicode
+characters:
+
+| ASCII sequence | Unicode |
+|----------------|---------|
+| `--`           | –       |
+| `---`          | —       |
+| `...`          | …       |
+| `"`            | “ or ”, depending on context |
+| `'`            | ‘ or ’, depending on context |
+
+So, no need to manually enter those Unicode characters!
 
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/

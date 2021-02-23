@@ -201,8 +201,8 @@ fn test_short_markdown_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
-    t("code `let x = i32;` ...", "code <code>let x = i32;</code> ...");
-    t("type `Type<'static>` ...", "type <code>Type<'static></code> ...");
+    t("code `let x = i32;` ...", "code <code>let x = i32;</code> …");
+    t("type `Type<'static>` ...", "type <code>Type<'static></code> …");
     t("# top header", "top header");
     t("## header", "header");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
@@ -227,8 +227,8 @@ fn test_plain_text_summary() {
     t("Hard-break  \nsummary", "Hard-break summary");
     t("hello [Rust] :)\n\n[Rust]: https://www.rust-lang.org", "hello Rust :)");
     t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
-    t("code `let x = i32;` ...", "code `let x = i32;` ...");
-    t("type `Type<'static>` ...", "type `Type<'static>` ...");
+    t("code `let x = i32;` ...", "code `let x = i32;` …");
+    t("type `Type<'static>` ...", "type `Type<'static>` …");
     t("# top header", "top header");
     t("# top header\n\nfollowed by some text", "top header");
     t("## header", "header");
@@ -251,6 +251,6 @@ fn test_markdown_html_escape() {
     }
 
     t("`Struct<'a, T>`", "<p><code>Struct&lt;'a, T&gt;</code></p>\n");
-    t("Struct<'a, T>", "<p>Struct&lt;'a, T&gt;</p>\n");
+    t("Struct<'a, T>", "<p>Struct&lt;’a, T&gt;</p>\n");
     t("Struct<br>", "<p>Struct&lt;br&gt;</p>\n");
 }
