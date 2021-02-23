@@ -562,8 +562,13 @@ public:
       for (size_t i = 1; i < pair.first.size(); ++i) {
         next.push_back(pair.first[i]);
       }
-      if (pair.first[0] != -1)
+      if (pair.first[0] != -1) {
+        if ((size_t)pair.first[0] >= len) {
+          llvm::errs() << str() << "\n";
+          llvm::errs() << " canonicalizing " << len << "\n";
+        }
         assert((size_t)pair.first[0] < len);
+      }
       staging[next][pair.second].insert(pair.first[0]);
     }
 

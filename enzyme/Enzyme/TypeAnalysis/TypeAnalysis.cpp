@@ -1542,6 +1542,29 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
 
   TypeTree result; //  = getAnalysis(&I);
   for (size_t i = 0; i < mask.size(); ++i) {
+    int newOff;
+    {
+      Value * vec[2] = {
+        ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+        ConstantInt::get(Type::getInt64Ty(I.getContext()), i)
+      };
+      auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+      auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+      #if LLVM_VERSION_MAJOR > 6
+      APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+      #else
+      APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+      #endif
+      g2->accumulateConstantOffset(dl, ai);
+      // Using destructor rather than eraseFromParent
+      //   as g2 has no parent
+      delete g2;
+      newOff = (int)ai.getLimitedValue();
+      // there is a bug in LLVM, this is the correct offset
+      if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+        newOff = i / 8;
+      }
+    }
 #if LLVM_VERSION_MAJOR >= 12
     if (mask[i] == UndefMaskElem)
 #else
@@ -1555,27 +1578,67 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
       }
     } else {
       if ((size_t)mask[i] < numFirst) {
+        Value * vec[2] = {
+          ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+          ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i])
+        };
+        auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+        auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+        #if LLVM_VERSION_MAJOR > 6
+        APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+        #else
+        APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+        #endif
+        g2->accumulateConstantOffset(dl, ai);
+        // Using destructor rather than eraseFromParent
+        //   as g2 has no parent
+        int oldOff = (int)ai.getLimitedValue();
+        // there is a bug in LLVM, this is the correct offset
+        if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+          oldOff = mask[i] / 8;
+        }
+        delete g2;
         if (direction & UP) {
           updateAnalysis(
               I.getOperand(lhs),
-              getAnalysis(&I).ShiftIndices(dl, size * i, size, size * mask[i]),
+              getAnalysis(&I).ShiftIndices(dl, newOff, size, oldOff),
               &I);
         }
         if (direction & DOWN) {
           result |= getAnalysis(I.getOperand(lhs))
-                        .ShiftIndices(dl, size * mask[i], size, size * i);
+                        .ShiftIndices(dl, oldOff, size, newOff);
         }
       } else {
+        Value * vec[2] = {
+          ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+          ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i] - numFirst)
+        };
+        auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+        auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
+        #if LLVM_VERSION_MAJOR > 6
+        APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
+        #else
+        APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
+        #endif
+        g2->accumulateConstantOffset(dl, ai);
+        // Using destructor rather than eraseFromParent
+        //   as g2 has no parent
+        int oldOff = (int)ai.getLimitedValue();
+        // there is a bug in LLVM, this is the correct offset
+        if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+          oldOff = (mask[i] - numFirst) / 8;
+        }
+        delete g2;
         if (direction & UP) {
           updateAnalysis(I.getOperand(rhs),
                          getAnalysis(&I).ShiftIndices(
-                             dl, size * i, size, size * (mask[i] - numFirst)),
+                             dl, newOff, size, oldOff),
                          &I);
         }
         if (direction & DOWN) {
           result |= getAnalysis(I.getOperand(rhs))
-                        .ShiftIndices(dl, size * (mask[i] - numFirst), size,
-                                      size * i);
+                        .ShiftIndices(dl, oldOff, size,
+                                      newOff);
         }
       }
     }
