@@ -2,7 +2,12 @@ error[E0769]: tuple variant `X::Y` written as struct variant
   --> $DIR/issue-41314.rs:7:9
    |
 LL |         X::Y { number } => {}
-   |         ^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `X::Y(number)`
+   |         ^^^^^^^^^^^^^^^
+   |
+help: use the tuple variant pattern syntax instead
+   |
+LL |         X::Y(number) => {}
+   |             ^^^^^^^^
 
 error: aborting due to previous error
 

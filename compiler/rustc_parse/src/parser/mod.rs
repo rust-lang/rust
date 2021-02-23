@@ -950,7 +950,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))
         } else {
-            self.parse_ident_common(false)
+            self.parse_ident_common(true)
         }
     }
 
