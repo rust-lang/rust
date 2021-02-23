@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 6e57fc1b345b00e9
+lsp_ext.rs hash: 10a8988e6893e6b2
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -648,5 +648,35 @@ export interface MoveItemParams {
 export const enum Direction {
     Up = "Up",
     Down = "Down"
+}
+```
+
+## Lookup workspace symbol search scope and kind
+
+**Issue:** https://github.com/rust-analyzer/rust-analyzer/pull/7698
+
+This request is sent from client to server to search for workspace symbols filtered by an
+optional search scope and / or an optional symbol kind.
+
+**Method:** `workspace/symbol`
+
+**Request:** `WorkspaceSymbolParams`
+
+**Response:** `SymbolInformation[] | null`
+
+```typescript
+interface lsp_ext.WorkspaceSymbolParams extends WorkspaceSymbolParams {
+    searchScope?: WorkspaceSymbolSearchScope;
+    searchKind?: WorkspaceSymbolSearchKind;
+}
+
+const enum WorkspaceSymbolSearchScope {
+    Workspace = "Workspace",
+    WorkspaceAndDependencies = "WorkspaceAndDependencies"
+}
+
+const enum WorkspaceSymbolSearchKind {
+    OnlyTypes = "OnlyTypes",
+    AllSymbols = "AllSymbols"
 }
 ```

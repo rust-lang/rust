@@ -38,7 +38,7 @@ use crate::{
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
-    lsp_ext::{self, InlayHint, InlayHintsParams},
+    lsp_ext::{self, InlayHint, InlayHintsParams, WorkspaceSymbolParams},
     lsp_utils::all_edits_are_disjoint,
     to_proto, LspError, Result,
 };
@@ -380,11 +380,12 @@ pub(crate) fn handle_document_symbol(
 
 pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
-    params: lsp_types::WorkspaceSymbolParams,
+    params: WorkspaceSymbolParams,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let _p = profile::span("handle_workspace_symbol");
-    let all_symbols = params.query.contains('#');
-    let libs = params.query.contains('*');
+
+    let (all_symbols, libs) = decide_search_scope_and_kind(&params, &snap);
+
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
         let mut q = Query::new(query);
@@ -405,6 +406,45 @@ pub(crate) fn handle_workspace_symbol(
     }
 
     return Ok(Some(res));
+
+    fn decide_search_scope_and_kind(
+        params: &WorkspaceSymbolParams,
+        snap: &GlobalStateSnapshot,
+    ) -> (bool, bool) {
+        // Support old-style parsing of markers in the query.
+        let mut all_symbols = params.query.contains('#');
+        let mut libs = params.query.contains('*');
+
+        let config = snap.config.workspace_symbol();
+
+        // If no explicit marker was set, check request params. If that's also empty
+        // use global config.
+        if !all_symbols {
+            let search_kind = if let Some(ref search_kind) = params.search_kind {
+                search_kind
+            } else {
+                &config.search_kind
+            };
+            all_symbols = match search_kind {
+                lsp_ext::WorkspaceSymbolSearchKind::OnlyTypes => false,
+                lsp_ext::WorkspaceSymbolSearchKind::AllSymbols => true,
+            }
+        }
+
+        if !libs {
+            let search_scope = if let Some(ref search_scope) = params.search_scope {
+                search_scope
+            } else {
+                &config.search_scope
+            };
+            libs = match search_scope {
+                lsp_ext::WorkspaceSymbolSearchScope::Workspace => false,
+                lsp_ext::WorkspaceSymbolSearchScope::WorkspaceAndDependencies => true,
+            }
+        }
+
+        (all_symbols, libs)
+    }
 
     fn exec_query(snap: &GlobalStateSnapshot, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();

@@ -24,7 +24,8 @@ use vfs::AbsPathBuf;
 
 use crate::{
     caps::completion_item_edit_resolve, diagnostics::DiagnosticsMapConfig,
-    line_index::OffsetEncoding, lsp_ext::supports_utf8,
+    line_index::OffsetEncoding, lsp_ext::supports_utf8, lsp_ext::WorkspaceSymbolSearchKind,
+    lsp_ext::WorkspaceSymbolSearchScope,
 };
 
 // Defines the server-side configuration of the rust-analyzer. We generate
@@ -215,6 +216,11 @@ config_data! {
         /// Advanced option, fully override the command rust-analyzer uses for
         /// formatting.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
+
+        /// Workspace symbol search scope.
+        workspace_symbol_search_scope: WorskpaceSymbolSearchScopeDef = "\"workspace\"",
+        /// Workspace symbol search kind.
+        workspace_symbol_search_kind: WorskpaceSymbolSearchKindDef = "\"only_types\"",
     }
 }
 
@@ -307,6 +313,15 @@ pub struct RunnablesConfig {
     pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
+}
+
+/// Configuration for workspace symbol search requests.
+#[derive(Debug, Clone)]
+pub struct WorkspaceSymbolConfig {
+    /// In what scope should the symbol be searched in.
+    pub search_scope: WorkspaceSymbolSearchScope,
+    /// What kind of symbol is being search for.
+    pub search_kind: WorkspaceSymbolSearchKind,
 }
 
 impl Config {
@@ -687,6 +702,22 @@ impl Config {
             .contains(&MarkupKind::Markdown),
         }
     }
+
+    pub fn workspace_symbol(&self) -> WorkspaceSymbolConfig {
+        WorkspaceSymbolConfig {
+            search_scope: match self.data.workspace_symbol_search_scope {
+                WorskpaceSymbolSearchScopeDef::Workspace => WorkspaceSymbolSearchScope::Workspace,
+                WorskpaceSymbolSearchScopeDef::WorkspaceAndDependencies => {
+                    WorkspaceSymbolSearchScope::WorkspaceAndDependencies
+                }
+            },
+            search_kind: match self.data.workspace_symbol_search_kind {
+                WorskpaceSymbolSearchKindDef::OnlyTypes => WorkspaceSymbolSearchKind::OnlyTypes,
+                WorskpaceSymbolSearchKindDef::AllSymbols => WorkspaceSymbolSearchKind::AllSymbols,
+            },
+        }
+    }
+
     pub fn semantic_tokens_refresh(&self) -> bool {
         try_or!(self.caps.workspace.as_ref()?.semantic_tokens.as_ref()?.refresh_support?, false)
     }
@@ -731,6 +762,20 @@ enum ImportPrefixDef {
     Plain,
     BySelf,
     ByCrate,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum WorskpaceSymbolSearchScopeDef {
+    Workspace,
+    WorkspaceAndDependencies,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum WorskpaceSymbolSearchKindDef {
+    OnlyTypes,
+    AllSymbols,
 }
 
 macro_rules! _config_data {
@@ -902,6 +947,22 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "Vec<ManifestOrProjectJson>" => set! {
             "type": "array",
             "items": { "type": ["string", "object"] },
+        },
+        "WorskpaceSymbolSearchScopeDef" => set! {
+            "type": "string",
+            "enum": ["workspace", "workspace_and_dependencies"],
+            "enumDescriptions": [
+                "Search in current workspace only",
+                "Search in current workspace and dependencies"
+            ],
+        },
+        "WorskpaceSymbolSearchKindDef" => set! {
+            "type": "string",
+            "enum": ["only_types", "all_symbols"],
+            "enumDescriptions": [
+                "Search for types only",
+                "Search for all symbols kinds"
+            ],
         },
         _ => panic!("{}: {}", ty, default),
     }

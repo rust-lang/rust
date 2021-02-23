@@ -4,7 +4,8 @@ use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
 use lsp_types::{
-    notification::Notification, CodeActionKind, Position, Range, TextDocumentIdentifier,
+    notification::Notification, CodeActionKind, PartialResultParams, Position, Range,
+    TextDocumentIdentifier, WorkDoneProgressParams,
 };
 use serde::{Deserialize, Serialize};
 
@@ -437,4 +438,43 @@ pub struct MoveItemParams {
 pub enum MoveItemDirection {
     Up,
     Down,
+}
+
+#[derive(Debug)]
+pub enum WorkspaceSymbol {}
+
+impl Request for WorkspaceSymbol {
+    type Params = WorkspaceSymbolParams;
+    type Result = Option<Vec<lsp_types::SymbolInformation>>;
+    const METHOD: &'static str = "workspace/symbol";
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
+pub struct WorkspaceSymbolParams {
+    #[serde(flatten)]
+    pub partial_result_params: PartialResultParams,
+
+    #[serde(flatten)]
+    pub work_done_progress_params: WorkDoneProgressParams,
+
+    /// A non-empty query string
+    pub query: String,
+
+    pub search_scope: Option<WorkspaceSymbolSearchScope>,
+
+    pub search_kind: Option<WorkspaceSymbolSearchKind>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkspaceSymbolSearchScope {
+    Workspace,
+    WorkspaceAndDependencies,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum WorkspaceSymbolSearchKind {
+    OnlyTypes,
+    AllSymbols,
 }
