@@ -1971,65 +1971,68 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // Therefore, we would compute `object_lifetime_defaults` to a
         // vector like `['x, 'static]`. Note that the vector only
         // includes type parameters.
-        let object_lifetime_defaults = type_def_id.map_or(vec![], |def_id| {
-            let in_body = {
-                let mut scope = self.scope;
-                loop {
-                    match *scope {
-                        Scope::Root => break false,
+        let object_lifetime_defaults = type_def_id.map_or_else(
+            || vec![],
+            |def_id| {
+                let in_body = {
+                    let mut scope = self.scope;
+                    loop {
+                        match *scope {
+                            Scope::Root => break false,
 
-                        Scope::Body { .. } => break true,
+                            Scope::Body { .. } => break true,
 
-                        Scope::Binder { s, .. }
-                        | Scope::Elision { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. } => {
-                            scope = s;
-                        }
-                    }
-                }
-            };
-
-            let map = &self.map;
-            let unsubst = if let Some(def_id) = def_id.as_local() {
-                let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                &map.object_lifetime_defaults[&id]
-            } else {
-                let tcx = self.tcx;
-                self.xcrate_object_lifetime_defaults.entry(def_id).or_insert_with(|| {
-                    tcx.generics_of(def_id)
-                        .params
-                        .iter()
-                        .filter_map(|param| match param.kind {
-                            GenericParamDefKind::Type { object_lifetime_default, .. } => {
-                                Some(object_lifetime_default)
+                            Scope::Binder { s, .. }
+                            | Scope::Elision { s, .. }
+                            | Scope::ObjectLifetimeDefault { s, .. } => {
+                                scope = s;
                             }
-                            GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
-                        })
-                        .collect()
-                })
-            };
-            debug!("visit_segment_args: unsubst={:?}", unsubst);
-            unsubst
-                .iter()
-                .map(|set| match *set {
-                    Set1::Empty => {
-                        if in_body {
-                            None
-                        } else {
-                            Some(Region::Static)
                         }
                     }
-                    Set1::One(r) => {
-                        let lifetimes = generic_args.args.iter().filter_map(|arg| match arg {
-                            GenericArg::Lifetime(lt) => Some(lt),
-                            _ => None,
-                        });
-                        r.subst(lifetimes, map)
-                    }
-                    Set1::Many => None,
-                })
-                .collect()
-        });
+                };
+
+                let map = &self.map;
+                let unsubst = if let Some(def_id) = def_id.as_local() {
+                    let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                    &map.object_lifetime_defaults[&id]
+                } else {
+                    let tcx = self.tcx;
+                    self.xcrate_object_lifetime_defaults.entry(def_id).or_insert_with(|| {
+                        tcx.generics_of(def_id)
+                            .params
+                            .iter()
+                            .filter_map(|param| match param.kind {
+                                GenericParamDefKind::Type { object_lifetime_default, .. } => {
+                                    Some(object_lifetime_default)
+                                }
+                                GenericParamDefKind::Lifetime | GenericParamDefKind::Const => None,
+                            })
+                            .collect()
+                    })
+                };
+                debug!("visit_segment_args: unsubst={:?}", unsubst);
+                unsubst
+                    .iter()
+                    .map(|set| match *set {
+                        Set1::Empty => {
+                            if in_body {
+                                None
+                            } else {
+                                Some(Region::Static)
+                            }
+                        }
+                        Set1::One(r) => {
+                            let lifetimes = generic_args.args.iter().filter_map(|arg| match arg {
+                                GenericArg::Lifetime(lt) => Some(lt),
+                                _ => None,
+                            });
+                            r.subst(lifetimes, map)
+                        }
+                        Set1::Many => None,
+                    })
+                    .collect()
+            },
+        );
 
         debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
 

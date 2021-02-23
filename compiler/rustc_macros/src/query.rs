@@ -409,7 +409,7 @@ fn add_query_description_impl(
     };
 
     let (tcx, desc) = modifiers.desc;
-    let tcx = tcx.as_ref().map_or(quote! { _ }, |t| quote! { #t });
+    let tcx = tcx.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
 
     let desc = quote! {
         #[allow(unused_variables)]
