@@ -3654,7 +3654,6 @@ dependencies = [
  "jobserver",
  "libc",
  "memmap",
- "num_cpus",
  "pathdiff",
  "rustc_apfloat",
  "rustc_ast",
