@@ -94,7 +94,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(LOCAL_CRATE)
-            .split_dwarf_filename(tcx.sess.split_debuginfo(), Some(mod_name))
+            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
     } else {
         None
     };
