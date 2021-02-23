@@ -416,10 +416,11 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameClass::classify(self.sema, name) {
-            Some(NameClass::PatFieldShorthand { local_def: _, field_ref }) => {
-                if !matches!(self.def, Definition::Field(_) if &field_ref == self.def) {
-                    return false;
-                }
+            Some(NameClass::PatFieldShorthand { local_def: _, field_ref })
+                if matches!(
+                    self.def, Definition::Field(_) if &field_ref == self.def
+                ) =>
+            {
                 let FileRange { file_id, range } = self.sema.original_range(name.syntax());
                 let reference = FileReference {
                     range,
@@ -427,6 +428,12 @@ impl<'a> FindUsages<'a> {
                     // FIXME: mutable patterns should have `Write` access
                     access: Some(ReferenceAccess::Read),
                 };
+                sink(file_id, reference)
+            }
+            Some(NameClass::ConstReference(def)) if *self.def == def => {
+                let FileRange { file_id, range } = self.sema.original_range(name.syntax());
+                let reference =
+                    FileReference { range, name: ast::NameLike::Name(name.clone()), access: None };
                 sink(file_id, reference)
             }
             _ => false, // not a usage
