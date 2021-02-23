@@ -12,11 +12,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AttrItem, AttrStyle, Block, Inline, ItemKind, LitKind, MacArgs};
+use rustc_ast::{AstLike, AttrItem, AttrStyle, Block, Inline, ItemKind, LitKind, MacArgs};
 use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, Path, StmtKind, Unsafe};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, is_builtin_attr, HasAttrs};
+use rustc_attr::{self as attr, is_builtin_attr};
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
@@ -1014,7 +1014,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// legacy derive helpers (helpers written before derives that introduce them).
     fn take_first_attr(
         &mut self,
-        item: &mut impl HasAttrs,
+        item: &mut impl AstLike,
     ) -> Option<(ast::Attribute, usize, Vec<Path>)> {
         let mut attr = None;
 
@@ -1045,7 +1045,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr
     }
 
-    fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
+    fn configure<T: AstLike>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
 
