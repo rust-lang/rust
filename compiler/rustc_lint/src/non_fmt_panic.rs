@@ -69,23 +69,65 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     let (span, panic) = panic_call(cx, f);
 
-    cx.struct_span_lint(NON_FMT_PANIC, arg.span, |lint| {
+    // Find the span of the argument to `panic!()`, before expansion in the
+    // case of `panic!(some_macro!())`.
+    // We don't use source_callsite(), because this `panic!(..)` might itself
+    // be expanded from another macro, in which case we want to stop at that
+    // expansion.
+    let mut arg_span = arg.span;
+    let mut arg_macro = None;
+    while !span.contains(arg_span) {
+        let expn = arg_span.ctxt().outer_expn_data();
+        if expn.is_root() {
+            break;
+        }
+        arg_macro = expn.macro_def_id;
+        arg_span = expn.call_site;
+    }
+
+    cx.struct_span_lint(NON_FMT_PANIC, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
         l.note("this is no longer accepted in Rust 2021");
-        if span.contains(arg.span) {
+        if !span.contains(arg_span) {
+            // No clue where this argument is coming from.
+            l.emit();
+            return;
+        }
+        if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
+            // A case of `panic!(format!(..))`.
+            l.note("the panic!() macro supports formatting, so there's no need for the format!() macro here");
+            if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
+                l.multipart_suggestion(
+                    "remove the `format!(..)` macro call",
+                    vec![
+                        (arg_span.until(open.shrink_to_hi()), "".into()),
+                        (close.until(arg_span.shrink_to_hi()), "".into()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
             l.span_suggestion_verbose(
-                arg.span.shrink_to_lo(),
+                arg_span.shrink_to_lo(),
                 "add a \"{}\" format string to Display the message",
                 "\"{}\", ".into(),
                 Applicability::MaybeIncorrect,
             );
             if panic == sym::std_panic_macro {
-                l.span_suggestion_verbose(
-                    span.until(arg.span),
-                    "or use std::panic::panic_any instead",
-                    "std::panic::panic_any(".into(),
-                    Applicability::MachineApplicable,
-                );
+                if let Some((open, close, del)) = find_delimiters(cx, span) {
+                    l.multipart_suggestion(
+                        "or use std::panic::panic_any instead",
+                        if del == '(' {
+                            vec![(span.until(open), "std::panic::panic_any".into())]
+                        } else {
+                            vec![
+                                (span.until(open.shrink_to_hi()), "std::panic::panic_any(".into()),
+                                (close, ")".into()),
+                            ]
+                        },
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
         l.emit();
@@ -173,6 +215,19 @@ fn check_panic_str<'tcx>(
             l.emit();
         });
     }
+}
+
+/// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
+/// and the type of (opening) delimiter used.
+fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Span, char)> {
+    let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
+    let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
+    let close = snippet.rfind(|c| ")]}".contains(c))?;
+    Some((
+        span.from_inner(InnerSpan { start: open, end: open + 1 }),
+        span.from_inner(InnerSpan { start: close, end: close + 1 }),
+        open_ch,
+    ))
 }
 
 fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol) {

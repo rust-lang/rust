@@ -97,8 +97,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
                 |lint| lint.build("missing code example in this documentation").emit(),
             );
         }
-    } else if tests.found_tests > 0 && !cx.renderinfo.borrow().access_levels.is_public(item.def_id)
-    {
+    } else if tests.found_tests > 0 && !cx.renderinfo.access_levels.is_public(item.def_id) {
         cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,

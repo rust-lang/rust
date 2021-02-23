@@ -41,7 +41,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     ) -> Option<Item> {
         let tcx = self.cx.tcx;
         let trait_ref = ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, &[]) };
-        if !self.cx.generated_synthetics.borrow_mut().insert((ty, trait_def_id)) {
+        if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
             debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
             return None;
         }

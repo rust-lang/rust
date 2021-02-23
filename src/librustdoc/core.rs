@@ -42,32 +42,37 @@ crate type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 crate struct DocContext<'tcx> {
     crate tcx: TyCtxt<'tcx>,
+    /// Name resolver. Used for intra-doc links.
+    ///
+    /// The `Rc<RefCell<...>>` wrapping is needed because that is what's returned by
+    /// [`Queries::expansion()`].
+    // FIXME: see if we can get rid of this RefCell somehow
     crate resolver: Rc<RefCell<interface::BoxedResolver>>,
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
     crate param_env: ParamEnv<'tcx>,
     /// Later on moved into `cache`
-    crate renderinfo: RefCell<RenderInfo>,
+    crate renderinfo: RenderInfo,
     /// Later on moved through `clean::Crate` into `cache`
     crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    crate active_extern_traits: RefCell<FxHashSet<DefId>>,
+    crate active_extern_traits: FxHashSet<DefId>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type parameter -> substituted type
-    crate ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
+    crate ty_substs: FxHashMap<DefId, clean::Type>,
     /// Table `DefId` of lifetime parameter -> substituted lifetime
-    crate lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    crate lt_substs: FxHashMap<DefId, clean::Lifetime>,
     /// Table `DefId` of const parameter -> substituted const
-    crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
+    crate ct_substs: FxHashMap<DefId, clean::Constant>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
+    crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
     crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
-    crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
+    crate generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
     crate auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     crate render_options: RenderOptions,
@@ -112,14 +117,14 @@ impl<'tcx> DocContext<'tcx> {
         F: FnOnce(&mut Self) -> R,
     {
         let (old_tys, old_lts, old_cts) = (
-            mem::replace(&mut *self.ty_substs.get_mut(), ty_substs),
-            mem::replace(&mut *self.lt_substs.get_mut(), lt_substs),
-            mem::replace(&mut *self.ct_substs.get_mut(), ct_substs),
+            mem::replace(&mut self.ty_substs, ty_substs),
+            mem::replace(&mut self.lt_substs, lt_substs),
+            mem::replace(&mut self.ct_substs, ct_substs),
         );
         let r = f(self);
-        *self.ty_substs.get_mut() = old_tys;
-        *self.lt_substs.get_mut() = old_lts;
-        *self.ct_substs.get_mut() = old_cts;
+        self.ty_substs = old_tys;
+        self.lt_substs = old_lts;
+        self.ct_substs = old_cts;
         r
     }
 
@@ -509,7 +514,7 @@ crate fn run_global_ctxt(
         param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
-        renderinfo: RefCell::new(renderinfo),
+        renderinfo,
         ty_substs: Default::default(),
         lt_substs: Default::default(),
         ct_substs: Default::default(),
@@ -642,7 +647,7 @@ crate fn run_global_ctxt(
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
 
-    (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
+    (krate, ctxt.renderinfo, ctxt.render_options)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

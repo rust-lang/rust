@@ -113,7 +113,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             assert_eq!(cur_mod_def_id, macro_parent_def_id);
             cur_mod.macros.push((def, None));
         }
-        self.cx.renderinfo.get_mut().exact_paths = self.exact_paths;
+        self.cx.renderinfo.exact_paths = self.exact_paths;
         top_level_module
     }
 
@@ -199,12 +199,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx
-                            .renderinfo
-                            .get_mut()
-                            .access_levels
-                            .map
-                            .insert(did, AccessLevel::Public);
+                        self.cx.renderinfo.access_levels.map.insert(did, AccessLevel::Public);
                     }
                 }
             }
@@ -216,7 +211,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(res_did);
+        let is_private = !self.cx.renderinfo.access_levels.is_public(res_did);
         let is_hidden = inherits_doc_hidden(self.cx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
