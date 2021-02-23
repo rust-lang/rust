@@ -7,6 +7,29 @@ use core::ptr;
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
 use super::search::SearchResult;
 
+pub struct LeafRange<BorrowType, K, V> {
+    pub front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+    pub back: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
+}
+
+impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
+    pub fn none() -> Self {
+        LeafRange { front: None, back: None }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.front == self.back
+    }
+
+    /// Temporarily takes out another, immutable equivalent of the same range.
+    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {
+        LeafRange {
+            front: self.front.as_ref().map(|f| f.reborrow()),
+            back: self.back.as_ref().map(|b| b.reborrow()),
+        }
+    }
+}
+
 /// Finds the leaf edges delimiting a specified range in or underneath a node.
 ///
 /// The result is meaningful only if the tree is ordered by key, like the tree
@@ -15,10 +38,7 @@ fn range_search<BorrowType: marker::BorrowType, K, V, Q, R>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R,
-) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-)
+) -> LeafRange<BorrowType, K, V>
 where
     Q: ?Sized + Ord,
     K: Borrow<Q>,
@@ -92,7 +112,7 @@ where
         }
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
-                return (f, b);
+                return LeafRange { front: Some(f), back: Some(b) };
             }
             (Internal(min_int), Internal(max_int)) => {
                 min_node = min_int.descend();
@@ -108,10 +128,7 @@ where
 fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-) -> (
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
-) {
+) -> LeafRange<BorrowType, K, V> {
     let mut min_node = root1;
     let mut max_node = root2;
     loop {
@@ -119,7 +136,7 @@ fn full_range<BorrowType: marker::BorrowType, K, V>(
         let back = max_node.last_edge();
         match (front.force(), back.force()) {
             (Leaf(f), Leaf(b)) => {
-                return (f, b);
+                return LeafRange { front: Some(f), back: Some(b) };
             }
             (Internal(min_int), Internal(max_int)) => {
                 min_node = min_int.descend();
@@ -135,13 +152,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub fn range_search<Q, R>(
-        self,
-        range: R,
-    ) -> (
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    )
+    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
@@ -151,12 +162,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     }
 
     /// Finds the pair of leaf edges delimiting an entire tree.
-    pub fn full_range(
-        self,
-    ) -> (
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    ) {
+    pub fn full_range(self) -> LeafRange<marker::Immut<'a>, K, V> {
         full_range(self, self)
     }
 }
@@ -168,13 +174,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub fn range_search<Q, R>(
-        self,
-        range: R,
-    ) -> (
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    )
+    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
@@ -189,12 +189,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing mutation (of values only), so must be used
     /// with care.
-    pub fn full_range(
-        self,
-    ) -> (
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>,
-    ) {
+    pub fn full_range(self) -> LeafRange<marker::ValMut<'a>, K, V> {
         // We duplicate the root NodeRef here -- we will never visit the same KV
         // twice, and never end up with overlapping value references.
         let self2 = unsafe { ptr::read(&self) };
@@ -206,12 +201,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing massively destructive mutation, so must be
     /// used with the utmost care.
-    pub fn full_range(
-        self,
-    ) -> (
-        Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
-        Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>,
-    ) {
+    pub fn full_range(self) -> LeafRange<marker::Dying, K, V> {
         // We duplicate the root NodeRef here -- we will never access it in a way
         // that overlaps references obtained from the root.
         let self2 = unsafe { ptr::read(&self) };
