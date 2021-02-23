@@ -42,7 +42,7 @@ impl<T, F> Drop for ScopeGuard<T, F>
 where
     F: FnMut(&mut T),
 {
-    #[cfg_attr(feature = "inline-more", inline)]
+    #[inline]
     fn drop(&mut self) {
         (self.dropfn)(&mut self.value)
     }
