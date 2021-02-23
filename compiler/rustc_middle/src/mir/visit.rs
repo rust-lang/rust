@@ -998,12 +998,11 @@ macro_rules! visit_place_fns {
     () => {
         fn visit_projection(
             &mut self,
-            local: Local,
-            projection: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection(local, projection, context, location);
+            self.super_projection(place_ref, context, location);
         }
 
         fn visit_projection_elem(
@@ -1033,20 +1032,20 @@ macro_rules! visit_place_fns {
 
             self.visit_local(&place.local, context, location);
 
-            self.visit_projection(place.local, &place.projection, context, location);
+            self.visit_projection(place.as_ref(), context, location);
         }
 
         fn super_projection(
             &mut self,
-            local: Local,
-            projection: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            let mut cursor = projection;
+            // FIXME: Use PlaceRef::iter_projections, once that exists.
+            let mut cursor = place_ref.projection;
             while let &[ref proj_base @ .., elem] = cursor {
                 cursor = proj_base;
-                self.visit_projection_elem(local, cursor, elem, context, location);
+                self.visit_projection_elem(place_ref.local, cursor, elem, context, location);
             }
         }
 

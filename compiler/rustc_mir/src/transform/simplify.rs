@@ -413,8 +413,7 @@ impl UsedLocals {
         } else {
             // A definition. Although, it still might use other locals for indexing.
             self.super_projection(
-                place.local,
-                &place.projection,
+                place.as_ref(),
                 PlaceContext::MutatingUse(MutatingUseContext::Projection),
                 location,
             );
