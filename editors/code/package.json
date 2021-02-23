@@ -36,7 +36,7 @@
     },
     "dependencies": {
         "node-fetch": "^2.6.1",
-        "vscode-languageclient": "^7.1.0-next.1"
+        "vscode-languageclient": "^7.1.0-next.4"
     },
     "devDependencies": {
         "@rollup/plugin-commonjs": "^17.0.0",
@@ -55,8 +55,8 @@
         "tslib": "^2.0.3",
         "typescript": "^4.1.2",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.81.1",
-        "vscode-test": "^1.4.1"
+        "vsce": "^1.85.0",
+        "vscode-test": "^1.5.1"
     },
     "activationEvents": [
         "onLanguage:rust",
