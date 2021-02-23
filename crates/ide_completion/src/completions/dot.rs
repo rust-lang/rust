@@ -428,4 +428,32 @@ fn main() { make_s!().f$0; }
             "#]],
         )
     }
+
+    #[test]
+    fn completes_after_macro_call_in_submodule() {
+        check(
+            r#"
+macro_rules! empty {
+    () => {};
+}
+
+mod foo {
+    #[derive(Debug, Default)]
+    struct Template2 {}
+
+    impl Template2 {
+        fn private(&self) {}
+    }
+    fn baz() {
+        let goo: Template2 = Template2 {};
+        empty!();
+        goo.$0
+    }
+}
+        "#,
+            expect![[r#"
+                me private() -> ()
+            "#]],
+        );
+    }
 }

@@ -608,7 +608,7 @@ impl DefCollector<'_> {
                                 (
                                     n,
                                     res.filter_visibility(|v| {
-                                        v.is_visible_from_def_map(&self.def_map, module_id)
+                                        v.is_visible_from_def_map(self.db, &self.def_map, module_id)
                                     }),
                                 )
                             })
@@ -761,7 +761,7 @@ impl DefCollector<'_> {
             .filter(|(glob_importing_module, _)| {
                 // we know all resolutions have the same visibility (`vis`), so we
                 // just need to check that once
-                vis.is_visible_from_def_map(&self.def_map, *glob_importing_module)
+                vis.is_visible_from_def_map(self.db, &self.def_map, *glob_importing_module)
             })
             .cloned()
             .collect::<Vec<_>>();

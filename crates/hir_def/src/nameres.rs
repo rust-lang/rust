@@ -337,6 +337,12 @@ impl DefMap {
         None
     }
 
+    /// If this `DefMap` is for a block expression, returns the module containing the block (which
+    /// might again be a block, or a module inside a block).
+    pub fn parent(&self) -> Option<ModuleId> {
+        Some(self.block?.parent)
+    }
+
     // FIXME: this can use some more human-readable format (ideally, an IR
     // even), as this should be a great debugging aid.
     pub fn dump(&self, db: &dyn DefDatabase) -> String {
