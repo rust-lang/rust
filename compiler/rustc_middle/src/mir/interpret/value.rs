@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 use rustc_apfloat::{
@@ -56,20 +56,20 @@ impl<'tcx> ConstValue<'tcx> {
         }
     }
 
+    pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
+        self.try_to_scalar()?.to_int().ok()
+    }
+
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.to_bits(size).ok()
     }
 
     pub fn try_to_bool(&self) -> Option<bool> {
-        match self.try_to_bits(Size::from_bytes(1))? {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        }
+        self.try_to_scalar_int()?.try_into().ok()
     }
 
     pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        Some(self.try_to_bits(tcx.data_layout.pointer_size)? as u64)
+        self.try_to_scalar_int()?.try_to_machine_usize(tcx).ok()
     }
 
     pub fn try_to_bits_for_ty(
@@ -502,6 +502,21 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     #[inline(always)]
     fn from(ptr: Pointer<Tag>) -> Self {
         Scalar::Ptr(ptr)
+    }
+}
+
+impl TryFrom<Scalar> for ScalarInt {
+    type Error = super::InterpErrorInfo<'static>;
+    #[inline]
+    fn try_from(scalar: Scalar) -> InterpResult<'static, Self> {
+        scalar.to_int()
+    }
+}
+
+impl<Tag> From<ScalarInt> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(ptr: ScalarInt) -> Self {
+        Scalar::Int(ptr)
     }
 }
 
