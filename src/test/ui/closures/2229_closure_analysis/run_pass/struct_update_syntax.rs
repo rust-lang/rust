@@ -1,4 +1,6 @@
+//check-pass
 #![feature(capture_disjoint_fields)]
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
 #![feature(rustc_attrs)]
 
 struct S {
@@ -12,7 +14,7 @@ fn main() {
         b: String::new(),
     };
 
-    let c = #[rustc_capture_analysis] || {
+    let c = || {
         let s2 = S {
             a: format!("New a"),
             ..s

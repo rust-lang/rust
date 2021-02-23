@@ -34,7 +34,6 @@ use super::writeback::Resolver;
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -42,6 +41,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults, UpvarSubsts};
 use rustc_session::lint;
@@ -248,7 +248,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
-        let fake_reads = delegate.fake_reads.into_iter().map(|fake_read| fake_read).collect();
+        let fake_reads =
+            delegate.fake_reads.into_iter().map(|(place, cause)| (place, cause)).collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
         // If we are also inferred the closure kind here,
@@ -1153,7 +1154,7 @@ struct InferBorrowKind<'a, 'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
-    fake_reads: FxHashSet<Place<'tcx>>, // these need to be fake read.
+    fake_reads: Vec<(Place<'tcx>, FakeReadCause)>,
 }
 
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
@@ -1415,9 +1416,9 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn fake_read(&mut self, place: Place<'tcx>) {
+    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause) {
         if let PlaceBase::Upvar(_) = place.base {
-            self.fake_reads.insert(place);
+            self.fake_reads.push((place, cause));
         }
     }
 

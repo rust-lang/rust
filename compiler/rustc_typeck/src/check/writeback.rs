@@ -12,6 +12,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::Place as HirPlace;
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -368,18 +369,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     }
 
     fn visit_fake_reads_map(&mut self) {
-        let mut resolved_closure_fake_reads: FxHashMap<DefId, Vec<HirPlace<'tcx>>> =
-            Default::default();
+        let mut resolved_closure_fake_reads: FxHashMap<
+            DefId,
+            Vec<(HirPlace<'tcx>, FakeReadCause)>,
+        > = Default::default();
         for (closure_def_id, fake_reads) in
             self.fcx.typeck_results.borrow().closure_fake_reads.iter()
         {
-            let mut resolved_fake_reads = Vec::<HirPlace<'tcx>>::new();
-            for fake_read in fake_reads.iter() {
+            let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause)>::new();
+            for (place, cause) in fake_reads.iter() {
                 let locatable =
                     self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
 
-                let resolved_fake_read = self.resolve(fake_read.clone(), &locatable);
-                resolved_fake_reads.push(resolved_fake_read);
+                let resolved_fake_read = self.resolve(place.clone(), &locatable);
+                resolved_fake_reads.push((resolved_fake_read, *cause));
             }
             resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
         }

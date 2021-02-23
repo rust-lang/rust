@@ -165,7 +165,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, movability, fake_reads } => {
+            ExprKind::Closure {
+                closure_id,
+                substs,
+                upvars,
+                movability,
+                fake_reads: opt_fake_reads,
+            } => {
                 // see (*) above
                 let operands: Vec<_> = upvars
                     .into_iter()
@@ -204,18 +210,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     })
                     .collect();
+                if let Some(fake_reads) = opt_fake_reads {
+                    for (thir_place, cause) in fake_reads.into_iter() {
+                        let place_builder =
+                            unpack!(block = this.as_place_builder(block, thir_place));
 
-                if let Some(fake_reads) = fake_reads {
-                    for thir_place in fake_reads.into_iter() {
-                        //  = this.hir.mirror(thir_place);
-                        let mir_place = unpack!(block = this.as_place(block, thir_place));
-                        // [FIXME] RFC2229 FakeReadCause can be ForLet or ForMatch, need to use the correct one
-                        this.cfg.push_fake_read(
-                            block,
-                            source_info,
-                            FakeReadCause::ForMatchedPlace,
-                            mir_place,
-                        );
+                        if let Ok(place_builder_resolved) =
+                            place_builder.clone().try_upvars_resolved(this.tcx, this.typeck_results)
+                        {
+                            let mir_place = place_builder_resolved
+                                .clone()
+                                .into_place(this.tcx, this.typeck_results);
+                            this.cfg.push_fake_read(block, source_info, cause, mir_place);
+                        }
                     }
                 }
 

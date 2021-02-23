@@ -1,12 +1,25 @@
+//check-pass
 #![feature(capture_disjoint_fields)]
 //~^ WARNING: the feature `capture_disjoint_fields` is incomplete
-#![feature(rustc_attrs)]
 
-fn main() {
+fn test1() {
     let foo = [1, 2, 3];
-    let c = #[rustc_capture_analysis] || {
-        //~^ ERROR: attributes on expressions are experimental
-        //~| ERROR: First Pass analysis includes:
+    let c = || {
         match foo { _ => () };
     };
+}
+
+fn test2() {
+    let foo = Some([1, 2, 3]);
+    let c = || {
+        match foo {
+            Some(_) => 1,
+            _ => 2
+        };
+    };
+}
+
+fn main() {
+    test1();
+    test2();
 }

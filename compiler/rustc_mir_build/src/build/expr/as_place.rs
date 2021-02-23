@@ -84,6 +84,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
     mir_projections: &[PlaceElem<'tcx>],
 ) -> Vec<HirProjectionKind> {
     let mut hir_projections = Vec::new();
+    let mut variant = None;
 
     for mir_projection in mir_projections {
         let hir_projection = match mir_projection {
@@ -91,13 +92,17 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
             ProjectionElem::Field(field, _) => {
                 // We will never encouter this for multivariant enums,
                 // read the comment for `Downcast`.
-                HirProjectionKind::Field(field.index() as u32, VariantIdx::new(0))
+                let variant = variant.unwrap_or(VariantIdx::new(0));
+                HirProjectionKind::Field(field.index() as u32, variant)
             }
-            ProjectionElem::Downcast(..) => {
-                // This projections exist only for enums that have
-                // multiple variants. Since such enums that are captured
-                // completely, we can stop here.
-                break;
+            ProjectionElem::Downcast(.., idx) => {
+                // This projections exist for enums that have
+                // single and multiple variants.
+                // For single variants, enums are not captured completely.
+                // We keep track of VariantIdx so we can use this information
+                // if the next ProjectionElem is a Field
+                variant = Some(*idx);
+                continue;
             }
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
@@ -107,7 +112,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 break;
             }
         };
-
+        variant = None;
         hir_projections.push(hir_projection);
     }
 
@@ -231,13 +236,12 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
                         from_builder.projection
                     )
                 } else {
-                    // FIXME(project-rfc-2229#24): Handle this case properly
                     debug!(
                         "No associated capture found for {:?}[{:#?}]",
                         var_hir_id, from_builder.projection,
                     );
                 }
-                return Err(upvar_resolved_place_builder);
+                return Err(from_builder);
             };
 
             let closure_ty = typeck_results
@@ -289,11 +293,10 @@ impl<'tcx> PlaceBuilder<'tcx> {
         if let PlaceBase::Local(local) = self.base {
             Place { local, projection: tcx.intern_place_elems(&self.projection) }
         } else {
-            self.try_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
+            self.expect_upvars_resolved(tcx, typeck_results).into_place(tcx, typeck_results)
         }
     }
 
-    /// ROX: Function that will be called when we really do need a place
     fn expect_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
@@ -302,14 +305,14 @@ impl<'tcx> PlaceBuilder<'tcx> {
         to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
     }
 
-    fn try_upvars_resolved<'a>(
+    crate fn try_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
-    ) -> PlaceBuilder<'tcx> {
+    ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
         match to_upvars_resolved_place_builder(self, tcx, typeck_results) {
-            Ok(upvars_resolved) => upvars_resolved,
-            Err(upvars_unresolved) => upvars_unresolved,
+            Ok(upvars_resolved) => Ok(upvars_resolved),
+            Err(upvars_unresolved) => Err(upvars_unresolved),
         }
     }
 
@@ -376,7 +379,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
-    // ROX: As place builder
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
     crate fn as_place_builder(

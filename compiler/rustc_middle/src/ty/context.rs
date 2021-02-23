@@ -47,6 +47,7 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
+use rustc_middle::mir::FakeReadCause;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -430,8 +431,7 @@ pub struct TypeckResults<'tcx> {
     /// see `MinCaptureInformationMap` for more details.
     pub closure_min_captures: ty::MinCaptureInformationMap<'tcx>,
 
-    /// [FIXME] RFC2229 Change to use HashSet instead of Vec
-    pub closure_fake_reads: FxHashMap<DefId, Vec<HirPlace<'tcx>>>,
+    pub closure_fake_reads: FxHashMap<DefId, Vec<(HirPlace<'tcx>, FakeReadCause)>>,
 
     /// Stores the type, expression, span and optional scope span of all types
     /// that are live across the yield of this generator (if a generator).

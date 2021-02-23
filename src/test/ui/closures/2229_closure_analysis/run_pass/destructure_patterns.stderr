@@ -1,14 +1,5 @@
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:17:13
-   |
-LL |     let c = #[rustc_capture_analysis] || {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-
 warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/destructure_patterns.rs:1:12
+  --> $DIR/destructure_patterns.rs:2:12
    |
 LL | #![feature(capture_disjoint_fields)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,46 +7,60 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:17:39
-   |
-LL |       let c = #[rustc_capture_analysis] || {
-   |  _______________________________________^
-LL | |         let (t1, t2) = t;
-LL | |     };
-   | |_____^
-   |
-note: Capturing t[(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:18:24
+warning: unused variable: `t1`
+  --> $DIR/destructure_patterns.rs:15:14
    |
 LL |         let (t1, t2) = t;
-   |                        ^
-note: Capturing t[(1, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:18:24
+   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
    |
-LL |         let (t1, t2) = t;
-   |                        ^
+note: the lint level is defined here
+  --> $DIR/destructure_patterns.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
-error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:17:39
-   |
-LL |       let c = #[rustc_capture_analysis] || {
-   |  _______________________________________^
-LL | |         let (t1, t2) = t;
-LL | |     };
-   | |_____^
-   |
-note: Min Capture t[(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:18:24
+warning: unused variable: `t2`
+  --> $DIR/destructure_patterns.rs:15:18
    |
 LL |         let (t1, t2) = t;
-   |                        ^
-note: Min Capture t[(1, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:18:24
+   |                  ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+
+warning: unused variable: `t1`
+  --> $DIR/destructure_patterns.rs:27:14
    |
-LL |         let (t1, t2) = t;
-   |                        ^
+LL |         let (t1, _) = t;
+   |              ^^ help: if this is intentional, prefix it with an underscore: `_t1`
 
-error: aborting due to 3 previous errors; 1 warning emitted
+warning: unused variable: `t2`
+  --> $DIR/destructure_patterns.rs:38:17
+   |
+LL |         let (_, t2) = t;
+   |                 ^^ help: if this is intentional, prefix it with an underscore: `_t2`
 
-For more information about this error, try `rustc --explain E0658`.
+warning: unused variable: `t`
+  --> $DIR/destructure_patterns.rs:46:9
+   |
+LL |     let t = (String::from("Hello"), String::from("World"));
+   |         ^ help: if this is intentional, prefix it with an underscore: `_t`
+
+warning: unused variable: `x`
+  --> $DIR/destructure_patterns.rs:93:21
+   |
+LL |         let Point { x, y } = p; // 1
+   |                     ^ help: try ignoring the field: `x: _`
+
+warning: unused variable: `x`
+  --> $DIR/destructure_patterns.rs:85:9
+   |
+LL |     let x = 0;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: unused variable: `tup`
+  --> $DIR/destructure_patterns.rs:87:9
+   |
+LL |     let tup = (1, 2);
+   |         ^^^ help: if this is intentional, prefix it with an underscore: `_tup`
+
+warning: 9 warnings emitted
+

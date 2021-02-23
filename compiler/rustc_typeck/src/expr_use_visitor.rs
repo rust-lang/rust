@@ -8,13 +8,14 @@ pub use self::ConsumeMode::*;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-// use rustc_hir::Pat;
 use rustc_hir::PatKind;
+use rustc_hir::QPath;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
@@ -54,7 +55,7 @@ pub trait Delegate<'tcx> {
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
     // [FIXME] RFC2229 This should also affect clippy ref: https://github.com/sexxi-goose/rust/pull/27
-    fn fake_read(&mut self, place: Place<'tcx>);
+    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -237,18 +238,26 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // We only want to borrow discr if the pattern contain something other
                 // than wildcards
                 let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
-                let mut res = false;
+                let mut needs_to_be_read = false;
                 for arm in arms.iter() {
                     return_if_err!(mc.cat_pattern(discr_place.clone(), &arm.pat, |_place, pat| {
                         if let PatKind::Binding(_, _, _, opt_sub_pat) = pat.kind {
                             if let None = opt_sub_pat {
-                                res = true;
+                                needs_to_be_read = true;
+                            }
+                        } else if let PatKind::TupleStruct(qpath, _, _) = &pat.kind {
+                            // If a TupleStruct has a Some PathSegment, we should read the discr_place
+                            // regardless if it contains a Wild pattern later
+                            if let QPath::Resolved(_, path) = qpath {
+                                if let Res::Def(DefKind::Ctor(_, _), _) = path.res {
+                                    needs_to_be_read = true;
+                                }
                             }
                         }
                     }));
                 }
 
-                if res {
+                if needs_to_be_read {
                     self.borrow_expr(&discr, ty::ImmBorrow);
                 }
 
@@ -539,6 +548,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_arm(&mut self, discr_place: &PlaceWithHirId<'tcx>, arm: &hir::Arm<'_>) {
+        self.delegate.fake_read(discr_place.place.clone(), FakeReadCause::ForMatchedPlace);
         self.walk_pat(discr_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
@@ -551,14 +561,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
+        self.delegate.fake_read(discr_place.place.clone(), FakeReadCause::ForLet);
         self.walk_pat(discr_place, pat);
     }
 
     /// The core driver for walking a pattern
     fn walk_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
         debug!("walk_pat(discr_place={:?}, pat={:?})", discr_place, pat);
-
-        self.delegate.fake_read(discr_place.place.clone());
 
         let tcx = self.tcx();
         let ExprUseVisitor { ref mc, body_owner: _, ref mut delegate } = *self;
@@ -620,10 +629,6 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
-        // Over here we walk a closure that is nested inside the current body
-        // If the current body is a closure, then we also want to report back any fake reads,
-        // starting off of variables that are captured by our parent as well.
-
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
         let upvars = self.tcx().upvars_mentioned(self.body_owner);
 
@@ -633,15 +638,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Closure(..) | ty::Generator(..)
         );
 
-        // [FIXME] RFC2229 Closures within closures don't work
         if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
-            for fake_read in fake_reads.iter() {
-                // Use this as a reference for if we should promote the fake read
+            for (fake_read, cause) in fake_reads.iter() {
                 match fake_read.base {
                     PlaceBase::Upvar(upvar_id) => {
                         if upvars.map_or(body_owner_is_closure, |upvars| {
                             !upvars.contains_key(&upvar_id.var_path.hir_id)
                         }) {
+                            // [FIXME] RFC2229 Update this comment
                             // The nested closure might be capturing the current (enclosing) closure's local variables.
                             // We check if the root variable is ever mentioned within the enclosing closure, if not
                             // then for the current body (if it's a closure) these aren't captures, we will ignore them.
@@ -655,14 +659,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         );
                     }
                 };
-                self.delegate.fake_read(fake_read.clone());
+                self.delegate.fake_read(fake_read.clone(), *cause);
             }
         }
 
         if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
         {
             for (var_hir_id, min_list) in min_captures.iter() {
-                // Use this as a reference for if we should promote the fake read
                 if upvars.map_or(body_owner_is_closure, |upvars| !upvars.contains_key(var_hir_id)) {
                     // The nested closure might be capturing the current (enclosing) closure's local variables.
                     // We check if the root variable is ever mentioned within the enclosing closure, if not

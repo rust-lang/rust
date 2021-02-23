@@ -1,6 +1,3 @@
-// ROX: this folder contains all code for handling patterns, including exhaustiveness checking etc.
-// We want to be careful ^^'
-
 //! Code related to match expressions. These are sufficiently complex to
 //! warrant their own module and submodules. :) This main module includes the
 //! high-level algorithm, the submodules contain the details.
@@ -100,7 +97,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
+        let mut arm_candidates =
+            self.create_match_candidates(scrutinee_place.clone(), &arms.clone());
 
         let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
         let mut candidates =
@@ -127,8 +125,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee));
-        let scrutinee_place =
-            scrutinee_place_builder.clone().into_place(self.tcx, self.typeck_results);
         // Matching on a `scrutinee_place` with an uninhabited type doesn't
         // generate any memory reads by itself, and so if the place "expression"
         // contains unsafe operations like raw pointer dereferences or union
@@ -146,7 +142,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // check safety.
         let cause_matched_place = FakeReadCause::ForMatchedPlace;
         let source_info = self.source_info(scrutinee_span);
-        self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
+
+        if let Ok(scrutinee_builder) =
+            scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+        {
+            let scrutinee_place =
+                scrutinee_builder.clone().into_place(self.tcx, self.typeck_results);
+            self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
+        }
 
         block.and(scrutinee_place_builder)
     }
@@ -228,7 +231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_match_arms(
         &mut self,
         destination: Place<'tcx>,
-        scrutinee_place: PlaceBuilder<'tcx>,
+        scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
         arm_candidates: Vec<(&'_ Arm<'_, 'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
@@ -242,17 +245,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 self.in_scope(arm_scope, arm.lint_level, |this| {
+                    let body = arm.body.clone();
+                    let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
+                    let scrutinee_place: Place<'tcx>;
+                    if let Ok(scrutinee_builder) = scrutinee_place_builder
+                        .clone()
+                        .try_upvars_resolved(this.tcx, this.typeck_results)
+                    {
+                        scrutinee_place =
+                            scrutinee_builder.clone().into_place(this.tcx, this.typeck_results);
+                        opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
+                    }
                     let scope = this.declare_bindings(
                         None,
                         arm.span,
                         &arm.pattern,
                         ArmHasGuard(arm.guard.is_some()),
-                        Some((
-                            Some(
-                                &scrutinee_place.clone().into_place(this.tcx, this.typeck_results),
-                            ),
-                            scrutinee_span,
-                        )),
+                        opt_scrutinee_place,
                     );
 
                     let arm_block = this.bind_pattern(
@@ -457,15 +466,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             _ => {
-                // Converts the destruct pattern into a place
-                //
-                // We don't want to convert to a place right away
-                // because in case of such pattern inside a closure, the projections matching a
-                // captured place might have not been applied.
-                // [FIXME] Need to find where this is happening and make the necessary changes there once
-                // Candidate is modified
-                //
-                // We want to use a place builder; Maybe use `as_place_builder`
                 let place_builder = unpack!(block = self.as_place_builder(block, initializer));
                 self.place_into_pattern(block, irrefutable_pat, place_builder, true)
             }
@@ -479,12 +479,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer: PlaceBuilder<'tcx>,
         set_match_place: bool,
     ) -> BlockAnd<()> {
-        let place = initializer.clone().into_place(self.tcx, self.typeck_results);
-        let mut candidate = Candidate::new(initializer, &irrefutable_pat, false);
-
+        let mut candidate = Candidate::new(initializer.clone(), &irrefutable_pat, false);
         let fake_borrow_temps =
             self.lower_match_tree(block, irrefutable_pat.span, false, &mut [&mut candidate]);
-
         // For matches and function arguments, the place that is being matched
         // can be set when creating the variables. But the place for
         // let PATTERN = ... might not even exist until we do the assignment.
@@ -499,7 +496,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
                     )))) = self.local_decls[local].local_info
                     {
-                        *match_place = Some(place);
+                        if let Ok(match_pair_resolved) =
+                            initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                        {
+                            let place = match_pair_resolved
+                                .clone()
+                                .into_place(self.tcx, self.typeck_results);
+                            *match_place = Some(place);
+                        }
                     } else {
                         bug!("Let binding to non-user variable.")
                     }
@@ -1461,7 +1465,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Insert a Shallow borrow of any places that is switched on.
         if let Some(fb) = fake_borrows {
-            fb.insert(match_place.clone().into_place(self.tcx, self.typeck_results));
+            if let Ok(match_place_resolved) =
+                match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+            {
+                let resolved_place =
+                    match_place_resolved.clone().into_place(self.tcx, self.typeck_results);
+                fb.insert(resolved_place);
+            }
         }
 
         // perform the test, branching to one of N blocks. For each of
@@ -1776,28 +1786,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
                 Guard::IfLet(pat, scrutinee) => {
                     let scrutinee_span = scrutinee.span;
-                    let scrutinee_place = unpack!(
+                    let scrutinee_place_builder = unpack!(
                         block = self.lower_scrutinee(block, scrutinee.clone(), scrutinee_span)
                     );
-                    let mut guard_candidate = Candidate::new(scrutinee_place.clone(), &pat, false);
+                    let mut guard_candidate =
+                        Candidate::new(scrutinee_place_builder.clone(), &pat, false);
                     let wildcard = Pat::wildcard_from_ty(pat.ty);
                     let mut otherwise_candidate =
-                        Candidate::new(scrutinee_place.clone(), &wildcard, false);
+                        Candidate::new(scrutinee_place_builder.clone(), &wildcard, false);
                     let fake_borrow_temps = self.lower_match_tree(
                         block,
                         pat.span,
                         false,
                         &mut [&mut guard_candidate, &mut otherwise_candidate],
                     );
+                    let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
+                    let scrutinee_place: Place<'tcx>;
+                    if let Ok(scrutinee_builder) = scrutinee_place_builder
+                        .clone()
+                        .try_upvars_resolved(self.tcx, self.typeck_results)
+                    {
+                        scrutinee_place =
+                            scrutinee_builder.clone().into_place(self.tcx, self.typeck_results);
+                        opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
+                    }
                     self.declare_bindings(
                         None,
                         pat.span.to(arm_span.unwrap()),
                         pat,
                         ArmHasGuard(false),
-                        Some((
-                            Some(&scrutinee_place.clone().into_place(tcx, self.typeck_results)),
-                            scrutinee.span,
-                        )),
+                        opt_scrutinee_place,
                     );
                     let post_guard_block = self.bind_pattern(
                         self.source_info(pat.span),

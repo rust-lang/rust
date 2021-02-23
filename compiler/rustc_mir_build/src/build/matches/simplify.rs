@@ -149,9 +149,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.tcx;
-        // Generate place to be used in Ascription
-        // Generate place to be used in Binding
-        let place = match_pair.place.clone().into_place(tcx, self.typeck_results);
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -159,6 +156,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
                 // value being matched, taking the variance field into account.
+                let place = match_pair.place.clone().into_place(self.tcx, self.typeck_results);
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
                     user_ty,
@@ -177,6 +175,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Binding { name, mutability, mode, var, ty, ref subpattern, is_primary: _ } => {
+                let place = match_pair.place.clone().into_place(self.tcx, self.typeck_results);
                 candidate.bindings.push(Binding {
                     name,
                     mutability,

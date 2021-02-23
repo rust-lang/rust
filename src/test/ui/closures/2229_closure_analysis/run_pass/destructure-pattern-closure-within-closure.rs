@@ -1,17 +1,19 @@
+//check-pass
 #![feature(capture_disjoint_fields)]
-#![feature(rustc_attrs)]
+//~^ WARNING: the feature `capture_disjoint_fields` is incomplete
+#![warn(unused)]
 
 fn main() {
     let _z = 9;
     let t = (String::from("Hello"), String::from("World"));
     let g = (String::from("Mr"), String::from("Goose"));
 
-    let a = #[rustc_capture_analysis] || {
+    let a = || {
         let (_, g2) = g;
-        println!("{}", g2);
-        let c = #[rustc_capture_analysis] ||  {
+        //~^ WARN unused variable: `g2`
+        let c = ||  {
             let (_, t2) = t;
-            println!("{}", t2);
+            //~^ WARN unused variable: `t2`
         };
 
         c();

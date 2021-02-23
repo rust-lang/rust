@@ -455,27 +455,32 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 );
 
                 let fake_reads = match self.typeck_results().closure_fake_reads.get(&def_id) {
-                    Some(vals) => Some(self.arena.alloc_from_iter(vals
-                        .iter()
-                        .filter(|val| match val.base {
-                            HirPlaceBase::Upvar(_) => true,
-                            _ => false,
-                        })
-                        .map(|val| {
-                            let var_hir_id = match val.base {
-                                HirPlaceBase::Upvar(upvar_id) => {
-                                    debug!("upvar");
-                                    upvar_id.var_path.hir_id
-                                }
-                                _ => {
-                                    bug!(
-                                        "Do not know how to get HirId out of Rvalue and StaticItem"
-                                    );
-                                }
-                            };
-                            self.fake_read_capture_upvar(expr, val.clone(), var_hir_id)
-                        })
-                    )),
+                    Some(vals) => {
+                        Some(
+                            vals.iter()
+                                .map(|(place, cause)| {
+                                    (
+                                        self.arena.alloc(
+                                            self.convert_captured_hir_place(expr, place.clone()),
+                                        ),
+                                        *cause,
+                                    )
+                                    // let var_hir_id = match val.base {
+                                    //     HirPlaceBase::Upvar(upvar_id) => {
+                                    //         debug!("upvar");
+                                    //         upvar_id.var_path.hir_id
+                                    //     }
+                                    //     _ => {
+                                    //         bug!(
+                                    //             "Do not know how to get HirId out of Rvalue and StaticItem"
+                                    //         );
+                                    //     }
+                                    // };
+                                    // self.fake_read_capture_upvar(expr, val.clone(), var_hir_id)
+                                })
+                                .collect(),
+                        )
+                    }
                     None => None,
                 };
 
@@ -1045,23 +1050,26 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         ExprKind::Deref { arg: ref_expr }
     }
 
-    fn fake_read_capture_upvar(
+    fn convert_captured_hir_place(
         &mut self,
         closure_expr: &'tcx hir::Expr<'tcx>,
         place: HirPlace<'tcx>,
-        hir_id: hir::HirId,
     ) -> Expr<'thir, 'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
+
+        let var_hir_id = match place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected an upvar, found {:?}", base),
+        };
 
         let mut captured_place_expr = Expr {
             temp_lifetime,
             ty: var_ty,
             span: closure_expr.span,
-            kind: self.convert_var(hir_id),
+            kind: self.convert_var(var_hir_id),
         };
-        // [FIXME] RFC2229 Maybe we should introduce an immutable borrow of the fake capture so that we don't
-        // end up moving this place
+
         for proj in place.projections.iter() {
             let kind = match proj.kind {
                 HirProjectionKind::Deref => {
@@ -1095,48 +1103,9 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         upvar_ty: Ty<'tcx>,
     ) -> Expr<'thir, 'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
+        let captured_place_expr =
+            self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-        let var_ty = captured_place.place.base_ty;
-
-        // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
-        // as it's seen for use within the closure and not at the time of closure creation.
-        //
-        // That is we see expect to see it start from a captured upvar and not something that is local
-        // to the closure's parent.
-        let var_hir_id = match captured_place.place.base {
-            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-            base => bug!("Expected an upvar, found {:?}", base),
-        };
-
-        let mut captured_place_expr = Expr {
-            temp_lifetime,
-            ty: var_ty,
-            span: closure_expr.span,
-            kind: self.convert_var(var_hir_id),
-        };
-
-        for proj in captured_place.place.projections.iter() {
-            let kind = match proj.kind {
-                HirProjectionKind::Deref => {
-                    ExprKind::Deref { arg: self.arena.alloc(captured_place_expr) }
-                }
-                HirProjectionKind::Field(field, ..) => {
-                    // Variant index will always be 0, because for multi-variant
-                    // enums, we capture the enum entirely.
-                    ExprKind::Field {
-                        lhs: self.arena.alloc(captured_place_expr),
-                        name: Field::new(field as usize),
-                    }
-                }
-                HirProjectionKind::Index | HirProjectionKind::Subslice => {
-                    // We don't capture these projections, so we can ignore them here
-                    continue;
-                }
-            };
-
-            captured_place_expr =
-                Expr { temp_lifetime, ty: proj.ty, span: closure_expr.span, kind };
-        }
 
         match upvar_capture {
             ty::UpvarCapture::ByValue(_) => captured_place_expr,
