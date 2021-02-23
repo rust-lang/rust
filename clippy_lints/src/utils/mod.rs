@@ -32,7 +32,7 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
-use rustc_ast::ast::{self, Attribute, LitKind};
+use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -1672,6 +1672,18 @@ pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, 
     f(expr, 0, count)
 }
 
+/// Peels off all references on the expression. Returns the underlying expression and the number of
+/// references removed.
+pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
+    fn f(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
+        match expr.kind {
+            ExprKind::AddrOf(BorrowKind::Ref, _, expr) => f(expr, count + 1),
+            _ => (expr, count),
+        }
+    }
+    f(expr, 0)
+}
+
 /// Peels off all references on the type. Returns the underlying type and the number of references
 /// removed.
 pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
@@ -1683,6 +1695,19 @@ pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
         }
     }
     peel(ty, 0)
+}
+
+/// Peels off all references on the type.Returns the underlying type, the number of references
+/// removed, and whether the pointer is ultimately mutable or not.
+pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
+    fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
+        match ty.kind() {
+            ty::Ref(_, ty, Mutability::Mut) => f(ty, count + 1, mutability),
+            ty::Ref(_, ty, Mutability::Not) => f(ty, count + 1, Mutability::Not),
+            _ => (ty, count, mutability),
+        }
+    }
+    f(ty, 0, Mutability::Mut)
 }
 
 #[macro_export]
