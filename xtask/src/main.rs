@@ -134,7 +134,10 @@ FLAGS:
         "bb" => {
             let suffix: String = args.free_from_str()?;
             finish_args(args)?;
-            cmd!("cargo build --release").run()?;
+            {
+                let _d = pushd("./crates/rust-analyzer")?;
+                cmd!("cargo build --release --features jemalloc").run()?;
+            }
             cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", suffix))?;
             Ok(())
         }
