@@ -32,33 +32,68 @@ pub(crate) fn convert_for_to_iter_for_each(acc: &mut Assists, ctx: &AssistContex
     let pat = for_loop.pat()?;
     let body = for_loop.loop_body()?;
 
-    let mut buf = String::new();
-
-    if impls_core_iter(&ctx.sema, &iterable) {
-        buf += &iterable.to_string();
-    } else {
-        match iterable {
-            ast::Expr::RefExpr(r) => {
-                if r.mut_token().is_some() {
-                    format_to!(buf, "{}.iter_mut()", r.expr()?);
-                } else {
-                    format_to!(buf, "{}.iter()", r.expr()?);
-                }
-            }
-            _ => format_to!(buf, "{}.into_iter()", iterable),
-        }
-    }
-
-    format_to!(buf, ".for_each(|{}| {});", pat, body);
-
     acc.add(
         AssistId("convert_for_to_iter_for_each", AssistKind::RefactorRewrite),
         "Convert a for loop into an Iterator::for_each",
         for_loop.syntax().text_range(),
-        |builder| builder.replace(for_loop.syntax().text_range(), buf),
+        |builder| {
+            let mut buf = String::new();
+
+            if let Some((expr_behind_ref, method)) =
+                is_ref_and_impls_iter_method(&ctx.sema, &iterable)
+            {
+                // We have either "for x in &col" and col implements a method called iter
+                //             or "for x in &mut col" and col implements a method called iter_mut
+                format_to!(buf, "{}.{}()", expr_behind_ref, method);
+            } else if impls_core_iter(&ctx.sema, &iterable) {
+                format_to!(buf, "{}", iterable);
+            } else {
+                if let ast::Expr::RefExpr(_) = iterable {
+                    format_to!(buf, "({}).into_iter()", iterable);
+                } else {
+                    format_to!(buf, "{}.into_iter()", iterable);
+                }
+            }
+
+            format_to!(buf, ".for_each(|{}| {});", pat, body);
+
+            builder.replace(for_loop.syntax().text_range(), buf)
+        },
     )
 }
 
+/// If iterable is a reference where the expression behind the reference implements a method
+/// returning an Iterator called iter or iter_mut (depending on the type of reference) then return
+/// the expression behind the reference and the method name
+fn is_ref_and_impls_iter_method(
+    sema: &hir::Semantics<ide_db::RootDatabase>,
+    iterable: &ast::Expr,
+) -> Option<(ast::Expr, &'static str)> {
+    let ref_expr = match iterable {
+        ast::Expr::RefExpr(r) => r,
+        _ => return None,
+    };
+    let wanted_method = if ref_expr.mut_token().is_some() { "iter_mut" } else { "iter" };
+    let expr_behind_ref = ref_expr.expr()?;
+    let typ = sema.type_of_expr(&expr_behind_ref)?;
+    let scope = sema.scope(iterable.syntax());
+    let krate = scope.module()?.krate();
+    let traits_in_scope = scope.traits_in_scope();
+    let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
+    let has_wanted_method =
+        typ.iterate_method_candidates(sema.db, krate, &traits_in_scope, None, |_, func| {
+            if func.name(sema.db).to_string() != wanted_method {
+                return None;
+            }
+            if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
+                return Some(());
+            }
+            None
+        });
+    has_wanted_method.and(Some((expr_behind_ref, wanted_method)))
+}
+
+/// Whether iterable implements core::Iterator
 fn impls_core_iter(sema: &hir::Semantics<ide_db::RootDatabase>, iterable: &ast::Expr) -> bool {
     let it_typ = if let Some(i) = sema.type_of_expr(iterable) {
         i
@@ -94,7 +129,10 @@ impl Iterator for EmptyIter {
 pub struct Empty;
 impl Empty {
     pub fn iter(&self) -> EmptyIter { EmptyIter }
+    pub fn iter_mut(&self) -> EmptyIter { EmptyIter }
 }
+
+pub struct NoIterMethod;
 ";
 
     #[test]
@@ -131,43 +169,97 @@ fn main() {
 
     #[test]
     fn test_for_borrowed() {
-        check_assist(
-            convert_for_to_iter_for_each,
-            r"
+        let before = r"
+use empty_iter::*;
 fn main() {
-    let x = vec![1, 2, 3];
+    let x = Empty;
     for $0v in &x {
         let a = v * 2;
     }
-}",
+}
+";
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
+            before,
+            FamousDefs::FIXTURE,
+            EMPTY_ITER_FIXTURE
+        );
+        check_assist(
+            convert_for_to_iter_for_each,
+            before,
             r"
+use empty_iter::*;
 fn main() {
-    let x = vec![1, 2, 3];
+    let x = Empty;
     x.iter().for_each(|v| {
         let a = v * 2;
     });
-}",
+}
+",
+        )
+    }
+
+    #[test]
+    fn test_for_borrowed_no_iter_method() {
+        let before = r"
+use empty_iter::*;
+fn main() {
+    let x = NoIterMethod;
+    for $0v in &x {
+        let a = v * 2;
+    }
+}
+";
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
+            before,
+            FamousDefs::FIXTURE,
+            EMPTY_ITER_FIXTURE
+        );
+        check_assist(
+            convert_for_to_iter_for_each,
+            before,
+            r"
+use empty_iter::*;
+fn main() {
+    let x = NoIterMethod;
+    (&x).into_iter().for_each(|v| {
+        let a = v * 2;
+    });
+}
+",
         )
     }
 
     #[test]
     fn test_for_borrowed_mut() {
+        let before = r"
+use empty_iter::*;
+fn main() {
+    let x = Empty;
+    for $0v in &mut x {
+        let a = v * 2;
+    }
+}
+";
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
+            before,
+            FamousDefs::FIXTURE,
+            EMPTY_ITER_FIXTURE
+        );
         check_assist(
             convert_for_to_iter_for_each,
+            before,
             r"
+use empty_iter::*;
 fn main() {
-    let x = vec![1, 2, 3];
-    for $0v in &mut x {
-        *v *= 2;
-    }
-}",
-            r"
-fn main() {
-    let x = vec![1, 2, 3];
+    let x = Empty;
     x.iter_mut().for_each(|v| {
-        *v *= 2;
+        let a = v * 2;
     });
-}",
+}
+",
         )
     }
 
@@ -195,7 +287,7 @@ fn main() {
     }
 
     #[test]
-    fn test_take() {
+    fn test_already_impls_iterator() {
         let before = r#"
 use empty_iter::*;
 fn main() {
