@@ -228,7 +228,7 @@ impl u8 {
 
     /// Assumes self is ascii
     #[inline]
-    pub(crate) fn ascii_change_case_unchecked(&self) -> u8 {
+    pub(crate) const fn ascii_change_case_unchecked(&self) -> u8 {
         *self ^ ASCII_CASE_MASK
     }
 
