@@ -336,8 +336,8 @@ fn build_clippy() {
 }
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
-fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
-    let toml_path = lintcheck_config_toml(toml_path);
+fn read_crates(clap_toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
+    let toml_path = lintcheck_config_toml(clap_toml_path);
     // save it so that we can use the name of the sources.toml as name for the logfile later.
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
@@ -478,7 +478,8 @@ pub fn run(clap_config: &ArgMatches) {
     build_clippy();
     println!("Done compiling");
 
-    let clap_toml_path = clap_config.value_of("crates-toml");
+    let clap_toml_path: Option<&str> = clap_config.value_of("crates-toml");
+    let toml_path = lintcheck_config_toml(clap_toml_path);
 
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
