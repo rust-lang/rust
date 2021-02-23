@@ -2175,6 +2175,7 @@ impl FromStr for String {
 /// implementation for free.
 ///
 /// [`Display`]: fmt::Display
+#[cfg_attr(not(test), rustc_diagnostic_item = "ToString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.

@@ -222,6 +222,7 @@ mod hack {
 }
 
 #[lang = "slice_alloc"]
+#[cfg_attr(not(test), rustc_diagnostic_item = "slice")]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Sorts the slice.
