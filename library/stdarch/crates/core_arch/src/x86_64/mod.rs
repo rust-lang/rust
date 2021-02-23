@@ -1,5 +1,8 @@
 //! `x86_64` intrinsics
 
+#[macro_use]
+mod macros;
+
 mod fxsr;
 pub use self::fxsr::*;
 

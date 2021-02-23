@@ -12,12 +12,12 @@
   * [x] [`_mm256_maskz_compress_epi8`]
   * [x] [`_mm512_mask_compress_epi8`]
   * [x] [`_mm512_maskz_compress_epi8`]
-  * [_] [`_mm_mask_compressstoreu_epi16`]
-  * [_] [`_mm256_mask_compressstoreu_epi16`]
-  * [_] [`_mm512_mask_compressstoreu_epi16`]
-  * [_] [`_mm_mask_compressstoreu_epi8`]
-  * [_] [`_mm256_mask_compressstoreu_epi8`]
-  * [_] [`_mm512_mask_compressstoreu_epi8`]
+  * [_] [`_mm_mask_compressstoreu_epi16`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_epi16`] //need i1
+  * [_] [`_mm512_mask_compressstoreu_epi16`] //need i1
+  * [_] [`_mm_mask_compressstoreu_epi8`] //need i1
+  * [_] [`_mm256_mask_compressstoreu_epi8`] //need i1
+  * [_] [`_mm512_mask_compressstoreu_epi8`] //need i1
   * [x] [`_mm_mask_expand_epi16`]
   * [x] [`_mm_maskz_expand_epi16`]
   * [x] [`_mm256_mask_expand_epi16`]
@@ -30,18 +30,18 @@
   * [x] [`_mm256_maskz_expand_epi8`]
   * [x] [`_mm512_mask_expand_epi8`]
   * [x] [`_mm512_maskz_expand_epi8`]
-  * [_] [`_mm_mask_expandloadu_epi16`]
-  * [_] [`_mm_maskz_expandloadu_epi16`]
-  * [_] [`_mm256_mask_expandloadu_epi16`]
-  * [_] [`_mm256_maskz_expandloadu_epi16`]
-  * [_] [`_mm512_mask_expandloadu_epi16`]
-  * [_] [`_mm512_maskz_expandloadu_epi16`]
-  * [_] [`_mm_mask_expandloadu_epi8`]
-  * [_] [`_mm_maskz_expandloadu_epi8`]
-  * [_] [`_mm256_mask_expandloadu_epi8`]
-  * [_] [`_mm256_maskz_expandloadu_epi8`]
-  * [_] [`_mm512_mask_expandloadu_epi8`]
-  * [_] [`_mm512_maskz_expandloadu_epi8`]
+  * [_] [`_mm_mask_expandloadu_epi16`] //need i1
+  * [_] [`_mm_maskz_expandloadu_epi16`] //need i1
+  * [_] [`_mm256_mask_expandloadu_epi16`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_epi16`] //need i1
+  * [_] [`_mm512_mask_expandloadu_epi16`] //need i1
+  * [_] [`_mm512_maskz_expandloadu_epi16`] //need i1
+  * [_] [`_mm_mask_expandloadu_epi8`] //need i1
+  * [_] [`_mm_maskz_expandloadu_epi8`] //need i1
+  * [_] [`_mm256_mask_expandloadu_epi8`] //need i1
+  * [_] [`_mm256_maskz_expandloadu_epi8`] //need i1
+  * [_] [`_mm512_mask_expandloadu_epi8`] //need i1
+  * [_] [`_mm512_maskz_expandloadu_epi8`] //need i1
   * [x] [`_mm_mask_shldi_epi16`]
   * [x] [`_mm_maskz_shldi_epi16`]
   * [x] [`_mm_shldi_epi16`]
