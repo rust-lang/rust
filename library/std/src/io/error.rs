@@ -182,7 +182,7 @@ pub enum ErrorKind {
     UnexpectedEof,
 
     /// This operation is not supported on this platform.
-    #[stable(feature = "not_supported_error", since = "1.50.0")]
+    #[stable(feature = "not_supported_error", since = "1.52.0")]
     NotSupported,
 }
 
