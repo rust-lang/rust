@@ -73,7 +73,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
     }
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
     if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
-        || inherits_doc_hidden(cx, hir_id)
+        || inherits_doc_hidden(cx.tcx, hir_id)
     {
         return false;
     }

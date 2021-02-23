@@ -29,10 +29,10 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
-crate fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
-    while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
+crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
+    while let Some(id) = tcx.hir().get_enclosing_scope(node) {
         node = id;
-        if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
+        if tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
             return true;
         }
     }
@@ -209,7 +209,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.access_levels.is_public(res_did);
-        let is_hidden = inherits_doc_hidden(self.cx, res_hir_id);
+        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
