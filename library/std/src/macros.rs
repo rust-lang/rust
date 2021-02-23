@@ -4,21 +4,6 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[cfg(bootstrap)]
-#[doc(include = "../../core/src/macros/panic.md")]
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(libstd_sys_internals)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_macro")]
-macro_rules! panic {
-    () => ({ $crate::panic!("explicit panic") });
-    ($msg:expr $(,)?) => ({ $crate::rt::begin_panic($msg) });
-    ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
-    });
-}
-
-#[cfg(not(bootstrap))]
 #[doc(include = "../../core/src/macros/panic.md")]
 #[macro_export]
 #[rustc_builtin_macro = "std_panic"]

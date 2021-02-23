@@ -94,10 +94,7 @@ mod cell;
 mod char;
 mod clone;
 mod cmp;
-
-#[cfg(not(bootstrap))]
 mod const_ptr;
-
 mod fmt;
 mod hash;
 mod intrinsics;

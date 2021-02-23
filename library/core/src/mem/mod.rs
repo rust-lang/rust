@@ -4,7 +4,6 @@
 //! types, initializing and manipulating memory.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![cfg_attr(bootstrap, allow(unused_unsafe))]
 
 use crate::clone;
 use crate::cmp;
@@ -152,13 +151,6 @@ pub const fn forget<T>(t: T) {
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
-    #[cfg(bootstrap)]
-    // SAFETY: the forget intrinsic could be safe, but there's no point in making it safe since
-    // we'll be implementing this function soon via `ManuallyDrop`
-    unsafe {
-        intrinsics::forget(t)
-    }
-    #[cfg(not(bootstrap))]
     intrinsics::forget(t)
 }
 

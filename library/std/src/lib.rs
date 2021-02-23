@@ -185,8 +185,8 @@
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
-#![cfg_attr(not(bootstrap), doc = "[array]: prim@array")]
-#![cfg_attr(not(bootstrap), doc = "[slice]: prim@slice")]
+//! [array]: prim@array
+//! [slice]: prim@slice
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
