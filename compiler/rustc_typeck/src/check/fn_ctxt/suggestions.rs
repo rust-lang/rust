@@ -393,12 +393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ExprKind::If(..)
                 | ExprKind::Match(..)
                 | ExprKind::Block(..) => {
-                    err.span_suggestion(
-                        cause_span.shrink_to_hi(),
-                        "try adding a semicolon",
-                        ";".to_string(),
-                        Applicability::MachineApplicable,
-                    );
+                    self.suggest_return_or_semicolon(err, expression, cause_span);
                 }
                 _ => (),
             }
@@ -474,5 +469,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp, None);
         }
+    }
+
+    pub(in super::super) fn suggest_return_or_semicolon(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expression: &'tcx hir::Expr<'tcx>,
+        cause_span: Span,
+    ) {
+        if let Some(ref ret_coercion) = self.ret_coercion {
+            let ret_ty = ret_coercion.borrow().expected_ty();
+            let return_expr_ty = self.check_expr_with_hint(expression, ret_ty.clone());
+            if self.can_coerce(return_expr_ty, ret_ty) {
+                err.span_suggestion_short(
+                    cause_span.shrink_to_lo(),
+                    "try adding return",
+                    "return ".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                return;
+            }
+        }
+        err.span_suggestion(
+            cause_span.shrink_to_hi(),
+            "try adding a semicolon",
+            ";".to_string(),
+            Applicability::MachineApplicable,
+        );
     }
 }
