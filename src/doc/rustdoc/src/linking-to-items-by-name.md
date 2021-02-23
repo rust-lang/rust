@@ -109,7 +109,7 @@ Links are resolved in the scope of the module where the item is defined, even
 when the item is re-exported. If a link from another crate fails to resolve, no
 warning is given.
 
-```rust
+```rust,edition2018
 mod inner {
     /// Link to [f()]
     pub struct S;
