@@ -36,10 +36,7 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn const_addr<'a, 'tcx>(
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        addr: i64,
-    ) -> Self {
+    pub(crate) fn const_addr(fx: &mut FunctionCx<'_, '_, '_>, addr: i64) -> Self {
         let addr = fx.bcx.ins().iconst(fx.pointer_type, addr);
         Pointer {
             base: PointerBase::Addr(addr),
@@ -59,7 +56,7 @@ impl Pointer {
         (self.base, self.offset)
     }
 
-    pub(crate) fn get_addr<'a, 'tcx>(self, fx: &mut FunctionCx<'a, 'tcx, impl Module>) -> Value {
+    pub(crate) fn get_addr(self, fx: &mut FunctionCx<'_, '_, '_>) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
@@ -81,19 +78,11 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn offset<'a, 'tcx>(
-        self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        extra_offset: Offset32,
-    ) -> Self {
+    pub(crate) fn offset(self, fx: &mut FunctionCx<'_, '_, '_>, extra_offset: Offset32) -> Self {
         self.offset_i64(fx, extra_offset.into())
     }
 
-    pub(crate) fn offset_i64<'a, 'tcx>(
-        self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        extra_offset: i64,
-    ) -> Self {
+    pub(crate) fn offset_i64(self, fx: &mut FunctionCx<'_, '_, '_>, extra_offset: i64) -> Self {
         if let Some(new_offset) = self.offset.try_add_i64(extra_offset) {
             Pointer {
                 base: self.base,
@@ -126,11 +115,7 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn offset_value<'a, 'tcx>(
-        self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        extra_offset: Value,
-    ) -> Self {
+    pub(crate) fn offset_value(self, fx: &mut FunctionCx<'_, '_, '_>, extra_offset: Value) -> Self {
         match self.base {
             PointerBase::Addr(addr) => Pointer {
                 base: PointerBase::Addr(fx.bcx.ins().iadd(addr, extra_offset)),
@@ -159,12 +144,7 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn load<'a, 'tcx>(
-        self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        ty: Type,
-        flags: MemFlags,
-    ) -> Value {
+    pub(crate) fn load(self, fx: &mut FunctionCx<'_, '_, '_>, ty: Type, flags: MemFlags) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
             PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_load(ty, stack_slot, self.offset),
@@ -172,12 +152,7 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn store<'a, 'tcx>(
-        self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Module>,
-        value: Value,
-        flags: MemFlags,
-    ) {
+    pub(crate) fn store(self, fx: &mut FunctionCx<'_, '_, '_>, value: Value, flags: MemFlags) {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 fx.bcx.ins().store(flags, value, base_addr, self.offset);

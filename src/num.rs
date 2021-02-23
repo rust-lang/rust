@@ -41,7 +41,7 @@ pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
 }
 
 fn codegen_compare_bin_op<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     signed: bool,
     lhs: Value,
@@ -54,7 +54,7 @@ fn codegen_compare_bin_op<'tcx>(
 }
 
 pub(crate) fn codegen_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -103,7 +103,7 @@ pub(crate) fn codegen_binop<'tcx>(
 }
 
 pub(crate) fn codegen_bool_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -124,7 +124,7 @@ pub(crate) fn codegen_bool_binop<'tcx>(
 }
 
 pub(crate) fn codegen_int_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -197,7 +197,7 @@ pub(crate) fn codegen_int_binop<'tcx>(
 }
 
 pub(crate) fn codegen_checked_int_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -350,7 +350,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
 }
 
 pub(crate) fn codegen_float_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -395,7 +395,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
 }
 
 pub(crate) fn codegen_ptr_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,

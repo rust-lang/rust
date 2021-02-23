@@ -3,7 +3,7 @@
 use crate::prelude::*;
 
 pub(crate) fn clif_intcast(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     val: Value,
     to: Type,
     signed: bool,
@@ -51,7 +51,7 @@ pub(crate) fn clif_intcast(
 }
 
 pub(crate) fn clif_int_or_float_cast(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     from: Value,
     from_signed: bool,
     to_ty: Type,

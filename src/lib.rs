@@ -127,9 +127,9 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'tcx, M: Module> {
+struct CodegenCx<'m, 'tcx: 'm> {
     tcx: TyCtxt<'tcx>,
-    module: M,
+    module: &'m mut dyn Module,
     global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
@@ -138,8 +138,13 @@ struct CodegenCx<'tcx, M: Module> {
     unwind_context: UnwindContext<'tcx>,
 }
 
-impl<'tcx, M: Module> CodegenCx<'tcx, M> {
-    fn new(tcx: TyCtxt<'tcx>, backend_config: BackendConfig, module: M, debug_info: bool) -> Self {
+impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        backend_config: BackendConfig,
+        module: &'m mut dyn Module,
+        debug_info: bool,
+    ) -> Self {
         let unwind_context = UnwindContext::new(
             tcx,
             module.isa(),
@@ -162,14 +167,9 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
         }
     }
 
-    fn finalize(mut self) -> (M, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        self.constants_cx.finalize(self.tcx, &mut self.module);
-        (
-            self.module,
-            self.global_asm,
-            self.debug_context,
-            self.unwind_context,
-        )
+    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+        self.constants_cx.finalize(self.tcx, self.module);
+        (self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 

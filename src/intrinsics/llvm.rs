@@ -6,7 +6,7 @@ use crate::prelude::*;
 use rustc_middle::ty::subst::SubstsRef;
 
 pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],

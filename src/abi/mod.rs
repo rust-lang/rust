@@ -73,7 +73,7 @@ pub(crate) fn get_function_sig<'tcx>(
 /// Instance must be monomorphized
 pub(crate) fn import_function<'tcx>(
     tcx: TyCtxt<'tcx>,
-    module: &mut impl Module,
+    module: &mut dyn Module,
     inst: Instance<'tcx>,
 ) -> FuncId {
     let name = tcx.symbol_name(inst).name.to_string();
@@ -83,10 +83,10 @@ pub(crate) fn import_function<'tcx>(
         .unwrap()
 }
 
-impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
+impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(self.tcx, &mut self.cx.module, inst);
+        let func_id = import_function(self.tcx, self.cx.module, inst);
         let func_ref = self
             .cx
             .module
@@ -167,7 +167,7 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
 
 /// Make a [`CPlace`] capable of holding value of the specified type.
 fn make_local_place<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     local: Local,
     layout: TyAndLayout<'tcx>,
     is_ssa: bool,
@@ -188,10 +188,7 @@ fn make_local_place<'tcx>(
     place
 }
 
-pub(crate) fn codegen_fn_prelude<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
-    start_block: Block,
-) {
+pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_block: Block) {
     fx.bcx.append_block_params_for_function_params(start_block);
 
     fx.bcx.switch_to_block(start_block);
@@ -344,7 +341,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(
 }
 
 pub(crate) fn codegen_terminator_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     span: Span,
     current_block: Block,
     func: &Operand<'tcx>,
@@ -572,7 +569,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 }
 
 pub(crate) fn codegen_drop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     span: Span,
     drop_place: CPlace<'tcx>,
 ) {

@@ -7,7 +7,7 @@ use rustc_target::abi::{Int, TagEncoding, Variants};
 use crate::prelude::*;
 
 pub(crate) fn codegen_set_discriminant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     place: CPlace<'tcx>,
     variant_index: VariantIdx,
 ) {
@@ -70,7 +70,7 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
 }
 
 pub(crate) fn codegen_get_discriminant<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     value: CValue<'tcx>,
     dest_layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {

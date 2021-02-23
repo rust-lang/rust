@@ -186,7 +186,7 @@ impl FuncWriter for &'_ CommentWriter {
 }
 
 #[cfg(debug_assertions)]
-impl<M: Module> FunctionCx<'_, '_, M> {
+impl FunctionCx<'_, '_, '_> {
     pub(crate) fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
         self.clif_comments.add_global_comment(comment);
     }
@@ -276,7 +276,7 @@ pub(crate) fn write_clif_file<'tcx>(
     );
 }
 
-impl<M: Module> fmt::Debug for FunctionCx<'_, '_, M> {
+impl fmt::Debug for FunctionCx<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "{:?}", self.instance.substs)?;
         writeln!(f, "{:?}", self.local_map)?;

@@ -130,7 +130,7 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 pub(crate) fn codegen_icmp_imm(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     intcc: IntCC,
     lhs: Value,
     rhs: i128,
@@ -241,8 +241,8 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, M>,
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
+    pub(crate) cx: &'clif mut crate::CodegenCx<'m, 'tcx>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
 
@@ -269,7 +269,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> LayoutOf for FunctionCx<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 
@@ -278,31 +278,31 @@ impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
     }
 }
 
-impl<'tcx, M: Module> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, M: Module> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> rustc_target::abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
     fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'tcx, M: Module> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> layout::HasParamEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         ParamEnv::reveal_all()
     }
 }
 
-impl<'tcx, M: Module> HasTargetSpec for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> HasTargetSpec for FunctionCx<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
     }
 }
 
-impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
+impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     pub(crate) fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx> + Copy,

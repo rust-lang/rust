@@ -8,7 +8,7 @@ use rustc_target::abi::call::FnAbi;
 use crate::prelude::*;
 
 pub(crate) fn codegen_fn<'tcx>(
-    cx: &mut crate::CodegenCx<'tcx, impl Module>,
+    cx: &mut crate::CodegenCx<'_, 'tcx>,
     instance: Instance<'tcx>,
     linkage: Linkage,
 ) {
@@ -209,7 +209,7 @@ pub(crate) fn verify_func(
     });
 }
 
-fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
+fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         let block = fx.get_block(bb);
         fx.bcx.switch_to_block(block);
@@ -453,7 +453,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Module>) {
 }
 
 fn codegen_stmt<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     #[allow(unused_variables)] cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
@@ -595,10 +595,7 @@ fn codegen_stmt<'tcx>(
                     let from_ty = operand.layout().ty;
                     let to_ty = fx.monomorphize(to_ty);
 
-                    fn is_fat_ptr<'tcx>(
-                        fx: &FunctionCx<'_, 'tcx, impl Module>,
-                        ty: Ty<'tcx>,
-                    ) -> bool {
+                    fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true)
                             .map(
                                 |ty::TypeAndMut {
@@ -895,10 +892,7 @@ fn codegen_stmt<'tcx>(
     }
 }
 
-fn codegen_array_len<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
-    place: CPlace<'tcx>,
-) -> Value {
+fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {
     match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
             let len = fx
@@ -915,7 +909,7 @@ fn codegen_array_len<'tcx>(
 }
 
 pub(crate) fn codegen_place<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     place: Place<'tcx>,
 ) -> CPlace<'tcx> {
     let mut cplace = fx.get_local_place(place.local);
@@ -987,7 +981,7 @@ pub(crate) fn codegen_place<'tcx>(
 }
 
 pub(crate) fn codegen_operand<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {
     match operand {
@@ -999,11 +993,7 @@ pub(crate) fn codegen_operand<'tcx>(
     }
 }
 
-pub(crate) fn codegen_panic<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
-    msg_str: &str,
-    span: Span,
-) {
+pub(crate) fn codegen_panic<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, msg_str: &str, span: Span) {
     let location = fx.get_caller_location(span).load_scalar(fx);
 
     let msg_ptr = fx.anonymous_str("assert", msg_str);
@@ -1017,7 +1007,7 @@ pub(crate) fn codegen_panic<'tcx>(
 }
 
 pub(crate) fn codegen_panic_inner<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
     span: Span,
