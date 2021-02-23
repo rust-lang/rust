@@ -312,9 +312,14 @@ fn filter_clippy_warnings(line: &str) -> bool {
 
 /// get the path to lintchecks crate sources .toml file, check LINTCHECK_TOML first but if it's
 /// empty use the default path
-fn lintcheck_config_toml() -> PathBuf {
+fn lintcheck_config_toml(toml_path: Option<&str>) -> PathBuf {
     PathBuf::from(
-        env::var("LINTCHECK_TOML").unwrap_or(toml_path.unwrap_or("clippy_dev/lintcheck_crates.toml").to_string()),
+        env::var("LINTCHECK_TOML").unwrap_or(
+            toml_path
+                .clone()
+                .unwrap_or("clippy_dev/lintcheck_crates.toml")
+                .to_string(),
+        ),
     )
 }
 
@@ -332,7 +337,7 @@ fn build_clippy() {
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
 fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
-    let toml_path = lintcheck_config_toml();
+    let toml_path = lintcheck_config_toml(toml_path);
     // save it so that we can use the name of the sources.toml as name for the logfile later.
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
@@ -444,10 +449,10 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun() -> bool {
+fn lintcheck_needs_rerun(toml_path: Option<&str>) -> bool {
     let clippy_modified: std::time::SystemTime = {
         let mut times = ["target/debug/clippy-driver", "target/debug/cargo-clippy"]
-            .into_iter()
+            .iter()
             .map(|p| {
                 std::fs::metadata(p)
                     .expect("failed to get metadata of file")
@@ -458,7 +463,7 @@ fn lintcheck_needs_rerun() -> bool {
         std::cmp::max(times.next().unwrap(), times.next().unwrap())
     };
 
-    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_config_toml())
+    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_config_toml(toml_path))
         .expect("failed to get metadata of file")
         .modified()
         .expect("failed to get modification date");
@@ -473,16 +478,22 @@ pub fn run(clap_config: &ArgMatches) {
     build_clippy();
     println!("Done compiling");
 
+    let clap_toml_path = clap_config.value_of("crates-toml");
+
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if lintcheck_needs_rerun() {
+    if lintcheck_needs_rerun(clap_toml_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
-        if std::fs::metadata(&shared_target_dir)
-            .expect("failed to get metadata of shared target dir")
-            .is_dir()
-        {
-            println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
-            std::fs::remove_dir_all(&shared_target_dir).expect("failed to remove target/lintcheck/shared_target_dir");
+        match std::fs::metadata(&shared_target_dir) {
+            Ok(metadata) => {
+                if metadata.is_dir() {
+                    println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
+                    std::fs::remove_dir_all(&shared_target_dir)
+                        .expect("failed to remove target/lintcheck/shared_target_dir");
+                }
+            },
+            Err(_) => { // dir probably does not exist, don't remove anything
+            },
         }
     }
 
@@ -506,7 +517,7 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let (filename, crates) = read_crates(clap_config.value_of("crates-toml"));
+    let (filename, crates) = read_crates(clap_toml_path);
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
