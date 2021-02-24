@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// for more.
     ///
     /// By default, the lint only triggers on fully-capitalized names.
-    /// You can use the `upper_case_acronyms_aggressive: true` config option to enable linting
+    /// You can use the `upper-case-acronyms-aggressive: true` config option to enable linting
     /// on all camel case names
     ///
     /// **Known problems:** When two acronyms are contiguous, the lint can't tell where
@@ -82,7 +82,7 @@ fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
     // (and don't warn)
     if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
     // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive 
-    // upper_case_acronyms_aggressive config option enabled
+    // upper-case-acronyms-aggressive config option enabled
     || (be_aggressive && ident != &corrected)
     {
         span_lint_and_sugg(
