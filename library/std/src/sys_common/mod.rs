@@ -46,7 +46,6 @@ macro_rules! rtunwrap {
     };
 }
 
-pub mod alloc;
 pub mod at_exit_imp;
 pub mod backtrace;
 pub mod bytestring;

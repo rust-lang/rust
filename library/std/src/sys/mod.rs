@@ -22,6 +22,8 @@
 
 #![allow(missing_debug_implementations)]
 
+mod common;
+
 cfg_if::cfg_if! {
     if #[cfg(target_os = "vxworks")] {
         mod vxworks;
