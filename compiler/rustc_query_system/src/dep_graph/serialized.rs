@@ -89,16 +89,6 @@ impl ColorAndOffset {
         ColorAndOffset(AtomicU64::new(val))
     }
 
-    #[allow(dead_code)]
-    fn new(color: DepNodeColor, range: Range<usize>) -> ColorAndOffset {
-        let start: u32 = range.start.try_into().unwrap();
-        let end: u32 = range.end.try_into().unwrap();
-        let val = (start as u64) << 32 | (end as u64);
-        debug_assert_eq!(val & TAG_MASK, 0);
-        let val = val | color.tag();
-        ColorAndOffset(AtomicU64::new(val))
-    }
-
     fn set_lifted(&self, color: DepNodeColor, range: Range<usize>) {
         let start: u32 = range.start.try_into().unwrap();
         let end: u32 = range.end.try_into().unwrap();
