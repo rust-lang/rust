@@ -22,6 +22,7 @@ pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_debuginfo;
+pub mod const_goto;
 pub mod const_prop;
 pub mod coverage;
 pub mod deaggregator;
@@ -492,6 +493,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &const_goto::ConstGoto,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)

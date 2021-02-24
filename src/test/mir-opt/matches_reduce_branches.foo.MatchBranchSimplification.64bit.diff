@@ -2,47 +2,26 @@
 + // MIR for `foo` after MatchBranchSimplification
   
   fn foo(_1: Option<()>) -> () {
-      debug bar => _1;                     // in scope 0 at $DIR/matches_reduce_branches.rs:6:8: 6:11
-      let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:6:25: 6:25
-      let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      let mut _3: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+     let mut _4: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
+      debug bar => _1;                     // in scope 0 at $DIR/matches_reduce_branches.rs:7:8: 7:11
+      let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:7:25: 7:25
+      let mut _2: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-          _3 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
--         switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         StorageLive(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         _4 = move _3;                    // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         _2 = Eq(_4, const 0_isize);      // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-+         StorageDead(_4);                 // scope 0 at $DIR/matches_reduce_branches.rs:7:22: 7:26
-+         switchInt(move _2) -> [false: bb1, otherwise: bb2]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+          _2 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
       }
   
       bb1: {
--         _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--     }
-- 
--     bb2: {
--         _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
--     }
-- 
--     bb3: {
--         switchInt(move _2) -> [false: bb4, otherwise: bb5]; // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
--     }
-- 
--     bb4: {
-          _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:9:6: 9:6
--         goto -> bb5;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
-+         goto -> bb2;                     // scope 0 at $DIR/matches_reduce_branches.rs:7:5: 9:6
+          _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:10:6: 10:6
+          goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:8:5: 10:6
       }
   
--     bb5: {
-+     bb2: {
-          StorageDead(_2);                 // scope 0 at $DIR/matches_reduce_branches.rs:9:5: 9:6
-          return;                          // scope 0 at $DIR/matches_reduce_branches.rs:10:2: 10:2
+      bb2: {
+          goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+      }
+  
+      bb3: {
+          return;                          // scope 0 at $DIR/matches_reduce_branches.rs:11:2: 11:2
       }
   }
   

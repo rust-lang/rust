@@ -1,9 +1,9 @@
 // EMIT_MIR not_equal_false.opt.InstCombine.diff
 
-fn opt(x: Option<()>) -> bool {
-    matches!(x, None) || matches!(x, Some(_))
+fn opt(x: bool) -> u32 {
+    if x != false { 0 } else { 1 }
 }
 
 fn main() {
-    opt(None);
+    opt(false);
 }

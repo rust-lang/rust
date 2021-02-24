@@ -514,6 +514,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Evaluate the operand, returning a place where you can then find the data.
     /// If you already know the layout, you can save two table lookups
     /// by passing it in here.
+    #[inline]
     pub fn eval_operand(
         &self,
         mir_op: &mir::Operand<'tcx>,
