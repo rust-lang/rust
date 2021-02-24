@@ -103,7 +103,7 @@ impl StaticRWLock {
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
     pub fn read_with_guard(&'static self) -> RWLockReadGuard {
-        // Safety: All methods require static references, therefore self
+        // SAFETY: All methods require static references, therefore self
         // cannot be moved between invocations.
         unsafe {
             self.0.read();
@@ -117,7 +117,7 @@ impl StaticRWLock {
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
     pub fn write_with_guard(&'static self) -> RWLockWriteGuard {
-        // Safety: All methods require static references, therefore self
+        // SAFETY: All methods require static references, therefore self
         // cannot be moved between invocations.
         unsafe {
             self.0.write();
