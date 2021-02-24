@@ -301,6 +301,8 @@ pub enum InvocationKind {
     },
     Attr {
         attr: ast::Attribute,
+        // Re-insertion position for inert attributes.
+        pos: usize,
         item: Annotatable,
         // Required for resolving derive helper attributes.
         derives: Vec<Path>,
@@ -690,7 +692,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Attr { attr, mut item, derives } => match ext {
+            InvocationKind::Attr { attr, pos, mut item, derives } => match ext {
                 SyntaxExtensionKind::Attr(expander) => {
                     self.gate_proc_macro_input(&item);
                     self.gate_proc_macro_attr_item(span, &item);
@@ -721,7 +723,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
                                     return ExpandResult::Retry(Invocation {
-                                        kind: InvocationKind::Attr { attr, item, derives },
+                                        kind: InvocationKind::Attr { attr, pos, item, derives },
                                         ..invoc
                                     });
                                 }
@@ -739,7 +741,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if *mark_used {
                         self.cx.sess.mark_attr_used(&attr);
                     }
-                    item.visit_attrs(|attrs| attrs.push(attr));
+                    item.visit_attrs(|attrs| attrs.insert(pos, attr));
                     fragment_kind.expect_from_annotatables(iter::once(item))
                 }
                 _ => unreachable!(),
@@ -1000,17 +1002,20 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(
         &mut self,
-        (attr, derives): (ast::Attribute, Vec<Path>),
+        (attr, pos, derives): (ast::Attribute, usize, Vec<Path>),
         item: Annotatable,
         kind: AstFragmentKind,
     ) -> AstFragment {
-        self.collect(kind, InvocationKind::Attr { attr, item, derives })
+        self.collect(kind, InvocationKind::Attr { attr, pos, item, derives })
     }
 
     /// If `item` is an attribute invocation, remove the attribute and return it together with
-    /// derives following it. We have to collect the derives in order to resolve legacy derive
-    /// helpers (helpers written before derives that introduce them).
-    fn take_first_attr(&mut self, item: &mut impl HasAttrs) -> Option<(ast::Attribute, Vec<Path>)> {
+    /// its position and derives following it. We have to collect the derives in order to resolve
+    /// legacy derive helpers (helpers written before derives that introduce them).
+    fn take_first_attr(
+        &mut self,
+        item: &mut impl HasAttrs,
+    ) -> Option<(ast::Attribute, usize, Vec<Path>)> {
         let mut attr = None;
 
         item.visit_attrs(|attrs| {
@@ -1033,7 +1038,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         })
                         .collect();
 
-                    (attr, following_derives)
+                    (attr, attr_pos, following_derives)
                 })
         });
 
