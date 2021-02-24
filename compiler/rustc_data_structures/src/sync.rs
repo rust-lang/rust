@@ -40,7 +40,7 @@ cfg_if! {
             }
         }
 
-        use std::ops::Add;
+        use std::ops::{Add, BitOr};
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
         /// This is a single threaded variant of AtomicCell provided by crossbeam.
@@ -143,6 +143,15 @@ cfg_if! {
             pub fn fetch_add(&self, val: T, _: Ordering) -> T {
                 let old = self.0.get();
                 self.0.set(old + val);
+                old
+            }
+        }
+
+        impl<T: BitOr<Output=T> + Copy> Atomic<T> {
+            #[inline]
+            pub fn fetch_or(&self, val: T, _: Ordering) -> T {
+                let old = self.0.get();
+                self.0.set(old | val);
                 old
             }
         }

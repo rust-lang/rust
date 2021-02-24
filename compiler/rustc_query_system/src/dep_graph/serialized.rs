@@ -4,6 +4,7 @@ use super::query::DepGraphQuery;
 use super::{DepKind, DepNode};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{AtomicU64, Ordering};
 use rustc_index::vec::{Idx, IndexArray, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::convert::TryInto;
@@ -16,15 +17,16 @@ pub enum DepNodeColor {
     New,
 }
 
-const TAG_UNKNOWN: u32 = 0;
-const TAG_GREEN: u32 = 1 << 30;
-const TAG_RED: u32 = 2 << 30;
-const TAG_NEW: u32 = 3 << 30;
-const TAG_MASK: u32 = TAG_UNKNOWN | TAG_GREEN | TAG_RED | TAG_NEW;
-const OFFSET_MASK: u32 = !TAG_MASK;
+const TAG_UNKNOWN: u64 = 0;
+const TAG_GREEN: u64 = 1 << 62;
+const TAG_RED: u64 = 2 << 62;
+const TAG_NEW: u64 = 3 << 62;
+const TAG_LIFTED: u64 = 1 << 31;
+const TAG_MASK: u64 = TAG_UNKNOWN | TAG_GREEN | TAG_RED | TAG_NEW | TAG_LIFTED;
+const OFFSET_MASK: u64 = !TAG_MASK;
 
 impl DepNodeColor {
-    const fn tag(self) -> u32 {
+    const fn tag(self) -> u64 {
         match self {
             Self::Green => TAG_GREEN,
             Self::Red => TAG_RED,
@@ -67,50 +69,51 @@ impl SerializedDepNodeIndex {
 static_assert_size!(Option<DepNodeIndex>, 4);
 static_assert_size!(Option<SerializedDepNodeIndex>, 4);
 
-#[derive(Copy, Clone, Encodable, Decodable)]
-struct ColorAndOffset(u32, u32);
+struct ColorAndOffset(AtomicU64);
 
 impl std::fmt::Debug for ColorAndOffset {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (lifted, range) = self.range();
         fmt.debug_struct("ColorAndOffset")
             .field("color", &self.color())
-            .field("lifted", &self.lifted())
-            .field("range", &self.range())
+            .field("lifted", &lifted)
+            .field("range", &range)
             .finish()
     }
 }
 
 impl ColorAndOffset {
     fn unknown(start: u32, end: u32) -> ColorAndOffset {
-        debug_assert_eq!(start & TAG_MASK, 0);
-        debug_assert_eq!(end & TAG_MASK, 0);
-        ColorAndOffset(start | TAG_UNKNOWN, end | TAG_UNKNOWN)
+        let val = (start as u64) << 32 | (end as u64);
+        debug_assert_eq!(val & TAG_MASK, 0);
+        ColorAndOffset(AtomicU64::new(val))
     }
 
     #[allow(dead_code)]
     fn new(color: DepNodeColor, range: Range<usize>) -> ColorAndOffset {
         let start: u32 = range.start.try_into().unwrap();
         let end: u32 = range.end.try_into().unwrap();
-        debug_assert_eq!(start & TAG_MASK, 0);
-        debug_assert_eq!(end & TAG_MASK, 0);
-        ColorAndOffset(start | color.tag(), end | TAG_UNKNOWN)
+        let val = (start as u64) << 32 | (end as u64);
+        debug_assert_eq!(val & TAG_MASK, 0);
+        let val = val | color.tag();
+        ColorAndOffset(AtomicU64::new(val))
     }
 
-    fn new_lifted(color: DepNodeColor, range: Range<usize>) -> ColorAndOffset {
+    fn set_lifted(&self, color: DepNodeColor, range: Range<usize>) {
         let start: u32 = range.start.try_into().unwrap();
         let end: u32 = range.end.try_into().unwrap();
-        debug_assert_eq!(start & TAG_MASK, 0);
-        debug_assert_eq!(end & TAG_MASK, 0);
-        ColorAndOffset(start | color.tag(), end | TAG_GREEN)
+        let val = (start as u64) << 32 | (end as u64);
+        debug_assert_eq!(val & TAG_MASK, 0);
+        let val = val | color.tag() | TAG_LIFTED;
+        self.0.store(val, Ordering::Release)
     }
 
-    fn set_color(&mut self, color: DepNodeColor) {
-        let offset = self.0 & OFFSET_MASK;
-        self.0 = color.tag() | offset;
+    fn set_color(&self, color: DepNodeColor) {
+        self.0.fetch_or(color.tag(), Ordering::SeqCst);
     }
 
-    fn color(self) -> Option<DepNodeColor> {
-        let tag = self.0 & TAG_MASK;
+    fn color(&self) -> Option<DepNodeColor> {
+        let tag = self.0.load(Ordering::Acquire) & TAG_MASK & !TAG_LIFTED;
         match tag {
             TAG_NEW => Some(DepNodeColor::New),
             TAG_RED => Some(DepNodeColor::Red),
@@ -120,18 +123,13 @@ impl ColorAndOffset {
         }
     }
 
-    fn lifted(self) -> bool {
-        let tag = self.1 & TAG_MASK;
-        match tag {
-            TAG_UNKNOWN => false,
-            _ => true,
-        }
-    }
-
-    fn range(self) -> Range<usize> {
-        let start = (self.0 & OFFSET_MASK) as usize;
-        let end = (self.1 & OFFSET_MASK) as usize;
-        start..end
+    fn range(&self) -> (bool, Range<usize>) {
+        let val = self.0.load(Ordering::Acquire);
+        let lifted = val & TAG_LIFTED != 0;
+        let val = val & OFFSET_MASK;
+        let start = (val >> 32) as usize;
+        let end = val as u32 as usize;
+        (lifted, start..end)
     }
 }
 
@@ -146,6 +144,7 @@ pub struct SerializedDepGraph<K: DepKind> {
     nodes: IndexArray<SerializedDepNodeIndex, DepNode<K>>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
+    // This field must only be read or modified when holding a lock to the CurrentDepGraph.
     fingerprints: IndexArray<SerializedDepNodeIndex, Fingerprint>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
@@ -159,8 +158,6 @@ pub struct SerializedDepGraph<K: DepKind> {
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug)]
 pub struct CurrentDepGraph<K: DepKind> {
-    /// The previous graph.
-    serialized: SerializedDepGraph<K>,
     /// The set of all DepNodes in the graph
     nodes: IndexVec<SplitIndex, DepNode<K>>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
@@ -188,8 +185,82 @@ impl<K: DepKind> Default for SerializedDepGraph<K> {
     }
 }
 
+impl<K: DepKind> SerializedDepGraph<K> {
+    pub(crate) fn intern_dark_green_node(&self, index: SerializedDepNodeIndex) -> DepNodeIndex {
+        debug!("intern_drak_green: {:?}", index);
+        debug_assert_eq!(self.edge_list_indices[index].color(), None);
+        self.edge_list_indices[index].set_color(DepNodeColor::Green);
+        debug!("intern_color: {:?} => Green", index);
+        index.rejuvenate()
+    }
+
+    #[inline]
+    pub(crate) fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
+        self.nodes[dep_node_index]
+    }
+
+    #[inline]
+    pub(crate) fn color(&self, index: SerializedDepNodeIndex) -> Option<DepNodeColor> {
+        self.edge_list_indices[index].color()
+    }
+
+    #[inline]
+    pub(crate) fn color_or_edges(
+        &self,
+        source: SerializedDepNodeIndex,
+    ) -> Result<DepNodeColor, &'static [SerializedDepNodeIndex]> {
+        let range = &self.edge_list_indices[source];
+        if let Some(color) = range.color() {
+            return Ok(color);
+        }
+        // The node has not been colored, so the dependencies have not been lifted to point to the
+        // new nodes vector.
+        let (_lifted, range) = range.range();
+        debug_assert!(!_lifted);
+        let edges = &self.edge_list_data[range];
+        debug_assert_eq!(
+            std::mem::size_of::<DepNodeIndex>(),
+            std::mem::size_of::<SerializedDepNodeIndex>()
+        );
+        // SAFETY: 1. self.edge_list_data is never modified.
+        // 2. SerializedDepNodeIndex and DepNodeIndex have the same binary representation.
+        let edges = unsafe { std::mem::transmute::<&[_], &[_]>(edges) };
+        Err(edges)
+    }
+
+    #[inline]
+    fn as_serialized(&self, index: DepNodeIndex) -> Result<SerializedDepNodeIndex, SplitIndex> {
+        let index = index.index();
+        let count = self.nodes.len();
+        if index < count {
+            Ok(SerializedDepNodeIndex::new(index))
+        } else {
+            Err(SplitIndex::new(index - count))
+        }
+    }
+
+    #[inline]
+    fn from_split(&self, index: SplitIndex) -> DepNodeIndex {
+        DepNodeIndex::new(self.nodes.len() + index.index())
+    }
+
+    #[inline]
+    pub(crate) fn serialized_indices(&self) -> impl Iterator<Item = SerializedDepNodeIndex> {
+        self.nodes.indices()
+    }
+
+    #[inline]
+    fn live_serialized_indices(&self) -> impl Iterator<Item = SerializedDepNodeIndex> + '_ {
+        self.edge_list_indices.iter_enumerated().filter_map(|(i, range)| {
+            // Return none if the node has not been coloured yet.
+            let _ = range.color()?;
+            Some(i)
+        })
+    }
+}
+
 impl<K: DepKind> CurrentDepGraph<K> {
-    pub(crate) fn new(serialized: SerializedDepGraph<K>) -> Self {
+    pub(crate) fn new(serialized: &SerializedDepGraph<K>) -> Self {
         let prev_graph_node_count = serialized.nodes.len();
         let nodes = node_count_estimate(prev_graph_node_count);
         let edges = edge_count_estimate(prev_graph_node_count);
@@ -201,7 +272,6 @@ impl<K: DepKind> CurrentDepGraph<K> {
             debug_assert_eq!(_o, None);
         }
         Self {
-            serialized,
             nodes: IndexVec::with_capacity(nodes),
             fingerprints: IndexVec::with_capacity(nodes),
             edge_list_indices: IndexVec::with_capacity(nodes),
@@ -212,18 +282,19 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
     fn intern_new_node(
         &mut self,
+        serialized: &SerializedDepGraph<K>,
         node: DepNode<K>,
         deps: &[DepNodeIndex],
         fingerprint: Fingerprint,
     ) -> DepNodeIndex {
         let index = self.nodes.push(node);
-        debug!("intern_new: {:?} {:?}", self.from_split(index), node);
+        debug!("intern_new: {:?} {:?}", serialized.from_split(index), node);
         let _index = self.fingerprints.push(fingerprint);
         debug_assert_eq!(index, _index);
         let range = self.insert_deps(deps);
         let _index = self.edge_list_indices.push(shrink_range(range));
         debug_assert_eq!(index, _index);
-        let index = self.from_split(index);
+        let index = serialized.from_split(index);
         let _o = self.index.insert(node, index);
         debug_assert_eq!(_o, None);
         index
@@ -238,37 +309,31 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
     fn update_deps(
         &mut self,
+        serialized: &SerializedDepGraph<K>,
         index: SerializedDepNodeIndex,
         color: DepNodeColor,
         deps: &[DepNodeIndex],
     ) {
         debug!("intern_color: {:?} => {:?}", index, color);
-        let range = self.serialized.edge_list_indices[index];
+        let range = &serialized.edge_list_indices[index];
         debug_assert_eq!(range.color(), None);
         let range = self.insert_deps(deps);
-        let range = ColorAndOffset::new_lifted(color, range);
-        self.serialized.edge_list_indices[index] = range;
-    }
-
-    pub(crate) fn intern_dark_green_node(&mut self, index: SerializedDepNodeIndex) -> DepNodeIndex {
-        debug!("intern_drak_green: {:?}", index);
-        debug_assert_eq!(self.serialized.edge_list_indices[index].color(), None);
-        self.serialized.edge_list_indices[index].set_color(DepNodeColor::Green);
-        debug!("intern_color: {:?} => Green", index);
-        index.rejuvenate()
+        serialized.edge_list_indices[index].set_lifted(color, range);
     }
 
     pub(crate) fn intern_anon_node(
         &mut self,
+        serialized: &SerializedDepGraph<K>,
         node: DepNode<K>,
         deps: &[DepNodeIndex],
     ) -> DepNodeIndex {
-        self.dep_node_index_of_opt(&node)
-            .unwrap_or_else(|| self.intern_new_node(node, deps, Fingerprint::ZERO))
+        self.dep_node_index_of_opt(serialized, &node)
+            .unwrap_or_else(|| self.intern_new_node(serialized, node, deps, Fingerprint::ZERO))
     }
 
     pub(crate) fn intern_task_node(
         &mut self,
+        serialized: &SerializedDepGraph<K>,
         node: DepNode<K>,
         deps: &[DepNodeIndex],
         fingerprint: Option<Fingerprint>,
@@ -277,10 +342,10 @@ impl<K: DepKind> CurrentDepGraph<K> {
         let print_status = cfg!(debug_assertions) && print_status;
 
         if let Some(&existing) = self.index.get(&node) {
-            let prev_index = self
+            let prev_index = serialized
                 .as_serialized(existing)
                 .unwrap_or_else(|_| panic!("Node {:?} is being interned multiple times.", node));
-            match self.color(prev_index) {
+            match serialized.color(prev_index) {
                 Some(DepNodeColor::Red) | Some(DepNodeColor::New) => {
                     panic!("Node {:?} is being interned multiple times.", node)
                 }
@@ -293,7 +358,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
             // Determine the color and index of the new `DepNode`.
             let color = if let Some(fingerprint) = fingerprint {
-                if fingerprint == self.serialized.fingerprints[prev_index] {
+                if fingerprint == serialized.fingerprints[prev_index] {
                     if print_status {
                         eprintln!("[task::green] {:?}", node);
                     }
@@ -308,7 +373,11 @@ impl<K: DepKind> CurrentDepGraph<K> {
 
                     // This is a red node: it existed in the previous compilation, its query
                     // was re-executed, but it has a different result from before.
-                    self.serialized.fingerprints[prev_index] = fingerprint;
+                    // SAFETY: `serialized.fingerprints` is only read or mutated when holding a
+                    // lock to CurrentDepGraph.
+                    unsafe {
+                        *(&serialized.fingerprints[prev_index] as *const _ as *mut _) = fingerprint
+                    };
                     DepNodeColor::Red
                 }
             } else {
@@ -320,11 +389,16 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 // session, its query was re-executed, but it doesn't compute a result hash
                 // (i.e. it represents a `no_hash` query), so we have no way of determining
                 // whether or not the result was the same as before.
-                self.serialized.fingerprints[prev_index] = Fingerprint::ZERO;
+                // SAFETY: `serialized.fingerprints` is only read or mutated when holding a
+                // lock to CurrentDepGraph.
+                unsafe {
+                    *(&serialized.fingerprints[prev_index] as *const _ as *mut _) =
+                        Fingerprint::ZERO
+                };
                 DepNodeColor::Red
             };
 
-            self.update_deps(prev_index, color, deps);
+            self.update_deps(serialized, prev_index, color, deps);
             prev_index.rejuvenate()
         } else {
             if print_status {
@@ -332,34 +406,29 @@ impl<K: DepKind> CurrentDepGraph<K> {
             }
 
             // This is a new node: it didn't exist in the previous compilation session.
-            self.intern_new_node(node, deps, fingerprint.unwrap_or(Fingerprint::ZERO))
+            self.intern_new_node(serialized, node, deps, fingerprint.unwrap_or(Fingerprint::ZERO))
         }
     }
 
     #[inline]
-    fn as_serialized(&self, index: DepNodeIndex) -> Result<SerializedDepNodeIndex, SplitIndex> {
-        let index = index.index();
-        let count = self.serialized.nodes.len();
-        if index < count {
-            Ok(SerializedDepNodeIndex::new(index))
-        } else {
-            Err(SplitIndex::new(index - count))
-        }
+    pub(crate) fn node_to_index_opt(
+        &self,
+        serialized: &SerializedDepGraph<K>,
+        dep_node: &DepNode<K>,
+    ) -> Option<SerializedDepNodeIndex> {
+        let idx = *self.index.get(dep_node)?;
+        serialized.as_serialized(idx).ok()
     }
 
     #[inline]
-    fn from_split(&self, index: SplitIndex) -> DepNodeIndex {
-        DepNodeIndex::new(self.serialized.nodes.len() + index.index())
-    }
-
-    #[inline]
-    fn serialized_edges(&self, source: SerializedDepNodeIndex) -> &[DepNodeIndex] {
-        let range = self.serialized.edge_list_indices[source];
-        if range.lifted() {
-            &self.edge_list_data[range.range()]
-        } else {
-            &self.serialized.edge_list_data[range.range()]
-        }
+    fn serialized_edges<'a>(
+        &'a self,
+        serialized: &'a SerializedDepGraph<K>,
+        source: SerializedDepNodeIndex,
+    ) -> &[DepNodeIndex] {
+        let range = &serialized.edge_list_indices[source];
+        let (lifted, range) = range.range();
+        if lifted { &self.edge_list_data[range] } else { &serialized.edge_list_data[range] }
     }
 
     #[inline]
@@ -371,117 +440,88 @@ impl<K: DepKind> CurrentDepGraph<K> {
     }
 
     #[inline]
-    pub(crate) fn color_or_edges(
-        &self,
-        source: SerializedDepNodeIndex,
-    ) -> Result<DepNodeColor, &'static [SerializedDepNodeIndex]> {
-        let range = self.serialized.edge_list_indices[source];
-        if let Some(color) = range.color() {
-            return Ok(color);
-        }
-        // The node has not been colored, so the dependencies have not been lifted to point to the
-        // new nodes vector.
-        debug_assert!(!range.lifted());
-        let edges = &self.serialized.edge_list_data[range.range()];
-        debug_assert_eq!(
-            std::mem::size_of::<DepNodeIndex>(),
-            std::mem::size_of::<SerializedDepNodeIndex>()
-        );
-        // SAFETY: 1. serialized.edge_list_data is never modified.
-        // 2. SerializedDepNodeIndex and DepNodeIndex have the same binary representation.
-        let edges = unsafe { std::mem::transmute::<&[_], &[_]>(edges) };
-        Err(edges)
-    }
-
-    #[inline]
-    pub(crate) fn edge_targets_from(&self, source: DepNodeIndex) -> &[DepNodeIndex] {
-        match self.as_serialized(source) {
-            Ok(source) => self.serialized_edges(source),
+    pub(crate) fn edge_targets_from<'a>(
+        &'a self,
+        serialized: &'a SerializedDepGraph<K>,
+        source: DepNodeIndex,
+    ) -> &[DepNodeIndex] {
+        match serialized.as_serialized(source) {
+            Ok(source) => self.serialized_edges(serialized, source),
             Err(source) => self.new_edges(source),
         }
     }
 
     #[inline]
-    pub(crate) fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
-        self.serialized.nodes[dep_node_index]
-    }
-
-    #[inline]
-    pub(crate) fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
-        match self.as_serialized(dep_node_index) {
-            Ok(serialized) => self.serialized.nodes[serialized],
+    pub(crate) fn index_to_node(
+        &self,
+        serialized: &SerializedDepGraph<K>,
+        dep_node_index: DepNodeIndex,
+    ) -> DepNode<K> {
+        match serialized.as_serialized(dep_node_index) {
+            Ok(sni) => serialized.nodes[sni],
             Err(new) => self.nodes[new],
         }
     }
 
     #[inline]
-    pub(crate) fn node_to_index_opt(
+    pub(crate) fn dep_node_index_of_opt(
         &self,
+        serialized: &SerializedDepGraph<K>,
         dep_node: &DepNode<K>,
-    ) -> Option<SerializedDepNodeIndex> {
-        let idx = *self.index.get(dep_node)?;
-        self.as_serialized(idx).ok()
-    }
-
-    #[inline]
-    pub(crate) fn dep_node_index_of_opt(&self, dep_node: &DepNode<K>) -> Option<DepNodeIndex> {
+    ) -> Option<DepNodeIndex> {
         let index = *self.index.get(dep_node)?;
-        if let Ok(prev) = self.as_serialized(index) {
+        if let Ok(prev) = serialized.as_serialized(index) {
             // Return none if the node has not been coloured yet.
-            self.serialized.edge_list_indices[prev].color()?;
+            serialized.edge_list_indices[prev].color()?;
         }
         Some(index)
     }
 
     #[inline]
-    pub(crate) fn color(&self, index: SerializedDepNodeIndex) -> Option<DepNodeColor> {
-        self.serialized.edge_list_indices[index].color()
-    }
-
-    #[inline]
-    pub(crate) fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
-        match self.as_serialized(dep_node_index) {
-            Ok(serialized) => self.serialized.fingerprints[serialized],
+    pub(crate) fn fingerprint_of(
+        &self,
+        serialized: &SerializedDepGraph<K>,
+        dep_node_index: DepNodeIndex,
+    ) -> Fingerprint {
+        match serialized.as_serialized(dep_node_index) {
+            Ok(sni) => serialized.fingerprints[sni],
             Err(split) => self.fingerprints[split],
         }
     }
 
     #[inline]
-    pub(crate) fn serialized_indices(&self) -> impl Iterator<Item = SerializedDepNodeIndex> {
-        self.serialized.nodes.indices()
+    fn new_indices<'a>(
+        &self,
+        serialized: &'a SerializedDepGraph<K>,
+    ) -> impl Iterator<Item = DepNodeIndex> + 'a {
+        self.nodes.indices().map(move |i| serialized.from_split(i))
     }
 
     #[inline]
-    fn live_serialized_indices(&self) -> impl Iterator<Item = SerializedDepNodeIndex> + '_ {
-        self.serialized.edge_list_indices.iter_enumerated().filter_map(|(i, range)| {
-            // Return none if the node has not been coloured yet.
-            let _ = range.color()?;
-            Some(i)
-        })
-    }
-
-    #[inline]
-    fn new_indices(&self) -> impl Iterator<Item = DepNodeIndex> + '_ {
-        self.nodes.indices().map(move |i| self.from_split(i))
-    }
-
-    #[inline]
-    pub(crate) fn live_indices(&self) -> impl Iterator<Item = DepNodeIndex> + '_ {
+    pub(crate) fn live_indices<'a>(
+        &self,
+        serialized: &'a SerializedDepGraph<K>,
+    ) -> impl Iterator<Item = DepNodeIndex> + 'a {
         // New indices are always live.
-        self.live_serialized_indices()
+        serialized
+            .live_serialized_indices()
             .map(SerializedDepNodeIndex::rejuvenate)
-            .chain(self.new_indices())
+            .chain(self.new_indices(serialized))
     }
 
     #[inline]
-    pub(crate) fn node_count(&self) -> usize {
-        self.live_indices().count()
+    pub(crate) fn node_count(&self, serialized: &SerializedDepGraph<K>) -> usize {
+        self.live_indices(serialized).count()
     }
 
     #[inline]
-    fn edge_map(&self) -> impl Iterator<Item = &[DepNodeIndex]> + '_ {
-        let serialized_edges =
-            self.live_serialized_indices().map(move |index| self.serialized_edges(index));
+    fn edge_map<'a>(
+        &'a self,
+        serialized: &'a SerializedDepGraph<K>,
+    ) -> impl Iterator<Item = &'a [DepNodeIndex]> + 'a {
+        let serialized_edges = serialized
+            .live_serialized_indices()
+            .map(move |index| self.serialized_edges(serialized, index));
         let new_edges = self.edge_list_indices.iter().map(move |range| {
             let start = range.start as usize;
             let end = range.end as usize;
@@ -491,20 +531,20 @@ impl<K: DepKind> CurrentDepGraph<K> {
     }
 
     #[inline]
-    pub(crate) fn edge_count(&self) -> usize {
-        self.edge_map().flatten().count()
+    pub(crate) fn edge_count(&self, serialized: &SerializedDepGraph<K>) -> usize {
+        self.edge_map(serialized).flatten().count()
     }
 
-    pub(crate) fn query(&self) -> DepGraphQuery<K> {
-        let node_count = self.node_count();
-        let edge_count = self.edge_count();
+    pub(crate) fn query(&self, serialized: &SerializedDepGraph<K>) -> DepGraphQuery<K> {
+        let node_count = self.node_count(serialized);
+        let edge_count = self.edge_count(serialized);
 
         let mut nodes = Vec::with_capacity(node_count);
-        nodes.extend(self.live_indices().map(|i| self.dep_node_of(i)));
+        nodes.extend(self.live_indices(serialized).map(|i| self.index_to_node(serialized, i)));
 
         let mut edge_list_indices = Vec::with_capacity(node_count);
         let mut edge_list_data = Vec::with_capacity(edge_count);
-        for edges in self.edge_map() {
+        for edges in self.edge_map(serialized) {
             let start = edge_list_data.len();
             edge_list_data.extend(edges.iter().map(|i| i.index() as usize));
             let end = edge_list_data.len();
@@ -515,10 +555,13 @@ impl<K: DepKind> CurrentDepGraph<K> {
         DepGraphQuery::new(&nodes[..], &edge_list_indices[..], &edge_list_data[..])
     }
 
-    pub(crate) fn compression_map(&self) -> IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>> {
+    pub(crate) fn compression_map(
+        &self,
+        serialized: &SerializedDepGraph<K>,
+    ) -> IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>> {
         let mut new_index = SerializedDepNodeIndex::new(0);
-        let mut remap = IndexVec::from_elem_n(None, self.serialized.nodes.len() + self.nodes.len());
-        for index in self.live_indices() {
+        let mut remap = IndexVec::from_elem_n(None, serialized.nodes.len() + self.nodes.len());
+        for index in self.live_indices(serialized) {
             debug_assert!(new_index.index() <= index.index());
             remap[index] = Some(new_index);
             new_index.increment_by(1);
@@ -527,18 +570,25 @@ impl<K: DepKind> CurrentDepGraph<K> {
     }
 }
 
-impl<E: Encoder, K: DepKind + Encodable<E>> Encodable<E> for CurrentDepGraph<K> {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        let remap = self.compression_map();
+impl<K: DepKind> CurrentDepGraph<K> {
+    pub(crate) fn encode<E: Encoder>(
+        &self,
+        serialized: &SerializedDepGraph<K>,
+        e: &mut E,
+    ) -> Result<(), E::Error>
+    where
+        K: Encodable<E>,
+    {
+        let remap = self.compression_map(serialized);
         let live_indices = || remap.iter_enumerated().filter_map(|(s, &n)| Some((s, n?)));
         let node_count = live_indices().count();
-        let edge_count = self.edge_count();
+        let edge_count = self.edge_count(serialized);
 
         e.emit_struct("SerializedDepGraph", 4, |e| {
             e.emit_struct_field("nodes", 0, |e| {
                 e.emit_seq(node_count, |e| {
                     for (index, new_index) in live_indices() {
-                        let node = self.dep_node_of(index);
+                        let node = self.index_to_node(serialized, index);
                         e.emit_seq_elt(new_index.index(), |e| node.encode(e))?;
                     }
                     Ok(())
@@ -547,7 +597,7 @@ impl<E: Encoder, K: DepKind + Encodable<E>> Encodable<E> for CurrentDepGraph<K> 
             e.emit_struct_field("fingerprints", 1, |e| {
                 e.emit_seq(node_count, |e| {
                     for (index, new_index) in live_indices() {
-                        let node = self.fingerprint_of(index);
+                        let node = self.fingerprint_of(serialized, index);
                         e.emit_seq_elt(new_index.index(), |e| node.encode(e))?;
                     }
                     Ok(())
@@ -561,7 +611,7 @@ impl<E: Encoder, K: DepKind + Encodable<E>> Encodable<E> for CurrentDepGraph<K> 
             e.emit_struct_field("edge_list_data", 2, |e| {
                 e.emit_seq(edge_count, |e| {
                     let mut pos: u32 = 0;
-                    for (new_index, edges) in self.edge_map().enumerate() {
+                    for (new_index, edges) in self.edge_map(serialized).enumerate() {
                         // Reconstruct the edges vector since it may be out of order.
                         // We only store the end indices, since the start can be reconstructed.
                         for &edge in edges {
