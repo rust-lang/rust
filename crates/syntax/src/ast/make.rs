@@ -527,8 +527,11 @@ pub mod tokens {
 
     use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
 
-    pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> =
-        Lazy::new(|| SourceFile::parse("const C: <()>::Item = (1 != 1, 2 == 2, !true, *p)\n;\n\n"));
+    pub(super) static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| {
+        SourceFile::parse(
+            "const C: <()>::Item = (1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p)\n;\n\n",
+        )
+    });
 
     pub fn single_space() -> SyntaxToken {
         SOURCE_FILE

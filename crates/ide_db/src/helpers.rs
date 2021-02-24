@@ -45,6 +45,10 @@ impl FamousDefs<'_, '_> {
         self.find_crate("core")
     }
 
+    pub fn core_cmp_Ord(&self) -> Option<Trait> {
+        self.find_trait("core:cmp:Ord")
+    }
+
     pub fn core_convert_From(&self) -> Option<Trait> {
         self.find_trait("core:convert:From")
     }
