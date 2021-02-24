@@ -267,24 +267,19 @@ fn invert_special_case(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Opti
 }
 
 fn bin_impls_ord(sema: &Semantics<RootDatabase>, bin: &ast::BinExpr) -> bool {
-    if let (Some(lhs), Some(rhs)) = (bin.lhs(), bin.rhs()) {
-        return sema.type_of_expr(&lhs) == sema.type_of_expr(&rhs)
-            && impls_ord(sema, &lhs)
-            && impls_ord(sema, &rhs);
-    }
-    false
-}
-
-fn impls_ord(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> bool {
-    let krate = sema.scope(expr.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(&sema, krate);
-
-    if let Some(ty) = sema.type_of_expr(expr) {
-        if let Some(ord_trait) = famous_defs.core_cmp_Ord() {
-            return ty.autoderef(sema.db).any(|ty| ty.impls_trait(sema.db, ord_trait, &[]));
+    match (
+        bin.lhs().and_then(|lhs| sema.type_of_expr(&lhs)),
+        bin.rhs().and_then(|rhs| sema.type_of_expr(&rhs)),
+    ) {
+        (Some(lhs_ty), Some(rhs_ty)) if lhs_ty == rhs_ty => {
+            let krate = sema.scope(bin.syntax()).module().map(|it| it.krate());
+            let ord_trait = FamousDefs(sema, krate).core_cmp_Ord();
+            ord_trait.map_or(false, |ord_trait| {
+                lhs_ty.autoderef(sema.db).any(|ty| ty.impls_trait(sema.db, ord_trait, &[]))
+            })
         }
+        _ => false,
     }
-    false
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
