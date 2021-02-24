@@ -1,4 +1,4 @@
-error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead.
+error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead
   --> $DIR/filter_map_next.rs:7:26
    |
 LL |       let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]

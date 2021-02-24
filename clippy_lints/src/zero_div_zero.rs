@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
                     "constant division of `0.0` with `0.0` will always result in NaN",
                     None,
                     &format!(
-                        "Consider using `{}::NAN` if you would like a constant representing NaN",
+                        "consider using `{}::NAN` if you would like a constant representing NaN",
                         float_type,
                     ),
                 );

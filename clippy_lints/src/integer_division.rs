@@ -39,7 +39,7 @@ impl<'tcx> LateLintPass<'tcx> for IntegerDivision {
                 expr.span,
                 "integer division",
                 None,
-                "division of integers may cause loss of precision. consider using floats.",
+                "division of integers may cause loss of precision. consider using floats",
             );
         }
     }

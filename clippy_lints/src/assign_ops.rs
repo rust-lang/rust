@@ -209,7 +209,7 @@ fn lint_misrefactored_assign_op(
                 diag.span_suggestion(
                     expr.span,
                     &format!(
-                        "Did you mean `{} = {} {} {}` or `{}`? Consider replacing it with",
+                        "did you mean `{} = {} {} {}` or `{}`? Consider replacing it with",
                         snip_a,
                         snip_a,
                         op.node.as_str(),

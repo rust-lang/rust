@@ -1625,10 +1625,7 @@ fn check_for_loop_range<'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         expr.span,
-                        &format!(
-                            "the loop variable `{}` is only used to index `{}`.",
-                            ident.name, indexed
-                        ),
+                        &format!("the loop variable `{}` is only used to index `{}`", ident.name, indexed),
                         |diag| {
                             multispan_sugg(
                                 diag,
@@ -1763,7 +1760,7 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             arg.span,
             &format!(
                 "for loop over `{0}`, which is an `Option`. This is more readably written as an \
-                `if let` statement.",
+                `if let` statement",
                 snippet(cx, arg.span, "_")
             ),
             None,
@@ -1780,7 +1777,7 @@ fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             arg.span,
             &format!(
                 "for loop over `{0}`, which is a `Result`. This is more readably written as an \
-                `if let` statement.",
+                `if let` statement",
                 snippet(cx, arg.span, "_")
             ),
             None,
@@ -1826,7 +1823,7 @@ fn check_for_loop_explicit_counter<'tcx>(
                         cx,
                         EXPLICIT_COUNTER_LOOP,
                         for_span.with_hi(arg.span.hi()),
-                        &format!("the variable `{}` is used as a loop counter.", name),
+                        &format!("the variable `{}` is used as a loop counter", name),
                         "consider using",
                         format!(
                             "for ({}, {}) in {}.enumerate()",
@@ -3055,16 +3052,16 @@ impl IterFunction {
     fn get_suggestion_text(&self) -> &'static str {
         match &self.func {
             IterFunctionKind::IntoIter => {
-                "Use the original Iterator instead of collecting it and then producing a new one"
+                "use the original Iterator instead of collecting it and then producing a new one"
             },
             IterFunctionKind::Len => {
-                "Take the original Iterator's count instead of collecting it and finding the length"
+                "take the original Iterator's count instead of collecting it and finding the length"
             },
             IterFunctionKind::IsEmpty => {
-                "Check if the original Iterator has anything instead of collecting it and seeing if it's empty"
+                "check if the original Iterator has anything instead of collecting it and seeing if it's empty"
             },
             IterFunctionKind::Contains(_) => {
-                "Check if the original Iterator contains an element instead of collecting then checking"
+                "check if the original Iterator contains an element instead of collecting then checking"
             },
         }
     }

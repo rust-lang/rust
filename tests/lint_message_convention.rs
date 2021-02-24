@@ -38,8 +38,11 @@ impl Message {
             r".*the arguments may be inverted...",
             r".*Intel x86 assembly syntax used",
             r".*AT&T x86 assembly syntax used",
-            r".*remove .* the return type...",
+            r".*remove .*the return type...",
             r"note: Clippy version: .*",
+            r"the compiler unexpectedly panicked. this is a bug.",
+            r".*help: I think you meant: .*",
+            r"Iterator.* will panic at runtime",
         ])
         .unwrap();
 
@@ -96,7 +99,7 @@ fn lint_message_convention() {
 
     eprintln!("\n\n\nLint message should not start with a capital letter and should not have punctuation at the end of the message unless multiple sentences are needed.");
     eprintln!("Check out the rustc-dev-guide for more information:");
-    eprintln!("https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-structure");
+    eprintln!("https://rustc-dev-guide.rust-lang.org/diagnostics.html#diagnostic-structure\n\n\n");
 
     assert!(bad_tests.is_empty());
 }
