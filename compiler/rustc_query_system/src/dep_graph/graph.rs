@@ -46,9 +46,9 @@ impl std::convert::From<DepNodeIndex> for QueryInvocationId {
 }
 
 struct DepGraphData<K: DepKind> {
-    /// The dep-graph from the previous compilation session. It contains all
+    /// The dep-graph from the compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: RwLock<CurrentDepGraph<K>>,
+    graph: RwLock<CurrentDepGraph<K>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -120,7 +120,7 @@ impl<K: DepKind> DepGraph<K> {
 
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
-                previous: RwLock::new(CurrentDepGraph::new(prev_graph)),
+                graph: RwLock::new(CurrentDepGraph::new(prev_graph)),
                 emitting_diagnostics: Default::default(),
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
@@ -148,7 +148,7 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn query(&self) -> DepGraphQuery<K> {
         let data = self.data.as_ref().unwrap();
-        data.previous.read().query()
+        data.graph.read().query()
     }
 
     pub fn assert_ignored(&self) {
@@ -238,7 +238,7 @@ impl<K: DepKind> DepGraph<K> {
             let current_fingerprint = hash_result(&mut hcx, &result);
 
             // Intern the new `DepNode`.
-            let dep_node_index = data.previous.write().intern_task_node(
+            let dep_node_index = data.graph.write().intern_task_node(
                 key,
                 &edges[..],
                 current_fingerprint,
@@ -284,8 +284,8 @@ impl<K: DepKind> DepGraph<K> {
                 hash: data.anon_id_seed.combine(hasher.finish()).into(),
             };
 
-            let mut previous = data.previous.write();
-            let dep_node_index = previous.intern_anon_node(target_dep_node, &task_deps.reads[..]);
+            let dep_node_index =
+                data.graph.write().intern_anon_node(target_dep_node, &task_deps.reads[..]);
 
             (result, dep_node_index)
         } else {
@@ -295,7 +295,7 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
+    pub(crate) fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -350,31 +350,26 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     #[inline]
-    pub fn dep_node_index_of(&self, dep_node: &DepNode<K>) -> DepNodeIndex {
-        self.dep_node_index_of_opt(dep_node).unwrap()
-    }
-
-    #[inline]
-    pub fn dep_node_index_of_opt(&self, dep_node: &DepNode<K>) -> Option<DepNodeIndex> {
-        let data = self.data.as_ref().unwrap();
-        data.previous.read().dep_node_index_of_opt(dep_node)
+    fn dep_node_index_of_opt(&self, dep_node: &DepNode<K>) -> Option<DepNodeIndex> {
+        let data = self.data.as_ref()?;
+        data.graph.read().dep_node_index_of_opt(dep_node)
     }
 
     #[inline]
     pub fn dep_node_exists(&self, dep_node: &DepNode<K>) -> bool {
-        self.data.is_some() && self.dep_node_index_of_opt(dep_node).is_some()
+        self.dep_node_index_of_opt(dep_node).is_some()
     }
 
     #[inline]
-    pub fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
+    fn dep_node_of(&self, dep_node_index: DepNodeIndex) -> DepNode<K> {
         let data = self.data.as_ref().unwrap();
-        data.previous.read().dep_node_of(dep_node_index)
+        data.graph.read().dep_node_of(dep_node_index)
     }
 
     #[inline]
-    pub fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
+    pub(crate) fn fingerprint_of(&self, dep_node_index: DepNodeIndex) -> Fingerprint {
         let data = self.data.as_ref().unwrap();
-        data.previous.read().fingerprint_of(dep_node_index)
+        data.graph.read().fingerprint_of(dep_node_index)
     }
 
     /// Checks whether a previous work product exists for `v` and, if
@@ -390,7 +385,7 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     #[inline(always)]
-    pub fn register_dep_node_debug_str<F>(&self, dep_node: DepNode<K>, debug_str_gen: F)
+    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode<K>, debug_str_gen: F)
     where
         F: FnOnce() -> String,
     {
@@ -409,9 +404,9 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn node_color(&self, dep_node: &DepNode<K>) -> Option<DepNodeColor> {
         if let Some(ref data) = self.data {
-            let previous = data.previous.read();
-            if let Some(prev_index) = previous.node_to_index_opt(dep_node) {
-                return previous.color(prev_index);
+            let graph = data.graph.read();
+            if let Some(prev_index) = graph.node_to_index_opt(dep_node) {
+                return graph.color(prev_index);
             } else {
                 // This is a node that did not exist in the previous compilation
                 // session, so we consider it to be red.
@@ -426,7 +421,7 @@ impl<K: DepKind> DepGraph<K> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<Ctxt: QueryContext<DepKind = K>>(
+    pub(crate) fn try_mark_green_and_read<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode<K>,
@@ -449,8 +444,8 @@ impl<K: DepKind> DepGraph<K> {
         let data = self.data.as_ref()?;
 
         // Return None if the dep node didn't exist in the previous session
-        let prev_index = data.previous.read().node_to_index_opt(dep_node)?;
-        let prev_deps = data.previous.read().color_or_edges(prev_index);
+        let prev_index = data.graph.read().node_to_index_opt(dep_node)?;
+        let prev_deps = data.graph.read().color_or_edges(prev_index);
         let prev_deps = match prev_deps {
             Err(prev_deps) => prev_deps,
             Ok(DepNodeColor::Green) => return Some((prev_index, prev_index.rejuvenate())),
@@ -473,7 +468,7 @@ impl<K: DepKind> DepGraph<K> {
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
     ) -> Option<()> {
-        let dep_dep_node_color = data.previous.read().color_or_edges(parent_dep_node_index);
+        let dep_dep_node_color = data.graph.read().color_or_edges(parent_dep_node_index);
         let prev_deps = match dep_dep_node_color {
             Ok(DepNodeColor::Green) => {
                 // This dependency has been marked as green before, we are
@@ -482,7 +477,7 @@ impl<K: DepKind> DepGraph<K> {
                 debug!(
                     "try_mark_parent_green({:?}) --- found dependency {:?} to be immediately green",
                     dep_node,
-                    data.previous.read().index_to_node(parent_dep_node_index)
+                    data.graph.read().index_to_node(parent_dep_node_index)
                 );
                 return Some(());
             }
@@ -494,7 +489,7 @@ impl<K: DepKind> DepGraph<K> {
                 debug!(
                     "try_mark_parent_green({:?}) - END - dependency {:?} was immediately red",
                     dep_node,
-                    data.previous.read().index_to_node(parent_dep_node_index)
+                    data.graph.read().index_to_node(parent_dep_node_index)
                 );
                 return None;
             }
@@ -508,12 +503,12 @@ impl<K: DepKind> DepGraph<K> {
                                  is unknown, trying to mark it green",
             dep_node,
             {
-                let dep_dep_node = data.previous.read().index_to_node(parent_dep_node_index);
+                let dep_dep_node = data.graph.read().index_to_node(parent_dep_node_index);
                 (dep_dep_node, dep_dep_node.hash)
             }
         );
 
-        let dep_dep_node = &data.previous.read().index_to_node(parent_dep_node_index);
+        let dep_dep_node = &data.graph.read().index_to_node(parent_dep_node_index);
         let node_index =
             self.try_mark_previous_green(tcx, data, parent_dep_node_index, prev_deps, dep_dep_node);
         if node_index.is_some() {
@@ -538,7 +533,7 @@ impl<K: DepKind> DepGraph<K> {
             return None;
         }
 
-        let dep_dep_node_color = data.previous.read().color(parent_dep_node_index);
+        let dep_dep_node_color = data.graph.read().color(parent_dep_node_index);
 
         match dep_dep_node_color {
             Some(DepNodeColor::Green) => {
@@ -597,7 +592,7 @@ impl<K: DepKind> DepGraph<K> {
 
         // We never try to mark eval_always nodes as green
         debug_assert!(!dep_node.kind.is_eval_always());
-        debug_assert_eq!(data.previous.read().index_to_node(prev_dep_node_index), *dep_node);
+        debug_assert_eq!(data.graph.read().index_to_node(prev_dep_node_index), *dep_node);
 
         for &dep_dep_node_index in prev_deps {
             self.try_mark_parent_green(tcx, data, dep_dep_node_index, dep_node)?
@@ -605,7 +600,7 @@ impl<K: DepKind> DepGraph<K> {
 
         #[cfg(not(parallel_compiler))]
         debug_assert_eq!(
-            data.previous.read().color(prev_dep_node_index),
+            data.graph.read().color(prev_dep_node_index),
             None,
             "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
                       insertion for {:?}",
@@ -621,7 +616,7 @@ impl<K: DepKind> DepGraph<K> {
         let dep_node_index = {
             // We allocating an entry for the node in the current dependency graph and
             // adding all the appropriate edges imported from the previous graph
-            data.previous.write().intern_dark_green_node(prev_dep_node_index)
+            data.graph.write().intern_dark_green_node(prev_dep_node_index)
         };
 
         // ... and emitting any stored diagnostic.
@@ -677,11 +672,11 @@ impl<K: DepKind> DepGraph<K> {
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
-        let previous = data.previous.read();
-        for prev_index in previous.serialized_indices() {
-            match previous.color(prev_index) {
+        let graph = data.graph.read();
+        for prev_index in graph.serialized_indices() {
+            match graph.color(prev_index) {
                 Some(DepNodeColor::Green) => {
-                    let dep_node = data.previous.read().index_to_node(prev_index);
+                    let dep_node = data.graph.read().index_to_node(prev_index);
                     debug!("PROMOTE {:?} {:?}", prev_index, dep_node);
                     qcx.try_load_from_on_disk_cache(&dep_node);
                 }
@@ -697,11 +692,11 @@ impl<K: DepKind> DepGraph<K> {
     // Register reused dep nodes (i.e. nodes we've marked red or green) with the context.
     pub fn register_reused_dep_nodes<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
         let data = self.data.as_ref().unwrap();
-        let previous = data.previous.read();
-        for prev_index in previous.serialized_indices() {
-            match previous.color(prev_index) {
+        let graph = data.graph.read();
+        for prev_index in graph.serialized_indices() {
+            match graph.color(prev_index) {
                 Some(_) => {
-                    let dep_node = data.previous.read().index_to_node(prev_index);
+                    let dep_node = data.graph.read().index_to_node(prev_index);
                     tcx.register_reused_dep_node(&dep_node);
                 }
                 None => {}
@@ -718,7 +713,7 @@ impl<K: DepKind> DepGraph<K> {
         }
 
         let data = self.data.as_ref().unwrap();
-        let prev = &data.previous.read();
+        let prev = &data.graph.read();
 
         let mut stats: FxHashMap<_, Stat<K>> = FxHashMap::with_hasher(Default::default());
 
@@ -797,14 +792,14 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     pub fn compression_map(&self) -> IndexVec<DepNodeIndex, Option<SerializedDepNodeIndex>> {
-        self.data.as_ref().unwrap().previous.read().compression_map()
+        self.data.as_ref().unwrap().graph.read().compression_map()
     }
 
     pub fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error>
     where
         K: Encodable<E>,
     {
-        if let Some(data) = &self.data { data.previous.read().encode(encoder) } else { Ok(()) }
+        if let Some(data) = &self.data { data.graph.read().encode(encoder) } else { Ok(()) }
     }
 }
 
