@@ -6,7 +6,7 @@ The `doc_spotlight` feature allows the use of the `spotlight` parameter to the `
 to "spotlight" a specific trait on the return values of functions. Adding a `#[doc(spotlight)]`
 attribute to a trait definition will make rustdoc print extra information for functions which return
 a type that implements that trait. This attribute is applied to the `Iterator`, `io::Read`,
-`io::Write` and `Future` traits in the standard library.
+`io::Write`, and `Future` traits in the standard library.
 
 You can do this on your own traits, like this:
 
