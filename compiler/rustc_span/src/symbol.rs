@@ -996,6 +996,7 @@ symbols! {
         rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
+        rustc_per_edition,
         rustc_polymorphize_error,
         rustc_private,
         rustc_proc_macro_decls,

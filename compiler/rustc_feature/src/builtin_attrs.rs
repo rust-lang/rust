@@ -394,6 +394,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         may_dangle, Normal, template!(Word), dropck_eyepatch,
         "`may_dangle` has unstable semantics and may be removed in the future",
     ),
+    rustc_attr!(
+        rustc_per_edition, AssumedUsed, template!(Word),
+        "#[rustc_per_edition] can be applied to a type alias to make the resolution
+        dependent on the edition of the crate using this type alias.
+        It must be applied on an alias for a tuple, of which the fields correspond
+        to the Rust editions.",
+    ),
 
     // ==========================================================================
     // Internal attributes: Runtime related:
