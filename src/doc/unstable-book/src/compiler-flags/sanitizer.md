@@ -286,8 +286,8 @@ achieve that will result in false positive reports.
 
 Detecting the use of uninitialized memory. The `-Zbuild-std` flag rebuilds and
 instruments the standard library, and is strictly necessary for the correct
-operation of the tool. The `-Zsanitizer-track-origins` enables tracking of the
-origins of uninitialized memory:
+operation of the tool. The `-Zsanitizer-memory-track-origins` enables tracking
+of the origins of uninitialized memory:
 
 ```rust
 use std::mem::MaybeUninit;
