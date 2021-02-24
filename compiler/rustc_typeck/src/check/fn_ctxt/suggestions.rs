@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, ItemKind, Node};
 use rustc_infer::infer;
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::kw;
 
@@ -44,7 +45,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        if expr.can_have_side_effects() {
+        // If the expression is from an external macro, then do not suggest
+        // adding a semicolon, because there's nowhere to put it.
+        // See issue #81943.
+        if expr.can_have_side_effects() && !in_external_macro(self.tcx.sess, cause_span) {
             self.suggest_missing_semicolon(err, expr, expected, cause_span);
         }
         let mut pointing_at_return_type = false;
