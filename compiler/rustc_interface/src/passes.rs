@@ -350,7 +350,7 @@ fn configure_and_expand_inner<'a>(
         rustc_builtin_macros::test_harness::inject(&sess, &mut resolver, &mut krate)
     });
 
-    if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
+    if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
         tracing::debug!("replacing bodies with loop {{}}");
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
