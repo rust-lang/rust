@@ -1,13 +1,9 @@
 // error-pattern:cargo-clippy
 
-#![feature(bindings_after_at)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(concat_idents)]
-#![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
-#![feature(once_cell)]
 #![feature(or_patterns)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
@@ -147,6 +143,20 @@ macro_rules! declare_clippy_lint {
             $(#[$attr])* pub clippy::$name, Warn, $description, report_in_external_macro: true
         }
     };
+}
+
+#[macro_export]
+macro_rules! sym {
+    ( $($x:tt)* ) => { clippy_utils::sym!($($x)*) }
+}
+
+#[macro_export]
+macro_rules! unwrap_cargo_metadata {
+    ( $($x:tt)* ) => { clippy_utils::unwrap_cargo_metadata!($($x)*) }
+}
+
+macro_rules! extract_msrv_attr {
+    ( $($x:tt)* ) => { clippy_utils::extract_msrv_attr!($($x)*); }
 }
 
 mod consts;

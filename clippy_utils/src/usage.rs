@@ -1,4 +1,4 @@
-use crate::utils;
+use crate as utils;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
