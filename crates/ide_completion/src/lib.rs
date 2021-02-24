@@ -13,7 +13,9 @@ mod completions;
 
 use completions::flyimport::position_for_import;
 use ide_db::{
-    base_db::FilePosition, helpers::insert_use::ImportScope, imports_locator, RootDatabase,
+    base_db::FilePosition,
+    helpers::{import_assets::LocatedImport, insert_use::ImportScope},
+    imports_locator, RootDatabase,
 };
 use text_edit::TextEdit;
 
@@ -148,12 +150,16 @@ pub fn resolve_completion_edits(
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();
 
-    let import_path = imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
-        .filter_map(|candidate| {
-            let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
-            current_module.find_use_path_prefixed(db, item, config.insert_use.prefix_kind)
-        })
-        .find(|mod_path| mod_path.to_string() == full_import_path)?;
+    let (import_path, item_to_import) =
+        imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
+            .filter_map(|candidate| {
+                let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
+                current_module
+                    .find_use_path_prefixed(db, item, config.insert_use.prefix_kind)
+                    .zip(Some(item))
+            })
+            .find(|(mod_path, _)| mod_path.to_string() == full_import_path)?;
+    let import = LocatedImport::new(import_path, item_to_import, None);
 
     ImportEdit { import_path, import_scope, import_for_trait_assoc_item }
         .to_text_edit(config.insert_use)

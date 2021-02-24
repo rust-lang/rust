@@ -74,17 +74,17 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     let group_label = group_label(candidate);
-    for (import, item) in proposed_imports {
+    for import in proposed_imports {
         acc.add_group(
             &group_label,
             AssistId("qualify_path", AssistKind::QuickFix),
-            label(candidate, &import),
+            label(candidate, import.display_path()),
             range,
             |builder| {
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
-                    import,
-                    item,
+                    import.import_path(),
+                    import.item_to_import(),
                 )
             },
         );
@@ -100,8 +100,13 @@ enum QualifyCandidate<'db> {
 }
 
 impl QualifyCandidate<'_> {
-    fn qualify(&self, mut replacer: impl FnMut(String), import: hir::ModPath, item: hir::ItemInNs) {
-        let import = mod_path_to_ast(&import);
+    fn qualify(
+        &self,
+        mut replacer: impl FnMut(String),
+        import: &hir::ModPath,
+        item: hir::ItemInNs,
+    ) {
+        let import = mod_path_to_ast(import);
         match self {
             QualifyCandidate::QualifierStart(segment, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);

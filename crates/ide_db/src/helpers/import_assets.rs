@@ -117,6 +117,42 @@ impl ImportAssets {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LocatedImport {
+    import_path: ModPath,
+    item_to_import: ItemInNs,
+    import_display_override: Option<(ModPath, ItemInNs)>,
+}
+
+impl LocatedImport {
+    pub fn new(
+        import_path: ModPath,
+        item_to_import: ItemInNs,
+        import_display_override: Option<(ModPath, ItemInNs)>,
+    ) -> Self {
+        Self { import_path, item_to_import, import_display_override }
+    }
+
+    pub fn display_path(&self) -> &ModPath {
+        self.import_display_override
+            .as_ref()
+            .map(|(mod_path, _)| mod_path)
+            .unwrap_or(&self.import_path)
+    }
+
+    pub fn import_path(&self) -> &ModPath {
+        &self.import_path
+    }
+
+    pub fn item_to_display(&self) -> ItemInNs {
+        self.import_display_override.as_ref().map(|&(_, item)| item).unwrap_or(self.item_to_import)
+    }
+
+    pub fn item_to_import(&self) -> ItemInNs {
+        self.item_to_import
+    }
+}
+
 impl ImportAssets {
     pub fn import_candidate(&self) -> &ImportCandidate {
         &self.import_candidate
@@ -134,16 +170,13 @@ impl ImportAssets {
         &self,
         sema: &Semantics<RootDatabase>,
         prefix_kind: PrefixKind,
-    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
+    ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
         self.search_for(sema, Some(prefix_kind))
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
-    pub fn search_for_relative_paths(
-        &self,
-        sema: &Semantics<RootDatabase>,
-    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
+    pub fn search_for_relative_paths(&self, sema: &Semantics<RootDatabase>) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
     }
@@ -152,7 +185,7 @@ impl ImportAssets {
         &self,
         sema: &Semantics<RootDatabase>,
         prefixed: Option<hir::PrefixKind>,
-    ) -> Vec<(hir::ModPath, hir::ItemInNs)> {
+    ) -> Vec<LocatedImport> {
         let current_crate = self.module_with_candidate.krate();
 
         let imports_for_candidate_name = match self.name_to_import() {
@@ -181,61 +214,53 @@ impl ImportAssets {
             }
         };
 
-        let mut res = self
-            .applicable_defs(sema, prefixed, imports_for_candidate_name)
-            .filter(|(use_path, _)| use_path.len() > 1)
-            .collect::<Vec<_>>();
-        res.sort_by_cached_key(|(path, _)| path.clone());
-        res
+        self.applicable_defs(sema.db, prefixed, imports_for_candidate_name)
+            .into_iter()
+            .filter(|import| import.import_path().len() > 1)
+            .collect()
     }
 
-    fn applicable_defs<'a>(
-        &'a self,
-        sema: &'a Semantics<RootDatabase>,
+    fn applicable_defs(
+        &self,
+        db: &RootDatabase,
         prefixed: Option<hir::PrefixKind>,
-        unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a,
-    ) -> Box<dyn Iterator<Item = (ModPath, ItemInNs)> + 'a> {
+        unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+    ) -> FxHashSet<LocatedImport> {
         let current_crate = self.module_with_candidate.krate();
-        let db = sema.db;
+
+        let import_path_locator =
+            |item| get_mod_path(db, item, &self.module_with_candidate, prefixed);
 
         match &self.import_candidate {
-            ImportCandidate::Path(path_candidate) => Box::new(
-                path_applicable_items(
-                    db,
-                    path_candidate,
-                    &self.module_with_candidate,
-                    prefixed,
-                    unfiltered_defs,
-                )
-                .into_iter(),
+            ImportCandidate::Path(path_candidate) => {
+                path_applicable_imports(db, path_candidate, import_path_locator, unfiltered_defs)
+            }
+            ImportCandidate::TraitAssocItem(trait_candidate) => trait_applicable_items(
+                db,
+                current_crate,
+                trait_candidate,
+                true,
+                import_path_locator,
+                unfiltered_defs,
             ),
-            ImportCandidate::TraitAssocItem(trait_candidate) => Box::new(
-                trait_applicable_defs(db, current_crate, trait_candidate, true, unfiltered_defs)
-                    .into_iter()
-                    .filter_map(move |item_to_search| {
-                        get_mod_path(db, item_to_search, &self.module_with_candidate, prefixed)
-                            .zip(Some(item_to_search))
-                    }),
-            ),
-            ImportCandidate::TraitMethod(trait_candidate) => Box::new(
-                trait_applicable_defs(db, current_crate, trait_candidate, false, unfiltered_defs)
-                    .into_iter()
-                    .filter_map(move |item_to_search| {
-                        get_mod_path(db, item_to_search, &self.module_with_candidate, prefixed)
-                            .zip(Some(item_to_search))
-                    }),
+            ImportCandidate::TraitMethod(trait_candidate) => trait_applicable_items(
+                db,
+                current_crate,
+                trait_candidate,
+                false,
+                import_path_locator,
+                unfiltered_defs,
             ),
         }
     }
 }
 
-fn path_applicable_items<'a>(
-    db: &'a RootDatabase,
-    path_candidate: &'a PathImportCandidate,
-    module_with_candidate: &hir::Module,
-    prefixed: Option<hir::PrefixKind>,
-    unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a,
-) -> FxHashSet<(ModPath, ItemInNs)> {
+fn path_applicable_imports(
+    db: &RootDatabase,
+    path_candidate: &PathImportCandidate,
+    import_path_locator: impl Fn(ItemInNs) -> Option<ModPath>,
+    unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+) -> FxHashSet<LocatedImport> {
     let applicable_items = unfiltered_defs
         .filter_map(|def| {
             let (assoc_original, candidate) = match def {
@@ -256,14 +281,15 @@ fn path_applicable_items<'a>(
             Some((assoc_original, candidate))
         })
         .filter_map(|(assoc_original, candidate)| {
-            get_mod_path(db, candidate, module_with_candidate, prefixed)
-                .zip(Some((assoc_original, candidate)))
+            import_path_locator(candidate).zip(Some((assoc_original, candidate)))
         });
 
     let (unresolved_first_segment, unresolved_qualifier) = match &path_candidate.qualifier {
         Qualifier::Absent => {
             return applicable_items
-                .map(|(candidate_path, (_, candidate))| (candidate_path, candidate))
+                .map(|(candidate_path, (_, candidate))| {
+                    LocatedImport::new(candidate_path, candidate, None)
+                })
                 .collect();
         }
         Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => (first_segment, qualifier),
@@ -283,19 +309,22 @@ fn path_applicable_items<'a>(
         .filter_map(|(candidate_path, (assoc_original, candidate))| {
             if let Some(assoc_original) = assoc_original {
                 if item_name(db, candidate)?.to_string() == unresolved_first_segment_string {
-                    return Some((candidate_path, ItemInNs::from(assoc_original)));
+                    return Some(LocatedImport::new(
+                        candidate_path.clone(),
+                        ItemInNs::from(assoc_original),
+                        Some((candidate_path, candidate)),
+                    ));
                 }
             }
 
             let matching_module =
                 module_with_matching_name(db, &unresolved_first_segment_string, candidate)?;
-            let path = get_mod_path(
-                db,
-                ItemInNs::from(ModuleDef::from(matching_module)),
-                module_with_candidate,
-                prefixed,
-            )?;
-            Some((path, candidate))
+            let item = ItemInNs::from(ModuleDef::from(matching_module));
+            Some(LocatedImport::new(
+                import_path_locator(item)?,
+                item,
+                Some((candidate_path, candidate)),
+            ))
         })
         .collect()
 }
@@ -336,13 +365,14 @@ fn module_with_matching_name(
     None
 }
 
-fn trait_applicable_defs<'a>(
-    db: &'a RootDatabase,
+fn trait_applicable_items(
+    db: &RootDatabase,
     current_crate: Crate,
     trait_candidate: &TraitImportCandidate,
     trait_assoc_item: bool,
-    unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>> + 'a,
-) -> FxHashSet<ItemInNs> {
+    import_path_locator: impl Fn(ItemInNs) -> Option<ModPath>,
+    unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+) -> FxHashSet<LocatedImport> {
     let mut required_assoc_items = FxHashSet::default();
 
     let trait_candidates = unfiltered_defs
@@ -357,7 +387,7 @@ fn trait_applicable_defs<'a>(
         })
         .collect();
 
-    let mut applicable_traits = FxHashSet::default();
+    let mut located_imports = FxHashSet::default();
 
     if trait_assoc_item {
         trait_candidate.receiver_ty.iterate_path_candidates(
@@ -372,8 +402,13 @@ fn trait_applicable_defs<'a>(
                             return None;
                         }
                     }
-                    applicable_traits
-                        .insert(ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?)));
+
+                    let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    located_imports.insert(LocatedImport::new(
+                        import_path_locator(item)?,
+                        item,
+                        None,
+                    ));
                 }
                 None::<()>
             },
@@ -387,15 +422,19 @@ fn trait_applicable_defs<'a>(
             |_, function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
-                    applicable_traits
-                        .insert(ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?)));
+                    let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    located_imports.insert(LocatedImport::new(
+                        import_path_locator(item)?,
+                        item,
+                        None,
+                    ));
                 }
                 None::<()>
             },
         )
     };
 
-    applicable_traits
+    located_imports
 }
 
 fn get_mod_path(

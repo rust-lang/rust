@@ -17,8 +17,8 @@ use rustc_hash::FxHashSet;
 
 pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
-pub fn find_exact_imports<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+pub fn find_exact_imports(
+    sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
     name_to_import: String,
 ) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>>> {
@@ -48,7 +48,7 @@ pub enum AssocItemSearch {
 }
 
 pub fn find_similar_imports<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+    sema: &'a Semantics<'a, RootDatabase>,
     krate: Crate,
     fuzzy_search_string: String,
     assoc_item_search: AssocItemSearch,
@@ -77,12 +77,11 @@ pub fn find_similar_imports<'a>(
         local_query.limit(limit);
     }
 
-    let db = sema.db;
     Box::new(find_imports(sema, krate, local_query, external_query).filter(
         move |import_candidate| match assoc_item_search {
             AssocItemSearch::Include => true,
-            AssocItemSearch::Exclude => !is_assoc_item(import_candidate, db),
-            AssocItemSearch::AssocItemsOnly => is_assoc_item(import_candidate, db),
+            AssocItemSearch::Exclude => !is_assoc_item(import_candidate, sema.db),
+            AssocItemSearch::AssocItemsOnly => is_assoc_item(import_candidate, sema.db),
         },
     ))
 }

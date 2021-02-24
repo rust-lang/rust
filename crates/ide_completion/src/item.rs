@@ -2,9 +2,10 @@
 
 use std::fmt;
 
-use hir::{Documentation, ModPath, Mutability};
+use hir::{Documentation, Mutability};
 use ide_db::{
     helpers::{
+        import_assets::LocatedImport,
         insert_use::{self, ImportScope, InsertUseConfig},
         mod_path_to_ast, SnippetCap,
     },
@@ -272,7 +273,7 @@ impl CompletionItem {
 /// An extra import to add after the completion is applied.
 #[derive(Debug, Clone)]
 pub struct ImportEdit {
-    pub import_path: ModPath,
+    pub import: LocatedImport,
     pub import_scope: ImportScope,
     pub import_for_trait_assoc_item: bool,
 }
@@ -283,8 +284,11 @@ impl ImportEdit {
     pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
         let _p = profile::span("ImportEdit::to_text_edit");
 
-        let rewriter =
-            insert_use::insert_use(&self.import_scope, mod_path_to_ast(&self.import_path), cfg);
+        let rewriter = insert_use::insert_use(
+            &self.import_scope,
+            mod_path_to_ast(self.import.import_path()),
+            cfg,
+        );
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();
         algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
@@ -323,19 +327,13 @@ impl Builder {
         let mut insert_text = self.insert_text;
 
         if let Some(import_to_add) = self.import_to_add.as_ref() {
+            lookup = lookup.or_else(|| Some(label.clone()));
+            insert_text = insert_text.or_else(|| Some(label.clone()));
+            let display_path = import_to_add.import.display_path();
             if import_to_add.import_for_trait_assoc_item {
-                lookup = lookup.or_else(|| Some(label.clone()));
-                insert_text = insert_text.or_else(|| Some(label.clone()));
-                label = format!("{} ({})", label, import_to_add.import_path);
+                label = format!("{} ({})", label, display_path);
             } else {
-                let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
-                let _ = import_path_without_last_segment.pop_segment();
-
-                if !import_path_without_last_segment.segments().is_empty() {
-                    lookup = lookup.or_else(|| Some(label.clone()));
-                    insert_text = insert_text.or_else(|| Some(label.clone()));
-                    label = format!("{}::{}", import_path_without_last_segment, label);
-                }
+                label = display_path.to_string();
             }
         }
 

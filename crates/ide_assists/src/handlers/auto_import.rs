@@ -92,14 +92,18 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group = import_group_message(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
-    for (import, _) in proposed_imports {
+    for import in proposed_imports {
         acc.add_group(
             &group,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", &import),
+            format!("Import `{}`", import.display_path()),
             range,
             |builder| {
-                let rewriter = insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use);
+                let rewriter = insert_use(
+                    &scope,
+                    mod_path_to_ast(import.import_path()),
+                    ctx.config.insert_use,
+                );
                 builder.rewrite(rewriter);
             },
         );

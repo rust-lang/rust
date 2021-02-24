@@ -96,21 +96,21 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     let mut all_mod_paths = import_assets
         .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
         .into_iter()
-        .map(|(mod_path, item_in_ns)| {
-            let scope_item = match item_in_ns {
+        .map(|import| {
+            let proposed_def = match import.item_to_import() {
                 hir::ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
                 hir::ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
                 hir::ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
             };
-            (mod_path, scope_item)
+            (import, proposed_def)
         })
         .filter(|(_, proposed_def)| !scope_definitions.contains(proposed_def))
         .collect::<Vec<_>>();
-    all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
-        compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
+    all_mod_paths.sort_by_cached_key(|(import, _)| {
+        compute_fuzzy_completion_order_key(import.display_path(), &user_input_lowercased)
     });
 
-    acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
+    acc.add_all(all_mod_paths.into_iter().filter_map(|(import, definition)| {
         let import_for_trait_assoc_item = match definition {
             ScopeDef::ModuleDef(module_def) => module_def
                 .as_assoc_item(ctx.db)
@@ -118,11 +118,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
                 .is_some(),
             _ => false,
         };
-        let import_edit = ImportEdit {
-            import_path,
-            import_scope: import_scope.clone(),
-            import_for_trait_assoc_item,
-        };
+        let import_edit =
+            ImportEdit { import, import_scope: import_scope.clone(), import_for_trait_assoc_item };
         render_resolution_with_import(RenderContext::new(ctx), import_edit, &definition)
     }));
     Some(())
@@ -186,11 +183,11 @@ fn compute_fuzzy_completion_order_key(
     user_input_lowercased: &str,
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
-    let proposed_import_name = match proposed_mod_path.segments().last() {
+    let import_name = match proposed_mod_path.segments().last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
     };
-    match proposed_import_name.match_indices(user_input_lowercased).next() {
+    match import_name.match_indices(user_input_lowercased).next() {
         Some((first_matching_index, _)) => first_matching_index,
         None => usize::MAX,
     }

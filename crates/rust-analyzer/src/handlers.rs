@@ -1534,14 +1534,13 @@ fn fill_resolve_data(
     position: &TextDocumentPositionParams,
 ) -> Option<()> {
     let import_edit = item.import_to_add()?;
-    let full_import_path = import_edit.import_path.to_string();
-    let imported_name = import_edit.import_path.segments().last()?.to_string();
+    let import_path = import_edit.import.import_path();
 
     *resolve_data = Some(
         to_value(CompletionResolveData {
             position: position.to_owned(),
-            full_import_path,
-            imported_name,
+            full_import_path: import_path.to_string(),
+            imported_name: import_path.segments().last()?.to_string(),
             import_for_trait_assoc_item: import_edit.import_for_trait_assoc_item,
         })
         .unwrap(),
