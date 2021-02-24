@@ -41,6 +41,10 @@ pub use crate::sys::ext as windows;
 #[cfg(any(target_os = "linux", target_os = "l4re"))]
 pub mod linux;
 
+#[cfg(not(doc))]
+#[cfg(target_os = "wasi")]
+pub mod wasi;
+
 #[cfg(target_os = "android")]
 pub mod android;
 #[cfg(target_os = "dragonfly")]
@@ -71,7 +75,5 @@ pub mod redox;
 pub mod solaris;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
-#[cfg(target_os = "wasi")]
-pub mod wasi;
 
 pub mod raw;
