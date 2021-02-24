@@ -1278,16 +1278,24 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let pushed = &mut false; // Record `parse_external_mod` pushing so we can pop.
                 let dir = Directory { ownership: orig_ownership, path: module.directory };
                 let Directory { ownership, path } = match mod_kind {
-                    ModKind::Loaded(_, Inline::Yes, _) => {
-                        // Inline `mod foo { ... }`, but we still need to push directories.
+                    ModKind::Loaded(_, inline, inner_span) => {
+                        // Inline `mod foo { ... }` or previously loaded `mod foo;`,
+                        // we still need to push directories.
+                        let dir = push_directory(
+                            &self.cx.sess,
+                            ident,
+                            &attrs,
+                            dir,
+                            *inline,
+                            *inner_span,
+                            span,
+                        );
                         item.attrs = attrs;
-                        push_directory(&self.cx.sess, ident, &item.attrs, dir)
-                    }
-                    ModKind::Loaded(_, Inline::No, _) => {
-                        panic!("`mod` item is loaded from a file for the second time")
+                        dir
                     }
                     ModKind::Unloaded => {
                         // We have an outline `mod foo;` so we need to parse the file.
+                        let old_attrs_len = attrs.len();
                         let (items, inner_span, dir) =
                             parse_external_mod(&self.cx.sess, ident, span, dir, &mut attrs, pushed);
 
@@ -1299,16 +1307,34 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
                         *mod_kind = ModKind::Loaded(krate.items, Inline::No, inner_span);
                         item.attrs = krate.attrs;
-                        // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
-                        item = match self.configure(item) {
-                            Some(node) => node,
-                            None => {
-                                if *pushed {
-                                    sess.included_mod_stack.borrow_mut().pop();
-                                }
-                                return Default::default();
+
+                        if item.attrs.len() > old_attrs_len {
+                            // If we loaded an out-of-line module and added some inner attributes,
+                            // then we need to re-configure it and re-collect attributes for
+                            // resolution and expansion.
+                            let file_path = if *pushed {
+                                sess.included_mod_stack.borrow_mut().pop()
+                            } else {
+                                None
+                            };
+
+                            item = configure!(self, item);
+
+                            if let Some(attr) = self.take_first_attr(&mut item) {
+                                return self
+                                    .collect_attr(
+                                        attr,
+                                        Annotatable::Item(item),
+                                        AstFragmentKind::Items,
+                                    )
+                                    .make_items();
                             }
-                        };
+
+                            if let Some(file_path) = file_path {
+                                sess.included_mod_stack.borrow_mut().push(file_path);
+                            }
+                        }
+
                         dir
                     }
                 };
