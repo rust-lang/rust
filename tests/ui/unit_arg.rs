@@ -27,6 +27,10 @@ impl Bar {
     }
 }
 
+fn baz<T: Debug>(t: T) {
+    foo(t);
+}
+
 fn bad() {
     foo({
         1;
@@ -73,6 +77,7 @@ fn ok() {
     question_mark();
     let named_unit_arg = ();
     foo(named_unit_arg);
+    baz(());
 }
 
 fn question_mark() -> Result<(), ()> {

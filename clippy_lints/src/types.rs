@@ -955,16 +955,10 @@ impl<'tcx> LateLintPass<'tcx> for UnitArg {
                     .iter()
                     .filter(|arg| {
                         if is_unit(cx.typeck_results().expr_ty(arg)) && !is_unit_literal(arg) {
-                            match &arg.kind {
-                                ExprKind::Block(..)
-                                | ExprKind::Call(..)
-                                | ExprKind::If(..)
-                                | ExprKind::MethodCall(..) => true,
-                                ExprKind::Match(..) => {
-                                    !matches!(&arg.kind, ExprKind::Match(.., MatchSource::TryDesugar))
-                                },
-                                _ => false,
-                            }
+                            !matches!(
+                                &arg.kind,
+                                ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
+                            )
                         } else {
                             false
                         }
