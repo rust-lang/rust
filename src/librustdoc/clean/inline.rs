@@ -195,14 +195,12 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
-        is_spotlight,
         is_auto,
     }
 }
@@ -626,6 +624,10 @@ crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
+    let trait_ = clean::TraitWithExtraInfo {
+        trait_,
+        is_spotlight: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::spotlight),
+    };
     cx.external_traits.borrow_mut().insert(did, trait_);
     cx.active_extern_traits.remove(&did);
 }

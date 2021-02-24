@@ -7,6 +7,7 @@ use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::FileName;
+use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
@@ -64,7 +65,7 @@ crate struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    crate traits: FxHashMap<DefId, clean::Trait>,
+    crate traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
@@ -247,7 +248,10 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = *item.kind {
-            self.cache.traits.entry(item.def_id).or_insert_with(|| t.clone());
+            self.cache.traits.entry(item.def_id).or_insert_with(|| clean::TraitWithExtraInfo {
+                trait_: t.clone(),
+                is_spotlight: item.attrs.has_doc_flag(sym::spotlight),
+            });
         }
 
         // Collect all the implementors of traits.

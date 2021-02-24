@@ -520,3 +520,19 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
         None
     }
 }
+
+/// Checks for the existence of `hidden` in the attribute below if `flag` is `sym::hidden`:
+///
+/// ```
+/// #[doc(hidden)]
+/// pub fn foo() {}
+/// ```
+///
+/// This function exists because it runs on `hir::Attributes` whereas the other is a
+/// `clean::Attributes` method.
+crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
+    attrs.iter().any(|attr| {
+        attr.has_name(sym::doc)
+            && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
+    })
+}

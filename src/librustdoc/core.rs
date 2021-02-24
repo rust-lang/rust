@@ -30,7 +30,7 @@ use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{AttributesExt, MAX_DEF_IDX};
+use crate::clean::{AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
 use crate::formats::cache::Cache;
@@ -55,7 +55,7 @@ crate struct DocContext<'tcx> {
     /// Later on moved into `cache`
     crate renderinfo: RenderInfo,
     /// Later on moved through `clean::Crate` into `cache`
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     crate active_extern_traits: FxHashSet<DefId>,
@@ -538,7 +538,10 @@ crate fn run_global_ctxt(
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
         let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         sized_trait.is_auto = true;
-        ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
+        ctxt.external_traits.borrow_mut().insert(
+            sized_trait_did,
+            TraitWithExtraInfo { trait_: sized_trait, is_spotlight: false },
+        );
     }
 
     debug!("crate: {:?}", tcx.hir().krate());

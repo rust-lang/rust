@@ -2003,14 +2003,11 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                         .iter()
                         .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
                         .collect();
-                    let attrs = item.attrs.clean(cx);
-                    let is_spotlight = attrs.has_doc_flag(sym::spotlight);
                     TraitItem(Trait {
                         unsafety,
                         items,
                         generics: generics.clean(cx),
                         bounds: bounds.clean(cx),
-                        is_spotlight,
                         is_auto: is_auto.clean(cx),
                     })
                 }
