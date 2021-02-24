@@ -398,7 +398,7 @@ In general `rust-analyzer` is configured via LSP messages, which means that it's
 
 Some clients, such as <<vs-code,VS Code>> or <<coc-rust-analyzer,COC plugin in Vim>> provide `rust-analyzer` specific configuration UIs. Others may require you to know a bit more about the interaction with `rust-analyzer`.
 
-For the later category, it might help to know that the initial configuration is specified as a value of the `intializationOptions` field of the https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize[`InitializeParams` message, in the LSP protocol].
+For the later category, it might help to know that the initial configuration is specified as a value of the `initializationOptions` field of the https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize[`InitializeParams` message, in the LSP protocol].
 The spec says that the field type is `any?`, but `rust-analyzer` is looking for a JSON object that is constructed using settings from the list below.
 Name of the setting, ignoring the `rust-analyzer.` prefix, is used as a path, and value of the setting becomes the JSON property value.
 
