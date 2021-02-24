@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
-#![feature(once_cell)]
 #![feature(or_patterns)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
@@ -32,7 +31,6 @@ pub mod ast_utils;
 pub mod attrs;
 pub mod camel_case;
 pub mod comparisons;
-pub mod conf;
 pub mod consts;
 mod diagnostics;
 pub mod eager_or_lazy;
