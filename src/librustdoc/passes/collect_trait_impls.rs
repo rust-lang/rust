@@ -88,18 +88,29 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
 
     let mut cleaner = BadImplStripper { prims, items: crate_items };
 
+    let sized_trait = cx.tcx.lang_items().sized_trait();
+    let deref_trait = cx.tcx.lang_items().deref_trait();
+
     let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
     // Gather all type to `Deref` target edges.
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
-            if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-                let target = items.iter().find_map(|item| match *item.kind {
-                    TypedefItem(ref t, true) => Some(&t.type_),
-                    _ => None,
-                });
-                if let (Some(for_did), Some(target)) = (for_.def_id(), target) {
-                    type_did_to_deref_target.insert(for_did, target);
+            match trait_.def_id() {
+                did if sized_trait == did => {}
+                Some(did) => {
+                    if Some(did) == deref_trait {
+                        let target = items.iter().find_map(|item| match *item.kind {
+                            TypedefItem(ref t, true) => Some(&t.type_),
+                            _ => None,
+                        });
+                        if let (Some(for_did), Some(target)) = (for_.def_id(), target) {
+                            type_did_to_deref_target.insert(for_did, target);
+                        }
+                    } else {
+                        cleaner.items.insert(did);
+                    }
                 }
+                _ => {}
             }
         }
     }
