@@ -5,7 +5,9 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
+colored = "2"
 diff = "0.1.10"
+unified-diff = "0.2.1"
 getopts = "0.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2.13", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
