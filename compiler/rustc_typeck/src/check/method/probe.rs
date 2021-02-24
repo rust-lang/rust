@@ -1090,19 +1090,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .next()
     }
 
+    /// For each type `T` in the step list, this attempts to find a method where
+    /// the (transformed) self type is exactly `T`. We do however do one
+    /// transformation on the adjustment: if we are passing a region pointer in,
+    /// we will potentially *reborrow* it to a shorter lifetime. This allows us
+    /// to transparently pass `&mut` pointers, in particular, without consuming
+    /// them for their entire lifetime.
     fn pick_by_value_method(
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Option<PickResult<'tcx>> {
-        //! For each type `T` in the step list, this attempts to find a
-        //! method where the (transformed) self type is exactly `T`. We
-        //! do however do one transformation on the adjustment: if we
-        //! are passing a region pointer in, we will potentially
-        //! *reborrow* it to a shorter lifetime. This allows us to
-        //! transparently pass `&mut` pointers, in particular, without
-        //! consuming them for their entire lifetime.
-
         if step.unsize {
             return None;
         }
