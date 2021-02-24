@@ -2831,7 +2831,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> {
         if let Some(_local_def_id) = def_id.as_local() {
-            // TODO: This doesn't actually work, items doesn't include everything?
+            // FIXME: This doesn't actually work, items doesn't include everything?
             //self.items[&hir::ItemId { def_id: local_def_id }].attrs.into()
             Vec::new()
         } else {
