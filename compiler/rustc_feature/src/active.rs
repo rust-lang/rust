@@ -370,9 +370,6 @@ declare_features! (
     /// Allows `#[doc(cfg(...))]`.
     (active, doc_cfg, "1.21.0", Some(43781), None),
 
-    /// Allows `#[doc(cfg_hide(...))]`.
-    (active, doc_cfg_hide, "1.49.0", Some(43781), None),
-
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
 
@@ -657,6 +654,9 @@ declare_features! (
 
     /// Allows unsizing coercions in `const fn`.
     (active, const_fn_unsize, "1.53.0", Some(64992), None),
+
+    /// Allows `#[doc(cfg_hide(...))]`.
+    (active, doc_cfg_hide, "1.53.0", Some(43781), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
