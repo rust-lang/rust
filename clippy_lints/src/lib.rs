@@ -1716,6 +1716,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&unused_unit::UNUSED_UNIT),
         LintId::of(&unwrap::PANICKING_UNWRAP),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
+        LintId::of(&upper_case_acronyms::UPPER_CASE_ACRONYMS),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
         LintId::of(&vec::USELESS_VEC),
         LintId::of(&vec_init_then_push::VEC_INIT_THEN_PUSH),
