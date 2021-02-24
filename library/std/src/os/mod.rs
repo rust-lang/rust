@@ -22,6 +22,9 @@ pub use crate::sys::windows_ext as windows;
 #[doc(cfg(target_os = "linux"))]
 pub mod linux;
 
+#[cfg(doc)]
+pub use crate::sys::wasi_ext as wasi;
+
 // If we're not documenting libstd then we just expose the main modules as we otherwise would.
 
 #[cfg(not(doc))]
