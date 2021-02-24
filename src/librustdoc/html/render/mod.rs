@@ -1343,7 +1343,6 @@ impl AllTypes {
                          </a>\
                      </span>
                  </span>
-                 <span class=\"in-band\">List of all items</span>\
              </h1>",
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
