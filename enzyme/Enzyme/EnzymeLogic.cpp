@@ -1527,16 +1527,13 @@ const AugmentedReturn &CreateAugmentedPrimal(
   }
 
   SmallVector<ReturnInst *, 4> Returns;
-  #if LLVM_VERSION_MAJOR >= 13
-  CloneFunctionInto(NewF, nf, VMap,
-                    CloneFunctionChangeType::LocalChangesOnly,
-                    Returns, "",
-                    nullptr);
-  #else
+#if LLVM_VERSION_MAJOR >= 13
+  CloneFunctionInto(NewF, nf, VMap, CloneFunctionChangeType::LocalChangesOnly,
+                    Returns, "", nullptr);
+#else
   CloneFunctionInto(NewF, nf, VMap, nf->getSubprogram() != nullptr, Returns, "",
                     nullptr);
-  #endif
-  
+#endif
 
   IRBuilder<> ib(NewF->getEntryBlock().getFirstNonPHI());
 

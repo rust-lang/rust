@@ -698,15 +698,16 @@ Function *preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI,
 
   SmallVector<ReturnInst *, 4> Returns;
 
-  #if LLVM_VERSION_MAJOR >= 13
-  CloneFunctionInto(NewF, F, VMap,
-                    /*ModuleLevelChanges*/ CloneFunctionChangeType::LocalChangesOnly,
-                    Returns, "", nullptr);
-  #else
+#if LLVM_VERSION_MAJOR >= 13
+  CloneFunctionInto(
+      NewF, F, VMap,
+      /*ModuleLevelChanges*/ CloneFunctionChangeType::LocalChangesOnly, Returns,
+      "", nullptr);
+#else
   CloneFunctionInto(NewF, F, VMap,
                     /*ModuleLevelChanges*/ F->getSubprogram() != nullptr,
                     Returns, "", nullptr);
-  #endif
+#endif
   NewF->setAttributes(F->getAttributes());
   if (EnzymeNoAlias)
     for (auto j = NewF->arg_begin(); j != NewF->arg_end(); j++) {
@@ -1317,13 +1318,13 @@ Function *CloneFunctionWithReturns(
       VMap[&I] = &*DestI++;        // Add mapping to VMap
     }
   SmallVector<ReturnInst *, 4> Returns;
-  #if LLVM_VERSION_MAJOR >= 13
-  CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::LocalChangesOnly, Returns, "",
-                    nullptr);
-  #else
+#if LLVM_VERSION_MAJOR >= 13
+  CloneFunctionInto(NewF, F, VMap, CloneFunctionChangeType::LocalChangesOnly,
+                    Returns, "", nullptr);
+#else
   CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
                     nullptr);
-  #endif
+#endif
   if (VMapO) {
     VMapO->insert(VMap.begin(), VMap.end());
     VMapO->getMDMap() = VMap.getMDMap();

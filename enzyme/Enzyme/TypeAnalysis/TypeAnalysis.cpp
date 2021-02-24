@@ -224,9 +224,8 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
                                                          /*addOffset*/ Off);
       Off += ObjSize;
     }
-    if (TA.fntypeinfo.Function->getParent()
-                          ->getDataLayout()
-                          .getTypeSizeInBits(CA->getType()) >= 16) {
+    if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+            CA->getType()) >= 16) {
       Result.ReplaceIntWithAnything();
     }
     return Result;
@@ -270,9 +269,8 @@ TypeTree getConstantAnalysis(Constant *Val, TypeAnalyzer &TA) {
                                                          /*maxSize*/ ObjSize,
                                                          /*addOffset*/ Off);
     }
-    if (TA.fntypeinfo.Function->getParent()
-                          ->getDataLayout()
-                          .getTypeSizeInBits(CD->getType()) >= 16) {
+    if (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+            CD->getType()) >= 16) {
       Result.ReplaceIntWithAnything();
     }
     return Result;
@@ -1471,6 +1469,16 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
 
   auto &dl = fntypeinfo.Function->getParent()->getDataLayout();
   VectorType *vecType = cast<VectorType>(I.getOperand(0)->getType());
+  if (vecType->getElementType()->isIntegerTy(1)) {
+    if (direction & UP) {
+      updateAnalysis(I.getOperand(0), TypeTree(BaseType::Integer).Only(-1), &I);
+      updateAnalysis(I.getOperand(1), TypeTree(BaseType::Integer).Only(-1), &I);
+    }
+    if (direction & DOWN) {
+      updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
+    }
+    return;
+  }
 #if LLVM_VERSION_MAJOR >= 13
   assert(!vecType->getElementCount().isScalable());
   size_t numElems = vecType->getElementCount().getKnownMinValue();
@@ -1544,24 +1552,25 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
   for (size_t i = 0; i < mask.size(); ++i) {
     int newOff;
     {
-      Value * vec[2] = {
-        ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
-        ConstantInt::get(Type::getInt64Ty(I.getContext()), i)
-      };
-      auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+      Value *vec[2] = {ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+                       ConstantInt::get(Type::getInt64Ty(I.getContext()), i)};
+      auto ud =
+          UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
       auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
-      #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
       APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
-      #else
+#else
       APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
-      #endif
+#endif
       g2->accumulateConstantOffset(dl, ai);
       // Using destructor rather than eraseFromParent
       //   as g2 has no parent
       delete g2;
       newOff = (int)ai.getLimitedValue();
       // there is a bug in LLVM, this is the correct offset
-      if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+      if (cast<VectorType>(I.getOperand(lhs)->getType())
+              ->getElementType()
+              ->isIntegerTy(1)) {
         newOff = i / 8;
       }
     }
@@ -1578,67 +1587,68 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
       }
     } else {
       if ((size_t)mask[i] < numFirst) {
-        Value * vec[2] = {
-          ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
-          ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i])
-        };
-        auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+        Value *vec[2] = {
+            ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+            ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i])};
+        auto ud =
+            UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
         auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
-        #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
         APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
-        #else
+#else
         APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
-        #endif
+#endif
         g2->accumulateConstantOffset(dl, ai);
         // Using destructor rather than eraseFromParent
         //   as g2 has no parent
         int oldOff = (int)ai.getLimitedValue();
         // there is a bug in LLVM, this is the correct offset
-        if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+        if (cast<VectorType>(I.getOperand(lhs)->getType())
+                ->getElementType()
+                ->isIntegerTy(1)) {
           oldOff = mask[i] / 8;
         }
         delete g2;
         if (direction & UP) {
-          updateAnalysis(
-              I.getOperand(lhs),
-              getAnalysis(&I).ShiftIndices(dl, newOff, size, oldOff),
-              &I);
+          updateAnalysis(I.getOperand(lhs),
+                         getAnalysis(&I).ShiftIndices(dl, newOff, size, oldOff),
+                         &I);
         }
         if (direction & DOWN) {
           result |= getAnalysis(I.getOperand(lhs))
                         .ShiftIndices(dl, oldOff, size, newOff);
         }
       } else {
-        Value * vec[2] = {
-          ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
-          ConstantInt::get(Type::getInt64Ty(I.getContext()), mask[i] - numFirst)
-        };
-        auto ud = UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
+        Value *vec[2] = {ConstantInt::get(Type::getInt64Ty(I.getContext()), 0),
+                         ConstantInt::get(Type::getInt64Ty(I.getContext()),
+                                          mask[i] - numFirst)};
+        auto ud =
+            UndefValue::get(PointerType::getUnqual(I.getOperand(0)->getType()));
         auto g2 = GetElementPtrInst::Create(nullptr, ud, vec);
-        #if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 6
         APInt ai(dl.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
-        #else
+#else
         APInt ai(dl.getPointerSize(g2->getPointerAddressSpace()) * 8, 0);
-        #endif
+#endif
         g2->accumulateConstantOffset(dl, ai);
         // Using destructor rather than eraseFromParent
         //   as g2 has no parent
         int oldOff = (int)ai.getLimitedValue();
         // there is a bug in LLVM, this is the correct offset
-        if (cast<VectorType>(I.getOperand(lhs)->getType())->getElementType()->isIntegerTy(1)) {
+        if (cast<VectorType>(I.getOperand(lhs)->getType())
+                ->getElementType()
+                ->isIntegerTy(1)) {
           oldOff = (mask[i] - numFirst) / 8;
         }
         delete g2;
         if (direction & UP) {
           updateAnalysis(I.getOperand(rhs),
-                         getAnalysis(&I).ShiftIndices(
-                             dl, newOff, size, oldOff),
+                         getAnalysis(&I).ShiftIndices(dl, newOff, size, oldOff),
                          &I);
         }
         if (direction & DOWN) {
           result |= getAnalysis(I.getOperand(rhs))
-                        .ShiftIndices(dl, oldOff, size,
-                                      newOff);
+                        .ShiftIndices(dl, oldOff, size, newOff);
         }
       }
     }
@@ -2078,7 +2088,8 @@ void TypeAnalyzer::visitBinaryOperator(BinaryOperator &I) {
 }
 
 void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
-  if (!(direction & UP)) return;
+  if (!(direction & UP))
+    return;
 
   // If memcpy / memmove of pointer, we can propagate type information from src
   // to dst up to the length and vice versa
@@ -2098,14 +2109,16 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1)).AtMost(sz).PurgeAnything();
 
   bool Legal = true;
-  res.checkedOrIn(res2, /*PointerIntSame*/false, Legal);
+  res.checkedOrIn(res2, /*PointerIntSame*/ false, Legal);
   if (!Legal) {
     dump();
     llvm::errs() << MTI << "\n";
     llvm::errs() << "Illegal orIn: " << res.str() << " right: " << res2.str()
-                  << "\n";
-    llvm::errs() << *MTI.getArgOperand(0) << " " << getAnalysis(MTI.getArgOperand(0)).str() << "\n";
-    llvm::errs() << *MTI.getArgOperand(1) << " " << getAnalysis(MTI.getArgOperand(1)).str() << "\n";
+                 << "\n";
+    llvm::errs() << *MTI.getArgOperand(0) << " "
+                 << getAnalysis(MTI.getArgOperand(0)).str() << "\n";
+    llvm::errs() << *MTI.getArgOperand(1) << " "
+                 << getAnalysis(MTI.getArgOperand(1)).str() << "\n";
     assert(0 && "Performed illegal visitMemTransferInst::orIn");
     llvm_unreachable("Performed illegal visitMemTransferInst::orIn");
   }
@@ -2113,7 +2126,7 @@ void TypeAnalyzer::visitMemTransferInst(llvm::MemTransferInst &MTI) {
   updateAnalysis(MTI.getArgOperand(1), res, &MTI);
   for (unsigned i = 2; i < MTI.getNumArgOperands(); ++i) {
     updateAnalysis(MTI.getArgOperand(i), TypeTree(BaseType::Integer).Only(-1),
-                    &MTI);
+                   &MTI);
   }
 }
 
