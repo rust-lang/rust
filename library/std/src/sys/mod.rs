@@ -61,9 +61,9 @@ cfg_if::cfg_if! {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as unix_ext;
     } else if #[cfg(any(target_os = "hermit",
-                        target_arch = "wasm32",
+                        all(target_arch = "wasm32", not(target_os = "wasi")),
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On wasm right now the module below doesn't compile
+        // On non-WASI wasm right now the module below doesn't compile
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
         #[unstable(issue = "none", feature = "std_internals")]
@@ -85,9 +85,9 @@ cfg_if::cfg_if! {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use self::ext as windows_ext;
     } else if #[cfg(any(target_os = "hermit",
-                        target_arch = "wasm32",
+                        all(target_arch = "wasm32", not(target_os = "wasi")),
                         all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On wasm right now the shim below doesn't compile, so
+        // On non-WASI wasm right now the shim below doesn't compile, so
         // just omit it
         #[unstable(issue = "none", feature = "std_internals")]
         #[allow(missing_docs)]
@@ -104,5 +104,27 @@ cfg_if::cfg_if! {
 
         #[path = "windows/ext/mod.rs"]
         pub mod windows_ext;
+    }
+}
+
+#[cfg(doc)]
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "wasi")] {
+        // On WASI we'll document what's already available
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub use self::ext as wasi_ext;
+    } else if #[cfg(any(target_os = "hermit",
+                        target_arch = "wasm32",
+                        all(target_vendor = "fortanix", target_env = "sgx")))] {
+        // On non-WASI wasm right now the module below doesn't compile
+        // (missing things in `libc` which is empty) so just omit everything
+        // with an empty module
+        #[unstable(issue = "none", feature = "std_internals")]
+        #[allow(missing_docs)]
+        pub mod wasi_ext {}
+    } else {
+        // On other platforms like Windows document the bare bones of WASI
+        #[path = "wasi/ext/mod.rs"]
+        pub mod wasi_ext;
     }
 }
