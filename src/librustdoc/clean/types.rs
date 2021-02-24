@@ -155,7 +155,7 @@ impl Item {
         name: Option<Symbol>,
         kind: ItemKind,
         attrs: Box<Attributes>,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
