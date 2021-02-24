@@ -81,7 +81,7 @@ error: layout_of(A) = Layout {
         raw: 1,
     },
 }
-  --> $DIR/hexagon-enum.rs:15:1
+  --> $DIR/hexagon-enum.rs:16:1
    |
 LL | enum A { Apple }
    | ^^^^^^^^^^^^^^^^
@@ -169,7 +169,7 @@ error: layout_of(B) = Layout {
         raw: 1,
     },
 }
-  --> $DIR/hexagon-enum.rs:19:1
+  --> $DIR/hexagon-enum.rs:20:1
    |
 LL | enum B { Banana = 255, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -257,7 +257,7 @@ error: layout_of(C) = Layout {
         raw: 2,
     },
 }
-  --> $DIR/hexagon-enum.rs:23:1
+  --> $DIR/hexagon-enum.rs:24:1
    |
 LL | enum C { Chaenomeles = 256, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -345,7 +345,7 @@ error: layout_of(P) = Layout {
         raw: 4,
     },
 }
-  --> $DIR/hexagon-enum.rs:27:1
+  --> $DIR/hexagon-enum.rs:28:1
    |
 LL | enum P { Peach = 0x1000_0000isize, }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -433,7 +433,7 @@ error: layout_of(T) = Layout {
         raw: 4,
     },
 }
-  --> $DIR/hexagon-enum.rs:33:1
+  --> $DIR/hexagon-enum.rs:34:1
    |
 LL | enum T { Tangerine = TANGERINE as isize }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
