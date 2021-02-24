@@ -1,4 +1,5 @@
 use ast::LoopBodyOwner;
+use hir::known;
 use ide_db::helpers::FamousDefs;
 use stdx::format_to;
 use syntax::{ast, AstNode};
@@ -68,28 +69,30 @@ pub(crate) fn convert_for_to_iter_for_each(acc: &mut Assists, ctx: &AssistContex
 fn is_ref_and_impls_iter_method(
     sema: &hir::Semantics<ide_db::RootDatabase>,
     iterable: &ast::Expr,
-) -> Option<(ast::Expr, &'static str)> {
+) -> Option<(ast::Expr, hir::Name)> {
     let ref_expr = match iterable {
         ast::Expr::RefExpr(r) => r,
         _ => return None,
     };
-    let wanted_method = if ref_expr.mut_token().is_some() { "iter_mut" } else { "iter" };
+    let wanted_method = if ref_expr.mut_token().is_some() { known::iter_mut } else { known::iter };
     let expr_behind_ref = ref_expr.expr()?;
     let typ = sema.type_of_expr(&expr_behind_ref)?;
     let scope = sema.scope(iterable.syntax());
     let krate = scope.module()?.krate();
     let traits_in_scope = scope.traits_in_scope();
     let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
-    let has_wanted_method =
-        typ.iterate_method_candidates(sema.db, krate, &traits_in_scope, None, |_, func| {
-            if func.name(sema.db).to_string() != wanted_method {
-                return None;
-            }
+    let has_wanted_method = typ.iterate_method_candidates(
+        sema.db,
+        krate,
+        &traits_in_scope,
+        Some(&wanted_method),
+        |_, func| {
             if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
                 return Some(());
             }
             None
-        });
+        },
+    );
     has_wanted_method.and(Some((expr_behind_ref, wanted_method)))
 }
 
@@ -135,6 +138,16 @@ impl Empty {
 pub struct NoIterMethod;
 ";
 
+    fn check_assist_with_fixtures(before: &str, after: &str) {
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
+            before,
+            FamousDefs::FIXTURE,
+            EMPTY_ITER_FIXTURE
+        );
+        check_assist(convert_for_to_iter_for_each, before, after);
+    }
+
     #[test]
     fn test_not_for() {
         check_assist_not_applicable(
@@ -169,7 +182,8 @@ fn main() {
 
     #[test]
     fn test_for_borrowed() {
-        let before = r"
+        check_assist_with_fixtures(
+            r"
 use empty_iter::*;
 fn main() {
     let x = Empty;
@@ -177,16 +191,7 @@ fn main() {
         let a = v * 2;
     }
 }
-";
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            FamousDefs::FIXTURE,
-            EMPTY_ITER_FIXTURE
-        );
-        check_assist(
-            convert_for_to_iter_for_each,
-            before,
+",
             r"
 use empty_iter::*;
 fn main() {
@@ -201,7 +206,8 @@ fn main() {
 
     #[test]
     fn test_for_borrowed_no_iter_method() {
-        let before = r"
+        check_assist_with_fixtures(
+            r"
 use empty_iter::*;
 fn main() {
     let x = NoIterMethod;
@@ -209,16 +215,7 @@ fn main() {
         let a = v * 2;
     }
 }
-";
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            FamousDefs::FIXTURE,
-            EMPTY_ITER_FIXTURE
-        );
-        check_assist(
-            convert_for_to_iter_for_each,
-            before,
+",
             r"
 use empty_iter::*;
 fn main() {
@@ -233,7 +230,8 @@ fn main() {
 
     #[test]
     fn test_for_borrowed_mut() {
-        let before = r"
+        check_assist_with_fixtures(
+            r"
 use empty_iter::*;
 fn main() {
     let x = Empty;
@@ -241,16 +239,7 @@ fn main() {
         let a = v * 2;
     }
 }
-";
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            FamousDefs::FIXTURE,
-            EMPTY_ITER_FIXTURE
-        );
-        check_assist(
-            convert_for_to_iter_for_each,
-            before,
+",
             r"
 use empty_iter::*;
 fn main() {
@@ -288,7 +277,8 @@ fn main() {
 
     #[test]
     fn test_already_impls_iterator() {
-        let before = r#"
+        check_assist_with_fixtures(
+            r#"
 use empty_iter::*;
 fn main() {
     let x = Empty;
@@ -296,8 +286,8 @@ fn main() {
         println!("{}", a);
     }
 }
-"#;
-        let after = r#"
+"#,
+            r#"
 use empty_iter::*;
 fn main() {
     let x = Empty;
@@ -305,13 +295,7 @@ fn main() {
         println!("{}", a);
     });
 }
-"#;
-        let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
-            before,
-            FamousDefs::FIXTURE,
-            EMPTY_ITER_FIXTURE
+"#,
         );
-        check_assist(convert_for_to_iter_for_each, before, after);
     }
 }
