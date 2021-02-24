@@ -93,11 +93,6 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Cx<'a, 'tcx> {
-    /// Normalizes `ast` into the appropriate "mirror" type.
-    crate fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
-        ast.make_mirror(self)
-    }
-
     crate fn usize_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.usize
     }
@@ -219,4 +214,3 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
 
 mod block;
 mod expr;
-mod to_ref;

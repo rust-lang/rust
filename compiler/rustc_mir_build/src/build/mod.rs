@@ -667,8 +667,8 @@ fn construct_const<'a, 'tcx>(
 
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
-    let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
+    let expr = builder.hir.mirror_expr(ast_expr);
+    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -953,8 +953,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        let body = self.hir.mirror(ast_body);
-        self.into(Place::return_place(), block, body)
+        let body = self.hir.mirror_expr(ast_body);
+        self.expr_into_dest(Place::return_place(), block, &body)
     }
 
     fn set_correct_source_scope_for_arg(
@@ -1001,7 +1001,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 mod block;
 mod cfg;
 mod expr;
-mod into;
 mod matches;
 mod misc;
 mod scope;

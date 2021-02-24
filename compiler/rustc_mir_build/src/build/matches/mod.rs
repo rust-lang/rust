@@ -89,10 +89,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         span: Span,
         mut block: BasicBlock,
-        scrutinee: ExprRef<'tcx>,
-        arms: Vec<Arm<'tcx>>,
+        scrutinee: &Expr<'tcx>,
+        arms: &[Arm<'tcx>],
     ) -> BlockAnd<()> {
-        let scrutinee_span = scrutinee.span();
+        let scrutinee_span = scrutinee.span;
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
@@ -119,7 +119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
-        scrutinee: ExprRef<'tcx>,
+        scrutinee: &Expr<'tcx>,
         scrutinee_span: Span,
     ) -> BlockAnd<Place<'tcx>> {
         let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
@@ -236,7 +236,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let body = this.hir.mirror(arm.body.clone());
                     let scope = this.declare_bindings(
                         None,
                         arm.span,
@@ -259,7 +258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.into(destination, arm_block, body)
+                    this.expr_into_dest(destination, arm_block, &arm.body)
                 })
             })
             .collect();
@@ -362,14 +361,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         irrefutable_pat: Pat<'tcx>,
-        initializer: ExprRef<'tcx>,
+        initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(place, block, initializer));
+                unpack!(block = self.expr_into_dest(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -404,7 +403,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(place, block, initializer));
+                unpack!(block = self.expr_into_dest(place, block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -1749,15 +1748,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let (guard_span, (post_guard_block, otherwise_post_guard_block)) = match guard {
                 Guard::If(e) => {
-                    let e = self.hir.mirror(e.clone());
                     let source_info = self.source_info(e.span);
                     (e.span, self.test_bool(block, e, source_info))
                 }
                 Guard::IfLet(pat, scrutinee) => {
-                    let scrutinee_span = scrutinee.span();
-                    let scrutinee_place = unpack!(
-                        block = self.lower_scrutinee(block, scrutinee.clone(), scrutinee_span)
-                    );
+                    let scrutinee_span = scrutinee.span;
+                    let scrutinee_place =
+                        unpack!(block = self.lower_scrutinee(block, &scrutinee, scrutinee_span));
                     let mut guard_candidate = Candidate::new(scrutinee_place, &pat, false);
                     let wildcard = Pat::wildcard_from_ty(pat.ty);
                     let mut otherwise_candidate = Candidate::new(scrutinee_place, &wildcard, false);
@@ -1772,14 +1769,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         pat.span.to(arm_span.unwrap()),
                         pat,
                         ArmHasGuard(false),
-                        Some((Some(&scrutinee_place), scrutinee.span())),
+                        Some((Some(&scrutinee_place), scrutinee.span)),
                     );
                     let post_guard_block = self.bind_pattern(
                         self.source_info(pat.span),
                         guard_candidate,
                         None,
                         &fake_borrow_temps,
-                        scrutinee.span(),
+                        scrutinee.span,
                         None,
                         None,
                     );

@@ -82,7 +82,7 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::thir::{Expr, ExprRef, LintLevel};
+use crate::thir::{Expr, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
@@ -575,7 +575,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<ExprRef<'tcx>>,
+        value: Option<&Expr<'tcx>>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -612,7 +612,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(value) = value {
                 debug!("stmt_expr Break val block_context.push(SubExpr)");
                 self.block_context.push(BlockFrame::SubExpr);
-                unpack!(block = self.into(destination, block, value));
+                unpack!(block = self.expr_into_dest(destination, block, value));
                 self.block_context.pop();
             } else {
                 self.cfg.push_assign_unit(block, source_info, destination, self.hir.tcx())
@@ -920,7 +920,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn test_bool(
         &mut self,
         mut block: BasicBlock,
-        condition: Expr<'tcx>,
+        condition: &Expr<'tcx>,
         source_info: SourceInfo,
     ) -> (BasicBlock, BasicBlock) {
         let cond = unpack!(block = self.as_local_operand(block, condition));

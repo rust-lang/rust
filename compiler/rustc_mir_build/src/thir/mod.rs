@@ -4,7 +4,6 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use self::cx::Cx;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -39,8 +38,8 @@ crate struct Block<'tcx> {
     crate region_scope: region::Scope,
     crate opt_destruction_scope: Option<region::Scope>,
     crate span: Span,
-    crate stmts: Vec<StmtRef<'tcx>>,
-    crate expr: Option<ExprRef<'tcx>>,
+    crate stmts: Vec<Stmt<'tcx>>,
+    crate expr: Option<Box<Expr<'tcx>>>,
     crate safety_mode: BlockSafety,
 }
 
@@ -50,11 +49,6 @@ crate enum BlockSafety {
     ExplicitUnsafe(hir::HirId),
     PushUnsafe,
     PopUnsafe,
-}
-
-#[derive(Clone, Debug)]
-crate enum StmtRef<'tcx> {
-    Mirror(Box<Stmt<'tcx>>),
 }
 
 #[derive(Clone, Debug)]
@@ -70,7 +64,7 @@ crate enum StmtKind<'tcx> {
         scope: region::Scope,
 
         /// expression being evaluated in this statement
-        expr: ExprRef<'tcx>,
+        expr: Box<Expr<'tcx>>,
     },
 
     Let {
@@ -88,7 +82,7 @@ crate enum StmtKind<'tcx> {
         pattern: Pat<'tcx>,
 
         /// let pat: ty = <INIT> ...
-        initializer: Option<ExprRef<'tcx>>,
+        initializer: Option<Box<Expr<'tcx>>>,
 
         /// the lint level for this let-statement
         lint_level: LintLevel,
@@ -97,12 +91,12 @@ crate enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 168);
+rustc_data_structures::static_assert_size!(Expr<'_>, 160);
 
 /// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
-/// reference to an expression in this enum is an `ExprRef<'tcx>`, which
+/// reference to an expression in this enum is an `Box<Expr<'tcx>>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
 /// short-lived. They are created by `Thir::to_expr`, analyzed and
@@ -134,84 +128,84 @@ crate enum ExprKind<'tcx> {
     Scope {
         region_scope: region::Scope,
         lint_level: LintLevel,
-        value: ExprRef<'tcx>,
+        value: Box<Expr<'tcx>>,
     },
     Box {
-        value: ExprRef<'tcx>,
+        value: Box<Expr<'tcx>>,
     },
     If {
-        cond: ExprRef<'tcx>,
-        then: ExprRef<'tcx>,
-        else_opt: Option<ExprRef<'tcx>>,
+        cond: Box<Expr<'tcx>>,
+        then: Box<Expr<'tcx>>,
+        else_opt: Option<Box<Expr<'tcx>>>,
     },
     Call {
         ty: Ty<'tcx>,
-        fun: ExprRef<'tcx>,
-        args: Vec<ExprRef<'tcx>>,
-        // Whether this is from a call in HIR, rather than from an overloaded
-        // operator. True for overloaded function call.
+        fun: Box<Expr<'tcx>>,
+        args: Vec<Expr<'tcx>>,
+        /// Whether this is from a call in HIR, rather than from an overloaded
+        /// operator. `true` for overloaded function call.
         from_hir_call: bool,
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
     },
     Deref {
-        arg: ExprRef<'tcx>,
+        arg: Box<Expr<'tcx>>,
     }, // NOT overloaded!
     Binary {
         op: BinOp,
-        lhs: ExprRef<'tcx>,
-        rhs: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
+        rhs: Box<Expr<'tcx>>,
     }, // NOT overloaded!
     LogicalOp {
         op: LogicalOp,
-        lhs: ExprRef<'tcx>,
-        rhs: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
+        rhs: Box<Expr<'tcx>>,
     }, // NOT overloaded!
     // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
-        arg: ExprRef<'tcx>,
+        arg: Box<Expr<'tcx>>,
     }, // NOT overloaded!
     Cast {
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
     },
     Use {
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
     }, // Use a lexpr to get a vexpr.
     NeverToAny {
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
     },
     Pointer {
         cast: PointerCast,
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
     },
     Loop {
-        body: ExprRef<'tcx>,
+        body: Box<Expr<'tcx>>,
     },
     Match {
-        scrutinee: ExprRef<'tcx>,
+        scrutinee: Box<Expr<'tcx>>,
         arms: Vec<Arm<'tcx>>,
     },
     Block {
-        body: &'tcx hir::Block<'tcx>,
+        body: Block<'tcx>,
     },
     Assign {
-        lhs: ExprRef<'tcx>,
-        rhs: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
+        rhs: Box<Expr<'tcx>>,
     },
     AssignOp {
         op: BinOp,
-        lhs: ExprRef<'tcx>,
-        rhs: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
+        rhs: Box<Expr<'tcx>>,
     },
     Field {
-        lhs: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
         name: Field,
     },
     Index {
-        lhs: ExprRef<'tcx>,
-        index: ExprRef<'tcx>,
+        lhs: Box<Expr<'tcx>>,
+        index: Box<Expr<'tcx>>,
     },
     VarRef {
         id: hir::HirId,
@@ -226,35 +220,35 @@ crate enum ExprKind<'tcx> {
     },
     Borrow {
         borrow_kind: BorrowKind,
-        arg: ExprRef<'tcx>,
+        arg: Box<Expr<'tcx>>,
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
         mutability: hir::Mutability,
-        arg: ExprRef<'tcx>,
+        arg: Box<Expr<'tcx>>,
     },
     Break {
         label: region::Scope,
-        value: Option<ExprRef<'tcx>>,
+        value: Option<Box<Expr<'tcx>>>,
     },
     Continue {
         label: region::Scope,
     },
     Return {
-        value: Option<ExprRef<'tcx>>,
+        value: Option<Box<Expr<'tcx>>>,
     },
     ConstBlock {
         value: &'tcx Const<'tcx>,
     },
     Repeat {
-        value: ExprRef<'tcx>,
+        value: Box<Expr<'tcx>>,
         count: &'tcx Const<'tcx>,
     },
     Array {
-        fields: Vec<ExprRef<'tcx>>,
+        fields: Vec<Expr<'tcx>>,
     },
     Tuple {
-        fields: Vec<ExprRef<'tcx>>,
+        fields: Vec<Expr<'tcx>>,
     },
     Adt {
         adt_def: &'tcx AdtDef,
@@ -265,23 +259,23 @@ crate enum ExprKind<'tcx> {
         /// Bar::<T> { ... }`.
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
 
-        fields: Vec<FieldExprRef<'tcx>>,
+        fields: Vec<FieldExpr<'tcx>>,
         base: Option<FruInfo<'tcx>>,
     },
     PlaceTypeAscription {
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     ValueTypeAscription {
-        source: ExprRef<'tcx>,
+        source: Box<Expr<'tcx>>,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     Closure {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
-        upvars: Vec<ExprRef<'tcx>>,
+        upvars: Vec<Expr<'tcx>>,
         movability: Option<hir::Movability>,
     },
     Literal {
@@ -310,29 +304,23 @@ crate enum ExprKind<'tcx> {
     ThreadLocalRef(DefId),
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,
-        outputs: Vec<ExprRef<'tcx>>,
-        inputs: Vec<ExprRef<'tcx>>,
+        outputs: Vec<Expr<'tcx>>,
+        inputs: Vec<Expr<'tcx>>,
     },
     Yield {
-        value: ExprRef<'tcx>,
+        value: Box<Expr<'tcx>>,
     },
 }
 
 #[derive(Clone, Debug)]
-crate enum ExprRef<'tcx> {
-    Thir(&'tcx hir::Expr<'tcx>),
-    Mirror(Box<Expr<'tcx>>),
-}
-
-#[derive(Clone, Debug)]
-crate struct FieldExprRef<'tcx> {
+crate struct FieldExpr<'tcx> {
     crate name: Field,
-    crate expr: ExprRef<'tcx>,
+    crate expr: Expr<'tcx>,
 }
 
 #[derive(Clone, Debug)]
 crate struct FruInfo<'tcx> {
-    crate base: ExprRef<'tcx>,
+    crate base: Box<Expr<'tcx>>,
     crate field_types: Vec<Ty<'tcx>>,
 }
 
@@ -340,7 +328,7 @@ crate struct FruInfo<'tcx> {
 crate struct Arm<'tcx> {
     crate pattern: Pat<'tcx>,
     crate guard: Option<Guard<'tcx>>,
-    crate body: ExprRef<'tcx>,
+    crate body: Expr<'tcx>,
     crate lint_level: LintLevel,
     crate scope: region::Scope,
     crate span: Span,
@@ -348,8 +336,8 @@ crate struct Arm<'tcx> {
 
 #[derive(Clone, Debug)]
 crate enum Guard<'tcx> {
-    If(ExprRef<'tcx>),
-    IfLet(Pat<'tcx>, ExprRef<'tcx>),
+    If(Box<Expr<'tcx>>),
+    IfLet(Pat<'tcx>, Box<Expr<'tcx>>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -358,110 +346,35 @@ crate enum LogicalOp {
     Or,
 }
 
-impl<'tcx> ExprRef<'tcx> {
-    crate fn span(&self) -> Span {
-        match self {
-            ExprRef::Thir(expr) => expr.span,
-            ExprRef::Mirror(expr) => expr.span,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 crate enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
-        expr: ExprRef<'tcx>,
+        expr: Expr<'tcx>,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Option<ExprRef<'tcx>>,
+        expr: Option<Expr<'tcx>>,
     },
     InOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: ExprRef<'tcx>,
+        expr: Expr<'tcx>,
     },
     SplitInOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        in_expr: ExprRef<'tcx>,
-        out_expr: Option<ExprRef<'tcx>>,
+        in_expr: Expr<'tcx>,
+        out_expr: Option<Expr<'tcx>>,
     },
     Const {
-        expr: ExprRef<'tcx>,
+        expr: Expr<'tcx>,
     },
     SymFn {
-        expr: ExprRef<'tcx>,
+        expr: Expr<'tcx>,
     },
     SymStatic {
         def_id: DefId,
     },
-}
-
-///////////////////////////////////////////////////////////////////////////
-// The Mirror trait
-
-/// "Mirroring" is the process of converting from a HIR type into one
-/// of the THIR types defined in this file. This is basically a "on
-/// the fly" desugaring step that hides a lot of the messiness in the
-/// tcx. For example, the mirror of a `&'tcx hir::Expr` is an
-/// `Expr<'tcx>`.
-///
-/// Mirroring is gradual: when you mirror an outer expression like `e1
-/// + e2`, the references to the inner expressions `e1` and `e2` are
-/// `ExprRef<'tcx>` instances, and they may or may not be eagerly
-/// mirrored. This allows a single AST node from the compiler to
-/// expand into one or more Thir nodes, which lets the Thir nodes be
-/// simpler.
-crate trait Mirror<'tcx> {
-    type Output;
-
-    fn make_mirror(self, cx: &mut Cx<'_, 'tcx>) -> Self::Output;
-}
-
-impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
-    type Output = Expr<'tcx>;
-
-    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Expr<'tcx> {
-        self
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
-    type Output = Expr<'tcx>;
-
-    fn make_mirror(self, hir: &mut Cx<'_, 'tcx>) -> Expr<'tcx> {
-        match self {
-            ExprRef::Thir(h) => h.make_mirror(hir),
-            ExprRef::Mirror(m) => *m,
-        }
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
-    type Output = Stmt<'tcx>;
-
-    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Stmt<'tcx> {
-        self
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
-    type Output = Stmt<'tcx>;
-
-    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Stmt<'tcx> {
-        match self {
-            StmtRef::Mirror(m) => *m,
-        }
-    }
-}
-
-impl<'tcx> Mirror<'tcx> for Block<'tcx> {
-    type Output = Block<'tcx>;
-
-    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Block<'tcx> {
-        self
-    }
 }

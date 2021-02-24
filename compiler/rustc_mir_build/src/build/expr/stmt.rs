@@ -13,7 +13,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
-        expr: Expr<'tcx>,
+        expr: &Expr<'tcx>,
         statement_scope: Option<region::Scope>,
     ) -> BlockAnd<()> {
         let this = self;
@@ -22,16 +22,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         let expr2 = expr.clone();
-        match expr.kind {
+        match &expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                let value = this.hir.mirror(value);
-                this.in_scope((region_scope, source_info), lint_level, |this| {
-                    this.stmt_expr(block, value, statement_scope)
+                this.in_scope((*region_scope, source_info), *lint_level, |this| {
+                    this.stmt_expr(block, &value, statement_scope)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
-                let lhs = this.hir.mirror(lhs);
-                let rhs = this.hir.mirror(rhs);
                 let lhs_span = lhs.span;
 
                 // Note: we evaluate assignments right-to-left. This
@@ -44,12 +41,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Generate better code for things that don't need to be
                 // dropped.
                 if this.hir.needs_drop(lhs.ty) {
-                    let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
+                    let rhs = unpack!(block = this.as_local_operand(block, &rhs));
+                    let lhs = unpack!(block = this.as_place(block, &lhs));
                     unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs));
                 } else {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
+                    let rhs = unpack!(block = this.as_local_rvalue(block, &rhs));
+                    let lhs = unpack!(block = this.as_place(block, &lhs));
                     this.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
@@ -65,22 +62,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 
-                let lhs = this.hir.mirror(lhs);
                 let lhs_ty = lhs.ty;
 
                 debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                let lhs = unpack!(block = this.as_place(block, lhs));
+                let rhs = unpack!(block = this.as_local_operand(block, &rhs));
+                let lhs = unpack!(block = this.as_place(block, &lhs));
 
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(
-                    block =
-                        this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
+                    block = this.build_binary_op(
+                        block,
+                        *op,
+                        expr_span,
+                        lhs_ty,
+                        Operand::Copy(lhs),
+                        rhs
+                    )
                 );
                 this.cfg.push_assign(block, source_info, lhs, result);
 
@@ -88,26 +90,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                this.break_scope(block, None, BreakableTarget::Continue(label), source_info)
+                this.break_scope(block, None, BreakableTarget::Continue(*label), source_info)
             }
-            ExprKind::Break { label, value } => {
-                this.break_scope(block, value, BreakableTarget::Break(label), source_info)
-            }
+            ExprKind::Break { label, value } => this.break_scope(
+                block,
+                value.as_deref(),
+                BreakableTarget::Break(*label),
+                source_info,
+            ),
             ExprKind::Return { value } => {
-                this.break_scope(block, value, BreakableTarget::Return, source_info)
+                this.break_scope(block, value.as_deref(), BreakableTarget::Return, source_info)
             }
             ExprKind::LlvmInlineAsm { asm, outputs, inputs } => {
                 debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()
-                    .map(|output| unpack!(block = this.as_place(block, output)))
+                    .map(|output| unpack!(block = this.as_place(block, &output)))
                     .collect::<Vec<_>>()
                     .into_boxed_slice();
                 let inputs = inputs
                     .into_iter()
                     .map(|input| {
-                        (input.span(), unpack!(block = this.as_local_operand(block, input)))
+                        (input.span, unpack!(block = this.as_local_operand(block, &input)))
                     })
                     .collect::<Vec<_>>()
                     .into_boxed_slice();
@@ -116,7 +121,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Statement {
                         source_info,
                         kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
-                            asm: asm.clone(),
+                            asm: (*asm).clone(),
                             outputs,
                             inputs,
                         }),
@@ -140,10 +145,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
                 let adjusted_span = (|| {
-                    if let ExprKind::Block { body } = expr.kind {
+                    if let ExprKind::Block { body } = &expr.kind {
                         if let Some(tail_expr) = &body.expr {
-                            let mut expr = tail_expr;
-                            while let rustc_hir::ExprKind::Block(subblock, _label) = &expr.kind {
+                            let mut expr = &*tail_expr;
+                            while let ExprKind::Block { body: subblock } = &expr.kind {
                                 if let Some(subtail_expr) = &subblock.expr {
                                     expr = subtail_expr
                                 } else {
