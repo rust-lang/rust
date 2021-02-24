@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use regex::RegexSet;
@@ -47,7 +48,7 @@ impl Message {
             .filter(|line| regex_set.matches(line).matched_any())
             // ignore exceptions
             .filter(|line| !exceptions_set.matches(line).matched_any())
-            .map(|s| s.to_owned())
+            .map(ToOwned::to_owned)
             .collect::<Vec<String>>();
 
         Message { path, bad_lines }
@@ -71,17 +72,16 @@ fn lint_message_convention() {
 
     // gather all .stderr files
     let tests = test_dirs
-        .map(|dir| {
+        .flat_map(|dir| {
             std::fs::read_dir(dir)
                 .expect("failed to read dir")
                 .map(|direntry| direntry.unwrap().path())
         })
-        .flatten()
-        .filter(|file| matches!(file.extension().map(|s| s.to_str()), Some(Some("stderr"))));
+        .filter(|file| matches!(file.extension().map(OsStr::to_str), Some(Some("stderr"))));
 
     // get all files that have any "bad lines" in them
     let bad_tests: Vec<Message> = tests
-        .map(|path| Message::new(path))
+        .map(Message::new)
         .filter(|message| !message.bad_lines.is_empty())
         .collect();
 
