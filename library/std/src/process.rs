@@ -1500,6 +1500,10 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatusError {}
+
 /// Describes the result of a process after it has failed
 ///
 /// Produced by the [`.exit_ok`](ExitStatus::exit_ok) method on [`ExitStatus`].
@@ -1536,9 +1540,8 @@ impl ExitStatusError {
     /// runtime system (often, for example, 255, 254, 127 or 126).
     ///
     /// On Unix, this will return `None` if the process was terminated by a signal.  If you want to
-    /// handle such situations specially, consider using
-    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) (possibly after getting the
-    /// general `ExitStatus` by using [`status()`](ExitStatusError::status).
+    /// handle such situations specially, consider using methods from
+    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt).
     ///
     /// If the process finished by calling `exit` with a nonzero value, this will return
     /// that exit status.
