@@ -2005,12 +2005,26 @@ fn lint_or_fun_call<'tcx>(
             if poss.contains(&name);
 
             then {
+                let macro_expanded_snipped;
                 let sugg: Cow<'_, str> = {
                     let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
                         (false, Some(fun_span)) => (fun_span, false),
                         _ => (arg.span, true),
                     };
-                    let snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                    let snippet = {
+                        let not_macro_argument_snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                        if not_macro_argument_snippet == "vec![]" {
+                            macro_expanded_snipped = snippet(cx, snippet_span, "..");
+                            match macro_expanded_snipped.strip_prefix("$crate::vec::") {
+                                Some(stripped) => Cow::from(stripped),
+                                None => macro_expanded_snipped
+                            }
+                        }
+                        else {
+                            not_macro_argument_snippet
+                        }
+                    };
+
                     if use_lambda {
                         let l_arg = if fn_has_arguments { "_" } else { "" };
                         format!("|{}| {}", l_arg, snippet).into()
