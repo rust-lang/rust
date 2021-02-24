@@ -189,6 +189,7 @@ pub mod known {
         // Components of known path (function name)
         filter_map,
         next,
+        iter_mut,
         // Builtin macros
         file,
         column,
