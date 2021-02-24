@@ -9,7 +9,7 @@ use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
-use crate::sys::fd::WasiFd;
+use super::fd::WasiFd;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;

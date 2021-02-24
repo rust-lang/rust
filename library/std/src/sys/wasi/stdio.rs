@@ -2,7 +2,7 @@
 
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
-use crate::sys::fd::WasiFd;
+use super::fd::WasiFd;
 
 pub struct Stdin;
 pub struct Stdout;

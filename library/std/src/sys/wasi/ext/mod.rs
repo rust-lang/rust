@@ -39,14 +39,14 @@ pub mod io;
 pub mod prelude {
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use crate::sys::ext::ffi::{OsStrExt, OsStringExt};
+    pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use crate::sys::ext::fs::FileTypeExt;
+    pub use super::fs::FileTypeExt;
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use crate::sys::ext::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
+    pub use super::fs::{DirEntryExt, FileExt, MetadataExt, OpenOptionsExt};
     #[doc(no_inline)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use crate::sys::ext::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+    pub use super::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 }
