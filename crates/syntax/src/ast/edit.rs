@@ -595,11 +595,14 @@ impl ops::Add<u8> for IndentLevel {
 
 impl IndentLevel {
     pub fn from_node(node: &SyntaxNode) -> IndentLevel {
-        let first_token = match node.first_token() {
-            Some(it) => it,
+        match node.first_token() {
+            Some(it) => Self::from_token(&it),
             None => return IndentLevel(0),
-        };
-        for ws in prev_tokens(first_token).filter_map(ast::Whitespace::cast) {
+        }
+    }
+
+    pub fn from_token(token: &SyntaxToken) -> IndentLevel {
+        for ws in prev_tokens(token.clone()).filter_map(ast::Whitespace::cast) {
             let text = ws.syntax().text();
             if let Some(pos) = text.rfind('\n') {
                 let level = text[pos + 1..].chars().count() / 4;
