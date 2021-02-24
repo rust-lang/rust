@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Call `tidy --bless` before each commit
-# Copy this scripts to .git/hooks to activate,
+# Copy this script to .git/hooks to activate,
 # and remove it from .git/hooks to deactivate.
 #
 
