@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Item};
+use rustc_ast::{token, Attribute, Inline, Item};
 use rustc_errors::{struct_span_err, PResult};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
@@ -103,25 +103,47 @@ crate fn push_directory(
     id: Ident,
     attrs: &[Attribute],
     Directory { mut ownership, mut path }: Directory,
+    inline: Inline,
+    inner_span: Span,
+    span: Span, // The span to blame on errors.
 ) -> Directory {
-    if let Some(filename) = sess.first_attr_value_str_by_name(attrs, sym::path) {
-        path.push(&*filename.as_str());
-        ownership = DirectoryOwnership::Owned { relative: None };
-    } else {
-        // We have to push on the current module name in the case of relative
-        // paths in order to ensure that any additional module paths from inline
-        // `mod x { ... }` come after the relative extension.
-        //
-        // For example, a `mod z { ... }` inside `x/y.rs` should set the current
-        // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-        if let DirectoryOwnership::Owned { relative } = &mut ownership {
-            if let Some(ident) = relative.take() {
-                // Remove the relative offset.
-                path.push(&*ident.as_str());
+    match inline {
+        Inline::Yes => {
+            if let Some(filename) = sess.first_attr_value_str_by_name(attrs, sym::path) {
+                path.push(&*filename.as_str());
+                ownership = DirectoryOwnership::Owned { relative: None };
+            } else {
+                // We have to push on the current module name in the case of relative
+                // paths in order to ensure that any additional module paths from inline
+                // `mod x { ... }` come after the relative extension.
+                //
+                // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+                // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+                if let DirectoryOwnership::Owned { relative } = &mut ownership {
+                    if let Some(ident) = relative.take() {
+                        // Remove the relative offset.
+                        path.push(&*ident.as_str());
+                    }
+                }
+                path.push(&*id.as_str());
             }
         }
-        path.push(&*id.as_str());
+        Inline::No => {
+            // FIXME: This is a subset of `parse_external_mod` without actual parsing,
+            // check whether the logic for unloaded, loaded and inline modules can be unified.
+            if let Ok(mp) = submod_path(sess, id, span, &attrs, ownership, &path) {
+                ownership = mp.ownership;
+            }
+
+            // Extract the directory path for submodules of  the module.
+            path = match sess.source_map().span_to_unmapped_path(inner_span) {
+                FileName::Real(name) => name.into_local_path(),
+                other => PathBuf::from(other.to_string()),
+            };
+            path.pop();
+        }
     }
+
     Directory { ownership, path }
 }
 
