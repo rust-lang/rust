@@ -101,8 +101,12 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                 break;
             }
             ast::PathSegmentKind::SelfKw => {
-                kind = PathKind::Super(0);
-                break;
+                // don't break out if `self` is the last segment of a path, this mean we got an
+                // use tree like `foo::{self}` which we want to resolve as `foo`
+                if !segments.is_empty() {
+                    kind = PathKind::Super(0);
+                    break;
+                }
             }
             ast::PathSegmentKind::SuperKw => {
                 let nested_super_count = if let PathKind::Super(n) = kind { n } else { 0 };
@@ -116,6 +120,11 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
     }
     segments.reverse();
     generic_args.reverse();
+
+    if segments.is_empty() && kind == PathKind::Plain && type_anchor.is_none() {
+        // plain empty paths don't exist, this means we got a single `self` segment as our path
+        kind = PathKind::Super(0);
+    }
 
     // handle local_inner_macros :
     // Basically, even in rustc it is quite hacky:
