@@ -28,7 +28,7 @@ pub fn expand_global_asm<'cx>(
             ident: Ident::invalid(),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
-            kind: ast::ItemKind::GlobalAsm(P(global_asm)),
+            kind: ast::ItemKind::GlobalAsm(global_asm),
             vis: ast::Visibility {
                 span: sp.shrink_to_lo(),
                 kind: ast::VisibilityKind::Inherited,

@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                 return Err(e);
             }
 
-            (Ident::invalid(), ItemKind::Use(P(tree)))
+            (Ident::invalid(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
