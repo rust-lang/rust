@@ -159,21 +159,21 @@ pub struct Pick<'tcx> {
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
 
-    // Indicates that the source expression should be autoderef'd N times
-    //
-    // A = expr | *expr | **expr | ...
+    /// Indicates that the source expression should be autoderef'd N times
+    ///
+    ///     A = expr | *expr | **expr | ...
     pub autoderefs: usize,
 
-    // Indicates that an autoref is applied after the optional autoderefs
-    //
-    // B = A | &A | &mut A
+    /// Indicates that an autoref is applied after the optional autoderefs
+    ///
+    ///     B = A | &A | &mut A
     pub autoref: Option<hir::Mutability>,
 
-    // Indicates that the source expression should be "unsized" to a
-    // target type. This should probably eventually go away in favor
-    // of just coercing method receivers.
-    //
-    // C = B | unsize(B)
+    /// Indicates that the source expression should be "unsized" to a
+    /// target type. This should probably eventually go away in favor
+    /// of just coercing method receivers.
+    ///
+    ///     C = B | unsize(B)
     pub unsize: Option<Ty<'tcx>>,
 }
 
