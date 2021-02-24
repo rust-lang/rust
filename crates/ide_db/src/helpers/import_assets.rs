@@ -1,8 +1,8 @@
 //! Look up accessible paths for items.
 use either::Either;
 use hir::{
-    AsAssocItem, AssocItem, Crate, ItemInNs, MacroDef, ModPath, Module, ModuleDef, Name,
-    PrefixKind, Semantics,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
+    ModuleDef, PathResolution, PrefixKind, Semantics, Type,
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
@@ -11,6 +11,8 @@ use crate::{
     imports_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
+
+use super::item_name;
 
 #[derive(Debug)]
 pub enum ImportCandidate {
@@ -28,7 +30,7 @@ pub enum ImportCandidate {
 
 #[derive(Debug)]
 pub struct TraitImportCandidate {
-    pub receiver_ty: hir::Type,
+    pub receiver_ty: Type,
     pub name: NameToImport,
 }
 
@@ -62,7 +64,7 @@ impl NameToImport {
 #[derive(Debug)]
 pub struct ImportAssets {
     import_candidate: ImportCandidate,
-    module_with_candidate: hir::Module,
+    module_with_candidate: Module,
 }
 
 impl ImportAssets {
@@ -104,7 +106,7 @@ impl ImportAssets {
 
     pub fn for_fuzzy_method_call(
         module_with_method_call: Module,
-        receiver_ty: hir::Type,
+        receiver_ty: Type,
         fuzzy_method_name: String,
     ) -> Option<Self> {
         Some(Self {
@@ -184,7 +186,7 @@ impl ImportAssets {
     fn search_for(
         &self,
         sema: &Semantics<RootDatabase>,
-        prefixed: Option<hir::PrefixKind>,
+        prefixed: Option<PrefixKind>,
     ) -> Vec<LocatedImport> {
         let current_crate = self.module_with_candidate.krate();
 
@@ -223,7 +225,7 @@ impl ImportAssets {
     fn applicable_defs(
         &self,
         db: &RootDatabase,
-        prefixed: Option<hir::PrefixKind>,
+        prefixed: Option<PrefixKind>,
         unfiltered_defs: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
     ) -> FxHashSet<LocatedImport> {
         let current_crate = self.module_with_candidate.krate();
@@ -266,10 +268,10 @@ fn path_applicable_imports(
             let (assoc_original, candidate) = match def {
                 Either::Left(module_def) => match module_def.as_assoc_item(db) {
                     Some(assoc_item) => match assoc_item.container(db) {
-                        hir::AssocItemContainer::Trait(trait_) => {
+                        AssocItemContainer::Trait(trait_) => {
                             (Some(module_def), ItemInNs::from(ModuleDef::from(trait_)))
                         }
-                        hir::AssocItemContainer::Impl(impl_) => (
+                        AssocItemContainer::Impl(impl_) => (
                             Some(module_def),
                             ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?)),
                         ),
@@ -296,6 +298,7 @@ fn path_applicable_imports(
     };
 
     // TODO kb need to remove turbofish from the qualifier, maybe use the segments instead?
+    // TODO kb sorting is changed now, return back?
     let unresolved_qualifier_string = unresolved_qualifier.to_string();
     let unresolved_first_segment_string = unresolved_first_segment.to_string();
 
@@ -305,36 +308,33 @@ fn path_applicable_imports(
             candidate_path_string.contains(&unresolved_qualifier_string)
                 && candidate_path_string.contains(&unresolved_first_segment_string)
         })
-        // TODO kb need to adjust the return type: I get the results rendered rather badly
         .filter_map(|(candidate_path, (assoc_original, candidate))| {
-            if let Some(assoc_original) = assoc_original {
-                if item_name(db, candidate)?.to_string() == unresolved_first_segment_string {
-                    return Some(LocatedImport::new(
-                        candidate_path.clone(),
-                        ItemInNs::from(assoc_original),
-                        Some((candidate_path, candidate)),
-                    ));
-                }
-            }
+            let found_segment_resolution = item_name(db, candidate)
+                .map(|name| name.to_string() == unresolved_first_segment_string)
+                .unwrap_or(false);
+            let (import_path, item_to_import) = if found_segment_resolution {
+                (candidate_path.clone(), candidate)
+            } else {
+                let matching_module =
+                    module_with_matching_name(db, &unresolved_first_segment_string, candidate)?;
+                let module_item = ItemInNs::from(ModuleDef::from(matching_module));
+                (import_path_locator(module_item)?, module_item)
+            };
 
-            let matching_module =
-                module_with_matching_name(db, &unresolved_first_segment_string, candidate)?;
-            let item = ItemInNs::from(ModuleDef::from(matching_module));
-            Some(LocatedImport::new(
-                import_path_locator(item)?,
-                item,
-                Some((candidate_path, candidate)),
-            ))
+            Some(match assoc_original {
+                Some(assoc_original) => LocatedImport::new(
+                    import_path.clone(),
+                    item_to_import,
+                    Some((import_path, ItemInNs::from(assoc_original))),
+                ),
+                None => LocatedImport::new(
+                    import_path,
+                    item_to_import,
+                    if found_segment_resolution { None } else { Some((candidate_path, candidate)) },
+                ),
+            })
         })
         .collect()
-}
-
-fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
-    match item {
-        ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).name(db),
-        ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
-        ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
-    }
 }
 
 fn item_module(db: &RootDatabase, item: ItemInNs) -> Option<Module> {
@@ -404,10 +404,20 @@ fn trait_applicable_items(
                     }
 
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let item_path = import_path_locator(item)?;
+
+                    let assoc_item = assoc_to_item(assoc);
+                    let assoc_item_path = match assoc.container(db) {
+                        AssocItemContainer::Trait(_) => item_path.clone(),
+                        AssocItemContainer::Impl(impl_) => import_path_locator(ItemInNs::from(
+                            ModuleDef::from(impl_.target_ty(db).as_adt()?),
+                        ))?,
+                    };
+
                     located_imports.insert(LocatedImport::new(
-                        import_path_locator(item)?,
+                        item_path,
                         item,
-                        None,
+                        Some((assoc_item_path, assoc_item)),
                     ));
                 }
                 None::<()>
@@ -423,10 +433,20 @@ fn trait_applicable_items(
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let item_path = import_path_locator(item)?;
+
+                    let assoc_item = assoc_to_item(assoc);
+                    let assoc_item_path = match assoc.container(db) {
+                        AssocItemContainer::Trait(_) => item_path.clone(),
+                        AssocItemContainer::Impl(impl_) => import_path_locator(ItemInNs::from(
+                            ModuleDef::from(impl_.target_ty(db).as_adt()?),
+                        ))?,
+                    };
+
                     located_imports.insert(LocatedImport::new(
-                        import_path_locator(item)?,
+                        item_path,
                         item,
-                        None,
+                        Some((assoc_item_path, assoc_item)),
                     ));
                 }
                 None::<()>
@@ -437,11 +457,19 @@ fn trait_applicable_items(
     located_imports
 }
 
+fn assoc_to_item(assoc: AssocItem) -> ItemInNs {
+    match assoc {
+        AssocItem::Function(f) => ItemInNs::from(ModuleDef::from(f)),
+        AssocItem::Const(c) => ItemInNs::from(ModuleDef::from(c)),
+        AssocItem::TypeAlias(t) => ItemInNs::from(ModuleDef::from(t)),
+    }
+}
+
 fn get_mod_path(
     db: &RootDatabase,
     item_to_search: ItemInNs,
     module_with_candidate: &Module,
-    prefixed: Option<hir::PrefixKind>,
+    prefixed: Option<PrefixKind>,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
         module_with_candidate.find_use_path_prefixed(db, item_to_search, prefix_kind)
@@ -509,7 +537,7 @@ fn path_import_candidate(
                     return None;
                 }
             }
-            Some(hir::PathResolution::Def(hir::ModuleDef::Adt(assoc_item_path))) => {
+            Some(PathResolution::Def(ModuleDef::Adt(assoc_item_path))) => {
                 ImportCandidate::TraitAssocItem(TraitImportCandidate {
                     receiver_ty: assoc_item_path.ty(sema.db),
                     name,

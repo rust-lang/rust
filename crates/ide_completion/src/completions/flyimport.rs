@@ -97,7 +97,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
         .into_iter()
         .map(|import| {
-            let proposed_def = match import.item_to_import() {
+            let proposed_def = match import.item_to_display() {
                 hir::ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
                 hir::ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
                 hir::ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
@@ -809,7 +809,7 @@ fn main() {
     #[test]
     fn unresolved_assoc_item_container() {
         check_edit(
-            "Item",
+            "TEST_ASSOC",
             r#"
 mod foo {
     pub struct Item;
@@ -820,7 +820,7 @@ mod foo {
 }
 
 fn main() {
-    Item::TEST_A$0;
+    Item::TEST_A$0
 }
 "#,
             r#"
@@ -844,7 +844,7 @@ fn main() {
     #[test]
     fn unresolved_assoc_item_container_with_path() {
         check_edit(
-            "Item",
+            "TEST_ASSOC",
             r#"
 mod foo {
     pub mod bar {
@@ -857,7 +857,7 @@ mod foo {
 }
 
 fn main() {
-    bar::Item::TEST_A$0;
+    bar::Item::TEST_A$0
 }
 "#,
             r#"
@@ -875,6 +875,61 @@ mod foo {
 
 fn main() {
     bar::Item::TEST_ASSOC
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_assoc_item_container_and_trait_with_path() {
+        check_edit(
+            "TEST_ASSOC",
+            r#"
+mod foo {
+    pub mod bar {
+        pub trait SomeTrait {
+            const TEST_ASSOC: usize;
+        }
+    }
+
+    pub mod baz {
+        use super::bar::SomeTrait;
+
+        pub struct Item;
+
+        impl SomeTrait for Item {
+            const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    baz::Item::TEST_A$0
+}
+"#,
+            r#"
+use foo::{bar::SomeTrait, baz};
+
+mod foo {
+    pub mod bar {
+        pub trait SomeTrait {
+            const TEST_ASSOC: usize;
+        }
+    }
+
+    pub mod baz {
+        use super::bar::SomeTrait;
+
+        pub struct Item;
+
+        impl SomeTrait for Item {
+            const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    baz::Item::TEST_ASSOC
 }
 "#,
         );

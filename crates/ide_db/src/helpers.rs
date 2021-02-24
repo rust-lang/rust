@@ -2,10 +2,18 @@
 pub mod insert_use;
 pub mod import_assets;
 
-use hir::{Crate, Enum, Module, ScopeDef, Semantics, Trait};
+use hir::{Crate, Enum, ItemInNs, MacroDef, Module, ModuleDef, Name, ScopeDef, Semantics, Trait};
 use syntax::ast::{self, make};
 
 use crate::RootDatabase;
+
+pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
+    match item {
+        ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).name(db),
+        ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
+        ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
+    }
+}
 
 /// Converts the mod path struct into its ast representation.
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
