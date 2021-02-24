@@ -1,8 +1,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use super::fd::WasiFd;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
-use super::fd::WasiFd;
 
 pub struct Stdin;
 pub struct Stdout;
