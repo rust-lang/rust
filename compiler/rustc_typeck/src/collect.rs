@@ -331,6 +331,11 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         span: Span,
     ) -> &'tcx Const<'tcx> {
         bad_placeholder_type(self.tcx(), vec![span]).emit();
+        // Typeck doesn't expect erased regions to be returned from `type_of`.
+        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
+            ty::ReErased => self.tcx.lifetimes.re_static,
+            _ => r,
+        });
         self.tcx().const_error(ty)
     }
 
@@ -1536,6 +1541,12 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             match get_infer_ret_ty(&sig.decl.output) {
                 Some(ty) => {
                     let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
+                    // Typeck doesn't expect erased regions to be returned from `type_of`.
+                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match r {
+                        ty::ReErased => tcx.lifetimes.re_static,
+                        _ => r,
+                    });
+
                     let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0);
@@ -1564,6 +1575,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                         }
                     }
                     diag.emit();
+
                     ty::Binder::bind(fn_sig)
                 }
                 None => AstConv::ty_of_fn(
