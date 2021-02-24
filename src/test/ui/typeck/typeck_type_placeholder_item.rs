@@ -208,3 +208,15 @@ impl Qux for Struct {
     const D: _ = 42;
     //~^ ERROR the type placeholder `_` is not allowed within types on item signatures
 }
+
+fn map<T>(_: fn() -> Option<&'static T>) -> Option<T> {
+    None
+}
+
+fn value() -> Option<&'static _> {
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
+    Option::<&'static u8>::None
+}
+
+const _: Option<_> = map(value);
+//~^ ERROR the type placeholder `_` is not allowed within types on item signatures
