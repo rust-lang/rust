@@ -208,7 +208,7 @@ impl Socket {
                 Ok(Socket(FileDesc::new(fd)))
             // While the Android kernel supports the syscall,
             // it is not included in all versions of Android's libc.
-            } else if #[cfg(target_os = "android")] {
+            } else if #[cfg(all(target_os = "android", not(target_arch = "x86")))] {
                 let fd = cvt_r(|| unsafe {
                     libc::syscall(libc::SYS_accept4, self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
                 })?;
