@@ -455,32 +455,18 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 );
 
                 let fake_reads = match self.typeck_results().closure_fake_reads.get(&def_id) {
-                    Some(vals) => {
-                        Some(
-                            vals.iter()
-                                .map(|(place, cause)| {
-                                    (
-                                        self.arena.alloc(
-                                            self.convert_captured_hir_place(expr, place.clone()),
-                                        ),
-                                        *cause,
-                                    )
-                                    // let var_hir_id = match val.base {
-                                    //     HirPlaceBase::Upvar(upvar_id) => {
-                                    //         debug!("upvar");
-                                    //         upvar_id.var_path.hir_id
-                                    //     }
-                                    //     _ => {
-                                    //         bug!(
-                                    //             "Do not know how to get HirId out of Rvalue and StaticItem"
-                                    //         );
-                                    //     }
-                                    // };
-                                    // self.fake_read_capture_upvar(expr, val.clone(), var_hir_id)
-                                })
-                                .collect(),
-                        )
-                    }
+                    Some(vals) => Some(
+                        vals.iter()
+                            .map(|(place, cause)| {
+                                (
+                                    self.arena.alloc(
+                                        self.convert_captured_hir_place(expr, place.clone()),
+                                    ),
+                                    *cause,
+                                )
+                            })
+                            .collect(),
+                    ),
                     None => None,
                 };
 
@@ -1058,6 +1044,11 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
+        // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
+        // as it's seen for use within the closure and not at the time of closure creation.
+        //
+        // That is we see expect to see it start from a captured upvar and not something that is local
+        // to the closure's parent.
         let var_hir_id = match place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected an upvar, found {:?}", base),

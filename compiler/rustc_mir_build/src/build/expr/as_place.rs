@@ -100,7 +100,7 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
                 // single and multiple variants.
                 // For single variants, enums are not captured completely.
                 // We keep track of VariantIdx so we can use this information
-                // if the next ProjectionElem is a Field
+                // if the next ProjectionElem is a Field.
                 variant = Some(*idx);
                 continue;
             }
