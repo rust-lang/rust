@@ -4,7 +4,7 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[doc(include = "../../core/src/macros/panic.md")]
+#[doc = include_str!("../../core/src/macros/panic.md")]
 #[macro_export]
 #[rustc_builtin_macro = "std_panic"]
 #[stable(feature = "rust1", since = "1.0.0")]
