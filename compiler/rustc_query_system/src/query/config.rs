@@ -3,10 +3,10 @@
 use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::query::caches::QueryCache;
-use crate::query::plumbing::CycleError;
 use crate::query::{QueryCacheStore, QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_errors::DiagnosticBuilder;
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -27,7 +27,7 @@ pub(crate) struct QueryVtable<CTX: QueryContext, K, V> {
     pub compute: fn(CTX, K) -> V,
 
     pub hash_result: fn(&mut CTX::StableHashingContext, &V) -> Option<Fingerprint>,
-    pub handle_cycle_error: fn(CTX, CycleError<CTX::Query>) -> V,
+    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
     pub cache_on_disk: fn(CTX, &K, Option<&V>) -> bool,
     pub try_load_from_disk: fn(CTX, SerializedDepNodeIndex) -> Option<V>,
 }
@@ -52,8 +52,8 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         (self.hash_result)(hcx, value)
     }
 
-    pub(crate) fn handle_cycle_error(&self, tcx: CTX, error: CycleError<CTX::Query>) -> V {
-        (self.handle_cycle_error)(tcx, error)
+    pub(crate) fn handle_cycle_error(&self, tcx: CTX, diag: DiagnosticBuilder<'_>) -> V {
+        (self.handle_cycle_error)(tcx, diag)
     }
 
     pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
@@ -73,7 +73,9 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, CTX::Query, Self::Key>;
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, Self::Key>
+    where
+        CTX: 'a;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_cache<'a>(tcx: CTX) -> &'a QueryCacheStore<Self::Cache>
@@ -88,7 +90,7 @@ pub trait QueryAccessors<CTX: QueryContext>: QueryConfig {
         result: &Self::Value,
     ) -> Option<Fingerprint>;
 
-    fn handle_cycle_error(tcx: CTX, error: CycleError<CTX::Query>) -> Self::Value;
+    fn handle_cycle_error(tcx: CTX, diag: DiagnosticBuilder<'_>) -> Self::Value;
 }
 
 pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
