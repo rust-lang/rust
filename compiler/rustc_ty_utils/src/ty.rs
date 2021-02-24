@@ -481,6 +481,63 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     fn_like.asyncness()
 }
 
+/// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
+#[instrument(level = "debug", skip(tcx))]
+pub fn conservative_is_privately_uninhabited_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env_and: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> bool {
+    let (param_env, ty) = param_env_and.into_parts();
+    match ty.kind() {
+        ty::Never => {
+            debug!("ty::Never =>");
+            true
+        }
+        ty::Adt(def, _) if def.is_union() => {
+            debug!("ty::Adt(def, _) if def.is_union() =>");
+            // For now, `union`s are never considered uninhabited.
+            false
+        }
+        ty::Adt(def, substs) => {
+            debug!("ty::Adt(def, _) if def.is_not_union() =>");
+            // Any ADT is uninhabited if either:
+            // (a) It has no variants (i.e. an empty `enum`);
+            // (b) Each of its variants (a single one in the case of a `struct`) has at least
+            //     one uninhabited field.
+            def.variants.iter().all(|var| {
+                var.fields.iter().any(|field| {
+                    let ty = tcx.type_of(field.did).subst(tcx, substs);
+                    tcx.conservative_is_privately_uninhabited(param_env.and(ty))
+                })
+            })
+        }
+        ty::Tuple(..) => {
+            debug!("ty::Tuple(..) =>");
+            ty.tuple_fields().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
+        }
+        ty::Array(ty, len) => {
+            debug!("ty::Array(ty, len) =>");
+            match len.try_eval_usize(tcx, param_env) {
+                Some(0) | None => false,
+                // If the array is definitely non-empty, it's uninhabited if
+                // the type of its elements is uninhabited.
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+            }
+        }
+        ty::Ref(..) => {
+            debug!("ty::Ref(..) =>");
+            // References to uninitialised memory is valid for any type, including
+            // uninhabited types, in unsafe code, so we treat all references as
+            // inhabited.
+            false
+        }
+        _ => {
+            debug!("_ =>");
+            false
+        }
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -498,6 +555,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };
 }
