@@ -3,7 +3,7 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
 
-// When documenting libstd we want to show unix/windows/linux modules as these are the "main
+// When documenting libstd we want to show unix/windows/linux/wasi modules as these are the "main
 // modules" that are used across platforms, so all modules are enabled when `cfg(doc)` is set.
 // This should help show platform-specific functionality in a hopefully cross-platform way in the
 // documentation.
