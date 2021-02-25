@@ -2,7 +2,7 @@ error[E0618]: expected function, found `U`
   --> $DIR/issue-21701.rs:2:13
    |
 LL | fn foo<U>(t: U) {
-   |           - `U` defined here
+   |           - `t` has type `U`
 LL |     let y = t();
    |             ^--
    |             |
