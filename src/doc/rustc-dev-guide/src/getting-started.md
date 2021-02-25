@@ -282,7 +282,7 @@ commit, as this reduces conflicts later. The pinned version is built under
 `build/<target>/stage0/bin/rustfmt`, so if you want, you can use it for a
 single file or for format-on-save in your editor, which can be faster than `./x.py fmt`.
 
-On last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
+One last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
 here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
 [`env_logger`][envlog] syntax.
 
