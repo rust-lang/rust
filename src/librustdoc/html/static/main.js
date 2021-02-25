@@ -2913,6 +2913,7 @@ function defocusSearchBar() {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
+            ["esc", "Close the search view"],
         ].map(function(x) {
             return "<dt>" +
                 x[0].split(" ")
