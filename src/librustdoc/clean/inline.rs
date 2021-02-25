@@ -414,7 +414,10 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    let mut item = clean::Item::from_def_id_and_parts(
+    let attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", attrs);
+
+    ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
         clean::ImplItem(clean::Impl {
@@ -428,11 +431,9 @@ crate fn build_impl(
             synthetic: false,
             blanket_impl: None,
         }),
+        attrs,
         cx,
-    );
-    item.attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
-    debug!("merged_attrs={:?}", item.attrs);
-    ret.push(item);
+    ));
 }
 
 fn build_module(

@@ -148,6 +148,22 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
+        Self::from_def_id_and_attrs_and_parts(
+            def_id,
+            name,
+            kind,
+            box cx.tcx.get_attrs(def_id).clean(cx),
+            cx,
+        )
+    }
+
+    pub fn from_def_id_and_attrs_and_parts(
+        def_id: DefId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        attrs: Box<Attributes>,
+        cx: &mut DocContext<'_>,
+    ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
@@ -164,7 +180,7 @@ impl Item {
             kind: box kind,
             name,
             source: source.clean(cx),
-            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
+            attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }
