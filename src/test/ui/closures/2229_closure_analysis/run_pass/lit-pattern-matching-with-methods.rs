@@ -21,4 +21,11 @@ fn main() {
         assert!(matches!(result, Ok(None)));
     }
 
+    {
+        let mut it = map.drain_filter(|_, _| true);
+        catch_unwind(AssertUnwindSafe(|| while let Some(_) = it.next() {})).unwrap_err();
+        let result = catch_unwind(AssertUnwindSafe(|| it.next()));
+        assert!(matches!(result, Ok(None)));
+    }
+
 }

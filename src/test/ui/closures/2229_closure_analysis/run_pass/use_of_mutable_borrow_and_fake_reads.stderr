@@ -1,5 +1,5 @@
 warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/no_capture_with_wildcard_match.rs:2:12
+  --> $DIR/use_of_mutable_borrow_and_fake_reads.rs:2:12
    |
 LL | #![feature(capture_disjoint_fields)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/struct_update_syntax.rs:2:12
+  --> $DIR/capture_with_wildcard_match.rs:2:12
    |
 LL | #![feature(capture_disjoint_fields)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^

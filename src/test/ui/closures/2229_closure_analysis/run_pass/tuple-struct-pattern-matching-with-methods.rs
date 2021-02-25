@@ -8,6 +8,7 @@ enum PointType {
     ThreeD(u32, u32, u32)
 }
 
+// Testing tuple struct patterns
 struct Points {
     points: Vec<PointType>,
 }

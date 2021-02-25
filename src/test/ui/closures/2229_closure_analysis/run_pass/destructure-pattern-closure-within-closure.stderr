@@ -8,7 +8,7 @@ LL | #![feature(capture_disjoint_fields)]
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
 warning: unused variable: `t2`
-  --> $DIR/destructure-pattern-closure-within-closure.rs:15:21
+  --> $DIR/destructure-pattern-closure-within-closure.rs:14:21
    |
 LL |             let (_, t2) = t;
    |                     ^^ help: if this is intentional, prefix it with an underscore: `_t2`
@@ -21,7 +21,7 @@ LL | #![warn(unused)]
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `g2`
-  --> $DIR/destructure-pattern-closure-within-closure.rs:12:17
+  --> $DIR/destructure-pattern-closure-within-closure.rs:11:17
    |
 LL |         let (_, g2) = g;
    |                 ^^ help: if this is intentional, prefix it with an underscore: `_g2`

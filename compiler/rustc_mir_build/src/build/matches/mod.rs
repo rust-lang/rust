@@ -146,8 +146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Ok(scrutinee_builder) =
             scrutinee_place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
         {
-            let scrutinee_place =
-                scrutinee_builder.clone().into_place(self.tcx, self.typeck_results);
+            let scrutinee_place = scrutinee_builder.into_place(self.tcx, self.typeck_results);
             self.cfg.push_fake_read(block, source_info, cause_matched_place, scrutinee_place);
         }
 
@@ -245,7 +244,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let body = arm.body.clone();
+                    let body = arm.body;
+
+                    // `try_upvars_resolved` may fail if it is unable to resolve the given
+                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                    // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
+                    // if the only match arm is a wildcard (`_`).
+                    // Example:
+                    // ```
+                    // let foo = (0, 1);
+                    // let c = || {
+                    //    match foo { _ => () };
+                    // };
+                    // ```
                     let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
                     let scrutinee_place: Place<'tcx>;
                     if let Ok(scrutinee_builder) = scrutinee_place_builder
@@ -496,6 +507,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
                     )))) = self.local_decls[local].local_info
                     {
+                        // `try_upvars_resolved` may fail if it is unable to resolve the given
+                        // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                        // a scrutinee place. `scrutinee_place_builder` will fail for destructured
+                        // assignments. This is because a closure only captures the precise places
+                        // that it will read and as a result a closure may not capture the entire
+                        // tuple/struct and rather have individual places that will be read in the
+                        // final MIR.
+                        // Example:
+                        // ```
+                        // let foo = (0, 1);
+                        // let c = || {
+                        //    let (v1, v2) = foo;
+                        // };
+                        // ```
                         if let Ok(match_pair_resolved) =
                             initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
                         {

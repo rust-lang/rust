@@ -4,7 +4,6 @@
 #![warn(unused)]
 
 fn main() {
-    let _z = 9;
     let t = (String::from("Hello"), String::from("World"));
     let g = (String::from("Mr"), String::from("Goose"));
 

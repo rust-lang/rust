@@ -281,7 +281,7 @@ pub enum ExprKind<'thir, 'tcx> {
         substs: UpvarSubsts<'tcx>,
         upvars: &'thir [Expr<'thir, 'tcx>],
         movability: Option<hir::Movability>,
-        fake_reads: Option<Vec<(&'thir mut Expr<'thir, 'tcx>, FakeReadCause)>>,
+        fake_reads: Vec<(&'thir mut Expr<'thir, 'tcx>, FakeReadCause, hir::HirId)>,
     },
     Literal {
         literal: &'tcx Const<'tcx>,

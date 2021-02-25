@@ -45,19 +45,19 @@ LL |     let t = (String::from("Hello"), String::from("World"));
    |         ^ help: if this is intentional, prefix it with an underscore: `_t`
 
 warning: unused variable: `x`
-  --> $DIR/destructure_patterns.rs:93:21
+  --> $DIR/destructure_patterns.rs:92:21
    |
-LL |         let Point { x, y } = p; // 1
+LL |         let Point { x, y } = p;
    |                     ^ help: try ignoring the field: `x: _`
 
 warning: unused variable: `x`
-  --> $DIR/destructure_patterns.rs:85:9
+  --> $DIR/destructure_patterns.rs:84:9
    |
 LL |     let x = 0;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
 
 warning: unused variable: `tup`
-  --> $DIR/destructure_patterns.rs:87:9
+  --> $DIR/destructure_patterns.rs:86:9
    |
 LL |     let tup = (1, 2);
    |         ^^^ help: if this is intentional, prefix it with an underscore: `_tup`

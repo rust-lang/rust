@@ -160,7 +160,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Ok(test_place_builder) =
             place_builder.clone().try_upvars_resolved(self.tcx, self.typeck_results)
         {
-            place = test_place_builder.clone().into_place(self.tcx, self.typeck_results);
+            place = test_place_builder.into_place(self.tcx, self.typeck_results);
         } else {
             return;
         }

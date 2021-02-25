@@ -90,15 +90,13 @@ fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
         let hir_projection = match mir_projection {
             ProjectionElem::Deref => HirProjectionKind::Deref,
             ProjectionElem::Field(field, _) => {
-                // We will never encouter this for multivariant enums,
-                // read the comment for `Downcast`.
                 let variant = variant.unwrap_or(VariantIdx::new(0));
                 HirProjectionKind::Field(field.index() as u32, variant)
             }
             ProjectionElem::Downcast(.., idx) => {
-                // This projections exist for enums that have
-                // single and multiple variants.
-                // For single variants, enums are not captured completely.
+                // We don't expect to see multi-variant enums here, as earlier
+                // phases will have truncated them already. However, there can
+                // still be downcasts, thanks to single-variant enums.
                 // We keep track of VariantIdx so we can use this information
                 // if the next ProjectionElem is a Field.
                 variant = Some(*idx);
@@ -200,7 +198,7 @@ fn find_capture_matching_projections<'a, 'tcx>(
 /// Takes a PlaceBuilder and resolves the upvar (if any) within it, so that the
 /// `PlaceBuilder` now starts from `PlaceBase::Local`.
 ///
-/// Returns a Result with the error being the HirId of the Upvar that was not found.
+/// Returns a Result with the error being the PlaceBuilder (`from_builder`) that was not found.
 fn to_upvars_resolved_place_builder<'a, 'tcx>(
     from_builder: PlaceBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -305,15 +303,23 @@ impl<'tcx> PlaceBuilder<'tcx> {
         to_upvars_resolved_place_builder(self, tcx, typeck_results).unwrap()
     }
 
+    /// Attempts to resolve the `PlaceBuilder`.
+    /// On success, it will return the resolved `PlaceBuilder`.
+    /// On failure, it will return itself.
+    ///
+    /// Upvars resolve may fail for a `PlaceBuilder` when attempting to
+    /// resolve a disjoint field whose root variable is not captured
+    /// (destructured assignments) or when attempting to resolve a root
+    /// variable (discriminant matching with only wildcard arm) that is
+    /// not captured. This can happen because the final mir that will be
+    /// generated doesn't require a read for this place. Failures will only
+    /// happen inside closures.
     crate fn try_upvars_resolved<'a>(
         self,
         tcx: TyCtxt<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
     ) -> Result<PlaceBuilder<'tcx>, PlaceBuilder<'tcx>> {
-        match to_upvars_resolved_place_builder(self, tcx, typeck_results) {
-            Ok(upvars_resolved) => Ok(upvars_resolved),
-            Err(upvars_unresolved) => Err(upvars_unresolved),
-        }
+        to_upvars_resolved_place_builder(self, tcx, typeck_results)
     }
 
     crate fn base(&self) -> PlaceBase {
@@ -662,7 +668,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             len,
-            Rvalue::Len(slice.clone().into_place(self.tcx, self.typeck_results)),
+            Rvalue::Len(slice.into_place(self.tcx, self.typeck_results)),
         );
         // lt = idx < len
         self.cfg.push_assign(

@@ -248,8 +248,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
 
-        let fake_reads =
-            delegate.fake_reads.into_iter().map(|(place, cause)| (place, cause)).collect();
+        let fake_reads = delegate
+            .fake_reads
+            .into_iter()
+            .map(|(place, cause, hir_id)| (place, cause, hir_id))
+            .collect();
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
         // If we are also inferred the closure kind here,
@@ -1154,7 +1157,7 @@ struct InferBorrowKind<'a, 'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
-    fake_reads: Vec<(Place<'tcx>, FakeReadCause)>,
+    fake_reads: Vec<(Place<'tcx>, FakeReadCause, hir::HirId)>,
 }
 
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
@@ -1416,9 +1419,9 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause) {
+    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId) {
         if let PlaceBase::Upvar(_) = place.base {
-            self.fake_reads.push((place, cause));
+            self.fake_reads.push((place, cause, diag_expr_id));
         }
     }
 

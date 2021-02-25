@@ -80,7 +80,6 @@ fn test7() {
     };
 }
 
-// [FIXME] RFC2229 Add an explanation for test
 fn test8() {
     let x = 0;
     //~^ WARN unused variable: `x`
@@ -90,10 +89,10 @@ fn test8() {
 
     let c = || {
         let _ = x;
-        let Point { x, y } = p; // 1
+        let Point { x, y } = p;
         //~^ WARN unused variable: `x`
         println!("{}", y);
-        let (_, _) = tup; // 2
+        let (_, _) = tup;
     };
 
     c();

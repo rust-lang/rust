@@ -189,19 +189,18 @@ LL |     drop(_x3);
 error[E0382]: use of moved value: `tup`
   --> $DIR/borrowck-move-ref-pattern.rs:43:14
    |
-LL |       let mut tup = (U, U, U);
-   |           ------- move occurs because `tup` has type `(U, U, U)`, which does not implement the `Copy` trait
-LL |       let c1 = || {
-   |                -- value moved into closure here
-LL |           let (ref _x0, _x1, _) = tup;
-   |                                   --- variable moved due to use in closure
-LL |       };
-LL |       let c2 = || {
-   |  ______________^
-LL | |
-LL | |         let (ref mut _x0, _, _x2) = tup;
-LL | |     };
-   | |_____^ value used here after move
+LL |     let mut tup = (U, U, U);
+   |         ------- move occurs because `tup` has type `(U, U, U)`, which does not implement the `Copy` trait
+LL |     let c1 = || {
+   |              -- value moved into closure here
+LL |         let (ref _x0, _x1, _) = tup;
+   |                                 --- variable moved due to use in closure
+LL |     };
+LL |     let c2 = || {
+   |              ^^ value used here after move
+LL |
+LL |         let (ref mut _x0, _, _x2) = tup;
+   |                                     --- use occurs due to use in closure
 
 error: aborting due to 18 previous errors
 
