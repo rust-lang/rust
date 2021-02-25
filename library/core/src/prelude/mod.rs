@@ -10,7 +10,7 @@ pub mod v1;
 
 /// The 2015 version of the core prelude.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[unstable(feature = "prelude_2015", issue = "none")]
 pub mod rust_2015 {
     #[unstable(feature = "prelude_2015", issue = "none")]
@@ -20,7 +20,7 @@ pub mod rust_2015 {
 
 /// The 2018 version of the core prelude.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[unstable(feature = "prelude_2018", issue = "none")]
 pub mod rust_2018 {
     #[unstable(feature = "prelude_2018", issue = "none")]
@@ -30,7 +30,7 @@ pub mod rust_2018 {
 
 /// The 2021 version of the core prelude.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](self) for more.
 #[unstable(feature = "prelude_2021", issue = "none")]
 pub mod rust_2021 {
     #[unstable(feature = "prelude_2021", issue = "none")]
