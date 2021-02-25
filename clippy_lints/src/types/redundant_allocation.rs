@@ -63,20 +63,20 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 applicability,
             );
             true
-        } else if let Some(span) = utils::match_borrows_parameter(cx, qpath) {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                REDUNDANT_ALLOCATION,
-                hir_ty.span,
-                "usage of `Rc<&T>`",
-                "try",
-                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
-                applicability,
-            );
-            true
         } else {
-            false
+            utils::match_borrows_parameter(cx, qpath).map_or(false, |span| {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_ALLOCATION,
+                    hir_ty.span,
+                    "usage of `Rc<&T>`",
+                    "try",
+                    snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                    applicability,
+                );
+                true
+            })
         }
     } else {
         false
