@@ -83,13 +83,6 @@ pub struct CopyImplOnTypeWithDtor {
 }
 
 #[derive(SessionDiagnostic)]
-#[error = "E0202"]
-pub struct AssocTypeOnInherentImpl {
-    #[message = "associated types are not yet supported in inherent impls (see #8995)"]
-    pub span: Span,
-}
-
-#[derive(SessionDiagnostic)]
 #[error = "E0203"]
 pub struct MultipleRelaxedDefaultBounds {
     #[message = "type parameter has more than one relaxed default bound, only one is supported"]

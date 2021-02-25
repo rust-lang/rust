@@ -1,4 +1,3 @@
-use crate::errors::AssocTypeOnInherentImpl;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
@@ -294,7 +293,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::TyAlias(ref ty) => {
                 if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
                 icx.to_ty(ty)
@@ -746,6 +745,16 @@ fn infer_placeholder_type(
     })
 }
 
-fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
-    tcx.sess.emit_err(AssocTypeOnInherentImpl { span });
+fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
+    if !tcx.features().inherent_associated_types {
+        use rustc_session::parse::feature_err;
+        use rustc_span::symbol::sym;
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::inherent_associated_types,
+            span,
+            "inherent associated types are unstable",
+        )
+        .emit();
+    }
 }
