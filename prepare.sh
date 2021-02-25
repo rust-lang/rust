@@ -2,7 +2,6 @@
 set -e
 
 rustup component add rust-src rustc-dev llvm-tools-preview
-rustup target add x86_64-pc-windows-gnu
 ./build_sysroot/prepare_sysroot_src.sh
 cargo install hyperfine || echo "Skipping hyperfine install"
 
