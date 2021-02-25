@@ -61,9 +61,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // Default per-arch clobbers
         // Basically what clang does
         let arch_clobbers = match &self.sess().target.arch[..] {
-            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
-            "mips" | "mips64" => vec!["~{$1}"],
-            _ => Vec::new(),
+            "x86" | "x86_64" => &["~{dirflag}", "~{fpsr}", "~{flags}"][..],
+            "mips" | "mips64" => &["~{$1}"],
+            _ => &[],
         };
 
         let all_constraints = ia
