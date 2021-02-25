@@ -199,7 +199,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
     fn after_krate(
         &mut self,
-        krate: &clean::Crate,
+        _krate: &clean::Crate,
         _diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
         debug!("Done with crate");
@@ -210,7 +210,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
-            crate_version: krate.version.clone(),
+            crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
             paths: self

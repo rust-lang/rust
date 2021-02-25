@@ -144,7 +144,6 @@ impl Cache {
         dst: &Path,
     ) -> clean::Crate {
         // Crawl the crate to build various caches used for the output
-        self.crate_version = krate.version.take();
         debug!(?self.crate_version);
         self.traits = krate.external_traits.take();
         self.masked_crates = mem::take(&mut krate.masked_crates);

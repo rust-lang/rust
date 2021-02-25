@@ -77,7 +77,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     Crate {
         name,
-        version: None,
         src,
         module: Some(module),
         externs,
