@@ -1,4 +1,4 @@
-#[doc(include = "panic.md")]
+#[doc = include_str!("panic.md")]
 #[macro_export]
 #[rustc_builtin_macro = "core_panic"]
 #[allow_internal_unstable(edition_panic)]
