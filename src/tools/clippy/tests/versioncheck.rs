@@ -2,21 +2,30 @@
 use rustc_tools_util::VersionInfo;
 
 #[test]
-fn check_that_clippy_lints_has_the_same_version_as_clippy() {
+fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
+    // do not run this test inside the upstream rustc repo:
+    // https://github.com/rust-lang/rust-clippy/issues/6683
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        return;
+    }
+
     let clippy_meta = cargo_metadata::MetadataCommand::new()
         .no_deps()
         .exec()
         .expect("could not obtain cargo metadata");
-    std::env::set_current_dir(std::env::current_dir().unwrap().join("clippy_lints")).unwrap();
-    let clippy_lints_meta = cargo_metadata::MetadataCommand::new()
-        .no_deps()
-        .exec()
-        .expect("could not obtain cargo metadata");
-    assert_eq!(clippy_lints_meta.packages[0].version, clippy_meta.packages[0].version);
-    for package in &clippy_meta.packages[0].dependencies {
-        if package.name == "clippy_lints" {
-            assert!(package.req.matches(&clippy_lints_meta.packages[0].version));
-            return;
+
+    for krate in &["clippy_lints", "clippy_utils"] {
+        let krate_meta = clippy_meta
+            .packages
+            .iter()
+            .find(|package| package.name == *krate)
+            .expect("could not obtain cargo metadata");
+        assert_eq!(krate_meta.version, clippy_meta.packages[0].version);
+        for package in &clippy_meta.packages[0].dependencies {
+            if package.name == *krate {
+                assert!(package.req.matches(&krate_meta.version));
+                break;
+            }
         }
     }
 }

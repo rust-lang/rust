@@ -1,4 +1,4 @@
-use crate::utils::{get_pat_name, match_var, snippet};
+use crate::{get_pat_name, match_var, snippet};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, BodyId, Expr, ExprKind, Param};
 use rustc_lint::LateContext;

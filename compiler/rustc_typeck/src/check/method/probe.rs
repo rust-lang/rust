@@ -10,6 +10,7 @@ use crate::hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
@@ -1167,7 +1168,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         //
                         // We suppress warning if we're picking the method only because it is a
                         // suggestion.
-                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
+                        self.emit_unstable_name_collision_hint(p, &unstable_candidates, self_ty);
                     }
                 }
                 return Some(pick);
@@ -1246,24 +1247,46 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
+        self_ty: Ty<'tcx>,
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
             |lint| {
-                let mut diag = lint.build(
-                    "a method with this name may be added to the standard library in the future",
-                );
-                // FIXME: This should be a `span_suggestion` instead of `help`
-                // However `self.span` only
-                // highlights the method name, so we can't use it. Also consider reusing the code from
-                // `report_method_error()`.
-                diag.help(&format!(
-                    "call with fully qualified syntax `{}(...)` to keep using the current method",
-                    self.tcx.def_path_str(stable_pick.item.def_id),
+                let def_kind = stable_pick.item.kind.as_def_kind();
+                let mut diag = lint.build(&format!(
+                    "{} {} with this name may be added to the standard library in the future",
+                    def_kind.article(),
+                    def_kind.descr(stable_pick.item.def_id),
                 ));
-
+                match (stable_pick.item.kind, stable_pick.item.container) {
+                    (ty::AssocKind::Fn, _) => {
+                        // FIXME: This should be a `span_suggestion` instead of `help`
+                        // However `self.span` only
+                        // highlights the method name, so we can't use it. Also consider reusing
+                        // the code from `report_method_error()`.
+                        diag.help(&format!(
+                            "call with fully qualified syntax `{}(...)` to keep using the current \
+                             method",
+                            self.tcx.def_path_str(stable_pick.item.def_id),
+                        ));
+                    }
+                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer(def_id)) => {
+                        diag.span_suggestion(
+                            self.span,
+                            "use the fully qualified path to the associated const",
+                            format!(
+                                "<{} as {}>::{}",
+                                self_ty,
+                                self.tcx.def_path_str(def_id),
+                                stable_pick.item.ident
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
                 if self.tcx.sess.is_nightly_build() {
                     for (candidate, feature) in unstable_candidates {
                         diag.help(&format!(

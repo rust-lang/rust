@@ -1577,6 +1577,14 @@ impl Expr<'_> {
         expr
     }
 
+    pub fn peel_blocks(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::Block(Block { expr: Some(inner), .. }, _) = &expr.kind {
+            expr = inner;
+        }
+        expr
+    }
+
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
             ExprKind::Path(_) | ExprKind::Lit(_) => false,

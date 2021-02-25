@@ -1,7 +1,7 @@
 ---
 name: New lint suggestion
 about: Suggest a new Clippy lint.
-labels: L-lint
+labels: A-lint
 ---
 
 ### What it does

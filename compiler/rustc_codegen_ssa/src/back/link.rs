@@ -181,16 +181,16 @@ fn get_linker(
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
-                    "x86_64" => Some("x64".to_string()),
-                    "x86" => Some("x86".to_string()),
-                    "aarch64" => Some("arm64".to_string()),
-                    "arm" => Some("arm".to_string()),
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
                     // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");

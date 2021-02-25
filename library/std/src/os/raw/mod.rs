@@ -18,7 +18,7 @@ macro_rules! type_alias_no_nz {
       $Docfile:tt, $Alias:ident = $Real:ty;
       $( $Cfg:tt )*
     } => {
-        #[doc(include = $Docfile)]
+        #[doc = include_str!($Docfile)]
         $( $Cfg )*
         #[stable(feature = "raw_os", since = "1.1.0")]
         pub type $Alias = $Real;

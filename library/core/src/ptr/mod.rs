@@ -902,7 +902,8 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn write<T>(dst: *mut T, src: T) {
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
@@ -998,14 +999,16 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
-pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
+pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must guarantee that `dst` is valid for writes.
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
         copy_nonoverlapping(&src as *const T as *const u8, dst as *mut u8, mem::size_of::<T>());
+        // We are calling the intrinsic directly to avoid function calls in the generated code.
+        intrinsics::forget(src);
     }
-    mem::forget(src);
 }
 
 /// Performs a volatile read of the value from `src` without moving it. This
