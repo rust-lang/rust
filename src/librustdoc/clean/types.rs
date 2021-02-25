@@ -16,6 +16,7 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
@@ -32,11 +33,10 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
-use crate::clean::external_path;
-use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
+use crate::clean::{clean_attrs, external_path, inline};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -154,7 +154,7 @@ impl Item {
             def_id,
             name,
             kind,
-            box cx.tcx.get_attrs(def_id).clean(cx),
+            box clean_attrs(cx.tcx.get_attrs(def_id), def_id.is_local(), cx),
             cx,
         )
     }
@@ -739,9 +739,10 @@ impl Attributes {
     }
 
     crate fn from_ast(
-        diagnostic: &::rustc_errors::Handler,
+        handler: &::rustc_errors::Handler,
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
+        local: bool,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let mut sp = None;
@@ -800,10 +801,26 @@ impl Attributes {
                             // Extracted #[doc(cfg(...))]
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => diagnostic.span_err(e.span, e.msg),
+                                Err(e) => handler.span_err(e.span, e.msg),
                             }
                         } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
                         {
+                            if local {
+                                let mut diag = handler
+                                    .struct_span_warn(attr.span, "`doc(include)` is deprecated");
+                                diag.span_suggestion_verbose(
+                                    attr.span,
+                                    "use `#![feature(extended_key_value_attributes)]` instead",
+                                    format!(
+                                        "#{}[doc = include_str!(\"{}\")]",
+                                        if attr.style == AttrStyle::Inner { "!" } else { "" },
+                                        filename,
+                                    ),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                diag.emit();
+                            }
+
                             let line = doc_line;
                             doc_line += contents.as_str().lines().count();
                             let frag = DocFragment {
@@ -2001,7 +2018,7 @@ impl Constant {
     crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
             ConstantKind::TyConst { ref expr } => expr.clone(),
-            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
+            ConstantKind::Extern { def_id } => inline::print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 print_const_expr(tcx, body)
             }

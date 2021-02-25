@@ -108,7 +108,9 @@ impl Clean<ExternalCrate> for CrateNum {
         // rendering by delegating everything to a hash map.
         let mut as_primitive = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
+                // We already warned about any attributes on the module when cleaning it.
+                // Don't warn a second time.
+                let attrs = clean_attrs(cx.tcx.get_attrs(def_id), false, cx);
                 let mut prim = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
@@ -155,7 +157,7 @@ impl Clean<ExternalCrate> for CrateNum {
 
         let mut as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = tcx.get_attrs(def_id).clean(cx);
+                let attrs = clean_attrs(tcx.get_attrs(def_id), false, cx);
                 let mut keyword = None;
                 for attr in attrs.lists(sym::doc) {
                     if attr.has_name(sym::keyword) {
@@ -197,7 +199,8 @@ impl Clean<ExternalCrate> for CrateNum {
         ExternalCrate {
             name: tcx.crate_name(*self),
             src: krate_src,
-            attrs: tcx.get_attrs(root).clean(cx),
+            // The local crate was already cleaned, and all other crates are non-local.
+            attrs: clean_attrs(tcx.get_attrs(root), false, cx),
             primitives,
             keywords,
         }
@@ -237,10 +240,8 @@ impl Clean<Item> for doctree::Module<'_> {
     }
 }
 
-impl Clean<Attributes> for [ast::Attribute] {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self, None)
-    }
+fn clean_attrs(attrs: &[ast::Attribute], local: bool, cx: &mut DocContext<'_>) -> Attributes {
+    Attributes::from_ast(cx.sess().diagnostic(), attrs, None, local)
 }
 
 impl Clean<GenericBound> for hir::GenericBound<'_> {
@@ -2124,7 +2125,7 @@ fn clean_extern_crate(
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
-        attrs: box attrs.clean(cx),
+        attrs: box clean_attrs(attrs, true, cx),
         span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),

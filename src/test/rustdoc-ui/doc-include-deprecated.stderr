@@ -1,0 +1,35 @@
+warning: `doc(include)` is deprecated
+  --> $DIR/doc-include-deprecated.rs:10:1
+   |
+LL | #[doc(include = "auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `#![feature(extended_key_value_attributes)]` instead
+   |
+LL | #[doc = include_str!("auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `doc(include)` is deprecated
+  --> $DIR/doc-include-deprecated.rs:13:1
+   |
+LL | #[doc(include = "auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `#![feature(extended_key_value_attributes)]` instead
+   |
+LL | #[doc = include_str!("auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `doc(include)` is deprecated
+  --> $DIR/doc-include-deprecated.rs:4:1
+   |
+LL | #![doc(include = "auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `#![feature(extended_key_value_attributes)]` instead
+   |
+LL | #![doc = include_str!("auxiliary/docs.md")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: 3 warnings emitted
+
