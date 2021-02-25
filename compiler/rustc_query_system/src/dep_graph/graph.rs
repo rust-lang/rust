@@ -392,6 +392,7 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     #[inline(always)]
+    #[cfg(debug_assertions)]
     pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode<K>, debug_str_gen: F)
     where
         F: FnOnce() -> String,
