@@ -1,7 +1,7 @@
 ---
 name: Bug Report (False Positive)
 about: Create a bug report about a wrongly emitted lint warning
-labels: L-bug, L-false-positive
+labels: C-bug, I-false-positive
 ---
 <!--
 Thank you for filing a bug report! 🐛 Please provide a short summary of the bug,

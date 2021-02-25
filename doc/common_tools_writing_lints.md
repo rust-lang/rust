@@ -78,7 +78,7 @@ impl LateLintPass<'_> for MyStructLint {
 There are two ways to do this, depending if the target trait is part of lang items.
 
 ```rust
-use crate::utils::{implements_trait, match_trait_method, paths};
+use clippy_utils::{implements_trait, match_trait_method, paths};
 
 impl LateLintPass<'_> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -112,7 +112,7 @@ We access lang items through the type context `tcx`. `tcx` is of type [`TyCtxt`]
 To check if our type defines a method called `some_method`:
 
 ```rust
-use crate::utils::{is_type_diagnostic_item, return_ty};
+use clippy_utils::{is_type_diagnostic_item, return_ty};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
 
 # Dealing with macros
 
-There are several helpers in Clippy's utils to deal with macros:
+There are several helpers in [`clippy_utils`][utils] to deal with macros:
 
 - `in_macro()`: detect if the given span is expanded by a macro
 
@@ -199,4 +199,5 @@ assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
 [LateContext]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LateContext.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
 [pat_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TypeckResults.html#method.pat_ty
-[paths]: ../clippy_lints/src/utils/paths.rs
+[paths]: ../clippy_utils/src/paths.rs
+[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs

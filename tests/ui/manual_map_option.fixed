@@ -1,0 +1,70 @@
+// run-rustfix
+
+#![warn(clippy::manual_map)]
+#![allow(clippy::no_effect, clippy::map_identity, clippy::unit_arg, clippy::match_ref_pats)]
+
+fn main() {
+    Some(0).map(|_| 2);
+
+    Some(0).map(|x| x + 1);
+
+    Some("").map(|x| x.is_empty());
+
+    Some(0).map(|x| !x);
+
+    #[rustfmt::skip]
+    Some(0).map(std::convert::identity);
+
+    Some(&String::new()).map(|x| str::len(x));
+
+    match Some(0) {
+        Some(x) if false => Some(x + 1),
+        _ => None,
+    };
+
+    Some([0, 1]).as_ref().map(|x| x[0]);
+
+    Some(0).map(|x| x * 2);
+
+    Some(String::new()).as_ref().map(|x| x.is_empty());
+
+    Some(String::new()).as_ref().map(|x| x.len());
+
+    Some(0).map(|x| x + x);
+
+    #[warn(clippy::option_map_unit_fn)]
+    match &mut Some(String::new()) {
+        Some(x) => Some(x.push_str("")),
+        None => None,
+    };
+
+    #[allow(clippy::option_map_unit_fn)]
+    {
+        Some(String::new()).as_mut().map(|x| x.push_str(""));
+    }
+
+    Some(String::new()).as_ref().map(|x| x.len());
+
+    Some(String::new()).as_ref().map(|x| x.is_empty());
+
+    Some((0, 1, 2)).map(|(x, y, z)| x + y + z);
+
+    Some([1, 2, 3]).map(|[first, ..]| first);
+
+    Some((String::new(), "test")).as_ref().map(|(x, y)| (y, x));
+
+    match Some((String::new(), 0)) {
+        Some((ref x, y)) => Some((y, x)),
+        None => None,
+    };
+
+    match Some(Some(0)) {
+        Some(Some(_)) | Some(None) => Some(0),
+        None => None,
+    };
+
+    match Some(Some((0, 1))) {
+        Some(Some((x, 1))) => Some(x),
+        _ => None,
+    };
+}

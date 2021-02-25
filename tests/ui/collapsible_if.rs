@@ -154,4 +154,11 @@ fn main() {
     if matches!(true, true) {
         if matches!(true, true) {}
     }
+
+    if true {
+        #[cfg(not(teehee))]
+        if true {
+            println!("Hello world!");
+        }
+    }
 }

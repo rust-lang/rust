@@ -1,7 +1,7 @@
 use crate::utils::{
     attr_by_name, attrs::is_proc_macro, is_must_use_ty, is_trait_impl_item, is_type_diagnostic_item, iter_input_pats,
-    last_path_segment, match_def_path, must_use_attr, path_to_local, return_ty, snippet, snippet_opt, span_lint,
-    span_lint_and_help, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
+    match_def_path, must_use_attr, path_to_local, return_ty, snippet, snippet_opt, span_lint, span_lint_and_help,
+    span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
@@ -470,12 +470,11 @@ fn check_result_unit_err(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, item_span
     if_chain! {
         if !in_external_macro(cx.sess(), item_span);
         if let hir::FnRetTy::Return(ref ty) = decl.output;
-        if let hir::TyKind::Path(ref qpath) = ty.kind;
-        if is_type_diagnostic_item(cx, hir_ty_to_ty(cx.tcx, ty), sym::result_type);
-        if let Some(ref args) = last_path_segment(qpath).args;
-        if let [_, hir::GenericArg::Type(ref err_ty)] = args.args;
-        if let hir::TyKind::Tup(t) = err_ty.kind;
-        if t.is_empty();
+        let ty = hir_ty_to_ty(cx.tcx, ty);
+        if is_type_diagnostic_item(cx, ty, sym::result_type);
+        if let ty::Adt(_, substs) = ty.kind();
+        let err_ty = substs.type_at(1);
+        if err_ty.is_unit();
         then {
             span_lint_and_help(
                 cx,
