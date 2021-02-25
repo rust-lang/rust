@@ -1691,7 +1691,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["count", "iter"] => lint_iter_count(cx, expr, &arg_lists[1], false),
+            ["count", "into_iter" | "iter"] => lint_iter_count(cx, expr, &arg_lists[1], false),
             ["count", "iter_mut"] => lint_iter_count(cx, expr, &arg_lists[1], true),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
@@ -2663,6 +2663,13 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
 
 fn lint_iter_count<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>], is_mut: bool) {
     let mut_str = if is_mut { "_mut" } else { "" };
+    let iter_method = if method_chain_args(expr, &[format!("iter{}", mut_str).as_str(), "count"]).is_some() {
+        "iter"
+    } else if method_chain_args(expr, &["into_iter", "count"]).is_some() {
+        "into_iter"
+    } else {
+        return;
+    };
     if_chain! {
         let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
             Some("slice")
@@ -2682,7 +2689,7 @@ fn lint_iter_count<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'t
                 cx,
                 ITER_COUNT,
                 expr.span,
-                &format!("called `.iter{}().count()` on a `{}`", mut_str, caller_type),
+                &format!("called `.{}{}().count()` on a `{}`", iter_method, mut_str, caller_type),
                 "try",
                 format!(
                     "{}.len()",
