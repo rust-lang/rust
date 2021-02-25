@@ -251,20 +251,10 @@ where
     Q: Hash + ?Sized,
     S: BuildHasher,
 {
-    #[cfg(feature = "ahash")]
-    {
-        //This enables specialization to improve performance on primitive types
-        use ahash::CallHasher;
-        let state = hash_builder.build_hasher();
-        Q::get_hash(val, state)
-    }
-    #[cfg(not(feature = "ahash"))]
-    {
-        use core::hash::Hasher;
-        let mut state = hash_builder.build_hasher();
-        val.hash(&mut state);
-        state.finish()
-    }
+    use core::hash::Hasher;
+    let mut state = hash_builder.build_hasher();
+    val.hash(&mut state);
+    state.finish()
 }
 
 #[cfg_attr(feature = "inline-more", inline)]
@@ -273,20 +263,10 @@ where
     K: Hash,
     S: BuildHasher,
 {
-    #[cfg(feature = "ahash")]
-    {
-        //This enables specialization to improve performance on primitive types
-        use ahash::CallHasher;
-        let state = hash_builder.build_hasher();
-        K::get_hash(val, state)
-    }
-    #[cfg(not(feature = "ahash"))]
-    {
-        use core::hash::Hasher;
-        let mut state = hash_builder.build_hasher();
-        val.hash(&mut state);
-        state.finish()
-    }
+    use core::hash::Hasher;
+    let mut state = hash_builder.build_hasher();
+    val.hash(&mut state);
+    state.finish()
 }
 
 #[cfg(feature = "ahash")]

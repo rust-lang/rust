@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 # For the default hasher
-ahash = { version = "0.6.1", default-features = false, optional = true }
+ahash = { version = "0.7.0", default-features = false, optional = true }
 
 # For external trait impls
 rayon = { version = "1.0", optional = true }
