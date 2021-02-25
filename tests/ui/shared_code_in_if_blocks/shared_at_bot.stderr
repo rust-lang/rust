@@ -12,7 +12,7 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::if_same_then_else, clippy::shared_code_in_if_blocks)]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
 help: consider moving the end statements out like this
    |
 LL |     }
@@ -75,7 +75,7 @@ LL | |         // I'm expecting a note about this
 LL | |     }
    | |_____^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the end statements out like this
    |
 LL |     }
@@ -91,7 +91,7 @@ LL | |         println!("This is the new simple_example: {}", simple_examples);
 LL | |     }
    | |_____^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the end statements out like this
    |
 LL |     }
@@ -106,7 +106,7 @@ LL | /         x << 2
 LL | |     };
    | |_____^
    |
-   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
 help: consider moving the end statements out like this
    |
 LL |     }
@@ -120,7 +120,7 @@ LL | /         x * 4
 LL | |     }
    | |_____^
    |
-   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
 help: consider moving the end statements out like this
    |
 LL |     }

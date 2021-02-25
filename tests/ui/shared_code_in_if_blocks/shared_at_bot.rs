@@ -190,4 +190,20 @@ fn test_suggestion_with_weird_formatting() {
     if x == 17 { b = 1; a = 0x99; } else { a = 0x99; }
 }
 
+fn fp_test() {
+    let x = 17;
+
+    if x == 18 {
+        let y = 19;
+        if y < x {
+            println!("Trigger")
+        }
+    } else {
+        let z = 166;
+        if z < x {
+            println!("Trigger")
+        }
+    }
+}
+
 fn main() {}

@@ -96,9 +96,11 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
-                self.eq_pat(&l.pat, &r.pat)
+                // eq_pat adds the HirIds to the locals map. We therefor call it last to make sure that
+                // these only get added if the init and type is equal.
+                both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
                     && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r))
-                    && both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
+                    && self.eq_pat(&l.pat, &r.pat)
             },
             (&StmtKind::Expr(ref l), &StmtKind::Expr(ref r)) | (&StmtKind::Semi(ref l), &StmtKind::Semi(ref r)) => {
                 self.eq_expr(l, r)

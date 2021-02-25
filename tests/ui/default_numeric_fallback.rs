@@ -3,6 +3,7 @@
 #![allow(clippy::never_loop)]
 #![allow(clippy::no_effect)]
 #![allow(clippy::unnecessary_operation)]
+#![allow(clippy::shared_code_in_if_blocks)]
 
 mod basic_expr {
     fn test() {

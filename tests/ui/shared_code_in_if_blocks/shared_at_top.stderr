@@ -25,7 +25,7 @@ LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
    | |___________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the start statements out like this
    |
 LL |     let y = 9;
@@ -55,7 +55,7 @@ LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the start statements out like this
    |
 LL |     let used_value_name = "Different type";
@@ -71,7 +71,7 @@ LL | |         let can_be_overridden = "Move me";
 LL | |         println!("I'm also moveable");
    | |______________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the start statements out like this
    |
 LL |     let can_be_overridden = "Move me";

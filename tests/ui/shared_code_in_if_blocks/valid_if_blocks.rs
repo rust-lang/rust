@@ -91,6 +91,14 @@ fn valid_examples() {
         let _ = (x, y, z);
         // I'm so much better than the x == 418 block. Trust me
     }
+
+    let x = 1;
+    if true {
+        println!("{}", x);
+    } else {
+        let x = 2;
+        println!("{}", x);
+    }
 }
 
 /// This makes sure that the `if_same_then_else` masks the `shared_code_in_if_blocks` lint

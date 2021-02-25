@@ -4,7 +4,8 @@
     dead_code,
     clippy::no_effect,
     clippy::if_same_then_else,
-    clippy::needless_return
+    clippy::needless_return,
+    clippy::shared_code_in_if_blocks
 )]
 
 fn main() {

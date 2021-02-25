@@ -142,7 +142,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     pub SHARED_CODE_IN_IF_BLOCKS,
-    nursery,
+    complexity,
     "`if` statement with shared code in all blocks"
 }
 
@@ -457,11 +457,11 @@ fn emit_shared_code_in_if_blocks_lint(
 
     let add_optional_msgs = |diag: &mut DiagnosticBuilder<'_>| {
         if add_expr_note {
-            diag.note("The end suggestion probably needs some adjustments to use the expression result correctly.");
+            diag.note("The end suggestion probably needs some adjustments to use the expression result correctly");
         }
 
         if warn_about_moved_symbol {
-            diag.warn("Some moved values might need to be renamed to avoid wrong references.");
+            diag.warn("Some moved values might need to be renamed to avoid wrong references");
         }
     };
 

@@ -47,7 +47,7 @@ LL | /         let _overlap_end = r * r * r;
 LL | |         let z = "end";
 LL | |     }
    | |_____^
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the start statements out like this
    |
 LL |     let r = 7;
@@ -82,7 +82,7 @@ LL | |         };
 LL | |         process_data(pack);
 LL | |     }
    | |_____^
-   = warning: Some moved values might need to be renamed to avoid wrong references.
+   = warning: Some moved values might need to be renamed to avoid wrong references
 help: consider moving the start statements out like this
    |
 LL |     let a = 0xcafe;
@@ -113,7 +113,7 @@ note: and here at the end
 LL | /         x << 2
 LL | |     };
    | |_____^
-   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
 help: consider moving the start statements out like this
    |
 LL |     let _ = 19;
@@ -138,7 +138,7 @@ note: and here at the end
 LL | /         x * 4
 LL | |     }
    | |_____^
-   = note: The end suggestion probably needs some adjustments to use the expression result correctly.
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
 help: consider moving the start statements out like this
    |
 LL |     let _ = 17;

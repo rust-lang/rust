@@ -101,5 +101,25 @@ LL | |         Ok("foo")?;
 LL | |     }
    | |_____^
 
-error: aborting due to 5 previous errors
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else2.rs:122:20
+   |
+LL |       } else if true {
+   |  ____________________^
+LL | |         let foo = "";
+LL | |         return Ok(&foo[0..]);
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else2.rs:125:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         let foo = "";
+LL | |         return Ok(&foo[0..]);
+LL | |     }
+   | |_____^
+
+error: aborting due to 6 previous errors
 
