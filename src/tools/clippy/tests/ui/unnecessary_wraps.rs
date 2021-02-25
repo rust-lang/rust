@@ -116,8 +116,53 @@ fn issue_6384(s: &str) -> Option<&str> {
     })
 }
 
+// should be linted
+fn issue_6640_1(a: bool, b: bool) -> Option<()> {
+    if a && b {
+        return Some(());
+    }
+    if a {
+        Some(());
+        Some(())
+    } else {
+        return Some(());
+    }
+}
+
+// should be linted
+fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
+    if a && b {
+        return Ok(());
+    }
+    if a {
+        Ok(())
+    } else {
+        return Ok(());
+    }
+}
+
+// should not be linted
+fn issue_6640_3() -> Option<()> {
+    if true {
+        Some(())
+    } else {
+        None
+    }
+}
+
+// should not be linted
+fn issue_6640_4() -> Result<(), ()> {
+    if true {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
 fn main() {
     // method calls are not linted
     func1(true, true);
     func2(true, true);
+    issue_6640_1(true, true);
+    issue_6640_2(true, true);
 }

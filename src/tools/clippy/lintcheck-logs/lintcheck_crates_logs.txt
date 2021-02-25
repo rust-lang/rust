@@ -1,6 +1,5 @@
-clippy 0.1.51 (7f5bb7fd0 2021-02-06)
+clippy 0.1.52 (697f3b6d4 2021-02-22)
 
-cargo-0.49.0//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/core/src/macros/mod.rs:409:34 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.categories` metadata"
 cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.keywords` metadata"
 cargo-0.49.0/src/bin/cargo/cli.rs:104:34 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -22,6 +21,7 @@ cargo-0.49.0/src/bin/cargo/commands/check.rs:1:5 clippy::wildcard_imports "usage
 cargo-0.49.0/src/bin/cargo/commands/clean.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
 cargo-0.49.0/src/bin/cargo/commands/doc.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
 cargo-0.49.0/src/bin/cargo/commands/fetch.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
+cargo-0.49.0/src/bin/cargo/commands/fetch.rs:22:5 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/bin/cargo/commands/fix.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
 cargo-0.49.0/src/bin/cargo/commands/generate_lockfile.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
 cargo-0.49.0/src/bin/cargo/commands/git_checkout.rs:1:5 clippy::wildcard_imports "usage of wildcard import"
@@ -99,10 +99,10 @@ cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:411:9 clippy::
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:420:69 clippy::doc_markdown "you should put `mode/target_kind` between ticks in the documentation"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:423:19 clippy::doc_markdown "you should put `CrateTypes` between ticks in the documentation"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:424:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:424:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:469:58 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:603:19 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:665:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:697:12 clippy::inconsistent_struct_constructor "inconsistent struct constructor"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:82:31 clippy::doc_markdown "you should put `FileType` between ticks in the documentation"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:83:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/compiler/build_context/target_info.rs:84:9 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -151,7 +151,6 @@ cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:361:5 clippy::must_use_candi
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:374:43 clippy::doc_markdown "you should put `RunCustomBuild` between ticks in the documentation"
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:378:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:383:41 clippy::doc_markdown "you should put `RunCustomBuild` between ticks in the documentation"
-cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:384:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:384:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:391:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/compiler/context/mod.rs:397:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -173,14 +172,13 @@ cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:481:5 clippy::missing_error
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:481:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:48:56 clippy::doc_markdown "you should put `RunCustomBuild` between ticks in the documentation"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:561:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:561:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:567:20 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:576:28 clippy::shadow_unrelated "`mut value` is being shadowed"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:606:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:688:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:756:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
-cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:762:5 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/core/compiler/custom_build.rs:823:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1021:51 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/compiler/fingerprint.rs:1656:16 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -236,7 +234,7 @@ cargo-0.49.0/src/cargo/core/compiler/job_queue.rs:93:24 clippy::doc_markdown "yo
 cargo-0.49.0/src/cargo/core/compiler/links.rs:8:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:1016:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:1094:19 clippy::redundant_closure_for_method_calls "redundant closure found"
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:1131:1 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:1131:1 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:1268:34 clippy::case_sensitive_file_extension_comparisons "case-sensitive file extension comparison"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:1277:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:179:1 clippy::too_many_lines "this function has too many lines (162/100)"
@@ -245,13 +243,13 @@ cargo-0.49.0/src/cargo/core/compiler/mod.rs:201:25 clippy::single_match_else "yo
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:267:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:324:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:364:5 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:392:45 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:415:23 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:464:18 clippy::ptr_arg "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do."
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:488:61 clippy::ptr_arg "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do."
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:667:15 clippy::similar_names "binding's name is too similar to existing binding"
-cargo-0.49.0/src/cargo/core/compiler/mod.rs:693:1 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/core/compiler/mod.rs:693:1 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:725:42 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:736:1 clippy::too_many_lines "this function has too many lines (141/100)"
 cargo-0.49.0/src/cargo/core/compiler/mod.rs:73:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -290,7 +288,6 @@ cargo-0.49.0/src/cargo/core/compiler/unit_graph.rs:65:1 clippy::missing_errors_d
 cargo-0.49.0/src/cargo/core/compiler/unit_graph.rs:65:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 cargo-0.49.0/src/cargo/core/dependency.rs:157:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/dependency.rs:182:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/dependency.rs:203:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/dependency.rs:203:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:224:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:23:1 clippy::struct_excessive_bools "more than 3 bools in a struct"
@@ -300,13 +297,10 @@ cargo-0.49.0/src/cargo/core/dependency.rs:274:5 clippy::must_use_candidate "this
 cargo-0.49.0/src/cargo/core/dependency.rs:278:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:287:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:291:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/core/dependency.rs:296:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/dependency.rs:305:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:311:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:319:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/core/dependency.rs:323:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/dependency.rs:337:75 clippy::redundant_closure_for_method_calls "redundant closure found"
-cargo-0.49.0/src/cargo/core/dependency.rs:379:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/dependency.rs:397:56 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/dependency.rs:403:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/dependency.rs:408:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -452,12 +446,10 @@ cargo-0.49.0/src/cargo/core/package.rs:287:1 clippy::module_name_repetitions "it
 cargo-0.49.0/src/cargo/core/package.rs:385:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/package.rs:421:5 clippy::needless_lifetimes "explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)"
 cargo-0.49.0/src/cargo/core/package.rs:425:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/package.rs:425:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/package.rs:452:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/package.rs:453:60 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/core/package.rs:459:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/package.rs:473:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/package.rs:552:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/package.rs:587:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/package.rs:588:9 clippy::needless_question_mark "Question mark operator is useless here"
 cargo-0.49.0/src/cargo/core/package.rs:682:46 clippy::cast_possible_truncation "casting `f64` to `u64` may truncate the value"
@@ -490,13 +482,12 @@ cargo-0.49.0/src/cargo/core/package_id_spec.rs:51:5 clippy::missing_errors_doc "
 cargo-0.49.0/src/cargo/core/package_id_spec.rs:51:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/package_id_spec.rs:77:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/package_id_spec.rs:88:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/core/profiles.rs:1004:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/profiles.rs:1004:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/profiles.rs:1014:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/profiles.rs:1018:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/profiles.rs:1028:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/profiles.rs:106:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
-cargo-0.49.0/src/cargo/core/profiles.rs:143:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/core/profiles.rs:143:5 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/core/profiles.rs:286:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/profiles.rs:286:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/profiles.rs:294:40 clippy::if_not_else "unnecessary boolean `not` operation"
@@ -522,9 +513,7 @@ cargo-0.49.0/src/cargo/core/registry.rs:19:5 clippy::missing_errors_doc "docs fo
 cargo-0.49.0/src/cargo/core/registry.rs:240:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/registry.rs:26:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/registry.rs:344:49 clippy::redundant_closure_for_method_calls "redundant closure found"
-cargo-0.49.0/src/cargo/core/registry.rs:358:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/registry.rs:369:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/core/registry.rs:424:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/registry.rs:424:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/registry.rs:49:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 cargo-0.49.0/src/cargo/core/registry.rs:520:17 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -538,7 +527,6 @@ cargo-0.49.0/src/cargo/core/resolver/context.rs:274:53 clippy::redundant_closure
 cargo-0.49.0/src/cargo/core/resolver/context.rs:42:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 cargo-0.49.0/src/cargo/core/resolver/context.rs:74:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/resolver/encode.rs:156:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/resolver/encode.rs:156:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/resolver/encode.rs:156:5 clippy::too_many_lines "this function has too many lines (164/100)"
 cargo-0.49.0/src/cargo/core/resolver/encode.rs:339:17 clippy::match_wildcard_for_single_variants "wildcard match will miss any future added variants"
 cargo-0.49.0/src/cargo/core/resolver/encode.rs:438:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
@@ -596,7 +584,6 @@ cargo-0.49.0/src/cargo/core/resolver/resolve.rs:255:5 clippy::must_use_candidate
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:259:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:263:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:269:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/core/resolver/resolve.rs:273:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:273:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:274:9 clippy::map_unwrap_or "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead"
 cargo-0.49.0/src/cargo/core/resolver/resolve.rs:280:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -639,6 +626,7 @@ cargo-0.49.0/src/cargo/core/shell.rs:314:5 clippy::must_use_candidate "this meth
 cargo-0.49.0/src/cargo/core/shell.rs:322:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/shell.rs:330:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/shell.rs:345:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+cargo-0.49.0/src/cargo/core/shell.rs:459:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/core/shell.rs:98:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/source/mod.rs:103:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/source/mod.rs:247:1 clippy::module_name_repetitions "item name starts with its containing module's name"
@@ -682,7 +670,6 @@ cargo-0.49.0/src/cargo/core/source/source_id.rs:241:5 clippy::must_use_candidate
 cargo-0.49.0/src/cargo/core/source/source_id.rs:252:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/source/source_id.rs:257:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/source/source_id.rs:262:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/source/source_id.rs:262:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/core/source/source_id.rs:305:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/source/source_id.rs:310:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/core/source/source_id.rs:318:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -780,7 +767,6 @@ cargo-0.49.0/src/cargo/core/workspace.rs:849:5 clippy::missing_panics_doc "docs 
 cargo-0.49.0/src/cargo/core/workspace.rs:893:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/core/workspace.rs:906:24 clippy::redundant_else "redundant else block"
 cargo-0.49.0/src/cargo/core/workspace.rs:932:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/core/workspace.rs:932:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/lib.rs:177:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/lib.rs:177:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/lib.rs:180:36 clippy::redundant_closure_for_method_calls "redundant closure found"
@@ -808,7 +794,6 @@ cargo-0.49.0/src/cargo/ops/cargo_compile.rs:249:1 clippy::missing_errors_doc "do
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:258:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:267:16 clippy::needless_question_mark "Question mark operator is useless here"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:275:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/ops/cargo_compile.rs:275:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:275:1 clippy::too_many_lines "this function has too many lines (219/100)"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:468:9 clippy::default_trait_access "calling `std::collections::HashMap::default()` is more clear than this expression"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:548:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -824,7 +809,6 @@ cargo-0.49.0/src/cargo/ops/cargo_compile.rs:612:21 clippy::doc_markdown "you sho
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:613:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:618:9 clippy::similar_names "binding's name is too similar to existing binding"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:641:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/ops/cargo_compile.rs:652:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:652:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:655:50 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo-0.49.0/src/cargo/ops/cargo_compile.rs:673:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -879,6 +863,7 @@ cargo-0.49.0/src/cargo/ops/cargo_package.rs:394:5 clippy::items_after_statements
 cargo-0.49.0/src/cargo/ops/cargo_package.rs:425:61 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/ops/cargo_package.rs:459:5 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/ops/cargo_package.rs:66:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+cargo-0.49.0/src/cargo/ops/cargo_package.rs:69:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/ops/cargo_package.rs:93:20 clippy::if_not_else "unnecessary boolean `not` operation"
 cargo-0.49.0/src/cargo/ops/cargo_pkgid.rs:5:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/cargo_read_manifest.rs:14:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -893,7 +878,6 @@ cargo-0.49.0/src/cargo/ops/cargo_run.rs:37:16 clippy::redundant_else "redundant 
 cargo-0.49.0/src/cargo/ops/cargo_run.rs:53:9 clippy::if_not_else "unnecessary boolean `not` operation"
 cargo-0.49.0/src/cargo/ops/cargo_run.rs:65:16 clippy::redundant_else "redundant else block"
 cargo-0.49.0/src/cargo/ops/cargo_run.rs:9:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/ops/cargo_run.rs:9:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/ops/cargo_test.rs:16:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/cargo_test.rs:43:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/cargo_test.rs:84:17 clippy::similar_names "binding's name is too similar to existing binding"
@@ -904,7 +888,7 @@ cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:233:21 clippy::si
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:244:22 clippy::doc_markdown "you should put `PackageId` between ticks in the documentation"
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:244:63 clippy::doc_markdown "you should put `PackageId` between ticks in the documentation"
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:253:17 clippy::if_not_else "unnecessary boolean `not` operation"
-cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:370:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:370:5 clippy::unnecessary_wraps "this function's return value is unnecessary"
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:505:8 clippy::map_unwrap_or "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling `map_or_else(<g>, <f>)` instead"
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:525:10 clippy::needless_pass_by_value "this argument is passed by value, but not consumed in the function body"
 cargo-0.49.0/src/cargo/ops/common_for_install_and_uninstall.rs:542:27 clippy::redundant_closure_for_method_calls "redundant closure found"
@@ -967,7 +951,6 @@ cargo-0.49.0/src/cargo/ops/registry.rs:794:16 clippy::single_match_else "you see
 cargo-0.49.0/src/cargo/ops/registry.rs:828:14 clippy::doc_markdown "you should put `SourceId` between ticks in the documentation"
 cargo-0.49.0/src/cargo/ops/registry.rs:848:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/resolve.rs:199:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/ops/resolve.rs:199:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/ops/resolve.rs:199:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 cargo-0.49.0/src/cargo/ops/resolve.rs:199:1 clippy::too_many_lines "this function has too many lines (137/100)"
 cargo-0.49.0/src/cargo/ops/resolve.rs:241:28 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -997,6 +980,7 @@ cargo-0.49.0/src/cargo/ops/tree/mod.rs:21:1 clippy::struct_excessive_bools "more
 cargo-0.49.0/src/cargo/ops/tree/mod.rs:360:30 clippy::match_same_arms "this `match` has identical arm bodies"
 cargo-0.49.0/src/cargo/ops/tree/mod.rs:58:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/ops/vendor.rs:14:1 clippy::module_name_repetitions "item name starts with its containing module's name"
+cargo-0.49.0/src/cargo/ops/vendor.rs:215:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/ops/vendor.rs:21:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/ops/vendor.rs:21:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/ops/vendor.rs:314:34 clippy::match_same_arms "this `match` has identical arm bodies"
@@ -1017,7 +1001,6 @@ cargo-0.49.0/src/cargo/sources/directory.rs:14:1 clippy::module_name_repetitions
 cargo-0.49.0/src/cargo/sources/directory.rs:90:56 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/sources/git/source.rs:14:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 cargo-0.49.0/src/cargo/sources/git/source.rs:25:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/sources/git/source.rs:25:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/sources/git/source.rs:49:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/sources/git/source.rs:53:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/git/source.rs:53:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
@@ -1032,7 +1015,6 @@ cargo-0.49.0/src/cargo/sources/git/utils.rs:184:5 clippy::missing_errors_doc "do
 cargo-0.49.0/src/cargo/sources/git/utils.rs:188:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/git/utils.rs:242:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/git/utils.rs:253:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/sources/git/utils.rs:253:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/sources/git/utils.rs:262:13 clippy::if_not_else "unnecessary boolean `not` operation"
 cargo-0.49.0/src/cargo/sources/git/utils.rs:289:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/git/utils.rs:294:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -1062,7 +1044,6 @@ cargo-0.49.0/src/cargo/sources/path.rs:429:5 clippy::missing_errors_doc "docs fo
 cargo-0.49.0/src/cargo/sources/path.rs:460:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/sources/path.rs:473:43 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/sources/path.rs:482:43 clippy::redundant_closure_for_method_calls "redundant closure found"
-cargo-0.49.0/src/cargo/sources/path.rs:55:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/sources/path.rs:63:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/path.rs:77:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/sources/path.rs:98:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -1142,7 +1123,6 @@ cargo-0.49.0/src/cargo/util/config/mod.rs:100:71 clippy::doc_markdown "you shoul
 cargo-0.49.0/src/cargo/util/config/mod.rs:1049:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1064:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1090:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/util/config/mod.rs:1090:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1166:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1179:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1181:33 clippy::needless_question_mark "Question mark operator is useless here"
@@ -1157,7 +1137,6 @@ cargo-0.49.0/src/cargo/util/config/mod.rs:1225:5 clippy::missing_errors_doc "doc
 cargo-0.49.0/src/cargo/util/config/mod.rs:1229:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:124:1 clippy::struct_excessive_bools "more than 3 bools in a struct"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1254:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-cargo-0.49.0/src/cargo/util/config/mod.rs:1263:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1279:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1281:9 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
 cargo-0.49.0/src/cargo/util/config/mod.rs:1323:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
@@ -1224,7 +1203,6 @@ cargo-0.49.0/src/cargo/util/dependency_queue.rs:151:5 clippy::must_use_candidate
 cargo-0.49.0/src/cargo/util/dependency_queue.rs:156:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/dependency_queue.rs:168:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/dependency_queue.rs:46:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/util/dependency_queue.rs:66:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/dependency_queue.rs:91:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/util/diagnostic_server.rs:218:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 cargo-0.49.0/src/cargo/util/diagnostic_server.rs:230:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -1238,7 +1216,6 @@ cargo-0.49.0/src/cargo/util/errors.rs:143:5 clippy::must_use_candidate "this met
 cargo-0.49.0/src/cargo/util/errors.rs:150:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/errors.rs:15:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/errors.rs:237:5 clippy::pub_enum_variant_names "variant name ends with the enum's name"
-cargo-0.49.0/src/cargo/util/errors.rs:245:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/errors.rs:245:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/errors.rs:321:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/errors.rs:328:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -1263,12 +1240,11 @@ cargo-0.49.0/src/cargo/util/flock.rs:335:23 clippy::cast_possible_truncation "ca
 cargo-0.49.0/src/cargo/util/flock.rs:335:23 clippy::cast_sign_loss "casting `i64` to `u32` may lose the sign of the value"
 cargo-0.49.0/src/cargo/util/flock.rs:335:44 clippy::cast_possible_truncation "casting `i64` to `u32` may truncate the value"
 cargo-0.49.0/src/cargo/util/flock.rs:379:35 clippy::match_same_arms "this `match` has identical arm bodies"
-cargo-0.49.0/src/cargo/util/flock.rs:37:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/flock.rs:37:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/util/flock.rs:43:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/flock.rs:43:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/flock.rs:52:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/flock.rs:52:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+cargo-0.49.0/src/cargo/util/flock.rs:96:17 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/util/graph.rs:10:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/graph.rs:41:51 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/util/graph.rs:45:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -1331,8 +1307,8 @@ cargo-0.49.0/src/cargo/util/paths.rs:445:1 clippy::missing_errors_doc "docs for 
 cargo-0.49.0/src/cargo/util/paths.rs:459:45 clippy::redundant_closure_for_method_calls "redundant closure found"
 cargo-0.49.0/src/cargo/util/paths.rs:469:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/paths.rs:469:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+cargo-0.49.0/src/cargo/util/paths.rs:514:5 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/util/paths.rs:54:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
-cargo-0.49.0/src/cargo/util/paths.rs:61:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 cargo-0.49.0/src/cargo/util/paths.rs:61:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/paths.rs:63:19 clippy::option_if_let_else "use Option::map_or_else instead of an if let/else"
 cargo-0.49.0/src/cargo/util/paths.rs:88:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -1346,6 +1322,7 @@ cargo-0.49.0/src/cargo/util/process_builder.rs:185:5 clippy::missing_errors_doc 
 cargo-0.49.0/src/cargo/util/process_builder.rs:190:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/process_builder.rs:218:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/process_builder.rs:218:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+cargo-0.49.0/src/cargo/util/process_builder.rs:278:22 clippy::inconsistent_struct_constructor "inconsistent struct constructor"
 cargo-0.49.0/src/cargo/util/process_builder.rs:307:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 cargo-0.49.0/src/cargo/util/process_builder.rs:343:39 clippy::needless_pass_by_value "this argument is passed by value, but not consumed in the function body"
 cargo-0.49.0/src/cargo/util/progress.rs:122:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -1386,6 +1363,7 @@ cargo-0.49.0/src/cargo/util/rustc.rs:115:5 clippy::doc_markdown "you should put 
 cargo-0.49.0/src/cargo/util/rustc.rs:162:17 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
 cargo-0.49.0/src/cargo/util/rustc.rs:39:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/sha256.rs:10:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+cargo-0.49.0/src/cargo/util/sha256.rs:16:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 cargo-0.49.0/src/cargo/util/sha256.rs:20:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/sha256.rs:31:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 cargo-0.49.0/src/cargo/util/sha256.rs:40:24 clippy::unseparated_literal_suffix "integer type suffix should be separated by an underscore"
@@ -1451,6 +1429,7 @@ iron-0.6.1/src/iron.rs:133:5 clippy::missing_errors_doc "docs for function retur
 iron-0.6.1/src/iron.rs:143:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 iron-0.6.1/src/iron.rs:149:13 clippy::redundant_field_names "redundant field names in struct initialization"
 iron-0.6.1/src/iron.rs:167:49 clippy::similar_names "binding's name is too similar to existing binding"
+iron-0.6.1/src/iron.rs:196:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 iron-0.6.1/src/iron.rs:80:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 iron-0.6.1/src/iron.rs:85:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 iron-0.6.1/src/iron.rs:90:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -1991,18 +1970,15 @@ log-0.4.11/src/lib.rs:1118:5 clippy::must_use_candidate "this method could have 
 log-0.4.11/src/lib.rs:1177:1 clippy::inline_always "you have declared `#[inline(always)]` on `max_level`. This is usually a bad idea"
 log-0.4.11/src/lib.rs:1178:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
 log-0.4.11/src/lib.rs:1306:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-log-0.4.11/src/lib.rs:1306:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 log-0.4.11/src/lib.rs:1358:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
 log-0.4.11/src/lib.rs:1359:5 clippy::if_not_else "unnecessary `!=` operation"
 log-0.4.11/src/lib.rs:1407:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
-log-0.4.11/src/lib.rs:329:27 clippy::derive_hash_xor_eq "you are deriving `Hash` but have implemented `PartialEq` explicitly"
 log-0.4.11/src/lib.rs:356:1 clippy::expl_impl_clone_on_copy "you are implementing `Clone` explicitly on a `Copy` type"
 log-0.4.11/src/lib.rs:448:12 clippy::manual_range_contains "manual `RangeInclusive::contains` implementation"
 log-0.4.11/src/lib.rs:500:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 log-0.4.11/src/lib.rs:506:28 clippy::trivially_copy_pass_by_ref "this argument (8 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)"
 log-0.4.11/src/lib.rs:506:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 log-0.4.11/src/lib.rs:506:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-log-0.4.11/src/lib.rs:520:27 clippy::derive_hash_xor_eq "you are deriving `Hash` but have implemented `PartialEq` explicitly"
 log-0.4.11/src/lib.rs:538:1 clippy::expl_impl_clone_on_copy "you are implementing `Clone` explicitly on a `Copy` type"
 log-0.4.11/src/lib.rs:653:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 log-0.4.11/src/lib.rs:661:21 clippy::trivially_copy_pass_by_ref "this argument (8 byte) is passed by reference, but would be more efficient if passed by value (limit: 8 byte)"
@@ -2112,7 +2088,6 @@ puffin-02dd4a3/puffin/src/data.rs:137:24 clippy::match_same_arms "this `match` h
 puffin-02dd4a3/puffin/src/data.rs:177:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 puffin-02dd4a3/puffin/src/data.rs:211:21 clippy::cast_possible_truncation "casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers"
 puffin-02dd4a3/puffin/src/data.rs:24:5 clippy::wildcard_imports "usage of wildcard import"
-puffin-02dd4a3/puffin/src/data.rs:75:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 puffin-02dd4a3/puffin/src/lib.rs:113:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 puffin-02dd4a3/puffin/src/lib.rs:147:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 puffin-02dd4a3/puffin/src/lib.rs:147:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
@@ -2146,7 +2121,6 @@ quote-1.0.7/src/ext.rs:10:1 clippy::module_name_repetitions "item name ends with
 quote-1.0.7/src/ext.rs:7:5 clippy::doc_markdown "you should put `TokenStream` between ticks in the documentation"
 quote-1.0.7/src/ident_fragment.rs:13:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 quote-1.0.7/src/ident_fragment.rs:51:31 clippy::manual_strip "stripping a prefix manually"
-quote-1.0.7/src/runtime.rs:332:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 quote-1.0.7/src/runtime.rs:52:5 clippy::module_name_repetitions "item name ends with its containing module's name"
 quote-1.0.7/src/runtime.rs:63:5 clippy::module_name_repetitions "item name ends with its containing module's name"
 quote-1.0.7/src/runtime.rs:66:33 clippy::doc_markdown "you should put `DoesNotHaveIter` between ticks in the documentation"
@@ -2183,7 +2157,6 @@ rand-0.7.3/src/distributions/binomial.rs:233:32 clippy::cast_precision_loss "cas
 rand-0.7.3/src/distributions/binomial.rs:234:27 clippy::cast_precision_loss "casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
 rand-0.7.3/src/distributions/binomial.rs:251:22 clippy::cast_sign_loss "casting `i64` to `u64` may lose the sign of the value"
 rand-0.7.3/src/distributions/binomial.rs:255:9 clippy::if_not_else "unnecessary `!=` operation"
-rand-0.7.3/src/distributions/binomial.rs:35:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/binomial.rs:35:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/binomial.rs:45:17 clippy::cast_precision_loss "casting `i64` to `f64` causes a loss of precision (`i64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
 rand-0.7.3/src/distributions/binomial.rs:46:5 clippy::cast_possible_truncation "casting `f64` to `i64` may truncate the value"
@@ -2194,25 +2167,18 @@ rand-0.7.3/src/distributions/binomial.rs:81:21 clippy::cast_precision_loss "cast
 rand-0.7.3/src/distributions/binomial.rs:82:32 clippy::cast_possible_truncation "casting `u64` to `i32` may truncate the value"
 rand-0.7.3/src/distributions/binomial.rs:88:26 clippy::cast_precision_loss "casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
 rand-0.7.3/src/distributions/binomial.rs:99:21 clippy::cast_precision_loss "casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
-rand-0.7.3/src/distributions/cauchy.rs:33:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/cauchy.rs:33:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/dirichlet.rs:52:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/dirichlet.rs:64:32 clippy::unseparated_literal_suffix "float type suffix should be separated by an underscore"
 rand-0.7.3/src/distributions/dirichlet.rs:65:23 clippy::unseparated_literal_suffix "float type suffix should be separated by an underscore"
-rand-0.7.3/src/distributions/exponential.rs:76:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/exponential.rs:76:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/float.rs:73:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 rand-0.7.3/src/distributions/gamma.rs:13:5 clippy::enum_glob_use "usage of wildcard import for enum variants"
 rand-0.7.3/src/distributions/gamma.rs:14:5 clippy::enum_glob_use "usage of wildcard import for enum variants"
-rand-0.7.3/src/distributions/gamma.rs:189:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/gamma.rs:189:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-rand-0.7.3/src/distributions/gamma.rs:230:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/gamma.rs:230:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-rand-0.7.3/src/distributions/gamma.rs:259:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/gamma.rs:259:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-rand-0.7.3/src/distributions/gamma.rs:287:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/gamma.rs:287:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-rand-0.7.3/src/distributions/gamma.rs:90:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/gamma.rs:90:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/integer.rs:23:9 clippy::cast_possible_truncation "casting `u32` to `u8` may truncate the value"
 rand-0.7.3/src/distributions/integer.rs:30:9 clippy::cast_possible_truncation "casting `u32` to `u16` may truncate the value"
@@ -2226,7 +2192,6 @@ rand-0.7.3/src/distributions/normal.rs:47:25 clippy::unseparated_literal_suffix 
 rand-0.7.3/src/distributions/normal.rs:48:25 clippy::unseparated_literal_suffix "float type suffix should be separated by an underscore"
 rand-0.7.3/src/distributions/other.rs:89:9 clippy::cast_possible_wrap "casting `u32` to `i32` may wrap around the value"
 rand-0.7.3/src/distributions/pareto.rs:32:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
-rand-0.7.3/src/distributions/poisson.rs:35:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/distributions/poisson.rs:35:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand-0.7.3/src/distributions/poisson.rs:87:30 clippy::cast_possible_truncation "casting `f64` to `u64` may truncate the value"
 rand-0.7.3/src/distributions/poisson.rs:87:30 clippy::cast_sign_loss "casting `f64` to `u64` may lose the sign of the value"
@@ -2316,6 +2281,7 @@ rand-0.7.3/src/rngs/adapter/reseeding.rs:112:5 clippy::inline_always "you have d
 rand-0.7.3/src/rngs/adapter/reseeding.rs:117:5 clippy::inline_always "you have declared `#[inline(always)]` on `next_u64`. This is usually a bad idea"
 rand-0.7.3/src/rngs/adapter/reseeding.rs:198:13 clippy::cast_possible_wrap "casting `u64` to `i64` may wrap around the value"
 rand-0.7.3/src/rngs/adapter/reseeding.rs:231:9 clippy::cast_possible_wrap "casting `usize` to `isize` may wrap around the value"
+rand-0.7.3/src/rngs/adapter/reseeding.rs:249:13 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 rand-0.7.3/src/rngs/adapter/reseeding.rs:27:28 clippy::doc_markdown "you should put `ChaCha` between ticks in the documentation"
 rand-0.7.3/src/rngs/adapter/reseeding.rs:79:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 rand-0.7.3/src/rngs/entropy.rs:24:1 clippy::module_name_repetitions "item name starts with its containing module's name"
@@ -2344,7 +2310,6 @@ rand-0.7.3/src/seq/index.rs:139:13 clippy::enum_glob_use "usage of wildcard impo
 rand-0.7.3/src/seq/index.rs:159:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 rand-0.7.3/src/seq/index.rs:171:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
 rand-0.7.3/src/seq/index.rs:180:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
-rand-0.7.3/src/seq/index.rs:213:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand-0.7.3/src/seq/index.rs:223:18 clippy::cast_possible_truncation "casting `usize` to `u32` may truncate the value on targets with 64-bit wide pointers"
 rand-0.7.3/src/seq/index.rs:224:18 clippy::cast_possible_truncation "casting `usize` to `u32` may truncate the value on targets with 64-bit wide pointers"
 rand-0.7.3/src/seq/index.rs:233:25 clippy::cast_precision_loss "casting `u32` to `f32` causes a loss of precision (`u32` is 32 bits wide, but `f32`'s mantissa is only 23 bits wide)"
@@ -2369,14 +2334,12 @@ rand-0.7.3/src/seq/mod.rs:45:4 clippy::needless_doctest_main "needless `fn main`
 rand-0.7.3/src/seq/mod.rs:527:26 clippy::cast_possible_truncation "casting `usize` to `u32` may truncate the value on targets with 64-bit wide pointers"
 rand_core-0.6.0/src/block.rs:117:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 rand_core-0.6.0/src/block.rs:153:5 clippy::inline_always "you have declared `#[inline(always)]` on `index`. This is usually a bad idea"
-rand_core-0.6.0/src/block.rs:168:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand_core-0.6.0/src/block.rs:230:5 clippy::inline_always "you have declared `#[inline(always)]` on `try_fill_bytes`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:240:5 clippy::inline_always "you have declared `#[inline(always)]` on `from_seed`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:245:5 clippy::inline_always "you have declared `#[inline(always)]` on `seed_from_u64`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:250:5 clippy::inline_always "you have declared `#[inline(always)]` on `from_rng`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:280:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 rand_core-0.6.0/src/block.rs:319:5 clippy::inline_always "you have declared `#[inline(always)]` on `index`. This is usually a bad idea"
-rand_core-0.6.0/src/block.rs:335:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand_core-0.6.0/src/block.rs:405:5 clippy::inline_always "you have declared `#[inline(always)]` on `try_fill_bytes`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:415:5 clippy::inline_always "you have declared `#[inline(always)]` on `from_seed`. This is usually a bad idea"
 rand_core-0.6.0/src/block.rs:420:5 clippy::inline_always "you have declared `#[inline(always)]` on `seed_from_u64`. This is usually a bad idea"
@@ -2386,8 +2349,6 @@ rand_core-0.6.0/src/block.rs:68:1 clippy::module_name_repetitions "item name sta
 rand_core-0.6.0/src/error.rs:106:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand_core-0.6.0/src/error.rs:87:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand_core-0.6.0/src/error.rs:95:74 clippy::cast_possible_wrap "casting `u32` to `i32` may wrap around the value"
-rand_core-0.6.0/src/le.rs:18:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
-rand_core-0.6.0/src/le.rs:27:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 rand_core-0.6.0/src/lib.rs:179:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 rand_core-0.6.0/src/lib.rs:301:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
 rand_core-0.6.0/src/lib.rs:303:26 clippy::unreadable_literal "long literal lacking separators"
@@ -2433,6 +2394,7 @@ rayon-1.5.0/src/iter/chain.rs:58:17 clippy::shadow_unrelated "`b` is being shado
 rayon-1.5.0/src/iter/chain.rs:78:14 clippy::shadow_unrelated "`a` is being shadowed"
 rayon-1.5.0/src/iter/chain.rs:78:17 clippy::shadow_unrelated "`b` is being shadowed"
 rayon-1.5.0/src/iter/chain.rs:97:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
+rayon-1.5.0/src/iter/chunks.rs:29:9 clippy::inconsistent_struct_constructor "inconsistent struct constructor"
 rayon-1.5.0/src/iter/chunks.rs:3:5 clippy::wildcard_imports "usage of wildcard import"
 rayon-1.5.0/src/iter/chunks.rs:4:5 clippy::wildcard_imports "usage of wildcard import"
 rayon-1.5.0/src/iter/chunks.rs:77:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
@@ -2699,7 +2661,6 @@ regex-1.3.2/src/compile.rs:1040:38 clippy::cast_possible_truncation "casting `u1
 regex-1.3.2/src/compile.rs:1051:25 clippy::unseparated_literal_suffix "integer type suffix should be separated by an underscore"
 regex-1.3.2/src/compile.rs:1071:8 clippy::cast_lossless "casting `u32` to `u64` may become silently lossy if you later change the type"
 regex-1.3.2/src/compile.rs:112:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
-regex-1.3.2/src/compile.rs:112:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 regex-1.3.2/src/compile.rs:154:30 clippy::redundant_closure_for_method_calls "redundant closure found"
 regex-1.3.2/src/compile.rs:156:30 clippy::redundant_closure_for_method_calls "redundant closure found"
 regex-1.3.2/src/compile.rs:185:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
@@ -3114,10 +3075,6 @@ regex-1.3.2/src/utf8.rs:85:19 clippy::cast_lossless "casting `u8` to `u32` may b
 regex-1.3.2/src/utf8.rs:92:23 clippy::unusual_byte_groupings "digits of hex or binary literal not grouped by four"
 regex-1.3.2/src/utf8.rs:92:9 clippy::unusual_byte_groupings "digits of hex or binary literal not grouped by four"
 regex-1.3.2/src/utf8.rs:97:16 clippy::unusual_byte_groupings "digits of hex or binary literal not grouped by four"
-ripgrep-12.1.1//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:30:27 clippy::match_same_arms "this `match` has identical arm bodies"
-ripgrep-12.1.1//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:30:27 clippy::match_same_arms "this `match` has identical arm bodies"
-ripgrep-12.1.1//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:30:27 clippy::match_same_arms "this `match` has identical arm bodies"
-ripgrep-12.1.1//home/matthias/.rustup/toolchains/nightly-2021-02-03-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/panic.rs:30:27 clippy::match_same_arms "this `match` has identical arm bodies"
 ripgrep-12.1.1/build.rs:133:19 clippy::option_as_ref_deref "called `.as_ref().map(|x| &**x)` on an Option value. This can be done more directly by calling `githash.as_deref()` instead"
 ripgrep-12.1.1/build.rs:18:18 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
 ripgrep-12.1.1/build.rs:225:14 clippy::redundant_closure_for_method_calls "redundant closure found"
@@ -3171,6 +3128,7 @@ ripgrep-12.1.1/crates/core/args.rs:1524:5 clippy::unnecessary_wraps "this functi
 ripgrep-12.1.1/crates/core/args.rs:1635:14 clippy::doc_markdown "you should put `values_of_lossy` between ticks in the documentation"
 ripgrep-12.1.1/crates/core/args.rs:1693:41 clippy::redundant_closure_for_method_calls "redundant closure found"
 ripgrep-12.1.1/crates/core/args.rs:1770:17 clippy::cast_possible_truncation "casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers"
+ripgrep-12.1.1/crates/core/args.rs:1829:5 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 ripgrep-12.1.1/crates/core/args.rs:287:13 clippy::similar_names "binding's name is too similar to existing binding"
 ripgrep-12.1.1/crates/core/args.rs:33:1 clippy::single_component_path_imports "this import is redundant"
 ripgrep-12.1.1/crates/core/args.rs:34:1 clippy::single_component_path_imports "this import is redundant"
@@ -3189,6 +3147,8 @@ ripgrep-12.1.1/crates/core/config.rs:58:6 clippy::type_complexity "very complex 
 ripgrep-12.1.1/crates/core/config.rs:79:6 clippy::type_complexity "very complex type used. Consider factoring parts into `type` definitions"
 ripgrep-12.1.1/crates/core/logger.rs:11:30 clippy::doc_markdown "you should put `max_level` between ticks in the documentation"
 ripgrep-12.1.1/crates/core/logger.rs:15:16 clippy::redundant_static_lifetimes "constants have by default a `'static` lifetime"
+ripgrep-12.1.1/crates/core/main.rs:114:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+ripgrep-12.1.1/crates/core/main.rs:189:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 ripgrep-12.1.1/crates/core/main.rs:55:19 clippy::needless_pass_by_value "this argument is passed by value, but not consumed in the function body"
 ripgrep-12.1.1/crates/core/main.rs:56:9 clippy::enum_glob_use "usage of wildcard import for enum variants"
 ripgrep-12.1.1/crates/core/messages.rs:46:1 clippy::module_name_repetitions "item name ends with its containing module's name"
@@ -3216,19 +3176,18 @@ ripgrep-12.1.1/crates/core/search.rs:533:36 clippy::cast_lossless "casting `u32`
 ripgrep-12.1.1/crates/core/search.rs:533:5 clippy::cast_precision_loss "casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
 ripgrep-12.1.1/crates/core/subject.rs:20:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 ripgrep-12.1.1/crates/core/subject.rs:4:1 clippy::single_component_path_imports "this import is redundant"
+serde-1.0.118/src/de/mod.rs:1592:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:1616:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:1627:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:1638:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:1649:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:952:13 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+serde-1.0.118/src/de/mod.rs:986:13 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 syn-1.0.54/build.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
-syn-1.0.54/build.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: `cargo metadata` exited with an error:  Downloading crates ...\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
-syn-1.0.54/src/generics.rs:174:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 syn-1.0.54/src/lib.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
-syn-1.0.54/src/lib.rs:1:null clippy::multiple_crate_versions "could not read cargo metadata: `cargo metadata` exited with an error:  Downloading crates ...\n  Downloaded syn-test-suite v0.0.0\nerror: failed to verify the checksum of `syn-test-suite v0.0.0`"
 syn-1.0.54/src/lit.rs:1397:40 clippy::redundant_else "redundant else block"
 syn-1.0.54/src/lit.rs:1405:28 clippy::redundant_else "redundant else block"
 syn-1.0.54/src/lit.rs:1485:32 clippy::redundant_else "redundant else block"
-syn-1.0.54/src/lit.rs:343:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
-syn-1.0.54/src/lit.rs:437:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
-syn-1.0.54/src/lit.rs:916:9 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
-syn-1.0.54/src/token.rs:974:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
-syn-1.0.54/src/token.rs:996:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
 unicode-xid-0.2.1/src/lib.rs:1:null clippy::cargo_common_metadata "package `unicode-xid` is missing `package.categories` metadata"
 unicode-xid-0.2.1/src/lib.rs:56:11 clippy::upper_case_acronyms "name `UnicodeXID` contains a capitalized acronym"
 unicode-xid-0.2.1/src/lib.rs:57:64 clippy::doc_markdown "you should put `XID_Start` between ticks in the documentation"
@@ -3248,7 +3207,6 @@ xsv-0.13.0/src/cmd/cat.rs:7:16 clippy::redundant_static_lifetimes "statics have 
 xsv-0.13.0/src/cmd/count.rs:32:9 clippy::similar_names "binding's name is too similar to existing binding"
 xsv-0.13.0/src/cmd/count.rs:38:9 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
 xsv-0.13.0/src/cmd/count.rs:42:33 clippy::unseparated_literal_suffix "integer type suffix should be separated by an underscore"
-xsv-0.13.0/src/cmd/count.rs:50:5 clippy::unit_arg "passing a unit value to a function"
 xsv-0.13.0/src/cmd/count.rs:7:16 clippy::redundant_static_lifetimes "statics have by default a `'static` lifetime"
 xsv-0.13.0/src/cmd/fixlengths.rs:45:9 clippy::similar_names "binding's name is too similar to existing binding"
 xsv-0.13.0/src/cmd/fixlengths.rs:50:18 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -3324,7 +3282,7 @@ xsv-0.13.0/src/cmd/sort.rs:48:9 clippy::similar_names "binding's name is too sim
 xsv-0.13.0/src/cmd/sort.rs:91:14 clippy::explicit_into_iter_loop "it is more concise to loop over containers instead of using explicit iteration methods"
 xsv-0.13.0/src/cmd/split.rs:14:16 clippy::redundant_static_lifetimes "statics have by default a `'static` lifetime"
 xsv-0.13.0/src/cmd/split.rs:61:9 clippy::similar_names "binding's name is too similar to existing binding"
-xsv-0.13.0/src/cmd/split.rs:94:5 clippy::unnecessary_wraps "this function's return value is unnecessarily wrapped by `Result`"
+xsv-0.13.0/src/cmd/split.rs:94:5 clippy::unnecessary_wraps "this function's return value is unnecessary"
 xsv-0.13.0/src/cmd/split.rs:96:14 clippy::needless_pass_by_value "this argument is passed by value, but not consumed in the function body"
 xsv-0.13.0/src/cmd/split.rs:99:13 clippy::cast_possible_truncation "casting `u64` to `usize` may truncate the value on targets with 32-bit wide pointers"
 xsv-0.13.0/src/cmd/stats.rs:110:36 clippy::redundant_closure_for_method_calls "redundant closure found"
@@ -3438,14 +3396,12 @@ clippy::redundant_slicing 1
 clippy::same_item_push 1
 clippy::should_implement_trait 1
 clippy::stable_sort_primitive 1
-clippy::unit_arg 1
 clippy::unnecessary_lazy_evaluations 1
 clippy::unsafe_derive_deserialize 1
 clippy::used_underscore_binding 1
 clippy::verbose_bit_mask 1
 clippy::while_let_on_iterator 1
 clippy::comparison_to_empty 2
-clippy::derive_hash_xor_eq 2
 clippy::expl_impl_clone_on_copy 2
 clippy::filter_map 2
 clippy::len_zero 2
@@ -3463,10 +3419,10 @@ clippy::write_with_newline 2
 clippy::filter_map_next 3
 clippy::fn_params_excessive_bools 3
 clippy::if_same_then_else 3
+clippy::inconsistent_struct_constructor 3
 clippy::mut_mut 3
 clippy::ptr_arg 3
 clippy::zero_ptr 3
-clippy::let_underscore_drop 4
 clippy::too_many_arguments 4
 clippy::explicit_iter_loop 5
 clippy::field_reassign_with_default 5
@@ -3488,11 +3444,11 @@ clippy::range_plus_one 7
 clippy::invalid_upcast_comparisons 8
 clippy::needless_question_mark 8
 clippy::wrong_self_convention 8
+clippy::multiple_crate_versions 9
 clippy::manual_range_contains 10
 clippy::match_wildcard_for_single_variants 10
 clippy::missing_safety_doc 10
 clippy::needless_doctest_main 10
-clippy::multiple_crate_versions 11
 clippy::needless_lifetimes 12
 clippy::cargo_common_metadata 13
 clippy::shadow_unrelated 13
@@ -3511,6 +3467,7 @@ clippy::struct_excessive_bools 20
 clippy::redundant_static_lifetimes 21
 clippy::default_trait_access 22
 clippy::cast_lossless 23
+clippy::let_underscore_drop 23
 clippy::trivially_copy_pass_by_ref 26
 clippy::redundant_else 29
 clippy::too_many_lines 32
@@ -3519,11 +3476,11 @@ clippy::enum_glob_use 40
 clippy::unseparated_literal_suffix 41
 clippy::cast_precision_loss 44
 clippy::single_match_else 45
+clippy::missing_panics_doc 54
 clippy::inline_always 59
-clippy::match_same_arms 65
+clippy::match_same_arms 60
 clippy::similar_names 78
 clippy::cast_possible_truncation 95
-clippy::missing_panics_doc 108
 clippy::redundant_field_names 111
 clippy::redundant_closure_for_method_calls 135
 clippy::items_after_statements 139
@@ -3533,3 +3490,4 @@ clippy::doc_markdown 178
 clippy::missing_errors_doc 343
 clippy::unreadable_literal 365
 clippy::must_use_candidate 565
+ICEs:

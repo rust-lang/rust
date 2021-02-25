@@ -41,3 +41,15 @@ pub fn derive_foo(_input: TokenStream) -> TokenStream {
         }
     }
 }
+
+#[proc_macro_derive(StructAUseSelf)]
+pub fn derive_use_self(_input: TokenStream) -> proc_macro::TokenStream {
+    quote! {
+        struct A;
+        impl A {
+            fn new() -> A {
+                A
+            }
+        }
+    }
+}

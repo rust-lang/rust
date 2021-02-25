@@ -232,6 +232,14 @@ fn negative_cases(res_opt: Result<Option<u32>, String>, res_res: Result<Result<u
             };
         }
     }
+    let _: &dyn std::any::Any = match &Some(Some(1)) {
+        Some(e) => match e {
+            Some(e) => e,
+            e => e,
+        },
+        // else branch looks the same but the binding is different
+        e => e,
+    };
 }
 
 fn make<T>() -> T {

@@ -47,6 +47,7 @@ impl Mul for Bad {
 
 impl Clone for Bad {
     fn clone(&self) -> Self {
+        // FIXME: applicable here
         Bad
     }
 }
