@@ -4724,7 +4724,7 @@ mod tests {
         assert_eq!(vals[1], 2.0);
     }
 
-    #[simd_test(enable = "sse")]
+    #[simd_test(enable = "sse2")]
     unsafe fn test_mm_storeu_pd() {
         let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
