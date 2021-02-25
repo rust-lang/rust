@@ -172,6 +172,8 @@ impl CommandExt for process::Command {
     }
 
     fn exec(&mut self) -> io::Error {
+        // NOTE: This may *not* be safe to call after `libc::fork`, because it
+        // may allocate. That may be worth fixing at some point in the future.
         self.as_inner_mut().exec(sys::process::Stdio::Inherit)
     }
 
