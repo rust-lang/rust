@@ -443,9 +443,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
         else_opt: Option<&Expr>,
     ) -> hir::ExprKind<'hir> {
         let cond = self.lower_expr(cond);
-        let then = self.arena.alloc(self.lower_block_expr(then));
-        let els = else_opt.map(|els| self.lower_expr(els));
-        hir::ExprKind::If(cond, then, els)
+        let wrapped_cond = match cond.kind {
+            hir::ExprKind::Let(..) => cond,
+            _ => self.expr_drop_temps(cond.span, cond, AttrVec::new()),
+        };
+        let then_expr = self.lower_block_expr(then);
+        if let Some(rslt) = else_opt {
+            hir::ExprKind::If(
+                wrapped_cond,
+                self.arena.alloc(then_expr),
+                Some(self.lower_expr(rslt)),
+            )
+        } else {
+            hir::ExprKind::If(wrapped_cond, self.arena.alloc(then_expr), None)
+        }
     }
 
     fn lower_expr_if_let(

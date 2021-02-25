@@ -35,6 +35,47 @@ use std::convert::TryFrom;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    pub(crate) fn then_else_blocks(
+        &mut self,
+        mut block: BasicBlock,
+        expr: ExprRef<'tcx>,
+        source_info: SourceInfo,
+    ) -> (BasicBlock, BasicBlock) {
+        let this = self;
+        let expr = this.hir.mirror(expr);
+        let expr_span = expr.span;
+
+        match expr.kind {
+            ExprKind::Scope { region_scope, lint_level, value } => {
+                let region_scope = (region_scope, source_info);
+                let then_block;
+                let else_block = unpack!(
+                    then_block = this.in_scope(region_scope, lint_level, |this| {
+                        let (then_block, else_block) =
+                            this.then_else_blocks(block, value, source_info);
+                        then_block.and(else_block)
+                    })
+                );
+                (then_block, else_block)
+            }
+            ExprKind::Let { expr, pat } => {
+                // TODO: Use correct span.
+                this.lower_let(block, &expr, &pat, expr_span)
+            }
+            _ => {
+                let local_scope = Some(this.local_scope());
+                let place =
+                    unpack!(block = this.as_temp(block, local_scope, expr, Mutability::Mut));
+                let operand = Operand::Move(Place::from(place));
+                let then_block = this.cfg.start_new_block();
+                let else_block = this.cfg.start_new_block();
+                let term = TerminatorKind::if_(this.hir.tcx(), operand, then_block, else_block);
+                this.cfg.terminate(block, source_info, term);
+                (then_block, else_block)
+            }
+        }
+    }
+
     /// Generates MIR for a `match` expression.
     ///
     /// The MIR that we generate for a match looks like this.

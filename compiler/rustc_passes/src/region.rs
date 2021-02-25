@@ -233,14 +233,12 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
                 terminating(r.hir_id.local_id);
             }
 
-            hir::ExprKind::If(ref expr, ref then, Some(ref otherwise)) => {
-                terminating(expr.hir_id.local_id);
+            hir::ExprKind::If(_, ref then, Some(ref otherwise)) => {
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);
             }
 
-            hir::ExprKind::If(ref expr, ref then, None) => {
-                terminating(expr.hir_id.local_id);
+            hir::ExprKind::If(_, ref then, None) => {
                 terminating(then.hir_id.local_id);
             }
 
@@ -390,6 +388,24 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
                 yield_data.expr_and_pat_count = new_count;
             }
+        }
+
+        hir::ExprKind::If(ref cond, ref then, Some(ref otherwise)) => {
+            // FIXME(matthewjasper): ideally the scope we use here would only
+            // contain the condition and then expression. This works, but
+            // can result in some extra drop flags.
+            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.visit_expr(cond);
+            visitor.cx.var_parent = prev_cx.var_parent;
+            visitor.visit_expr(then);
+            visitor.visit_expr(otherwise);
+        }
+
+        hir::ExprKind::If(ref cond, ref then, None) => {
+            visitor.cx.var_parent = visitor.cx.parent;
+            visitor.visit_expr(cond);
+            visitor.cx.var_parent = prev_cx.var_parent;
+            visitor.visit_expr(then);
         }
 
         _ => intravisit::walk_expr(visitor, expr),
