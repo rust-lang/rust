@@ -134,15 +134,20 @@ impl TryFrom<ResolveRes> for Res {
     }
 }
 
-#[derive(Debug)]
 /// A link failed to resolve.
+#[derive(Debug)]
 enum ResolutionFailure<'a> {
     /// This resolved, but with the wrong namespace.
-    ///
-    /// `Namespace` is the namespace specified with a disambiguator
-    /// (as opposed to the actual namespace of the `Res`).
-    WrongNamespace(Res, /* disambiguated */ Namespace),
-    /// The link failed to resolve. `resolution_failure` should look to see if there's
+    WrongNamespace {
+        /// What the link resolved to.
+        res: Res,
+        /// The expected namespace for the resolution, determined from the link's disambiguator.
+        ///
+        /// E.g., for `[fn@Result]` this is [`Namespace::ValueNS`],
+        /// even though `Result`'s actual namespace is [`Namespace::TypeNS`].
+        expected_ns: Namespace,
+    },
+    /// The link failed to resolve. [`resolution_failure`] should look to see if there's
     /// a more helpful error that can be given.
     NotResolved {
         /// The scope the link was resolved in.
@@ -157,12 +162,11 @@ enum ResolutionFailure<'a> {
         unresolved: Cow<'a, str>,
     },
     /// This happens when rustdoc can't determine the parent scope for an item.
-    ///
     /// It is always a bug in rustdoc.
     NoParentItem,
     /// This link has malformed generic parameters; e.g., the angle brackets are unbalanced.
     MalformedGenerics(MalformedGenerics),
-    /// Used to communicate that this should be ignored, but shouldn't be reported to the user
+    /// Used to communicate that this should be ignored, but shouldn't be reported to the user.
     ///
     /// This happens when there is no disambiguator and one of the namespaces
     /// failed to resolve.
@@ -216,7 +220,7 @@ impl ResolutionFailure<'a> {
     /// Returns the full resolution of the link, if present.
     fn full_res(&self) -> Option<Res> {
         match self {
-            Self::WrongNamespace(res, _) => Some(*res),
+            Self::WrongNamespace { res, expected_ns: _ } => Some(*res),
             _ => None,
         }
     }
@@ -1308,20 +1312,20 @@ impl LinkCollector<'_, '_> {
         let extra_fragment = &key.extra_fragment;
 
         match disambiguator.map(Disambiguator::ns) {
-            Some(ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, ns, base_node, extra_fragment) {
+            Some(expected_ns @ (ValueNS | TypeNS)) => {
+                match self.resolve(path_str, expected_ns, base_node, extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
                         if kind.full_res().is_none() {
-                            let other_ns = if ns == ValueNS { TypeNS } else { ValueNS };
+                            let other_ns = if expected_ns == ValueNS { TypeNS } else { ValueNS };
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
                                 if let Some(res) =
                                     self.check_full_res(new_ns, path_str, base_node, extra_fragment)
                                 {
-                                    kind = ResolutionFailure::WrongNamespace(res, ns);
+                                    kind = ResolutionFailure::WrongNamespace { res, expected_ns };
                                     break;
                                 }
                             }
@@ -1396,7 +1400,7 @@ impl LinkCollector<'_, '_> {
                         // Constructors are picked up in the type namespace.
                         match res {
                             Res::Def(DefKind::Ctor(..), _) => {
-                                Err(ResolutionFailure::WrongNamespace(res, TypeNS))
+                                Err(ResolutionFailure::WrongNamespace { res, expected_ns: TypeNS })
                             }
                             _ => {
                                 match (fragment, extra_fragment.clone()) {
@@ -1457,7 +1461,8 @@ impl LinkCollector<'_, '_> {
                             if let Some(res) =
                                 self.check_full_res(ns, path_str, base_node, extra_fragment)
                             {
-                                kind = ResolutionFailure::WrongNamespace(res, MacroNS);
+                                kind =
+                                    ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
                                 break;
                             }
                         }
@@ -1889,7 +1894,7 @@ fn resolution_failure(
                 let note = match failure {
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
                     ResolutionFailure::Dummy => continue,
-                    ResolutionFailure::WrongNamespace(res, expected_ns) => {
+                    ResolutionFailure::WrongNamespace { res, expected_ns } => {
                         if let Res::Def(kind, _) = res {
                             let disambiguator = Disambiguator::Kind(kind);
                             suggest_disambiguator(
@@ -1910,7 +1915,7 @@ fn resolution_failure(
                     }
                     ResolutionFailure::NoParentItem => {
                         diag.level = rustc_errors::Level::Bug;
-                        "all intra doc links should have a parent item".to_owned()
+                        "all intra-doc links should have a parent item".to_owned()
                     }
                     ResolutionFailure::MalformedGenerics(variant) => match variant {
                         MalformedGenerics::UnbalancedAngleBrackets => {
