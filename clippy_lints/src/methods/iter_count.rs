@@ -1,7 +1,8 @@
 use crate::utils::{
-    derefs_to_slice, is_type_diagnostic_item, match_trait_method, method_chain_args, paths, snippet_with_applicability,
+    derefs_to_slice, is_type_diagnostic_item, match_type, method_chain_args, paths, snippet_with_applicability,
     span_lint_and_sugg,
 };
+
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -19,19 +20,29 @@ pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
     } else {
         return;
     };
+    let ty = cx.typeck_results().expr_ty(&iter_args[0]);
     if_chain! {
-        let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
-            Some("slice")
-        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
-            Some("Vec")
-        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
-            Some("VecDeque")
-        } else if match_trait_method(cx, expr, &paths::ITERATOR) {
-            Some("std::iter::Iterator")
+        let caller_type = if derefs_to_slice(cx, &iter_args[0], ty).is_some() {
+            "slice"
+        } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
+            "Vec"
+        } else if is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) {
+            "VecDeque"
+        } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) {
+            "HashSet"
+        } else if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
+            "HashMap"
+        } else if match_type(cx, ty, &paths::BTREEMAP) {
+            "BTreeMap"
+        } else if match_type(cx, ty, &paths::BTREESET) {
+            "BTreeSet"
+        } else if match_type(cx, ty, &paths::LINKED_LIST) {
+            "LinkedList"
+        } else if match_type(cx, ty, &paths::BINARY_HEAP) {
+            "BinaryHeap"
         } else {
-            None
+            return
         };
-        if let Some(caller_type) = caller_type;
         then {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
