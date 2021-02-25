@@ -135,8 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym::main {
-                    let def_id = it.hir_id.owner;
-                    let def_key = cx.tcx.hir().def_key(def_id);
+                    let def_key = cx.tcx.hir().def_key(it.def_id);
                     if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
                         return;
                     }
@@ -159,23 +158,20 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Use(..) => return,
         };
 
-        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, &it.attrs, it.span, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
-        let def_id = cx.tcx.hir().local_def_id(trait_item.hir_id);
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
         self.check_missing_docs_attrs(cx, &trait_item.attrs, trait_item.span, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-        match cx.tcx.associated_item(def_id).container {
+        match cx.tcx.associated_item(impl_item.def_id).container {
             ty::TraitContainer(_) => return,
             ty::ImplContainer(cid) => {
                 if cx.tcx.impl_trait_ref(cid).is_some() {
@@ -184,7 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             },
         }
 
-        let (article, desc) = cx.tcx.article_and_description(def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
         self.check_missing_docs_attrs(cx, &impl_item.attrs, impl_item.span, article, desc);
     }
 

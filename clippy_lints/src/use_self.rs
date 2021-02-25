@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 } else {
                     false
                 };
-                let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id));
+                let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
                 if should_check {
                     self.stack.push(StackItem::Check {
                         hir_id: hir_self_ty.hir_id,

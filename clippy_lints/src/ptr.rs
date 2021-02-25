@@ -124,19 +124,19 @@ declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, _, body_id) = item.kind {
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, body_id) = item.kind {
-            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id);
+            let parent_item = cx.tcx.hir().get_parent_item(item.hir_id());
             if let Some(Node::Item(it)) = cx.tcx.hir().find(parent_item) {
                 if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = it.kind {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.hir_id, Some(body_id));
+            check_fn(cx, &sig.decl, item.hir_id(), Some(body_id));
         }
     }
 
@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             } else {
                 None
             };
-            check_fn(cx, &sig.decl, item.hir_id, body_id);
+            check_fn(cx, &sig.decl, item.hir_id(), body_id);
         }
     }
 
