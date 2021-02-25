@@ -1,5 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/err.rs:10:21
+  --> $DIR/err.rs:11:21
    |
 LL | pub static C: u32 = 0 - 1;
    |                     ^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
