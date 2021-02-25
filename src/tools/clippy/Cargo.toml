@@ -37,8 +37,8 @@ tempfile = { version = "3.1.0", optional = true }
 
 [dev-dependencies]
 cargo_metadata = "0.12"
-compiletest_rs = { version = "0.5.0", features = ["tmp"] }
-tester = "0.7"
+compiletest_rs = { version = "0.6.0", features = ["tmp"] }
+tester = "0.9"
 clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
 serde = { version = "1.0", features = ["derive"] }
 derive-new = "0.5"

@@ -4,7 +4,7 @@
 
 #![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
 
-use crate::utils::{both, over};
+use crate::{both, over};
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
@@ -229,23 +229,20 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     match (l, r) {
         (ExternCrate(l), ExternCrate(r)) => l == r,
         (Use(l), Use(r)) => eq_use_tree(l, r),
-        (Static(lt, lm, le), Static(rt, rm, re)) => {
-            lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re)
-        }
-        (Const(ld, lt, le), Const(rd, rt, re)) => {
-            eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re)
-        }
+        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
+        (Const(ld, lt, le), Const(rd, rt, re)) => eq_defaultness(*ld, *rd) && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {
-            eq_defaultness(*ld, *rd)
-                && eq_fn_sig(lf, rf)
-                && eq_generics(lg, rg)
-                && both(lb, rb, |l, r| eq_block(l, r))
-        }
-        (Mod(lu, lmk), Mod(ru, rmk)) => lu == ru && match (lmk, rmk) {
-            (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) =>
-                linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind)),
-            (ModKind::Unloaded, ModKind::Unloaded) => true,
-            _ => false,
+            eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
+        },
+        (Mod(lu, lmk), Mod(ru, rmk)) => {
+            lu == ru
+                && match (lmk, rmk) {
+                    (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) => {
+                        linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind))
+                    },
+                    (ModKind::Unloaded, ModKind::Unloaded) => true,
+                    _ => false,
+                }
         },
         (ForeignMod(l), ForeignMod(r)) => {
             both(&l.abi, &r.abi, |l, r| eq_str_lit(l, r))
@@ -311,15 +308,10 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
 pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
     use ForeignItemKind::*;
     match (l, r) {
-        (Static(lt, lm, le), Static(rt, rm, re)) => {
-            lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re)
-        }
+        (Static(lt, lm, le), Static(rt, rm, re)) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le, re),
         (Fn(box FnKind(ld, lf, lg, lb)), Fn(box FnKind(rd, rf, rg, rb))) => {
-            eq_defaultness(*ld, *rd)
-                && eq_fn_sig(lf, rf)
-                && eq_generics(lg, rg)
-                && both(lb, rb, |l, r| eq_block(l, r))
-        }
+            eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
+        },
         (TyAlias(box TyAliasKind(ld, lg, lb, lt)), TyAlias(box TyAliasKind(rd, rg, rb, rt))) => {
             eq_defaultness(*ld, *rd)
                 && eq_generics(lg, rg)

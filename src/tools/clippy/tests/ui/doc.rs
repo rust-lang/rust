@@ -50,11 +50,23 @@ fn test_units() {
 }
 
 /// This tests allowed identifiers.
+/// KiB MiB GiB TiB PiB EiB
 /// DirectX
 /// ECMAScript
+/// GPLv2 GPLv3
+/// GitHub GitLab
+/// IPv4 IPv6
+/// ClojureScript CoffeeScript JavaScript PureScript TypeScript
+/// NaN NaNs
 /// OAuth GraphQL
+/// OCaml
+/// OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenDNS
 /// WebGL
+/// TensorFlow
+/// TrueType
+/// iOS macOS
 /// TeX LaTeX BibTeX BibLaTeX
+/// MinGW
 /// CamelCase (see also #2395)
 /// be_sure_we_got_to_the_end_of_it
 fn test_allowed() {

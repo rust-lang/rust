@@ -3,7 +3,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{is_expn_of, match_def_path, paths};
+use crate::{is_expn_of, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_hir as hir;

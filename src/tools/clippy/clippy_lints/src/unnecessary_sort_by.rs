@@ -212,10 +212,10 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintTrigger> {
             if !expr_borrows(cx, left_expr) {
                 return Some(LintTrigger::SortByKey(SortByKeyDetection {
                     vec_name,
-                    unstable,
                     closure_arg,
                     closure_body,
-                    reverse
+                    reverse,
+                    unstable,
                 }));
             }
         }
