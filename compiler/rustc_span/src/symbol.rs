@@ -981,6 +981,7 @@ symbols! {
         rustc_layout,
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,
+        rustc_legacy_const_generics,
         rustc_macro_transparency,
         rustc_mir,
         rustc_nonnull_optimization_guaranteed,

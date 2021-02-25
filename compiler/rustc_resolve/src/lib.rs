@@ -29,6 +29,7 @@ use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
+use rustc_ast::{Expr, ExprKind, LitKind};
 use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
@@ -995,6 +996,8 @@ pub struct Resolver<'a> {
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
+
+    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1074,6 +1077,10 @@ impl ResolverAstLowering for Resolver<'_> {
 
     fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
+    }
+
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        self.legacy_const_generic_args(expr)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -1316,6 +1323,7 @@ impl<'a> Resolver<'a> {
             invocation_parents,
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
+            legacy_const_generic_args: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -3307,6 +3315,61 @@ impl<'a> Resolver<'a> {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
+    }
+
+    /// Checks if an expression refers to a function marked with
+    /// `#[rustc_legacy_const_generics]` and returns the argument index list
+    /// from the attribute.
+    pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
+
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
+
+            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
+                }
+
+                let parse_attrs = || {
+                    let attrs = self.cstore().item_attrs(def_id, self.session);
+                    let attr = attrs
+                        .iter()
+                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let mut ret = vec![];
+                    for meta in attr.meta_item_list()? {
+                        match meta.literal()?.kind {
+                            LitKind::Int(a, _) => {
+                                ret.push(a as usize);
+                            }
+                            _ => panic!("invalid arg index"),
+                        }
+                    }
+                    Some(ret)
+                };
+
+                // Cache the lookup to avoid parsing attributes for an iterm
+                // multiple times.
+                let ret = parse_attrs();
+                self.legacy_const_generic_args.insert(def_id, ret.clone());
+                return ret;
+            }
+        }
+        None
     }
 }
 

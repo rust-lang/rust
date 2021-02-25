@@ -175,6 +175,8 @@ pub trait ResolverAstLowering {
 
     fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
 
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
+
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 

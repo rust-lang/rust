@@ -9,7 +9,9 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
+use rustc_hir::definitions::DefPathData;
 use rustc_session::parse::feature_err;
+use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{hygiene::ForLoopLoc, DUMMY_SP};
@@ -42,8 +44,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(ref f, ref args) => {
-                    let f = self.lower_expr(f);
-                    hir::ExprKind::Call(f, self.lower_exprs(args))
+                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
+                        self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
+                    } else {
+                        let f = self.lower_expr(f);
+                        hir::ExprKind::Call(f, self.lower_exprs(args))
+                    }
                 }
                 ExprKind::MethodCall(ref seg, ref args, span) => {
                     let hir_seg = self.arena.alloc(self.lower_path_segment(
@@ -290,6 +296,54 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             span: b.span,
         }
+    }
+
+    fn lower_legacy_const_generics(
+        &mut self,
+        mut f: Expr,
+        args: Vec<AstP<Expr>>,
+        legacy_args_idx: &[usize],
+    ) -> hir::ExprKind<'hir> {
+        let path = match f.kind {
+            ExprKind::Path(None, ref mut path) => path,
+            _ => unreachable!(),
+        };
+
+        // Split the arguments into const generics and normal arguments
+        let mut real_args = vec![];
+        let mut generic_args = vec![];
+        for (idx, arg) in args.into_iter().enumerate() {
+            if legacy_args_idx.contains(&idx) {
+                let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                let node_id = self.resolver.next_node_id();
+
+                // Add a definition for the in-band const def.
+                self.resolver.create_def(
+                    parent_def_id,
+                    node_id,
+                    DefPathData::AnonConst,
+                    ExpnId::root(),
+                    arg.span,
+                );
+
+                let anon_const = AnonConst { id: node_id, value: arg };
+                generic_args.push(AngleBracketedArg::Arg(GenericArg::Const(anon_const)));
+            } else {
+                real_args.push(arg);
+            }
+        }
+
+        // Add generic args to the last element of the path.
+        let last_segment = path.segments.last_mut().unwrap();
+        assert!(last_segment.args.is_none());
+        last_segment.args = Some(AstP(GenericArgs::AngleBracketed(AngleBracketedArgs {
+            span: DUMMY_SP,
+            args: generic_args,
+        })));
+
+        // Now lower everything as normal.
+        let f = self.lower_expr(&f);
+        hir::ExprKind::Call(f, self.lower_exprs(&real_args))
     }
 
     /// Emit an error and lower `ast::ExprKind::Let(pat, scrutinee)` into:

@@ -91,6 +91,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::naked) {
                 self.check_naked(hir_id, attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_legacy_const_generics) {
+                self.check_rustc_legacy_const_generics(&attr, span, target, item)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -733,6 +735,105 @@ impl CheckAttrVisitor<'tcx> {
                     }
                 } else {
                     bug!("should be a function item");
+                }
+            } else {
+                invalid_args.push(meta.span());
+            }
+        }
+
+        if !invalid_args.is_empty() {
+            self.tcx
+                .sess
+                .struct_span_err(invalid_args, "arguments should be non-negative integers")
+                .emit();
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
+    fn check_rustc_legacy_const_generics(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) -> bool {
+        let is_function = matches!(target, Target::Fn | Target::Method(..));
+        if !is_function {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a function")
+                .span_label(*span, "not a function")
+                .emit();
+            return false;
+        }
+
+        let list = match attr.meta_item_list() {
+            // The attribute form is validated on AST.
+            None => return false,
+            Some(it) => it,
+        };
+
+        let (decl, generics) = match item {
+            Some(ItemLike::Item(Item {
+                kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
+                ..
+            })) => (decl, generics),
+            _ => bug!("should be a function item"),
+        };
+
+        for param in generics.params {
+            match param.kind {
+                hir::GenericParamKind::Const { .. } => {}
+                _ => {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            attr.span,
+                            "#[rustc_legacy_const_generics] functions must \
+                             only have const generics",
+                        )
+                        .span_label(param.span, "non-const generic parameter")
+                        .emit();
+                    return false;
+                }
+            }
+        }
+
+        if list.len() != generics.params.len() {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    attr.span,
+                    "#[rustc_legacy_const_generics] must have one index for each generic parameter",
+                )
+                .span_label(generics.span, "generic parameters")
+                .emit();
+            return false;
+        }
+
+        let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
+        let mut invalid_args = vec![];
+        for meta in list {
+            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
+                if *val >= arg_count {
+                    let span = meta.span();
+                    self.tcx
+                        .sess
+                        .struct_span_err(span, "index exceeds number of arguments")
+                        .span_label(
+                            span,
+                            format!(
+                                "there {} only {} argument{}",
+                                if arg_count != 1 { "are" } else { "is" },
+                                arg_count,
+                                pluralize!(arg_count)
+                            ),
+                        )
+                        .emit();
+                    return false;
                 }
             } else {
                 invalid_args.push(meta.span());
