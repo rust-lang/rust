@@ -1,9 +1,10 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-use crate::io::{self, ErrorKind, Read};
+use crate::io::{self, Read};
 use crate::mem;
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
+use crate::sys::unsupported;
 use crate::sys_common::AsInner;
 
 #[derive(Debug)]
@@ -46,7 +47,7 @@ impl FileDesc {
         self.duplicate_path(&[])
     }
     pub fn duplicate_path(&self, _path: &[u8]) -> io::Result<FileDesc> {
-        Err(io::Error::new_const(ErrorKind::Other, &"duplicate isn't supported"))
+        unsupported()
     }
 
     pub fn nonblocking(&self) -> io::Result<bool> {
@@ -54,11 +55,11 @@ impl FileDesc {
     }
 
     pub fn set_cloexec(&self) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"cloexec isn't supported"))
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _nonblocking: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"nonblocking isn't supported"))
+        unsupported()
     }
 }
 
