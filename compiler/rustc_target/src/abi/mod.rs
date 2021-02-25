@@ -222,6 +222,7 @@ pub trait HasDataLayout {
 }
 
 impl HasDataLayout for TargetDataLayout {
+    #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self
     }

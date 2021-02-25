@@ -176,7 +176,10 @@ impl<Tag> MemPlace<Tag> {
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
         Ok(MemPlace {
-            ptr: self.ptr.ptr_offset(offset, cx)?,
+            ptr: match self.ptr.ptr_offset(offset, cx) {
+                Ok(ptr) => ptr,
+                Err(e) => return Err(e),
+            },
             align: self.align.restrict_for_offset(offset),
             meta,
         })
@@ -207,7 +210,13 @@ impl<'tcx, Tag: Copy> MPlaceTy<'tcx, Tag> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        Ok(MPlaceTy { mplace: self.mplace.offset(offset, meta, cx)?, layout })
+        Ok(MPlaceTy {
+            mplace: match self.mplace.offset(offset, meta, cx) {
+                Ok(mplace) => mplace,
+                Err(e) => return Err(e),
+            },
+            layout,
+        })
     }
 
     #[inline]
