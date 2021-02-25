@@ -543,12 +543,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// error which will report the first range of bytes which is uninitialized.
     fn check_init(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.is_init(ptr, size).or_else(|idx_range| {
-            throw_ub!(InvalidUninitBytes(Some(Box::new(UninitBytesAccess {
+            throw_ub!(InvalidUninitBytes(Some(UninitBytesAccess {
                 access_ptr: ptr.erase_tag(),
                 access_size: size,
                 uninit_ptr: Pointer::new(ptr.alloc_id, idx_range.start),
                 uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
-            }))))
+            })))
         })
     }
 
