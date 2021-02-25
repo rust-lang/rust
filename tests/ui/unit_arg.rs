@@ -31,6 +31,26 @@ fn baz<T: Debug>(t: T) {
     foo(t);
 }
 
+trait Tr {
+    type Args;
+    fn do_it(args: Self::Args);
+}
+
+struct A;
+impl Tr for A {
+    type Args = ();
+    fn do_it(_: Self::Args) {}
+}
+
+struct B;
+impl Tr for B {
+    type Args = <A as Tr>::Args;
+
+    fn do_it(args: Self::Args) {
+        A::do_it(args)
+    }
+}
+
 fn bad() {
     foo({
         1;
@@ -78,6 +98,7 @@ fn ok() {
     let named_unit_arg = ();
     foo(named_unit_arg);
     baz(());
+    B::do_it(());
 }
 
 fn question_mark() -> Result<(), ()> {
