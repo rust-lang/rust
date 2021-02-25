@@ -30,6 +30,7 @@ use crate::mem::transmute;
 use crate::num;
 use crate::str;
 use crate::string;
+use crate::sync::Arc;
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`]. Errors must describe
@@ -488,6 +489,27 @@ impl<T: Error> Error for Box<T> {
 
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
+    #[allow(deprecated, deprecated_in_future)]
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    #[allow(deprecated)]
+    fn cause(&self) -> Option<&dyn Error> {
+        Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        Error::backtrace(&**self)
+    }
+}
+
+#[stable(feature = "arc_error", since = "1.52.0")]
+impl<T: Error + ?Sized> Error for Arc<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         Error::description(&**self)
