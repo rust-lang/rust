@@ -2326,8 +2326,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(expr));
-                let const_args = self.legacy_const_generic_args(callee).unwrap_or(Vec::new());
+                let const_args = self.r.legacy_const_generic_args(callee).unwrap_or(Vec::new());
                 for (idx, argument) in arguments.iter().enumerate() {
+                    // Constant arguments need to be treated as AnonConst since
+                    // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
                         self.with_constant_rib(
                             IsRepeatExpr::No,
@@ -2417,42 +2419,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ident.span.ctxt(),
             Some((ident.name, ns)),
         )
-    }
-
-    /// Checks if an expression refers to a function marked with
-    /// `#[rustc_legacy_const_generics]` and returns the argument index list
-    /// from the attribute.
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
-            if let Some(partial_res) = self.r.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() != 0 {
-                    return None;
-                }
-                if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
-                    if def_id.is_local() {
-                        return None;
-                    }
-                    let attrs = self.r.cstore().item_attrs(def_id, self.r.session);
-                    let attr = attrs
-                        .iter()
-                        .find(|a| self.r.session.check_name(a, sym::rustc_legacy_const_generics))?;
-                    let mut ret = vec![];
-                    for meta in attr.meta_item_list()? {
-                        match meta.literal()?.kind {
-                            LitKind::Int(a, _) => {
-                                ret.push(a as usize);
-                            }
-                            _ => panic!("invalid arg index"),
-                        }
-                    }
-                    return Some(ret);
-                }
-            }
-        }
-        None
     }
 }
 

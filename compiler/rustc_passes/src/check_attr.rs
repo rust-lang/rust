@@ -789,6 +789,23 @@ impl CheckAttrVisitor<'tcx> {
                 })) = item
                 {
                     let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
+                    for param in generics.params {
+                        match param.kind {
+                            hir::GenericParamKind::Const { .. } => {}
+                            _ => {
+                                self.tcx
+                                    .sess
+                                    .struct_span_err(
+                                        meta.span(),
+                                        "#[rustc_legacy_const_generics] functions must \
+                                         only have const generics",
+                                    )
+                                    .span_label(param.span, "non-const generic parameter")
+                                    .emit();
+                                break;
+                            }
+                        }
+                    }
                     if *val >= arg_count {
                         let span = meta.span();
                         self.tcx

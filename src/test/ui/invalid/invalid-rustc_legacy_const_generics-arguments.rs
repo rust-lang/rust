@@ -26,6 +26,9 @@ extern {
     fn foo7(_: u8);
 }
 
+#[rustc_legacy_const_generics(0)] //~ ERROR #[rustc_legacy_const_generics] functions must only have
+fn foo3<X>() {}
+
 #[rustc_legacy_const_generics] //~ ERROR malformed `rustc_legacy_const_generics` attribute
 fn bar1() {}
 

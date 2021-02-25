@@ -29,6 +29,7 @@ use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
+use rustc_ast::{Expr, ExprKind, LitKind};
 use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
@@ -1076,8 +1077,8 @@ impl ResolverAstLowering for Resolver<'_> {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
 
-    fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
-        self.cstore().item_attrs(def_id, sess)
+    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+        self.legacy_const_generic_args(expr)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -3311,6 +3312,49 @@ impl<'a> Resolver<'a> {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
+    }
+
+    /// Checks if an expression refers to a function marked with
+    /// `#[rustc_legacy_const_generics]` and returns the argument index list
+    /// from the attribute.
+    pub fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
+
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
+
+            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                let attrs = self.cstore().item_attrs(def_id, self.session);
+                let attr = attrs
+                    .iter()
+                    .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                let mut ret = vec![];
+                for meta in attr.meta_item_list()? {
+                    match meta.literal()?.kind {
+                        LitKind::Int(a, _) => {
+                            ret.push(a as usize);
+                        }
+                        _ => panic!("invalid arg index"),
+                    }
+                }
+                return Some(ret);
+            }
+        }
+        None
     }
 }
 

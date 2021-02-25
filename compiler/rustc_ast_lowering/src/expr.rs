@@ -44,7 +44,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
                 ExprKind::Call(ref f, ref args) => {
-                    if let Some(legacy_args) = self.legacy_const_generic_args(f) {
+                    if let Some(legacy_args) = self.resolver.legacy_const_generic_args(f) {
                         self.lower_legacy_const_generics((**f).clone(), args.clone(), &legacy_args)
                     } else {
                         let f = self.lower_expr(f);
@@ -298,39 +298,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    /// Checks if an expression refers to a function marked with
-    /// `#[rustc_legacy_const_generics]` and returns the argument index list
-    /// from the attribute.
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
-            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
-                if partial_res.unresolved_segments() != 0 {
-                    return None;
-                }
-                if let Res::Def(hir::def::DefKind::Fn, def_id) = partial_res.base_res() {
-                    let attrs = self.item_attrs(def_id);
-                    let attr = attrs
-                        .iter()
-                        .find(|a| self.sess.check_name(a, sym::rustc_legacy_const_generics))?;
-                    let mut ret = vec![];
-                    for meta in attr.meta_item_list()? {
-                        match meta.literal()?.kind {
-                            LitKind::Int(a, _) => {
-                                ret.push(a as usize);
-                            }
-                            _ => panic!("invalid arg index"),
-                        }
-                    }
-                    return Some(ret);
-                }
-            }
-        }
-        None
-    }
-
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
@@ -366,12 +333,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
-        // Add generic args to the last element of the path
-        path.segments.last_mut().unwrap().args =
-            Some(AstP(GenericArgs::AngleBracketed(AngleBracketedArgs {
-                span: DUMMY_SP,
-                args: generic_args,
-            })));
+        // Add generic args to the last element of the path.
+        let last_segment = path.segments.last_mut().unwrap();
+        assert!(last_segment.args.is_none());
+        last_segment.args = Some(AstP(GenericArgs::AngleBracketed(AngleBracketedArgs {
+            span: DUMMY_SP,
+            args: generic_args,
+        })));
 
         // Now lower everything as normal.
         let f = self.lower_expr(&f);
