@@ -996,6 +996,8 @@ pub struct Resolver<'a> {
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
+
+    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1077,7 +1079,7 @@ impl ResolverAstLowering for Resolver<'_> {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
     }
 
-    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
         self.legacy_const_generic_args(expr)
     }
 
@@ -1321,6 +1323,7 @@ impl<'a> Resolver<'a> {
             invocation_parents,
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
+            legacy_const_generic_args: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -3317,7 +3320,7 @@ impl<'a> Resolver<'a> {
     /// Checks if an expression refers to a function marked with
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
-    pub fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
+    pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
             // has generic arguments.
@@ -3338,20 +3341,32 @@ impl<'a> Resolver<'a> {
                     return None;
                 }
 
-                let attrs = self.cstore().item_attrs(def_id, self.session);
-                let attr = attrs
-                    .iter()
-                    .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
-                let mut ret = vec![];
-                for meta in attr.meta_item_list()? {
-                    match meta.literal()?.kind {
-                        LitKind::Int(a, _) => {
-                            ret.push(a as usize);
-                        }
-                        _ => panic!("invalid arg index"),
-                    }
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
                 }
-                return Some(ret);
+
+                let parse_attrs = || {
+                    let attrs = self.cstore().item_attrs(def_id, self.session);
+                    let attr = attrs
+                        .iter()
+                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let mut ret = vec![];
+                    for meta in attr.meta_item_list()? {
+                        match meta.literal()?.kind {
+                            LitKind::Int(a, _) => {
+                                ret.push(a as usize);
+                            }
+                            _ => panic!("invalid arg index"),
+                        }
+                    }
+                    Some(ret)
+                };
+
+                // Cache the lookup to avoid parsing attributes for an iterm
+                // multiple times.
+                let ret = parse_attrs();
+                self.legacy_const_generic_args.insert(def_id, ret.clone());
+                return ret;
             }
         }
         None
