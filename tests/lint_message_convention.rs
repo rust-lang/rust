@@ -60,6 +60,11 @@ impl Message {
 
 #[test]
 fn lint_message_convention() {
+    // disable the test inside the rustc test suite
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        return;
+    }
+
     // make sure that lint messages:
     // * are not capitalized
     // * don't have puncuation at the end of the last sentence
