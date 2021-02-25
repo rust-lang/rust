@@ -160,21 +160,21 @@ pub struct Pick<'tcx> {
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
 
-    // Indicates that the source expression should be autoderef'd N times
-    //
-    // A = expr | *expr | **expr | ...
+    /// Indicates that the source expression should be autoderef'd N times
+    ///
+    ///     A = expr | *expr | **expr | ...
     pub autoderefs: usize,
 
-    // Indicates that an autoref is applied after the optional autoderefs
-    //
-    // B = A | &A | &mut A
+    /// Indicates that an autoref is applied after the optional autoderefs
+    ///
+    ///     B = A | &A | &mut A
     pub autoref: Option<hir::Mutability>,
 
-    // Indicates that the source expression should be "unsized" to a
-    // target type. This should probably eventually go away in favor
-    // of just coercing method receivers.
-    //
-    // C = B | unsize(B)
+    /// Indicates that the source expression should be "unsized" to a
+    /// target type. This should probably eventually go away in favor
+    /// of just coercing method receivers.
+    ///
+    ///     C = B | unsize(B)
     pub unsize: Option<Ty<'tcx>>,
 }
 
@@ -1091,19 +1091,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .next()
     }
 
+    /// For each type `T` in the step list, this attempts to find a method where
+    /// the (transformed) self type is exactly `T`. We do however do one
+    /// transformation on the adjustment: if we are passing a region pointer in,
+    /// we will potentially *reborrow* it to a shorter lifetime. This allows us
+    /// to transparently pass `&mut` pointers, in particular, without consuming
+    /// them for their entire lifetime.
     fn pick_by_value_method(
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Option<PickResult<'tcx>> {
-        //! For each type `T` in the step list, this attempts to find a
-        //! method where the (transformed) self type is exactly `T`. We
-        //! do however do one transformation on the adjustment: if we
-        //! are passing a region pointer in, we will potentially
-        //! *reborrow* it to a shorter lifetime. This allows us to
-        //! transparently pass `&mut` pointers, in particular, without
-        //! consuming them for their entire lifetime.
-
         if step.unsize {
             return None;
         }
