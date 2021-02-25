@@ -126,7 +126,7 @@ define_Conf! {
         "NaN", "NaNs",
         "OAuth", "GraphQL",
         "OCaml",
-        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap",
+        "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS",
         "WebGL",
         "TensorFlow",
         "TrueType",
