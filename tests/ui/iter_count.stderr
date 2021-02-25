@@ -1,0 +1,52 @@
+error: called `.iter().count()` on a `Vec`
+  --> $DIR/iter_count.rs:36:23
+   |
+LL |         let bad_vec = some_vec.iter().count();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec.len()`
+   |
+   = note: `-D clippy::iter-count` implied by `-D warnings`
+
+error: called `.iter().count()` on a `slice`
+  --> $DIR/iter_count.rs:37:26
+   |
+LL |         let bad_slice = &some_vec[..].iter().count();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec[..].len()`
+
+error: called `.iter().count()` on a `slice`
+  --> $DIR/iter_count.rs:38:31
+   |
+LL |         let bad_boxed_slice = boxed_slice.iter().count();
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `boxed_slice.len()`
+
+error: called `.iter().count()` on a `VecDeque`
+  --> $DIR/iter_count.rs:39:29
+   |
+LL |         let bad_vec_deque = some_vec_deque.iter().count();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec_deque.len()`
+
+error: called `.iter().count()` on a `std::iter::Iterator`
+  --> $DIR/iter_count.rs:40:28
+   |
+LL |         let bad_hash_set = some_hash_set.iter().count();
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_hash_set.len()`
+
+error: called `.iter_mut().count()` on a `Vec`
+  --> $DIR/iter_count.rs:45:23
+   |
+LL |         let bad_vec = some_vec.iter_mut().count();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec.len()`
+
+error: called `.iter_mut().count()` on a `slice`
+  --> $DIR/iter_count.rs:48:26
+   |
+LL |         let bad_slice = &some_vec[..].iter_mut().count();
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec[..].len()`
+
+error: called `.iter_mut().count()` on a `VecDeque`
+  --> $DIR/iter_count.rs:51:29
+   |
+LL |         let bad_vec_deque = some_vec_deque.iter_mut().count();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `some_vec_deque.len()`
+
+error: aborting due to 8 previous errors
+

@@ -1540,6 +1540,32 @@ declare_clippy_lint! {
     "implicitly cloning a value by invoking a function on its dereferenced type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `.iter().count()`.
+    ///
+    /// **Why is this bad?** `.len()` is more efficient and more
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.iter().count();
+    /// let _ = &some_vec[..].iter().count();
+    ///
+    /// // Good
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.len();
+    /// let _ = &some_vec[..].len();
+    /// ```
+    pub ITER_COUNT,
+    complexity,
+    "replace `.iter().count()` with `.len()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1585,6 +1611,7 @@ impl_lint_pass!(Methods => [
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NEXT_SLICE,
+    ITER_COUNT,
     ITER_NTH,
     ITER_NTH_ZERO,
     BYTES_NTH,
@@ -1664,6 +1691,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
+            ["count", "iter"] => lint_iter_count(cx, expr, &arg_lists[1], false),
+            ["count", "iter_mut"] => lint_iter_count(cx, expr, &arg_lists[1], true),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
@@ -2629,6 +2658,39 @@ fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_
             ),
             applicability,
         );
+    }
+}
+
+fn lint_iter_count<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>], is_mut: bool) {
+    let mut_str = if is_mut { "_mut" } else { "" };
+    if_chain! {
+        let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
+            Some("slice")
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
+            Some("Vec")
+        } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
+            Some("VecDeque")
+        } else if match_trait_method(cx, expr, &paths::ITERATOR) {
+            Some("std::iter::Iterator")
+        } else {
+            None
+        };
+        if let Some(caller_type) = caller_type;
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                cx,
+                ITER_COUNT,
+                expr.span,
+                &format!("called `.iter{}().count()` on a `{}`", mut_str, caller_type),
+                "try",
+                format!(
+                    "{}.len()",
+                    snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
+                ),
+                applicability,
+            );
+        }
     }
 }
 
