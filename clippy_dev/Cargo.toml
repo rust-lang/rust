@@ -19,8 +19,9 @@ shell-escape = "0.1"
 tar = { version = "0.4.30", optional = true }
 toml = { version = "0.5", optional = true }
 ureq = { version = "2.0.0-rc3", optional = true }
+rayon = { version = "1.5.0", optional = true }
 walkdir = "2"
 
 [features]
-lintcheck = ["flate2", "serde_json", "tar", "toml", "ureq", "serde", "fs_extra"]
+lintcheck = ["flate2", "serde_json", "tar", "toml", "ureq", "serde", "fs_extra", "rayon"]
 deny-warnings = []

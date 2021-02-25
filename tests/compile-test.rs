@@ -66,8 +66,8 @@ fn third_party_crates() -> String {
 fn default_config() -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
-    if let Ok(name) = env::var("TESTNAME") {
-        config.filter = Some(name);
+    if let Ok(filters) = env::var("TESTNAME") {
+        config.filters = filters.split(',').map(std::string::ToString::to_string).collect();
     }
 
     if let Some(path) = option_env!("RUSTC_LIB_PATH") {
@@ -167,7 +167,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
 fn run_ui_cargo(config: &mut compiletest::Config) {
     fn run_tests(
         config: &compiletest::Config,
-        filter: &Option<String>,
+        filters: &[String],
         mut tests: Vec<tester::TestDescAndFn>,
     ) -> Result<bool, io::Error> {
         let mut result = true;
@@ -181,9 +181,10 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
 
             // Use the filter if provided
             let dir_path = dir.path();
-            match &filter {
-                Some(name) if !dir_path.ends_with(name) => continue,
-                _ => {},
+            for filter in filters {
+                if !dir_path.ends_with(filter) {
+                    continue;
+                }
             }
 
             for case in fs::read_dir(&dir_path)? {
@@ -243,8 +244,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
 
     let current_dir = env::current_dir().unwrap();
     let conf_dir = var("CLIPPY_CONF_DIR").unwrap_or_default();
-    let filter = env::var("TESTNAME").ok();
-    let res = run_tests(&config, &filter, tests);
+    let res = run_tests(&config, &config.filters, tests);
     env::set_current_dir(current_dir).unwrap();
     set_var("CLIPPY_CONF_DIR", conf_dir);
 

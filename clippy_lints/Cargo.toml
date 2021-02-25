@@ -18,6 +18,7 @@ edition = "2018"
 
 [dependencies]
 cargo_metadata = "0.12"
+clippy_utils = { path = "../clippy_utils" }
 if_chain = "1.0.0"
 itertools = "0.9"
 pulldown-cmark = { version = "0.8", default-features = false }
@@ -38,4 +39,4 @@ syn = { version = "1", features = ["full"] }
 [features]
 deny-warnings = []
 # build clippy with internal lints enabled, off by default
-internal-lints = []
+internal-lints = ["clippy_utils/internal-lints"]

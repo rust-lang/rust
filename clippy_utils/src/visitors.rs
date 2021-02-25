@@ -1,4 +1,4 @@
-use crate::utils::path_to_local_id;
+use crate::path_to_local_id;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Arm, Body, Expr, HirId, Stmt};
