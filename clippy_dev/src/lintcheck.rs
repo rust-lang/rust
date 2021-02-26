@@ -336,8 +336,7 @@ fn build_clippy() {
 }
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
-fn read_crates(toml_path: Option<&str>) -> (String, Vec<CrateSource>) {
-    let toml_path = lintcheck_config_toml(toml_path);
+fn read_crates(toml_path: &PathBuf) -> (String, Vec<CrateSource>) {
     // save it so that we can use the name of the sources.toml as name for the logfile later.
     let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
     let toml_content: String =
@@ -428,7 +427,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
 }
 
 /// Generate a short list of occuring lints-types and their count
-fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
+fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, usize>) {
     // count lint type occurrences
     let mut counter: HashMap<&String, usize> = HashMap::new();
     clippy_warnings
@@ -441,15 +440,17 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> String {
     // to not have a lint with 200 and 2 warnings take the same spot
     stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
 
-    stats
+    let stats_string = stats
         .iter()
         .map(|(lint, count)| format!("{} {}\n", lint, count))
-        .collect::<String>()
+        .collect::<String>();
+
+    (stats_string, counter)
 }
 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun(toml_path: Option<&str>) -> bool {
+fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
     let clippy_modified: std::time::SystemTime = {
         let mut times = ["target/debug/clippy-driver", "target/debug/cargo-clippy"]
             .iter()
@@ -459,17 +460,18 @@ fn lintcheck_needs_rerun(toml_path: Option<&str>) -> bool {
                     .modified()
                     .expect("failed to get modification date")
             });
-        // the lates modification of either of the binaries
-        std::cmp::max(times.next().unwrap(), times.next().unwrap())
+        // the oldest modification of either of the binaries
+        std::cmp::min(times.next().unwrap(), times.next().unwrap())
     };
 
-    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_config_toml(toml_path))
+    let logs_modified: std::time::SystemTime = std::fs::metadata(toml_path)
         .expect("failed to get metadata of file")
         .modified()
         .expect("failed to get modification date");
 
-    // if clippys modification time is bigger (older) than the logs mod time, we need to rerun lintcheck
-    clippy_modified > logs_modified
+    // if clippys modification time is smaller (older) than the logs mod time, we need to rerun
+    // lintcheck
+    clippy_modified < logs_modified
 }
 
 /// lintchecks `main()` function
@@ -478,11 +480,12 @@ pub fn run(clap_config: &ArgMatches) {
     build_clippy();
     println!("Done compiling");
 
-    let clap_toml_path = clap_config.value_of("crates-toml");
+    let clap_toml_path: Option<&str> = clap_config.value_of("crates-toml");
+    let toml_path: PathBuf = lintcheck_config_toml(clap_toml_path);
 
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if lintcheck_needs_rerun(clap_toml_path) {
+    if lintcheck_needs_rerun(&toml_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         match std::fs::metadata(&shared_target_dir) {
             Ok(metadata) => {
@@ -517,7 +520,9 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let (filename, crates) = read_crates(clap_toml_path);
+    let (filename, crates) = read_crates(&toml_path);
+    let file = format!("lintcheck-logs/{}_logs.txt", filename);
+    let old_stats = read_stats_from_file(&file);
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -586,7 +591,7 @@ pub fn run(clap_config: &ArgMatches) {
     };
 
     // generate some stats
-    let stats_formatted = gather_stats(&clippy_warnings);
+    let (stats_formatted, new_stats) = gather_stats(&clippy_warnings);
 
     // grab crashes/ICEs, save the crate name and the ice message
     let ices: Vec<(&String, &String)> = clippy_warnings
@@ -597,7 +602,7 @@ pub fn run(clap_config: &ArgMatches) {
 
     let mut all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
     all_msgs.sort();
-    all_msgs.push("\n\n\n\nStats\n\n".into());
+    all_msgs.push("\n\n\n\nStats:\n".into());
     all_msgs.push(stats_formatted);
 
     // save the text into lintcheck-logs/logs.txt
@@ -607,7 +612,84 @@ pub fn run(clap_config: &ArgMatches) {
     ices.iter()
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
-    let file = format!("lintcheck-logs/{}_logs.txt", filename);
     println!("Writing logs to {}", file);
-    write(file, text).unwrap();
+    write(&file, text).unwrap();
+
+    print_stats(old_stats, new_stats);
+}
+
+/// read the previous stats from the lintcheck-log file
+fn read_stats_from_file(file_path: &String) -> HashMap<String, usize> {
+    let file_path = PathBuf::from(file_path);
+    let file_content: String = match std::fs::read_to_string(file_path).ok() {
+        Some(content) => content,
+        None => {
+            eprintln!("RETURND");
+            return HashMap::new();
+        },
+    };
+
+    let lines: Vec<String> = file_content.lines().map(|l| l.to_string()).collect();
+
+    // search for the beginning "Stats:" and the end "ICEs:" of the section we want
+    let start = lines.iter().position(|line| line == "Stats:").unwrap();
+    let end = lines.iter().position(|line| line == "ICEs:").unwrap();
+
+    let stats_lines = &lines[start + 1..=end - 1];
+
+    stats_lines
+        .into_iter()
+        .map(|line| {
+            let mut spl = line.split(" ").into_iter();
+            (
+                spl.next().unwrap().to_string(),
+                spl.next().unwrap().parse::<usize>().unwrap(),
+            )
+        })
+        .collect::<HashMap<String, usize>>()
+}
+
+/// print how lint counts changed between runs
+fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>) {
+    let same_in_both_hashmaps = old_stats
+        .iter()
+        .filter(|(old_key, old_val)| new_stats.get::<&String>(&old_key) == Some(old_val))
+        .map(|(k, v)| (k.to_string(), *v))
+        .collect::<Vec<(String, usize)>>();
+
+    let mut old_stats_deduped = old_stats;
+    let mut new_stats_deduped = new_stats;
+
+    // remove duplicates from both hashmaps
+    same_in_both_hashmaps.iter().for_each(|(k, v)| {
+        assert!(old_stats_deduped.remove(k) == Some(*v));
+        assert!(new_stats_deduped.remove(k) == Some(*v));
+    });
+
+    println!("\nStats:");
+
+    // list all new counts  (key is in new stats but not in old stats)
+    new_stats_deduped
+        .iter()
+        .filter(|(new_key, _)| old_stats_deduped.get::<str>(&new_key).is_none())
+        .for_each(|(new_key, new_value)| {
+            println!("{} 0 => {}", new_key, new_value);
+        });
+
+    // list all changed counts (key is in both maps but value differs)
+    new_stats_deduped
+        .iter()
+        .filter(|(new_key, _new_val)| old_stats_deduped.get::<str>(&new_key).is_some())
+        .for_each(|(new_key, new_val)| {
+            let old_val = old_stats_deduped.get::<str>(&new_key).unwrap();
+            println!("{} {} => {}", new_key, old_val, new_val);
+        });
+
+    // list all gone counts (key is in old status but not in new stats)
+    old_stats_deduped
+        .iter()
+        .filter(|(old_key, _)| new_stats_deduped.get::<&String>(&old_key).is_none())
+        .for_each(|(old_key, old_value)| {
+            println!("{} {} => 0", old_key, old_value);
+        });
 }
