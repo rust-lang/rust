@@ -34,7 +34,7 @@ macro_rules! uint_impl {
         /// ```
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::BITS, ", stringify!($BITS), ");")]
         /// ```
-        #[stable(feature = "int_bits_const", since = "1.51.0")]
+        #[stable(feature = "int_bits_const", since = "1.53.0")]
         pub const BITS: u32 = $BITS;
 
         /// Converts a string slice in a given base to an integer.
