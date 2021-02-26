@@ -112,7 +112,7 @@
 //! assert success with [`expect`]. This will panic if the
 //! write fails, providing a marginally useful message indicating why:
 //!
-//! ```{.no_run}
+//! ```no_run
 //! use std::fs::File;
 //! use std::io::prelude::*;
 //!
@@ -122,7 +122,7 @@
 //!
 //! You might also simply assert success:
 //!
-//! ```{.no_run}
+//! ```no_run
 //! # use std::fs::File;
 //! # use std::io::prelude::*;
 //! # let mut file = File::create("valuable_data.txt").unwrap();
@@ -984,7 +984,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// Basic usage:
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
@@ -1024,7 +1024,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// assert_eq!(x.unwrap(), 2);
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
@@ -1052,7 +1052,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// Basic usage:
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
     /// ```
@@ -1075,7 +1075,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Result<u32, &str> = Ok(2);
     /// x.unwrap_err(); // panics with `2`
     /// ```

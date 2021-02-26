@@ -780,6 +780,31 @@ impl LangString {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
     }
 
+    fn tokens(string: &str) -> impl Iterator<Item = &str> {
+        // Pandoc, which Rust once used for generating documentation,
+        // expects lang strings to be surrounded by `{}` and for each token
+        // to be proceeded by a `.`. Since some of these lang strings are still
+        // loose in the wild, we strip a pair of surrounding `{}` from the lang
+        // string and a leading `.` from each token.
+
+        let string = string.trim();
+
+        let first = string.chars().next();
+        let last = string.chars().last();
+
+        let string = if first == Some('{') && last == Some('}') {
+            &string[1..string.len() - 1]
+        } else {
+            string
+        };
+
+        string
+            .split(|c| c == ',' || c == ' ' || c == '\t')
+            .map(str::trim)
+            .map(|token| if token.chars().next() == Some('.') { &token[1..] } else { token })
+            .filter(|token| !token.is_empty())
+    }
+
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
@@ -793,11 +818,11 @@ impl LangString {
         let mut ignores = vec![];
 
         data.original = string.to_owned();
-        let tokens = string.split(|c: char| !(c == '_' || c == '-' || c.is_alphanumeric()));
+
+        let tokens = Self::tokens(string).collect::<Vec<&str>>();
 
         for token in tokens {
-            match token.trim() {
-                "" => {}
+            match token {
                 "should_panic" => {
                     data.should_panic = true;
                     seen_rust_tags = !seen_other_tags;
@@ -894,6 +919,7 @@ impl LangString {
                 _ => seen_other_tags = true,
             }
         }
+
         // ignore-foo overrides ignore
         if !ignores.is_empty() {
             data.ignore = Ignore::Some(ignores);

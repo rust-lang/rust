@@ -58,6 +58,9 @@ fn test_lang_string_parse() {
 
     t(Default::default());
     t(LangString { original: "rust".into(), ..Default::default() });
+    t(LangString { original: ".rust".into(), ..Default::default() });
+    t(LangString { original: "{rust}".into(), ..Default::default() });
+    t(LangString { original: "{.rust}".into(), ..Default::default() });
     t(LangString { original: "sh".into(), rust: false, ..Default::default() });
     t(LangString { original: "ignore".into(), ignore: Ignore::All, ..Default::default() });
     t(LangString {
@@ -75,16 +78,16 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     t(LangString { original: "allow_fail".into(), allow_fail: true, ..Default::default() });
-    t(LangString { original: "{.no_run .example}".into(), no_run: true, ..Default::default() });
+    t(LangString { original: "no_run,example".into(), no_run: true, ..Default::default() });
     t(LangString {
-        original: "{.sh .should_panic}".into(),
+        original: "sh,should_panic".into(),
         should_panic: true,
         rust: false,
         ..Default::default()
     });
-    t(LangString { original: "{.example .rust}".into(), ..Default::default() });
+    t(LangString { original: "example,rust".into(), ..Default::default() });
     t(LangString {
-        original: "{.test_harness .rust}".into(),
+        original: "test_harness,.rust".into(),
         test_harness: true,
         ..Default::default()
     });
@@ -101,6 +104,18 @@ fn test_lang_string_parse() {
         ..Default::default()
     });
     t(LangString {
+        original: "text,no_run, ".into(),
+        no_run: true,
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
+        original: "text,no_run,".into(),
+        no_run: true,
+        rust: false,
+        ..Default::default()
+    });
+    t(LangString {
         original: "edition2015".into(),
         edition: Some(Edition::Edition2015),
         ..Default::default()
@@ -110,6 +125,29 @@ fn test_lang_string_parse() {
         edition: Some(Edition::Edition2018),
         ..Default::default()
     });
+}
+
+#[test]
+fn test_lang_string_tokenizer() {
+    fn case(lang_string: &str, want: &[&str]) {
+        let have = LangString::tokens(lang_string).collect::<Vec<&str>>();
+        assert_eq!(have, want, "Unexpected lang string split for `{}`", lang_string);
+    }
+
+    case("", &[]);
+    case("foo", &["foo"]);
+    case("foo,bar", &["foo", "bar"]);
+    case(".foo,.bar", &["foo", "bar"]);
+    case("{.foo,.bar}", &["foo", "bar"]);
+    case("  {.foo,.bar}  ", &["foo", "bar"]);
+    case("foo bar", &["foo", "bar"]);
+    case("foo\tbar", &["foo", "bar"]);
+    case("foo\t, bar", &["foo", "bar"]);
+    case(" foo , bar ", &["foo", "bar"]);
+    case(",,foo,,bar,,", &["foo", "bar"]);
+    case("foo=bar", &["foo=bar"]);
+    case("a-b-c", &["a-b-c"]);
+    case("a_b_c", &["a_b_c"]);
 }
 
 #[test]
