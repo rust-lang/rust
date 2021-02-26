@@ -21,7 +21,7 @@ pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
 /// appear in the return type).
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
     /// The opaque type (`ty::Opaque`) for this declaration.
     pub opaque_type: Ty<'tcx>,

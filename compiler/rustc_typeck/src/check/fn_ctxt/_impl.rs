@@ -399,8 +399,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
-            let _ = opaque_types.insert(ty, decl);
             let _ = opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
+            let _ = opaque_types.insert(ty, decl);
         }
 
         value
