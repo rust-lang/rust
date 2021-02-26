@@ -147,7 +147,7 @@ top_level_options!(
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
-        pretty: Option<PpMode> [UNTRACKED],
+        pretty: Option<Vec<PpMode>> [UNTRACKED],
     }
 );
 
@@ -1153,11 +1153,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "present the input source, unstable (and less-pretty) variants;
         valid types are any of the types for `--pretty`, as well as:
-        `expanded`, `expanded,identified`,
-        `expanded,hygiene` (with internal representations),
+        `expanded`, `expanded+identified`,
+        `expanded+hygiene` (with internal representations),
         `everybody_loops` (all function bodies replaced with `loop {}`),
-        `hir` (the HIR), `hir,identified`,
-        `hir,typed` (HIR with types for each node),
+        `hir` (the HIR), `hir+identified`,
+        `hir+typed` (HIR with types for each node),
         `hir-tree` (dump the raw HIR),
         `mir` (the MIR), or `mir-cfg` (graphviz formatted MIR)"),
     unsound_mir_opts: bool = (false, parse_bool, [TRACKED],

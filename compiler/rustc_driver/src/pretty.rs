@@ -386,52 +386,15 @@ pub fn print_after_parsing(
     sess: &Session,
     input: &Input,
     krate: &ast::Crate,
-    ppm: PpMode,
+    ppms: &Vec<PpMode>,
     ofile: Option<&Path>,
 ) {
-    let (src, src_name) = get_source(input, sess);
+    ppms.iter().for_each(|ppm| {
+        let (src, src_name) = get_source(input, sess);
 
-    let out = if let Source(s) = ppm {
-        // Silently ignores an identified node.
-        call_with_pp_support(&s, sess, None, move |annotation| {
-            debug!("pretty printing source code {:?}", s);
-            let sess = annotation.sess();
-            let parse = &sess.parse_sess;
-            pprust::print_crate(
-                sess.source_map(),
-                krate,
-                src_name,
-                src,
-                annotation.pp_ann(),
-                false,
-                parse.edition,
-            )
-        })
-    } else {
-        unreachable!()
-    };
-
-    write_or_print(&out, ofile);
-}
-
-pub fn print_after_hir_lowering<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    input: &Input,
-    krate: &ast::Crate,
-    ppm: PpMode,
-    ofile: Option<&Path>,
-) {
-    if ppm.needs_analysis() {
-        abort_on_err(print_with_analysis(tcx, ppm, ofile), tcx.sess);
-        return;
-    }
-
-    let (src, src_name) = get_source(input, tcx.sess);
-
-    let out = match ppm {
-        Source(s) => {
+        let out = if let Source(s) = ppm {
             // Silently ignores an identified node.
-            call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
+            call_with_pp_support(&s, sess, None, move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 let parse = &sess.parse_sess;
@@ -441,28 +404,71 @@ pub fn print_after_hir_lowering<'tcx>(
                     src_name,
                     src,
                     annotation.pp_ann(),
-                    true,
+                    false,
                     parse.edition,
                 )
             })
+        } else {
+            unreachable!()
+        };
+
+        write_or_print(&out, ofile);
+    });
+}
+
+pub fn print_after_hir_lowering<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    input: &Input,
+    krate: &ast::Crate,
+    ppms: &Vec<PpMode>,
+    ofile: Option<&Path>,
+) {
+    ppms.iter().for_each(|ppm| {
+        if ppm.needs_analysis() {
+            abort_on_err(print_with_analysis(tcx, *ppm, ofile), tcx.sess);
+            return;
         }
 
-        Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
-            debug!("pretty printing HIR {:?}", s);
-            let sess = annotation.sess();
-            let sm = sess.source_map();
-            pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
-        }),
+        let (src, src_name) = get_source(input, tcx.sess);
 
-        HirTree => call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, krate| {
-            debug!("pretty printing HIR tree");
-            format!("{:#?}", krate)
-        }),
+        let out = match ppm {
+            Source(s) => {
+                // Silently ignores an identified node.
+                call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
+                    debug!("pretty printing source code {:?}", s);
+                    let sess = annotation.sess();
+                    let parse = &sess.parse_sess;
+                    pprust::print_crate(
+                        sess.source_map(),
+                        krate,
+                        src_name,
+                        src,
+                        annotation.pp_ann(),
+                        true,
+                        parse.edition,
+                    )
+                })
+            }
 
-        _ => unreachable!(),
-    };
+            Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
+                debug!("pretty printing HIR {:?}", s);
+                let sess = annotation.sess();
+                let sm = sess.source_map();
+                pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
+            }),
 
-    write_or_print(&out, ofile);
+            HirTree => {
+                call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, krate| {
+                    debug!("pretty printing HIR tree");
+                    format!("{:#?}", krate)
+                })
+            }
+
+            _ => unreachable!(),
+        };
+
+        write_or_print(&out, ofile);
+    });
 }
 
 // In an ideal world, this would be a public function called by the driver after

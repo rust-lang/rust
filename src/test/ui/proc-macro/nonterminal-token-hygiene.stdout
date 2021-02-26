@@ -26,7 +26,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 // Make sure that marks from declarative macros are applied to tokens in nonterminal.
 
 // check-pass
-// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
+// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded+hygiene
 // compile-flags: -Z trim-diagnostic-paths=no
 // normalize-stdout-test "\d+#" -> "0#"
 // aux-build:test-macros.rs

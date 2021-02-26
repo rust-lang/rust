@@ -333,28 +333,30 @@ fn run_compiler(
             let early_exit = || sess.compile_status().map(|_| None);
             queries.parse()?;
 
-            if let Some(ppm) = &sess.opts.pretty {
-                if ppm.needs_ast_map() {
-                    queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                        let expanded_crate = queries.expansion()?.take().0;
-                        pretty::print_after_hir_lowering(
-                            tcx,
-                            compiler.input(),
-                            &expanded_crate,
-                            *ppm,
+            if let Some(ppms) = &sess.opts.pretty {
+                for ppm in ppms {
+                    if ppm.needs_ast_map() {
+                        queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                            let expanded_crate = queries.expansion()?.take().0;
+                            pretty::print_after_hir_lowering(
+                                tcx,
+                                compiler.input(),
+                                &expanded_crate,
+                                ppms,
+                                compiler.output_file().as_ref().map(|p| &**p),
+                            );
+                            Ok(())
+                        })?;
+                    } else {
+                        let krate = queries.parse()?.take();
+                        pretty::print_after_parsing(
+                            sess,
+                            &compiler.input(),
+                            &krate,
+                            ppms,
                             compiler.output_file().as_ref().map(|p| &**p),
                         );
-                        Ok(())
-                    })?;
-                } else {
-                    let krate = queries.parse()?.take();
-                    pretty::print_after_parsing(
-                        sess,
-                        &compiler.input(),
-                        &krate,
-                        *ppm,
-                        compiler.output_file().as_ref().map(|p| &**p),
-                    );
+                    }
                 }
                 trace!("finished pretty-printing");
                 return early_exit();

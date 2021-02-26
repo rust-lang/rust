@@ -1178,7 +1178,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Pretty-print the input instead of compiling;
                   valid types are: `normal` (un-annotated source),
                   `expanded` (crates expanded), or
-                  `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+                  `expanded+identified` (fully parenthesized, AST nodes with IDs).",
             "TYPE",
         ),
         opt::multi_s(
@@ -2056,49 +2056,51 @@ fn parse_pretty(
     matches: &getopts::Matches,
     debugging_opts: &DebuggingOptions,
     efmt: ErrorOutputType,
-) -> Option<PpMode> {
-    fn parse_pretty_inner(efmt: ErrorOutputType, name: &str, extended: bool) -> PpMode {
+) -> Option<Vec<PpMode>> {
+    fn parse_pretty_inner(efmt: ErrorOutputType, list: &str, extended: bool) -> Vec<PpMode> {
         use PpMode::*;
-        let first = match (name, extended) {
-            ("normal", _) => Source(PpSourceMode::Normal),
-            ("identified", _) => Source(PpSourceMode::Identified),
-            ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
-            ("expanded", _) => Source(PpSourceMode::Expanded),
-            ("expanded,identified", _) => Source(PpSourceMode::ExpandedIdentified),
-            ("expanded,hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
-            ("hir", true) => Hir(PpHirMode::Normal),
-            ("hir,identified", true) => Hir(PpHirMode::Identified),
-            ("hir,typed", true) => Hir(PpHirMode::Typed),
-            ("hir-tree", true) => HirTree,
-            ("mir", true) => Mir,
-            ("mir-cfg", true) => MirCFG,
-            _ => {
-                if extended {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `unpretty` must be one of `normal`, \
-                                        `expanded`, `identified`, `expanded,identified`, \
-                                        `expanded,hygiene`, `everybody_loops`, \
-                                        `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
-                                        `mir` or `mir-cfg`; got {}",
-                            name
-                        ),
-                    );
-                } else {
-                    early_error(
-                        efmt,
-                        &format!(
-                            "argument to `pretty` must be one of `normal`, \
-                                        `expanded`, `identified`, or `expanded,identified`; got {}",
-                            name
-                        ),
-                    );
+        list.split(",").map(|ppmode| {
+            let first = match (ppmode, extended) {
+                ("normal", _) => Source(PpSourceMode::Normal),
+                ("identified", _) => Source(PpSourceMode::Identified),
+                ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
+                ("expanded", _) => Source(PpSourceMode::Expanded),
+                ("expanded+identified", _) => Source(PpSourceMode::ExpandedIdentified),
+                ("expanded+hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
+                ("hir", true) => Hir(PpHirMode::Normal),
+                ("hir+identified", true) => Hir(PpHirMode::Identified),
+                ("hir+typed", true) => Hir(PpHirMode::Typed),
+                ("hir-tree", true) => HirTree,
+                ("mir", true) => Mir,
+                ("mir-cfg", true) => MirCFG,
+                _ => {
+                    if extended {
+                        early_error(
+                            efmt,
+                            &format!(
+                                "argument to `unpretty` must be one of `normal`, \
+                                            `expanded`, `identified`, `expanded+identified`, \
+                                            `expanded+hygiene`, `everybody_loops`, \
+                                            `hir`, `hir+identified`, `hir+typed`, `hir-tree`, \
+                                            `mir` or `mir-cfg`; got {}",
+                                ppmode
+                            ),
+                        );
+                    } else {
+                        early_error(
+                            efmt,
+                            &format!(
+                                "argument to `pretty` must be a comma-separated list or one of `normal`, \
+                                            `expanded`, `identified`, or `expanded+identified`; got {}",
+                                ppmode
+                            ),
+                        );
+                    }
                 }
-            }
-        };
-        tracing::debug!("got unpretty option: {:?}", first);
-        first
+            };
+            tracing::debug!("got unpretty option: {:?}", first);
+            first
+        }).collect()
     }
 
     if debugging_opts.unstable_options {
@@ -2227,9 +2229,9 @@ pub enum PpSourceMode {
     Expanded,
     /// `--pretty=identified`
     Identified,
-    /// `--pretty=expanded,identified`
+    /// `--pretty=expanded+identified`
     ExpandedIdentified,
-    /// `--pretty=expanded,hygiene`
+    /// `--pretty=expanded+hygiene`
     ExpandedHygiene,
 }
 
@@ -2237,9 +2239,9 @@ pub enum PpSourceMode {
 pub enum PpHirMode {
     /// `-Zunpretty=hir`
     Normal,
-    /// `-Zunpretty=hir,identified`
+    /// `-Zunpretty=hir+identified`
     Identified,
-    /// `-Zunpretty=hir,typed`
+    /// `-Zunpretty=hir+typed`
     Typed,
 }
 

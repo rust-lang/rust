@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Zunpretty=expanded,hygiene
+// compile-flags: -Zunpretty=expanded+hygiene
 
 // Don't break whenever Symbol numbering changes
 // normalize-stdout-test "\d+#" -> "0#"

@@ -350,9 +350,11 @@ fn configure_and_expand_inner<'a>(
         rustc_builtin_macros::test_harness::inject(&sess, &mut resolver, &mut krate)
     });
 
-    if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
-        tracing::debug!("replacing bodies with loop {{}}");
-        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
+    if let Some(ppmodes) = &sess.opts.pretty {
+        if ppmodes.contains(&PpMode::Source(PpSourceMode::EveryBodyLoops)) {
+            tracing::debug!("replacing bodies with loop {{}}");
+            util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
+        }
     }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
