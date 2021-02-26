@@ -456,6 +456,18 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
+/// Checks whether a type can be partially moved.
+pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    if has_drop(cx, ty) || is_copy(cx, ty) {
+        return false;
+    }
+    match ty.kind() {
+        ty::Param(_) => false,
+        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs))),
+        _ => true,
+    }
+}
+
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
 pub fn method_calls<'tcx>(
