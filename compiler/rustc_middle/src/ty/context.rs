@@ -206,17 +206,24 @@ pub struct LocalTableInContext<'a, V> {
 /// would be in a different frame of reference and using its `local_id`
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
+#[inline]
 fn validate_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
     if hir_id.owner != hir_owner {
-        ty::tls::with(|tcx| {
-            bug!(
-                "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
-                tcx.hir().node_to_string(hir_id),
-                hir_id.owner,
-                hir_owner
-            )
-        });
+        invalid_hir_id_for_typeck_results(hir_owner, hir_id);
     }
+}
+
+#[cold]
+#[inline(never)]
+fn invalid_hir_id_for_typeck_results(hir_owner: LocalDefId, hir_id: hir::HirId) {
+    ty::tls::with(|tcx| {
+        bug!(
+            "node {} with HirId::owner {:?} cannot be placed in TypeckResults with hir_owner {:?}",
+            tcx.hir().node_to_string(hir_id),
+            hir_id.owner,
+            hir_owner
+        )
+    });
 }
 
 impl<'a, V> LocalTableInContext<'a, V> {

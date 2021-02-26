@@ -61,12 +61,14 @@ pub trait HasLocalDecls<'tcx> {
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
+    #[inline]
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         self
     }
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
+    #[inline]
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         &self.local_decls
     }
@@ -1772,6 +1774,7 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().as_local()
     }
 
+    #[inline]
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
@@ -1783,6 +1786,7 @@ impl<'tcx> Place<'tcx> {
     /// - (a.b, .c)
     ///
     /// Given a place without projections, the iterator is empty.
+    #[inline]
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {

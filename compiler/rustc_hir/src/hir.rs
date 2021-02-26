@@ -773,6 +773,7 @@ pub struct MacroDef<'hir> {
 }
 
 impl MacroDef<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         HirId::make_owner(self.def_id)
     }
@@ -2024,6 +2025,7 @@ pub struct TraitItemId {
 }
 
 impl TraitItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2045,6 +2047,7 @@ pub struct TraitItem<'hir> {
 }
 
 impl TraitItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2086,6 +2089,7 @@ pub struct ImplItemId {
 }
 
 impl ImplItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2106,6 +2110,7 @@ pub struct ImplItem<'hir> {
 }
 
 impl ImplItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2696,6 +2701,7 @@ pub struct ItemId {
 }
 
 impl ItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2716,6 +2722,7 @@ pub struct Item<'hir> {
 }
 
 impl Item<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2900,6 +2907,7 @@ pub struct ForeignItemId {
 }
 
 impl ForeignItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2932,6 +2940,7 @@ pub struct ForeignItem<'hir> {
 }
 
 impl ForeignItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)

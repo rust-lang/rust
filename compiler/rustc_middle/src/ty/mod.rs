@@ -1055,6 +1055,7 @@ impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<PredicateKind<'tcx>>`.
+    #[inline]
     pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
         self.inner.kind
     }
