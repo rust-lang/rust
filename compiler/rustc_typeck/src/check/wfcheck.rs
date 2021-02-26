@@ -915,6 +915,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
 /// fn b<T>() -> Foo<T, u32> { .. }
 /// ```
 ///
+#[instrument(level = "debug", skip(tcx, fcx))]
 fn check_opaque_types<'fcx, 'tcx>(
     tcx: TyCtxt<'tcx>,
     fcx: &FnCtxt<'fcx, 'tcx>,
@@ -922,12 +923,11 @@ fn check_opaque_types<'fcx, 'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) {
-    trace!("check_opaque_types(ty={:?})", ty);
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
         ty_op: |ty| {
             if let ty::Opaque(def_id, substs) = *ty.kind() {
-                trace!("check_opaque_types: opaque_ty, {:?}, {:?}", def_id, substs);
+                trace!(?def_id, ?substs, "opaque type");
                 let generics = tcx.generics_of(def_id);
 
                 let opaque_hir_id = if let Some(local_id) = def_id.as_local() {
@@ -965,7 +965,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                 if !may_define_opaque_type(tcx, fn_def_id, opaque_hir_id) {
                     return ty;
                 }
-                trace!("check_opaque_types: may define, generics={:#?}", generics);
+                trace!(?generics, "may define");
                 let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
                 for (i, arg) in substs.iter().enumerate() {
                     let arg_is_param = match arg.unpack() {

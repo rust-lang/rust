@@ -95,6 +95,7 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 /// Whether member constraints should be generated for all opaque types
+#[derive(Debug)]
 pub enum GenerateMemberConstraints {
     /// The default, used by typeck
     WhenRequired,
@@ -183,6 +184,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     ///   obligations
     /// - `value` -- the value within which we are instantiating opaque types
     /// - `value_span` -- the span where the value came from, used in error reporting
+    #[instrument(level = "debug", skip(self))]
+    // FIXME(oli-obk): this function is invoked twice: once with the crate root, and then for each body that
+    // actually could be a defining use. It is unclear to me why we run all of it twice. Figure out what
+    // happens and document that or fix it.
     fn instantiate_opaque_types<T: TypeFoldable<'tcx>>(
         &self,
         parent_def_id: LocalDefId,
@@ -191,11 +196,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         value: T,
         value_span: Span,
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
-        debug!(
-            "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
-             param_env={:?}, value_span={:?})",
-            value, parent_def_id, body_id, param_env, value_span,
-        );
         let mut instantiator = Instantiator {
             infcx: self,
             parent_def_id,
@@ -389,6 +389,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     /// See `constrain_opaque_types` for documentation.
+    #[instrument(level = "debug", skip(self, free_region_relations))]
     fn constrain_opaque_type<FRR: FreeRegionRelations<'tcx>>(
         &self,
         def_id: DefId,
@@ -396,15 +397,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         mode: GenerateMemberConstraints,
         free_region_relations: &FRR,
     ) {
-        debug!("constrain_opaque_type()");
-        debug!("constrain_opaque_type: def_id={:?}", def_id);
-        debug!("constrain_opaque_type: opaque_defn={:#?}", opaque_defn);
-
         let tcx = self.tcx;
 
         let concrete_ty = self.resolve_vars_if_possible(opaque_defn.concrete_ty);
 
-        debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
+        debug!(?concrete_ty);
 
         let first_own_region = match opaque_defn.origin {
             hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => {
@@ -469,8 +466,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
             // Compute the least upper bound of it with the other regions.
-            debug!("constrain_opaque_types: least_region={:?}", least_region);
-            debug!("constrain_opaque_types: subst_region={:?}", subst_region);
+            debug!(?least_region);
+            debug!(?subst_region);
             match least_region {
                 None => least_region = Some(subst_region),
                 Some(lr) => {
@@ -997,8 +994,8 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn instantiate_opaque_types_in_map<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
-        debug!("instantiate_opaque_types_in_map(value={:?})", value);
         let tcx = self.infcx.tcx;
         value.fold_with(&mut BottomUpFolder {
             tcx,
@@ -1075,12 +1072,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             return self.fold_opaque_ty(ty, def_id.to_def_id(), substs, origin);
                         }
 
-                        debug!(
-                            "instantiate_opaque_types_in_map: \
-                             encountered opaque outside its definition scope \
-                             def_id={:?}",
-                            def_id,
-                        );
+                        debug!(?def_id, "encountered opaque outside its definition scope");
                     }
                 }
 
@@ -1091,6 +1083,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn fold_opaque_ty(
         &mut self,
         ty: Ty<'tcx>,
@@ -1101,8 +1094,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
 
-        debug!("instantiate_opaque_types: Opaque(def_id={:?}, substs={:?})", def_id, substs);
-
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
@@ -1110,7 +1101,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             return opaque_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);
-        debug!("fold_opaque_ty {:?} {:?}", self.value_span, span);
+        debug!(?self.value_span, ?span);
         let ty_var = infcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
