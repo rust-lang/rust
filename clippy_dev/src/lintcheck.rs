@@ -471,7 +471,7 @@ fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
 
     // if clippys modification time is smaller (older) than the logs mod time, we need to rerun
     // lintcheck
-    dbg!(clippy_modified < logs_modified)
+    clippy_modified < logs_modified
 }
 
 /// lintchecks `main()` function
@@ -485,7 +485,7 @@ pub fn run(clap_config: &ArgMatches) {
 
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if dbg!(lintcheck_needs_rerun(&toml_path)) {
+    if lintcheck_needs_rerun(&toml_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         match std::fs::metadata(&shared_target_dir) {
             Ok(metadata) => {
@@ -621,7 +621,6 @@ pub fn run(clap_config: &ArgMatches) {
 /// read the previous stats from the lintcheck-log file
 fn read_stats_from_file(file_path: &String) -> HashMap<String, usize> {
     let file_path = PathBuf::from(file_path);
-    dbg!(&file_path);
     let file_content: String = match std::fs::read_to_string(file_path).ok() {
         Some(content) => content,
         None => {
