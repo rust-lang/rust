@@ -2358,11 +2358,27 @@ impl<'a> From<&'a str> for Cow<'a, str> {
     }
 }
 
+#[stable(feature = "cow_u8_slice_from_str", since = "1.52.0")]
+impl<'a> From<&'a str> for Cow<'a, [u8]> {
+    #[inline]
+    fn from(s: &'a str) -> Cow<'a, [u8]> {
+        Cow::Borrowed(s.as_bytes())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<String> for Cow<'a, str> {
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
         Cow::Owned(s)
+    }
+}
+
+#[stable(feature = "cow_u8_slice_from_str", since = "1.52.0")]
+impl<'a> From<String> for Cow<'a, [u8]> {
+    #[inline]
+    fn from(s: String) -> Cow<'a, [u8]> {
+        Cow::Owned(s.into_bytes())
     }
 }
 

@@ -1681,8 +1681,20 @@ fn test_box_slice_clone() {
 fn test_cow_from() {
     let borrowed = "borrowed";
     let owned = String::from("owned");
-    match (Cow::from(owned.clone()), Cow::from(borrowed)) {
+
+    let cow_owned: Cow<'_, str> = Cow::from(owned.clone());
+    let cow_borrowed: Cow<'_, str> = Cow::from(borrowed);
+    match (cow_owned, cow_borrowed) {
         (Cow::Owned(o), Cow::Borrowed(b)) => assert!(o == owned && b == borrowed),
+        _ => panic!("invalid `Cow::from`"),
+    }
+
+    let cow_owned: Cow<'_, [u8]> = Cow::from(owned.clone());
+    let cow_borrowed: Cow<'_, [u8]> = Cow::from(borrowed);
+    match (cow_owned, cow_borrowed) {
+        (Cow::Owned(o), Cow::Borrowed(b)) => {
+            assert!(o == owned.into_bytes() && b == borrowed.as_bytes())
+        }
         _ => panic!("invalid `Cow::from`"),
     }
 }
