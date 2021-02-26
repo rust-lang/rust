@@ -1,5 +1,5 @@
-use crate::spec::Target;
 use crate::spec::crt_objects::new;
+use crate::spec::Target;
 
 pub fn target() -> Target {
     let mut base = super::mips_unknown_linux_musl::target();
