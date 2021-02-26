@@ -1,4 +1,4 @@
-#![doc(include = "core_arch_docs.md")]
+#![doc = include_str!("core_arch_docs.md")]
 #![allow(improper_ctypes_definitions)]
 #![allow(dead_code)]
 #![allow(unused_features)]
@@ -36,7 +36,8 @@
     f16c_target_feature,
     external_doc,
     allow_internal_unstable,
-    decl_macro
+    decl_macro,
+    extended_key_value_attributes
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall))]
 #![cfg_attr(all(test, target_arch = "wasm32"), feature(wasm_simd))]

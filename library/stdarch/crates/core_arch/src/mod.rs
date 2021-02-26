@@ -9,7 +9,7 @@ mod acle;
 
 mod simd;
 
-#[doc(include = "core_arch_docs.md")]
+#[doc = include_str!("core_arch_docs.md")]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
