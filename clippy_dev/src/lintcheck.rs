@@ -287,6 +287,61 @@ impl Crate {
     }
 }
 
+#[derive(Debug)]
+struct LintcheckConfig {
+    // max number of jobs to spawn (default 1)
+    max_jobs: usize,
+    // we read the sources to check from here
+    sources_toml_path: PathBuf,
+    // we save the clippy lint results here
+    lintcheck_results_path: PathBuf,
+}
+
+impl LintcheckConfig {
+    fn from_clap(clap_config: &ArgMatches) -> Self {
+        // first, check if we got anything passed via the LINTCHECK_TOML env var,
+        // if not, ask clap if we got any value for --crates-toml  <foo>
+        // if not, use the default "clippy_dev/lintcheck_crates.toml"
+        let sources_toml = env::var("LINTCHECK_TOML").unwrap_or(
+            clap_config
+                .value_of("crates-toml")
+                .clone()
+                .unwrap_or("clippy_dev/lintcheck_crates.toml")
+                .to_string(),
+        );
+
+        let sources_toml_path = PathBuf::from(sources_toml);
+
+        // for the path where we save the lint results, get the filename without extenstion ( so for
+        // wasd.toml, use "wasd"....)
+        let filename: PathBuf = sources_toml_path.file_stem().unwrap().into();
+        let lintcheck_results_path = PathBuf::from(format!("lintcheck-logs/{}_logs.txt", filename.display()));
+
+        let max_jobs = match clap_config.value_of("threads") {
+            Some(threads) => {
+                let threads: usize = threads
+                    .parse()
+                    .expect(&format!("Failed to parse '{}' to a digit", threads));
+                if threads == 0 {
+                    // automatic choice
+                    // Rayon seems to return thread count so half that for core count
+                    (rayon::current_num_threads() / 2) as usize
+                } else {
+                    threads
+                }
+            },
+            // no -j passed, use a single thread
+            None => 1,
+        };
+
+        LintcheckConfig {
+            max_jobs,
+            sources_toml_path,
+            lintcheck_results_path,
+        }
+    }
+}
+
 /// takes a single json-formatted clippy warnings and returns true (we are interested in that line)
 /// or false (we aren't)
 fn filter_clippy_warnings(line: &str) -> bool {
@@ -310,19 +365,6 @@ fn filter_clippy_warnings(line: &str) -> bool {
     false
 }
 
-/// get the path to lintchecks crate sources .toml file, check LINTCHECK_TOML first but if it's
-/// empty use the default path
-fn lintcheck_config_toml(toml_path: Option<&str>) -> PathBuf {
-    PathBuf::from(
-        env::var("LINTCHECK_TOML").unwrap_or(
-            toml_path
-                .clone()
-                .unwrap_or("clippy_dev/lintcheck_crates.toml")
-                .to_string(),
-        ),
-    )
-}
-
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
     let status = Command::new("cargo")
@@ -336,9 +378,7 @@ fn build_clippy() {
 }
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
-fn read_crates(toml_path: &PathBuf) -> (String, Vec<CrateSource>) {
-    // save it so that we can use the name of the sources.toml as name for the logfile later.
-    let toml_filename = toml_path.file_stem().unwrap().to_str().unwrap().to_string();
+fn read_crates(toml_path: &PathBuf) -> Vec<CrateSource> {
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
@@ -398,7 +438,7 @@ fn read_crates(toml_path: &PathBuf) -> (String, Vec<CrateSource>) {
     // sort the crates
     crate_sources.sort();
 
-    (toml_filename, crate_sources)
+    crate_sources
 }
 
 /// Parse the json output of clippy and return a `ClippyWarning`
@@ -476,16 +516,15 @@ fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
 
 /// lintchecks `main()` function
 pub fn run(clap_config: &ArgMatches) {
+    let config = LintcheckConfig::from_clap(clap_config);
+
     println!("Compiling clippy...");
     build_clippy();
     println!("Done compiling");
 
-    let clap_toml_path: Option<&str> = clap_config.value_of("crates-toml");
-    let toml_path: PathBuf = lintcheck_config_toml(clap_toml_path);
-
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if lintcheck_needs_rerun(&toml_path) {
+    if lintcheck_needs_rerun(&config.sources_toml_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         match std::fs::metadata(&shared_target_dir) {
             Ok(metadata) => {
@@ -520,9 +559,8 @@ pub fn run(clap_config: &ArgMatches) {
     // download and extract the crates, then run clippy on them and collect clippys warnings
     // flatten into one big list of warnings
 
-    let (filename, crates) = read_crates(&toml_path);
-    let file = format!("lintcheck-logs/{}_logs.txt", filename);
-    let old_stats = read_stats_from_file(&file);
+    let crates = read_crates(&config.sources_toml_path);
+    let old_stats = read_stats_from_file(&config.lintcheck_results_path);
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -562,23 +600,7 @@ pub fn run(clap_config: &ArgMatches) {
         // order to achive some kind of parallelism
 
         // by default, use a single thread
-        let num_cpus = match clap_config.value_of("threads") {
-            Some(threads) => {
-                let threads: usize = threads
-                    .parse()
-                    .expect(&format!("Failed to parse '{}' to a digit", threads));
-                if threads == 0 {
-                    // automatic choice
-                    // Rayon seems to return thread count so half that for core count
-                    (rayon::current_num_threads() / 2) as usize
-                } else {
-                    threads
-                }
-            },
-            // no -j passed, use a single thread
-            None => 1,
-        };
-
+        let num_cpus = config.max_jobs;
         let num_crates = crates.len();
 
         // check all crates (default)
@@ -612,15 +634,14 @@ pub fn run(clap_config: &ArgMatches) {
     ices.iter()
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
-    println!("Writing logs to {}", file);
-    write(&file, text).unwrap();
+    println!("Writing logs to {}", config.lintcheck_results_path.display());
+    write(&config.lintcheck_results_path, text).unwrap();
 
     print_stats(old_stats, new_stats);
 }
 
 /// read the previous stats from the lintcheck-log file
-fn read_stats_from_file(file_path: &String) -> HashMap<String, usize> {
-    let file_path = PathBuf::from(file_path);
+fn read_stats_from_file(file_path: &PathBuf) -> HashMap<String, usize> {
     let file_content: String = match std::fs::read_to_string(file_path).ok() {
         Some(content) => content,
         None => {
