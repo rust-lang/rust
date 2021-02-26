@@ -63,7 +63,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -425,7 +425,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
@@ -532,7 +532,7 @@ jobs:
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
           num: "${{ github.event.number }}"
-        if: "success() && !env.SKIP_JOBS && github.event_name == 'pull_request'"
+        if: "success() && !env.SKIP_JOB && github.event_name == 'pull_request'"
       - name: add extra environment variables
         run: src/ci/scripts/setup-environment.sh
         env:
