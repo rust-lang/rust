@@ -1,4 +1,5 @@
 use crate::spec::Target;
+use crate::spec::crt_objects::new;
 
 pub fn target() -> Target {
     let mut base = super::mips64_unknown_linux_muslabi64::target();
