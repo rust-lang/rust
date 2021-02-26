@@ -1,6 +1,5 @@
-use crate::utils::{
-    derefs_to_slice, is_type_diagnostic_item, match_type, paths, snippet_with_applicability, span_lint_and_sugg,
-};
+use crate::methods::derefs_to_slice;
+use crate::utils::{is_type_diagnostic_item, match_type, paths, snippet_with_applicability, span_lint_and_sugg};
 
 use rustc_errors::Applicability;
 use rustc_hir::Expr;

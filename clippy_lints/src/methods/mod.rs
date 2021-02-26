@@ -33,12 +33,12 @@ use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, derefs_to_slice, get_parent_expr, get_trait_def_id, has_iter_method, higher,
-    implements_trait, in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment,
-    match_def_path, match_qpath, match_trait_method, match_type, meets_msrv, method_calls, method_chain_args,
-    path_to_local_id, paths, remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability,
-    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs,
-    sugg, walk_ptrs_ty_depth, SpanlessEq,
+    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
+    in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
+    match_qpath, match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
+    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth,
+    SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -2799,6 +2799,46 @@ fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[
                 hint,
                 Applicability::MachineApplicable,
             );
+        }
+    }
+}
+
+pub(crate) fn derefs_to_slice<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<&'tcx hir::Expr<'tcx>> {
+    fn may_slice<'a>(cx: &LateContext<'a>, ty: Ty<'a>) -> bool {
+        match ty.kind() {
+            ty::Slice(_) => true,
+            ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
+            ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::vec_type),
+            ty::Array(_, size) => size
+                .try_eval_usize(cx.tcx, cx.param_env)
+                .map_or(false, |size| size < 32),
+            ty::Ref(_, inner, _) => may_slice(cx, inner),
+            _ => false,
+        }
+    }
+
+    if let hir::ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind {
+        if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(&args[0])) {
+            Some(&args[0])
+        } else {
+            None
+        }
+    } else {
+        match ty.kind() {
+            ty::Slice(_) => Some(expr),
+            ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => Some(expr),
+            ty::Ref(_, inner, _) => {
+                if may_slice(cx, inner) {
+                    Some(expr)
+                } else {
+                    None
+                }
+            },
+            _ => None,
         }
     }
 }
