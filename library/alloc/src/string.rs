@@ -2224,6 +2224,25 @@ impl ToString for char {
     }
 }
 
+#[stable(feature = "u8_to_string_specialization", since="1.999.0")]
+impl ToString for u8 {
+    #[inline]
+    fn to_string(&self) -> String {
+        let mut result = String::with_capacity(3);
+        let mut n = *self;
+        if n >= 100 {
+            result.push((b'0' + n / 100) as char);
+            n %= 100;
+        }
+        if !result.is_empty() || n >= 10 {
+            result.push((b'0' + n / 10) as char);
+            n %= 10;
+        };
+        result.push((b'0' + n) as char);
+        result
+    }
+}
+
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
