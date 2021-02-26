@@ -76,8 +76,14 @@ crate mod fira_sans {
     /// The file `FiraSans-Regular.woff`, the Regular variant of the Fira Sans font.
     crate static REGULAR: &[u8] = include_bytes!("static/FiraSans-Regular.woff");
 
+    /// The file `FiraSans-Regular.woff2`, the Regular variant of the Fira Sans font in woff2.
+    crate static REGULAR2: &[u8] = include_bytes!("static/FiraSans-Regular.woff2");
+
     /// The file `FiraSans-Medium.woff`, the Medium variant of the Fira Sans font.
     crate static MEDIUM: &[u8] = include_bytes!("static/FiraSans-Medium.woff");
+
+    /// The file `FiraSans-Medium.woff2`, the Medium variant of the Fira Sans font in woff2.
+    crate static MEDIUM2: &[u8] = include_bytes!("static/FiraSans-Medium.woff2");
 
     /// The file `FiraSans-LICENSE.txt`, the license text for the Fira Sans font.
     crate static LICENSE: &[u8] = include_bytes!("static/FiraSans-LICENSE.txt");

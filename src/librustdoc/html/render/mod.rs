@@ -883,6 +883,8 @@ themePicker.onblur = handleThemeButtonsBlur;
         static_files::NORMALIZE_CSS,
         options.enable_minification,
     )?;
+    write(cx.dst.join("FiraSans-Regular.woff2"), static_files::fira_sans::REGULAR2)?;
+    write(cx.dst.join("FiraSans-Medium.woff2"), static_files::fira_sans::MEDIUM2)?;
     write(cx.dst.join("FiraSans-Regular.woff"), static_files::fira_sans::REGULAR)?;
     write(cx.dst.join("FiraSans-Medium.woff"), static_files::fira_sans::MEDIUM)?;
     write(cx.dst.join("FiraSans-LICENSE.txt"), static_files::fira_sans::LICENSE)?;
