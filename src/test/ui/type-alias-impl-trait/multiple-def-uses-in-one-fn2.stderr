@@ -1,0 +1,26 @@
+error: defining use generics `[B, A]` differ from previous defining use
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:9:63
+   |
+LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+   |                                                               ^^^^^^^^^^^^^^^^^^
+   |
+note: previous defining use with different generics `[A, B]` found here
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:9:63
+   |
+LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+   |                                                               ^^^^^^^^^^^^^^^^^^
+
+error: defining use generics `[B, A]` differ from previous defining use
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:9:1
+   |
+LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: previous defining use with different generics `[A, B]` found here
+  --> $DIR/multiple-def-uses-in-one-fn2.rs:9:1
+   |
+LL | fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

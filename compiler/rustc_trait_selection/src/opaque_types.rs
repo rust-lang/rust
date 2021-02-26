@@ -1109,22 +1109,26 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             } else {
                 // Don't emit multiple errors for the same set of substs
                 opaque_defn.substs.push(substs);
+                /*opaque_defn.concrete_ty = tcx.ty_error_with_message(
+                    self.value_span,
+                    "defining use generics differ from previous defining use",
+                );*/
                 tcx.sess
                     .struct_span_err(
                         self.value_span,
                         &format!(
-                            "defining use generics {:?} differ from previous defining use",
+                            "defining use generics `{:?}` differ from previous defining use",
                             substs
                         ),
                     )
                     .span_note(
                         opaque_defn.definition_span,
                         &format!(
-                            "previous defining use with different generics {:?} found here",
+                            "previous defining use with different generics `{:?}` found here",
                             opaque_defn.substs[0]
                         ),
                     )
-                    .delay_as_bug();
+                    .emit();
             }
         }
         let span = tcx.def_span(def_id);
@@ -1161,7 +1165,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let definition_span = self.value_span;
 
         // We only keep the first concrete type var, as we will already error
-        // out if there are multiple due to the conflicting obligations 
+        // out if there are multiple due to the conflicting obligations
         if !self.opaque_types.contains_key(&def_id) {
             self.opaque_types.insert(
                 def_id,

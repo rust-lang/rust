@@ -4,15 +4,16 @@
 
 #![feature(min_type_alias_impl_trait)]
 
-type X<A, B> = impl Into<&'static A>;
-//~^ ERROR the trait bound `&'static B: From<&A>` is not satisfied
+type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
 
-fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
+fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
     //~^ ERROR defining use generics `[B, A]` differ from previous defining use
     //~| ERROR defining use generics `[B, A]` differ from previous defining use
-    (a, a)
+    (a, b)
 }
 
-fn main() {
-    println!("{}", <X<_, _> as Into<&String>>::into(f(&[1isize, 2, 3], String::new()).1));
+fn g<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>) {
+    (a, b) //~ ERROR mismatched types
 }
+
+fn main() {}
