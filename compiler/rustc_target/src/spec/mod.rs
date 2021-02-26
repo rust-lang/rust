@@ -672,6 +672,7 @@ supported_targets! {
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("x86_64-unknown-linux-dynmusl", x86_64_unknown_linux_dynmusl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
+    ("i686-unknown-linux-dynmusl", i686_unknown_linux_dynmusl),
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("i586-unknown-linux-dynmusl", i586_unknown_linux_dynmusl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),

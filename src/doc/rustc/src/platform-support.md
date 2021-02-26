@@ -186,6 +186,7 @@ target | std | host | notes
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
 `i686-unknown-uefi` | ? |  | 32-bit UEFI
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
+`i686-unknown-linux-dynmusl` |   |   | 32-bit Pentium 4-class x86 Linux (Musl with dynamic linking)
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 `i686-unknown-openbsd` | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
