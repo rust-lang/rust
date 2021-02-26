@@ -5189,7 +5189,16 @@ mod tests {
         let y = i8::MAX;
         let b = i8x8::new(y, y, y, y, y, y, y, y);
         let y = y as i16;
-        let e = i16x8::new(x + y, 1 + y, 2 + y, 3 + y, 4 + y, 5 + y, 6 + y, 7 + y);
+        let e = i16x8::new(
+            x.wrapping_add(y),
+            1 + y,
+            2 + y,
+            3 + y,
+            4 + y,
+            5 + y,
+            6 + y,
+            7 + y,
+        );
         let r: i16x8 = transmute(vaddw_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5201,7 +5210,7 @@ mod tests {
         let y = i16::MAX;
         let b = i16x4::new(y, y, y, y);
         let y = y as i32;
-        let e = i32x4::new(x + y, 1 + y, 2 + y, 3 + y);
+        let e = i32x4::new(x.wrapping_add(y), 1 + y, 2 + y, 3 + y);
         let r: i32x4 = transmute(vaddw_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5213,7 +5222,7 @@ mod tests {
         let y = i32::MAX;
         let b = i32x2::new(y, y);
         let y = y as i64;
-        let e = i64x2::new(x + y, 1 + y);
+        let e = i64x2::new(x.wrapping_add(y), 1 + y);
         let r: i64x2 = transmute(vaddw_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5225,7 +5234,16 @@ mod tests {
         let y = u8::MAX;
         let b = u8x8::new(y, y, y, y, y, y, y, y);
         let y = y as u16;
-        let e = u16x8::new(x + y, 1 + y, 2 + y, 3 + y, 4 + y, 5 + y, 6 + y, 7 + y);
+        let e = u16x8::new(
+            x.wrapping_add(y),
+            1 + y,
+            2 + y,
+            3 + y,
+            4 + y,
+            5 + y,
+            6 + y,
+            7 + y,
+        );
         let r: u16x8 = transmute(vaddw_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5237,7 +5255,7 @@ mod tests {
         let y = u16::MAX;
         let b = u16x4::new(y, y, y, y);
         let y = y as u32;
-        let e = u32x4::new(x + y, 1 + y, 2 + y, 3 + y);
+        let e = u32x4::new(x.wrapping_add(y), 1 + y, 2 + y, 3 + y);
         let r: u32x4 = transmute(vaddw_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5249,7 +5267,7 @@ mod tests {
         let y = u32::MAX;
         let b = u32x2::new(y, y);
         let y = y as u64;
-        let e = u64x2::new(x + y, 1 + y);
+        let e = u64x2::new(x.wrapping_add(y), 1 + y);
         let r: u64x2 = transmute(vaddw_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5261,7 +5279,16 @@ mod tests {
         let y = i8::MAX;
         let b = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, y, y, y, y, y, y, y, y);
         let y = y as i16;
-        let e = i16x8::new(x + y, 1 + y, 2 + y, 3 + y, 4 + y, 5 + y, 6 + y, 7 + y);
+        let e = i16x8::new(
+            x.wrapping_add(y),
+            1 + y,
+            2 + y,
+            3 + y,
+            4 + y,
+            5 + y,
+            6 + y,
+            7 + y,
+        );
         let r: i16x8 = transmute(vaddw_high_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5273,7 +5300,7 @@ mod tests {
         let y = i16::MAX;
         let b = i16x8::new(0, 0, 0, 0, y, y, y, y);
         let y = y as i32;
-        let e = i32x4::new(x + y, 1 + y, 2 + y, 3 + y);
+        let e = i32x4::new(x.wrapping_add(y), 1 + y, 2 + y, 3 + y);
         let r: i32x4 = transmute(vaddw_high_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5285,7 +5312,7 @@ mod tests {
         let y = i32::MAX;
         let b = i32x4::new(0, 0, y, y);
         let y = y as i64;
-        let e = i64x2::new(x + y, 1 + y);
+        let e = i64x2::new(x.wrapping_add(y), 1 + y);
         let r: i64x2 = transmute(vaddw_high_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5297,7 +5324,16 @@ mod tests {
         let y = u8::MAX;
         let b = u8x16::new(0, 0, 0, 0, 0, 0, 0, 0, y, y, y, y, y, y, y, y);
         let y = y as u16;
-        let e = u16x8::new(x + y, 1 + y, 2 + y, 3 + y, 4 + y, 5 + y, 6 + y, 7 + y);
+        let e = u16x8::new(
+            x.wrapping_add(y),
+            1 + y,
+            2 + y,
+            3 + y,
+            4 + y,
+            5 + y,
+            6 + y,
+            7 + y,
+        );
         let r: u16x8 = transmute(vaddw_high_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5309,7 +5345,7 @@ mod tests {
         let y = u16::MAX;
         let b = u16x8::new(0, 0, 0, 0, y, y, y, y);
         let y = y as u32;
-        let e = u32x4::new(x + y, 1 + y, 2 + y, 3 + y);
+        let e = u32x4::new(x.wrapping_add(y), 1 + y, 2 + y, 3 + y);
         let r: u32x4 = transmute(vaddw_high_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
@@ -5321,7 +5357,7 @@ mod tests {
         let y = u32::MAX;
         let b = u32x4::new(0, 0, y, y);
         let y = y as u64;
-        let e = u64x2::new(x + y, 1 + y);
+        let e = u64x2::new(x.wrapping_add(y), 1 + y);
         let r: u64x2 = transmute(vaddw_high_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
