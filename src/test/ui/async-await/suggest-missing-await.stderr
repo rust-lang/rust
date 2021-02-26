@@ -2,11 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:12:14
    |
 LL | async fn make_u32() -> u32 {
-   |                        --- the `Output` of this `async fn`'s found opaque type
+   |                        --- checked the `Output` of this `async fn`, found opaque type
 ...
 LL |     take_u32(x)
    |              ^ expected `u32`, found opaque type
    |
+   = note: while checking the return type of the `async fn`
    = note:     expected type `u32`
            found opaque type `impl Future`
 help: consider `await`ing on the `Future`
@@ -18,11 +19,12 @@ error[E0308]: mismatched types
   --> $DIR/suggest-missing-await.rs:22:5
    |
 LL | async fn dummy() {}
-   |                  - the `Output` of this `async fn`'s found opaque type
+   |                  - checked the `Output` of this `async fn`, found opaque type
 ...
 LL |     dummy()
    |     ^^^^^^^ expected `()`, found opaque type
    |
+   = note: while checking the return type of the `async fn`
    = note: expected unit type `()`
             found opaque type `impl Future`
 help: consider `await`ing on the `Future`
