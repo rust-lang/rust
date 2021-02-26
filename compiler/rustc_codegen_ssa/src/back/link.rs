@@ -2082,7 +2082,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or(Path::new("")),
+            parent.unwrap_or_else(|| Path::new("")),
         );
     }
 }

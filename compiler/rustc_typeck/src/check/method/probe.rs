@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_item(def_id, name, Namespace::ValueNS)
-                    .map_or(Vec::new(), |x| vec![x])
+                    .map_or_else(Vec::new, |x| vec![x])
             }
         } else {
             self.tcx.associated_items(def_id).in_definition_order().copied().collect()
