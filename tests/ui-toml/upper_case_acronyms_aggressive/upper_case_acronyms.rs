@@ -19,4 +19,9 @@ enum Flags {
 struct GCCLLVMSomething; // linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
                          // `GccLlvmSomething`
 
+// don't warn on public items
+pub struct MIXEDCapital;
+
+pub struct FULLCAPITAL;
+
 fn main() {}

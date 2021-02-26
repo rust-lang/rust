@@ -19,4 +19,8 @@ enum Flags {
 struct GCCLLVMSomething; // linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
                          // `GccLlvmSomething`
 
+// public items must not be linted
+pub struct NOWARNINGHERE;
+pub struct ALSONoWarningHERE;
+
 fn main() {}
