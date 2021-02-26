@@ -1,4 +1,4 @@
-use syntax::{algo::non_trivia_sibling, Direction, T};
+use syntax::{algo::non_trivia_sibling, Direction, SyntaxKind, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -28,6 +28,12 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
+    // Don't apply a "flip" inside the macro call
+    // since macro input are just mere tokens
+    if comma.ancestors().any(|it| it.kind() == SyntaxKind::MACRO_CALL) {
+        return None;
+    }
+
     acc.add(
         AssistId("flip_comma", AssistKind::RefactorRewrite),
         "Flip comma",
@@ -43,7 +49,7 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 mod tests {
     use super::*;
 
-    use crate::tests::{check_assist, check_assist_target};
+    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
     fn flip_comma_works_for_function_parameters() {
@@ -80,5 +86,21 @@ mod tests {
              }",
             ",",
         );
+    }
+
+    #[test]
+    fn flip_comma_works() {
+        check_assist(
+            flip_comma,
+            r#"fn main() {((1, 2),$0 (3, 4));}"#,
+            r#"fn main() {((3, 4), (1, 2));}"#,
+        )
+    }
+
+    #[test]
+    fn flip_comma_not_applicable_for_macro_input() {
+        // "Flip comma" assist shouldn't be applicable inside the macro call
+        // See https://github.com/rust-analyzer/rust-analyzer/issues/7693
+        check_assist_not_applicable(flip_comma, r#"bar!(a,$0 b)"#);
     }
 }
