@@ -1,7 +1,3 @@
-//! Checks for useless borrowed references.
-//!
-//! This lint is **warn** by default
-
 use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -10,44 +6,37 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for useless borrowed references.
+    /// **What it does:** Checks for bindings that destructure a reference and borrow the inner
+    /// value with `&ref`.
     ///
-    /// **Why is this bad?** It is mostly useless and make the code look more
-    /// complex than it
-    /// actually is.
+    /// **Why is this bad?** This pattern has no effect in almost all cases.
     ///
-    /// **Known problems:** It seems that the `&ref` pattern is sometimes useful.
-    /// For instance in the following snippet:
-    /// ```rust,ignore
-    /// enum Animal {
-    ///     Cat(u64),
-    ///     Dog(u64),
-    /// }
-    ///
-    /// fn foo(a: &Animal, b: &Animal) {
+    /// **Known problems:** In some cases, `&ref` is needed to avoid a lifetime mismatch error.
+    /// Example:
+    /// ```rust
+    /// fn foo(a: &Option<String>, b: &Option<String>) {
     ///     match (a, b) {
-    ///         (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime mismatch error
-    ///         (&Animal::Dog(ref c), &Animal::Dog(_)) => ()
-    ///     }
+    ///         (None, &ref c) | (&ref c, None) => (),
+    ///         (&Some(ref c), _) => (),
+    ///     };
     /// }
     /// ```
-    /// There is a lifetime mismatch error for `k` (indeed a and b have distinct
-    /// lifetime).
-    /// This can be fixed by using the `&ref` pattern.
-    /// However, the code can also be fixed by much cleaner ways
     ///
     /// **Example:**
+    /// Bad:
     /// ```rust
     /// let mut v = Vec::<String>::new();
     /// let _ = v.iter_mut().filter(|&ref a| a.is_empty());
     /// ```
-    /// This closure takes a reference on something that has been matched as a
-    /// reference and
-    /// de-referenced.
-    /// As such, it could just be |a| a.is_empty()
+    ///
+    /// Good:
+    /// ```rust
+    /// let mut v = Vec::<String>::new();
+    /// let _ = v.iter_mut().filter(|a| a.is_empty());
+    /// ```
     pub NEEDLESS_BORROWED_REFERENCE,
     complexity,
-    "taking a needless borrowed reference"
+    "destructuring a reference and borrowing the inner value"
 }
 
 declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
