@@ -72,4 +72,33 @@
       </CustomListItems>
     </Expand>
   </Type>
+
+  <Type Name="std::ffi::c_str::CString">
+    <DisplayString>{inner.data_ptr,s}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <Expand>
+          <ArrayItems>
+            <Size>inner.length</Size>
+            <ValuePointer>(char*)inner.data_ptr</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
+
+  <Type Name="std::ffi::c_str::CStr">
+    <DisplayString>{(char*) inner}</DisplayString>
+    <Expand>
+      <Synthetic Name="[chars]">
+        <DisplayString>{(char*) inner}</DisplayString>
+        <Expand>
+          <ArrayItems>
+            <Size>strlen((char *) inner) + 1</Size>
+            <ValuePointer>(char*)inner</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
 </AutoVisualizer>
