@@ -103,7 +103,6 @@
 #![feature(fn_traits)]
 #![feature(fundamental)]
 #![feature(inplace_iteration)]
-#![feature(int_bits_const)]
 // Technically, this is a bug in rustdoc: rustdoc sees the documentation on `#[lang = slice_alloc]`
 // blocks is for `&[T]`, which also has documentation using this feature in `core`, and gets mad
 // that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs
