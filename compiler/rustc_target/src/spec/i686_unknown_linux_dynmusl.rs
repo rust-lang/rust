@@ -5,7 +5,6 @@ pub fn target() -> Target {
 
     base.llvm_target = "i686-unknown-linux-musl".to_string();
     base.options.crt_static_default = false;
-    base.options.static_position_independent_executables = true;
 
     base
 }
