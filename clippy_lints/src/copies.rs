@@ -156,23 +156,25 @@ declare_lint_pass!(CopyAndPaste => [
 impl<'tcx> LateLintPass<'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if !expr.span.from_expansion() {
-            // skip ifs directly in else, it will be checked in the parent if
-            if let Some(&Expr {
-                kind: ExprKind::If(_, _, Some(ref else_expr)),
-                ..
-            }) = get_parent_expr(cx, expr)
-            {
-                if else_expr.hir_id == expr.hir_id {
-                    return;
+            if let ExprKind::If(_, _, _) = expr.kind {
+                // skip ifs directly in else, it will be checked in the parent if
+                if let Some(&Expr {
+                    kind: ExprKind::If(_, _, Some(ref else_expr)),
+                    ..
+                }) = get_parent_expr(cx, expr)
+                {
+                    if else_expr.hir_id == expr.hir_id {
+                        return;
+                    }
                 }
-            }
 
-            let (conds, blocks) = if_sequence(expr);
-            // Conditions
-            lint_same_cond(cx, &conds);
-            lint_same_fns_in_if_cond(cx, &conds);
-            // Block duplication
-            lint_same_then_else(cx, &blocks, conds.len() != blocks.len(), expr);
+                let (conds, blocks) = if_sequence(expr);
+                // Conditions
+                lint_same_cond(cx, &conds);
+                lint_same_fns_in_if_cond(cx, &conds);
+                // Block duplication
+                lint_same_then_else(cx, &blocks, conds.len() != blocks.len(), expr);
+            }
         }
     }
 }
