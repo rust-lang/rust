@@ -120,7 +120,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 let src = self.eval_operand(src, None)?;
                 let dst = self.eval_operand(dst, None)?;
-                self.copy_nonoverlapping(src, dst, count)?;
+                self.copy(&src, &dst, &count, /* nonoverlapping */ true)?;
             }
 
             // Statements we do not track.
@@ -150,11 +150,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub(crate) fn copy_nonoverlapping(
+    pub(crate) fn copy(
         &mut self,
-        src: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        dst: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        count: OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
@@ -170,7 +171,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })?;
 
         if let (Some(src), Some(dst)) = (src, dst) {
-            self.memory.copy(src, dst, size, /*nonoverlapping*/ true)?;
+            self.memory.copy(src, dst, size, nonoverlapping)?;
         }
         Ok(())
     }
