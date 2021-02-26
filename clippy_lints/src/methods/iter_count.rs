@@ -1,9 +1,7 @@
 use crate::utils::{
-    derefs_to_slice, is_type_diagnostic_item, match_type, method_chain_args, paths, snippet_with_applicability,
-    span_lint_and_sugg,
+    derefs_to_slice, is_type_diagnostic_item, match_type, paths, snippet_with_applicability, span_lint_and_sugg,
 };
 
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -11,15 +9,7 @@ use rustc_span::sym;
 
 use super::ITER_COUNT;
 
-pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>], is_mut: bool) {
-    let mut_str = if is_mut { "_mut" } else { "" };
-    let iter_method = if method_chain_args(expr, &[format!("iter{}", mut_str).as_str(), "count"]).is_some() {
-        "iter"
-    } else if method_chain_args(expr, &["into_iter", "count"]).is_some() {
-        "into_iter"
-    } else {
-        return;
-    };
+pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>], iter_method: &str) {
     let ty = cx.typeck_results().expr_ty(&iter_args[0]);
     let caller_type = if derefs_to_slice(cx, &iter_args[0], ty).is_some() {
         "slice"
@@ -47,7 +37,7 @@ pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
         cx,
         ITER_COUNT,
         expr.span,
-        &format!("called `.{}{}().count()` on a `{}`", iter_method, mut_str, caller_type),
+        &format!("called `.{}().count()` on a `{}`", iter_method, caller_type),
         "try",
         format!(
             "{}.len()",

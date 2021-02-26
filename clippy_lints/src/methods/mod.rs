@@ -1692,8 +1692,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["count", "into_iter" | "iter"] => iter_count::lints(cx, expr, &arg_lists[1], false),
-            ["count", "iter_mut"] => iter_count::lints(cx, expr, &arg_lists[1], true),
+            ["count", "into_iter"] => iter_count::lints(cx, expr, &arg_lists[1], "into_iter"),
+            ["count", "iter"] => iter_count::lints(cx, expr, &arg_lists[1], "iter"),
+            ["count", "iter_mut"] => iter_count::lints(cx, expr, &arg_lists[1], "iter_mut"),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
