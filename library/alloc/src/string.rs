@@ -2224,6 +2224,15 @@ impl ToString for char {
     }
 }
 
+#[stable(feature = "u8_to_string_specialization", since="1.999.0")]
+impl ToString for u8 {
+    #[inline]
+    fn to_string(&self) -> String {
+        // Encode utf8 panics if not valid utf8.
+        String::from((*self as char).encode_utf8(&mut [0; 1]))
+    }
+}
+
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl ToString for str {
     #[inline]
