@@ -127,13 +127,13 @@ this chapter for more info][config].
 
 In the top level of the repo:
 
-```console
+```sh
 $ x.py setup
 ```
 
 This will walk you through an interactive setup for x.py that looks like this:
 
-```console
+```
 $ x.py setup
 Welcome to the Rust project! What do you want to do with x.py?
 a) Contribute to the standard library
