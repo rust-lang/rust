@@ -166,10 +166,10 @@ target | std | host | notes
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
+`arm-unknown-linux-dynmusleabihf` |   |   | ARMv6 Linux (Musl with dynamic linking)
 `armv4t-unknown-linux-gnueabi` | ? |  |
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
-`armv6-unknown-linux-dynmusleabihf` |   |   | ARMv6 Linux (Musl with dynamic linking)
 `armv6-unknown-netbsd-eabihf` | ? |  |
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
