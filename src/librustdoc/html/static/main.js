@@ -2913,7 +2913,7 @@ function defocusSearchBar() {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-            ["esc", "Close the search view"],
+            ["esc", "<p>Close the search view,</p><p>Remove the query parameters from the URL,</p><p>Close the help popup,</p><p>Close the theme list if open,</p><p>Blur the focus from the search input</p>"],
         ].map(function(x) {
             return "<dt>" +
                 x[0].split(" ")

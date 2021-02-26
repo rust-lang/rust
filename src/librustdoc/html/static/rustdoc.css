@@ -798,7 +798,6 @@ body.blur > :not(#help) {
 	float: left;
 	clear: left;
 	display: block;
-	margin-right: 0.5rem;
 }
 #help > div > span {
 	text-align: center;
@@ -809,7 +808,7 @@ body.blur > :not(#help) {
 	padding-bottom: 4px;
 	margin-bottom: 6px;
 }
-#help dd { margin: 5px 35px; }
+#help dd { margin: 5px 35px 5px 50px; }
 #help .infos { padding-left: 0; }
 #help h1, #help h2 { margin-top: 0; }
 #help > div div {
