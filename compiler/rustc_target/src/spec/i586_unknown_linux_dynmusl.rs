@@ -5,10 +5,8 @@ pub fn target() -> Target {
 
     base.options.cpu = "pentium4".to_string();
     base.llvm_target = "i586-unknown-linux-musl".to_string();
-    base.options.vendor = "alpine".to_string();
     base.options.crt_static_default = false;
     base.options.static_position_independent_executables = true;
-    base.options.need_rpath = true;
 
     base
 }
