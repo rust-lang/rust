@@ -4,11 +4,11 @@ error[E0495]: cannot infer an appropriate lifetime for autoref due to conflictin
 LL |         self.foo();
    |              ^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 6:5...
-  --> $DIR/issue-17758.rs:6:5
+note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 6:12...
+  --> $DIR/issue-17758.rs:6:12
    |
 LL |     fn bar(&self) {
-   |     ^^^^^^^^^^^^^
+   |            ^^^^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/issue-17758.rs:7:9
    |

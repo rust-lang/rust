@@ -6,7 +6,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 
 mod different_lifetimes;
-mod find_anon_type;
+pub mod find_anon_type;
 mod named_anon_conflict;
 mod placeholder_error;
 mod static_impl_trait;
