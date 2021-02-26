@@ -438,6 +438,7 @@ impl<'a> Builder<'a> {
                 test::Miri,
                 test::Clippy,
                 test::CompiletestTest,
+                test::JsonDocCkTest,
                 test::RustdocJSStd,
                 test::RustdocJSNotStd,
                 test::RustdocGUI,

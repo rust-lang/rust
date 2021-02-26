@@ -503,6 +503,42 @@ impl Step for CompiletestTest {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct JsonDocCkTest {
+    host: TargetSelection,
+}
+
+impl Step for JsonDocCkTest {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/jsondocck")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(JsonDocCkTest { host: run.target });
+    }
+
+    /// Runs `cargo test` for jsondocck.
+    fn run(self, builder: &Builder<'_>) {
+        let host = self.host;
+        let compiler = builder.compiler(0, host);
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            host,
+            "test",
+            "src/tools/jsondocck",
+            SourceType::InTree,
+            &[],
+        );
+
+        try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     stage: u32,
     host: TargetSelection,

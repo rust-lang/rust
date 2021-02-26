@@ -284,3 +284,11 @@ fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
         Cow::Owned(serde_json::from_str(s).unwrap())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn no() {
+        assert_eq!(1, 2);
+    }
+}
