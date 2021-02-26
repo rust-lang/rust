@@ -33,9 +33,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // use super::AssistContext;
 // ```
 //
-// .Merge Behaviour
+// .Merge Behavior
 //
-// It is possible to configure how use-trees are merged with the `importMergeBehaviour` setting.
+// It is possible to configure how use-trees are merged with the `importMergeBehavior` setting.
 // It has the following configurations:
 //
 // - `full`: This setting will cause auto-import to always completely merge use-trees that share the
@@ -46,7 +46,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // - `none`: This setting will cause auto-import to never merge use-trees keeping them as simple
 //  paths.
 //
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importMergeBehaviour`.
+// In `VS Code` the configuration for this is `rust-analyzer.assist.importMergeBehavior`.
 //
 // .Import Prefix
 //
