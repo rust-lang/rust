@@ -1256,6 +1256,7 @@ impl<'tcx> ParamTy {
         ParamTy::new(def.index, def.name)
     }
 
+    #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.index, self.name)
     }
@@ -1561,14 +1562,17 @@ impl RegionKind {
         }
     }
 
+    #[inline]
     pub fn is_late_bound(&self) -> bool {
         matches!(*self, ty::ReLateBound(..))
     }
 
+    #[inline]
     pub fn is_placeholder(&self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
     }
 
+    #[inline]
     pub fn bound_at_or_above_binder(&self, index: ty::DebruijnIndex) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn >= index,

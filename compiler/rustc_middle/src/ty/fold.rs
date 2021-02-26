@@ -837,6 +837,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         result
     }
 
+    #[inline]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         // If the outer-exclusive-binder is *strictly greater* than
         // `outer_index`, that means that `t` contains some content
@@ -850,6 +851,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         }
     }
 
+    #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         // If the region is bound by `outer_index` or anything outside
         // of outer index, then it escapes the binders we have
@@ -875,6 +877,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         }
     }
 
+    #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         if predicate.inner.outer_exclusive_binder > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
@@ -895,6 +898,7 @@ struct HasTypeFlagsVisitor {
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
+    #[inline]
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
@@ -909,6 +913,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         }
     }
 
+    #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = r.type_flags();
         debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
@@ -919,6 +924,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         }
     }
 
+    #[inline]
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         debug!("HasTypeFlagsVisitor: c={:?} c.flags={:?} self.flags={:?}", c, flags, self.flags);
@@ -929,6 +935,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         }
     }
 
+    #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
