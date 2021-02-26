@@ -19,7 +19,7 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** Using the `map` method is clearer and more concise.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** `map` is not capable of representing some control flow which works fine in `match`.
     ///
     /// **Example:**
     ///
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// Some(0).map(|x| x + 1);
     /// ```
     pub MANUAL_MAP,
-    style,
+    nursery,
     "reimplementation of `map`"
 }
 
