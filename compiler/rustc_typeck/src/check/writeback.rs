@@ -515,7 +515,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             // figures out the concrete type with `U`, but the stored type is with `T`.
             let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
                 def_id,
-                opaque_defn.substs,
+                opaque_defn.substs[0],
                 instantiated_ty,
                 span,
             );
@@ -535,7 +535,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if !opaque_defn.substs.needs_infer() {
+            if !opaque_defn.substs[0].needs_infer() {
                 // We only want to add an entry into `concrete_opaque_types`
                 // if we actually found a defining usage of this opaque type.
                 // Otherwise, we do nothing - we'll either find a defining usage
@@ -544,12 +544,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 if !skip_add {
                     let new = ty::ResolvedOpaqueTy {
                         concrete_type: definition_ty,
-                        substs: opaque_defn.substs,
+                        substs: opaque_defn.substs[0],
                     };
 
+                    debug!(?def_id, ?new, "inserting opaque type resolution");
                     let old = self.typeck_results.concrete_opaque_types.insert(def_id, new);
                     if let Some(old) = old {
-                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                        debug!(?old, "duplicate insertion");
+                        if old.concrete_type != definition_ty || old.substs != opaque_defn.substs[0]
+                        {
                             span_bug!(
                                 span,
                                 "`visit_opaque_types` tried to write different types for the same \

@@ -13,6 +13,7 @@ use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisit
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+use smallvec::{smallvec, SmallVec};
 
 use std::ops::ControlFlow;
 
@@ -37,7 +38,11 @@ pub struct OpaqueTypeDecl<'tcx> {
     ///     fn foo<'a, 'b, T>() -> Foo<'a, T>
     ///
     /// then `substs` would be `['a, T]`.
-    pub substs: SubstsRef<'tcx>,
+    ///
+    /// In case there are multiple conflicting substs an error has already
+    /// been reported, but we still store the additional substs here in order
+    /// to allow for better diagnostics later.
+    pub substs: SmallVec<[SubstsRef<'tcx>; 1]>,
 
     /// The span of this particular definition of the opaque type. So
     /// for example:
@@ -429,11 +434,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // If there are required region bounds, we can use them.
         if opaque_defn.has_required_region_bounds {
             let bounds = tcx.explicit_item_bounds(def_id);
-            debug!("constrain_opaque_type: predicates: {:#?}", bounds);
+            debug!(?bounds, "predicates");
             let bounds: Vec<_> =
-                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_defn.substs)).collect();
-            debug!("constrain_opaque_type: bounds={:#?}", bounds);
-            let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs);
+                bounds.iter().map(|(bound, _)| bound.subst(tcx, opaque_defn.substs[0])).collect();
+            debug!(?bounds);
+            let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs[0]);
 
             let required_region_bounds =
                 required_region_bounds(tcx, opaque_type, bounds.into_iter());
@@ -459,7 +464,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // second.
         let mut least_region = None;
 
-        for subst_arg in &opaque_defn.substs[first_own_region..] {
+        for subst_arg in &opaque_defn.substs[0][first_own_region..] {
             let subst_region = match subst_arg.unpack() {
                 GenericArgKind::Lifetime(r) => r,
                 GenericArgKind::Type(_) | GenericArgKind::Const(_) => continue,
@@ -532,7 +537,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // type can be equal to any of the region parameters of the
         // opaque type definition.
         let choice_regions: Lrc<Vec<ty::Region<'tcx>>> = Lrc::new(
-            opaque_defn.substs[first_own_region..]
+            opaque_defn.substs[0][first_own_region..]
                 .iter()
                 .filter_map(|arg| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
@@ -1095,10 +1100,32 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         let tcx = infcx.tcx;
 
         // Use the same type variable if the exact same opaque type appears more
-        // than once in the return type (e.g., if it's passed to a type alias).
-        if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
-            debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
-            return opaque_defn.concrete_ty;
+        // than once in a function (e.g., if it's passed to a type alias).
+        if let Some(opaque_defn) = self.opaque_types.get_mut(&def_id) {
+            debug!(?opaque_defn, "found already known concrete type");
+            if opaque_defn.substs.contains(&substs) {
+                // Already seen this concrete type
+                return opaque_defn.concrete_ty;
+            } else {
+                // Don't emit multiple errors for the same set of substs
+                opaque_defn.substs.push(substs);
+                tcx.sess
+                    .struct_span_err(
+                        self.value_span,
+                        &format!(
+                            "defining use generics {:?} differ from previous defining use",
+                            substs
+                        ),
+                    )
+                    .span_note(
+                        opaque_defn.definition_span,
+                        &format!(
+                            "previous defining use with different generics {:?} found here",
+                            opaque_defn.substs[0]
+                        ),
+                    )
+                    .delay_as_bug();
+            }
         }
         let span = tcx.def_span(def_id);
         debug!(?self.value_span, ?span);
@@ -1106,7 +1133,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
-        debug!("instantiate_opaque_types: bounds={:#?}", item_bounds);
+        debug!(?item_bounds);
         let bounds: Vec<_> =
             item_bounds.iter().map(|(bound, _)| bound.subst(tcx, substs)).collect();
 
@@ -1115,16 +1142,16 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             infcx.partially_normalize_associated_types_in(span, self.body_id, param_env, bounds);
         self.obligations.extend(obligations);
 
-        debug!("instantiate_opaque_types: bounds={:?}", bounds);
+        debug!(?bounds);
 
         let required_region_bounds = required_region_bounds(tcx, ty, bounds.iter().copied());
-        debug!("instantiate_opaque_types: required_region_bounds={:?}", required_region_bounds);
+        debug!(?required_region_bounds);
 
         // Make sure that we are in fact defining the *entire* type
         // (e.g., `type Foo<T: Bound> = impl Bar;` needs to be
         // defined by a function like `fn foo<T: Bound>() -> Foo<T>`).
-        debug!("instantiate_opaque_types: param_env={:#?}", self.param_env,);
-        debug!("instantiate_opaque_types: generics={:#?}", tcx.generics_of(def_id),);
+        debug!(?self.param_env,);
+        debug!(generics= ?tcx.generics_of(def_id),);
 
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
@@ -1133,18 +1160,22 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         // Foo, impl Bar)`.
         let definition_span = self.value_span;
 
-        self.opaque_types.insert(
-            def_id,
-            OpaqueTypeDecl {
-                opaque_type: ty,
-                substs,
-                definition_span,
-                concrete_ty: ty_var,
-                has_required_region_bounds: !required_region_bounds.is_empty(),
-                origin,
-            },
-        );
-        debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
+        // We only keep the first concrete type var, as we will already error
+        // out if there are multiple due to the conflicting obligations 
+        if !self.opaque_types.contains_key(&def_id) {
+            self.opaque_types.insert(
+                def_id,
+                OpaqueTypeDecl {
+                    opaque_type: ty,
+                    substs: smallvec![substs],
+                    definition_span,
+                    concrete_ty: ty_var,
+                    has_required_region_bounds: !required_region_bounds.is_empty(),
+                    origin,
+                },
+            );
+        }
+        debug!(?ty_var);
 
         for predicate in &bounds {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {

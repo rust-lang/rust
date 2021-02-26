@@ -1307,7 +1307,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         };
                         debug!("opaque_defn_ty = {:?}", opaque_defn_ty);
                         let subst_opaque_defn_ty =
-                            opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs);
+                            opaque_defn_ty.concrete_type.subst(tcx, opaque_decl.substs[0]);
                         let renumbered_opaque_defn_ty =
                             renumber::renumber_regions(infcx, subst_opaque_defn_ty);
 
@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 opaque_def_id,
                                 ty::ResolvedOpaqueTy {
                                     concrete_type: renumbered_opaque_defn_ty,
-                                    substs: opaque_decl.substs,
+                                    substs: opaque_decl.substs[0],
                                 },
                             ));
                         } else {
