@@ -69,41 +69,41 @@ target | std | host | notes
 `aarch64-fuchsia` | ✓ |  | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ |  | ARM64 Android
 `aarch64-pc-windows-msvc` | ✓ | ✓ | ARM64 Windows MSVC
-`aarch64-unknown-linux-musl` | ✓ | ✓ | ARM64 Linux with MUSL
+`aarch64-unknown-linux-musl` | ✓ | ✓ | ARM64 Linux with musl libc
 `aarch64-unknown-none` | * |  | Bare ARM64, hardfloat
 `aarch64-unknown-none-softfloat` | * |  | Bare ARM64, softfloat
 `arm-linux-androideabi` | ✓ |  | ARMv7 Android
 `arm-unknown-linux-gnueabi` | ✓ | ✓ | ARMv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | ✓ | ✓ | ARMv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
-`arm-unknown-linux-musleabi` | ✓ |  | ARMv6 Linux with MUSL
-`arm-unknown-linux-musleabihf` | ✓ |  | ARMv6 Linux with MUSL, hardfloat
+`arm-unknown-linux-musleabi` | ✓ |  | ARMv6 Linux with musl libc
+`arm-unknown-linux-musleabihf` | ✓ |  | ARMv6 Linux with musl libc, hardfloat
 `armebv7r-none-eabi` | * |  | Bare ARMv7-R, Big Endian
 `armebv7r-none-eabihf` | * |  | Bare ARMv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ |  | ARMv5TE Linux (kernel 4.4, glibc 2.23)
-`armv5te-unknown-linux-musleabi` | ✓ |  | ARMv5TE Linux with MUSL
+`armv5te-unknown-linux-musleabi` | ✓ |  | ARMv5TE Linux with musl libc
 `armv7-linux-androideabi` | ✓ |  | ARMv7a Android
 `armv7a-none-eabi` | * |  | Bare ARMv7-A
 `armv7r-none-eabi` | * |  | Bare ARMv7-R
 `armv7r-none-eabihf` | * |  | Bare ARMv7-R, hardfloat
 `armv7-unknown-linux-gnueabi` | ✓ |   | ARMv7 Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-gnueabihf` | ✓ | ✓ | ARMv7 Linux, hardfloat (kernel 3.2, glibc 2.17)
-`armv7-unknown-linux-musleabi` | ✓ |   | ARMv7 Linux, MUSL
-`armv7-unknown-linux-musleabihf` | ✓ |  | ARMv7 Linux with MUSL
+`armv7-unknown-linux-musleabi` | ✓ |   | ARMv7 Linux, musl libc
+`armv7-unknown-linux-musleabihf` | ✓ |  | ARMv7 Linux with musl libc
 `asmjs-unknown-emscripten` | ✓ |  | asm.js via Emscripten
 `i586-pc-windows-msvc` | ✓ |  | 32-bit Windows w/o SSE
 `i586-unknown-linux-gnu` | ✓ |  | 32-bit Linux w/o SSE (kernel 4.4, glibc 2.23)
-`i586-unknown-linux-musl` | ✓ |  | 32-bit Linux w/o SSE, MUSL
+`i586-unknown-linux-musl` | ✓ |  | 32-bit Linux w/o SSE, musl libc
 `i686-linux-android` | ✓ |  | 32-bit x86 Android
 `i686-unknown-freebsd` | ✓ |  | 32-bit FreeBSD
-`i686-unknown-linux-musl` | ✓ |  | 32-bit Linux with MUSL
+`i686-unknown-linux-musl` | ✓ |  | 32-bit Linux with musl libc
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
-`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with MUSL
+`mips-unknown-linux-musl` | ✓ |  | MIPS Linux with musl libc
 `mips64-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 Linux, n64 ABI (kernel 4.4, glibc 2.23)
-`mips64-unknown-linux-muslabi64` | ✓ |  | MIPS64 Linux, n64 ABI, MUSL
+`mips64-unknown-linux-muslabi64` | ✓ |  | MIPS64 Linux, n64 ABI, musl libc
 `mips64el-unknown-linux-gnuabi64` | ✓ | ✓ | MIPS64 (LE) Linux, n64 ABI (kernel 4.4, glibc 2.23)
-`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (LE) Linux, n64 ABI, MUSL
+`mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (LE) Linux, n64 ABI, musl libc
 `mipsel-unknown-linux-gnu` | ✓ | ✓ | MIPS (LE) Linux (kernel 4.4, glibc 2.23)
-`mipsel-unknown-linux-musl` | ✓ |  | MIPS (LE) Linux with MUSL
+`mipsel-unknown-linux-musl` | ✓ |  | MIPS (LE) Linux with musl libc
 `nvptx64-nvidia-cuda` | ✓ |  | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
 `powerpc-unknown-linux-gnu` | ✓ | ✓ | PowerPC Linux (kernel 2.6.32, glibc 2.11)
 `powerpc64-unknown-linux-gnu` | ✓ | ✓ | PPC64 Linux (kernel 2.6.32, glibc 2.11)
@@ -138,7 +138,7 @@ target | std | host | notes
 `x86_64-unknown-freebsd` | ✓ | ✓ | 64-bit FreeBSD
 `x86_64-unknown-illumos` | ✓ | ✓ | illumos
 `x86_64-unknown-linux-gnux32` | ✓ |  | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
-`x86_64-unknown-linux-musl` | ✓ | ✓ | 64-bit Linux with MUSL
+`x86_64-unknown-linux-musl` | ✓ | ✓ | 64-bit Linux with musl libc
 `x86_64-unknown-netbsd` | ✓ | ✓ | NetBSD/amd64
 `x86_64-unknown-redox` | ✓ |  | Redox OS
 
@@ -158,7 +158,7 @@ target | std | host | notes
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
-`aarch64-unknown-linux-dynmusl` |   |   | ARM64 Linux (Musl with dynamic linking)
+`aarch64-unknown-linux-dynmusl` |   |   | ARM64 Linux (musl libc with dynamic linking)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
 `aarch64-unknown-openbsd` | ✓ | ✓ | ARM64 OpenBSD
 `aarch64-unknown-redox` | ? |  | ARM64 Redox OS
@@ -166,14 +166,14 @@ target | std | host | notes
 `aarch64-wrs-vxworks` | ? |  |
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
-`arm-unknown-linux-dynmusleabihf` |   |   | ARMv6 Linux (Musl with dynamic linking)
+`arm-unknown-linux-dynmusleabihf` |   |   | ARMv6 Linux (musl libc with dynamic linking)
 `armv4t-unknown-linux-gnueabi` | ? |  |
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 `armv6-unknown-netbsd-eabihf` | ? |  |
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
 `armv7-unknown-freebsd` | ✓ | ✓ | ARMv7 FreeBSD
-`armv7-unknown-linux-dynmusleabihf` |   |   | ARMv7 Linux (Musl with dynamic linking)
+`armv7-unknown-linux-dynmusleabihf` |   |   | ARMv7 Linux (musl libc with dynamic linking)
 `armv7-unknown-netbsd-eabihf` | ✓ | ✓ |
 `armv7-wrs-vxworks-eabihf` | ? |  |
 `armv7a-none-eabihf` | * | | ARM Cortex-A, hardfloat
@@ -181,25 +181,25 @@ target | std | host | notes
 `avr-unknown-gnu-atmega328` | ✗ |  | AVR. Requires `-Z build-std=core`
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
-`i586-unknown-linux-dynmusl` |   |   | 32-bit Pentium-class x86 Linux (Musl with dynamic linking)
+`i586-unknown-linux-dynmusl` |   |   | 32-bit Pentium-class x86 Linux (musl libc with dynamic linking)
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
 `i686-unknown-uefi` | ? |  | 32-bit UEFI
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
-`i686-unknown-linux-dynmusl` |   |   | 32-bit Pentium 4-class x86 Linux (Musl with dynamic linking)
+`i686-unknown-linux-dynmusl` |   |   | 32-bit Pentium 4-class x86 Linux (musl libc with dynamic linking)
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 `i686-unknown-openbsd` | ✓ | ✓ | 32-bit OpenBSD
 `i686-uwp-windows-gnu` | ? |  |
 `i686-uwp-windows-msvc` | ? |  |
 `i686-wrs-vxworks` | ? |  |
-`mips-unknown-linux-dynmusl` |   |  | MIPS Linux, o32 ABI, MUSL with dynamic linking
+`mips-unknown-linux-dynmusl` |   |  | MIPS Linux, o32 ABI, musl libc with dynamic linking
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
-`mipsel-unknown-linux-dynmusl` |   |  | MIPS (LE) Linux, o32 ABI, MUSL with dynamic linking
+`mipsel-unknown-linux-dynmusl` |   |  | MIPS (LE) Linux, o32 ABI, musl libc with dynamic linking
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
 `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
-`mips64-unknown-linux-dynmuslabi64` |   |  | MIPS64 Linux, n64 ABI, MUSL with dynamic linking
-`mips64el-unknown-linux-dynmuslabi64` |   |  | MIPS64 (LE) Linux, n64 ABI, MUSL with dynamic linking
+`mips64-unknown-linux-dynmuslabi64` |   |  | MIPS64 Linux, n64 ABI, musl libc with dynamic linking
+`mips64el-unknown-linux-dynmuslabi64` |   |  | MIPS64 (LE) Linux, n64 ABI, musl libc with dynamic linking
 `mipsisa32r6-unknown-linux-gnu` | ? |  |
 `mipsisa32r6el-unknown-linux-gnu` | ? |  |
 `mipsisa64r6-unknown-linux-gnuabi64` | ? |  |
@@ -220,14 +220,14 @@ target | std | host | notes
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
-`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 2.6.32, MUSL)
-`s390x-unknown-linux-dynmusl` |  |  | S390x Linux (kernel 2.6.32, MUSL with dynamic linking)
+`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 2.6.32, musl libc)
+`s390x-unknown-linux-dynmusl` |  |  | S390x Linux (kernel 2.6.32, musl libc with dynamic linking)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 `sparc64-unknown-openbsd` | ? |  |
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
-`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, MUSL
+`thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7a Linux with NEON, musl libc
 `thumbv4t-none-eabi` | * |  | ARMv4T T32
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
@@ -239,7 +239,7 @@ target | std | host | notes
 `x86_64-unknown-hermit` | ? |  |
 `x86_64-unknown-hermit-kernel` | ? |  | HermitCore kernel
 `x86_64-unknown-l4re-uclibc` | ? |  |
-`x86_64-unknown-linux-dynmusl` |   |   | 64-bit x86 Linux, MUSL with dynamic linking
+`x86_64-unknown-linux-dynmusl` |   |   | 64-bit x86 Linux, musl libc with dynamic linking
 `x86_64-unknown-openbsd` | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-unknown-uefi` | ? |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
