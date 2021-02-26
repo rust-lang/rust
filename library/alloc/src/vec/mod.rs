@@ -1879,7 +1879,15 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_spare_capacity", issue = "75017")]
     #[inline]
     pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
-        self.split_at_spare_mut().1
+        // Note:
+        // This method is not implemented in terms of `split_at_spare_mut`,
+        // to prevent invalidation of pointers to the buffer.
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
+                self.buf.capacity() - self.len,
+            )
+        }
     }
 
     /// Returns vector content as a slice of `T`, along with the remaining spare
