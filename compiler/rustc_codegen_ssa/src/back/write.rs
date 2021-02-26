@@ -712,6 +712,33 @@ impl<B: WriteBackendMethods> WorkItem<B> {
             }
         }
     }
+
+    /// Generate a short description of this work item suitable for use as a thread name.
+    fn short_description(&self) -> String {
+        // `pthread_setname()` on *nix is limited to 15 characters and longer names are ignored.
+        // Use very short descriptions in this case to maximize the space available for the module name.
+        // Windows does not have that limitation so use slightly more descriptive names there.
+        match self {
+            WorkItem::Optimize(m) => {
+                #[cfg(windows)]
+                return format!("optimize module {}", m.name);
+                #[cfg(not(windows))]
+                return format!("opt {}", m.name);
+            }
+            WorkItem::CopyPostLtoArtifacts(m) => {
+                #[cfg(windows)]
+                return format!("copy LTO artifacts for {}", m.name);
+                #[cfg(not(windows))]
+                return format!("copy {}", m.name);
+            }
+            WorkItem::LTO(m) => {
+                #[cfg(windows)]
+                return format!("LTO module {}", m.name());
+                #[cfg(not(windows))]
+                return format!("LTO {}", m.name());
+            }
+        }
+    }
 }
 
 enum WorkItemResult<B: WriteBackendMethods> {
@@ -1609,56 +1636,59 @@ fn start_executing_work<B: ExtraBackendMethods>(
 pub struct WorkerFatalError;
 
 fn spawn_work<B: ExtraBackendMethods>(cgcx: CodegenContext<B>, work: WorkItem<B>) {
-    thread::spawn(move || {
-        // Set up a destructor which will fire off a message that we're done as
-        // we exit.
-        struct Bomb<B: ExtraBackendMethods> {
-            coordinator_send: Sender<Box<dyn Any + Send>>,
-            result: Option<Result<WorkItemResult<B>, FatalError>>,
-            worker_id: usize,
-        }
-        impl<B: ExtraBackendMethods> Drop for Bomb<B> {
-            fn drop(&mut self) {
-                let worker_id = self.worker_id;
-                let msg = match self.result.take() {
-                    Some(Ok(WorkItemResult::Compiled(m))) => {
-                        Message::Done::<B> { result: Ok(m), worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsLink(m))) => {
-                        Message::NeedsLink::<B> { module: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
-                        Message::NeedsFatLTO::<B> { result: m, worker_id }
-                    }
-                    Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
-                        Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
-                    }
-                    Some(Err(FatalError)) => {
-                        Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
-                    }
-                    None => Message::Done::<B> { result: Err(None), worker_id },
-                };
-                drop(self.coordinator_send.send(Box::new(msg)));
+    let builder = thread::Builder::new().name(work.short_description());
+    builder
+        .spawn(move || {
+            // Set up a destructor which will fire off a message that we're done as
+            // we exit.
+            struct Bomb<B: ExtraBackendMethods> {
+                coordinator_send: Sender<Box<dyn Any + Send>>,
+                result: Option<Result<WorkItemResult<B>, FatalError>>,
+                worker_id: usize,
             }
-        }
+            impl<B: ExtraBackendMethods> Drop for Bomb<B> {
+                fn drop(&mut self) {
+                    let worker_id = self.worker_id;
+                    let msg = match self.result.take() {
+                        Some(Ok(WorkItemResult::Compiled(m))) => {
+                            Message::Done::<B> { result: Ok(m), worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsLink(m))) => {
+                            Message::NeedsLink::<B> { module: m, worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsFatLTO(m))) => {
+                            Message::NeedsFatLTO::<B> { result: m, worker_id }
+                        }
+                        Some(Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))) => {
+                            Message::NeedsThinLTO::<B> { name, thin_buffer, worker_id }
+                        }
+                        Some(Err(FatalError)) => {
+                            Message::Done::<B> { result: Err(Some(WorkerFatalError)), worker_id }
+                        }
+                        None => Message::Done::<B> { result: Err(None), worker_id },
+                    };
+                    drop(self.coordinator_send.send(Box::new(msg)));
+                }
+            }
 
-        let mut bomb = Bomb::<B> {
-            coordinator_send: cgcx.coordinator_send.clone(),
-            result: None,
-            worker_id: cgcx.worker,
-        };
+            let mut bomb = Bomb::<B> {
+                coordinator_send: cgcx.coordinator_send.clone(),
+                result: None,
+                worker_id: cgcx.worker,
+            };
 
-        // Execute the work itself, and if it finishes successfully then flag
-        // ourselves as a success as well.
-        //
-        // Note that we ignore any `FatalError` coming out of `execute_work_item`,
-        // as a diagnostic was already sent off to the main thread - just
-        // surface that there was an error in this worker.
-        bomb.result = {
-            let _prof_timer = work.start_profiling(&cgcx);
-            Some(execute_work_item(&cgcx, work))
-        };
-    });
+            // Execute the work itself, and if it finishes successfully then flag
+            // ourselves as a success as well.
+            //
+            // Note that we ignore any `FatalError` coming out of `execute_work_item`,
+            // as a diagnostic was already sent off to the main thread - just
+            // surface that there was an error in this worker.
+            bomb.result = {
+                let _prof_timer = work.start_profiling(&cgcx);
+                Some(execute_work_item(&cgcx, work))
+            };
+        })
+        .expect("failed to spawn thread");
 }
 
 enum SharedEmitterMessage {

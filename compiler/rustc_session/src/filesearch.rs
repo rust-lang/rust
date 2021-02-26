@@ -169,7 +169,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
 
     // Check if sysroot is found using env::args().next(), and if is not found,
     // use env::current_exe() to imply sysroot.
-    from_env_args_next().unwrap_or(from_current_exe())
+    from_env_args_next().unwrap_or_else(from_current_exe)
 }
 
 // The name of the directory rustc expects libraries to be located.

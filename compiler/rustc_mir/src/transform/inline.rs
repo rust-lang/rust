@@ -1,6 +1,6 @@
 //! Inlining pass for MIR functions
 
-use rustc_attr as attr;
+use rustc_attr::InlineAttr;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
@@ -106,72 +106,90 @@ struct Inliner<'tcx> {
 impl Inliner<'tcx> {
     fn process_blocks(&mut self, caller_body: &mut Body<'tcx>, blocks: Range<BasicBlock>) {
         for bb in blocks {
-            let callsite = match self.get_valid_function_call(bb, &caller_body[bb], caller_body) {
+            let bb_data = &caller_body[bb];
+            if bb_data.is_cleanup {
+                continue;
+            }
+
+            let callsite = match self.resolve_callsite(caller_body, bb, bb_data) {
                 None => continue,
                 Some(it) => it,
             };
+
             let span = trace_span!("process_blocks", %callsite.callee, ?bb);
             let _guard = span.enter();
 
-            trace!(
-                "checking for self recursion ({:?} vs body_source: {:?})",
-                callsite.callee.def_id(),
-                caller_body.source.def_id()
-            );
-            if callsite.callee.def_id() == caller_body.source.def_id() {
-                debug!("Not inlining a function into itself");
-                continue;
+            match self.try_inlining(caller_body, &callsite) {
+                Err(reason) => {
+                    debug!("not-inlined {} [{}]", callsite.callee, reason);
+                    continue;
+                }
+                Ok(new_blocks) => {
+                    debug!("inlined {}", callsite.callee);
+                    self.changed = true;
+                    self.history.push(callsite.callee);
+                    self.process_blocks(caller_body, new_blocks);
+                    self.history.pop();
+                }
             }
-
-            if !self.is_mir_available(callsite.callee, caller_body) {
-                debug!("MIR unavailable {}", callsite.callee);
-                continue;
-            }
-
-            let span = trace_span!("instance_mir", %callsite.callee);
-            let instance_mir_guard = span.enter();
-            let callee_body = self.tcx.instance_mir(callsite.callee.def);
-            drop(instance_mir_guard);
-            if !self.should_inline(callsite, callee_body) {
-                continue;
-            }
-
-            if !self.tcx.consider_optimizing(|| {
-                format!("Inline {:?} into {}", callee_body.span, callsite.callee)
-            }) {
-                return;
-            }
-
-            let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
-                self.tcx,
-                self.param_env,
-                callee_body.clone(),
-            );
-
-            let old_blocks = caller_body.basic_blocks().next_index();
-            self.inline_call(callsite, caller_body, callee_body);
-            let new_blocks = old_blocks..caller_body.basic_blocks().next_index();
-            self.changed = true;
-
-            self.history.push(callsite.callee);
-            self.process_blocks(caller_body, new_blocks);
-            self.history.pop();
         }
     }
 
-    #[instrument(level = "debug", skip(self, caller_body))]
-    fn is_mir_available(&self, callee: Instance<'tcx>, caller_body: &Body<'tcx>) -> bool {
+    /// Attempts to inline a callsite into the caller body. When successful returns basic blocks
+    /// containing the inlined body. Otherwise returns an error describing why inlining didn't take
+    /// place.
+    fn try_inlining(
+        &self,
+        caller_body: &mut Body<'tcx>,
+        callsite: &CallSite<'tcx>,
+    ) -> Result<std::ops::Range<BasicBlock>, &'static str> {
+        let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
+        self.check_codegen_attributes(callsite, callee_attrs)?;
+        self.check_mir_is_available(caller_body, &callsite.callee)?;
+        let callee_body = self.tcx.instance_mir(callsite.callee.def);
+        self.check_mir_body(callsite, callee_body, callee_attrs)?;
+
+        if !self.tcx.consider_optimizing(|| {
+            format!("Inline {:?} into {}", callee_body.span, callsite.callee)
+        }) {
+            return Err("optimization fuel exhausted");
+        }
+
+        let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
+            self.tcx,
+            self.param_env,
+            callee_body.clone(),
+        );
+
+        let old_blocks = caller_body.basic_blocks().next_index();
+        self.inline_call(caller_body, &callsite, callee_body);
+        let new_blocks = old_blocks..caller_body.basic_blocks().next_index();
+
+        Ok(new_blocks)
+    }
+
+    fn check_mir_is_available(
+        &self,
+        caller_body: &Body<'tcx>,
+        callee: &Instance<'tcx>,
+    ) -> Result<(), &'static str> {
+        if callee.def_id() == caller_body.source.def_id() {
+            return Err("self-recursion");
+        }
+
         match callee.def {
             InstanceDef::Item(_) => {
                 // If there is no MIR available (either because it was not in metadata or
                 // because it has no MIR because it's an extern function), then the inliner
                 // won't cause cycles on this.
                 if !self.tcx.is_mir_available(callee.def_id()) {
-                    return false;
+                    return Err("item MIR unavailable");
                 }
             }
             // These have no own callable MIR.
-            InstanceDef::Intrinsic(_) | InstanceDef::Virtual(..) => return false,
+            InstanceDef::Intrinsic(_) | InstanceDef::Virtual(..) => {
+                return Err("instance without MIR (intrinsic / virtual)");
+            }
             // This cannot result in an immediate cycle since the callee MIR is a shim, which does
             // not get any optimizations run on it. Any subsequent inlining may cause cycles, but we
             // do not need to catch this here, we can wait until the inliner decides to continue
@@ -181,13 +199,13 @@ impl Inliner<'tcx> {
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)
-            | InstanceDef::CloneShim(..) => return true,
+            | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
         if self.tcx.is_constructor(callee.def_id()) {
             trace!("constructors always have MIR");
             // Constructor functions cannot cause a query cycle.
-            return true;
+            return Ok(());
         }
 
         if let Some(callee_def_id) = callee.def_id().as_local() {
@@ -196,39 +214,44 @@ impl Inliner<'tcx> {
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
             // in the other direction.
-            caller_body.generator_kind.is_none()
-                && (
-                    // Avoid a cycle here by only using `instance_mir` only if we have
-                    // a lower `HirId` than the callee. This ensures that the callee will
-                    // not inline us. This trick only works without incremental compilation.
-                    // So don't do it if that is enabled.
-                    !self.tcx.dep_graph.is_fully_enabled()
-                && self.hir_id < callee_hir_id
-                // If we know for sure that the function we're calling will itself try to
-                // call us, then we avoid inlining that function.
-                || !self.tcx.mir_callgraph_reachable((callee, caller_body.source.def_id().expect_local()))
-                )
+            if caller_body.generator_kind.is_some() {
+                return Err("local generator (query cycle avoidance)");
+            }
+
+            // Avoid a cycle here by only using `instance_mir` only if we have
+            // a lower `HirId` than the callee. This ensures that the callee will
+            // not inline us. This trick only works without incremental compilation.
+            // So don't do it if that is enabled.
+            if !self.tcx.dep_graph.is_fully_enabled() && self.hir_id < callee_hir_id {
+                return Ok(());
+            }
+
+            // If we know for sure that the function we're calling will itself try to
+            // call us, then we avoid inlining that function.
+            if self
+                .tcx
+                .mir_callgraph_reachable((*callee, caller_body.source.def_id().expect_local()))
+            {
+                return Err("caller might be reachable from callee (query cycle avoidance)");
+            }
+
+            Ok(())
         } else {
             // This cannot result in an immediate cycle since the callee MIR is from another crate
             // and is already optimized. Any subsequent inlining may cause cycles, but we do
             // not need to catch this here, we can wait until the inliner decides to continue
             // inlining a second time.
             trace!("functions from other crates always have MIR");
-            true
+            Ok(())
         }
     }
 
-    fn get_valid_function_call(
+    fn resolve_callsite(
         &self,
+        caller_body: &Body<'tcx>,
         bb: BasicBlock,
         bb_data: &BasicBlockData<'tcx>,
-        caller_body: &Body<'tcx>,
     ) -> Option<CallSite<'tcx>> {
-        // Don't inline calls that are in cleanup blocks.
-        if bb_data.is_cleanup {
-            return None;
-        }
-
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { ref func, ref destination, .. } = terminator.kind {
@@ -258,72 +281,72 @@ impl Inliner<'tcx> {
         None
     }
 
-    #[instrument(level = "debug", skip(self, callee_body))]
-    fn should_inline(&self, callsite: CallSite<'tcx>, callee_body: &Body<'tcx>) -> bool {
-        let tcx = self.tcx;
-
-        if callsite.fn_sig.c_variadic() {
-            debug!("callee is variadic - not inlining");
-            return false;
+    /// Returns an error if inlining is not possible based on codegen attributes alone. A success
+    /// indicates that inlining decision should be based on other criteria.
+    fn check_codegen_attributes(
+        &self,
+        callsite: &CallSite<'tcx>,
+        callee_attrs: &CodegenFnAttrs,
+    ) -> Result<(), &'satic str> {
+        if let InlineAttr::Never = callee_attrs.inline {
+            return Err("never inline hint");
         }
-
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
-
-        let self_features = &self.codegen_fn_attrs.target_features;
-        let callee_features = &codegen_fn_attrs.target_features;
-        if callee_features.iter().any(|feature| !self_features.contains(feature)) {
-            debug!("`callee has extra target features - not inlining");
-            return false;
-        }
-
-        if self.codegen_fn_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
-            debug!("`callee has incompatible no_sanitize attribute - not inlining");
-            return false;
-        }
-
-        if self.codegen_fn_attrs.instruction_set != codegen_fn_attrs.instruction_set {
-            debug!("`callee has incompatible instruction set - not inlining");
-            return false;
-        }
-
-        let hinted = match codegen_fn_attrs.inline {
-            // Just treat inline(always) as a hint for now,
-            // there are cases that prevent inlining that we
-            // need to check for first.
-            attr::InlineAttr::Always => true,
-            attr::InlineAttr::Never => {
-                debug!("`#[inline(never)]` present - not inlining");
-                return false;
-            }
-            attr::InlineAttr::Hint => true,
-            attr::InlineAttr::None => false,
-        };
 
         // Only inline local functions if they would be eligible for cross-crate
         // inlining. This is to ensure that the final crate doesn't have MIR that
         // reference unexported symbols
         if callsite.callee.def_id().is_local() {
-            if callsite.callee.substs.non_erasable_generics().count() == 0 && !hinted {
-                debug!("    callee is an exported function - not inlining");
-                return false;
+            let is_generic = callsite.callee.substs.non_erasable_generics().next().is_some();
+            if !is_generic && !callee_attrs.requests_inline() {
+                return Err("not exported");
             }
         }
 
-        let mut threshold = if hinted {
+        if callsite.fn_sig.c_variadic() {
+            return Err("C variadic");
+        }
+
+        if callee_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+            return Err("naked");
+        }
+
+        if callee_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
+            return Err("cold");
+        }
+
+        if callee_attrs.no_sanitize != self.codegen_fn_attrs.no_sanitize {
+            return Err("incompatible sanitizer set");
+        }
+
+        if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set {
+            return Err("incompatible instruction set");
+        }
+
+        for feature in &callee_attrs.target_features {
+            if !self.codegen_fn_attrs.target_features.contains(feature) {
+                return Err("incompatible target feature");
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns inlining decision that is based on the examination of callee MIR body.
+    /// Assumes that codegen attributes have been checked for compatibility already.
+    #[instrument(level = "debug", skip(self, callee_body))]
+    fn check_mir_body(
+        &self,
+        callsite: &CallSite<'tcx>,
+        callee_body: &Body<'tcx>,
+        callee_attrs: &CodegenFnAttrs,
+    ) -> Result<(), &'static str> {
+        let tcx = self.tcx;
+
+        let mut threshold = if callee_attrs.requests_inline() {
             self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
         } else {
             self.tcx.sess.opts.debugging_opts.inline_mir_threshold
         };
-
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-            debug!("#[naked] present - not inlining");
-            return false;
-        }
-
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
-            debug!("#[cold] present - not inlining");
-            return false;
-        }
 
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
@@ -393,11 +416,10 @@ impl Inliner<'tcx> {
                         if let Ok(Some(instance)) =
                             Instance::resolve(self.tcx, self.param_env, def_id, substs)
                         {
-                            if callsite.callee.def_id() == instance.def_id()
-                                || self.history.contains(&instance)
-                            {
-                                debug!("`callee is recursive - not inlining");
-                                return false;
+                            if callsite.callee.def_id() == instance.def_id() {
+                                return Err("self-recursion");
+                            } else if self.history.contains(&instance) {
+                                return Err("already inlined");
                             }
                         }
                         // Don't give intrinsics the extra penalty for calls
@@ -450,24 +472,24 @@ impl Inliner<'tcx> {
             }
         }
 
-        if let attr::InlineAttr::Always = codegen_fn_attrs.inline {
+        if let InlineAttr::Always = callee_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
-            true
+            Ok(())
         } else {
             if cost <= threshold {
                 debug!("INLINING {:?} [cost={} <= threshold={}]", callsite, cost, threshold);
-                true
+                Ok(())
             } else {
                 debug!("NOT inlining {:?} [cost={} > threshold={}]", callsite, cost, threshold);
-                false
+                Err("cost above threshold")
             }
         }
     }
 
     fn inline_call(
         &self,
-        callsite: CallSite<'tcx>,
         caller_body: &mut Body<'tcx>,
+        callsite: &CallSite<'tcx>,
         mut callee_body: Body<'tcx>,
     ) {
         let terminator = caller_body[callsite.block].terminator.take().unwrap();

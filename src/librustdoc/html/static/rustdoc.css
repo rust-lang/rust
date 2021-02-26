@@ -3,13 +3,17 @@
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Fira Sans'), url("FiraSans-Regular.woff") format('woff');
+	src: local('Fira Sans'),
+		url("FiraSans-Regular.woff2") format("woff2"),
+		url("FiraSans-Regular.woff") format('woff');
 }
 @font-face {
 	font-family: 'Fira Sans';
 	font-style: normal;
 	font-weight: 500;
-	src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
+	src: local('Fira Sans Medium'),
+		url("FiraSans-Medium.woff2") format("woff2"),
+		url("FiraSans-Medium.woff") format('woff');
 }
 
 /* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */

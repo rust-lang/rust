@@ -879,7 +879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let sm = tcx.sess.source_map();
             let path_str = sm
                 .span_to_snippet(sm.span_until_char(pat.span, '('))
-                .map_or(String::new(), |s| format!(" `{}`", s.trim_end()));
+                .map_or_else(|_| String::new(), |s| format!(" `{}`", s.trim_end()));
             let msg = format!(
                 "expected tuple struct or tuple variant, found {}{}",
                 res.descr(),

@@ -5,8 +5,7 @@
     associated_type_bounds,
     never_type,
     try_blocks,
-    hash_drain_filter,
-    str_split_once
+    hash_drain_filter
 )]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
