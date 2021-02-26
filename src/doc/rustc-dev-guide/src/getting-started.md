@@ -156,6 +156,14 @@ compiler. In some circumstances, such as when updating the version of LLVM used
 by `rustc`, you may want to temporarily disable this feature. See the ["Updating
 LLVM" section] for more.
 
+If you want to download LLVM from CI without running `x.py setup`, you can set
+the `download-ci-llvm` option to `true` in your `config.toml`:
+
+```toml
+[llvm]
+download-ci-llvm = true
+```
+
 ["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
 
 ### x.py Intro
