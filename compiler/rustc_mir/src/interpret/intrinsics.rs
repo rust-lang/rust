@@ -323,9 +323,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
             }
-            sym::copy_nonoverlapping => {
-                self.copy_nonoverlapping(args[0], args[1], args[2])?;
-            }
             sym::copy => {
                 let elem_ty = instance.substs.type_at(0);
                 let elem_layout = self.layout_of(elem_ty)?;
