@@ -2372,7 +2372,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIAr
     fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
         let mut names = generics
             .parent
-            .map_or(vec![], |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
+            .map_or_else(Vec::new, |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
         names.extend(generics.params.iter().map(|param| param.name));
         names
     }
