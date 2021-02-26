@@ -2569,7 +2569,7 @@ fn lint_step_by<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'tcx 
                 cx,
                 ITERATOR_STEP_BY_ZERO,
                 expr.span,
-                "Iterator::step_by(0) will panic at runtime",
+                "`Iterator::step_by(0)` will panic at runtime",
             );
         }
     }

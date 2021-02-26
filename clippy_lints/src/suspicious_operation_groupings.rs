@@ -262,7 +262,7 @@ fn emit_suggestion(cx: &EarlyContext<'_>, span: Span, sugg: String, applicabilit
         SUSPICIOUS_OPERATION_GROUPINGS,
         span,
         "this sequence of operators looks suspiciously like a bug",
-        "I think you meant",
+        "did you mean",
         sugg,
         applicability,
     )

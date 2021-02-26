@@ -578,7 +578,7 @@ impl Types {
                             cx,
                             LINKEDLIST,
                             hir_ty.span,
-                            "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                            "you seem to be using a `LinkedList`! Perhaps you meant some other data structure?",
                             None,
                             "a `VecDeque` might work",
                         );

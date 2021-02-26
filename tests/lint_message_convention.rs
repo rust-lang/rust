@@ -31,9 +31,7 @@ impl Message {
         // sometimes the first character is capitalized and it is legal (like in "Iterator...") or
         // we want to ask a question ending in "?"
         let exceptions_set: RegexSet = RegexSet::new(&[
-            r".*error: I see you're using a LinkedList! Perhaps you meant some other data structure?",
             r".*C-like enum variant discriminant is not portable to 32-bit targets",
-            r".*Iterator::step_by(0) will panic at runtime",
             r".*did you mean `unix`?",
             r".*the arguments may be inverted...",
             r".*Intel x86 assembly syntax used",
@@ -41,8 +39,6 @@ impl Message {
             r".*remove .*the return type...",
             r"note: Clippy version: .*",
             r"the compiler unexpectedly panicked. this is a bug.",
-            r".*help: I think you meant: .*",
-            r"Iterator.* will panic at runtime",
         ])
         .unwrap();
 
