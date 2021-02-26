@@ -1,4 +1,4 @@
-// Test to make sure that asm for array comparison on x86 optimized.
+// Ensure the asm for array comparisons is properly optimized on x86.
 
 // min-llvm-version: 11
 // assembly-output: emit-asm
