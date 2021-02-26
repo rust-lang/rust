@@ -2803,7 +2803,7 @@ fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[
     }
 }
 
-pub(crate) fn derefs_to_slice<'tcx>(
+fn derefs_to_slice<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
     ty: Ty<'tcx>,
