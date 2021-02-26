@@ -314,7 +314,6 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
-#![feature(str_split_once)]
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(thread_local_internals)]

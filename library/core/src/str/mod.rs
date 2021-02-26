@@ -1506,13 +1506,11 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_once)]
-    ///
     /// assert_eq!("cfg".split_once('='), None);
     /// assert_eq!("cfg=foo".split_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".split_once('='), Some(("cfg", "foo=bar")));
     /// ```
-    #[unstable(feature = "str_split_once", reason = "newly added", issue = "74773")]
+    #[stable(feature = "str_split_once", since = "1.52.0")]
     #[inline]
     pub fn split_once<'a, P: Pattern<'a>>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)> {
         let (start, end) = delimiter.into_searcher(self).next_match()?;
@@ -1525,13 +1523,11 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_split_once)]
-    ///
     /// assert_eq!("cfg".rsplit_once('='), None);
     /// assert_eq!("cfg=foo".rsplit_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
     /// ```
-    #[unstable(feature = "str_split_once", reason = "newly added", issue = "74773")]
+    #[stable(feature = "str_split_once", since = "1.52.0")]
     #[inline]
     pub fn rsplit_once<'a, P>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)>
     where
