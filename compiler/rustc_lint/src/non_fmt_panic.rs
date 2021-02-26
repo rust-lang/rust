@@ -201,7 +201,7 @@ fn check_panic_str<'tcx>(
             Some(v) if v.len() == 1 => "panic message contains a brace",
             _ => "panic message contains braces",
         };
-        cx.struct_span_lint(NON_FMT_PANIC, brace_spans.unwrap_or(vec![span]), |lint| {
+        cx.struct_span_lint(NON_FMT_PANIC, brace_spans.unwrap_or_else(|| vec![span]), |lint| {
             let mut l = lint.build(msg);
             l.note("this message is not used as a format string, but will be in Rust 2021");
             if span.contains(arg.span) {

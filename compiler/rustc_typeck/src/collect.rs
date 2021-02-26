@@ -2387,7 +2387,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .sess
                     .source_map()
                     .span_to_snippet(ast_ty.span)
-                    .map_or(String::new(), |s| format!(" `{}`", s));
+                    .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
                 tcx.sess
                     .struct_span_err(
                         ast_ty.span,

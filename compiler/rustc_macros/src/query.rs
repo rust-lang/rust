@@ -378,14 +378,14 @@ fn add_query_description_impl(
                 let t = &(t.0).0;
                 quote! { #t }
             })
-            .unwrap_or(quote! { _ });
+            .unwrap_or_else(|| quote! { _ });
         let value = args
             .as_ref()
             .map(|t| {
                 let t = &(t.1).0;
                 quote! { #t }
             })
-            .unwrap_or(quote! { _ });
+            .unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
         quote! {
@@ -409,7 +409,7 @@ fn add_query_description_impl(
     };
 
     let (tcx, desc) = modifiers.desc;
-    let tcx = tcx.as_ref().map_or(quote! { _ }, |t| quote! { #t });
+    let tcx = tcx.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
 
     let desc = quote! {
         #[allow(unused_variables)]
