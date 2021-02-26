@@ -56,7 +56,7 @@ async fn struct_() -> Struct {
 }
 
 async fn tuple() -> Tuple {
-    //~^ NOTE the `Output` of this `async fn`'s expected opaque type
+    //~^ NOTE checked the `Output` of this `async fn`, expected opaque type
     Tuple(1i32)
 }
 
@@ -92,6 +92,7 @@ async fn match_() {
         Tuple(_) => {} //~ ERROR mismatched types
         //~^ NOTE expected opaque type, found struct `Tuple`
         //~| NOTE expected opaque type `impl Future`
+        //~| NOTE while checking the return type of the `async fn`
     }
 }
 
