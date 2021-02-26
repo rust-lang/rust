@@ -21,42 +21,38 @@ pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
         return;
     };
     let ty = cx.typeck_results().expr_ty(&iter_args[0]);
-    if_chain! {
-        let caller_type = if derefs_to_slice(cx, &iter_args[0], ty).is_some() {
-            "slice"
-        } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
-            "Vec"
-        } else if is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) {
-            "VecDeque"
-        } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) {
-            "HashSet"
-        } else if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
-            "HashMap"
-        } else if match_type(cx, ty, &paths::BTREEMAP) {
-            "BTreeMap"
-        } else if match_type(cx, ty, &paths::BTREESET) {
-            "BTreeSet"
-        } else if match_type(cx, ty, &paths::LINKED_LIST) {
-            "LinkedList"
-        } else if match_type(cx, ty, &paths::BINARY_HEAP) {
-            "BinaryHeap"
-        } else {
-            return
-        };
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                ITER_COUNT,
-                expr.span,
-                &format!("called `.{}{}().count()` on a `{}`", iter_method, mut_str, caller_type),
-                "try",
-                format!(
-                    "{}.len()",
-                    snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
-                ),
-                applicability,
-            );
-        }
-    }
+    let caller_type = if derefs_to_slice(cx, &iter_args[0], ty).is_some() {
+        "slice"
+    } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
+        "Vec"
+    } else if is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) {
+        "VecDeque"
+    } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) {
+        "HashSet"
+    } else if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
+        "HashMap"
+    } else if match_type(cx, ty, &paths::BTREEMAP) {
+        "BTreeMap"
+    } else if match_type(cx, ty, &paths::BTREESET) {
+        "BTreeSet"
+    } else if match_type(cx, ty, &paths::LINKED_LIST) {
+        "LinkedList"
+    } else if match_type(cx, ty, &paths::BINARY_HEAP) {
+        "BinaryHeap"
+    } else {
+        return;
+    };
+    let mut applicability = Applicability::MachineApplicable;
+    span_lint_and_sugg(
+        cx,
+        ITER_COUNT,
+        expr.span,
+        &format!("called `.{}{}().count()` on a `{}`", iter_method, mut_str, caller_type),
+        "try",
+        format!(
+            "{}.len()",
+            snippet_with_applicability(cx, iter_args[0].span, "..", &mut applicability),
+        ),
+        applicability,
+    );
 }
