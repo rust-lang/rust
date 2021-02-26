@@ -483,6 +483,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "openbsd" => "OpenBSD",
                         "redox" => "Redox",
                         "solaris" => "Solaris",
+                        "wasi" => "WASI",
                         "windows" => "Windows",
                         _ => "",
                     },
