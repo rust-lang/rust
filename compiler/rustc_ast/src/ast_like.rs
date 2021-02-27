@@ -1,5 +1,7 @@
 use super::ptr::P;
-use super::tokenstream::{LazyTokenStream, Spacing, AttributesData, PreexpTokenTree, PreexpTokenStream};
+use super::tokenstream::{
+    AttributesData, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing,
+};
 use super::{Arm, Field, FieldPat, GenericParam, Param, StructField, Variant};
 use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
@@ -143,7 +145,6 @@ impl AstLike for Attribute {
                 panic!("Called visit_tokens on doc comment attr {:?}", self)
             }
         }
-
     }
 }
 
@@ -176,7 +177,6 @@ pub fn has_cfg_or_cfg_any(attrs: &[Attribute]) -> bool {
         attr.ident().map_or(false, |ident| ident.name == sym::cfg || ident.name == sym::cfg_attr)
     })
 }
-
 
 /// Helper trait for the macros below. Abstracts over
 /// the two types of attribute fields that AST nodes

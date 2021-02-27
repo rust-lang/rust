@@ -230,7 +230,7 @@ impl<'a> Parser<'a> {
             && !attrs.maybe_needs_tokens()
             && !R::SUPPORTS_INNER_ATTRS
             && !(matches!(self.capture_state.capturing, Capturing::Yes { tokens_for_attrs: true })
-                && ast::attr::has_cfg_or_cfg_any(&attrs.attrs))
+                && ast::ast_like::has_cfg_or_cfg_any(&attrs.attrs))
         {
             return Ok(f(self, attrs.attrs.into())?.0);
         }
@@ -268,7 +268,7 @@ impl<'a> Parser<'a> {
             // but we only bail out if there's no possibility of inner attributes
             // (!R::SUPPORTS_INNER_ATTRS)
             && !(matches!(self.capture_state.capturing, Capturing:: Yes { tokens_for_attrs: true })
-                 && ast::attr::has_cfg_or_cfg_any(ret.attrs()))
+                 && ast::ast_like::has_cfg_or_cfg_any(ret.attrs()))
         {
             return Ok(ret);
         }
@@ -298,19 +298,17 @@ impl<'a> Parser<'a> {
 
         let num_calls = end_pos - cursor_snapshot_next_calls;
 
-        let make_lazy = || {
-            LazyTokenStream::new(LazyTokenStreamImpl {
-                start_token,
-                num_calls: num_calls.try_into().unwrap(),
-                cursor_snapshot,
-                desugar_doc_comments: self.desugar_doc_comments,
-                append_unglued_token: self.token_cursor.append_unglued_token.clone(),
-                replace_ranges: replace_ranges.into(),
-                start_calls: cursor_snapshot_next_calls.try_into().unwrap(),
-            })
-        };
+        let tokens = LazyTokenStream::new(LazyTokenStreamImpl {
+            start_token,
+            num_calls: num_calls.try_into().unwrap(),
+            cursor_snapshot,
+            desugar_doc_comments: self.desugar_doc_comments,
+            append_unglued_token: self.token_cursor.append_unglued_token.clone(),
+            replace_ranges: replace_ranges.into(),
+            start_calls: cursor_snapshot_next_calls.try_into().unwrap(),
+        });
 
-        let final_attrs: Option<AttributesData> = ret.finalize_tokens(make_lazy);
+        let final_attrs: Option<AttributesData> = ret.finalize_tokens(tokens);
         if let Some(final_attrs) = final_attrs {
             if matches!(self.capture_state.capturing, Capturing::Yes { tokens_for_attrs: true }) {
                 let start_pos =

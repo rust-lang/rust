@@ -9,11 +9,11 @@
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
-use rustc_ast::AstLike;
 use rustc_ast::tokenstream::{
     self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream, PreexpTokenStream,
     PreexpTokenTree, Spacing, TokenStream,
 };
+use rustc_ast::AstLike;
 use rustc_ast::Attribute;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;

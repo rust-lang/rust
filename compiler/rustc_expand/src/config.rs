@@ -5,8 +5,10 @@ use crate::base::Annotatable;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AstLike, AttrItem, Attribute, MetaItem};
+use rustc_ast::tokenstream::{
+    DelimSpan, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
+};
+use rustc_ast::{self as ast, AstLike, AttrItem, Attribute, AttrStyle, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -268,12 +270,7 @@ impl<'a> StripUnconfigured<'a> {
         mut attrs: Vec<ast::Attribute>,
     ) -> Option<Vec<ast::Attribute>> {
         attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
-        if self.in_cfg(&attrs) {
-            Some(attrs)
-        } else {
-            self.modified = true;
-            None
-        }
+        if self.in_cfg(&attrs) { Some(attrs) } else { None }
     }
 
     fn configure_tokens(&mut self, stream: &PreexpTokenStream) -> PreexpTokenStream {

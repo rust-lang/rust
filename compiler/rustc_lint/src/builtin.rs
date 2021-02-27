@@ -1048,7 +1048,7 @@ impl EarlyLintPass for UnusedDocComment {
             | ast::StmtKind::MacCall(_) => return,
         };
 
-        warn_if_doc(cx, stmt.span, kind, HasAttrs::attrs(&stmt.kind));
+        warn_if_doc(cx, stmt.span, kind, stmt.kind.attrs());
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
