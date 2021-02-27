@@ -2,12 +2,11 @@
 
 use crate::base::Annotatable;
 
-use rustc_ast::attr::HasAttrs;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenTree};
-use rustc_ast::{self as ast, AttrItem, Attribute, MetaItem};
+use rustc_ast::{self as ast, AstLike, AttrItem, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -205,7 +204,7 @@ pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features)
     let unconfigured_attrs = krate.attrs.clone();
     let diag = &sess.parse_sess.span_diagnostic;
     let err_count = diag.err_count();
-    let features = match strip_unconfigured.configure(krate.attrs) {
+    let features = match strip_unconfigured.configure_krate_attrs(krate.attrs) {
         None => {
             // The entire crate is unconfigured.
             krate.attrs = Vec::new();
@@ -218,7 +217,9 @@ pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features)
             if err_count == diag.err_count() {
                 // Avoid reconfiguring malformed `cfg_attr`s.
                 strip_unconfigured.features = Some(&features);
-                strip_unconfigured.configure(unconfigured_attrs);
+                // Run configuration again, this time with features available
+                // so that we can perform feature-gating.
+                strip_unconfigured.configure_krate_attrs(unconfigured_attrs);
             }
             features
         }
@@ -242,10 +243,23 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
+    pub fn configure<T: AstLike>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         if self.in_cfg(node.attrs()) {
             Some(node)
+        } else {
+            self.modified = true;
+            None
+        }
+    }
+
+    fn configure_krate_attrs(
+        &mut self,
+        mut attrs: Vec<ast::Attribute>,
+    ) -> Option<Vec<ast::Attribute>> {
+        attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
+        if self.in_cfg(&attrs) {
+            Some(attrs)
         } else {
             self.modified = true;
             None
@@ -258,7 +272,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives compiler warnings if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
-    pub fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {
+    pub fn process_cfg_attrs<T: AstLike>(&mut self, node: &mut T) {
         node.visit_attrs(|attrs| {
             attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
         });

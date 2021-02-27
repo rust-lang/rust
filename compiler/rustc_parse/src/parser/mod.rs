@@ -22,7 +22,7 @@ use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, HasTokens};
+use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
 use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -1228,7 +1228,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn collect_tokens_no_attrs<R: HasTokens>(
+    pub fn collect_tokens_no_attrs<R: AstLike>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, R> {
