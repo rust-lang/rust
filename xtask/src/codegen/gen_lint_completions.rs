@@ -1,7 +1,7 @@
 //! Generates descriptors structure for unstable feature from Unstable Book
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
-use quote::quote;
 use walkdir::WalkDir;
 use xshell::{cmd, read_file};
 
@@ -15,16 +15,13 @@ pub fn generate_lint_completions(mode: Mode) -> Result<()> {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run()?;
     }
 
-    let ts_features = generate_descriptor("./target/rust/src/doc/unstable-book/src".into())?;
-    cmd!("curl http://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
+    let mut contents = String::from("use crate::completions::attribute::LintCompletion;\n\n");
+    generate_descriptor(&mut contents, "./target/rust/src/doc/unstable-book/src".into())?;
+    contents.push('\n');
 
-    let ts_clippy = generate_descriptor_clippy(&Path::new("./target/clippy_lints.json"))?;
-    let ts = quote! {
-        use crate::completions::attribute::LintCompletion;
-        #ts_features
-        #ts_clippy
-    };
-    let contents = reformat(ts.to_string().as_str())?;
+    cmd!("curl http://rust-lang.github.io/rust-clippy/master/lints.json --output ./target/clippy_lints.json").run()?;
+    generate_descriptor_clippy(&mut contents, &Path::new("./target/clippy_lints.json"))?;
+    let contents = reformat(&contents)?;
 
     let destination =
         project_root().join("crates/ide_completion/src/generated_lint_completions.rs");
@@ -34,8 +31,10 @@ pub fn generate_lint_completions(mode: Mode) -> Result<()> {
     Ok(())
 }
 
-fn generate_descriptor(src_dir: PathBuf) -> Result<proc_macro2::TokenStream> {
-    let definitions = ["language-features", "library-features"]
+fn generate_descriptor(buf: &mut String, src_dir: PathBuf) -> Result<()> {
+    buf.push_str(r#"pub(super) const FEATURES: &[LintCompletion] = &["#);
+    buf.push('\n');
+    ["language-features", "library-features"]
         .iter()
         .flat_map(|it| WalkDir::new(src_dir.join(it)))
         .filter_map(|e| e.ok())
@@ -43,21 +42,15 @@ fn generate_descriptor(src_dir: PathBuf) -> Result<proc_macro2::TokenStream> {
             // Get all `.md ` files
             entry.file_type().is_file() && entry.path().extension().unwrap_or_default() == "md"
         })
-        .map(|entry| {
+        .for_each(|entry| {
             let path = entry.path();
             let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace("-", "_");
             let doc = read_file(path).unwrap();
 
-            quote! { LintCompletion { label: #feature_ident, description: #doc } }
+            push_lint_completion(buf, &feature_ident, &doc);
         });
-
-    let ts = quote! {
-        pub(super) const FEATURES:  &[LintCompletion] = &[
-            #(#definitions),*
-        ];
-    };
-
-    Ok(ts)
+    buf.push_str("];\n");
+    Ok(())
 }
 
 #[derive(Default)]
@@ -66,7 +59,7 @@ struct ClippyLint {
     id: String,
 }
 
-fn generate_descriptor_clippy(path: &Path) -> Result<proc_macro2::TokenStream> {
+fn generate_descriptor_clippy(buf: &mut String, path: &Path) -> Result<()> {
     let file_content = read_file(path)?;
     let mut clippy_lints: Vec<ClippyLint> = vec![];
 
@@ -97,18 +90,27 @@ fn generate_descriptor_clippy(path: &Path) -> Result<proc_macro2::TokenStream> {
         }
     }
 
-    let definitions = clippy_lints.into_iter().map(|clippy_lint| {
+    buf.push_str(r#"pub(super) const CLIPPY_LINTS: &[LintCompletion] = &["#);
+    buf.push('\n');
+    clippy_lints.into_iter().for_each(|clippy_lint| {
         let lint_ident = format!("clippy::{}", clippy_lint.id);
         let doc = clippy_lint.help;
-
-        quote! { LintCompletion { label: #lint_ident, description: #doc } }
+        push_lint_completion(buf, &lint_ident, &doc);
     });
 
-    let ts = quote! {
-        pub(super) const CLIPPY_LINTS:  &[LintCompletion] = &[
-            #(#definitions),*
-        ];
-    };
+    buf.push_str("];\n");
 
-    Ok(ts)
+    Ok(())
+}
+
+fn push_lint_completion(buf: &mut String, label: &str, description: &str) {
+    writeln!(
+        buf,
+        r###"    LintCompletion {{
+        label: "{}",
+        description: r##"{}"##
+    }},"###,
+        label, description
+    )
+    .unwrap();
 }
