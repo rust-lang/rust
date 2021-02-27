@@ -75,7 +75,6 @@ struct LazyTokenStreamImpl {
     num_calls: u32,
     desugar_doc_comments: bool,
     append_unglued_token: Option<(Token, Spacing)>,
-    start_calls: u32,
     replace_ranges: Box<[ReplaceRange]>,
 }
 
@@ -116,9 +115,6 @@ impl CreateTokenStream for LazyTokenStreamImpl {
                     new_tokens
                 );
 
-                let range_start = range.start - self.start_calls;
-                let range_end = range.end - self.start_calls;
-
                 // Replace any removed tokens with `FlatToken::Empty`.
                 // This keeps the total length of `tokens` constant throughout the
                 // replacement process, allowing us to use all of the `ReplaceRanges` entries
@@ -127,7 +123,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
                     .take(range.len() - new_tokens.len());
 
                 tokens.splice(
-                    (range_start as usize)..(range_end as usize),
+                    (range.start as usize)..(range.end as usize),
                     new_tokens.clone().into_iter().chain(filler),
                 );
             }
@@ -270,12 +266,6 @@ impl<'a> Parser<'a> {
             return Ok(ret);
         }
 
-        // Handle previous replace ranges
-        let replace_ranges = if ret.attrs().is_empty() {
-            vec![]
-        } else {
-            self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end].to_vec()
-        };
 
         let cursor_snapshot_next_calls = cursor_snapshot.num_next_calls;
         let mut end_pos = self.token_cursor.num_next_calls;
@@ -295,6 +285,20 @@ impl<'a> Parser<'a> {
 
         let num_calls = end_pos - cursor_snapshot_next_calls;
 
+        // Handle previous replace ranges
+        let replace_ranges: Box<[ReplaceRange]> = if ret.attrs().is_empty() {
+            Box::new([])
+        } else {
+            let start_calls: u32 = cursor_snapshot_next_calls.try_into().unwrap();
+            self.capture_state.replace_ranges[replace_ranges_start..replace_ranges_end]
+                .iter()
+                .cloned()
+                .map(|(range, tokens)| {
+                    ((range.start - start_calls)..(range.end - start_calls), tokens)
+                })
+                .collect()
+        };
+
         let tokens = LazyTokenStream::new(LazyTokenStreamImpl {
             start_token,
             num_calls: num_calls.try_into().unwrap(),
@@ -302,7 +306,6 @@ impl<'a> Parser<'a> {
             desugar_doc_comments: self.desugar_doc_comments,
             append_unglued_token: self.token_cursor.append_unglued_token.clone(),
             replace_ranges: replace_ranges.into(),
-            start_calls: cursor_snapshot_next_calls.try_into().unwrap(),
         });
 
         let final_attrs: Option<AttributesData> = ret.finalize_tokens(tokens);
