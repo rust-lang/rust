@@ -2000,6 +2000,20 @@ function defocusSearchBar() {
                 });
             }
             search();
+
+            // This is required in firefox to avoid this problem: Navigating to a search result
+            // with the keyboard, hitting enter, and then hitting back would take you back to
+            // the doc page, rather than the search that should overlay it.
+            // This was an interaction between the back-forward cache and our handlers
+            // that try to sync state between the URL and the search input. To work around it,
+            // do a small amount of re-init on page show.
+            window.onpageshow = function(){
+                var qSearch = getQueryStringParams().search;
+                if (search_input.value === "" && qSearch) {
+                    search_input.value = qSearch;
+                }
+                search();
+            };
         }
 
         index = buildIndex(rawSearchIndex);
@@ -2958,9 +2972,3 @@ function defocusSearchBar() {
     onHashChange(null);
     window.onhashchange = onHashChange;
 }());
-
-// This is required in firefox. Explanations: when going back in the history, firefox doesn't re-run
-// the JS, therefore preventing rustdoc from setting a few things required to be able to reload the
-// previous search results (if you navigated to a search result with the keyboard, pressed enter on
-// it to navigate to that result, and then came back to this page).
-window.onunload = function(){};
