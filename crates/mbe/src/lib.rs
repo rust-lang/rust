@@ -12,6 +12,9 @@ mod subtree_source;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod benchmark;
+
 use std::fmt;
 
 use test_utils::mark;
