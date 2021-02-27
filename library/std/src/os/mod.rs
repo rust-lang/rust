@@ -3,7 +3,7 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
 
-// When documenting libstd we want to show unix/windows/linux modules as these are the "main
+// When documenting libstd we want to show unix/windows/linux/wasi modules as these are the "main
 // modules" that are used across platforms, so all modules are enabled when `cfg(doc)` is set.
 // This should help show platform-specific functionality in a hopefully cross-platform way in the
 // documentation.
@@ -22,6 +22,9 @@ pub use crate::sys::windows_ext as windows;
 #[doc(cfg(target_os = "linux"))]
 pub mod linux;
 
+#[cfg(doc)]
+pub use crate::sys::wasi_ext as wasi;
+
 // If we're not documenting libstd then we just expose the main modules as we otherwise would.
 
 #[cfg(not(doc))]
@@ -37,6 +40,10 @@ pub use crate::sys::ext as windows;
 #[cfg(not(doc))]
 #[cfg(any(target_os = "linux", target_os = "l4re"))]
 pub mod linux;
+
+#[cfg(not(doc))]
+#[cfg(target_os = "wasi")]
+pub mod wasi;
 
 #[cfg(target_os = "android")]
 pub mod android;
@@ -68,7 +75,5 @@ pub mod redox;
 pub mod solaris;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
-#[cfg(target_os = "wasi")]
-pub mod wasi;
 
 pub mod raw;

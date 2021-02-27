@@ -2,8 +2,8 @@
 
 use std::ffi::CString;
 
+use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
@@ -75,8 +75,8 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("frame-pointer"),
-            const_cstr!("all"),
+            cstr!("frame-pointer"),
+            cstr!("all"),
         );
     }
 }
@@ -95,7 +95,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"),
+            cstr!("instrument-function-entry-inlined"),
             &mcount_name,
         );
     }
@@ -129,16 +129,16 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         StackProbeType::None => None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
         // this, no probe is generated at all (even if the attribute is specified).
-        StackProbeType::Inline => Some(const_cstr!("inline-asm")),
+        StackProbeType::Inline => Some(cstr!("inline-asm")),
         // Flag our internal `__rust_probestack` function as the stack probe symbol.
         // This is defined in the `compiler-builtins` crate for each architecture.
-        StackProbeType::Call => Some(const_cstr!("__rust_probestack")),
+        StackProbeType::Call => Some(cstr!("__rust_probestack")),
         // Pick from the two above based on the LLVM version.
         StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
             if llvm_util::get_version() < min_llvm_version_for_inline {
-                Some(const_cstr!("__rust_probestack"))
+                Some(cstr!("__rust_probestack"))
             } else {
-                Some(const_cstr!("inline-asm"))
+                Some(cstr!("inline-asm"))
             }
         }
     };
@@ -146,7 +146,7 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("probe-stack"),
+            cstr!("probe-stack"),
             attr_value,
         );
     }
@@ -169,7 +169,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     llvm::AddFunctionAttrStringValue(
         llfn,
         llvm::AttributePlace::Function,
-        const_cstr!("target-cpu"),
+        cstr!("target-cpu"),
         target_cpu.as_c_str(),
     );
 }
@@ -180,7 +180,7 @@ pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("tune-cpu"),
+            cstr!("tune-cpu"),
             tune_cpu.as_c_str(),
         );
     }
@@ -289,7 +289,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         Attribute::NoAlias.apply_llfn(llvm::AttributePlace::ReturnValue, llfn);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        llvm::AddFunctionAttrString(llfn, Function, const_cstr!("cmse_nonsecure_entry"));
+        llvm::AddFunctionAttrString(llfn, Function, cstr!("cmse_nonsecure_entry"));
     }
     sanitize(cx, codegen_fn_attrs.no_sanitize, llfn);
 
@@ -319,7 +319,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
         llvm::AddFunctionAttrStringValue(
             llfn,
             llvm::AttributePlace::Function,
-            const_cstr!("target-features"),
+            cstr!("target-features"),
             &val,
         );
     }
@@ -332,7 +332,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,
-                const_cstr!("wasm-import-module"),
+                cstr!("wasm-import-module"),
                 &module,
             );
 
@@ -342,7 +342,7 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,
-                const_cstr!("wasm-import-name"),
+                cstr!("wasm-import-name"),
                 &name,
             );
         }

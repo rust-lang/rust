@@ -1,0 +1,12 @@
+error[E0596]: cannot borrow `c` as mutable, as it is not declared as mutable
+  --> $DIR/issue-82438-mut-without-upvar.rs:27:27
+   |
+LL |     let c = |a, b, c, d| {};
+   |         - help: consider changing this to be mutable: `mut c`
+LL | 
+LL |     A.f(participant_name, &mut c);
+   |                           ^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.
