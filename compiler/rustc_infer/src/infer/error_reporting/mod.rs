@@ -50,6 +50,7 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
 use crate::infer;
+use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -179,7 +180,14 @@ fn msg_span_from_early_bound_and_free_regions(
         }
         ty::ReFree(ref fr) => match fr.bound_region {
             ty::BrAnon(idx) => {
-                (format!("the anonymous lifetime #{} defined on", idx + 1), tcx.hir().span(node))
+                if let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region) {
+                    ("the anonymous lifetime defined on".to_string(), ty.span)
+                } else {
+                    (
+                        format!("the anonymous lifetime #{} defined on", idx + 1),
+                        tcx.hir().span(node),
+                    )
+                }
             }
             _ => (
                 format!("the lifetime `{}` as defined on", region),
