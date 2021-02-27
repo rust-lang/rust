@@ -272,13 +272,8 @@ macro_rules! derive_has_tokens_no_attrs {
             }
 
             fn finalize_tokens(&mut self, tokens: LazyTokenStream) -> Option<AttributesData> {
-                // FIXME - stoer them directly?
                 if self.tokens.is_none() {
-                    self.tokens = Some(LazyTokenStream::new(PreexpTokenStream::new(vec![
-                        (PreexpTokenTree::Attributes(AttributesData {
-                            attrs: Default::default(),
-                            tokens,
-                        }), Spacing::Alone)])));
+                    self.tokens = Some(tokens);
                 }
                 None
             }
