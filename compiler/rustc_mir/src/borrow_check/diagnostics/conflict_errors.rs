@@ -344,6 +344,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             "Copy",
                             None,
                         );
+                        suggest_constraining_type_param(
+                            tcx,
+                            generics,
+                            &mut err,
+                            &param.name.as_str(),
+                            "Clone",
+                            None,
+                        );
                     }
                 }
                 let span = if let Some(local) = place.as_local() {
