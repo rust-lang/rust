@@ -111,7 +111,7 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     if #[cfg(target_os = "wasi")] {
         // On WASI we'll document what's already available
-        #[stable(feature = "rust1", since = "1.0.0")]
+        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
         pub use self::ext as wasi_ext;
     } else if #[cfg(any(target_os = "hermit",
                         target_arch = "wasm32",
@@ -125,6 +125,7 @@ cfg_if::cfg_if! {
     } else {
         // On other platforms like Windows document the bare bones of WASI
         #[path = "wasi/ext/mod.rs"]
+        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
         pub mod wasi_ext;
     }
 }
