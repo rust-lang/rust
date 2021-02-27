@@ -400,6 +400,8 @@ pub trait MetadataExt {
     fn ino(&self) -> u64;
     /// Returns the `st_nlink` field of the internal `filestat_t`
     fn nlink(&self) -> u64;
+    /// Returns the `st_size` field of the internal `filestat_t`
+    fn size(&self) -> u64;
     /// Returns the `st_atim` field of the internal `filestat_t`
     fn atim(&self) -> u64;
     /// Returns the `st_mtim` field of the internal `filestat_t`
@@ -417,6 +419,9 @@ impl MetadataExt for fs::Metadata {
     }
     fn nlink(&self) -> u64 {
         self.as_inner().as_wasi().nlink
+    }
+    fn size(&self) -> u64 {
+        self.as_inner().as_wasi().size
     }
     fn atim(&self) -> u64 {
         self.as_inner().as_wasi().atim
