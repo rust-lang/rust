@@ -90,7 +90,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
-                self.write_discriminant(*variant_index, dest)?;
+                self.write_discriminant(*variant_index, &dest)?;
             }
 
             // Mark locals as alive
@@ -110,7 +110,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Stacked Borrows.
             Retag(kind, place) => {
                 let dest = self.eval_place(**place)?;
-                M::retag(self, *kind, dest)?;
+                M::retag(self, *kind, &dest)?;
             }
 
             // Statements we do not track.
@@ -156,45 +156,45 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ThreadLocalRef(did) => {
                 let id = M::thread_local_static_alloc_id(self, did)?;
                 let val = self.global_base_pointer(id.into())?;
-                self.write_scalar(val, dest)?;
+                self.write_scalar(val, &dest)?;
             }
 
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(op, dest)?;
+                self.copy_op(&op, &dest)?;
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
                 let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
-                let left = self.read_immediate(self.eval_operand(left, layout)?)?;
+                let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_ignore_overflow(bin_op, left, right, dest)?;
+                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
-                let left = self.read_immediate(self.eval_operand(left, None)?)?;
+                let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
-                self.binop_with_overflow(bin_op, left, right, dest)?;
+                let right = self.read_immediate(&self.eval_operand(right, layout)?)?;
+                self.binop_with_overflow(bin_op, &left, &right, &dest)?;
             }
 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
-                let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
-                let val = self.unary_op(un_op, val)?;
+                let val = self.read_immediate(&self.eval_operand(operand, Some(dest.layout))?)?;
+                let val = self.unary_op(un_op, &val)?;
                 assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
-                self.write_immediate(*val, dest)?;
+                self.write_immediate(*val, &dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
-                        self.write_discriminant(variant_index, dest)?;
+                        self.write_discriminant(variant_index, &dest)?;
                         if adt_def.is_enum() {
-                            (self.place_downcast(dest, variant_index)?, active_field_index)
+                            (self.place_downcast(&dest, variant_index)?, active_field_index)
                         } else {
                             (dest, active_field_index)
                         }
@@ -207,21 +207,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Ignore zero-sized fields.
                     if !op.layout.is_zst() {
                         let field_index = active_field_index.unwrap_or(i);
-                        let field_dest = self.place_field(dest, field_index)?;
-                        self.copy_op(op, field_dest)?;
+                        let field_dest = self.place_field(&dest, field_index)?;
+                        self.copy_op(&op, &field_dest)?;
                     }
                 }
             }
 
             Repeat(ref operand, _) => {
                 let op = self.eval_operand(operand, None)?;
-                let dest = self.force_allocation(dest)?;
+                let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
-                if let Some(first_ptr) = self.check_mplace_access(dest, None)? {
+                if let Some(first_ptr) = self.check_mplace_access(&dest, None)? {
                     // Write the first.
-                    let first = self.mplace_field(dest, 0)?;
-                    self.copy_op(op, first.into())?;
+                    let first = self.mplace_field(&dest, 0)?;
+                    self.copy_op(&op, &first.into())?;
 
                     if length > 1 {
                         let elem_size = first.layout.size;
@@ -242,23 +242,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Len(place) => {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(src)?;
+                let mplace = self.force_allocation(&src)?;
                 let len = mplace.len(self)?;
-                self.write_scalar(Scalar::from_machine_usize(len, self), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
             AddressOf(_, place) | Ref(_, _, place) => {
                 let src = self.eval_place(place)?;
-                let place = self.force_allocation(src)?;
+                let place = self.force_allocation(&src)?;
                 if place.layout.size.bytes() > 0 {
                     // definitely not a ZST
                     assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
                 }
-                self.write_immediate(place.to_ref(), dest)?;
+                self.write_immediate(place.to_ref(), &dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
-                M::box_alloc(self, dest)?;
+                M::box_alloc(self, &dest)?;
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
@@ -272,19 +272,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     );
                     throw_inval!(SizeOfUnsizedType(ty));
                 }
-                self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), dest)?;
+                self.write_scalar(Scalar::from_machine_usize(layout.size.bytes(), self), &dest)?;
             }
 
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
-                self.cast(src, cast_kind, cast_ty, dest)?;
+                self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 
             Discriminant(place) => {
                 let op = self.eval_place_to_op(place, None)?;
-                let discr_val = self.read_discriminant(op)?.0;
-                self.write_scalar(discr_val, dest)?;
+                let discr_val = self.read_discriminant(&op)?.0;
+                self.write_scalar(discr_val, &dest)?;
             }
         }
 

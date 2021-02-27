@@ -127,7 +127,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 
     fn print_results(&self) {
-        let output_format = self.ctx.renderinfo.borrow().output_format;
+        let output_format = self.ctx.renderinfo.output_format;
         if output_format.is_json() {
             println!("{}", self.to_json());
             return;

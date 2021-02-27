@@ -12,7 +12,7 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     if true {
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
-            if true {
+            if foo.is_some() {
                 break;
             } else {
                 continue;
@@ -21,8 +21,8 @@ fn if_same_then_else2() -> Result<&'static str, ()> {
     } else {
         //~ ERROR same body as `if` block
         for _ in &[42] {
-            let foo: &Option<_> = &Some::<u8>(42);
-            if true {
+            let bar: &Option<_> = &Some::<u8>(42);
+            if bar.is_some() {
                 break;
             } else {
                 continue;

@@ -100,8 +100,6 @@ pub use self::list::List;
 
 pub use self::trait_def::TraitDef;
 
-pub use self::query::queries;
-
 pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt};
 
 pub mod _match;
@@ -1057,6 +1055,7 @@ impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<PredicateKind<'tcx>>`.
+    #[inline]
     pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
         self.inner.kind
     }

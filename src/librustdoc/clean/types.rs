@@ -57,9 +57,16 @@ crate struct Crate {
     crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate masked_crates: FxHashSet<CrateNum>,
     crate collapsed: bool,
+}
+
+/// This struct is used to wrap additional information added by rustdoc on a `trait` item.
+#[derive(Clone, Debug)]
+crate struct TraitWithExtraInfo {
+    crate trait_: Trait,
+    crate is_spotlight: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -141,6 +148,22 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
+        Self::from_def_id_and_attrs_and_parts(
+            def_id,
+            name,
+            kind,
+            box cx.tcx.get_attrs(def_id).clean(cx),
+            cx,
+        )
+    }
+
+    pub fn from_def_id_and_attrs_and_parts(
+        def_id: DefId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        attrs: Box<Attributes>,
+        cx: &mut DocContext<'_>,
+    ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
@@ -157,7 +180,7 @@ impl Item {
             kind: box kind,
             name,
             source: source.clean(cx),
-            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
+            attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }
@@ -1185,7 +1208,6 @@ crate struct Trait {
     crate items: Vec<Item>,
     crate generics: Generics,
     crate bounds: Vec<GenericBound>,
-    crate is_spotlight: bool,
     crate is_auto: bool,
 }
 
@@ -1850,6 +1872,10 @@ impl Span {
 
     crate fn span(&self) -> rustc_span::Span {
         self.0
+    }
+
+    crate fn is_dummy(&self) -> bool {
+        self.0.is_dummy()
     }
 
     crate fn filename(&self, sess: &Session) -> FileName {

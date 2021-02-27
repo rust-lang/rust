@@ -1,10 +1,11 @@
 use crate::check::coercion::{AsCoercionSite, CoerceMany};
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyS};
-use rustc_span::Span;
+use rustc_span::{MultiSpan, Span};
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -206,7 +207,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                 };
                 let cause = self.cause(span, code);
-                coercion.coerce(self, &cause, &arm.body, arm_ty);
+                let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
+                    Some(ret_coercion) if self.in_tail_expr => {
+                        let ret_ty = ret_coercion.borrow().expected_ty();
+                        let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+                        self.can_coerce(arm_ty, ret_ty)
+                            && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                            // The match arms need to unify for the case of `impl Trait`.
+                            && !matches!(ret_ty.kind(), ty::Opaque(..))
+                    }
+                    _ => false,
+                };
+
+                // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
+                // We use it this way to be able to expand on the potential error and detect when a
+                // `match` tail statement could be a tail expression instead. If so, we suggest
+                // removing the stray semicolon.
+                coercion.coerce_inner(
+                    self,
+                    &cause,
+                    Some(&arm.body),
+                    arm_ty,
+                    Some(&mut |err: &mut DiagnosticBuilder<'_>| {
+                        if let (Expectation::IsLast(stmt), Some(ret), true) =
+                            (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
+                        {
+                            let semi_span = expr.span.shrink_to_hi().with_hi(stmt.hi());
+                            let mut ret_span: MultiSpan = semi_span.into();
+                            ret_span.push_span_label(
+                                expr.span,
+                                "this could be implicitly returned but it is a statement, not a \
+                                 tail expression"
+                                    .to_owned(),
+                            );
+                            ret_span.push_span_label(
+                                ret,
+                                "the `match` arms can conform to this return type".to_owned(),
+                            );
+                            ret_span.push_span_label(
+                                semi_span,
+                                "the `match` is a statement because of this semicolon, consider \
+                                 removing it"
+                                    .to_owned(),
+                            );
+                            err.span_note(
+                                ret_span,
+                                "you might have meant to return the `match` expression",
+                            );
+                            err.tool_only_span_suggestion(
+                                semi_span,
+                                "remove this semicolon",
+                                String::new(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }),
+                    false,
+                );
+
                 other_arms.push(arm_span);
                 if other_arms.len() > 5 {
                     other_arms.remove(0);

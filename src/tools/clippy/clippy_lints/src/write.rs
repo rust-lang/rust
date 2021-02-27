@@ -149,7 +149,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    ///
     /// // Bad
     /// writeln!(buf, "");
     ///
@@ -176,7 +175,6 @@ declare_clippy_lint! {
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
-    ///
     /// // Bad
     /// write!(buf, "Hello {}!\n", name);
     ///
@@ -202,7 +200,6 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
-    ///
     /// // Bad
     /// writeln!(buf, "{}", "foo");
     ///

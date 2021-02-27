@@ -278,14 +278,14 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         let out_ptr = match self.handle.insert_recursing(self.key, value) {
             (Fit(_), val_ptr) => {
-                // Safety: We have consumed self.handle and the handle returned.
+                // SAFETY: We have consumed self.handle and the handle returned.
                 let map = unsafe { self.dormant_map.awaken() };
                 map.length += 1;
                 val_ptr
             }
             (Split(ins), val_ptr) => {
                 drop(ins.left);
-                // Safety: We have consumed self.handle and the reference returned.
+                // SAFETY: We have consumed self.handle and the reference returned.
                 let map = unsafe { self.dormant_map.awaken() };
                 let root = map.root.as_mut().unwrap();
                 root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);

@@ -106,6 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             let decl = &signature.decl;
             if decl.implicit_self.has_implicit_self();
             if decl.inputs.len() == 1;
+            if impl_item.generics.params.is_empty();
 
             // Check if return type is String
             if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::string_type);

@@ -2,6 +2,8 @@ use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
+use super::simplify::simplify_cfg;
+
 pub struct MatchBranchSimplification;
 
 /// If a source block is found that switches between two blocks that are exactly
@@ -42,9 +44,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             return;
         }
 
-        let param_env = tcx.param_env(body.source.def_id());
         let def_id = body.source.def_id();
+        let param_env = tcx.param_env(def_id);
+
         let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let mut should_cleanup = false;
         'outer: for bb_idx in bbs.indices() {
             if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {:?} ", def_id)) {
                 continue;
@@ -159,6 +163,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             from.statements
                 .push(Statement { source_info, kind: StatementKind::StorageDead(discr_local) });
             from.terminator_mut().kind = first.terminator().kind.clone();
+            should_cleanup = true;
+        }
+
+        if should_cleanup {
+            simplify_cfg(body);
         }
     }
 }

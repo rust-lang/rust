@@ -408,7 +408,7 @@ impl From<clean::FnDecl> for FnDecl {
 
 impl From<clean::Trait> for Trait {
     fn from(trait_: clean::Trait) -> Self {
-        let clean::Trait { unsafety, items, generics, bounds, is_spotlight: _, is_auto } = trait_;
+        let clean::Trait { unsafety, items, generics, bounds, is_auto } = trait_;
         Trait {
             is_auto,
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,

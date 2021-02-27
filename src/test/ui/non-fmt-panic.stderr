@@ -93,7 +93,7 @@ LL |     panic!("{}", C);
 help: or use std::panic::panic_any instead
    |
 LL |     std::panic::panic_any(C);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:20:12
@@ -109,7 +109,7 @@ LL |     panic!("{}", S);
 help: or use std::panic::panic_any instead
    |
 LL |     std::panic::panic_any(S);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:21:17
@@ -125,7 +125,7 @@ LL |     std::panic!("{}", 123);
 help: or use std::panic::panic_any instead
    |
 LL |     std::panic::panic_any(123);
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:22:18
@@ -183,5 +183,66 @@ LL |     fancy_panic::fancy_panic!(S);
    |
    = note: this is no longer accepted in Rust 2021
 
-warning: 14 warnings emitted
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:36:12
+   |
+LL |     panic!(a!());
+   |            ^^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!("{}", a!());
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(a!());
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:38:12
+   |
+LL |     panic!(format!("{}", 1));
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+   = note: the panic!() macro supports formatting, so there's no need for the format!() macro here
+help: remove the `format!(..)` macro call
+   |
+LL |     panic!("{}", 1);
+   |           --     --
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:40:12
+   |
+LL |     panic![123];
+   |            ^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!["{}", 123];
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(123);
+   |     ^^^^^^^^^^^^^^^^^^^^^^   ^
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:41:12
+   |
+LL |     panic!{123};
+   |            ^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+help: add a "{}" format string to Display the message
+   |
+LL |     panic!{"{}", 123};
+   |            ^^^^^
+help: or use std::panic::panic_any instead
+   |
+LL |     std::panic::panic_any(123);
+   |     ^^^^^^^^^^^^^^^^^^^^^^   ^
+
+warning: 18 warnings emitted
 

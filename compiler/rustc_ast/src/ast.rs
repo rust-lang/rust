@@ -1979,7 +1979,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, PartialOrd, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2067,7 +2067,7 @@ pub struct InlineAsm {
 /// Inline assembly dialect.
 ///
 /// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Hash, HashStable_Generic)]
 pub enum LlvmAsmDialect {
     Att,
     Intel,
@@ -2695,7 +2695,7 @@ pub enum ItemKind {
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
-    Use(P<UseTree>),
+    Use(UseTree),
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
@@ -2719,7 +2719,7 @@ pub enum ItemKind {
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
-    GlobalAsm(P<GlobalAsm>),
+    GlobalAsm(GlobalAsm),
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.

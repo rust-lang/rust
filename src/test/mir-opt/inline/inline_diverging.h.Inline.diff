@@ -46,7 +46,7 @@
 +         _4 = &_2;                        // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
 +         StorageLive(_7);                 // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
 +         _7 = const ();                   // scope 1 at $DIR/inline-diverging.rs:22:5: 22:22
-+         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:22:5: 22:22
++         goto -> bb1;                     // scope 4 at $DIR/inline-diverging.rs:22:5: 22:22
       }
   
       bb1: {

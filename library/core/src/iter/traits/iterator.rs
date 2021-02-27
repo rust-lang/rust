@@ -3,7 +3,7 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, ControlFlow, Try};
+use crate::ops::{ControlFlow, Try};
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -242,13 +242,11 @@ pub trait Iterator {
     where
         Self: Sized,
     {
-        #[inline]
-        fn add1<T>(count: usize, _: T) -> usize {
-            // Might overflow.
-            Add::add(count, 1)
-        }
-
-        self.fold(0, add1)
+        self.fold(
+            0,
+            #[rustc_inherit_overflow_checks]
+            |count, _| count + 1,
+        )
     }
 
     /// Consumes the iterator, returning the last element.
@@ -2475,13 +2473,9 @@ pub trait Iterator {
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
         ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
-            // The addition might panic on overflow
+            #[rustc_inherit_overflow_checks]
             move |i, x| {
-                if predicate(x) {
-                    ControlFlow::Break(i)
-                } else {
-                    ControlFlow::Continue(Add::add(i, 1))
-                }
+                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i + 1) }
             }
         }
 

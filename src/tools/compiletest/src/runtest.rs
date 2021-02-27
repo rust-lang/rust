@@ -1585,7 +1585,7 @@ impl<'test> TestCx<'test> {
 
         let aux_dir = self.aux_output_dir_name();
 
-        let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path passed");
+        let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path not passed");
         let mut rustdoc = Command::new(rustdoc_path);
 
         rustdoc

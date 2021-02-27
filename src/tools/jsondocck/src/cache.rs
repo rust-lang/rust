@@ -9,6 +9,7 @@ pub struct Cache {
     root: PathBuf,
     files: HashMap<PathBuf, String>,
     values: HashMap<PathBuf, Value>,
+    pub variables: HashMap<String, Value>,
     last_path: Option<PathBuf>,
 }
 
@@ -19,6 +20,7 @@ impl Cache {
             root: Path::new(doc_dir).to_owned(),
             files: HashMap::new(),
             values: HashMap::new(),
+            variables: HashMap::new(),
             last_path: None,
         }
     }

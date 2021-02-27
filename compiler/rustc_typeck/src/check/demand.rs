@@ -616,10 +616,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ if sp == expr.span && !is_macro => {
                 if let Some(steps) = self.deref_steps(checked_ty, expected) {
+                    let expr = expr.peel_blocks();
+
                     if steps == 1 {
-                        // For a suggestion to make sense, the type would need to be `Copy`.
-                        if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp) {
-                            if let Ok(code) = sm.span_to_snippet(sp) {
+                        if let hir::ExprKind::AddrOf(_, mutbl, inner) = expr.kind {
+                            // If the expression has `&`, removing it would fix the error
+                            let prefix_span = expr.span.with_hi(inner.span.lo());
+                            let message = match mutbl {
+                                hir::Mutability::Not => "consider removing the `&`",
+                                hir::Mutability::Mut => "consider removing the `&mut`",
+                            };
+                            let suggestion = String::new();
+                            return Some((
+                                prefix_span,
+                                message,
+                                suggestion,
+                                Applicability::MachineApplicable,
+                            ));
+                        } else if self.infcx.type_is_copy_modulo_regions(
+                            self.param_env,
+                            expected,
+                            sp,
+                        ) {
+                            // For this suggestion to make sense, the type would need to be `Copy`.
+                            if let Ok(code) = sm.span_to_snippet(expr.span) {
                                 let message = if checked_ty.is_region_ptr() {
                                     "consider dereferencing the borrow"
                                 } else {
@@ -631,7 +651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     format!("*{}", code)
                                 };
                                 return Some((
-                                    sp,
+                                    expr.span,
                                     message,
                                     suggestion,
                                     Applicability::MachineApplicable,

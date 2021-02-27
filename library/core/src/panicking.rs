@@ -91,3 +91,54 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
 }
+
+#[derive(Debug)]
+#[doc(hidden)]
+pub enum AssertKind {
+    Eq,
+    Ne,
+}
+
+/// Internal function for `assert_eq!` and `assert_ne!` macros
+#[cold]
+#[track_caller]
+#[doc(hidden)]
+pub fn assert_failed<T, U>(
+    kind: AssertKind,
+    left: &T,
+    right: &U,
+    args: Option<fmt::Arguments<'_>>,
+) -> !
+where
+    T: fmt::Debug + ?Sized,
+    U: fmt::Debug + ?Sized,
+{
+    #[track_caller]
+    fn inner(
+        kind: AssertKind,
+        left: &dyn fmt::Debug,
+        right: &dyn fmt::Debug,
+        args: Option<fmt::Arguments<'_>>,
+    ) -> ! {
+        let op = match kind {
+            AssertKind::Eq => "==",
+            AssertKind::Ne => "!=",
+        };
+
+        match args {
+            Some(args) => panic!(
+                r#"assertion failed: `(left {} right)`
+  left: `{:?}`,
+ right: `{:?}: {}`"#,
+                op, left, right, args
+            ),
+            None => panic!(
+                r#"assertion failed: `(left {} right)`
+  left: `{:?}`,
+ right: `{:?}`"#,
+                op, left, right,
+            ),
+        }
+    }
+    inner(kind, &left, &right, args)
+}

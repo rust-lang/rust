@@ -181,16 +181,16 @@ fn get_linker(
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
-                    "x86_64" => Some("x64".to_string()),
-                    "x86" => Some("x86".to_string()),
-                    "aarch64" => Some("arm64".to_string()),
-                    "arm" => Some("arm".to_string()),
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
                     // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");
@@ -2082,7 +2082,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or(Path::new("")),
+            parent.unwrap_or_else(|| Path::new("")),
         );
     }
 }
@@ -2193,6 +2193,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
         ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",

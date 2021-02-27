@@ -23,7 +23,7 @@ fn wrong() {
     foo::Enum::Variant { x: () };
     //~^ ERROR missing field `y` in initializer of `Enum`
     foo::Enum::Variant { };
-    //~^ ERROR missing fields `x`, `y` in initializer of `Enum`
+    //~^ ERROR missing fields `x` and `y` in initializer of `Enum`
 }
 
 fn main() {}

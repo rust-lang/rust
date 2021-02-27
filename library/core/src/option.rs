@@ -336,7 +336,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.expect("fruits are healthy"), "value");
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Option<&str> = None;
     /// x.expect("fruits are healthy"); // panics with `fruits are healthy`
     /// ```
@@ -372,7 +372,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.unwrap(), "air");
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
@@ -1114,7 +1114,7 @@ impl<T: fmt::Debug> Option<T> {
     /// }
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// #![feature(option_expect_none)]
     ///
     /// use std::collections::HashMap;
@@ -1156,7 +1156,7 @@ impl<T: fmt::Debug> Option<T> {
     /// }
     /// ```
     ///
-    /// ```{.should_panic}
+    /// ```should_panic
     /// #![feature(option_unwrap_none)]
     ///
     /// use std::collections::HashMap;

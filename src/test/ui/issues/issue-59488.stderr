@@ -84,24 +84,16 @@ error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
    |
 LL |     assert_eq!(Foo::Bar, i);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   | 
+  ::: $SRC_DIR/core/src/panicking.rs:LL:COL
+   |
+LL |     T: fmt::Debug + ?Sized,
+   |        ---------- required by this bound in `core::panicking::assert_failed`
    |
    = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
-   = note: required because of the requirements on the impl of `Debug` for `&fn(usize) -> Foo {Foo::Bar}`
-   = note: required by `std::fmt::Debug::fmt`
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
-  --> $DIR/issue-59488.rs:30:5
-   |
-LL |     assert_eq!(Foo::Bar, i);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
-   |
-   = help: the trait `Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
-   = note: required because of the requirements on the impl of `Debug` for `&fn(usize) -> Foo {Foo::Bar}`
-   = note: required by `std::fmt::Debug::fmt`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0369.
 For more information about an error, try `rustc --explain E0277`.

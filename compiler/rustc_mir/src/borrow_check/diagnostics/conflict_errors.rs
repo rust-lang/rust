@@ -8,11 +8,10 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
-    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty};
-use rustc_span::source_map::DesugaringKind;
-use rustc_span::Span;
+use rustc_middle::ty::{self, suggest_constraining_type_param, Instance, Ty};
+use rustc_span::{source_map::DesugaringKind, symbol::sym, Span};
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
@@ -1543,7 +1542,41 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
         );
 
+        self.explain_deref_coercion(loan, &mut err);
+
         err.buffer(&mut self.errors_buffer);
+    }
+
+    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
+        let tcx = self.infcx.tcx;
+        if let (
+            Some(Terminator { kind: TerminatorKind::Call { from_hir_call: false, .. }, .. }),
+            Some((method_did, method_substs)),
+        ) = (
+            &self.body[loan.reserve_location.block].terminator,
+            crate::util::find_self_call(
+                tcx,
+                self.body,
+                loan.assigned_place.local,
+                loan.reserve_location.block,
+            ),
+        ) {
+            if tcx.is_diagnostic_item(sym::deref_method, method_did) {
+                let deref_target =
+                    tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
+                        Instance::resolve(tcx, self.param_env, deref_target, method_substs)
+                            .transpose()
+                    });
+                if let Some(Ok(instance)) = deref_target {
+                    let deref_target_ty = instance.ty(tcx, self.param_env);
+                    err.note(&format!(
+                        "borrow occurs due to deref coercion to `{}`",
+                        deref_target_ty
+                    ));
+                    err.span_note(tcx.def_span(instance.def_id()), "deref defined here");
+                }
+            }
+        }
     }
 
     /// Reports an illegal reassignment; for example, an assignment to

@@ -26,7 +26,6 @@
 #![feature(thread_id_value)]
 #![feature(extend_one)]
 #![feature(const_panic)]
-#![cfg_attr(bootstrap, feature(min_const_generics))]
 #![feature(new_uninit)]
 #![feature(once_cell)]
 #![feature(maybe_uninit_uninit_array)]

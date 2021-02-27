@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                 return Err(e);
             }
 
-            (Ident::invalid(), ItemKind::Use(P(tree)))
+            (Ident::invalid(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
@@ -1475,15 +1475,7 @@ impl<'a> Parser<'a> {
         let vstr = pprust::vis_to_string(vis);
         let vstr = vstr.trim_end();
         if macro_rules {
-            let msg = format!("can't qualify macro_rules invocation with `{}`", vstr);
-            self.struct_span_err(vis.span, &msg)
-                .span_suggestion(
-                    vis.span,
-                    "try exporting the macro",
-                    "#[macro_export]".to_owned(),
-                    Applicability::MaybeIncorrect, // speculative
-                )
-                .emit();
+            self.sess.gated_spans.gate(sym::pub_macro_rules, vis.span);
         } else {
             self.struct_span_err(vis.span, "can't qualify macro invocation with `pub`")
                 .span_suggestion(
@@ -1679,7 +1671,7 @@ impl<'a> Parser<'a> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
-        let ext = self.parse_extern()?;
+        let ext = self.parse_extern();
 
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);

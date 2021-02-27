@@ -174,6 +174,7 @@ pub struct Config {
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
+    pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub cargo_native_static: bool,
@@ -364,6 +365,7 @@ struct Build {
     fast_submodules: Option<bool>,
     gdb: Option<String>,
     nodejs: Option<String>,
+    npm: Option<String>,
     python: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
@@ -654,6 +656,7 @@ impl Config {
         };
 
         config.nodejs = build.nodejs.map(PathBuf::from);
+        config.npm = build.npm.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
         set(&mut config.low_priority, build.low_priority);

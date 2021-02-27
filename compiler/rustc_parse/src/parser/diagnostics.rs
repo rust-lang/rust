@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on `Iterator`.
-            let b = i.next().map_or(String::new(), |t| t.to_string());
+            let b = i.next().map_or_else(String::new, |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
                 if tokens.len() > 2 && i == tokens.len() - 2 {
                     b.push_str(", or ");

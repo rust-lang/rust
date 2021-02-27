@@ -7,6 +7,6 @@ fn main() {
     let bar = 1.5f32;
     let _ = Foo { bar.into(), bat: -1, . };
     //~^ ERROR expected one of
-    //~| ERROR missing fields `bar`, `baz` in initializer of `Foo`
+    //~| ERROR missing fields `bar` and `baz` in initializer of `Foo`
     //~| ERROR expected identifier, found `.`
 }

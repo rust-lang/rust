@@ -10,6 +10,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
+#[cfg(parallel_compiler)]
+use rustc_middle::ty::tls;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{self, CrateType};
@@ -29,11 +31,12 @@ use std::io;
 use std::lazy::SyncOnceCell;
 use std::mem;
 use std::ops::DerefMut;
+#[cfg(not(parallel_compiler))]
+use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Once};
-#[cfg(not(parallel_compiler))]
-use std::{panic, thread};
+use std::thread;
 use tracing::info;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
@@ -156,6 +159,28 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     scoped_thread(cfg, main_handler)
 }
 
+/// Creates a new thread and forwards information in thread locals to it.
+/// The new thread runs the deadlock handler.
+/// Must only be called when a deadlock is about to happen.
+#[cfg(parallel_compiler)]
+unsafe fn handle_deadlock() {
+    let registry = rustc_rayon_core::Registry::current();
+
+    let context = tls::get_tlv();
+    assert!(context != 0);
+    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
+    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
+
+    let session_globals = rustc_span::SESSION_GLOBALS.with(|sg| sg as *const _);
+    let session_globals = &*session_globals;
+    thread::spawn(move || {
+        tls::enter_context(icx, |_| {
+            rustc_span::SESSION_GLOBALS
+                .set(session_globals, || tls::with(|tcx| tcx.queries.deadlock(tcx, &registry)))
+        });
+    });
+}
+
 #[cfg(parallel_compiler)]
 pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
@@ -163,7 +188,6 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rustc_middle::ty;
     crate::callbacks::setup_callbacks();
 
     let mut config = rayon::ThreadPoolBuilder::new()
@@ -171,7 +195,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
+        .deadlock_handler(|| unsafe { handle_deadlock() });
 
     if let Some(size) = get_stack_size() {
         config = config.stack_size(size);

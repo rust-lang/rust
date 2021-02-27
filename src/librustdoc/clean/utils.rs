@@ -23,10 +23,9 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let krate = cx.tcx.hir().krate();
     let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
 
-    let mut r = cx.renderinfo.get_mut();
-    r.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    r.owned_box_did = cx.tcx.lang_items().owned_box();
+    cx.renderinfo.deref_trait_did = cx.tcx.lang_items().deref_trait();
+    cx.renderinfo.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+    cx.renderinfo.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
@@ -494,10 +493,10 @@ crate fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R
 where
     F: FnOnce(&mut DocContext<'_>) -> R,
 {
-    let old_bounds = mem::take(&mut *cx.impl_trait_bounds.get_mut());
+    let old_bounds = mem::take(&mut cx.impl_trait_bounds);
     let r = f(cx);
-    assert!(cx.impl_trait_bounds.borrow().is_empty());
-    *cx.impl_trait_bounds.get_mut() = old_bounds;
+    assert!(cx.impl_trait_bounds.is_empty());
+    cx.impl_trait_bounds = old_bounds;
     r
 }
 
@@ -520,4 +519,20 @@ crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<De
         }
         None
     }
+}
+
+/// Checks for the existence of `hidden` in the attribute below if `flag` is `sym::hidden`:
+///
+/// ```
+/// #[doc(hidden)]
+/// pub fn foo() {}
+/// ```
+///
+/// This function exists because it runs on `hir::Attributes` whereas the other is a
+/// `clean::Attributes` method.
+crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
+    attrs.iter().any(|attr| {
+        attr.has_name(sym::doc)
+            && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
+    })
 }

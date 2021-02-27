@@ -883,6 +883,8 @@ themePicker.onblur = handleThemeButtonsBlur;
         static_files::NORMALIZE_CSS,
         options.enable_minification,
     )?;
+    write(cx.dst.join("FiraSans-Regular.woff2"), static_files::fira_sans::REGULAR2)?;
+    write(cx.dst.join("FiraSans-Medium.woff2"), static_files::fira_sans::MEDIUM2)?;
     write(cx.dst.join("FiraSans-Regular.woff"), static_files::fira_sans::REGULAR)?;
     write(cx.dst.join("FiraSans-Medium.woff"), static_files::fira_sans::MEDIUM)?;
     write(cx.dst.join("FiraSans-LICENSE.txt"), static_files::fira_sans::LICENSE)?;
@@ -1343,7 +1345,6 @@ impl AllTypes {
                          </a>\
                      </span>
                  </span>
-                 <span class=\"in-band\">List of all items</span>\
              </h1>",
         );
         // Note: print_entries does not escape the title, because we know the current set of titles
@@ -1548,7 +1549,10 @@ impl Context<'_> {
         }
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = if it.is_crate() {
+        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));
+        let desc = if let Some(desc) = desc {
+            desc
+        } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
         } else {
             format!(
@@ -1638,6 +1642,9 @@ impl Context<'_> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     fn src_href(&self, item: &clean::Item) -> Option<String> {
+        if item.source.is_dummy() {
+            return None;
+        }
         let mut root = self.root_path();
         let mut path = String::new();
         let cnum = item.source.cnum(self.sess());
@@ -3681,8 +3688,9 @@ fn spotlight_decl(decl: &clean::FnDecl, cache: &Cache) -> String {
         if let Some(impls) = cache.impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
-                if impl_.trait_.def_id_full(cache).map_or(false, |d| cache.traits[&d].is_spotlight)
-                {
+                if impl_.trait_.def_id().map_or(false, |d| {
+                    cache.traits.get(&d).map(|t| t.is_spotlight).unwrap_or(false)
+                }) {
                     if out.is_empty() {
                         write!(
                             &mut out,
@@ -3973,7 +3981,7 @@ fn render_impl(
             false,
             outer_version,
             outer_const_version,
-            trait_,
+            trait_.map(|t| &t.trait_),
             show_def_docs,
         );
     }
@@ -4022,7 +4030,7 @@ fn render_impl(
             render_default_items(
                 w,
                 cx,
-                t,
+                &t.trait_,
                 &i.inner_impl(),
                 &i.impl_item,
                 render_mode,

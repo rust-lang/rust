@@ -641,6 +641,7 @@ supported_targets! {
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("s390x-unknown-linux-musl", s390x_unknown_linux_musl),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
@@ -727,6 +728,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
+    ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 

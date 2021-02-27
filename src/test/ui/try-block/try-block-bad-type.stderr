@@ -1,16 +1,12 @@
-error[E0277]: `?` couldn't convert the error to `i32`
+error[E0277]: `?` couldn't convert the error to `TryFromSliceError`
   --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |                ^ the trait `From<&str>` is not implemented for `i32`
+   |                ^ the trait `From<&str>` is not implemented for `TryFromSliceError`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following implementations were found:
-             <i32 as From<NonZeroI32>>
-             <i32 as From<bool>>
-             <i32 as From<i16>>
-             <i32 as From<i8>>
-           and 2 others
+             <TryFromSliceError as From<Infallible>>
    = note: required by `from`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Ok == &str`

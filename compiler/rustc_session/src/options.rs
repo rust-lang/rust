@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str;
 
@@ -591,10 +592,10 @@ macro_rules! options {
             true
         }
 
-        fn parse_treat_err_as_bug(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+        fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = s.parse().ok().filter(|&x| x != 0); slot.unwrap_or(0) != 0 }
-                None => { *slot = Some(1); true }
+                Some(s) => { *slot = s.parse().ok(); slot.is_some() }
+                None => { *slot = NonZeroUsize::new(1); true }
             }
         }
 
@@ -1141,7 +1142,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "for every macro invocation, print its name and arguments (default: no)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)"),
-    treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
+    treat_err_as_bug: Option<NonZeroUsize> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat error number `val` that occurs as bug"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
         "in diagnostics, use heuristics to shorten paths referring to items"),

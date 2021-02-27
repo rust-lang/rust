@@ -26,14 +26,11 @@ use rustc_span::DUMMY_SP;
 
 use std::mem;
 use std::rc::Rc;
-use std::{
-    cell::{Cell, RefCell},
-    collections::hash_map::Entry,
-};
+use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{AttributesExt, MAX_DEF_IDX};
+use crate::clean::{AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::config::{OutputFormat, RenderInfo};
 use crate::formats::cache::Cache;
@@ -45,32 +42,37 @@ crate type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 crate struct DocContext<'tcx> {
     crate tcx: TyCtxt<'tcx>,
+    /// Name resolver. Used for intra-doc links.
+    ///
+    /// The `Rc<RefCell<...>>` wrapping is needed because that is what's returned by
+    /// [`Queries::expansion()`].
+    // FIXME: see if we can get rid of this RefCell somehow
     crate resolver: Rc<RefCell<interface::BoxedResolver>>,
     /// Used for normalization.
     ///
     /// Most of this logic is copied from rustc_lint::late.
-    crate param_env: Cell<ParamEnv<'tcx>>,
+    crate param_env: ParamEnv<'tcx>,
     /// Later on moved into `cache`
-    crate renderinfo: RefCell<RenderInfo>,
+    crate renderinfo: RenderInfo,
     /// Later on moved through `clean::Crate` into `cache`
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, clean::TraitWithExtraInfo>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    crate active_extern_traits: RefCell<FxHashSet<DefId>>,
+    crate active_extern_traits: FxHashSet<DefId>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
     /// Table `DefId` of type parameter -> substituted type
-    crate ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
+    crate ty_substs: FxHashMap<DefId, clean::Type>,
     /// Table `DefId` of lifetime parameter -> substituted lifetime
-    crate lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    crate lt_substs: FxHashMap<DefId, clean::Lifetime>,
     /// Table `DefId` of const parameter -> substituted const
-    crate ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
+    crate ct_substs: FxHashMap<DefId, clean::Constant>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    crate impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
-    crate fake_def_ids: RefCell<FxHashMap<CrateNum, DefIndex>>,
+    crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
+    crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
-    crate generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
+    crate generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
     crate auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     crate render_options: RenderOptions,
@@ -89,9 +91,9 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     crate fn with_param_env<T, F: FnOnce(&mut Self) -> T>(&mut self, def_id: DefId, f: F) -> T {
-        let old_param_env = self.param_env.replace(self.tcx.param_env(def_id));
+        let old_param_env = mem::replace(&mut self.param_env, self.tcx.param_env(def_id));
         let ret = f(self);
-        self.param_env.set(old_param_env);
+        self.param_env = old_param_env;
         ret
     }
 
@@ -115,14 +117,14 @@ impl<'tcx> DocContext<'tcx> {
         F: FnOnce(&mut Self) -> R,
     {
         let (old_tys, old_lts, old_cts) = (
-            mem::replace(&mut *self.ty_substs.get_mut(), ty_substs),
-            mem::replace(&mut *self.lt_substs.get_mut(), lt_substs),
-            mem::replace(&mut *self.ct_substs.get_mut(), ct_substs),
+            mem::replace(&mut self.ty_substs, ty_substs),
+            mem::replace(&mut self.lt_substs, lt_substs),
+            mem::replace(&mut self.ct_substs, ct_substs),
         );
         let r = f(self);
-        *self.ty_substs.get_mut() = old_tys;
-        *self.lt_substs.get_mut() = old_lts;
-        *self.ct_substs.get_mut() = old_cts;
+        self.ty_substs = old_tys;
+        self.lt_substs = old_lts;
+        self.ct_substs = old_cts;
         r
     }
 
@@ -140,16 +142,14 @@ impl<'tcx> DocContext<'tcx> {
     /// [`RefCell`]: std::cell::RefCell
     /// [`Debug`]: std::fmt::Debug
     /// [`clean::Item`]: crate::clean::types::Item
-    crate fn next_def_id(&self, crate_num: CrateNum) -> DefId {
-        let mut fake_ids = self.fake_def_ids.borrow_mut();
-
-        let def_index = match fake_ids.entry(crate_num) {
+    crate fn next_def_id(&mut self, crate_num: CrateNum) -> DefId {
+        let def_index = match self.fake_def_ids.entry(crate_num) {
             Entry::Vacant(e) => {
                 let num_def_idx = {
                     let num_def_idx = if crate_num == LOCAL_CRATE {
                         self.tcx.hir().definitions().def_path_table().num_def_ids()
                     } else {
-                        self.enter_resolver(|r| r.cstore().num_def_ids(crate_num))
+                        self.resolver.borrow_mut().access(|r| r.cstore().num_def_ids(crate_num))
                     };
 
                     DefIndex::from_usize(num_def_idx)
@@ -511,10 +511,10 @@ crate fn run_global_ctxt(
     let mut ctxt = DocContext {
         tcx,
         resolver,
-        param_env: Cell::new(ParamEnv::empty()),
+        param_env: ParamEnv::empty(),
         external_traits: Default::default(),
         active_extern_traits: Default::default(),
-        renderinfo: RefCell::new(renderinfo),
+        renderinfo,
         ty_substs: Default::default(),
         lt_substs: Default::default(),
         ct_substs: Default::default(),
@@ -538,7 +538,10 @@ crate fn run_global_ctxt(
     if let Some(sized_trait_did) = ctxt.tcx.lang_items().sized_trait() {
         let mut sized_trait = build_external_trait(&mut ctxt, sized_trait_did);
         sized_trait.is_auto = true;
-        ctxt.external_traits.borrow_mut().insert(sized_trait_did, sized_trait);
+        ctxt.external_traits.borrow_mut().insert(
+            sized_trait_did,
+            TraitWithExtraInfo { trait_: sized_trait, is_spotlight: false },
+        );
     }
 
     debug!("crate: {:?}", tcx.hir().krate());
@@ -647,7 +650,7 @@ crate fn run_global_ctxt(
     // The main crate doc comments are always collapsed.
     krate.collapsed = true;
 
-    (krate, ctxt.renderinfo.into_inner(), ctxt.render_options)
+    (krate, ctxt.renderinfo, ctxt.render_options)
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

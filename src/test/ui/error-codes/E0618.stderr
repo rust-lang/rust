@@ -18,7 +18,7 @@ error[E0618]: expected function, found `i32`
   --> $DIR/E0618.rs:9:5
    |
 LL |     let x = 0i32;
-   |         - `i32` defined here
+   |         - `x` has type `i32`
 LL |     x();
    |     ^--
    |     |

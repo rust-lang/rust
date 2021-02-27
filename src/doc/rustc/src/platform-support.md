@@ -153,6 +153,7 @@ not available.
 target | std | host | notes
 -------|-----|------|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
+`aarch64-apple-ios-sim` | ? |  | Apple iOS Simulator on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 `aarch64-unknown-hermit` | ? |  |
@@ -207,6 +208,7 @@ target | std | host | notes
 `riscv64gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 4.20, musl 1.2.0)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
+`s390x-unknown-linux-musl` |  |  | S390x Linux (kernel 2.6.32, MUSL)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 `sparc64-unknown-netbsd` | ✓ | ✓ | NetBSD/sparc64
 `sparc64-unknown-openbsd` | ? |  |

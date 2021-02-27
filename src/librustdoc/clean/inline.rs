@@ -122,7 +122,7 @@ crate fn try_inline(
     let target_attrs = load_attrs(cx, did);
     let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
-    cx.renderinfo.borrow_mut().inlined.insert(did);
+    cx.renderinfo.inlined.insert(did);
     let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
     ret.push(clean::Item { attrs, ..what_rustc_thinks });
     Some(ret)
@@ -156,7 +156,7 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
-crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind) {
+crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: clean::TypeKind) {
     let crate_name = cx.tcx.crate_name(did.krate).to_string();
 
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
@@ -181,9 +181,9 @@ crate fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKin
     };
 
     if did.is_local() {
-        cx.renderinfo.borrow_mut().exact_paths.insert(did, fqn);
+        cx.renderinfo.exact_paths.insert(did, fqn);
     } else {
-        cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
+        cx.renderinfo.external_paths.insert(did, (fqn, kind));
     }
 }
 
@@ -195,14 +195,12 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
-    let is_spotlight = load_attrs(cx, did).clean(cx).has_doc_flag(sym::spotlight);
     let is_auto = cx.tcx.trait_is_auto(did);
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
         bounds: supertrait_bounds,
-        is_spotlight,
         is_auto,
     }
 }
@@ -317,7 +315,7 @@ crate fn build_impl(
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
 ) {
-    if !cx.renderinfo.borrow_mut().inlined.insert(did) {
+    if !cx.renderinfo.inlined.insert(did) {
         return;
     }
 
@@ -329,7 +327,7 @@ crate fn build_impl(
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
             let did = traitref.def_id;
-            if !cx.renderinfo.borrow().access_levels.is_public(did) {
+            if !cx.renderinfo.access_levels.is_public(did) {
                 return;
             }
 
@@ -361,7 +359,7 @@ crate fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.renderinfo.borrow().access_levels.is_public(did) {
+            if !cx.renderinfo.access_levels.is_public(did) {
                 return;
             }
 
@@ -416,7 +414,10 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    let mut item = clean::Item::from_def_id_and_parts(
+    let attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", attrs);
+
+    ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
         clean::ImplItem(clean::Impl {
@@ -430,11 +431,9 @@ crate fn build_impl(
             synthetic: false,
             blanket_impl: None,
         }),
+        attrs,
         cx,
-    );
-    item.attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
-    debug!("merged_attrs={:?}", item.attrs);
-    ret.push(item);
+    ));
 }
 
 fn build_module(
@@ -613,20 +612,23 @@ crate fn record_extern_trait(cx: &mut DocContext<'_>, did: DefId) {
     }
 
     {
-        if cx.external_traits.borrow().contains_key(&did)
-            || cx.active_extern_traits.borrow().contains(&did)
+        if cx.external_traits.borrow().contains_key(&did) || cx.active_extern_traits.contains(&did)
         {
             return;
         }
     }
 
     {
-        cx.active_extern_traits.borrow_mut().insert(did);
+        cx.active_extern_traits.insert(did);
     }
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
+    let trait_ = clean::TraitWithExtraInfo {
+        trait_,
+        is_spotlight: clean::utils::has_doc_flag(cx.tcx.get_attrs(did), sym::spotlight),
+    };
     cx.external_traits.borrow_mut().insert(did, trait_);
-    cx.active_extern_traits.borrow_mut().remove(&did);
+    cx.active_extern_traits.remove(&did);
 }

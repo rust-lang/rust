@@ -18,7 +18,7 @@ use crate::mem;
 use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f32`.
-/// Use [`f32::RADIX`](../../std/primitive.f32.html#associatedconstant.RADIX) instead.
+/// Use [`f32::RADIX`] instead.
 ///
 /// # Examples
 ///
@@ -832,8 +832,8 @@ impl f32 {
     /// As the target platform's native endianness is used, portable code
     /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
     ///
-    /// [`to_be_bytes`]: #method.to_be_bytes
-    /// [`to_le_bytes`]: #method.to_le_bytes
+    /// [`to_be_bytes`]: f32::to_be_bytes
+    /// [`to_le_bytes`]: f32::to_le_bytes
     ///
     /// # Examples
     ///
@@ -860,7 +860,7 @@ impl f32 {
     ///
     /// [`to_ne_bytes`] should be preferred over this whenever possible.
     ///
-    /// [`to_ne_bytes`]: #method.to_ne_bytes
+    /// [`to_ne_bytes`]: f32::to_ne_bytes
     ///
     /// # Examples
     ///
@@ -920,8 +920,8 @@ impl f32 {
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
     /// appropriate instead.
     ///
-    /// [`from_be_bytes`]: #method.from_be_bytes
-    /// [`from_le_bytes`]: #method.from_le_bytes
+    /// [`from_be_bytes`]: f32::from_be_bytes
+    /// [`from_le_bytes`]: f32::from_le_bytes
     ///
     /// # Examples
     ///

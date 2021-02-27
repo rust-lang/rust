@@ -9,6 +9,7 @@ use core::ops::{Index, RangeBounds};
 use core::ptr;
 
 use super::borrow::DormantMutRef;
+use super::navigate::LeafRange;
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
 
@@ -307,8 +308,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// [`into_iter`]: IntoIterator::into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    front: Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
-    back: Option<Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge>>,
+    range: LeafRange<marker::Dying, K, V>,
     length: usize,
 }
 
@@ -316,11 +316,7 @@ impl<K, V> IntoIter<K, V> {
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Iter<'_, K, V> {
-        let range = Range {
-            front: self.front.as_ref().map(|f| f.reborrow()),
-            back: self.back.as_ref().map(|b| b.reborrow()),
-        };
-
+        let range = Range { inner: self.range.reborrow() };
         Iter { range: range, length: self.length }
     }
 }
@@ -438,8 +434,7 @@ impl<K, V: fmt::Debug> fmt::Debug for IntoValues<K, V> {
 /// [`range`]: BTreeMap::range
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
-    front: Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-    back: Option<Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    inner: LeafRange<marker::Immut<'a>, K, V>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -457,8 +452,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for Range<'_, K, V> {
 /// [`range_mut`]: BTreeMap::range_mut
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
-    front: Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
-    back: Option<Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::Edge>>,
+    inner: LeafRange<marker::ValMut<'a>, K, V>,
 
     // Be invariant in `K` and `V`
     _marker: PhantomData<&'a mut (K, V)>,
@@ -467,10 +461,7 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for RangeMut<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let range = Range {
-            front: self.front.as_ref().map(|f| f.reborrow()),
-            back: self.back.as_ref().map(|b| b.reborrow()),
-        };
+        let range = Range { inner: self.inner.reborrow() };
         f.debug_list().entries(range).finish()
     }
 }
@@ -1018,11 +1009,9 @@ impl<K, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &self.root {
-            let (f, b) = root.reborrow().range_search(range);
-
-            Range { front: Some(f), back: Some(b) }
+            Range { inner: root.reborrow().range_search(range) }
         } else {
-            Range { front: None, back: None }
+            Range { inner: LeafRange::none() }
         }
     }
 
@@ -1064,11 +1053,9 @@ impl<K, V> BTreeMap<K, V> {
         R: RangeBounds<T>,
     {
         if let Some(root) = &mut self.root {
-            let (f, b) = root.borrow_valmut().range_search(range);
-
-            RangeMut { front: Some(f), back: Some(b), _marker: PhantomData }
+            RangeMut { inner: root.borrow_valmut().range_search(range), _marker: PhantomData }
         } else {
-            RangeMut { front: None, back: None, _marker: PhantomData }
+            RangeMut { inner: LeafRange::none(), _marker: PhantomData }
         }
     }
 
@@ -1407,11 +1394,11 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     fn into_iter(self) -> IntoIter<K, V> {
         let mut me = ManuallyDrop::new(self);
         if let Some(root) = me.root.take() {
-            let (f, b) = root.into_dying().full_range();
+            let full_range = root.into_dying().full_range();
 
-            IntoIter { front: Some(f), back: Some(b), length: me.length }
+            IntoIter { range: full_range, length: me.length }
         } else {
-            IntoIter { front: None, back: None, length: 0 }
+            IntoIter { range: LeafRange::none(), length: 0 }
         }
     }
 }
@@ -1450,7 +1437,7 @@ impl<K, V> Drop for Dropper<K, V> {
 #[stable(feature = "btree_drop", since = "1.7.0")]
 impl<K, V> Drop for IntoIter<K, V> {
     fn drop(&mut self) {
-        if let Some(front) = self.front.take() {
+        if let Some(front) = self.range.front.take() {
             Dropper { front, remaining_length: self.length };
         }
     }
@@ -1465,7 +1452,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.front.as_mut().unwrap().deallocating_next_unchecked() })
+            Some(unsafe { self.range.front.as_mut().unwrap().deallocating_next_unchecked() })
         }
     }
 
@@ -1481,7 +1468,7 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.back.as_mut().unwrap().deallocating_next_back_unchecked() })
+            Some(unsafe { self.range.back.as_mut().unwrap().deallocating_next_back_unchecked() })
         }
     }
 }
@@ -1698,7 +1685,7 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
+        if self.inner.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a V)> {
@@ -1749,12 +1736,8 @@ impl<K, V> ExactSizeIterator for ValuesMut<'_, K, V> {
 impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 impl<'a, K, V> Range<'a, K, V> {
-    fn is_empty(&self) -> bool {
-        self.front == self.back
-    }
-
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
+        unsafe { self.inner.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 }
 
@@ -1837,13 +1820,13 @@ impl<K, V> FusedIterator for IntoValues<K, V> {}
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
+        if self.inner.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
     }
 }
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
+        unsafe { self.inner.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 
@@ -1853,7 +1836,7 @@ impl<K, V> FusedIterator for Range<'_, K, V> {}
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<K, V> Clone for Range<'_, K, V> {
     fn clone(&self) -> Self {
-        Range { front: self.front, back: self.back }
+        Range { inner: LeafRange { front: self.inner.front, back: self.inner.back } }
     }
 }
 
@@ -1862,7 +1845,7 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
+        if self.inner.is_empty() { None } else { Some(unsafe { self.next_unchecked() }) }
     }
 
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
@@ -1879,28 +1862,21 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K, V> RangeMut<'a, K, V> {
-    fn is_empty(&self) -> bool {
-        self.front == self.back
-    }
-
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.front.as_mut().unwrap_unchecked().next_unchecked() }
+        unsafe { self.inner.front.as_mut().unwrap_unchecked().next_unchecked() }
     }
 
     /// Returns an iterator of references over the remaining items.
     #[inline]
     pub(super) fn iter(&self) -> Range<'_, K, V> {
-        Range {
-            front: self.front.as_ref().map(|f| f.reborrow()),
-            back: self.back.as_ref().map(|b| b.reborrow()),
-        }
+        Range { inner: self.inner.reborrow() }
     }
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
-        if self.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
+        if self.inner.is_empty() { None } else { Some(unsafe { self.next_back_unchecked() }) }
     }
 }
 
@@ -1909,7 +1885,7 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        unsafe { self.back.as_mut().unwrap_unchecked().next_back_unchecked() }
+        unsafe { self.inner.back.as_mut().unwrap_unchecked().next_back_unchecked() }
     }
 }
 
@@ -2043,11 +2019,11 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<'_, K, V> {
         if let Some(root) = &self.root {
-            let (f, b) = root.reborrow().full_range();
+            let full_range = root.reborrow().full_range();
 
-            Iter { range: Range { front: Some(f), back: Some(b) }, length: self.length }
+            Iter { range: Range { inner: full_range }, length: self.length }
         } else {
-            Iter { range: Range { front: None, back: None }, length: 0 }
+            Iter { range: Range { inner: LeafRange::none() }, length: 0 }
         }
     }
 
@@ -2075,14 +2051,17 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         if let Some(root) = &mut self.root {
-            let (f, b) = root.borrow_valmut().full_range();
+            let full_range = root.borrow_valmut().full_range();
 
             IterMut {
-                range: RangeMut { front: Some(f), back: Some(b), _marker: PhantomData },
+                range: RangeMut { inner: full_range, _marker: PhantomData },
                 length: self.length,
             }
         } else {
-            IterMut { range: RangeMut { front: None, back: None, _marker: PhantomData }, length: 0 }
+            IterMut {
+                range: RangeMut { inner: LeafRange::none(), _marker: PhantomData },
+                length: 0,
+            }
         }
     }
 

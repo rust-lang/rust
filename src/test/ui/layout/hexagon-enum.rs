@@ -1,0 +1,33 @@
+// compile-flags: --target hexagon-unknown-linux-musl
+//
+// Verify that the hexagon targets implement the repr(C) for enums correctly.
+//
+// See #82100
+#![feature(never_type, rustc_attrs, type_alias_impl_trait, no_core, lang_items)]
+#![crate_type = "lib"]
+#![no_core]
+
+#[lang="sized"]
+trait Sized {}
+
+#[rustc_layout(debug)]
+#[repr(C)]
+enum A { Apple } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
+#[repr(C)]
+enum B { Banana = 255, } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
+#[repr(C)]
+enum C { Chaenomeles = 256, } //~ ERROR: layout_of
+
+#[rustc_layout(debug)]
+#[repr(C)]
+enum P { Peach = 0x1000_0000isize, } //~ ERROR: layout_of
+
+const TANGERINE: usize = 0x8100_0000; // hack to get negative numbers without negation operator!
+
+#[rustc_layout(debug)]
+#[repr(C)]
+enum T { Tangerine = TANGERINE as isize } //~ ERROR: layout_of

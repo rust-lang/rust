@@ -189,9 +189,10 @@ LL |         async fn ft1();
 LL |         async fn ft1() {}
    |                        ^
    |                        |
-   |                        the `Output` of this `async fn`'s found opaque type
+   |                        checked the `Output` of this `async fn`, found opaque type
    |                        expected `()`, found opaque type
    |
+   = note: while checking the return type of the `async fn`
    = note: expected fn pointer `fn()`
               found fn pointer `fn() -> impl Future`
 
@@ -204,9 +205,10 @@ LL |         const async unsafe extern "C" fn ft5();
 LL |         const async unsafe extern "C" fn ft5() {}
    |                                                ^
    |                                                |
-   |                                                the `Output` of this `async fn`'s found opaque type
+   |                                                checked the `Output` of this `async fn`, found opaque type
    |                                                expected `()`, found opaque type
    |
+   = note: while checking the return type of the `async fn`
    = note: expected fn pointer `unsafe extern "C" fn()`
               found fn pointer `unsafe extern "C" fn() -> impl Future`
 

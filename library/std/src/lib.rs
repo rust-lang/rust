@@ -185,8 +185,8 @@
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
-#![cfg_attr(not(bootstrap), doc = "[array]: prim@array")]
-#![cfg_attr(not(bootstrap), doc = "[slice]: prim@slice")]
+//! [array]: prim@array
+//! [slice]: prim@slice
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
@@ -263,7 +263,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
-#![feature(external_doc)]
+#![feature(extended_key_value_attributes)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
@@ -314,7 +314,6 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
-#![feature(str_split_once)]
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(thread_local_internals)]

@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-use crate::def::{DefKind, Namespace, Res};
+use crate::def::{CtorKind, DefKind, Namespace, Res};
 use crate::def_id::DefId;
 crate use crate::hir_id::HirId;
 use crate::{itemlikevisit, LangItem};
@@ -773,6 +773,7 @@ pub struct MacroDef<'hir> {
 }
 
 impl MacroDef<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         HirId::make_owner(self.def_id)
     }
@@ -1281,7 +1282,18 @@ impl Body<'hir> {
 }
 
 /// The type of source expression that caused this generator to be created.
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Hash,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    Debug,
+    Copy
+)]
 pub enum GeneratorKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncGeneratorKind),
@@ -1313,7 +1325,18 @@ impl GeneratorKind {
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic, Encodable, Decodable, Debug, Copy)]
+#[derive(
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Hash,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    Debug,
+    Copy
+)]
 pub enum AsyncGeneratorKind {
     /// An explicit `async` block written by the user.
     Block,
@@ -1553,6 +1576,71 @@ impl Expr<'_> {
             expr = inner;
         }
         expr
+    }
+
+    pub fn peel_blocks(&self) -> &Self {
+        let mut expr = self;
+        while let ExprKind::Block(Block { expr: Some(inner), .. }, _) = &expr.kind {
+            expr = inner;
+        }
+        expr
+    }
+
+    pub fn can_have_side_effects(&self) -> bool {
+        match self.peel_drop_temps().kind {
+            ExprKind::Path(_) | ExprKind::Lit(_) => false,
+            ExprKind::Type(base, _)
+            | ExprKind::Unary(_, base)
+            | ExprKind::Field(base, _)
+            | ExprKind::Index(base, _)
+            | ExprKind::AddrOf(.., base)
+            | ExprKind::Cast(base, _) => {
+                // This isn't exactly true for `Index` and all `Unnary`, but we are using this
+                // method exclusively for diagnostics and there's a *cultural* pressure against
+                // them being used only for its side-effects.
+                base.can_have_side_effects()
+            }
+            ExprKind::Struct(_, fields, init) => fields
+                .iter()
+                .map(|field| field.expr)
+                .chain(init.into_iter())
+                .all(|e| e.can_have_side_effects()),
+
+            ExprKind::Array(args)
+            | ExprKind::Tup(args)
+            | ExprKind::Call(
+                Expr {
+                    kind:
+                        ExprKind::Path(QPath::Resolved(
+                            None,
+                            Path { res: Res::Def(DefKind::Ctor(_, CtorKind::Fn), _), .. },
+                        )),
+                    ..
+                },
+                args,
+            ) => args.iter().all(|arg| arg.can_have_side_effects()),
+            ExprKind::If(..)
+            | ExprKind::Match(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Call(..)
+            | ExprKind::Closure(..)
+            | ExprKind::Block(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Break(..)
+            | ExprKind::Continue(..)
+            | ExprKind::Ret(..)
+            | ExprKind::Loop(..)
+            | ExprKind::Assign(..)
+            | ExprKind::InlineAsm(..)
+            | ExprKind::LlvmInlineAsm(..)
+            | ExprKind::AssignOp(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::Box(..)
+            | ExprKind::Binary(..)
+            | ExprKind::Yield(..)
+            | ExprKind::DropTemps(..)
+            | ExprKind::Err => true,
+        }
     }
 }
 
@@ -1937,6 +2025,7 @@ pub struct TraitItemId {
 }
 
 impl TraitItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -1958,6 +2047,7 @@ pub struct TraitItem<'hir> {
 }
 
 impl TraitItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -1999,6 +2089,7 @@ pub struct ImplItemId {
 }
 
 impl ImplItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2019,6 +2110,7 @@ pub struct ImplItem<'hir> {
 }
 
 impl ImplItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2308,7 +2400,7 @@ pub struct InlineAsm<'hir> {
     pub line_spans: &'hir [Span],
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Hash, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmOutput {
     pub constraint: Symbol,
     pub is_rw: bool,
@@ -2319,7 +2411,7 @@ pub struct LlvmInlineAsmOutput {
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
 // it needs to be `Clone` and `Decodable` and use plain `Vec<T>` instead of
 // arena-allocated slice.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, PartialEq)]
+#[derive(Clone, Encodable, Decodable, Debug, Hash, HashStable_Generic, PartialEq)]
 pub struct LlvmInlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
@@ -2609,6 +2701,7 @@ pub struct ItemId {
 }
 
 impl ItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2629,6 +2722,7 @@ pub struct Item<'hir> {
 }
 
 impl Item<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2813,6 +2907,7 @@ pub struct ForeignItemId {
 }
 
 impl ForeignItemId {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)
@@ -2845,6 +2940,7 @@ pub struct ForeignItem<'hir> {
 }
 
 impl ForeignItem<'_> {
+    #[inline]
     pub fn hir_id(&self) -> HirId {
         // Items are always HIR owners.
         HirId::make_owner(self.def_id)

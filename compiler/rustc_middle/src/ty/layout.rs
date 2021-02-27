@@ -130,6 +130,7 @@ impl IntegerExt for Integer {
 
         if repr.c() {
             match &tcx.sess.target.arch[..] {
+                "hexagon" => min_from_extern = Some(I8),
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
@@ -231,7 +232,7 @@ fn layout_raw<'tcx>(
             let layout = cx.layout_raw_uncached(ty);
             // Type-level uninhabitedness should always imply ABI uninhabitedness.
             if let Ok(layout) = layout {
-                if ty.conservative_is_privately_uninhabited(tcx) {
+                if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
                     assert!(layout.abi.is_uninhabited());
                 }
             }
@@ -583,11 +584,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let size =
                     element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
-                    Abi::Uninhabited
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let abi =
+                    if count != 0 && tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+                        Abi::Uninhabited
+                    } else {
+                        Abi::Aggregate { sized: true }
+                    };
 
                 let largest_niche = if count != 0 { element.largest_niche.clone() } else { None };
 
