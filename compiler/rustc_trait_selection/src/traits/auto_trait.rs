@@ -77,7 +77,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        mut auto_trait_callback: impl FnMut(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
+        mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
@@ -211,7 +211,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
             let info = AutoTraitInfo { full_user_env, region_data, vid_to_region };
 
-            AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info))
+            AutoTraitResult::PositiveImpl(auto_trait_callback(info))
         })
     }
 }
