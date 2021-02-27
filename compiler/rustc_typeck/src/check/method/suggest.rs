@@ -517,21 +517,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
-                    macro_rules! report_function {
-                        ($span:expr, $name:expr) => {
-                            err.note(&format!(
-                                "`{}` is a function, perhaps you wish to call it",
-                                $name
-                            ));
-                        };
+                    fn report_function<T: std::fmt::Display>(
+                        err: &mut DiagnosticBuilder<'_>,
+                        name: T,
+                    ) {
+                        err.note(
+                            &format!("`{}` is a function, perhaps you wish to call it", name,),
+                        );
                     }
 
                     if let SelfSource::MethodCall(expr) = source {
                         if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
-                            report_function!(expr.span, expr_string);
+                            report_function(&mut err, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, ref path)) = expr.kind {
                             if let Some(segment) = path.segments.last() {
-                                report_function!(expr.span, segment.ident);
+                                report_function(&mut err, segment.ident);
                             }
                         }
                     }
