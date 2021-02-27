@@ -75,7 +75,7 @@ crate fn render<T: Print, S: Print>(
     <![endif]-->\
     {before_content}\
     <nav class=\"sidebar\">\
-        <div class=\"sidebar-menu\">&#9776;</div>\
+        <div class=\"sidebar-menu\" role=\"button\">&#9776;</div>\
         {logo}\
         {sidebar}\
     </nav>\
