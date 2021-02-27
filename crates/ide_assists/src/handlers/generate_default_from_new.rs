@@ -10,13 +10,13 @@ use test_utils::mark;
 
 // Assist: generate_default_from_new
 //
-// Generates default implementation from new method
+// Generates default implementation from new method.
 //
 // ```
 // struct Example { _inner: () }
 //
 // impl Example {
-//     pu|b fn new() -> Self {
+//     pub fn n$0ew() -> Self {
 //         Self { _inner: () }
 //     }
 // }
@@ -24,13 +24,13 @@ use test_utils::mark;
 // ->
 // ```
 // struct Example { _inner: () }
-
+//
 // impl Example {
 //     pub fn new() -> Self {
 //         Self { _inner: () }
 //     }
 // }
-
+//
 // impl Default for Example {
 //     fn default() -> Self {
 //         Self::new()
@@ -62,7 +62,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
         "Generate a Default impl from a new fn",
         impl_obj.syntax().text_range(),
         move |builder| {
-            // TODO: indentation logic can also go here.
+            // FIXME: indentation logic can also go here.
             // let new_indent = IndentLevel::from_node(&insert_after);
             let insert_location = impl_obj.syntax().text_range().end();
             builder.insert(insert_location, default_fn_syntax);
@@ -75,7 +75,7 @@ fn scope_for_fn_insertion_node(node: &SyntaxNode) -> Option<SyntaxNode> {
 }
 
 fn default_fn_node_for_new(struct_name: SyntaxText) -> String {
-    // TODO: Update the implementation to consider the code indentation.
+    // FIXME: Update the implementation to consider the code indentation.
     format!(
         r#"
 
