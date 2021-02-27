@@ -7,7 +7,7 @@
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream, TokenTree};
 
 // Macro that return empty token stream.
 
@@ -80,6 +80,10 @@ pub fn recollect_derive(input: TokenStream) -> TokenStream {
 // Macros that print their input in the original and re-collected forms (if they differ).
 
 fn print_helper(input: TokenStream, kind: &str) -> TokenStream {
+    print_helper_ext(input, kind, true)
+}
+
+fn print_helper_ext(input: TokenStream, kind: &str, debug: bool) -> TokenStream {
     let input_display = format!("{}", input);
     let input_debug = format!("{:#?}", input);
     let recollected = input.into_iter().collect();
@@ -89,9 +93,11 @@ fn print_helper(input: TokenStream, kind: &str) -> TokenStream {
     if recollected_display != input_display {
         println!("PRINT-{} RE-COLLECTED (DISPLAY): {}", kind, recollected_display);
     }
-    println!("PRINT-{} INPUT (DEBUG): {}", kind, input_debug);
-    if recollected_debug != input_debug {
-        println!("PRINT-{} RE-COLLECTED (DEBUG): {}", kind, recollected_debug);
+    if debug {
+        println!("PRINT-{} INPUT (DEBUG): {}", kind, input_debug);
+        if recollected_debug != input_debug {
+            println!("PRINT-{} RE-COLLECTED (DEBUG): {}", kind, recollected_debug);
+        }
     }
     recollected
 }
@@ -108,8 +114,12 @@ pub fn print_bang_consume(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn print_attr(_: TokenStream, input: TokenStream) -> TokenStream {
-    print_helper(input, "ATTR")
+pub fn print_attr(args: TokenStream, input: TokenStream) -> TokenStream {
+    let debug = match &args.into_iter().collect::<Vec<_>>()[..] {
+        [TokenTree::Ident(ident)] if ident.to_string() == "nodebug" => false,
+        _ => true,
+    };
+    print_helper_ext(input, "ATTR", debug)
 }
 
 #[proc_macro_attribute]

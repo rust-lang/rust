@@ -1,0 +1,22 @@
+error: cannot find attribute `dummy` in this scope
+  --> $DIR/derive-helper-legacy-spurious.rs:3:4
+   |
+LL | #![dummy]
+   |    ^^^^^
+
+error: cannot determine resolution for the attribute macro `derive`
+  --> $DIR/derive-helper-legacy-spurious.rs:8:3
+   |
+LL | #[derive(Empty)]
+   |   ^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-legacy-spurious.rs:9:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
