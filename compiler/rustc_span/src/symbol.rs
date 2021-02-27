@@ -195,6 +195,7 @@ symbols! {
         RangeToInclusive,
         Rc,
         Ready,
+        Receiver,
         Result,
         Return,
         Right,
