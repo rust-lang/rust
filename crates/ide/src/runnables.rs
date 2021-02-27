@@ -110,16 +110,6 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     res
 }
 
-// Feature: Run Test
-//
-// Shows a popup suggesting to run a test in which the item **at the current cursor
-// location** is used (if any).
-//
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **Rust Analyzer: Run Test**
-// |===
 pub(crate) fn related_tests(
     db: &RootDatabase,
     position: FilePosition,

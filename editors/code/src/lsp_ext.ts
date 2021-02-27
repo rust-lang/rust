@@ -72,7 +72,7 @@ export interface Runnable {
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");
 
-export interface RelatedTestsParams extends lc.TextDocumentPositionParams {    
+export interface RelatedTestsParams extends lc.TextDocumentPositionParams {
 }
 
 export interface TestInfo {
