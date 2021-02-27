@@ -392,57 +392,36 @@ impl<'a> Parser<'a> {
             Err(err) => return Err(err),
         };
 
-        match self.token.kind {
-            token::Semi => {
-                self.bump(); // consume ';'
-                let size_const = self.parse_anon_const_expr()?;
-                self.expect(&token::CloseDelim(token::Bracket))?;
-                Ok(TyKind::Array(elt_ty, size_const))
-            }
-            token::CloseDelim(token::Bracket) => {
-                self.bump(); // consume ']'
-                Ok(TyKind::Slice(elt_ty))
-            }
-            token::Comma if recover_array_type == RecoverArrayType::Yes => {
+        let size_const =
+            if self.eat(&token::Semi) { Some(self.parse_anon_const_expr()?) } else { None };
+
+        match self.expect(&token::CloseDelim(token::Bracket)) {
+            Ok(_) => Ok(match size_const {
+                Some(size_const) => TyKind::Array(elt_ty, size_const),
+                None => TyKind::Slice(elt_ty),
+            }),
+            Err(mut bracket_err)
+                if recover_array_type == RecoverArrayType::Yes
+                    && self.token.kind == token::Comma
+                    && size_const.is_none() =>
+            {
                 // Possibly used ',' instead of ';' in slice type syntax, try to recover
-                let comma_span = self.token.span;
-                self.bump(); // consume ','
+                self.bump();
                 let snapshot = self.clone();
                 match self.parse_anon_const_expr() {
                     Ok(array_size) => {
-                        // Recovery successful, generate help at the position of `,`
-                        let mut comma_err =
-                            self.struct_span_err(comma_span, "expected `;`, found `,`");
-                        comma_err.span_suggestion_short(
-                            comma_span,
-                            "use `;` to separate the array length from the type",
-                            ";".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                        comma_err.emit();
+                        bracket_err.emit();
                         self.expect(&token::CloseDelim(token::Bracket))?;
                         Ok(TyKind::Array(elt_ty, array_size))
                     }
                     Err(mut const_expr_err) => {
-                        // Recovery failed, restore parser state, emit an error for the ','
                         const_expr_err.cancel();
                         *self = snapshot;
-                        let comma_err = self
-                            .struct_span_err(comma_span, "expected one of `;` or `]`, found `,`");
-                        Err(comma_err)
+                        Err(bracket_err)
                     }
                 }
             }
-            _ => {
-                let err = self.struct_span_err(
-                    self.token.span,
-                    &format!(
-                        "expected one of `;` or `]`, found {}",
-                        super::token_descr(&self.token)
-                    ),
-                );
-                Err(err)
-            }
+            Err(bracket_err) => Err(bracket_err),
         }
     }
 
