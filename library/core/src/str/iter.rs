@@ -196,6 +196,7 @@ impl<'a> CharIndices<'a> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(char_indices_offset)]
     /// let mut chars = "a楽".char_indices();
     ///
     /// assert_eq!(chars.offset(), 0);
