@@ -93,15 +93,31 @@ pub struct Backtrace {
 
 /// Global implementation of backtrace functionality. Called to create
 /// `RawBacktrace` trait objects.
+#[cfg(not(bootstrap))]
 extern "Rust" {
-    #[cfg_attr(not(bootstrap), lang = "backtrace_create")]
+    #[lang = "backtrace_create"]
     fn backtrace_create(ip: usize) -> *mut dyn RawBacktrace;
 
-    #[cfg_attr(not(bootstrap), lang = "backtrace_enabled")]
+    #[lang = "backtrace_enabled"]
     fn backtrace_enabled() -> bool;
 
-    #[cfg_attr(not(bootstrap), lang = "backtrace_status")]
+    #[lang = "backtrace_status"]
     fn backtrace_status(raw: *mut dyn RawBacktrace) -> BacktraceStatus;
+}
+
+#[cfg(bootstrap)]
+unsafe fn backtrace_create(_ip: usize) -> *mut dyn RawBacktrace {
+    UnsupportedBacktrace::create().inner
+}
+
+#[cfg(bootstrap)]
+unsafe fn backtrace_enabled() -> bool {
+    false
+}
+
+#[cfg(bootstrap)]
+unsafe fn backtrace_status(_raw: *mut dyn RawBacktrace) -> BacktraceStatus {
+    BacktraceStatus::Unsupported
 }
 
 impl Backtrace {
