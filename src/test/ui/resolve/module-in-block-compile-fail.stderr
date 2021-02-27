@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `super::x`
+  --> $DIR/module-in-block-compile-fail.rs:5:13
+   |
+LL |         use super::x;
+   |             ^^^^^^^^ no `x` in `<opaque>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.

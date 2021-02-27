@@ -99,3 +99,36 @@ fn module_in_block_prefer_inner_glob() {
         assert_eq!(inner::get_const(), "INNER");
     }
 }
+
+#[test]
+fn module_in_block_does_not_use_variables() {
+    #[allow(unused_variables)]
+    let bar = || "inner_block";
+
+
+    // anonymous block
+    mod inner {
+        use super::bar;
+        pub fn call_bar() -> &'static str {
+            bar()
+        }
+    }
+
+    assert_eq!(inner::call_bar(), "outer");
+}
+
+#[test]
+fn module_in_block_does_not_use_variables_glob() {
+    #[allow(unused_variables)]
+    let bar = || "inner_block";
+
+    // anonymous block
+    mod inner {
+        use super::*;
+        pub fn call_bar() -> &'static str {
+            bar()
+        }
+    }
+
+    assert_eq!(inner::call_bar(), "outer");
+}
