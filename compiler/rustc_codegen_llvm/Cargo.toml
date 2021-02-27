@@ -10,6 +10,7 @@ doctest = false
 
 [dependencies]
 bitflags = "1.0"
+cstr = "0.2"
 libc = "0.2"
 measureme = "9.0.0"
 snap = "1"

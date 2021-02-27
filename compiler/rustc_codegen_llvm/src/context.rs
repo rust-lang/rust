@@ -7,10 +7,10 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
+use cstr::cstr;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
-use rustc_data_structures::const_cstr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::bug;
@@ -414,8 +414,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn create_used_variable(&self) {
-        let name = const_cstr!("llvm.used");
-        let section = const_cstr!("llvm.metadata");
+        let name = cstr!("llvm.used");
+        let section = cstr!("llvm.metadata");
         let array =
             self.const_array(&self.type_ptr_to(self.type_i8()), &*self.used_statics.borrow());
 

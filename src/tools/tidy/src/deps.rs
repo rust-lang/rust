@@ -85,6 +85,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-queue",
     "crossbeam-utils",
+    "cstr",
     "datafrog",
     "difference",
     "digest",
