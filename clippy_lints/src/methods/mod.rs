@@ -24,7 +24,7 @@ use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, SymbolStr};
+use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
@@ -3619,7 +3619,7 @@ fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symbol, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let mutbl = match self_ref_ty.kind() {
             ty::Ref(_, _, mutbl) => mutbl,
