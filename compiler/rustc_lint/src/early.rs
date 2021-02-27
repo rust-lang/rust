@@ -18,7 +18,7 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast as ast;
 use rustc_ast::visit as ast_visit;
-use rustc_attr::HasAttrs;
+use rustc_ast::AstLike;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
