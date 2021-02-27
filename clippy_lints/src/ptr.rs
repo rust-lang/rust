@@ -233,7 +233,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &paths::PATH_BUF) {
+            } else if is_type_diagnostic_item(cx, ty, sym::PathBuf) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_path_buf()"), ("as_path", "")]) {
                     span_lint_and_then(
                         cx,
