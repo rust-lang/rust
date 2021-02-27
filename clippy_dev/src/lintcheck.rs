@@ -588,28 +588,41 @@ pub fn run(clap_config: &ArgMatches) {
             .flatten()
             .collect()
     } else {
-        let counter = std::sync::atomic::AtomicUsize::new(0);
+        if config.max_jobs > 1 {
+            // run parallel with rayon
 
-        // Ask rayon for thread count. Assume that half of that is the number of physical cores
-        // Use one target dir for each core so that we can run N clippys in parallel.
-        // We need to use different target dirs because cargo would lock them for a single build otherwise,
-        // killing the parallelism. However this also means that deps will only be reused half/a
-        // quarter of the time which might result in a longer wall clock runtime
+            let counter = AtomicUsize::new(0);
 
-        // This helps when we check many small crates with dep-trees that don't have a lot of branches in
-        // order to achive some kind of parallelism
+            // Ask rayon for thread count. Assume that half of that is the number of physical cores
+            // Use one target dir for each core so that we can run N clippys in parallel.
+            // We need to use different target dirs because cargo would lock them for a single build otherwise,
+            // killing the parallelism. However this also means that deps will only be reused half/a
+            // quarter of the time which might result in a longer wall clock runtime
 
-        // by default, use a single thread
-        let num_cpus = config.max_jobs;
-        let num_crates = crates.len();
+            // This helps when we check many small crates with dep-trees that don't have a lot of branches in
+            // order to achive some kind of parallelism
 
-        // check all crates (default)
-        crates
-            .into_par_iter()
-            .map(|krate| krate.download_and_extract())
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
-            .flatten()
-            .collect()
+            // by default, use a single thread
+            let num_cpus = config.max_jobs;
+            let num_crates = crates.len();
+
+            // check all crates (default)
+            crates
+                .into_par_iter()
+                .map(|krate| krate.download_and_extract())
+                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
+                .flatten()
+                .collect()
+        } else {
+            // run sequential
+            let num_crates = crates.len();
+            crates
+                .into_iter()
+                .map(|krate| krate.download_and_extract())
+                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, num_crates))
+                .flatten()
+                .collect()
+        }
     };
 
     // generate some stats
