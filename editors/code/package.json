@@ -1164,6 +1164,13 @@
                     "command": "rust-analyzer.openCargoToml",
                     "when": "inRustProject"
                 }
+            ],
+            "editor/context": [
+                {
+                    "command": "rust-analyzer.peekTests",
+                    "when": "inRustProject",
+                    "group": "navigation@1000"
+                }
             ]
         }
     }

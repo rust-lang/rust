@@ -566,24 +566,25 @@ export function peekTests(ctx: Ctx): Cmd {
         const editor = ctx.activeRustEditor;
         if (!editor || !client) return;
 
-        const uri = editor.document.uri.toString();
-        const position = client.code2ProtocolConverter.asPosition(
-            editor.selection.active,
-        );
-        
-        const tests = await client.sendRequest(ra.relatedTests, {
-            textDocument: { uri: uri },
-            position: position,
-        });
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Looking for tests...",
+            cancellable: false,
+        }, async (_progress, _token) => {
+            const uri = editor.document.uri.toString();
+            const position = client.code2ProtocolConverter.asPosition(
+                editor.selection.active,
+            );
 
-        const locations: lc.Location[] = tests.map( it => {
-            return {
-                uri: it.runnable.location!.targetUri,
-                range: it.runnable.location!.targetSelectionRange
-            };
-        });
+            const tests = await client.sendRequest(ra.relatedTests, {
+                textDocument: { uri: uri },
+                position: position,
+            });
+            const locations: lc.Location[] = tests.map(it =>
+                lc.Location.create(it.runnable.location!.targetUri, it.runnable.location!.targetSelectionRange));
 
-        await showReferencesImpl(client, uri, position, locations);
+            await showReferencesImpl(client, uri, position, locations);
+        });
     };
 }
 
