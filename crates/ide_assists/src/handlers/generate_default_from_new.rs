@@ -1,5 +1,11 @@
-use crate::{AssistId, assist_context::{AssistContext, Assists}};
-use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxText, ast::{self, NameOwner}};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    AssistId,
+};
+use syntax::{
+    ast::{self, NameOwner},
+    AstNode, SyntaxKind, SyntaxNode, SyntaxText,
+};
 use test_utils::mark;
 
 // Assist: generate_default_from_new
@@ -51,7 +57,6 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
 
     let default_fn_syntax = default_fn_node_for_new(struct_name);
 
-
     acc.add(
         AssistId("generate_default_from_new", crate::AssistKind::Generate),
         "Generate a Default impl from a new fn",
@@ -72,14 +77,15 @@ fn scope_for_fn_insertion_node(node: &SyntaxNode) -> Option<SyntaxNode> {
 fn default_fn_node_for_new(struct_name: SyntaxText) -> String {
     // TODO: Update the implementation to consider the code indentation.
     format!(
-    r#"
+        r#"
 
 impl Default for {} {{
     fn default() -> Self {{
         Self::new()
     }}
-}}"#
-    ,struct_name)
+}}"#,
+        struct_name
+    )
 }
 
 #[cfg(test)]
@@ -157,8 +163,9 @@ impl Default for Test {
     #[test]
     fn new_function_with_parameters() {
         mark::check!(new_function_with_parameters);
-        check_assist_not_applicable(generate_default_from_new,
-        r#"
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
 struct Example { _inner: () }
 
 impl Example {
@@ -166,15 +173,16 @@ impl Example {
         Self { _inner: value }
     }
 }
-"#
+"#,
         );
     }
 
     #[test]
     fn other_function_than_new() {
         mark::check!(other_function_than_new);
-        check_assist_not_applicable(generate_default_from_new,
-        r#"
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
 struct Example { _inner: () }
 
 impl Exmaple {
@@ -183,39 +191,40 @@ impl Exmaple {
     }
 }
 
-"#
+"#,
         );
     }
 
-//     #[test]
-//     fn default_block_is_already_present() {
-//         check_assist_not_applicable(generate_default_from_new,
-//         r#"
-// struct Example { _inner: () }
+    //     #[test]
+    //     fn default_block_is_already_present() {
+    //         check_assist_not_applicable(generate_default_from_new,
+    //         r#"
+    // struct Example { _inner: () }
 
-// impl Exmaple {
-//     pub fn n$0ew() -> Self {
-//         Self { _inner: () }
-//     }
-// }
+    // impl Exmaple {
+    //     pub fn n$0ew() -> Self {
+    //         Self { _inner: () }
+    //     }
+    // }
 
-// impl Default for Example {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-// "#,
-//         );
-//     }
+    // impl Default for Example {
+    //     fn default() -> Self {
+    //         Self::new()
+    //     }
+    // }
+    // "#,
+    //         );
+    //     }
 
     #[test]
     fn standalone_new_function() {
-        check_assist_not_applicable(generate_default_from_new,
-        r#"
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
 fn n$0ew() -> u32 {
     0
 }
-"#
+"#,
         );
     }
 }
