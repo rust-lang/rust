@@ -9,6 +9,7 @@ import { RunnableQuickPick, selectRunnable, createTask, createArgs } from './run
 import { AstInspector } from './ast_inspector';
 import { isRustDocument, sleep, isRustEditor } from './util';
 import { startDebugSession, makeDebugConfig } from './debug';
+import { LanguageClient } from 'vscode-languageclient/node';
 
 export * from './ast_inspector';
 export * from './run';
@@ -456,17 +457,20 @@ export function reloadWorkspace(ctx: Ctx): Cmd {
     return async () => ctx.client.sendRequest(ra.reloadWorkspace);
 }
 
+async function showReferencesImpl(client: LanguageClient, uri: string, position: lc.Position, locations: lc.Location[]) {
+    if (client) {
+        await vscode.commands.executeCommand(
+            'editor.action.showReferences',
+            vscode.Uri.parse(uri),
+            client.protocol2CodeConverter.asPosition(position),
+            locations.map(client.protocol2CodeConverter.asLocation),
+        );
+    }
+}
+
 export function showReferences(ctx: Ctx): Cmd {
     return async (uri: string, position: lc.Position, locations: lc.Location[]) => {
-        const client = ctx.client;
-        if (client) {
-            await vscode.commands.executeCommand(
-                'editor.action.showReferences',
-                vscode.Uri.parse(uri),
-                client.protocol2CodeConverter.asPosition(position),
-                locations.map(client.protocol2CodeConverter.asLocation),
-            );
-        }
+        await showReferencesImpl(ctx.client, uri, position, locations);
     };
 }
 
@@ -554,6 +558,35 @@ export function run(ctx: Ctx): Cmd {
         return await vscode.tasks.executeTask(task);
     };
 }
+
+export function peekTests(ctx: Ctx): Cmd {
+    const client = ctx.client;
+
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        if (!editor || !client) return;
+
+        const uri = editor.document.uri.toString();
+        const position = client.code2ProtocolConverter.asPosition(
+            editor.selection.active,
+        );
+        
+        const tests = await client.sendRequest(ra.relatedTests, {
+            textDocument: { uri: uri },
+            position: position,
+        });
+
+        const locations: lc.Location[] = tests.map( it => {
+            return {
+                uri: it.runnable.location!.targetUri,
+                range: it.runnable.location!.targetSelectionRange
+            };
+        });
+
+        await showReferencesImpl(client, uri, position, locations);
+    };
+}
+
 
 export function runSingle(ctx: Ctx): Cmd {
     return async (runnable: ra.Runnable) => {

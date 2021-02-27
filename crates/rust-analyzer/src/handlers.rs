@@ -607,6 +607,24 @@ pub(crate) fn handle_runnables(
     Ok(res)
 }
 
+pub(crate) fn handle_related_tests(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::RelatedTestsParams,
+) -> Result<Vec<lsp_ext::TestInfo>> {
+    let _p = profile::span("handle_related_tests");
+    let position = from_proto::file_position(&snap, params.text_document_position)?;
+
+    let tests = snap.analysis.related_tests(position, None)?;
+    let mut res = Vec::new();
+    for it in tests {
+        if let Ok(runnable) = to_proto::runnable(&snap, it) {
+            res.push(lsp_ext::TestInfo { runnable })
+        }
+    }
+
+    Ok(res)
+}
+
 pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
     params: lsp_types::CompletionParams,
