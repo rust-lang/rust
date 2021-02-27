@@ -266,7 +266,6 @@ impl<'a> Parser<'a> {
             return Ok(ret);
         }
 
-
         let cursor_snapshot_next_calls = cursor_snapshot.num_next_calls;
         let mut end_pos = self.token_cursor.num_next_calls;
 
