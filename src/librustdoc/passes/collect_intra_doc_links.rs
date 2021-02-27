@@ -838,6 +838,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         debug!("looking for the `Self` type");
         let self_id = if item.is_fake() {
             None
+        // Checking if the item is a field in an enum variant
+        } else if (matches!(self.cx.tcx.def_kind(item.def_id), DefKind::Field)
+            && matches!(
+                self.cx.tcx.def_kind(self.cx.tcx.parent(item.def_id).unwrap()),
+                DefKind::Variant
+            ))
+        {
+            self.cx.tcx.parent(item.def_id).and_then(|item_id| self.cx.tcx.parent(item_id))
         } else if matches!(
             self.cx.tcx.def_kind(item.def_id),
             DefKind::AssocConst
