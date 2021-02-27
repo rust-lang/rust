@@ -68,7 +68,7 @@ The following previously stable methods are now `const`.
 - `saturating_pow` for all integer types.
 - `wrapping_pow` for all integer types.
 - `next_power_of_two` for all unsigned integer types.
-- `checked_power_of_two` for all unsigned integer types.
+- `checked_next_power_of_two` for all unsigned integer types.
 
 Cargo
 -----------------------
