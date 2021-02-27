@@ -43,8 +43,8 @@ pub(super) fn lint(cx: &LateContext<'_>, expr: &'tcx Expr<'_>, args: &[&[Expr<'_
 
             let sugg = format!(
                 "for {} in {} {{ .. }}",
-                snippet(cx, body.params[0].pat.span, ""),
-                snippet(cx, for_each_receiver.span, "")
+                snippet(cx, body.params[0].pat.span, ".."),
+                snippet(cx, for_each_receiver.span, "..")
             );
 
             span_lint_and_then(
