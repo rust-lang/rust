@@ -1,3 +1,4 @@
+#![crate_name = "foo"]
 #![deny(broken_intra_doc_links)]
 pub enum Foo {
     Bar {
@@ -6,3 +7,5 @@ pub enum Foo {
         xyz: i32,
     },
 }
+
+// @has foo/enum.Foo.html '//a/@href' '../foo/enum.Foo.html#variant.Bar.field.abc'
