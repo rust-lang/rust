@@ -19,6 +19,9 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver";
+const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy";
+
 /// List of sources to check, loaded from a .toml file
 #[derive(Debug, Serialize, Deserialize)]
 struct SourceList {
@@ -317,6 +320,9 @@ impl LintcheckConfig {
         let filename: PathBuf = sources_toml_path.file_stem().unwrap().into();
         let lintcheck_results_path = PathBuf::from(format!("lintcheck-logs/{}_logs.txt", filename.display()));
 
+        // look at the --threads arg, if 0 is passed, ask rayon rayon how many threads it would spawn and
+        // use half of that for the physical core count
+        // by default use a single thread
         let max_jobs = match clap_config.value_of("threads") {
             Some(threads) => {
                 let threads: usize = threads
@@ -492,14 +498,12 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
 fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
     let clippy_modified: std::time::SystemTime = {
-        let mut times = ["target/debug/clippy-driver", "target/debug/cargo-clippy"]
-            .iter()
-            .map(|p| {
-                std::fs::metadata(p)
-                    .expect("failed to get metadata of file")
-                    .modified()
-                    .expect("failed to get modification date")
-            });
+        let mut times = [CLIPPY_DRIVER_PATH, CARGO_CLIPPY_PATH].iter().map(|p| {
+            std::fs::metadata(p)
+                .expect("failed to get metadata of file")
+                .modified()
+                .expect("failed to get modification date")
+        });
         // the oldest modification of either of the binaries
         std::cmp::min(times.next().unwrap(), times.next().unwrap())
     };
@@ -539,7 +543,7 @@ pub fn run(clap_config: &ArgMatches) {
         }
     }
 
-    let cargo_clippy_path: PathBuf = PathBuf::from("target/debug/cargo-clippy")
+    let cargo_clippy_path: PathBuf = PathBuf::from(CARGO_CLIPPY_PATH)
         .canonicalize()
         .expect("failed to canonicalize path to clippy binary");
 
@@ -550,7 +554,7 @@ pub fn run(clap_config: &ArgMatches) {
         cargo_clippy_path.display()
     );
 
-    let clippy_ver = std::process::Command::new("target/debug/cargo-clippy")
+    let clippy_ver = std::process::Command::new(CARGO_CLIPPY_PATH)
         .arg("--version")
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
