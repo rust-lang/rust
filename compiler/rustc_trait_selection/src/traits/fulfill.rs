@@ -499,10 +499,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     ) {
                         Ok(()) => ProcessResult::Changed(vec![]),
                         Err(ErrorHandled::TooGeneric) => {
-                            pending_obligation.stalled_on = substs
-                                .iter()
-                                .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
-                                .collect();
+                            pending_obligation.stalled_on.clear();
+                            pending_obligation.stalled_on.extend(
+                                substs.iter().filter_map(TyOrConstInferVar::maybe_from_generic_arg),
+                            );
                             ProcessResult::Unchanged
                         }
                         Err(e) => ProcessResult::Error(CodeSelectionError(ConstEvalFailure(e))),
@@ -544,13 +544,10 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             ) {
                                 Ok(val) => Ok(Const::from_value(self.selcx.tcx(), val, c.ty)),
                                 Err(ErrorHandled::TooGeneric) => {
-                                    stalled_on.append(
-                                        &mut substs
+                                    stalled_on.extend(
+                                        substs
                                             .iter()
-                                            .filter_map(|arg| {
-                                                TyOrConstInferVar::maybe_from_generic_arg(arg)
-                                            })
-                                            .collect(),
+                                            .filter_map(TyOrConstInferVar::maybe_from_generic_arg),
                                     );
                                     Err(ErrorHandled::TooGeneric)
                                 }
@@ -634,10 +631,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 // only reason we can fail to make progress on
                 // trait selection is because we don't have enough
                 // information about the types in the trait.
-                *stalled_on = substs_infer_vars(
+                stalled_on.clear();
+                stalled_on.extend(substs_infer_vars(
                     self.selcx,
                     trait_obligation.predicate.map_bound(|pred| pred.trait_ref.substs),
-                );
+                ));
 
                 debug!(
                     "process_predicate: pending obligation {:?} now stalled on {:?}",
@@ -664,10 +662,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
             Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
             Ok(Ok(None)) => {
-                *stalled_on = substs_infer_vars(
+                stalled_on.clear();
+                stalled_on.extend(substs_infer_vars(
                     self.selcx,
                     project_obligation.predicate.map_bound(|pred| pred.projection_ty.substs),
-                );
+                ));
                 ProcessResult::Unchanged
             }
             // Let the caller handle the recursion
@@ -683,18 +682,24 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 fn substs_infer_vars<'a, 'tcx>(
     selcx: &mut SelectionContext<'a, 'tcx>,
     substs: ty::Binder<SubstsRef<'tcx>>,
-) -> Vec<TyOrConstInferVar<'tcx>> {
+) -> impl Iterator<Item = TyOrConstInferVar<'tcx>> {
     selcx
         .infcx()
         .resolve_vars_if_possible(substs)
         .skip_binder() // ok because this check doesn't care about regions
         .iter()
-        // FIXME(eddyb) try using `skip_current_subtree` to skip everything that
-        // doesn't contain inference variables, not just the outermost level.
         .filter(|arg| arg.has_infer_types_or_consts())
-        .flat_map(|arg| arg.walk())
+        .flat_map(|arg| {
+            let mut walker = arg.walk();
+            while let Some(c) = walker.next() {
+                if !c.has_infer_types_or_consts() {
+                    walker.visited.remove(&c);
+                    walker.skip_current_subtree();
+                }
+            }
+            walker.visited.into_iter()
+        })
         .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
-        .collect()
 }
 
 fn to_fulfillment_error<'tcx>(
