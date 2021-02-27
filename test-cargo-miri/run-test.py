@@ -50,7 +50,7 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     print("--- END stderr ---")
     fail("exit code was {}".format(p.returncode))
 
-def test_rebuild(name, cmd, rebuild_count_expected):
+def test_no_rebuild(name, cmd):
     print("Testing {}...".format(name))
     p = subprocess.Popen(
         cmd,
@@ -62,12 +62,12 @@ def test_rebuild(name, cmd, rebuild_count_expected):
     stderr = stderr.decode("UTF-8")
     if p.returncode != 0:
         fail("rebuild failed");
-    rebuild_count =  stderr.count(" Compiling ");
-    if rebuild_count != rebuild_count_expected:
+    # Also check for 'Running' as a sanity check.
+    if stderr.count(" Compiling ") > 0 or stderr.count(" Running ") == 0:
         print("--- BEGIN stderr ---")
         print(stderr, end="")
         print("--- END stderr ---")
-        fail("Expected {} rebuild(s), but got {}".format(rebuild_count_expected, rebuild_count));
+        fail("Something was being rebuilt when it should not be (or we got no output)");
 
 def test_cargo_miri_run():
     test("`cargo miri run` (no isolation)",
@@ -89,9 +89,10 @@ def test_cargo_miri_run():
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
     )
     # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
-    test_rebuild("`cargo miri run` (clean rebuild)",
+    # FIXME: move this test up to right after the first `test`
+    # (currently that fails, only the 3rd and later runs are really clean... see Miri issue #1722)
+    test_no_rebuild("`cargo miri run` (no rebuild)",
         cargo_miri("run", quiet=False) + ["--", ""],
-        rebuild_count_expected=1,
     )
 
 def test_cargo_miri_test():

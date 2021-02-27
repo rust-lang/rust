@@ -692,12 +692,17 @@ fn phase_cargo_rustc(mut args: env::Args) {
     exec(cmd);
 
     // Create a stub .rlib file if "link" was requested by cargo.
+    // This is necessary to prevent cargo from doing rebuilds all the time.
     if emit_link_hack {
         // Some platforms prepend "lib", some do not... let's just create both files.
-        let filename = out_filename("lib", ".rlib");
-        File::create(filename).expect("failed to create rlib file");
-        let filename = out_filename("", ".rlib");
-        File::create(filename).expect("failed to create rlib file");
+        File::create(out_filename("lib", ".rlib")).expect("failed to create fake .rlib file");
+        File::create(out_filename("", ".rlib")).expect("failed to create fake .rlib file");
+        // Just in case this is a cdylib or staticlib, also create those fake files.
+        File::create(out_filename("lib", ".so")).expect("failed to create fake .so file");
+        File::create(out_filename("lib", ".a")).expect("failed to create fake .a file");
+        File::create(out_filename("lib", ".dylib")).expect("failed to create fake .dylib file");
+        File::create(out_filename("", ".dll")).expect("failed to create fake .dll file");
+        File::create(out_filename("", ".lib")).expect("failed to create fake .lib file");
     }
 }
 
