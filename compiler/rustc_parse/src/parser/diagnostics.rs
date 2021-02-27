@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
                         SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_ty(),
+                        |p| p.parse_generic_arg(),
                     );
                     match x {
                         Ok((_, _, false)) => {
