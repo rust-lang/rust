@@ -1,3 +1,4 @@
+#![stable(feature = "bar", since = "OLD 1.0")]
 #![crate_name = "foo"]
 
 #![feature(staged_api)]
@@ -8,6 +9,7 @@ pub trait Bar {}
 #[stable(feature = "baz", since = "OLD 1.0")]
 pub trait Baz {}
 
+#[stable(feature = "baz", since = "OLD 1.0")]
 pub struct Foo;
 
 // @has foo/trait.Bar.html '//div[@id="implementors-list"]//span[@class="since"]' 'NEW 2.0'
