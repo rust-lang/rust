@@ -2154,11 +2154,12 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
+        let mut size = self.len();
         let mut left = 0;
-        let mut right = self.len();
+        let mut right = size;
         while left < right {
-            // never overflow because `slice::len()` max is `isize::MAX`.
-            let mid = (left + right) / 2;
+            let mid = left + size / 2;
+
             // SAFETY: the call is made safe by the following invariants:
             // - `mid >= 0`
             // - `mid < size`: `mid` is limited by `[left; right)` bound.
@@ -2174,6 +2175,8 @@ impl<T> [T] {
             } else {
                 return Ok(mid);
             }
+
+            size = right - left;
         }
         Err(left)
     }
