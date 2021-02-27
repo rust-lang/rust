@@ -115,9 +115,6 @@ impl CreateTokenStream for LazyTokenStreamImpl {
                     range,
                     new_tokens
                 );
-                if self.start_calls > range.start {
-                    continue;
-                }
 
                 let range_start = range.start - self.start_calls;
                 let range_end = range.end - self.start_calls;
