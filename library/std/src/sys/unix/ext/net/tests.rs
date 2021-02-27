@@ -485,14 +485,14 @@ fn test_unix_datagram_peek_from() {
 fn test_send_vectored_fds_unix_stream() {
     let (s1, s2) = or_panic!(UnixStream::pair());
 
-    let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let buf1 = [1; 8];
+    let bufs_send = &[IoSlice::new(&buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
     assert!(ancillary1.add_fds(&[s1.as_raw_fd()][..]));
 
-    let usize = or_panic!(s1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    let usize = or_panic!(s1.send_vectored_with_ancillary(&bufs_send, &mut ancillary1));
     assert_eq!(usize, 8);
 
     let mut buf2 = [0; 8];
@@ -542,8 +542,8 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
 
     or_panic!(bsock2.set_passcred(true));
 
-    let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let buf1 = [1; 8];
+    let bufs_send = &[IoSlice::new(&buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
@@ -554,7 +554,7 @@ fn test_send_vectored_with_ancillary_to_unix_datagram() {
     assert!(ancillary1.add_creds(&[cred1.clone()][..]));
 
     let usize =
-        or_panic!(bsock1.send_vectored_with_ancillary_to(&mut bufs_send, &mut ancillary1, &path2));
+        or_panic!(bsock1.send_vectored_with_ancillary_to(&bufs_send, &mut ancillary1, &path2));
     assert_eq!(usize, 8);
 
     let mut buf2 = [0; 8];
@@ -603,15 +603,15 @@ fn test_send_vectored_with_ancillary_unix_datagram() {
     let bsock1 = or_panic!(UnixDatagram::bind(&path1));
     let bsock2 = or_panic!(UnixDatagram::bind(&path2));
 
-    let mut buf1 = [1; 8];
-    let mut bufs_send = &mut [IoSliceMut::new(&mut buf1[..])][..];
+    let buf1 = [1; 8];
+    let bufs_send = &[IoSlice::new(&buf1[..])][..];
 
     let mut ancillary1_buffer = [0; 128];
     let mut ancillary1 = SocketAncillary::new(&mut ancillary1_buffer[..]);
     assert!(ancillary1.add_fds(&[bsock1.as_raw_fd()][..]));
 
     or_panic!(bsock1.connect(&path2));
-    let usize = or_panic!(bsock1.send_vectored_with_ancillary(&mut bufs_send, &mut ancillary1));
+    let usize = or_panic!(bsock1.send_vectored_with_ancillary(&bufs_send, &mut ancillary1));
     assert_eq!(usize, 8);
 
     let mut buf2 = [0; 8];
