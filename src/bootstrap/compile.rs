@@ -189,6 +189,12 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
+            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let target = libdir_self_contained.join(obj);
+            builder.copy(&src, &target);
+            target_deps.push((target, DependencyType::TargetSelfContained));
+        }
     } else if target.ends_with("-wasi") {
         let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
         for &obj in &["crt1.o", "crt1-reactor.o"] {
