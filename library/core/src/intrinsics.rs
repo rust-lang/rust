@@ -846,6 +846,12 @@ extern "rust-intrinsic" {
     /// destination value, then forgets the original. It's equivalent to C's
     /// `memcpy` under the hood, just like `transmute_copy`.
     ///
+    /// Because `transmute` is a by-value operation, alignment of the *transmuted values
+    /// themselves* is not a concern. As with any other function, the compiler already ensures
+    /// both `T` and `U` are properly aligned. However, when transmuting values that *point
+    /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
+    /// alignment of the pointed-to values.
+    ///
     /// `transmute` is **incredibly** unsafe. There are a vast number of ways to
     /// cause [undefined behavior][ub] with this function. `transmute` should be
     /// the absolute last resort.
@@ -965,7 +971,13 @@ extern "rust-intrinsic" {
     /// assert_eq!(b"Rust", &[82, 117, 115, 116]);
     /// ```
     ///
-    /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`:
+    /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`.
+    ///
+    /// To transmute the inner type of the contents of a container, you must make sure to not
+    /// violate any of the container's invariants. For `Vec`, this means that both the size
+    /// *and alignment* of the inner types have to match. Other containers might rely on the
+    /// size of the type, alignment, or even the `TypeId`, in which case transmuting wouldn't
+    /// be possible at all without violating the container invariants.
     ///
     /// ```
     /// let store = [0, 1, 2, 3];
@@ -991,14 +1003,11 @@ extern "rust-intrinsic" {
     ///
     /// let v_clone = v_orig.clone();
     ///
-    /// // The no-copy, unsafe way, still using transmute, but not relying on the data layout.
-    /// // Like the first approach, this reuses the `Vec` internals.
-    /// // Therefore, the new inner type must have the
-    /// // exact same size, *and the same alignment*, as the old type.
-    /// // The same caveats exist for this method as transmute, for
-    /// // the original inner type (`&i32`) to the converted inner type
-    /// // (`Option<&i32>`), so read the nomicon pages linked above and also
-    /// // consult the [`from_raw_parts`] documentation.
+    /// // This is the proper no-copy, unsafe way of "transmuting" a `Vec`, without relying on the
+    /// // data layout. Instead of literally calling `transmute`, we perform a pointer cast, but
+    /// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
+    /// // this has all the same caveats. Besides the information provided above, also consult the
+    /// // [`from_raw_parts`] documentation.
     /// let v_from_raw = unsafe {
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Ensure the original vector is not dropped.
