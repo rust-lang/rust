@@ -21,7 +21,7 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: `#[deny(missing_doc_code_examples)]` implied by `#[deny(rustdoc)]`
+   = note: `#[deny(rustdoc::missing_doc_code_examples)]` implied by `#[deny(rustdoc)]`
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?
   --> $DIR/check-fail.rs:6:1
@@ -37,7 +37,7 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc)]
    |         ^^^^^^^
-   = note: `#[deny(invalid_codeblock_attributes)]` implied by `#[deny(rustdoc)]`
+   = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(rustdoc)]`
    = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
 
 error: unknown attribute `testharness`. Did you mean `test_harness`?

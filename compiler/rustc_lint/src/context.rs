@@ -89,6 +89,7 @@ impl SessionLintStore for LintStore {
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
+#[derive(Debug)]
 enum TargetLint {
     /// A direct lint target
     Id(LintId),
@@ -470,7 +471,10 @@ impl LintStore {
             Some(&Id(ref id)) => {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
-            _ => CheckLintNameResult::NoLint(None),
+            Some(other) => {
+                tracing::debug!("got renamed lint {:?}", other);
+                CheckLintNameResult::NoLint(None)
+            }
         }
     }
 }

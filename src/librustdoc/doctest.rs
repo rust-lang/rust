@@ -26,8 +26,8 @@ use std::str;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
@@ -44,11 +44,14 @@ crate struct TestOptions {
 crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
+    // See core::create_config for what's going on here.
+    let allowed_lints = vec![
+        invalid_codeblock_attributes_name.to_owned(),
+        lint::builtin::UNKNOWN_LINTS.name.to_owned(),
+        lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_owned(),
+    ];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
         if lint.name == invalid_codeblock_attributes_name {
@@ -92,7 +95,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
