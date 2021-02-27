@@ -15,8 +15,10 @@ def fail(msg):
     print("\nTEST FAIL: {}".format(msg))
     sys.exit(1)
 
-def cargo_miri(cmd):
-    args = ["cargo", "miri", cmd, "-q"]
+def cargo_miri(cmd, quiet = True):
+    args = ["cargo", "miri", cmd]
+    if quiet:
+        args += ["-q"]
     if 'MIRI_TEST_TARGET' in os.environ:
         args += ["--target", os.environ['MIRI_TEST_TARGET']]
     return args
@@ -48,6 +50,25 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     print("--- END stderr ---")
     fail("exit code was {}".format(p.returncode))
 
+def test_no_rebuild(name, cmd):
+    print("Testing {}...".format(name))
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    (stdout, stderr) = p.communicate()
+    stdout = stdout.decode("UTF-8")
+    stderr = stderr.decode("UTF-8")
+    if p.returncode != 0:
+        fail("rebuild failed");
+    # Also check for 'Running' as a sanity check.
+    if stderr.count(" Compiling ") > 0 or stderr.count(" Running ") == 0:
+        print("--- BEGIN stderr ---")
+        print(stderr, end="")
+        print("--- END stderr ---")
+        fail("Something was being rebuilt when it should not be (or we got no output)");
+
 def test_cargo_miri_run():
     test("`cargo miri run` (no isolation)",
         cargo_miri("run"),
@@ -66,6 +87,12 @@ def test_cargo_miri_run():
         cargo_miri("run") + ["-p", "subcrate"],
         "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
+    )
+    # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
+    # FIXME: move this test up to right after the first `test`
+    # (currently that fails, only the 3rd and later runs are really clean... see Miri issue #1722)
+    test_no_rebuild("`cargo miri run` (no rebuild)",
+        cargo_miri("run", quiet=False) + ["--", ""],
     )
 
 def test_cargo_miri_test():
