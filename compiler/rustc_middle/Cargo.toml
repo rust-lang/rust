@@ -28,6 +28,6 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 chalk-ir = "0.55.0"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
-measureme = "9.0.0"
+measureme = "9.1.0"
 rustc_session = { path = "../rustc_session" }
 rustc_type_ir = { path = "../rustc_type_ir" }
