@@ -975,8 +975,8 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for use of `obj.method().for_each(closure)` if obj doesn't
-    /// implelement `Iterator` and `method()` returns `Impl Iterator` type.
+    /// **What it does:** Checks for use of `.method(..).for_each(closure)` if the reciever of `.method(..)` doesn't
+    /// implement `Iterator` and the return type of `.method(..)` implements `Iterator`.
     ///
     /// **Why is this bad?** Excessive use of `for_each` reduces redability, using `for` loop is
     /// clearer and more concise.
