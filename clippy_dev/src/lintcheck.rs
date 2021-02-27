@@ -89,7 +89,7 @@ impl std::fmt::Display for ClippyWarning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            r#"{}-{}/{}:{}:{} {} "{}""#,
+            r#"target/lintcheck/sources/{}-{}/{}:{}:{} {} "{}""#,
             &self.crate_name, &self.crate_version, &self.file, &self.line, &self.column, &self.linttype, &self.message
         )
     }
