@@ -1,6 +1,7 @@
 mod bind_instead_of_map;
 mod bytes_nth;
 mod filter_map_identity;
+mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod manual_saturating_arithmetic;
@@ -1513,6 +1514,32 @@ declare_clippy_lint! {
     "replace `.bytes().nth()` with `.as_bytes().get()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the usage of `_.to_owned()`, `vec.to_vec()`, or similar when calling `_.clone()` would be clearer.
+    ///
+    /// **Why is this bad?** These methods do the same thing as `_.clone()` but may be confusing as
+    /// to why we are calling `to_vec` on something that is already a `Vec` or calling `to_owned` on something that is already owned.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let a = vec![1, 2, 3];
+    /// let b = a.to_vec();
+    /// let c = a.to_owned();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let a = vec![1, 2, 3];
+    /// let b = a.clone();
+    /// let c = a.clone();
+    /// ```
+    pub IMPLICIT_CLONE,
+    pedantic,
+    "implicitly cloning a value by invoking a function on its dereferenced type"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1579,6 +1606,7 @@ impl_lint_pass!(Methods => [
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
+    IMPLICIT_CLONE
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1670,6 +1698,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
             ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
+            ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
+            ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
+            ["to_path_buf", ..] => implicit_clone::check(cx, expr, sym::Path),
+            ["to_vec", ..] => implicit_clone::check(cx, expr, sym::slice),
             _ => {},
         }
 

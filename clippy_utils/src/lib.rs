@@ -237,6 +237,22 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
+/// Checks if the method call given in `expr` belongs to a trait or other container with a given
+/// diagnostic item
+pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
+    cx.tcx
+        .opt_associated_item(def_id)
+        .and_then(|associated_item| match associated_item.container {
+            ty::TraitContainer(assoc_def_id) => Some(assoc_def_id),
+            ty::ImplContainer(assoc_def_id) => match cx.tcx.type_of(assoc_def_id).kind() {
+                ty::Adt(adt, _) => Some(adt.did),
+                ty::Slice(_) => cx.tcx.get_diagnostic_item(sym::slice), // this isn't perfect but it works
+                _ => None,
+            },
+        })
+        .map_or(false, |assoc_def_id| cx.tcx.is_diagnostic_item(diag_item, assoc_def_id))
+}
+
 /// Checks if an expression references a variable of the given name.
 pub fn match_var(expr: &Expr<'_>, var: Symbol) -> bool {
     if let ExprKind::Path(QPath::Resolved(None, ref path)) = expr.kind {
