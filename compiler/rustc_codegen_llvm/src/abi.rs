@@ -554,7 +554,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llvm::AddCallSiteAttrString(
                     callsite,
                     llvm::AttributePlace::Function,
-                    rustc_data_structures::const_cstr!("cmse_nonsecure_call"),
+                    cstr::cstr!("cmse_nonsecure_call"),
                 );
             }
         }
