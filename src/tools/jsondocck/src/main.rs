@@ -9,6 +9,9 @@ mod cache;
 mod config;
 mod error;
 
+#[cfg(test)]
+mod tests;
+
 use cache::Cache;
 use config::parse_config;
 use error::CkError;
@@ -282,13 +285,5 @@ fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
         Cow::Borrowed(&cache.variables[&s[1..]])
     } else {
         Cow::Owned(serde_json::from_str(s).unwrap())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn no() {
-        assert_eq!(1, 2);
     }
 }
