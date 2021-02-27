@@ -69,8 +69,3 @@ fn test_extract_llvm_version() {
     assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Some(90301));
     assert_eq!(extract_llvm_version("10.0.0-rust"), Some(100000));
 }
-
-#[test]
-fn no() {
-    assert_eq!(1, 2);
-}
