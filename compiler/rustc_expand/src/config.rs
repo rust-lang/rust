@@ -6,9 +6,9 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{
-    DelimSpan, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream, TokenTree,
+    DelimSpan, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing, TokenTree,
 };
-use rustc_ast::{self as ast, AstLike, AttrItem, Attribute, AttrStyle, MetaItem};
+use rustc_ast::{self as ast, AstLike, AttrItem, AttrStyle, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::map_in_place::MapInPlace;

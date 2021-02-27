@@ -7,8 +7,8 @@ use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
 use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{
-    AttributesData, DelimSpan, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing,
-    TokenStream, TokenTree, TreeAndSpacing,
+    DelimSpan, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing, TokenStream,
+    TokenTree, TreeAndSpacing,
 };
 
 use rustc_index::bit_set::GrowableBitSet;

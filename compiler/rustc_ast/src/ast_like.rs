@@ -1,7 +1,5 @@
 use super::ptr::P;
-use super::tokenstream::{
-    AttributesData, LazyTokenStream, PreexpTokenStream, PreexpTokenTree, Spacing,
-};
+use super::tokenstream::{AttributesData, LazyTokenStream};
 use super::{Arm, Field, FieldPat, GenericParam, Param, StructField, Variant};
 use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};

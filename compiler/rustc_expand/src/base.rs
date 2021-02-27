@@ -3,7 +3,9 @@ use crate::module::DirectoryOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{AttributesData, CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
+use rustc_ast::tokenstream::{
+    AttributesData, CanSynthesizeMissingTokens, LazyTokenStream, TokenStream,
+};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AstLike, Attribute, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
