@@ -592,6 +592,8 @@ symbols! {
         gt,
         half_open_range_patterns,
         hash,
+        hashmap_type,
+        hashset_type,
         hexagon_target_feature,
         hidden,
         homogeneous_aggregate,
