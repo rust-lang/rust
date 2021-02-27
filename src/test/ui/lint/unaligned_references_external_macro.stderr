@@ -1,0 +1,26 @@
+error: reference to packed field is unaligned
+  --> $DIR/unaligned_references_external_macro.rs:7:1
+   |
+LL | / unaligned_references_external_crate::mac! {
+LL | |     #[repr(packed)]
+LL | |     pub struct X {
+LL | |         pub field: u16
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: the lint level is defined here
+  --> $DIR/unaligned_references_external_macro.rs:7:1
+   |
+LL | / unaligned_references_external_crate::mac! {
+LL | |     #[repr(packed)]
+LL | |     pub struct X {
+LL | |         pub field: u16
+LL | |     }
+LL | | }
+   | |_^
+   = note: fields of packed structs are not properly aligned, and creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
