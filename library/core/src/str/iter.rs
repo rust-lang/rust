@@ -190,7 +190,7 @@ impl<'a> CharIndices<'a> {
         self.iter.as_str()
     }
 
-    /// Returns the byte position of the next character, or the length 
+    /// Returns the byte position of the next character, or the length
     /// of the underlying string if there are no more characters.
     ///
     /// # Examples
