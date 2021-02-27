@@ -555,7 +555,7 @@ pub(crate) fn handle_runnables(
         if should_skip_target(&runnable, cargo_spec.as_ref()) {
             continue;
         }
-        let mut runnable = to_proto::runnable(&snap, file_id, runnable)?;
+        let mut runnable = to_proto::runnable(&snap, runnable)?;
         if expect_test {
             runnable.label = format!("{} + expect", runnable.label);
             runnable.args.expect_test = Some(true);
@@ -773,7 +773,7 @@ pub(crate) fn handle_hover(
             contents: HoverContents::Markup(to_proto::markup_content(info.info.markup)),
             range: Some(range),
         },
-        actions: prepare_hover_actions(&snap, position.file_id, &info.info.actions),
+        actions: prepare_hover_actions(&snap, &info.info.actions),
     };
 
     Ok(Some(hover))
@@ -1438,17 +1438,16 @@ fn show_impl_command_link(
 
 fn runnable_action_links(
     snap: &GlobalStateSnapshot,
-    file_id: FileId,
     runnable: Runnable,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    let cargo_spec = CargoTargetSpec::for_file(&snap, file_id).ok()?;
+    let cargo_spec = CargoTargetSpec::for_file(&snap, runnable.nav.file_id).ok()?;
     let hover_config = snap.config.hover();
     if !hover_config.runnable() || should_skip_target(&runnable, cargo_spec.as_ref()) {
         return None;
     }
 
     let action: &'static _ = runnable.action();
-    to_proto::runnable(snap, file_id, runnable).ok().map(|r| {
+    to_proto::runnable(snap, runnable).ok().map(|r| {
         let mut group = lsp_ext::CommandLinkGroup::default();
 
         if hover_config.run {
@@ -1487,7 +1486,6 @@ fn goto_type_action_links(
 
 fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
-    file_id: FileId,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
     if snap.config.hover().none() || !snap.config.hover_actions() {
@@ -1498,7 +1496,7 @@ fn prepare_hover_actions(
         .iter()
         .filter_map(|it| match it {
             HoverAction::Implementation(position) => show_impl_command_link(snap, position),
-            HoverAction::Runnable(r) => runnable_action_links(snap, file_id, r.clone()),
+            HoverAction::Runnable(r) => runnable_action_links(snap, r.clone()),
             HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
         })
         .collect()
