@@ -505,7 +505,6 @@ impl<'a> fmt::Display for Display<'a> {
                     (sym::target_vendor, Some(vendor)) => match &*vendor.as_str() {
                         "apple" => "Apple",
                         "pc" => "PC",
-                        "rumprun" => "Rumprun",
                         "sun" => "Sun",
                         "fortanix" => "Fortanix",
                         _ => "",
