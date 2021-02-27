@@ -586,15 +586,23 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let place = this.ref_to_mplace(val)?;
         let size = this
             .size_and_align_of_mplace(&place)?
-            .map(|(size, _)| size)
-            .unwrap_or_else(|| place.layout.size);
+            .map(|(size, _)| size);
+        // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
+        // bail out -- we cannot reasonably figure out which memory range to reborrow.
+        // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
+        let size = match size {
+            Some(size) => size,
+            None => return Ok(*val),
+        };
         // `reborrow` relies on getting a `Pointer` and everything being in-bounds,
         // so let's ensure that. However, we do not care about alignment.
         // We can see dangling ptrs in here e.g. after a Box's `Unique` was
         // updated using "self.0 = ..." (can happen in Box::from_raw) so we cannot ICE; see miri#1050.
         let place = this.mplace_access_checked(place, Some(Align::from_bytes(1).unwrap()))?;
-        // Nothing to do for ZSTs.
-        if size == Size::ZERO {
+        // Nothing to do for ZSTs. We use `is_bits` here because we *do* need to retag even ZSTs
+        // when there actually is a tag (to avoid inheriting a tag that would let us access more
+        // than 0 bytes).
+        if size == Size::ZERO && place.ptr.is_bits() {
             return Ok(*val);
         }
 
