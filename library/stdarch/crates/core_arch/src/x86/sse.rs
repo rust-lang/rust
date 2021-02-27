@@ -1007,52 +1007,20 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, mask = 3))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: i32) -> __m128 {
-    let mask = (mask & 0xFF) as u8;
-
-    macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
-        };
-    }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (mask >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 4),
-                0b01 => shuffle_done!($x01, $x23, $x45, 5),
-                0b10 => shuffle_done!($x01, $x23, $x45, 6),
-                _ => shuffle_done!($x01, $x23, $x45, 7),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (mask >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 4),
-                0b01 => shuffle_x67!($x01, $x23, 5),
-                0b10 => shuffle_x67!($x01, $x23, 6),
-                _ => shuffle_x67!($x01, $x23, 7),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (mask >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    match mask & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    }
+pub unsafe fn _mm_shuffle_ps<const mask: i32>(a: __m128, b: __m128) -> __m128 {
+    assert!(mask >= 0 && mask <= 255);
+    simd_shuffle4(
+        a,
+        b,
+        [
+            mask as u32 & 0b11,
+            (mask as u32 >> 2) & 0b11,
+            ((mask as u32 >> 4) & 0b11) + 4,
+            ((mask as u32 >> 6) & 0b11) + 4,
+        ],
+    )
 }
 
 /// Unpacks and interleave single-precision (32-bit) floating-point elements
@@ -1725,6 +1693,14 @@ pub const _MM_HINT_T2: i32 = 1;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_NTA: i32 = 0;
 
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub const _MM_HINT_ET0: i32 = 7;
+
+/// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub const _MM_HINT_ET1: i32 = 6;
+
 /// Fetch the cache line that contains address `p` using the given `strategy`.
 ///
 /// The `strategy` must be one of:
@@ -1741,6 +1717,10 @@ pub const _MM_HINT_NTA: i32 = 0;
 ///   non-temporal access (NTA) hint. It may be a place closer than main memory
 ///   but outside of the cache hierarchy. This is used to reduce access latency
 ///   without polluting the cache.
+///
+/// * [`_MM_HINT_ET0`](constant._MM_HINT_ET0.html) and
+///   [`_MM_HINT_ET1`](constant._MM_HINT_ET1.html) are similar to `_MM_HINT_T0`
+///   and `_MM_HINT_T1` but indicate an anticipation to write to the address.
 ///
 /// The actual implementation depends on the particular CPU. This instruction
 /// is considered a hint, so the CPU is also free to simply ignore the request.
@@ -1769,24 +1749,12 @@ pub const _MM_HINT_NTA: i32 = 0;
 #[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
-    // The `strategy` must be a compile-time constant, so we use a short form
-    // of `constify_imm8!` for now.
-    // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
-    // `cache type` = 1 (data cache). `locality` is based on our `strategy`.
-    macro_rules! pref {
-        ($imm8:expr) => {
-            match $imm8 {
-                0 => prefetch(p, 0, 0, 1),
-                1 => prefetch(p, 0, 1, 1),
-                2 => prefetch(p, 0, 2, 1),
-                _ => prefetch(p, 0, 3, 1),
-            }
-        };
-    }
-    pref!(strategy)
+pub unsafe fn _mm_prefetch<const strategy: i32>(p: *const i8) {
+    // We use the `llvm.prefetch` instrinsic with `cache type` = 1 (data cache).
+    // `locality` and `rw` are based on our `strategy`.
+    prefetch(p, (strategy >> 2) & 1, strategy & 3, 1);
 }
 
 /// Returns vector of type __m128 with undefined elements.
@@ -2976,7 +2944,7 @@ mod tests {
     unsafe fn test_mm_shuffle_ps() {
         let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
         let b = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
-        let r = _mm_shuffle_ps(a, b, 0b00_01_01_11);
+        let r = _mm_shuffle_ps::<0b00_01_01_11>(a, b);
         assert_eq_m128(r, _mm_setr_ps(4.0, 2.0, 6.0, 5.0));
     }
 

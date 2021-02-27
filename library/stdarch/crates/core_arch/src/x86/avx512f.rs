@@ -22694,7 +22694,7 @@ pub unsafe fn _mm_mask_shuffle_ps(
 ) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm_shuffle_ps(a, b, $imm8)
+            _mm_shuffle_ps::<$imm8>(a, b)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
@@ -22711,7 +22711,7 @@ pub unsafe fn _mm_mask_shuffle_ps(
 pub unsafe fn _mm_maskz_shuffle_ps(k: __mmask8, a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm_shuffle_ps(a, b, $imm8)
+            _mm_shuffle_ps::<$imm8>(a, b)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
