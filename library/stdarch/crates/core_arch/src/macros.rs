@@ -1,6 +1,19 @@
 //! Utility macros.
 
 #[allow(unused)]
+macro_rules! static_assert {
+    ($imm:ident : $ty:ty where $e:expr) => {
+        struct Validate<const $imm: $ty>();
+        impl<const $imm: $ty> Validate<$imm> {
+            const VALID: () = {
+                let _ = 1 / ($e as usize);
+            };
+        }
+        let _ = Validate::<$imm>::VALID;
+    };
+}
+
+#[allow(unused)]
 macro_rules! constify_imm8 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
