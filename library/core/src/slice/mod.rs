@@ -35,6 +35,7 @@ mod iter;
 mod raw;
 mod rotate;
 mod sort;
+mod specialize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
@@ -2866,13 +2867,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        if let Some((last, elems)) = self.split_last_mut() {
-            for el in elems {
-                el.clone_from(&value);
-            }
-
-            *last = value
-        }
+        specialize::SpecFill::spec_fill(self, value);
     }
 
     /// Fills `self` with elements returned by calling a closure repeatedly.
