@@ -287,7 +287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self_ty,
                     scope_expr_id,
                     ProbeScope::AllTraits,
-                    |probe_cx| probe_cx.pick(scope_expr_id),
+                    |probe_cx| probe_cx.pick(),
                 )
                 .ok()
                 .map(|pick| pick.item)
@@ -319,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             scope_expr_id,
             scope,
-            |probe_cx| probe_cx.pick(scope_expr_id),
+            |probe_cx| probe_cx.pick(),
         )
     }
 
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // THE ACTUAL SEARCH
 
-    fn pick(mut self, scope_expr_id: hir::HirId) -> PickResult<'tcx> {
+    fn pick(mut self) -> PickResult<'tcx> {
         assert!(self.method_name.is_some());
 
         if let Some(r) = self.pick_core() {
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         if let Some((kind, def_id)) = private_candidate {
             return Err(MethodError::PrivateMatch(kind, def_id, out_of_scope_traits));
         }
-        let lev_candidate = self.probe_for_lev_candidate(scope_expr_id)?;
+        let lev_candidate = self.probe_for_lev_candidate()?;
 
         Err(MethodError::NoMatch(NoMatchData::new(
             static_candidates,
@@ -1585,10 +1585,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelt. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
-    fn probe_for_lev_candidate(
-        &mut self,
-        scope_expr_id: hir::HirId,
-    ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
+    fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
         let steps = self.steps.clone();
@@ -1602,7 +1599,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values.clone(),
                 steps,
                 IsSuggestion(true),
-                scope_expr_id,
+                self.scope_expr_id,
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
