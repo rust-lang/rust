@@ -17,7 +17,7 @@ impl Drop for Foo {
 
 fn foo() {
     let x: &[_] = &[Foo, Foo];
-    &x[3..4];
+    let _ = &x[3..4];
 }
 
 fn main() {

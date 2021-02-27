@@ -29,6 +29,6 @@ impl Index<usize> for T {
 
 fn main() {
     assert_eq!(&S[0], "hello");
-    &T[0];
+    let _ = &T[0];
     // let x = &x as &Debug;
 }

@@ -8,7 +8,7 @@ fn promote<const N: i32>() {
     // let n = N;
     // &n;
 
-    &N;
+    let _ = &N;
 }
 
 fn main() {

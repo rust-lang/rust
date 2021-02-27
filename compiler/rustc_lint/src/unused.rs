@@ -154,6 +154,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 | hir::BinOpKind::Shl
                 | hir::BinOpKind::Shr => Some("bitwise operation"),
             },
+
+            hir::ExprKind::AddrOf(..) => Some("borrow"),
+
             hir::ExprKind::Unary(..) => Some("unary operation"),
             _ => None,
         };
