@@ -14,16 +14,19 @@
 //! - [ ] TODO The Applicability for each lint for [#4310](https://github.com/rust-lang/rust-clippy/issues/4310)
 
 // # Applicability
-// - TODO xFrednet 2021-01-17: Find all methods that take and modify applicability or predefine
-//   them?
 // - TODO xFrednet 2021-01-17: Find lint emit and collect applicability
+// - TODO xFrednet 2021-02-27: Link applicability from function parameters
+//   - (Examples: suspicious_operation_groupings:267, needless_bool.rs:311)
+// - TODO xFrednet 2021-02-27: Tuple if let thingy
+//   - (Examples: unused_unit.rs:140, misc.rs:694)
 // # NITs
 // - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
 
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, ExprKind, Item, ItemKind, Mutability};
+use rustc_hir::{self as hir, intravisit, ExprKind, Item, ItemKind, Mutability};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
+use rustc_middle::hir::map::Map;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::Serialize;
@@ -33,13 +36,15 @@ use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
 use crate::utils::{
-    last_path_segment, match_function_call, match_type, paths, span_lint, walk_ptrs_ty_depth, match_path,
+    last_path_segment, match_function_call, match_path, match_type, paths, span_lint, walk_ptrs_ty_depth,
 };
 
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "metadata_collection.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 2] = ["lint_author", "deep_code_inspection"];
+/// These groups will be ignored by the lint group matcher
+const BLACK_LISTED_LINT_GROUP: [&str; 1] = ["clippy::all"];
 
 // TODO xFrednet 2021-02-15: `span_lint_and_then` & `span_lint_hir_and_then` requires special
 // handling
@@ -51,6 +56,9 @@ const LINT_EMISSION_FUNCTIONS: [&[&str]; 5] = [
     &["clippy_utils", "diagnostics", "span_lint_hir"],
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
 ];
+
+/// The index of the applicability name of `paths::APPLICABILITY_VALUES`
+const APPLICABILITY_NAME_INDEX: usize = 2;
 
 declare_clippy_lint! {
     /// **What it does:** Collects metadata about clippy lints for the website.
@@ -297,6 +305,10 @@ fn get_lint_group_or_lint(cx: &LateContext<'_>, lint_name: &str, item: &'hir Ite
 
 fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
     for (group_name, lints, _) in &cx.lint_store.get_lint_groups() {
+        if BLACK_LISTED_LINT_GROUP.contains(group_name) {
+            continue;
+        }
+
         if lints.iter().any(|x| *x == lint_id) {
             return Some((*group_name).to_string());
         }
@@ -341,7 +353,10 @@ fn match_simple_lint_emission<'hir>(
 }
 
 /// This returns the lint name and the possible applicability of this emission
-fn extract_emission_info<'hir>(cx: &LateContext<'hir>, args: &[hir::Expr<'_>]) -> Option<(String, Option<String>)> {
+fn extract_emission_info<'hir>(
+    cx: &LateContext<'hir>,
+    args: &'hir [hir::Expr<'hir>],
+) -> Option<(String, Option<String>)> {
     let mut lint_name = None;
     let mut applicability = None;
 
@@ -358,41 +373,38 @@ fn extract_emission_info<'hir>(cx: &LateContext<'hir>, args: &[hir::Expr<'_>]) -
         }
     }
 
-    lint_name.map(|lint_name| {
-        (
-            sym_to_string(lint_name).to_ascii_lowercase(),
-            applicability,
-        )
-    })
+    lint_name.map(|lint_name| (sym_to_string(lint_name).to_ascii_lowercase(), applicability))
 }
 
-fn resolve_applicability(cx: &LateContext<'hir>, expr: &hir::Expr<'_>) -> Option<String> {
+/// This function tries to resolve the linked applicability to the given expression.
+fn resolve_applicability(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<String> {
     match expr.kind {
         // We can ignore ifs without an else block because those can't be used as an assignment
-        hir::ExprKind::If(_con, _if_block, Some(_else_block)) => {
-            // self.process_assign_expr(if_block);
-            // self.process_assign_expr(else_block);
-            return Some("TODO IF EXPR".to_string());
+        hir::ExprKind::If(_con, if_block, Some(else_block)) => {
+            let mut visitor = ApplicabilityVisitor::new(cx);
+            intravisit::walk_expr(&mut visitor, if_block);
+            intravisit::walk_expr(&mut visitor, else_block);
+            visitor.complete()
         },
-        hir::ExprKind::Match(_expr, _arms, _) => {
-            // for arm in *arms {
-            //     self.process_assign_expr(arm.body);
-            // }
-            return Some("TODO MATCH EXPR".to_string());
+        hir::ExprKind::Match(_expr, arms, _) => {
+            let mut visitor = ApplicabilityVisitor::new(cx);
+            arms.iter()
+                .for_each(|arm| intravisit::walk_expr(&mut visitor, arm.body));
+            visitor.complete()
         },
         hir::ExprKind::Loop(block, ..) | hir::ExprKind::Block(block, ..) => {
-            if let Some(block_expr) = block.expr {
-                return resolve_applicability(cx, block_expr);
-            }
+            let mut visitor = ApplicabilityVisitor::new(cx);
+            intravisit::walk_block(&mut visitor, block);
+            visitor.complete()
         },
         ExprKind::Path(hir::QPath::Resolved(_, path)) => {
             // direct applicabilities are simple:
             for enum_value in &paths::APPLICABILITY_VALUES {
                 if match_path(path, enum_value) {
-                    return Some(enum_value[2].to_string());
+                    return Some(enum_value[APPLICABILITY_NAME_INDEX].to_string());
                 }
             }
-    
+
             // Values yay
             if let hir::def::Res::Local(local_hir) = path.res {
                 if let Some(local) = get_parent_local(cx, local_hir) {
@@ -401,19 +413,67 @@ fn resolve_applicability(cx: &LateContext<'hir>, expr: &hir::Expr<'_>) -> Option
                     }
                 }
             }
-        }
-        _ => {}
+
+            // This is true for paths that are linked to function parameters. They might be a bit more work so
+            // not today :)
+            None
+        },
+        _ => None,
     }
-
-
-    Some("TODO".to_string())
 }
 
 fn get_parent_local(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::Local<'hir>> {
     let map = cx.tcx.hir();
-    if let Some(hir::Node::Local(local)) = map.find(map.get_parent_node(hir_id)) {
-        return Some(local);
+
+    match map.find(map.get_parent_node(hir_id)) {
+        Some(hir::Node::Local(local)) => Some(local),
+        Some(hir::Node::Pat(pattern)) => get_parent_local(cx, pattern.hir_id),
+        _ => None,
+    }
+}
+
+/// This visitor finds the highest applicability value in the visited expressions
+struct ApplicabilityVisitor<'a, 'hir> {
+    cx: &'a LateContext<'hir>,
+    /// This is the index of hightest `Applicability` for
+    /// `clippy_utils::paths::APPLICABILITY_VALUES`
+    applicability_index: Option<usize>,
+}
+
+impl<'a, 'hir> ApplicabilityVisitor<'a, 'hir> {
+    fn new(cx: &'a LateContext<'hir>) -> Self {
+        Self {
+            cx,
+            applicability_index: None,
+        }
     }
 
-    None
+    fn add_new_index(&mut self, new_index: usize) {
+        self.applicability_index = self
+            .applicability_index
+            .map_or(new_index, |old_index| old_index.min(new_index))
+            .into();
+    }
+
+    fn complete(self) -> Option<String> {
+        self.applicability_index
+            .map(|index| paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX].to_string())
+    }
+}
+
+impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityVisitor<'a, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    }
+
+    fn visit_path(&mut self, path: &hir::Path<'_>, _id: hir::HirId) {
+        for (index, enum_value) in paths::APPLICABILITY_VALUES.iter().enumerate() {
+            if match_path(path, enum_value) {
+                self.add_new_index(index);
+                break;
+            }
+        }
+    }
 }
