@@ -49,7 +49,7 @@ impl fmt::Display for CfgAtom {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CfgExpr {
     Invalid,
     Atom(CfgAtom),
