@@ -138,6 +138,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// *stat += random_stat_buff();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeMap")]
 pub struct BTreeMap<K, V> {
     root: Option<Root<K, V>>,
     length: usize,
