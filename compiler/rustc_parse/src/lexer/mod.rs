@@ -376,6 +376,25 @@ impl<'a> StringReader<'a> {
                 let n = u32::from(n_hashes);
                 (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
             }
+            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter, terminated } => {
+                if !terminated {
+                    let lo = if start_delimiter == rustc_lexer::FStrDelimiter::Quote { start + BytePos(1) } else { start };
+                    self.sess
+                        .span_diagnostic
+                        .struct_span_fatal_with_code(
+                            self.mk_sp(lo, suffix_start),
+                            "unterminated double quote format string",
+                            error_code!(E0766),
+                        )
+                        .emit();
+                    FatalError.raise();
+                }
+                let prefix_len = match start_delimiter {
+                    rustc_lexer::FStrDelimiter::Quote => 2,
+                    rustc_lexer::FStrDelimiter::Brace => 1
+                };
+                (token::FStr(translate_f_str_delimiter(start_delimiter), translate_f_str_delimiter(end_delimiter)), Mode::FStr, prefix_len, 1)
+            }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 return if empty_int {
                     self.sess
@@ -569,6 +588,13 @@ impl<'a> StringReader<'a> {
                 self.err_span_(lo, hi, &format!("invalid digit for a base {} literal", base));
             }
         }
+    }
+}
+
+fn translate_f_str_delimiter(delimiter: rustc_lexer::FStrDelimiter) -> token::FStrDelimiter {
+    match delimiter {
+        rustc_lexer::FStrDelimiter::Quote => token::FStrDelimiter::Quote,
+        rustc_lexer::FStrDelimiter::Brace => token::FStrDelimiter::Brace
     }
 }
 

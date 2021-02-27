@@ -11,7 +11,7 @@ use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, Field, Lit, UnOp, DUMMY_NODE_ID};
-use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
+use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind, FStr, FStrSegment};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
@@ -1197,7 +1197,24 @@ impl<'a> Parser<'a> {
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(literal), attrs);
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
-            None => self.try_macro_suggestion(),
+            None => {
+                if let TokenKind::Literal(literal) = self.token.kind {
+                    if let token::FStr(start, end) = literal.kind {
+                        self.bump();
+                        let segments = match (start, end) {
+                            (token::FStrDelimiter::Quote, token::FStrDelimiter::Quote) => {
+                                vec![FStrSegment::Str(literal.symbol)]
+                            },
+                            _ => rustc_errors::FatalError.raise()
+                        };
+                        let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::FStr(FStr { segments }), attrs);
+                        // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
+                        tracing::debug!("parse_lit_expr: expr: {:#?}", &expr);
+                        return Ok(expr);
+                    }
+                }
+                self.try_macro_suggestion()
+            }
         }
     }
 

@@ -1192,6 +1192,7 @@ impl Expr {
             ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
+            ExprKind::FStr(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
@@ -1281,6 +1282,8 @@ pub enum ExprKind {
     Unary(UnOp, P<Expr>),
     /// A literal (e.g., `1`, `"foo"`).
     Lit(Lit),
+    /// An f-string (e.g. `f"foo == {1 + 1}"`)
+    FStr(FStr),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
@@ -1669,6 +1672,19 @@ impl LitKind {
             | LitKind::Err(..) => false,
         }
     }
+}
+
+/// Segment of an f-string.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum FStrSegment {
+    Str(Symbol),
+    Expr(P<Expr>),
+}
+
+/// F-string. TODO.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct FStr {
+    pub segments: Vec<FStrSegment>,
 }
 
 // N.B., If you change this, you'll probably want to change the corresponding

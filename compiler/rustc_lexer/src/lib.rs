@@ -52,7 +52,7 @@ impl Token {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TokenKind {
     // Multi-char tokens:
-    /// "// comment"
+    /// `// comment`
     LineComment { doc_style: Option<DocStyle> },
     /// `/* block comment */`
     ///
@@ -61,20 +61,20 @@ pub enum TokenKind {
     BlockComment { doc_style: Option<DocStyle>, terminated: bool },
     /// Any whitespace characters sequence.
     Whitespace,
-    /// "ident" or "continue"
+    /// `ident` or `continue`
     /// At this step keywords are also considered identifiers.
     Ident,
-    /// "r#ident"
+    /// `r#ident`
     RawIdent,
-    /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
+    /// `12_u8`, `1.0e-40`, `b"123"`. See `LiteralKind` for more details.
     Literal { kind: LiteralKind, suffix_start: usize },
-    /// "'a"
+    /// `'a`
     Lifetime { starts_with_number: bool },
 
     // One-char tokens:
-    /// ";"
+    /// `;`
     Semi,
-    /// ","
+    /// `,`
     Comma,
     /// "."
     Dot,
@@ -137,24 +137,35 @@ pub enum DocStyle {
     Inner,
 }
 
+/// Delimiter of an f-string.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FStrDelimiter {
+    /// `f"` or `"`
+    Quote,
+    /// `{` or `}`
+    Brace,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LiteralKind {
-    /// "12_u8", "0o100", "0b120i99"
+    /// `12_u8`, `0o100`, `0b120i99`
     Int { base: Base, empty_int: bool },
-    /// "12.34f32", "0b100.100"
+    /// `12.34f32`, `0b100.100`
     Float { base: Base, empty_exponent: bool },
-    /// "'a'", "'\\'", "'''", "';"
+    /// `'a'`, `'\\'`, `'''`, `';`
     Char { terminated: bool },
-    /// "b'a'", "b'\\'", "b'''", "b';"
+    /// `b'a'`, `b'\\'`, `b'''`, `b';`
     Byte { terminated: bool },
-    /// ""abc"", ""abc"
+    /// `"abc"`, `"abc`
     Str { terminated: bool },
-    /// "b"abc"", "b"abc"
+    /// `b"abc"`, `b"abc`
     ByteStr { terminated: bool },
-    /// "r"abc"", "r#"abc"#", "r####"ab"###"c"####", "r#"a"
+    /// `r"abc"`, `r#"abc"#`, `r####"ab"###"c"####`, `r#"a`
     RawStr { n_hashes: u16, err: Option<RawStrError> },
-    /// "br"abc"", "br#"abc"#", "br####"ab"###"c"####", "br#"a"
+    /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`
     RawByteStr { n_hashes: u16, err: Option<RawStrError> },
+    /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
+    FStr { start: FStrDelimiter, end: FStrDelimiter, terminated: bool },
 }
 
 /// Error produced validating a raw string. Represents cases like:
@@ -360,6 +371,25 @@ impl Cursor<'_> {
                 }
                 _ => self.ident(),
             },
+
+            // f-string or identifier.
+            'f' => {
+                match self.first() {
+                    '\"' => {
+                        self.bump();
+
+                        // TODO: Actually parse correctly
+                        let terminated = self.double_quoted_string();
+                        let suffix_start = self.len_consumed();
+                        if terminated {
+                            self.eat_literal_suffix();
+                        }
+                        let kind = FStr { start: FStrDelimiter::Quote, end: FStrDelimiter::Quote, terminated };
+                        Literal { kind, suffix_start }
+                    }
+                    _ => self.ident(),
+                }
+            }
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).

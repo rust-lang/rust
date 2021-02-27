@@ -56,6 +56,9 @@ pub enum EscapeError {
     NonAsciiCharInByte,
     /// Non-ascii character in byte string literal.
     NonAsciiCharInByteString,
+
+    /// Unescaped `{` or `}` in f-string.
+    LoneBrace,
 }
 
 /// Takes a contents of a literal (without quotes) and produces a
@@ -72,12 +75,13 @@ where
             // The Chars iterator moved forward.
             callback(0..(literal_text.len() - chars.as_str().len()), result);
         }
-        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str(literal_text, mode, callback),
+        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str_or_f_str(literal_text, mode, callback),
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => {
             unescape_raw_str_or_byte_str(literal_text, mode, callback)
         }
+        Mode::FStr => unescape_str_or_byte_str_or_f_str(literal_text, mode, callback)
     }
 }
 
@@ -112,7 +116,7 @@ pub fn unescape_byte(literal_text: &str) -> Result<u8, (usize, EscapeError)> {
 }
 
 /// What kind of literal do we parse.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Char,
     Str,
@@ -120,13 +124,14 @@ pub enum Mode {
     ByteStr,
     RawStr,
     RawByteStr,
+    FStr,
 }
 
 impl Mode {
     pub fn in_single_quotes(self) -> bool {
         match self {
             Mode::Char | Mode::Byte => true,
-            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr => false,
+            Mode::Str | Mode::ByteStr | Mode::RawStr | Mode::RawByteStr | Mode::FStr => false,
         }
     }
 
@@ -137,13 +142,20 @@ impl Mode {
     pub fn is_bytes(self) -> bool {
         match self {
             Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-            Mode::Char | Mode::Str | Mode::RawStr => false,
+            Mode::Char | Mode::Str | Mode::RawStr | Mode::FStr => false,
         }
     }
 }
 
 fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
-    if first_char != '\\' {
+    if mode == Mode::FStr && (first_char == '{' || first_char == '}') {
+        // F-string escapes are similar to format!() escapes -- `{{` => `{`, and `}}` => `}`.
+        return match chars.next() {
+            None => Err(EscapeError::LoneBrace),
+            Some(second_char) if second_char != first_char => Err(EscapeError::LoneBrace), // TODO: Improve error?
+            Some(_) => Ok(first_char)
+        }
+    } else if first_char != '\\' {
         // Previous character was not a slash, and we don't expect it to be
         // an escape-only character.
         return match first_char {
@@ -264,7 +276,7 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-fn unescape_str_or_byte_str<F>(src: &str, mode: Mode, callback: &mut F)
+fn unescape_str_or_byte_str_or_f_str<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {

@@ -55,6 +55,24 @@ pub enum DelimToken {
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+pub enum FStrDelimiter {
+    /// `f"` at the start, `"` at the end
+    Quote,
+    /// `}` at the start, `{` at the end
+    Brace,
+}
+impl FStrDelimiter {
+    pub fn display(&self, is_start: bool) -> &'static str {
+        match (self, is_start) {
+            (FStrDelimiter::Quote, true) => "f\"",
+            (FStrDelimiter::Quote, false) => "\"",
+            (FStrDelimiter::Brace, true) => "{",
+            (FStrDelimiter::Brace, false) => "}",
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -65,6 +83,8 @@ pub enum LitKind {
     StrRaw(u16), // raw string delimited by `n` hash symbols
     ByteStr,
     ByteStrRaw(u16), // raw byte string delimited by `n` hash symbols
+    /// F-string, delimited at the start and end by the specified delimiters.
+    FStr(FStrDelimiter, FStrDelimiter), // `Token` only, must never appear in AST
     Err,
 }
 
@@ -96,6 +116,7 @@ impl fmt::Display for Lit {
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
+            FStr(start, end) => write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?,
             Integer | Float | Bool | Err => write!(f, "{}", symbol)?,
         }
 
@@ -125,6 +146,7 @@ impl LitKind {
             Float => "float",
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
+            FStr(..) => "format string", // TODO: an f-string, rather than a "format string"? Will have to change `article()` as well.
             Err => "error",
         }
     }
