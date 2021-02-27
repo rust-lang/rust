@@ -483,9 +483,38 @@ struct Point {
 }
 
 #[test]
-fn doctest_generate_enum_match_method() {
+fn doctest_generate_enum_as_method() {
     check_doc_test(
-        "generate_enum_match_method",
+        "generate_enum_as_method",
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String)$0,
+}
+"#####,
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String),
+}
+
+impl Value {
+    fn as_text(&self) -> Option<&String> {
+        if let Self::Text(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_enum_is_method() {
+    check_doc_test(
+        "generate_enum_is_method",
         r#####"
 enum Version {
  Undefined,
@@ -504,6 +533,35 @@ impl Version {
     /// Returns `true` if the version is [`Minor`].
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_enum_try_into_method() {
+    check_doc_test(
+        "generate_enum_try_into_method",
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String)$0,
+}
+"#####,
+        r#####"
+enum Value {
+ Number(i32),
+ Text(String),
+}
+
+impl Value {
+    fn try_into_text(self) -> Result<String, Self> {
+        if let Self::Text(v) = self {
+            Ok(v)
+        } else {
+            Err(self)
+        }
     }
 }
 "#####,
