@@ -157,26 +157,16 @@ impl SlowVectorInit {
         vec_alloc: &VecAllocation<'_>,
     ) {
         match initialization {
-            InitializationType::Extend(e) | InitializationType::Resize(e) => Self::emit_lint(
-                cx,
-                e,
-                vec_alloc,
-                "slow zero-filling initialization",
-                SLOW_VECTOR_INITIALIZATION,
-            ),
+            InitializationType::Extend(e) | InitializationType::Resize(e) => {
+                Self::emit_lint(cx, e, vec_alloc, "slow zero-filling initialization")
+            },
         };
     }
 
-    fn emit_lint<'tcx>(
-        cx: &LateContext<'tcx>,
-        slow_fill: &Expr<'_>,
-        vec_alloc: &VecAllocation<'_>,
-        msg: &str,
-        lint: &'static Lint,
-    ) {
+    fn emit_lint<'tcx>(cx: &LateContext<'tcx>, slow_fill: &Expr<'_>, vec_alloc: &VecAllocation<'_>, msg: &str) {
         let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
-        span_lint_and_then(cx, lint, slow_fill.span, msg, |diag| {
+        span_lint_and_then(cx, SLOW_VECTOR_INITIALIZATION, slow_fill.span, msg, |diag| {
             diag.span_suggestion(
                 vec_alloc.allocation_expr.span,
                 "consider replace allocation with",

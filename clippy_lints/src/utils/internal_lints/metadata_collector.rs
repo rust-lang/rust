@@ -15,16 +15,25 @@
 
 // # Applicability
 // - TODO xFrednet 2021-01-17: Find lint emit and collect applicability
-// - TODO xFrednet 2021-02-27: Link applicability from function parameters
-//   - (Examples: suspicious_operation_groupings:267, needless_bool.rs:311)
-// - TODO xFrednet 2021-02-27: Tuple if let thingy
-//   - (Examples: unused_unit.rs:140, misc.rs:694)
+//   - TODO xFrednet 2021-02-28:  1x reference to closure
+//     - See clippy_lints/src/needless_pass_by_value.rs@NeedlessPassByValue::check_fn
+//   - TODO xFrednet 2021-02-28:  4x weird emission forwarding
+//     - See clippy_lints/src/enum_variants.rs@EnumVariantNames::check_name
+//   - TODO xFrednet 2021-02-28:  6x emission forwarding with local that is initializes from
+//     function.
+//     - See clippy_lints/src/methods/mod.rs@lint_binary_expr_with_method_call
+//   - TODO xFrednet 2021-02-28:  2x lint from local from function call
+//     - See clippy_lints/src/misc.rs@check_binary
+//   - TODO xFrednet 2021-02-28:  2x lint from local from method call
+//     - See clippy_lints/src/non_copy_const.rs@lint
+//   - TODO xFrednet 2021-02-28: 20x lint from local
+//     - See clippy_lints/src/map_unit_fn.rs@lint_map_unit_fn
 // # NITs
 // - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
 
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, intravisit, ExprKind, Item, ItemKind, Mutability};
+use rustc_hir::{self as hir, intravisit, ExprKind, Item, ItemKind, Mutability, QPath};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -44,17 +53,35 @@ const OUTPUT_FILE: &str = "metadata_collection.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 2] = ["lint_author", "deep_code_inspection"];
 /// These groups will be ignored by the lint group matcher
-const BLACK_LISTED_LINT_GROUP: [&str; 1] = ["clippy::all"];
+const BLACK_LISTED_LINT_GROUP: [&str; 1] = ["clippy::all", "clippy::internal"];
 
 // TODO xFrednet 2021-02-15: `span_lint_and_then` & `span_lint_hir_and_then` requires special
 // handling
-#[rustfmt::skip]
-const LINT_EMISSION_FUNCTIONS: [&[&str]; 5] = [
+const SIMPLE_LINT_EMISSION_FUNCTIONS: [&[&str]; 5] = [
     &["clippy_utils", "diagnostics", "span_lint"],
     &["clippy_utils", "diagnostics", "span_lint_and_help"],
     &["clippy_utils", "diagnostics", "span_lint_and_note"],
     &["clippy_utils", "diagnostics", "span_lint_hir"],
     &["clippy_utils", "diagnostics", "span_lint_and_sugg"],
+];
+const COMPLEX_LINT_EMISSION_FUNCTIONS: [&[&str]; 2] = [
+    &["clippy_utils", "diagnostics", "span_lint_and_then"],
+    &["clippy_utils", "diagnostics", "span_lint_hir_and_then"],
+];
+const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
+    ("span_suggestion", false),
+    ("span_suggestion_short", false),
+    ("span_suggestion_verbose", false),
+    ("span_suggestion_hidden", false),
+    ("tool_only_span_suggestion", false),
+    ("multipart_suggestion", true),
+    ("multipart_suggestions", true),
+    ("tool_only_multipart_suggestion", true),
+    ("span_suggestions", true),
+];
+const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
+    &["clippy_utils", "diagnostics", "mutispan_sugg"],
+    &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
 ];
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
@@ -177,7 +204,7 @@ struct ApplicabilityInfo {
     /// Indicates if any of the lint emissions uses multiple spans. This is related to
     /// [rustfix#141](https://github.com/rust-lang/rustfix/issues/141) as such suggestions can
     /// currently not be applied automatically.
-    has_multi_suggestion: bool,
+    is_multi_suggestion: bool,
     applicability: Option<String>,
 }
 
@@ -249,6 +276,14 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 app_info.applicability = applicability;
             } else {
                 lint_collection_error_span(cx, expr.span, "I found this but I can't get the lint or applicability");
+            }
+        } else if let Some(args) = match_complex_lint_emission(cx, expr) {
+            if let Some((lint_name, applicability, is_multi_span)) = extract_complex_emission_info(cx, args) {
+                let app_info = self.applicability_into.entry(lint_name).or_default();
+                app_info.applicability = applicability;
+                app_info.is_multi_suggestion = is_multi_span;
+            } else {
+                lint_collection_error_span(cx, expr.span, "Look, here ... I have no clue what todo with it");
             }
         }
     }
@@ -347,7 +382,16 @@ fn match_simple_lint_emission<'hir>(
     cx: &LateContext<'hir>,
     expr: &'hir hir::Expr<'_>,
 ) -> Option<&'hir [hir::Expr<'hir>]> {
-    LINT_EMISSION_FUNCTIONS
+    SIMPLE_LINT_EMISSION_FUNCTIONS
+        .iter()
+        .find_map(|emission_fn| match_function_call(cx, expr, emission_fn))
+}
+
+fn match_complex_lint_emission<'hir>(
+    cx: &LateContext<'hir>,
+    expr: &'hir hir::Expr<'_>,
+) -> Option<&'hir [hir::Expr<'hir>]> {
+    COMPLEX_LINT_EMISSION_FUNCTIONS
         .iter()
         .find_map(|emission_fn| match_function_call(cx, expr, emission_fn))
 }
@@ -376,28 +420,60 @@ fn extract_emission_info<'hir>(
     lint_name.map(|lint_name| (sym_to_string(lint_name).to_ascii_lowercase(), applicability))
 }
 
+fn extract_complex_emission_info<'hir>(
+    cx: &LateContext<'hir>,
+    args: &'hir [hir::Expr<'hir>],
+) -> Option<(String, Option<String>, bool)> {
+    let mut lint_name = None;
+    let mut applicability = None;
+    let mut multi_span = false;
+
+    for arg in args {
+        let (arg_ty, _) = walk_ptrs_ty_depth(cx.typeck_results().expr_ty(&arg));
+
+        if match_type(cx, arg_ty, &paths::LINT) {
+            // If we found the lint arg, extract the lint name
+            if let ExprKind::Path(ref lint_path) = arg.kind {
+                lint_name = Some(last_path_segment(lint_path).ident.name);
+            }
+        } else if arg_ty.is_closure() {
+            if let ExprKind::Closure(_, _, body_id, _, _) = arg.kind {
+                let mut visitor = EmissionClosureVisitor::new(cx);
+                intravisit::walk_body(&mut visitor, cx.tcx.hir().body(body_id));
+                multi_span = visitor.found_multi_span();
+                applicability = visitor.complete();
+            } else {
+                // TODO xfrednet 2021-02-28: linked closures, see: needless_pass_by_value.rs:292
+                return None;
+            }
+        }
+    }
+
+    lint_name.map(|lint_name| (sym_to_string(lint_name).to_ascii_lowercase(), applicability, multi_span))
+}
+
 /// This function tries to resolve the linked applicability to the given expression.
 fn resolve_applicability(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<String> {
     match expr.kind {
         // We can ignore ifs without an else block because those can't be used as an assignment
-        hir::ExprKind::If(_con, if_block, Some(else_block)) => {
+        ExprKind::If(_con, if_block, Some(else_block)) => {
             let mut visitor = ApplicabilityVisitor::new(cx);
             intravisit::walk_expr(&mut visitor, if_block);
             intravisit::walk_expr(&mut visitor, else_block);
             visitor.complete()
         },
-        hir::ExprKind::Match(_expr, arms, _) => {
+        ExprKind::Match(_expr, arms, _) => {
             let mut visitor = ApplicabilityVisitor::new(cx);
             arms.iter()
                 .for_each(|arm| intravisit::walk_expr(&mut visitor, arm.body));
             visitor.complete()
         },
-        hir::ExprKind::Loop(block, ..) | hir::ExprKind::Block(block, ..) => {
+        ExprKind::Loop(block, ..) | ExprKind::Block(block, ..) => {
             let mut visitor = ApplicabilityVisitor::new(cx);
             intravisit::walk_block(&mut visitor, block);
             visitor.complete()
         },
-        ExprKind::Path(hir::QPath::Resolved(_, path)) => {
+        ExprKind::Path(QPath::Resolved(_, path)) => {
             // direct applicabilities are simple:
             for enum_value in &paths::APPLICABILITY_VALUES {
                 if match_path(path, enum_value) {
@@ -475,5 +551,98 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityVisitor<'a, 'hir> {
                 break;
             }
         }
+    }
+}
+
+/// This visitor finds the highest applicability value in the visited expressions
+struct EmissionClosureVisitor<'a, 'hir> {
+    cx: &'a LateContext<'hir>,
+    /// This is the index of hightest `Applicability` for
+    /// `clippy_utils::paths::APPLICABILITY_VALUES`
+    applicability_index: Option<usize>,
+    suggestion_count: usize,
+}
+
+impl<'a, 'hir> EmissionClosureVisitor<'a, 'hir> {
+    fn new(cx: &'a LateContext<'hir>) -> Self {
+        Self {
+            cx,
+            applicability_index: None,
+            suggestion_count: 0,
+        }
+    }
+
+    fn add_new_index(&mut self, new_index: usize) {
+        self.applicability_index = self
+            .applicability_index
+            .map_or(new_index, |old_index| old_index.min(new_index))
+            .into();
+    }
+
+    fn found_multi_span(&self) -> bool {
+        self.suggestion_count > 1
+    }
+
+    fn complete(self) -> Option<String> {
+        self.applicability_index
+            .map(|index| paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX].to_string())
+    }
+}
+
+impl<'a, 'hir> intravisit::Visitor<'hir> for EmissionClosureVisitor<'a, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    }
+
+    fn visit_path(&mut self, path: &hir::Path<'_>, _id: hir::HirId) {
+        for (index, enum_value) in paths::APPLICABILITY_VALUES.iter().enumerate() {
+            if match_path(path, enum_value) {
+                self.add_new_index(index);
+                break;
+            }
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+        match &expr.kind {
+            ExprKind::Call(fn_expr, _args) => {
+                let found_function = SUGGESTION_FUNCTIONS
+                    .iter()
+                    .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
+                if found_function {
+                    // These functions are all multi part suggestions
+                    self.suggestion_count += 2;
+                }
+            },
+            ExprKind::MethodCall(path, _path_span, arg, _arg_span) => {
+                let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&arg[0]));
+                if match_type(self.cx, self_ty, &paths::DIAGNOSTIC_BUILDER) {
+                    let called_method = path.ident.name.as_str().to_string();
+                    let found_suggestion =
+                        SUGGESTION_DIAGNOSTIC_BUILDER_METHODS
+                            .iter()
+                            .find_map(|(method_name, is_multi_part)| {
+                                if *method_name == called_method {
+                                    Some(*is_multi_part)
+                                } else {
+                                    None
+                                }
+                            });
+                    if let Some(multi_part) = found_suggestion {
+                        if multi_part {
+                            // two is enough to have it marked as a multipart suggestion
+                            self.suggestion_count += 2;
+                        } else {
+                            self.suggestion_count += 1;
+                        }
+                    }
+                }
+            },
+            _ => {},
+        }
+
+        intravisit::walk_expr(self, expr);
     }
 }
