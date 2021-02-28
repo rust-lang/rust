@@ -161,6 +161,10 @@ impl Inliner<'tcx> {
             return Err("optimization fuel exhausted");
         }
 
+        if true {
+            return Err("optimization fuel exhausted");
+        }
+
         let callee_body = callsite.callee.subst_mir_and_normalize_erasing_regions(
             self.tcx,
             self.param_env,
