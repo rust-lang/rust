@@ -1,5 +1,6 @@
 use std::iter::once;
 
+use ide_db::ty_filter::TryEnum;
 use syntax::{
     ast::{
         self,
@@ -10,7 +11,6 @@ use syntax::{
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
-use ide_db::ty_filter::TryEnum;
 
 // Assist: replace_let_with_if_let
 //

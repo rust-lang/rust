@@ -3,6 +3,7 @@ use hir::known;
 use ide_db::helpers::FamousDefs;
 use stdx::format_to;
 use syntax::{ast, AstNode};
+use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -13,7 +14,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn main() {
 //     let x = vec![1, 2, 3];
-//     for $0v in x {
+//     for$0 v in x {
 //         let y = v * 2;
 //     }
 // }
@@ -32,6 +33,10 @@ pub(crate) fn convert_for_to_iter_for_each(acc: &mut Assists, ctx: &AssistContex
     let iterable = for_loop.iterable()?;
     let pat = for_loop.pat()?;
     let body = for_loop.loop_body()?;
+    if body.syntax().text_range().start() < ctx.offset() {
+        mark::hit!(not_available_in_body);
+        return None;
+    }
 
     acc.add(
         AssistId("convert_for_to_iter_for_each", AssistKind::RefactorRewrite),
@@ -176,6 +181,21 @@ fn main() {
     x.into_iter().for_each(|v| {
         v *= 2;
     });
+}",
+        )
+    }
+
+    #[test]
+    fn not_available_in_body() {
+        mark::check!(not_available_in_body);
+        check_assist_not_applicable(
+            convert_for_to_iter_for_each,
+            r"
+fn main() {
+    let x = vec![1, 2, 3];
+    for v in x {
+        $0v *= 2;
+    }
 }",
         )
     }
