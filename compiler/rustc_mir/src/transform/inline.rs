@@ -226,10 +226,7 @@ impl Inliner<'tcx> {
 
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
-            if self
-                .tcx
-                .mir_callgraph_reachable((*callee, caller_body.source.def_id().expect_local()))
-            {
+            if !self.tcx.mir_inliner_callees(callee.def).is_empty() {
                 return Err("caller might be reachable from callee (query cycle avoidance)");
             }
 
