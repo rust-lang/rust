@@ -57,8 +57,10 @@ use std::{
 
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
-    ast_id_map::FileAstId, eager::expand_eager_macro, hygiene::Hygiene, AstId, HirFileId, InFile,
-    MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    ast_id_map::FileAstId,
+    eager::{expand_eager_macro, ErrorEmitted},
+    hygiene::Hygiene,
+    AstId, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use la_arena::Idx;
 use nameres::DefMap;
@@ -592,8 +594,15 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             error_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
         }
 
-        AstIdWithPath::new(ast_id.file_id, ast_id.value, path?)
-            .as_call_id_with_errors(db, krate, resolver, error_sink)
+        macro_call_as_call_id(
+            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path?),
+            db,
+            krate,
+            resolver,
+            error_sink,
+        )
+        .ok()?
+        .ok()
     }
 }
 
@@ -610,61 +619,50 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
     }
 }
 
-impl AsMacroCall for AstIdWithPath<ast::MacroCall> {
-    fn as_call_id_with_errors(
-        &self,
-        db: &dyn db::DefDatabase,
-        krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId> {
-        let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
-            error_sink(mbe::ExpandError::Other(format!("could not resolve macro `{}`", self.path)));
-            None
-        })?;
+struct UnresolvedMacro;
 
-        if let MacroDefKind::BuiltInEager(_) = def.kind {
-            let macro_call = InFile::new(self.ast_id.file_id, self.ast_id.to_node(db.upcast()));
-            let hygiene = Hygiene::new(db.upcast(), self.ast_id.file_id);
+fn macro_call_as_call_id(
+    call: &AstIdWithPath<ast::MacroCall>,
+    db: &dyn db::DefDatabase,
+    krate: CrateId,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+    error_sink: &mut dyn FnMut(mbe::ExpandError),
+) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+    let def: MacroDefId = resolver(call.path.clone()).ok_or(UnresolvedMacro)?;
 
-            Some(
-                expand_eager_macro(
-                    db.upcast(),
-                    krate,
-                    macro_call,
-                    def,
-                    &|path: ast::Path| resolver(path::ModPath::from_src(path, &hygiene)?),
-                    error_sink,
-                )
-                .ok()?
-                .into(),
-            )
-        } else {
-            Some(def.as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike(self.ast_id)).into())
-        }
-    }
+    let res = if let MacroDefKind::BuiltInEager(_) = def.kind {
+        let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db.upcast()));
+        let hygiene = Hygiene::new(db.upcast(), call.ast_id.file_id);
+
+        expand_eager_macro(
+            db.upcast(),
+            krate,
+            macro_call,
+            def,
+            &|path: ast::Path| resolver(path::ModPath::from_src(path, &hygiene)?),
+            error_sink,
+        )
+        .map(MacroCallId::from)
+    } else {
+        Ok(def.as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike(call.ast_id)).into())
+    };
+    Ok(res)
 }
 
-impl AsMacroCall for AstIdWithPath<ast::Item> {
-    fn as_call_id_with_errors(
-        &self,
-        db: &dyn db::DefDatabase,
-        krate: CrateId,
-        resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId> {
-        let def: MacroDefId = resolver(self.path.clone()).or_else(|| {
-            error_sink(mbe::ExpandError::Other(format!("could not resolve macro `{}`", self.path)));
-            None
-        })?;
-
-        Some(
-            def.as_lazy_macro(
-                db.upcast(),
-                krate,
-                MacroCallKind::Attr(self.ast_id, self.path.segments().last()?.to_string()),
-            )
-            .into(),
+fn item_attr_as_call_id(
+    item_attr: &AstIdWithPath<ast::Item>,
+    db: &dyn db::DefDatabase,
+    krate: CrateId,
+    resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
+) -> Result<MacroCallId, UnresolvedMacro> {
+    let def: MacroDefId = resolver(item_attr.path.clone()).ok_or(UnresolvedMacro)?;
+    let last_segment = item_attr.path.segments().last().ok_or(UnresolvedMacro)?;
+    let res = def
+        .as_lazy_macro(
+            db.upcast(),
+            krate,
+            MacroCallKind::Attr(item_attr.ast_id, last_segment.to_string()),
         )
-    }
+        .into();
+    Ok(res)
 }

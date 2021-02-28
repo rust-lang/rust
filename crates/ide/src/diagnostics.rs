@@ -10,15 +10,16 @@ mod field_shorthand;
 use std::cell::RefCell;
 
 use hir::{
+    db::AstDatabase,
     diagnostics::{Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
-    Semantics,
+    InFile, Semantics,
 };
 use ide_db::{base_db::SourceDatabase, RootDatabase};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange,
+    SyntaxNode, SyntaxNodePtr, TextRange,
 };
 use text_edit::TextEdit;
 
@@ -147,19 +148,37 @@ pub(crate) fn diagnostics(
 
             // Override severity and mark as unused.
             res.borrow_mut().push(
-                Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
-                    .with_unused(true)
-                    .with_code(Some(d.code())),
+                Diagnostic::hint(
+                    sema.diagnostics_display_range(d.display_source()).range,
+                    d.message(),
+                )
+                .with_unused(true)
+                .with_code(Some(d.code())),
             );
         })
         .on::<hir::diagnostics::UnresolvedProcMacro, _>(|d| {
             // Use more accurate position if available.
-            let display_range =
-                d.precise_location.unwrap_or_else(|| sema.diagnostics_display_range(d).range);
+            let display_range = d
+                .precise_location
+                .unwrap_or_else(|| sema.diagnostics_display_range(d.display_source()).range);
 
             // FIXME: it would be nice to tell the user whether proc macros are currently disabled
             res.borrow_mut()
                 .push(Diagnostic::hint(display_range, d.message()).with_code(Some(d.code())));
+        })
+        .on::<hir::diagnostics::UnresolvedMacroCall, _>(|d| {
+            let last_path_segment = sema.db.parse_or_expand(d.file).and_then(|root| {
+                d.node
+                    .to_node(&root)
+                    .path()
+                    .and_then(|it| it.segment())
+                    .and_then(|it| it.name_ref())
+                    .map(|it| InFile::new(d.file, SyntaxNodePtr::new(it.syntax())))
+            });
+            let diagnostics = last_path_segment.unwrap_or_else(|| d.display_source());
+            let display_range = sema.diagnostics_display_range(diagnostics).range;
+            res.borrow_mut()
+                .push(Diagnostic::error(display_range, d.message()).with_code(Some(d.code())));
         })
         // Only collect experimental diagnostics when they're enabled.
         .filter(|diag| !(diag.is_experimental() && config.disable_experimental))
@@ -170,8 +189,11 @@ pub(crate) fn diagnostics(
         // Diagnostics not handled above get no fix and default treatment.
         .build(|d| {
             res.borrow_mut().push(
-                Diagnostic::error(sema.diagnostics_display_range(d).range, d.message())
-                    .with_code(Some(d.code())),
+                Diagnostic::error(
+                    sema.diagnostics_display_range(d.display_source()).range,
+                    d.message(),
+                )
+                .with_code(Some(d.code())),
             );
         });
 
@@ -183,13 +205,13 @@ pub(crate) fn diagnostics(
 }
 
 fn diagnostic_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic::error(sema.diagnostics_display_range(d).range, d.message())
+    Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema))
         .with_code(Some(d.code()))
 }
 
 fn warning_with_fix<D: DiagnosticWithFix>(d: &D, sema: &Semantics<RootDatabase>) -> Diagnostic {
-    Diagnostic::hint(sema.diagnostics_display_range(d).range, d.message())
+    Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema))
         .with_code(Some(d.code()))
 }
@@ -637,6 +659,29 @@ fn test_fn() {
                         code: Some(
                             DiagnosticCode(
                                 "unresolved-module",
+                            ),
+                        ),
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_unresolved_macro_range() {
+        check_expect(
+            r#"foo::bar!(92);"#,
+            expect![[r#"
+                [
+                    Diagnostic {
+                        message: "unresolved macro call",
+                        range: 5..8,
+                        severity: Error,
+                        fix: None,
+                        unused: false,
+                        code: Some(
+                            DiagnosticCode(
+                                "unresolved-macro-call",
                             ),
                         ),
                     },
