@@ -299,7 +299,7 @@ f"foo{not_a_suffix + 2}bar"suffix
 }
 
 #[test]
-fn f_string_literals() {
+fn f_strings() {
     check_lexing(
         r#"
 f"foobar"
@@ -362,7 +362,7 @@ f"foo{ 1 + { 5 + { 10 } } }bar"
 }
 
 #[test]
-fn monster_f_string_literal() {
+fn f_string_large() {
     check_lexing(
         r#"f"foo{ ident + f"nested { bar + "f-strings" + f"just }} a plain {{ string" }" }bar""#,
         expect![[r#"
@@ -392,7 +392,7 @@ fn monster_f_string_literal() {
 }
 
 #[test]
-fn unterminated_f_string_literal() {
+fn f_string_unterminated() {
     check_lexing(
         r#"f"foo"#,
         expect![[r#"
@@ -402,7 +402,7 @@ fn unterminated_f_string_literal() {
 }
 
 #[test]
-fn unterminated_f_string_literal_with_inner() {
+fn f_string_unterminated_with_inner_expr() {
     check_lexing(
         r#"f"foo{1 + 2}"#,
         expect![[r#"
@@ -418,7 +418,7 @@ fn unterminated_f_string_literal_with_inner() {
 }
 
 #[test]
-fn escaped_f_string_literal() {
+fn f_string_escaped() {
     check_lexing(
         r#"f"this whole{{string should}}be one\\}}literal\\{{""#,
         expect![[r#"
@@ -428,13 +428,29 @@ fn escaped_f_string_literal() {
 }
 
 #[test]
-fn multiline_f_string_literal() {
+fn f_string_multiline() {
     check_lexing(
-        r#"f"
-foo{
+        r#"f"foo{
 1 + 2
-}bar
-"#,
+}bar""#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 7 }, len: 7 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: None }, suffix_start: 5 }, len: 5 }
+        "#]],
+    )
+}
+
+#[test]
+fn f_string_inner_string_literal() {
+    check_lexing(
+        r#"f"foo { "bar}" } bar""#,
         expect![[r#"
             Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 7 }, len: 7 }
             Token { kind: Whitespace, len: 1 }
