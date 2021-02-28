@@ -26,6 +26,7 @@ fn dogfood_clippy() {
         .arg("clippy-preview")
         .arg("--all-targets")
         .arg("--all-features")
+        .args(&["-p", "clippy_lints", "-p", "clippy_utils", "-p", "rustc_tools_util"])
         .arg("--")
         .args(&["-D", "clippy::all"])
         .args(&["-D", "clippy::pedantic"])
