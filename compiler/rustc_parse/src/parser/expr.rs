@@ -15,6 +15,7 @@ use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_lexer::unescape;
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1198,24 +1199,57 @@ impl<'a> Parser<'a> {
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
             None => {
-                if let TokenKind::Literal(literal) = self.token.kind {
-                    if let token::FStr(start, end) = literal.kind {
-                        self.bump();
-                        let segments = match (start, end) {
-                            (token::FStrDelimiter::Quote, token::FStrDelimiter::Quote) => {
-                                vec![FStrSegment::Str(literal.symbol)]
-                            },
-                            _ => rustc_errors::FatalError.raise()
-                        };
-                        let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::FStr(FStr { segments }), attrs);
-                        // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
-                        tracing::debug!("parse_lit_expr: expr: {:#?}", &expr);
-                        return Ok(expr);
-                    }
+                if let Some(expr) = self.parse_opt_f_str_expr(attrs) {
+                    Ok(expr)
+                } else {
+                    self.try_macro_suggestion()
                 }
-                self.try_macro_suggestion()
             }
         }
+    }
+
+    fn unescape_f_str(&mut self, lit: token::Lit, span: Span) -> Symbol {
+        let s = lit.symbol.as_str();
+        if s.contains(&['\\', '\r', '{', '}'][..]) {
+            let mut buf = String::with_capacity(s.len());
+            let mut error = Ok(());
+            unescape::unescape_literal(&s, unescape::Mode::FStr, &mut |_, unescaped_char| {
+                match unescaped_char {
+                    Ok(c) => buf.push(c),
+                    Err(_) => error = Err(LitError::LexerError),
+                }
+            });
+            if let Err(error) = error {
+                self.report_lit_error(error, lit, span);
+            }
+            Symbol::intern(&buf)
+        } else {
+            lit.symbol
+        }
+    }
+
+    fn parse_opt_f_str_expr(&mut self, attrs: AttrVec) -> Option<P<Expr>> {
+        let lo = self.token.span;
+        if let TokenKind::Literal(literal) = self.token.kind {
+            if let token::FStr(start, end) = literal.kind {
+                let symbol = self.unescape_f_str(literal, self.token.span);
+                let segments = match (start, end) {
+                    (token::FStrDelimiter::Quote, token::FStrDelimiter::Quote) => {
+                        vec![FStrSegment::Str(symbol)]
+                    },
+                    _ => rustc_errors::FatalError.raise()
+                };
+
+                self.bump();
+
+                // TODO: Check if attrs are passed through
+                let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::FStr(FStr { segments }), attrs);
+                // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
+
+                return Some(expr);
+            }
+        }
+        None
     }
 
     fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
