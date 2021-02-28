@@ -42,7 +42,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
         // If you change this optimization level, also change the level in
         // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
         // Otherwise you will get an ICE about stolen MIR.
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+        if tcx.sess.opts.debugging_opts.mir_opt_level < 1 {
             return;
         }
 
@@ -337,10 +337,14 @@ impl Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         let tcx = self.tcx;
 
-        let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+        let mut threshold = if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+            25
         } else {
-            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+            if callee_attrs.requests_inline() {
+                self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+            } else {
+                self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+            }
         };
 
         // Give a bonus functions with a small number of blocks,
@@ -467,7 +471,9 @@ impl Inliner<'tcx> {
             }
         }
 
-        if let InlineAttr::Always = callee_attrs.inline {
+        if tcx.sess.opts.debugging_opts.mir_opt_level > 1
+            && InlineAttr::Always == callee_attrs.inline
+        {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             Ok(())
         } else {
