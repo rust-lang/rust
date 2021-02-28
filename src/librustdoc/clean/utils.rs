@@ -13,7 +13,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
@@ -426,19 +426,18 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
 
 crate fn get_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'tcx>,
-    ty: Ty<'tcx>,
-    param_env_def_id: DefId,
+    item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
     let auto_impls = cx
         .sess()
         .prof
         .generic_activity("get_auto_trait_impls")
-        .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(ty, param_env_def_id));
+        .run(|| AutoTraitFinder::new(cx).get_auto_trait_impls(item_def_id));
     let blanket_impls = cx
         .sess()
         .prof
         .generic_activity("get_blanket_impls")
-        .run(|| BlanketImplFinder { cx }.get_blanket_impls(ty, param_env_def_id));
+        .run(|| BlanketImplFinder { cx }.get_blanket_impls(item_def_id));
     auto_impls.into_iter().chain(blanket_impls)
 }
 
