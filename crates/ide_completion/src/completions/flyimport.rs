@@ -95,20 +95,20 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
         .into_iter()
         .map(|import| {
-            let proposed_def = match import.item_to_display() {
+            let def_to_display = match import.item_to_display() {
                 ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
                 ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
                 ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
             };
-            (import, proposed_def)
+            (import, def_to_display)
         })
         .collect::<Vec<_>>();
     all_mod_paths.sort_by_cached_key(|(import, _)| {
         compute_fuzzy_completion_order_key(import.display_path(), &user_input_lowercased)
     });
 
-    acc.add_all(all_mod_paths.into_iter().filter_map(|(import, definition)| {
-        let import_for_trait_assoc_item = match definition {
+    acc.add_all(all_mod_paths.into_iter().filter_map(|(import, def_to_display)| {
+        let import_for_trait_assoc_item = match def_to_display {
             ScopeDef::ModuleDef(module_def) => module_def
                 .as_assoc_item(ctx.db)
                 .and_then(|assoc| assoc.containing_trait(ctx.db))
@@ -117,7 +117,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         };
         let import_edit =
             ImportEdit { import, import_scope: import_scope.clone(), import_for_trait_assoc_item };
-        render_resolution_with_import(RenderContext::new(ctx), import_edit, &definition)
+        render_resolution_with_import(RenderContext::new(ctx), import_edit, &def_to_display)
     }));
     Some(())
 }
@@ -866,61 +866,6 @@ mod foo {
 
 fn main() {
     bar::Item::TEST_ASSOC
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn unresolved_assoc_item_container_and_trait_with_path() {
-        check_edit(
-            "TEST_ASSOC",
-            r#"
-mod foo {
-    pub mod bar {
-        pub trait SomeTrait {
-            const TEST_ASSOC: usize;
-        }
-    }
-
-    pub mod baz {
-        use super::bar::SomeTrait;
-
-        pub struct Item;
-
-        impl SomeTrait for Item {
-            const TEST_ASSOC: usize = 3;
-        }
-    }
-}
-
-fn main() {
-    baz::Item::TEST_A$0
-}
-"#,
-            r#"
-use foo::{bar::SomeTrait, baz};
-
-mod foo {
-    pub mod bar {
-        pub trait SomeTrait {
-            const TEST_ASSOC: usize;
-        }
-    }
-
-    pub mod baz {
-        use super::bar::SomeTrait;
-
-        pub struct Item;
-
-        impl SomeTrait for Item {
-            const TEST_ASSOC: usize = 3;
-        }
-    }
-}
-
-fn main() {
-    baz::Item::TEST_ASSOC
 }
 "#,
         );
