@@ -110,4 +110,9 @@ fn main() {
             }
         }
     }
+
+    // #6811
+    Some(0).map(|x| vec![x]);
+
+    option_env!("").map(String::from);
 }

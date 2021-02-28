@@ -154,5 +154,23 @@ LL | |         None => None,
 LL | |     };
    | |_____^ help: try this: `Some((String::new(), "test")).as_ref().map(|(x, y)| (y, x))`
 
-error: aborting due to 17 previous errors
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option.rs:167:5
+   |
+LL | /     match Some(0) {
+LL | |         Some(x) => Some(vec![x]),
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try this: `Some(0).map(|x| vec![x])`
+
+error: manual implementation of `Option::map`
+  --> $DIR/manual_map_option.rs:172:5
+   |
+LL | /     match option_env!("") {
+LL | |         Some(x) => Some(String::from(x)),
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try this: `option_env!("").map(String::from)`
+
+error: aborting due to 19 previous errors
 

@@ -162,4 +162,15 @@ fn main() {
             }
         }
     }
+
+    // #6811
+    match Some(0) {
+        Some(x) => Some(vec![x]),
+        None => None,
+    };
+
+    match option_env!("") {
+        Some(x) => Some(String::from(x)),
+        None => None,
+    };
 }
