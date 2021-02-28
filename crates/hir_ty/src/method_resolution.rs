@@ -33,7 +33,7 @@ pub enum TyFingerprint {
     Scalar(Scalar),
     Adt(AdtId),
     Dyn(TraitId),
-    Tuple { cardinality: u16 },
+    Tuple(usize),
     ForeignType(TypeAliasId),
     FnPtr { num_args: u16, is_varargs: bool },
 }
@@ -50,7 +50,7 @@ impl TyFingerprint {
             &Ty::Array(..) => TyFingerprint::Array,
             &Ty::Scalar(scalar) => TyFingerprint::Scalar(scalar),
             &Ty::Adt(adt, _) => TyFingerprint::Adt(adt),
-            &Ty::Tuple { cardinality: u16, .. } => TyFingerprint::Tuple { cardinality: u16 },
+            &Ty::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
             &Ty::RawPtr(mutability, ..) => TyFingerprint::RawPtr(mutability),
             &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
             &Ty::FnPtr { num_args, is_varargs, .. } => {
@@ -235,7 +235,7 @@ impl Ty {
             Ty::Adt(def_id, _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
-            Ty::ForeignType(type_alias_id, _) => {
+            Ty::ForeignType(type_alias_id) => {
                 return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
             }
             Ty::Scalar(Scalar::Bool) => lang_item_crate!("bool"),

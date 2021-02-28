@@ -55,7 +55,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
             }
 
-            Ty::ForeignType(type_alias, _) => {
+            Ty::ForeignType(type_alias) => {
                 let foreign_type = TypeAliasAsForeignType(type_alias);
                 let foreign_type_id = foreign_type.to_chalk(db);
                 chalk_ir::TyKind::Foreign(foreign_type_id).intern(&Interner)
@@ -63,7 +63,7 @@ impl ToChalk for Ty {
 
             Ty::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
-            Ty::Tuple { cardinality, substs } => {
+            Ty::Tuple(cardinality, substs) => {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
             }
@@ -199,7 +199,7 @@ impl ToChalk for Ty {
 
             chalk_ir::TyKind::Scalar(scalar) => Ty::Scalar(scalar),
             chalk_ir::TyKind::Tuple(cardinality, subst) => {
-                Ty::Tuple { cardinality: cardinality as u16, substs: from_chalk(db, subst) }
+                Ty::Tuple(cardinality, from_chalk(db, subst))
             }
             chalk_ir::TyKind::Raw(mutability, ty) => {
                 Ty::RawPtr(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))
@@ -221,10 +221,9 @@ impl ToChalk for Ty {
                 Ty::Closure { def, expr, substs: from_chalk(db, subst) }
             }
 
-            chalk_ir::TyKind::Foreign(foreign_def_id) => Ty::ForeignType(
-                from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0,
-                Substs::empty(),
-            ),
+            chalk_ir::TyKind::Foreign(foreign_def_id) => {
+                Ty::ForeignType(from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0)
+            }
             chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME
             chalk_ir::TyKind::GeneratorWitness(_, _) => unimplemented!(), // FIXME
         }

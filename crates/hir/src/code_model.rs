@@ -1547,7 +1547,7 @@ impl Type {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(self.ty.value, Ty::Tuple { cardinality: 0, .. })
+        matches!(self.ty.value, Ty::Tuple(0, ..))
     }
     pub fn is_bool(&self) -> bool {
         matches!(self.ty.value, Ty::Scalar(Scalar::Bool))
@@ -1741,7 +1741,7 @@ impl Type {
     }
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
-        if let Ty::Tuple { substs, .. } = &self.ty.value {
+        if let Ty::Tuple(_, substs) = &self.ty.value {
             substs.iter().map(|ty| self.derived(ty.clone())).collect()
         } else {
             Vec::new()
