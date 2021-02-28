@@ -128,6 +128,8 @@ struct Intrinsic {
 struct Parameter {
     #[serde(rename = "type")]
     type_: String,
+    #[serde(default)]
+    etype: String,
 }
 
 #[derive(Deserialize)]
@@ -548,7 +550,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 
     // Make sure we've got the right return type.
     if let Some(t) = rust.ret {
-        equate(t, &intel.return_.type_, rust.name, false)?;
+        equate(t, &intel.return_.type_, "", rust.name, false)?;
     } else if intel.return_.type_ != "" && intel.return_.type_ != "void" {
         bail!(
             "{} returns `{}` with intel, void in rust",
@@ -570,7 +572,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         }
         for (i, (a, b)) in intel.parameters.iter().zip(rust.arguments).enumerate() {
             let is_const = rust.required_const.contains(&i);
-            equate(b, &a.type_, &intel.name, is_const)?;
+            equate(b, &a.type_, &a.etype, &intel.name, is_const)?;
         }
     }
 
@@ -669,7 +671,13 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), String> {
+fn equate(
+    t: &Type,
+    intel: &str,
+    etype: &str,
+    intrinsic: &str,
+    is_const: bool,
+) -> Result<(), String> {
     // Make pointer adjacent to the type: float * foo => float* foo
     let mut intel = intel.replace(" *", "*");
     // Make mutability modifier adjacent to the pointer:
@@ -681,19 +689,26 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         intel = intel.replace("const ", "");
         intel = intel.replace("*", " const*");
     }
-    let require_const = || {
-        if is_const {
-            return Ok(());
+    if etype == "IMM" {
+        // The _bittest intrinsics claim to only accept immediates but actually
+        // accept run-time values as well.
+        if !is_const && !intrinsic.starts_with("_bittest") {
+            return bail!("argument required to be const but isn't");
         }
-        Err(format!("argument required to be const but isn't"))
-    };
+    } else {
+        // const int must be an IMM
+        assert_ne!(intel, "const int");
+        if is_const {
+            return bail!("argument is const but shouldn't be");
+        }
+    }
     match (t, &intel[..]) {
         (&Type::PrimFloat(32), "float") => {}
         (&Type::PrimFloat(64), "double") => {}
         (&Type::PrimSigned(16), "__int16") => {}
         (&Type::PrimSigned(16), "short") => {}
         (&Type::PrimSigned(32), "__int32") => {}
-        (&Type::PrimSigned(32), "const int") => require_const()?,
+        (&Type::PrimSigned(32), "const int") => {}
         (&Type::PrimSigned(32), "int") => {}
         (&Type::PrimSigned(64), "__int64") => {}
         (&Type::PrimSigned(64), "long long") => {}

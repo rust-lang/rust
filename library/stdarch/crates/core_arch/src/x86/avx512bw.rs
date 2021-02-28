@@ -5166,7 +5166,7 @@ pub unsafe fn _mm512_maskz_slli_epi16(k: __mmask32, a: __m512i, imm8: u32) -> __
 pub unsafe fn _mm256_mask_slli_epi16(src: __m256i, k: __mmask16, a: __m256i, imm8: u32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_slli_epi16(a, $imm8)
+            _mm256_slli_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);
@@ -5183,7 +5183,7 @@ pub unsafe fn _mm256_mask_slli_epi16(src: __m256i, k: __mmask16, a: __m256i, imm
 pub unsafe fn _mm256_maskz_slli_epi16(k: __mmask16, a: __m256i, imm8: u32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_slli_epi16(a, $imm8)
+            _mm256_slli_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);
@@ -5495,7 +5495,7 @@ pub unsafe fn _mm512_maskz_srli_epi16(k: __mmask32, a: __m512i, imm8: i32) -> __
 pub unsafe fn _mm256_mask_srli_epi16(src: __m256i, k: __mmask16, a: __m256i, imm8: i32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_srli_epi16(a, $imm8)
+            _mm256_srli_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);
@@ -5512,7 +5512,7 @@ pub unsafe fn _mm256_mask_srli_epi16(src: __m256i, k: __mmask16, a: __m256i, imm
 pub unsafe fn _mm256_maskz_srli_epi16(k: __mmask16, a: __m256i, imm8: i32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_srli_epi16(a, $imm8)
+            _mm256_srli_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);
@@ -5823,7 +5823,7 @@ pub unsafe fn _mm512_maskz_srai_epi16(k: __mmask32, a: __m512i, imm8: u32) -> __
 pub unsafe fn _mm256_mask_srai_epi16(src: __m256i, k: __mmask16, a: __m256i, imm8: u32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_srai_epi16(a, $imm8)
+            _mm256_srai_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);
@@ -5840,7 +5840,7 @@ pub unsafe fn _mm256_mask_srai_epi16(src: __m256i, k: __mmask16, a: __m256i, imm
 pub unsafe fn _mm256_maskz_srai_epi16(k: __mmask16, a: __m256i, imm8: u32) -> __m256i {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_srai_epi16(a, $imm8)
+            _mm256_srai_epi16::<$imm8>(a)
         };
     }
     let shf = constify_imm8_sae!(imm8, call);

@@ -2929,9 +2929,11 @@ pub unsafe fn _mm256_sll_epi64(a: __m256i, count: __m128i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsllw))]
+#[cfg_attr(test, assert_instr(vpsllw, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi16(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_slli_epi16<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(pslliw(a.as_i16x16(), imm8))
 }
 
@@ -2941,9 +2943,11 @@ pub unsafe fn _mm256_slli_epi16(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpslld))]
+#[cfg_attr(test, assert_instr(vpslld, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi32(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_slli_epi32<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psllid(a.as_i32x8(), imm8))
 }
 
@@ -2953,9 +2957,11 @@ pub unsafe fn _mm256_slli_epi32(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsllq))]
+#[cfg_attr(test, assert_instr(vpsllq, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi64(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_slli_epi64<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(pslliq(a.as_i64x4(), imm8))
 }
 
@@ -3077,9 +3083,11 @@ pub unsafe fn _mm256_sra_epi32(a: __m256i, count: __m128i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsraw))]
+#[cfg_attr(test, assert_instr(vpsraw, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srai_epi16(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_srai_epi16<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psraiw(a.as_i16x16(), imm8))
 }
 
@@ -3089,9 +3097,11 @@ pub unsafe fn _mm256_srai_epi16(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrad))]
+#[cfg_attr(test, assert_instr(vpsrad, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srai_epi32(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_srai_epi32<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psraid(a.as_i32x8(), imm8))
 }
 
@@ -3197,9 +3207,11 @@ pub unsafe fn _mm256_srl_epi64(a: __m256i, count: __m128i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrlw))]
+#[cfg_attr(test, assert_instr(vpsrlw, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi16(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_srli_epi16<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psrliw(a.as_i16x16(), imm8))
 }
 
@@ -3209,9 +3221,11 @@ pub unsafe fn _mm256_srli_epi16(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrld))]
+#[cfg_attr(test, assert_instr(vpsrld, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi32(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_srli_epi32<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psrlid(a.as_i32x8(), imm8))
 }
 
@@ -3221,9 +3235,11 @@ pub unsafe fn _mm256_srli_epi32(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrlq))]
+#[cfg_attr(test, assert_instr(vpsrlq, imm8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi64(a: __m256i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_srli_epi64<const imm8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(imm8);
     transmute(psrliq(a.as_i64x4(), imm8))
 }
 
@@ -5204,7 +5220,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_slli_epi16() {
         assert_eq_m256i(
-            _mm256_slli_epi16(_mm256_set1_epi16(0xFF), 4),
+            _mm256_slli_epi16::<4>(_mm256_set1_epi16(0xFF)),
             _mm256_set1_epi16(0xFF0),
         );
     }
@@ -5212,7 +5228,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_slli_epi32() {
         assert_eq_m256i(
-            _mm256_slli_epi32(_mm256_set1_epi32(0xFFFF), 4),
+            _mm256_slli_epi32::<4>(_mm256_set1_epi32(0xFFFF)),
             _mm256_set1_epi32(0xFFFF0),
         );
     }
@@ -5220,7 +5236,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_slli_epi64() {
         assert_eq_m256i(
-            _mm256_slli_epi64(_mm256_set1_epi64x(0xFFFFFFFF), 4),
+            _mm256_slli_epi64::<4>(_mm256_set1_epi64x(0xFFFFFFFF)),
             _mm256_set1_epi64x(0xFFFFFFFF0),
         );
     }
@@ -5287,7 +5303,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srai_epi16() {
         assert_eq_m256i(
-            _mm256_srai_epi16(_mm256_set1_epi16(-1), 1),
+            _mm256_srai_epi16::<1>(_mm256_set1_epi16(-1)),
             _mm256_set1_epi16(-1),
         );
     }
@@ -5295,7 +5311,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srai_epi32() {
         assert_eq_m256i(
-            _mm256_srai_epi32(_mm256_set1_epi32(-1), 1),
+            _mm256_srai_epi32::<1>(_mm256_set1_epi32(-1)),
             _mm256_set1_epi32(-1),
         );
     }
@@ -5365,7 +5381,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srli_epi16() {
         assert_eq_m256i(
-            _mm256_srli_epi16(_mm256_set1_epi16(0xFF), 4),
+            _mm256_srli_epi16::<4>(_mm256_set1_epi16(0xFF)),
             _mm256_set1_epi16(0xF),
         );
     }
@@ -5373,7 +5389,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srli_epi32() {
         assert_eq_m256i(
-            _mm256_srli_epi32(_mm256_set1_epi32(0xFFFF), 4),
+            _mm256_srli_epi32::<4>(_mm256_set1_epi32(0xFFFF)),
             _mm256_set1_epi32(0xFFF),
         );
     }
@@ -5381,7 +5397,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srli_epi64() {
         assert_eq_m256i(
-            _mm256_srli_epi64(_mm256_set1_epi64x(0xFFFFFFFF), 4),
+            _mm256_srli_epi64::<4>(_mm256_set1_epi64x(0xFFFFFFFF)),
             _mm256_set1_epi64x(0xFFFFFFF),
         );
     }
