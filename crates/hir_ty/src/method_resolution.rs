@@ -7,11 +7,8 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::CrateId;
 use hir_def::{
-    builtin_type::{IntBitness, Signedness},
-    lang_item::LangItemTarget,
-    type_ref::Mutability,
-    AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule, ImplId, Lookup, ModuleId,
-    TraitId,
+    lang_item::LangItemTarget, type_ref::Mutability, AssocContainerId, AssocItemId, FunctionId,
+    GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -19,10 +16,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     autoderef,
     db::HirDatabase,
-    primitive::{FloatBitness, FloatTy, IntTy},
+    primitive::{FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, Substs, TraitEnvironment, TraitRef, Ty,
-    TyKind, TypeCtor, TypeWalk,
+    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, Scalar, Substs, TraitEnvironment,
+    TraitRef, Ty, TyKind, TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -46,59 +43,23 @@ impl TyFingerprint {
 }
 
 pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::X8,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::X16,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::X32,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::X64,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::X128,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Unsigned,
-        bitness: IntBitness::Xsize,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::X8,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::X16,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::X32,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::X64,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::X128,
-    })),
-    TyFingerprint::Apply(TypeCtor::Int(IntTy {
-        signedness: Signedness::Signed,
-        bitness: IntBitness::Xsize,
-    })),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I8))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I16))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I32))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I64))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I128))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::Isize))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U8))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U16))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U32))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U64))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U128))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::Usize))),
 ];
 
 pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
-    TyFingerprint::Apply(TypeCtor::Float(FloatTy { bitness: FloatBitness::X32 })),
-    TyFingerprint::Apply(TypeCtor::Float(FloatTy { bitness: FloatBitness::X64 })),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Float(FloatTy::F32))),
+    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Float(FloatTy::F64))),
 ];
 
 /// Trait impls defined or available in some crate.
@@ -257,14 +218,15 @@ impl Ty {
                 TypeCtor::ForeignType(type_alias_id) => {
                     return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
                 }
-                TypeCtor::Bool => lang_item_crate!("bool"),
-                TypeCtor::Char => lang_item_crate!("char"),
-                TypeCtor::Float(f) => match f.bitness {
+                TypeCtor::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
+                TypeCtor::Scalar(Scalar::Char) => lang_item_crate!("char"),
+                TypeCtor::Scalar(Scalar::Float(f)) => match f {
                     // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-                    FloatBitness::X32 => lang_item_crate!("f32", "f32_runtime"),
-                    FloatBitness::X64 => lang_item_crate!("f64", "f64_runtime"),
+                    FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
+                    FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
                 },
-                TypeCtor::Int(i) => lang_item_crate!(i.ty_to_string()),
+                TypeCtor::Scalar(Scalar::Int(t)) => lang_item_crate!(t.ty_to_string()),
+                TypeCtor::Scalar(Scalar::Uint(t)) => lang_item_crate!(t.ty_to_string()),
                 TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
                 TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
                 TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),

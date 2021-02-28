@@ -4,7 +4,6 @@ use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
 use hir_def::{
-    builtin_type::Signedness,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
@@ -16,10 +15,11 @@ use test_utils::mark;
 
 use crate::{
     autoderef, method_resolution, op,
+    primitive::UintTy,
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    ApplicationTy, Binders, CallableDefId, InferTy, IntTy, Mutability, Obligation, OpaqueTyId,
-    Rawness, Substs, TraitRef, Ty, TypeCtor,
+    ApplicationTy, Binders, CallableDefId, InferTy, Mutability, Obligation, OpaqueTyId, Rawness,
+    Scalar, Substs, TraitRef, Ty, TypeCtor,
 };
 
 use super::{
@@ -120,7 +120,10 @@ impl<'a> InferenceContext<'a> {
             Expr::Missing => Ty::Unknown,
             Expr::If { condition, then_branch, else_branch } => {
                 // if let is desugared to match, so this is always simple if
-                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
+                self.infer_expr(
+                    *condition,
+                    &Expectation::has_type(Ty::simple(TypeCtor::Scalar(Scalar::Bool))),
+                );
 
                 let condition_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let mut both_arms_diverge = Diverges::Always;
@@ -203,7 +206,10 @@ impl<'a> InferenceContext<'a> {
                     label: label.map(|label| self.body[label].name.clone()),
                 });
                 // while let is desugared to a match loop, so this is always simple while
-                self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
+                self.infer_expr(
+                    *condition,
+                    &Expectation::has_type(Ty::simple(TypeCtor::Scalar(Scalar::Bool))),
+                );
                 self.infer_expr(*body, &Expectation::has_type(Ty::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
                 // the body may not run, so it diverging doesn't mean we diverge
@@ -321,7 +327,7 @@ impl<'a> InferenceContext<'a> {
                     if let Some(guard_expr) = arm.guard {
                         self.infer_expr(
                             guard_expr,
-                            &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
+                            &Expectation::has_type(Ty::simple(TypeCtor::Scalar(Scalar::Bool))),
                         );
                     }
 
@@ -534,10 +540,13 @@ impl<'a> InferenceContext<'a> {
                         match &inner_ty {
                             // Fast path for builtins
                             Ty::Apply(ApplicationTy {
-                                ctor: TypeCtor::Int(IntTy { signedness: Signedness::Signed, .. }),
+                                ctor: TypeCtor::Scalar(Scalar::Int(_)),
                                 ..
                             })
-                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(_), .. })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Scalar(Scalar::Float(_)),
+                                ..
+                            })
                             | Ty::Infer(InferTy::IntVar(..))
                             | Ty::Infer(InferTy::FloatVar(..)) => inner_ty,
                             // Otherwise we resolve via the std::ops::Neg trait
@@ -548,8 +557,18 @@ impl<'a> InferenceContext<'a> {
                     UnaryOp::Not => {
                         match &inner_ty {
                             // Fast path for builtins
-                            Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. })
-                            | Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(_), .. })
+                            Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Scalar(Scalar::Bool),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Scalar(Scalar::Int(_)),
+                                ..
+                            })
+                            | Ty::Apply(ApplicationTy {
+                                ctor: TypeCtor::Scalar(Scalar::Uint(_)),
+                                ..
+                            })
                             | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
                             // Otherwise we resolve via the std::ops::Not trait
                             _ => self
@@ -561,7 +580,9 @@ impl<'a> InferenceContext<'a> {
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(op) => {
                     let lhs_expectation = match op {
-                        BinaryOp::LogicOp(..) => Expectation::has_type(Ty::simple(TypeCtor::Bool)),
+                        BinaryOp::LogicOp(..) => {
+                            Expectation::has_type(Ty::simple(TypeCtor::Scalar(Scalar::Bool)))
+                        }
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
@@ -688,7 +709,9 @@ impl<'a> InferenceContext<'a> {
                         );
                         self.infer_expr(
                             *repeat,
-                            &Expectation::has_type(Ty::simple(TypeCtor::Int(IntTy::usize()))),
+                            &Expectation::has_type(Ty::simple(TypeCtor::Scalar(Scalar::Uint(
+                                UintTy::Usize,
+                            )))),
                         );
                     }
                 }
@@ -696,22 +719,28 @@ impl<'a> InferenceContext<'a> {
                 Ty::apply_one(TypeCtor::Array, elem_ty)
             }
             Expr::Literal(lit) => match lit {
-                Literal::Bool(..) => Ty::simple(TypeCtor::Bool),
+                Literal::Bool(..) => Ty::simple(TypeCtor::Scalar(Scalar::Bool)),
                 Literal::String(..) => {
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), Ty::simple(TypeCtor::Str))
                 }
                 Literal::ByteString(..) => {
-                    let byte_type = Ty::simple(TypeCtor::Int(IntTy::u8()));
+                    let byte_type = Ty::simple(TypeCtor::Scalar(Scalar::Uint(UintTy::U8)));
                     let array_type = Ty::apply_one(TypeCtor::Array, byte_type);
                     Ty::apply_one(TypeCtor::Ref(Mutability::Shared), array_type)
                 }
-                Literal::Char(..) => Ty::simple(TypeCtor::Char),
+                Literal::Char(..) => Ty::simple(TypeCtor::Scalar(Scalar::Char)),
                 Literal::Int(_v, ty) => match ty {
-                    Some(int_ty) => Ty::simple(TypeCtor::Int((*int_ty).into())),
+                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Int((*int_ty).into()))),
+                    None => self.table.new_integer_var(),
+                },
+                Literal::Uint(_v, ty) => match ty {
+                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Uint((*int_ty).into()))),
                     None => self.table.new_integer_var(),
                 },
                 Literal::Float(_v, ty) => match ty {
-                    Some(float_ty) => Ty::simple(TypeCtor::Float((*float_ty).into())),
+                    Some(float_ty) => {
+                        Ty::simple(TypeCtor::Scalar(Scalar::Float((*float_ty).into())))
+                    }
                     None => self.table.new_float_var(),
                 },
             },

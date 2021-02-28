@@ -24,7 +24,7 @@ use test_utils::mark;
 use crate::{
     adt::StructKind,
     body::{Body, BodySourceMap, Expander, LabelSource, PatPtr, SyntheticSyntax},
-    builtin_type::{BuiltinFloat, BuiltinInt},
+    builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
     diagnostics::{InactiveCode, MacroError, UnresolvedProcMacro},
     expr::{
@@ -1065,11 +1065,16 @@ impl From<ast::LiteralKind> for Literal {
     fn from(ast_lit_kind: ast::LiteralKind) -> Self {
         match ast_lit_kind {
             LiteralKind::IntNumber(lit) => {
-                if let Some(float_suffix) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
-                    return Literal::Float(Default::default(), Some(float_suffix));
+                if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
+                    return Literal::Float(Default::default(), builtin);
+                } else if let builtin @ Some(_) =
+                    lit.suffix().and_then(|it| BuiltinInt::from_suffix(&it))
+                {
+                    Literal::Int(Default::default(), builtin)
+                } else {
+                    let builtin = lit.suffix().and_then(|it| BuiltinUint::from_suffix(&it));
+                    Literal::Uint(Default::default(), builtin)
                 }
-                let ty = lit.suffix().and_then(|it| BuiltinInt::from_suffix(&it));
-                Literal::Int(Default::default(), ty)
             }
             LiteralKind::FloatNumber(lit) => {
                 let ty = lit.suffix().and_then(|it| BuiltinFloat::from_suffix(&it));
@@ -1077,7 +1082,7 @@ impl From<ast::LiteralKind> for Literal {
             }
             LiteralKind::ByteString(_) => Literal::ByteString(Default::default()),
             LiteralKind::String(_) => Literal::String(Default::default()),
-            LiteralKind::Byte => Literal::Int(Default::default(), Some(BuiltinInt::U8)),
+            LiteralKind::Byte => Literal::Uint(Default::default(), Some(BuiltinUint::U8)),
             LiteralKind::Bool(val) => Literal::Bool(val),
             LiteralKind::Char => Literal::Char(Default::default()),
         }

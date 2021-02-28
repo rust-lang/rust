@@ -38,7 +38,7 @@ use itertools::Itertools;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    primitive::{FloatTy, IntTy},
+    primitive::{FloatTy, IntTy, UintTy},
     utils::{generics, make_mut_slice, Generics},
 };
 
@@ -58,23 +58,24 @@ pub enum Lifetime {
     Static,
 }
 
+/// Types of scalar values.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[allow(missing_docs)]
+pub enum Scalar {
+    Bool,
+    Char,
+    Int(IntTy),
+    Uint(UintTy),
+    Float(FloatTy),
+}
+
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
 /// tuples.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum TypeCtor {
-    /// The primitive boolean type. Written as `bool`.
-    Bool,
-
-    /// The primitive character type; holds a Unicode scalar value
-    /// (a non-surrogate code point). Written as `char`.
-    Char,
-
-    /// A primitive integer type. For example, `i32`.
-    Int(IntTy),
-
-    /// A primitive floating-point type. For example, `f64`.
-    Float(FloatTy),
+    /// a scalar type like `bool` or `u32`
+    Scalar(Scalar),
 
     /// Structures, enumerations and unions.
     Adt(AdtId),
@@ -152,10 +153,7 @@ pub enum TypeCtor {
 impl TypeCtor {
     pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
         match self {
-            TypeCtor::Bool
-            | TypeCtor::Char
-            | TypeCtor::Int(_)
-            | TypeCtor::Float(_)
+            TypeCtor::Scalar(_)
             | TypeCtor::Str
             | TypeCtor::Never => 0,
             TypeCtor::Slice
@@ -197,10 +195,7 @@ impl TypeCtor {
 
     pub fn krate(self, db: &dyn HirDatabase) -> Option<CrateId> {
         match self {
-            TypeCtor::Bool
-            | TypeCtor::Char
-            | TypeCtor::Int(_)
-            | TypeCtor::Float(_)
+            TypeCtor::Scalar(_)
             | TypeCtor::Str
             | TypeCtor::Never
             | TypeCtor::Slice
@@ -232,10 +227,7 @@ impl TypeCtor {
 
     pub fn as_generic_def(self) -> Option<GenericDefId> {
         match self {
-            TypeCtor::Bool
-            | TypeCtor::Char
-            | TypeCtor::Int(_)
-            | TypeCtor::Float(_)
+            TypeCtor::Scalar(_)
             | TypeCtor::Str
             | TypeCtor::Never
             | TypeCtor::Slice
@@ -741,11 +733,12 @@ impl Ty {
     }
     pub fn builtin(builtin: BuiltinType) -> Self {
         Ty::simple(match builtin {
-            BuiltinType::Char => TypeCtor::Char,
-            BuiltinType::Bool => TypeCtor::Bool,
+            BuiltinType::Char => TypeCtor::Scalar(Scalar::Char),
+            BuiltinType::Bool => TypeCtor::Scalar(Scalar::Bool),
             BuiltinType::Str => TypeCtor::Str,
-            BuiltinType::Int(t) => TypeCtor::Int(IntTy::from(t).into()),
-            BuiltinType::Float(t) => TypeCtor::Float(FloatTy::from(t).into()),
+            BuiltinType::Int(t) => TypeCtor::Scalar(Scalar::Int(t.into())),
+            BuiltinType::Uint(t) => TypeCtor::Scalar(Scalar::Uint(t.into())),
+            BuiltinType::Float(t) => TypeCtor::Scalar(Scalar::Float(t.into())),
         })
     }
 
