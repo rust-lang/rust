@@ -614,9 +614,10 @@ fn phase_cargo_rustc(mut args: env::Args) {
         // As we store a JSON file instead of building the crate here, an empty file is fine.
         let dep_info_name = out_filename("", ".d");
         if verbose {
-            eprintln!("[cargo-miri rustc] writing dep-info to `{}`", dep_info_name.display());
+            eprintln!("[cargo-miri rustc] writing stub dep-info to `{}`", dep_info_name.display());
         }
         File::create(dep_info_name).expect("failed to create fake .d file");
+
         let filename = out_filename("", "");
         if verbose {
             eprintln!("[cargo-miri rustc] writing run info to `{}`", filename.display());
