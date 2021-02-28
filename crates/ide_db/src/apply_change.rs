@@ -32,7 +32,7 @@ struct RootChange {
 
 impl fmt::Debug for RootChange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_struct("AnalysisChange")
+        fmt.debug_struct("RootChange")
             .field("added", &self.added.len())
             .field("removed", &self.removed.len())
             .finish()
