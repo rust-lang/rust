@@ -1,8 +1,8 @@
 warning: variable `a` is assigned to, but never used
-  --> $DIR/liveness-consts.rs:7:9
+  --> $DIR/liveness-consts.rs:7:13
    |
 LL |     let mut a = 0;
-   |         ^^^^^
+   |             ^
    |
 note: the lint level is defined here
   --> $DIR/liveness-consts.rs:2:9
