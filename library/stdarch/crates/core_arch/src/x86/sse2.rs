@@ -503,16 +503,11 @@ pub unsafe fn _mm_bsrli_si128(a: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psllw, imm8 = 7))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_slli_epi16(a: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i16x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            transmute(pslliw(a, $imm8))
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_slli_epi16<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(pslliw(a.as_i16x8(), imm8))
 }
 
 /// Shifts packed 16-bit integers in `a` left by `count` while shifting in
@@ -533,16 +528,11 @@ pub unsafe fn _mm_sll_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(pslld, imm8 = 7))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_slli_epi32(a: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            transmute(psllid(a, $imm8))
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_slli_epi32<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(psllid(a.as_i32x4(), imm8))
 }
 
 /// Shifts packed 32-bit integers in `a` left by `count` while shifting in
@@ -563,16 +553,11 @@ pub unsafe fn _mm_sll_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psllq, imm8 = 7))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_slli_epi64(a: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            transmute(pslliq(a, $imm8))
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_slli_epi64<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(pslliq(a.as_i64x2(), imm8))
 }
 
 /// Shifts packed 64-bit integers in `a` left by `count` while shifting in
@@ -713,16 +698,11 @@ unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrlw, imm8 = 1))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_srli_epi16(a: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i16x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            transmute(psrliw(a, $imm8))
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_srli_epi16<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(psrliw(a.as_i16x8(), imm8))
 }
 
 /// Shifts packed 16-bit integers in `a` right by `count` while shifting in
@@ -744,16 +724,11 @@ pub unsafe fn _mm_srl_epi16(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrld, imm8 = 8))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_srli_epi32(a: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            transmute(psrlid(a, $imm8))
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_srli_epi32<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(psrlid(a.as_i32x4(), imm8))
 }
 
 /// Shifts packed 32-bit integers in `a` right by `count` while shifting in
@@ -775,9 +750,10 @@ pub unsafe fn _mm_srl_epi32(a: __m128i, count: __m128i) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(psrlq, imm8 = 1))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_srli_epi64(a: __m128i, imm8: i32) -> __m128i {
+pub unsafe fn _mm_srli_epi64<const imm8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
     transmute(psrliq(a.as_i64x2(), imm8))
 }
 
@@ -3439,7 +3415,7 @@ mod tests {
         let a = _mm_setr_epi16(
             0xFFFF as u16 as i16, 0x0FFF, 0x00FF, 0x000F, 0, 0, 0, 0,
         );
-        let r = _mm_slli_epi16(a, 4);
+        let r = _mm_slli_epi16::<4>(a);
 
         #[rustfmt::skip]
         let e = _mm_setr_epi16(
@@ -3460,7 +3436,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_slli_epi32() {
-        let r = _mm_slli_epi32(_mm_set1_epi32(0xFFFF), 4);
+        let r = _mm_slli_epi32::<4>(_mm_set1_epi32(0xFFFF));
         assert_eq_m128i(r, _mm_set1_epi32(0xFFFF0));
     }
 
@@ -3474,7 +3450,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_slli_epi64() {
-        let r = _mm_slli_epi64(_mm_set1_epi64x(0xFFFFFFFF), 4);
+        let r = _mm_slli_epi64::<4>(_mm_set1_epi64x(0xFFFFFFFF));
         assert_eq_m128i(r, _mm_set1_epi64x(0xFFFFFFFF0));
     }
 
@@ -3563,7 +3539,7 @@ mod tests {
         let a = _mm_setr_epi16(
             0xFFFF as u16 as i16, 0x0FFF, 0x00FF, 0x000F, 0, 0, 0, 0,
         );
-        let r = _mm_srli_epi16(a, 4);
+        let r = _mm_srli_epi16::<4>(a);
         #[rustfmt::skip]
         let e = _mm_setr_epi16(
             0xFFF as u16 as i16, 0xFF as u16 as i16, 0xF, 0, 0, 0, 0, 0,
@@ -3582,7 +3558,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_srli_epi32() {
-        let r = _mm_srli_epi32(_mm_set1_epi32(0xFFFF), 4);
+        let r = _mm_srli_epi32::<4>(_mm_set1_epi32(0xFFFF));
         assert_eq_m128i(r, _mm_set1_epi32(0xFFF));
     }
 
@@ -3596,7 +3572,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_srli_epi64() {
-        let r = _mm_srli_epi64(_mm_set1_epi64x(0xFFFFFFFF), 4);
+        let r = _mm_srli_epi64::<4>(_mm_set1_epi64x(0xFFFFFFFF));
         assert_eq_m128i(r, _mm_set1_epi64x(0xFFFFFFF));
     }
 
