@@ -1924,21 +1924,18 @@ impl Type {
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.value.strip_references();
             match ty {
-                Ty::Adt(_, parameters) => {
+                Ty::Adt(..) => {
                     cb(type_.derived(ty.clone()));
-                    walk_substs(db, type_, parameters, cb);
                 }
-                Ty::AssociatedType(_, parameters) => {
+                Ty::AssociatedType(..) => {
                     if let Some(_) = ty.associated_type_parent_trait(db) {
                         cb(type_.derived(ty.clone()));
                     }
-                    walk_substs(db, type_, parameters, cb);
                 }
-                Ty::OpaqueType(_, parameters) => {
+                Ty::OpaqueType(..) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
-                    walk_substs(db, type_, parameters, cb);
                 }
                 Ty::Opaque(opaque_ty) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
@@ -1956,7 +1953,10 @@ impl Type {
                     walk_bounds(db, &type_.derived(ty.clone()), bounds.as_ref(), cb);
                 }
 
-                _ => (),
+                _ => {}
+            }
+            if let Some(substs) = ty.substs() {
+                walk_substs(db, type_, &substs, cb);
             }
         }
 

@@ -341,11 +341,12 @@ impl HirDisplay for Ty {
                     write!(f, ")")?;
                 }
             }
-            &Ty::FnPtr { is_varargs, ref substs, .. } => {
-                let sig = FnSig::from_fn_ptr_substs(&substs, is_varargs);
+            Ty::FnPtr { is_varargs, substs, .. } => {
+                let sig = FnSig::from_fn_ptr_substs(&substs, *is_varargs);
                 sig.hir_fmt(f)?;
             }
-            &Ty::FnDef(def, ref parameters) => {
+            Ty::FnDef(def, parameters) => {
+                let def = *def;
                 let sig = f.db.callable_item_signature(def).subst(parameters);
                 match def {
                     CallableDefId::FunctionId(ff) => {
@@ -383,10 +384,10 @@ impl HirDisplay for Ty {
                     write!(f, " -> {}", ret_display)?;
                 }
             }
-            &Ty::Adt(def_id, ref parameters) => {
+            Ty::Adt(def_id, parameters) => {
                 match f.display_target {
                     DisplayTarget::Diagnostics | DisplayTarget::Test => {
-                        let name = match def_id {
+                        let name = match *def_id {
                             AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
                             AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
                             AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
@@ -396,7 +397,7 @@ impl HirDisplay for Ty {
                     DisplayTarget::SourceCode { module_id } => {
                         if let Some(path) = find_path::find_path(
                             f.db.upcast(),
-                            ItemInNs::Types(def_id.into()),
+                            ItemInNs::Types((*def_id).into()),
                             module_id,
                         ) {
                             write!(f, "{}", path)?;
@@ -447,13 +448,13 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            &Ty::AssociatedType(type_alias, ref parameters) => {
+            Ty::AssociatedType(type_alias, parameters) => {
                 let trait_ = match type_alias.lookup(f.db.upcast()).container {
                     AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
                 let trait_ = f.db.trait_data(trait_);
-                let type_alias_data = f.db.type_alias_data(type_alias);
+                let type_alias_data = f.db.type_alias_data(*type_alias);
 
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
                 if f.display_target.is_test() {
@@ -465,13 +466,13 @@ impl HirDisplay for Ty {
                     }
                 } else {
                     let projection_ty =
-                        ProjectionTy { associated_ty: type_alias, parameters: parameters.clone() };
+                        ProjectionTy { associated_ty: *type_alias, parameters: parameters.clone() };
 
                     projection_ty.hir_fmt(f)?;
                 }
             }
-            &Ty::ForeignType(type_alias, ref parameters) => {
-                let type_alias = f.db.type_alias_data(type_alias);
+            Ty::ForeignType(type_alias, parameters) => {
+                let type_alias = f.db.type_alias_data(*type_alias);
                 write!(f, "{}", type_alias.name)?;
                 if parameters.len() > 0 {
                     write!(f, "<")?;
@@ -479,9 +480,9 @@ impl HirDisplay for Ty {
                     write!(f, ">")?;
                 }
             }
-            &Ty::OpaqueType(opaque_ty_id, ref parameters) => {
+            Ty::OpaqueType(opaque_ty_id, parameters) => {
                 match opaque_ty_id {
-                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                    &OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)

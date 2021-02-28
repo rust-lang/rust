@@ -726,11 +726,11 @@ impl Ty {
 
     pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
         match self {
-            &Ty::FnPtr { is_varargs, substs: ref parameters, .. } => {
-                Some(FnSig::from_fn_ptr_substs(&parameters, is_varargs))
+            Ty::FnPtr { is_varargs, substs: parameters, .. } => {
+                Some(FnSig::from_fn_ptr_substs(&parameters, *is_varargs))
             }
-            &Ty::FnDef(def, ref parameters) => {
-                let sig = db.callable_item_signature(def);
+            Ty::FnDef(def, parameters) => {
+                let sig = db.callable_item_signature(*def);
                 Some(sig.subst(&parameters))
             }
             Ty::Closure { substs: parameters, .. } => {
@@ -783,7 +783,6 @@ impl Ty {
             | Ty::AssociatedType(_, substs)
             | Ty::ForeignType(_, substs)
             | Ty::Closure { substs, .. } => Some(substs),
-
             _ => None,
         }
     }
@@ -802,7 +801,6 @@ impl Ty {
             | Ty::AssociatedType(_, substs)
             | Ty::ForeignType(_, substs)
             | Ty::Closure { substs, .. } => Some(substs),
-
             _ => None,
         }
     }
