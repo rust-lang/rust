@@ -91,6 +91,12 @@ impl DefPathTable {
             .iter_enumerated()
             .map(move |(index, key)| (index, key, &self.def_path_hashes[index]))
     }
+
+    pub fn all_def_path_hashes_and_def_ids(
+        &self,
+    ) -> impl Iterator<Item = (&DefPathHash, DefIndex)> + '_ {
+        self.def_path_hashes.iter_enumerated().map(move |(index, hash)| (hash, index))
+    }
 }
 
 /// The definition table containing node definitions.
