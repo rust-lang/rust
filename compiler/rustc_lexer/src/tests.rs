@@ -402,6 +402,22 @@ fn unterminated_f_string_literal() {
 }
 
 #[test]
+fn unterminated_f_string_literal_with_inner() {
+    check_lexing(
+        r#"f"foo{1 + 2}"#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: None }, suffix_start: 1 }, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
 fn escaped_f_string_literal() {
     check_lexing(
         r#"f"this whole{{string should}}be one\\}}literal\\{{""#,
