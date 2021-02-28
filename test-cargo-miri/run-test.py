@@ -73,20 +73,19 @@ def test_no_rebuild(name, cmd, env={}):
         fail("Something was being rebuilt when it should not be (or we got no output)");
 
 def test_cargo_miri_run():
-    default_env={
-        'MIRIFLAGS': "-Zmiri-disable-isolation",
-        'MIRITESTVAR': "wrongval", # make sure the build.rs value takes precedence
-    }
     test("`cargo miri run` (no isolation)",
         cargo_miri("run"),
         "run.default.stdout.ref", "run.default.stderr.ref",
         stdin=b'12\n21\n',
-        env=default_env,
+        env={
+            'MIRIFLAGS': "-Zmiri-disable-isolation",
+            'MIRITESTVAR': "wrongval", # make sure the build.rs value takes precedence
+        },
     )
     # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
     test_no_rebuild("`cargo miri run` (no rebuild, no isolation)",
         cargo_miri("run", quiet=False) + ["--", ""],
-        env=default_env,
+        env={'MIRITESTVAR': "wrongval"},
     )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
