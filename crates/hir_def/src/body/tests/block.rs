@@ -259,3 +259,32 @@ fn main() {
     "#]],
     );
 }
+
+#[test]
+fn underscore_import() {
+    // This used to panic, because the default (private) visibility inside block expressions would
+    // point into the containing `DefMap`, which visibilities should never be able to do.
+    mark::check!(adjust_vis_in_block_def_map);
+    check_at(
+        r#"
+mod m {
+    fn main() {
+        use Tr as _;
+        trait Tr {}
+        $0
+    }
+}
+    "#,
+        expect![[r#"
+        block scope
+        _: t
+        Tr: t
+
+        crate
+        m: t
+
+        crate::m
+        main: v
+    "#]],
+    );
+}
