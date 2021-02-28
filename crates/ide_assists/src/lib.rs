@@ -114,7 +114,6 @@ mod handlers {
     mod apply_demorgan;
     mod auto_import;
     mod change_visibility;
-    mod convert_for_to_iter_for_each;
     mod convert_integer_literal;
     mod early_return;
     mod expand_glob_import;
@@ -132,8 +131,8 @@ mod handlers {
     mod generate_enum_projection_method;
     mod generate_from_impl_for_enum;
     mod generate_function;
-    mod generate_getter;
     mod generate_getter_mut;
+    mod generate_getter;
     mod generate_impl;
     mod generate_new;
     mod generate_setter;
@@ -156,6 +155,7 @@ mod handlers {
     mod reorder_fields;
     mod reorder_impl;
     mod replace_derive_with_manual_impl;
+    mod replace_for_loop_with_for_each;
     mod replace_if_let_with_match;
     mod replace_impl_trait_with_generic;
     mod replace_let_with_if_let;
@@ -177,11 +177,9 @@ mod handlers {
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             change_visibility::change_visibility,
-            convert_for_to_iter_for_each::convert_for_to_iter_for_each,
             convert_integer_literal::convert_integer_literal,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
-            move_module_to_file::move_module_to_file,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,
             fill_match_arms::fill_match_arms,
             fix_visibility::fix_visibility,
@@ -191,12 +189,12 @@ mod handlers {
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_derive::generate_derive,
             generate_enum_is_method::generate_enum_is_method,
-            generate_enum_projection_method::generate_enum_try_into_method,
             generate_enum_projection_method::generate_enum_as_method,
+            generate_enum_projection_method::generate_enum_try_into_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
-            generate_getter::generate_getter,
             generate_getter_mut::generate_getter_mut,
+            generate_getter::generate_getter,
             generate_impl::generate_impl,
             generate_new::generate_new,
             generate_setter::generate_setter,
@@ -210,6 +208,7 @@ mod handlers {
             move_bounds::move_bounds_to_where_clause,
             move_guard::move_arm_cond_to_match_guard,
             move_guard::move_guard_to_arm_body,
+            move_module_to_file::move_module_to_file,
             pull_assignment_up::pull_assignment_up,
             qualify_path::qualify_path,
             raw_string::add_hash,
@@ -221,6 +220,7 @@ mod handlers {
             reorder_fields::reorder_fields,
             reorder_impl::reorder_impl,
             replace_derive_with_manual_impl::replace_derive_with_manual_impl,
+            replace_for_loop_with_for_each::replace_for_loop_with_for_each,
             replace_if_let_with_match::replace_if_let_with_match,
             replace_if_let_with_match::replace_match_with_if_let,
             replace_impl_trait_with_generic::replace_impl_trait_with_generic,

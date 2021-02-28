@@ -193,29 +193,6 @@ pub(crate) fn frobnicate() {}
 }
 
 #[test]
-fn doctest_convert_for_to_iter_for_each() {
-    check_doc_test(
-        "convert_for_to_iter_for_each",
-        r#####"
-fn main() {
-    let x = vec![1, 2, 3];
-    for $0v in x {
-        let y = v * 2;
-    }
-}
-"#####,
-        r#####"
-fn main() {
-    let x = vec![1, 2, 3];
-    x.into_iter().for_each(|v| {
-        let y = v * 2;
-    });
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_convert_integer_literal() {
     check_doc_test(
         "convert_integer_literal",
@@ -1174,6 +1151,29 @@ impl Debug for S {
     fn fmt(&self, f: &mut Formatter) -> Result<()> {
         ${0:todo!()}
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_replace_for_loop_with_for_each() {
+    check_doc_test(
+        "replace_for_loop_with_for_each",
+        r#####"
+fn main() {
+    let x = vec![1, 2, 3];
+    for$0 v in x {
+        let y = v * 2;
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    let x = vec![1, 2, 3];
+    x.into_iter().for_each(|v| {
+        let y = v * 2;
+    });
 }
 "#####,
     )
