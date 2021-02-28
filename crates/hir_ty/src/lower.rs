@@ -33,7 +33,7 @@ use crate::{
     },
     Binders, BoundVar, DebruijnIndex, FnSig, GenericPredicate, OpaqueTy, OpaqueTyId, PolyFnSig,
     ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait, ReturnTypeImplTraits, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 
 #[derive(Debug)]
@@ -145,13 +145,10 @@ impl Ty {
     pub fn from_hir_ext(ctx: &TyLoweringContext<'_>, type_ref: &TypeRef) -> (Self, Option<TypeNs>) {
         let mut res = None;
         let ty = match type_ref {
-            TypeRef::Never => Ty::simple(TypeCtor::Never),
+            TypeRef::Never => Ty::Never,
             TypeRef::Tuple(inner) => {
                 let inner_tys: Arc<[Ty]> = inner.iter().map(|tr| Ty::from_hir(ctx, tr)).collect();
-                Ty::apply(
-                    TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
-                    Substs(inner_tys),
-                )
+                Ty::Tuple { cardinality: inner_tys.len() as u16, substs: Substs(inner_tys) }
             }
             TypeRef::Path(path) => {
                 let (ty, res_) = Ty::from_hir_path(ctx, path);
@@ -160,27 +157,24 @@ impl Ty {
             }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::apply_one(TypeCtor::RawPtr(*mutability), inner_ty)
+                Ty::RawPtr(*mutability, Substs::single(inner_ty))
             }
             TypeRef::Array(inner) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::apply_one(TypeCtor::Array, inner_ty)
+                Ty::Array(Substs::single(inner_ty))
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::apply_one(TypeCtor::Slice, inner_ty)
+                Ty::Slice(Substs::single(inner_ty))
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
+                Ty::Ref(*mutability, Substs::single(inner_ty))
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params, is_varargs) => {
                 let sig = Substs(params.iter().map(|tr| Ty::from_hir(ctx, tr)).collect());
-                Ty::apply(
-                    TypeCtor::FnPtr { num_args: sig.len() as u16 - 1, is_varargs: *is_varargs },
-                    sig,
-                )
+                Ty::FnPtr { num_args: sig.len() as u16 - 1, is_varargs: *is_varargs, substs: sig }
             }
             TypeRef::DynTrait(bounds) => {
                 let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
@@ -414,7 +408,6 @@ impl Ty {
             // FIXME: report error
             TypeNs::EnumVariantId(_) => return (Ty::Unknown, None),
         };
-
         Ty::from_type_relative_path(ctx, ty, Some(resolution), remaining_segments)
     }
 
@@ -1025,7 +1018,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
 fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
+    Binders::new(substs.len(), Ty::FnDef(def.into(), substs))
 }
 
 /// Build the declared type of a const.
@@ -1068,7 +1061,7 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
     }
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
+    Binders::new(substs.len(), Ty::FnDef(def.into(), substs))
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
@@ -1093,13 +1086,13 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
     }
     let generics = generics(db.upcast(), def.parent.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), Ty::apply(TypeCtor::FnDef(def.into()), substs))
+    Binders::new(substs.len(), Ty::FnDef(def.into(), substs))
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     let generics = generics(db.upcast(), adt.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), Ty::apply(TypeCtor::Adt(adt), substs))
+    Binders::new(substs.len(), Ty::Adt(adt, substs))
 }
 
 fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
@@ -1109,7 +1102,7 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     if db.type_alias_data(t).is_extern {
-        Binders::new(substs.len(), Ty::apply(TypeCtor::ForeignType(t), substs))
+        Binders::new(substs.len(), Ty::ForeignType(t, substs))
     } else {
         let type_ref = &db.type_alias_data(t).type_ref;
         let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));

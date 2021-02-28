@@ -3,9 +3,8 @@
 use std::{borrow::Cow, fmt};
 
 use crate::{
-    db::HirDatabase, primitive, utils::generics, ApplicationTy, CallableDefId, FnSig,
-    GenericPredicate, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs,
-    TraitRef, Ty, TypeCtor,
+    db::HirDatabase, primitive, utils::generics, CallableDefId, FnSig, GenericPredicate, Lifetime,
+    Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty,
 };
 use arrayvec::ArrayVec;
 use hir_def::{
@@ -235,39 +234,62 @@ impl HirDisplay for &Ty {
     }
 }
 
-impl HirDisplay for ApplicationTy {
+impl HirDisplay for ProjectionTy {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
 
-        match self.ctor {
-            TypeCtor::Scalar(Scalar::Bool) => write!(f, "bool")?,
-            TypeCtor::Scalar(Scalar::Char) => write!(f, "char")?,
-            TypeCtor::Scalar(Scalar::Float(t)) => {
-                write!(f, "{}", primitive::float_ty_to_string(t))?
-            }
-            TypeCtor::Scalar(Scalar::Int(t)) => write!(f, "{}", primitive::int_ty_to_string(t))?,
-            TypeCtor::Scalar(Scalar::Uint(t)) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
-            TypeCtor::Str => write!(f, "str")?,
-            TypeCtor::Slice => {
-                let t = self.parameters.as_single();
+        let trait_ = f.db.trait_data(self.trait_(f.db));
+        let first_parameter = self.parameters[0].into_displayable(
+            f.db,
+            f.max_size,
+            f.omit_verbose_types,
+            f.display_target,
+        );
+        write!(f, "<{} as {}", first_parameter, trait_.name)?;
+        if self.parameters.len() > 1 {
+            write!(f, "<")?;
+            f.write_joined(&self.parameters[1..], ", ")?;
+            write!(f, ">")?;
+        }
+        write!(f, ">::{}", f.db.type_alias_data(self.associated_ty).name)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Ty {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        if f.should_truncate() {
+            return write!(f, "{}", TYPE_HINT_TRUNCATION);
+        }
+
+        match self {
+            Ty::Never => write!(f, "!")?,
+            Ty::Str => write!(f, "str")?,
+            Ty::Scalar(Scalar::Bool) => write!(f, "bool")?,
+            Ty::Scalar(Scalar::Char) => write!(f, "char")?,
+            &Ty::Scalar(Scalar::Float(t)) => write!(f, "{}", primitive::float_ty_to_string(t))?,
+            &Ty::Scalar(Scalar::Int(t)) => write!(f, "{}", primitive::int_ty_to_string(t))?,
+            &Ty::Scalar(Scalar::Uint(t)) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
+            Ty::Slice(parameters) => {
+                let t = parameters.as_single();
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TypeCtor::Array => {
-                let t = self.parameters.as_single();
+            Ty::Array(parameters) => {
+                let t = parameters.as_single();
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
                 write!(f, "; _]")?;
             }
-            TypeCtor::RawPtr(m) | TypeCtor::Ref(m) => {
-                let t = self.parameters.as_single();
+            Ty::RawPtr(m, parameters) | Ty::Ref(m, parameters) => {
+                let t = parameters.as_single();
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
-                if matches!(self.ctor, TypeCtor::RawPtr(_)) {
+                if matches!(self, Ty::RawPtr(..)) {
                     write!(f, "*{}", m.as_keyword_for_ptr())?;
                 } else {
                     write!(f, "&{}", m.as_keyword_for_ref())?;
@@ -308,25 +330,23 @@ impl HirDisplay for ApplicationTy {
                     write!(f, "{}", ty_display)?;
                 }
             }
-            TypeCtor::Never => write!(f, "!")?,
-            TypeCtor::Tuple { .. } => {
-                let ts = &self.parameters;
-                if ts.len() == 1 {
+            Ty::Tuple { substs, .. } => {
+                if substs.len() == 1 {
                     write!(f, "(")?;
-                    ts[0].hir_fmt(f)?;
+                    substs[0].hir_fmt(f)?;
                     write!(f, ",)")?;
                 } else {
                     write!(f, "(")?;
-                    f.write_joined(&*ts.0, ", ")?;
+                    f.write_joined(&*substs.0, ", ")?;
                     write!(f, ")")?;
                 }
             }
-            TypeCtor::FnPtr { is_varargs, .. } => {
-                let sig = FnSig::from_fn_ptr_substs(&self.parameters, is_varargs);
+            &Ty::FnPtr { is_varargs, ref substs, .. } => {
+                let sig = FnSig::from_fn_ptr_substs(&substs, is_varargs);
                 sig.hir_fmt(f)?;
             }
-            TypeCtor::FnDef(def) => {
-                let sig = f.db.callable_item_signature(def).subst(&self.parameters);
+            &Ty::FnDef(def, ref parameters) => {
+                let sig = f.db.callable_item_signature(def).subst(parameters);
                 match def {
                     CallableDefId::FunctionId(ff) => {
                         write!(f, "fn {}", f.db.function_data(ff).name)?
@@ -336,7 +356,7 @@ impl HirDisplay for ApplicationTy {
                         write!(f, "{}", f.db.enum_data(e.parent).variants[e.local_id].name)?
                     }
                 };
-                if self.parameters.len() > 0 {
+                if parameters.len() > 0 {
                     let generics = generics(f.db.upcast(), def.into());
                     let (parent_params, self_param, type_params, _impl_trait_params) =
                         generics.provenance_split();
@@ -344,7 +364,7 @@ impl HirDisplay for ApplicationTy {
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&self.parameters.0[..total_len], ", ")?;
+                        f.write_joined(&parameters.0[..total_len], ", ")?;
                         write!(f, ">")?;
                     }
                 }
@@ -363,7 +383,7 @@ impl HirDisplay for ApplicationTy {
                     write!(f, " -> {}", ret_display)?;
                 }
             }
-            TypeCtor::Adt(def_id) => {
+            &Ty::Adt(def_id, ref parameters) => {
                 match f.display_target {
                     DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match def_id {
@@ -388,19 +408,18 @@ impl HirDisplay for ApplicationTy {
                     }
                 }
 
-                if self.parameters.len() > 0 {
+                if parameters.len() > 0 {
                     let parameters_to_write =
                         if f.display_target.is_source_code() || f.omit_verbose_types() {
                             match self
-                                .ctor
                                 .as_generic_def()
                                 .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
                                 .filter(|defaults| !defaults.is_empty())
                             {
-                                None => self.parameters.0.as_ref(),
+                                None => parameters.0.as_ref(),
                                 Some(default_parameters) => {
                                     let mut default_from = 0;
-                                    for (i, parameter) in self.parameters.iter().enumerate() {
+                                    for (i, parameter) in parameters.iter().enumerate() {
                                         match (parameter, default_parameters.get(i)) {
                                             (&Ty::Unknown, _) | (_, None) => {
                                                 default_from = i + 1;
@@ -408,18 +427,18 @@ impl HirDisplay for ApplicationTy {
                                             (_, Some(default_parameter)) => {
                                                 let actual_default = default_parameter
                                                     .clone()
-                                                    .subst(&self.parameters.prefix(i));
+                                                    .subst(&parameters.prefix(i));
                                                 if parameter != &actual_default {
                                                     default_from = i + 1;
                                                 }
                                             }
                                         }
                                     }
-                                    &self.parameters.0[0..default_from]
+                                    &parameters.0[0..default_from]
                                 }
                             }
                         } else {
-                            self.parameters.0.as_ref()
+                            parameters.0.as_ref()
                         };
                     if !parameters_to_write.is_empty() {
                         write!(f, "<")?;
@@ -428,7 +447,7 @@ impl HirDisplay for ApplicationTy {
                     }
                 }
             }
-            TypeCtor::AssociatedType(type_alias) => {
+            &Ty::AssociatedType(type_alias, ref parameters) => {
                 let trait_ = match type_alias.lookup(f.db.upcast()).container {
                     AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
@@ -439,30 +458,28 @@ impl HirDisplay for ApplicationTy {
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
                 if f.display_target.is_test() {
                     write!(f, "{}::{}", trait_.name, type_alias_data.name)?;
-                    if self.parameters.len() > 0 {
+                    if parameters.len() > 0 {
                         write!(f, "<")?;
-                        f.write_joined(&*self.parameters.0, ", ")?;
+                        f.write_joined(&*parameters.0, ", ")?;
                         write!(f, ">")?;
                     }
                 } else {
-                    let projection_ty = ProjectionTy {
-                        associated_ty: type_alias,
-                        parameters: self.parameters.clone(),
-                    };
+                    let projection_ty =
+                        ProjectionTy { associated_ty: type_alias, parameters: parameters.clone() };
 
                     projection_ty.hir_fmt(f)?;
                 }
             }
-            TypeCtor::ForeignType(type_alias) => {
+            &Ty::ForeignType(type_alias, ref parameters) => {
                 let type_alias = f.db.type_alias_data(type_alias);
                 write!(f, "{}", type_alias.name)?;
-                if self.parameters.len() > 0 {
+                if parameters.len() > 0 {
                     write!(f, "<")?;
-                    f.write_joined(&*self.parameters.0, ", ")?;
+                    f.write_joined(&*parameters.0, ", ")?;
                     write!(f, ">")?;
                 }
             }
-            TypeCtor::OpaqueType(opaque_ty_id) => {
+            &Ty::OpaqueType(opaque_ty_id, ref parameters) => {
                 match opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
@@ -470,19 +487,19 @@ impl HirDisplay for ApplicationTy {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(&self.parameters);
+                        let bounds = data.subst(&parameters);
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
                     OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "impl Future<Output = ")?;
-                        self.parameters[0].hir_fmt(f)?;
+                        parameters[0].hir_fmt(f)?;
                         write!(f, ">")?;
                     }
                 }
             }
-            TypeCtor::Closure { .. } => {
-                let sig = self.parameters[0].callable_sig(f.db);
+            Ty::Closure { substs, .. } => {
+                let sig = substs[0].callable_sig(f.db);
                 if let Some(sig) = sig {
                     if sig.params().is_empty() {
                         write!(f, "||")?;
@@ -505,43 +522,6 @@ impl HirDisplay for ApplicationTy {
                     write!(f, "{{closure}}")?;
                 }
             }
-        }
-        Ok(())
-    }
-}
-
-impl HirDisplay for ProjectionTy {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
-        }
-
-        let trait_ = f.db.trait_data(self.trait_(f.db));
-        let first_parameter = self.parameters[0].into_displayable(
-            f.db,
-            f.max_size,
-            f.omit_verbose_types,
-            f.display_target,
-        );
-        write!(f, "<{} as {}", first_parameter, trait_.name)?;
-        if self.parameters.len() > 1 {
-            write!(f, "<")?;
-            f.write_joined(&self.parameters[1..], ", ")?;
-            write!(f, ">")?;
-        }
-        write!(f, ">::{}", f.db.type_alias_data(self.associated_ty).name)?;
-        Ok(())
-    }
-}
-
-impl HirDisplay for Ty {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        if f.should_truncate() {
-            return write!(f, "{}", TYPE_HINT_TRUNCATION);
-        }
-
-        match self {
-            Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Placeholder(id) => {
                 let generics = generics(f.db.upcast(), id.parent);

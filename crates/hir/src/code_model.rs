@@ -31,9 +31,9 @@ use hir_ty::{
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
-    ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
-    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
-    Ty, TyDefId, TyKind, TypeCtor,
+    BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate, InEnvironment,
+    Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, Ty, TyDefId,
+    TyKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -1547,28 +1547,19 @@ impl Type {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(
-            self.ty.value,
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple { cardinality: 0 }, .. })
-        )
+        matches!(self.ty.value, Ty::Tuple { cardinality: 0, .. })
     }
     pub fn is_bool(&self) -> bool {
-        matches!(
-            self.ty.value,
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Scalar(Scalar::Bool), .. })
-        )
+        matches!(self.ty.value, Ty::Scalar(Scalar::Bool))
     }
 
     pub fn is_mutable_reference(&self) -> bool {
-        matches!(
-            self.ty.value,
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(Mutability::Mut), .. })
-        )
+        matches!(self.ty.value, Ty::Ref(Mutability::Mut, ..))
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
-        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(_), .. }) = self.ty.value {
-            self.ty.value.substs().map(|substs| self.derived(substs[0].clone()))
+        if let Ty::Ref(.., substs) = &self.ty.value {
+            Some(self.derived(substs[0].clone()))
         } else {
             None
         }
@@ -1688,7 +1679,7 @@ impl Type {
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
         let def = match self.ty.value {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(def), parameters: _ }) => Some(def),
+            Ty::FnDef(def, _) => Some(def),
             _ => None,
         };
 
@@ -1697,20 +1688,16 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { .. }, .. }))
+        matches!(&self.ty.value, Ty::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(
-            &self.ty.value,
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(..), .. })
-                | Ty::Apply(ApplicationTy { ctor: TypeCtor::FnPtr { .. }, .. })
-        )
+        matches!(&self.ty.value, Ty::FnDef(..) | Ty::FnPtr { .. })
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
         let adt_id = match self.ty.value {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_id), .. }) => adt_id,
+            Ty::Adt(adt_id, ..) => adt_id,
             _ => return false,
         };
 
@@ -1722,7 +1709,7 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }))
+        matches!(&self.ty.value, Ty::RawPtr(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
@@ -1731,44 +1718,34 @@ impl Type {
         fn go(ty: &Ty) -> bool {
             match ty {
                 Ty::Unknown => true,
-                Ty::Apply(a_ty) => a_ty.parameters.iter().any(go),
-                _ => false,
+                _ => ty.substs().map_or(false, |substs| substs.iter().any(go)),
             }
         }
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
-        if let Ty::Apply(a_ty) = &self.ty.value {
-            let variant_id = match a_ty.ctor {
-                TypeCtor::Adt(AdtId::StructId(s)) => s.into(),
-                TypeCtor::Adt(AdtId::UnionId(u)) => u.into(),
-                _ => return Vec::new(),
-            };
-
-            return db
-                .field_types(variant_id)
-                .iter()
-                .map(|(local_id, ty)| {
-                    let def = Field { parent: variant_id.into(), id: local_id };
-                    let ty = ty.clone().subst(&a_ty.parameters);
-                    (def, self.derived(ty))
-                })
-                .collect();
+        let (variant_id, substs) = match self.ty.value {
+            Ty::Adt(AdtId::StructId(s), ref substs) => (s.into(), substs),
+            Ty::Adt(AdtId::UnionId(u), ref substs) => (u.into(), substs),
+            _ => return Vec::new(),
         };
-        Vec::new()
+
+        db.field_types(variant_id)
+            .iter()
+            .map(|(local_id, ty)| {
+                let def = Field { parent: variant_id.into(), id: local_id };
+                let ty = ty.clone().subst(substs);
+                (def, self.derived(ty))
+            })
+            .collect()
     }
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
-        let mut res = Vec::new();
-        if let Ty::Apply(a_ty) = &self.ty.value {
-            if let TypeCtor::Tuple { .. } = a_ty.ctor {
-                for ty in a_ty.parameters.iter() {
-                    let ty = ty.clone();
-                    res.push(self.derived(ty));
-                }
-            }
-        };
-        res
+        if let Ty::Tuple { substs, .. } = &self.ty.value {
+            substs.iter().map(|ty| self.derived(ty.clone())).collect()
+        } else {
+            Vec::new()
+        }
     }
 
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
@@ -1805,15 +1782,13 @@ impl Type {
     }
 
     pub fn type_parameters(&self) -> impl Iterator<Item = Type> + '_ {
-        let ty = self.ty.value.strip_references();
-        let substs = match ty {
-            Ty::Apply(apply_ty) => &apply_ty.parameters,
-            Ty::Opaque(opaque_ty) => &opaque_ty.parameters,
-            _ => return Either::Left(iter::empty()),
-        };
-
-        let iter = substs.iter().map(move |ty| self.derived(ty.clone()));
-        Either::Right(iter)
+        self.ty
+            .value
+            .strip_references()
+            .substs()
+            .into_iter()
+            .flat_map(|substs| substs.iter())
+            .map(move |ty| self.derived(ty.clone()))
     }
 
     pub fn iterate_method_candidates<T>(
@@ -1903,17 +1878,8 @@ impl Type {
 
     // FIXME: provide required accessors such that it becomes implementable from outside.
     pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
-        match (&self.ty.value, &other.ty.value) {
-            (Ty::Apply(a_original_ty), Ty::Apply(ApplicationTy { ctor, parameters })) => match ctor
-            {
-                TypeCtor::Ref(..) => match parameters.as_single() {
-                    Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
-                    _ => false,
-                },
-                _ => a_original_ty.ctor == *ctor,
-            },
-            _ => false,
-        }
+        let rref = other.remove_ref();
+        self.ty.value.equals_ctor(rref.as_ref().map_or(&other.ty.value, |it| &it.ty.value))
     }
 
     fn derived(&self, ty: Ty) -> Type {
@@ -1958,25 +1924,20 @@ impl Type {
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.value.strip_references();
             match ty {
-                Ty::Apply(ApplicationTy { ctor, parameters }) => {
-                    match ctor {
-                        TypeCtor::Adt(_) => {
-                            cb(type_.derived(ty.clone()));
-                        }
-                        TypeCtor::AssociatedType(_) => {
-                            if let Some(_) = ty.associated_type_parent_trait(db) {
-                                cb(type_.derived(ty.clone()));
-                            }
-                        }
-                        TypeCtor::OpaqueType(..) => {
-                            if let Some(bounds) = ty.impl_trait_bounds(db) {
-                                walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
-                            }
-                        }
-                        _ => (),
+                Ty::Adt(_, parameters) => {
+                    cb(type_.derived(ty.clone()));
+                    walk_substs(db, type_, parameters, cb);
+                }
+                Ty::AssociatedType(_, parameters) => {
+                    if let Some(_) = ty.associated_type_parent_trait(db) {
+                        cb(type_.derived(ty.clone()));
                     }
-
-                    // adt params, tuples, etc...
+                    walk_substs(db, type_, parameters, cb);
+                }
+                Ty::OpaqueType(_, parameters) => {
+                    if let Some(bounds) = ty.impl_trait_bounds(db) {
+                        walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
+                    }
                     walk_substs(db, type_, parameters, cb);
                 }
                 Ty::Opaque(opaque_ty) => {

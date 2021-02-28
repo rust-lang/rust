@@ -13,7 +13,7 @@ use hir_expand::name::Name;
 use test_utils::mark;
 
 use super::{BindingMode, Expectation, InferenceContext};
-use crate::{utils::variant_data, Substs, Ty, TypeCtor};
+use crate::{utils::variant_data, Substs, Ty};
 
 impl<'a> InferenceContext<'a> {
     fn infer_tuple_struct_pat(
@@ -32,7 +32,7 @@ impl<'a> InferenceContext<'a> {
         }
         self.unify(&ty, expected);
 
-        let substs = ty.substs().unwrap_or_else(Substs::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
@@ -71,7 +71,7 @@ impl<'a> InferenceContext<'a> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().unwrap_or_else(Substs::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
@@ -138,10 +138,7 @@ impl<'a> InferenceContext<'a> {
                 inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
                 inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
 
-                Ty::apply(
-                    TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
-                    Substs(inner_tys.into()),
-                )
+                Ty::Tuple { cardinality: inner_tys.len() as u16, substs: Substs(inner_tys.into()) }
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
@@ -165,7 +162,7 @@ impl<'a> InferenceContext<'a> {
                     _ => &Ty::Unknown,
                 };
                 let subty = self.infer_pat(*pat, expectation, default_bm);
-                Ty::apply_one(TypeCtor::Ref(*mutability), subty)
+                Ty::Ref(*mutability, Substs::single(subty))
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_ref(),
@@ -198,7 +195,7 @@ impl<'a> InferenceContext<'a> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        Ty::apply_one(TypeCtor::Ref(mutability), inner_ty.clone())
+                        Ty::Ref(mutability, Substs::single(inner_ty.clone()))
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
@@ -207,17 +204,17 @@ impl<'a> InferenceContext<'a> {
                 return inner_ty;
             }
             Pat::Slice { prefix, slice, suffix } => {
-                let (container_ty, elem_ty) = match &expected {
-                    ty_app!(TypeCtor::Array, st) => (TypeCtor::Array, st.as_single().clone()),
-                    ty_app!(TypeCtor::Slice, st) => (TypeCtor::Slice, st.as_single().clone()),
-                    _ => (TypeCtor::Slice, Ty::Unknown),
+                let (container_ty, elem_ty): (fn(_) -> _, _) = match &expected {
+                    Ty::Array(st) => (Ty::Array, st.as_single().clone()),
+                    Ty::Slice(st) => (Ty::Slice, st.as_single().clone()),
+                    _ => (Ty::Slice, Ty::Unknown),
                 };
 
                 for pat_id in prefix.iter().chain(suffix) {
                     self.infer_pat(*pat_id, &elem_ty, default_bm);
                 }
 
-                let pat_ty = Ty::apply_one(container_ty, elem_ty);
+                let pat_ty = container_ty(Substs::single(elem_ty));
                 if let Some(slice_pat_id) = slice {
                     self.infer_pat(*slice_pat_id, &pat_ty, default_bm);
                 }
@@ -239,7 +236,7 @@ impl<'a> InferenceContext<'a> {
                     };
 
                     let inner_ty = self.infer_pat(*inner, inner_expected, default_bm);
-                    Ty::apply_one(TypeCtor::Adt(box_adt), inner_ty)
+                    Ty::Adt(box_adt, Substs::single(inner_ty))
                 }
                 None => Ty::Unknown,
             },

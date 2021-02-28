@@ -20,7 +20,7 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
     BoundVar, CallableDefId, DebruijnIndex, FnSig, GenericPredicate, ProjectionPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    ProjectionTy, Substs, TraitRef, Ty,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsAssocType,
@@ -489,10 +489,11 @@ pub(crate) fn struct_datum_query(
     struct_id: AdtId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor = TypeCtor::Adt(from_chalk(db, struct_id));
+    let adt_id = from_chalk(db, struct_id);
+    let type_ctor = Ty::Adt(adt_id, Substs::empty());
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
-    let num_params = type_ctor.num_ty_params(db);
-    let upstream = type_ctor.krate(db) != Some(krate);
+    let num_params = generics(db.upcast(), adt_id.into()).len();
+    let upstream = adt_id.module(db.upcast()).krate() != krate;
     let where_clauses = type_ctor
         .as_generic_def()
         .map(|generic_def| {

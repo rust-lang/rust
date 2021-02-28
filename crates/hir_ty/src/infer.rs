@@ -38,22 +38,13 @@ use syntax::SmolStr;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode, Scalar,
 };
 
 pub(crate) use unify::unify;
-
-macro_rules! ty_app {
-    ($ctor:pat, $param:pat) => {
-        crate::Ty::Apply(crate::ApplicationTy { ctor: $ctor, parameters: $param })
-    };
-    ($ctor:pat) => {
-        ty_app!($ctor, _)
-    };
-}
 
 mod unify;
 mod path;
@@ -684,9 +675,9 @@ impl InferTy {
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => Ty::simple(TypeCtor::Scalar(Scalar::Int(IntTy::I32))),
-            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Scalar(Scalar::Float(FloatTy::F64))),
-            InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
+            InferTy::IntVar(..) => Ty::Scalar(Scalar::Int(IntTy::I32)),
+            InferTy::FloatVar(..) => Ty::Scalar(Scalar::Float(FloatTy::F64)),
+            InferTy::MaybeNeverTypeVar(..) => Ty::Never,
         }
     }
 }

@@ -17,7 +17,7 @@ use crate::{
         MissingPatFields, RemoveThisSemicolon,
     },
     utils::variant_data,
-    ApplicationTy, InferenceResult, Ty, TypeCtor,
+    InferenceResult, Ty,
 };
 
 pub(crate) use hir_def::{
@@ -381,14 +381,11 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let core_result_ctor = TypeCtor::Adt(AdtId::EnumId(core_result_enum));
-        let core_option_ctor = TypeCtor::Adt(AdtId::EnumId(core_option_enum));
-
-        let (params, required) = match &mismatch.expected {
-            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_result_ctor => {
+        let (params, required) = match mismatch.expected {
+            Ty::Adt(AdtId::EnumId(enum_id), ref parameters) if enum_id == core_result_enum => {
                 (parameters, "Ok".to_string())
             }
-            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &core_option_ctor => {
+            Ty::Adt(AdtId::EnumId(enum_id), ref parameters) if enum_id == core_option_enum => {
                 (parameters, "Some".to_string())
             }
             _ => return,

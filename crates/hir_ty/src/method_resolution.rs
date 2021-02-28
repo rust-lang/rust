@@ -7,8 +7,8 @@ use std::{iter, sync::Arc};
 use arrayvec::ArrayVec;
 use base_db::CrateId;
 use hir_def::{
-    lang_item::LangItemTarget, type_ref::Mutability, AssocContainerId, AssocItemId, FunctionId,
-    GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId,
+    lang_item::LangItemTarget, type_ref::Mutability, AdtId, AssocContainerId, AssocItemId,
+    FunctionId, GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -18,15 +18,24 @@ use crate::{
     db::HirDatabase,
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    ApplicationTy, Canonical, DebruijnIndex, InEnvironment, Scalar, Substs, TraitEnvironment,
-    TraitRef, Ty, TyKind, TypeCtor, TypeWalk,
+    Canonical, DebruijnIndex, InEnvironment, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
+    TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum TyFingerprint {
-    Apply(TypeCtor),
+    Str,
+    Slice,
+    Array,
+    Never,
+    RawPtr(Mutability),
+    Scalar(Scalar),
+    Adt(AdtId),
     Dyn(TraitId),
+    Tuple { cardinality: u16 },
+    ForeignType(TypeAliasId),
+    FnPtr { num_args: u16, is_varargs: bool },
 }
 
 impl TyFingerprint {
@@ -34,32 +43,44 @@ impl TyFingerprint {
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
     pub(crate) fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
-        match ty {
-            Ty::Apply(a_ty) => Some(TyFingerprint::Apply(a_ty.ctor)),
-            Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_)),
-            _ => None,
-        }
+        let fp = match ty {
+            &Ty::Str => TyFingerprint::Str,
+            &Ty::Never => TyFingerprint::Never,
+            &Ty::Slice(..) => TyFingerprint::Slice,
+            &Ty::Array(..) => TyFingerprint::Array,
+            &Ty::Scalar(scalar) => TyFingerprint::Scalar(scalar),
+            &Ty::Adt(adt, _) => TyFingerprint::Adt(adt),
+            &Ty::Tuple { cardinality: u16, .. } => TyFingerprint::Tuple { cardinality: u16 },
+            &Ty::RawPtr(mutability, ..) => TyFingerprint::RawPtr(mutability),
+            &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
+            &Ty::FnPtr { num_args, is_varargs, .. } => {
+                TyFingerprint::FnPtr { num_args, is_varargs }
+            }
+            Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
+            _ => return None,
+        };
+        Some(fp)
     }
 }
 
 pub(crate) const ALL_INT_FPS: [TyFingerprint; 12] = [
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I8))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I16))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I32))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I64))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::I128))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Int(IntTy::Isize))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U8))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U16))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U32))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U64))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::U128))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Uint(UintTy::Usize))),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::I8)),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::I16)),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::I32)),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::I64)),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::I128)),
+    TyFingerprint::Scalar(Scalar::Int(IntTy::Isize)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::U8)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::U16)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::U32)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::U64)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::U128)),
+    TyFingerprint::Scalar(Scalar::Uint(UintTy::Usize)),
 ];
 
 pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Float(FloatTy::F32))),
-    TyFingerprint::Apply(TypeCtor::Scalar(Scalar::Float(FloatTy::F64))),
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F32)),
+    TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
 ];
 
 /// Trait impls defined or available in some crate.
@@ -211,32 +232,29 @@ impl Ty {
         let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
 
         let lang_item_targets = match self {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::Adt(def_id) => {
-                    return mod_to_crate_ids(def_id.module(db.upcast()));
-                }
-                TypeCtor::ForeignType(type_alias_id) => {
-                    return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
-                }
-                TypeCtor::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
-                TypeCtor::Scalar(Scalar::Char) => lang_item_crate!("char"),
-                TypeCtor::Scalar(Scalar::Float(f)) => match f {
-                    // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-                    FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
-                    FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
-                },
-                TypeCtor::Scalar(Scalar::Int(t)) => {
-                    lang_item_crate!(primitive::int_ty_to_string(t))
-                }
-                TypeCtor::Scalar(Scalar::Uint(t)) => {
-                    lang_item_crate!(primitive::uint_ty_to_string(t))
-                }
-                TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
-                TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
-                TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),
-                TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!("mut_ptr"),
-                _ => return None,
+            Ty::Adt(def_id, _) => {
+                return mod_to_crate_ids(def_id.module(db.upcast()));
+            }
+            Ty::ForeignType(type_alias_id, _) => {
+                return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
+            }
+            Ty::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
+            Ty::Scalar(Scalar::Char) => lang_item_crate!("char"),
+            Ty::Scalar(Scalar::Float(f)) => match f {
+                // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
+                FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
+                FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
             },
+            &Ty::Scalar(Scalar::Int(t)) => {
+                lang_item_crate!(primitive::int_ty_to_string(t))
+            }
+            &Ty::Scalar(Scalar::Uint(t)) => {
+                lang_item_crate!(primitive::uint_ty_to_string(t))
+            }
+            Ty::Str => lang_item_crate!("str_alloc", "str"),
+            Ty::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
+            Ty::RawPtr(Mutability::Shared, _) => lang_item_crate!("const_ptr"),
+            Ty::RawPtr(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
             Ty::Dyn(_) => {
                 return self.dyn_trait().and_then(|trait_| {
                     mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
@@ -413,7 +431,7 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: Ty::apply_one(TypeCtor::Ref(Mutability::Shared), deref_chain[0].value.clone()),
+        value: Ty::Ref(Mutability::Shared, Substs::single(deref_chain[0].value.clone())),
     };
     if iterate_method_candidates_by_receiver(
         &refed,
@@ -429,7 +447,7 @@ fn iterate_method_candidates_with_autoref(
     }
     let ref_muted = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: Ty::apply_one(TypeCtor::Ref(Mutability::Mut), deref_chain[0].value.clone()),
+        value: Ty::Ref(Mutability::Mut, Substs::single(deref_chain[0].value.clone())),
     };
     if iterate_method_candidates_by_receiver(
         &ref_muted,
@@ -756,11 +774,9 @@ fn autoderef_method_receiver(
 ) -> Vec<Canonical<Ty>> {
     let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(Ty::Apply(ApplicationTy { ctor: TypeCtor::Array, parameters })) =
-        deref_chain.last().map(|ty| &ty.value)
-    {
+    if let Some(Ty::Array(parameters)) = deref_chain.last().map(|ty| &ty.value) {
         let kinds = deref_chain.last().unwrap().kinds.clone();
-        let unsized_ty = Ty::apply(TypeCtor::Slice, parameters.clone());
+        let unsized_ty = Ty::Slice(parameters.clone());
         deref_chain.push(Canonical { value: unsized_ty, kinds })
     }
     deref_chain
