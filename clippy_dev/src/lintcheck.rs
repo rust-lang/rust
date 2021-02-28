@@ -22,6 +22,9 @@ use serde_json::Value;
 const CLIPPY_DRIVER_PATH: &str = "target/debug/clippy-driver";
 const CARGO_CLIPPY_PATH: &str = "target/debug/cargo-clippy";
 
+const LINTCHECK_DOWNLOADS: &str = "target/lintcheck/downloads";
+const LINTCHECK_SOURCES: &str = "target/lintcheck/sources";
+
 /// List of sources to check, loaded from a .toml file
 #[derive(Debug, Serialize, Deserialize)]
 struct SourceList {
@@ -102,8 +105,8 @@ impl CrateSource {
     fn download_and_extract(&self) -> Crate {
         match self {
             CrateSource::CratesIo { name, version, options } => {
-                let extract_dir = PathBuf::from("target/lintcheck/crates");
-                let krate_download_dir = PathBuf::from("target/lintcheck/downloads");
+                let extract_dir = PathBuf::from(LINTCHECK_SOURCES);
+                let krate_download_dir = PathBuf::from(LINTCHECK_DOWNLOADS);
 
                 // url to download the crate from crates.io
                 let url = format!("https://crates.io/api/v1/crates/{}/{}/download", name, version);
@@ -143,7 +146,7 @@ impl CrateSource {
                 options,
             } => {
                 let repo_path = {
-                    let mut repo_path = PathBuf::from("target/lintcheck/crates");
+                    let mut repo_path = PathBuf::from(LINTCHECK_SOURCES);
                     // add a -git suffix in case we have the same crate from crates.io and a git repo
                     repo_path.push(format!("{}-git", name));
                     repo_path
@@ -185,7 +188,7 @@ impl CrateSource {
                 use fs_extra::dir;
 
                 // simply copy the entire directory into our target dir
-                let copy_dest = PathBuf::from("target/lintcheck/crates/");
+                let copy_dest = PathBuf::from(format!("{}/", LINTCHECK_SOURCES));
 
                 // the source path of the crate we copied,  ${copy_dest}/crate_name
                 let crate_root = copy_dest.join(name); // .../crates/local_crate

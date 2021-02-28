@@ -1,5 +1,26 @@
-clippy 0.1.52 (e3386041a 2021-02-28)
+clippy 0.1.52 (70d952e75 2021-02-28)
 
+target/lintcheck/sources/anyhow-1.0.38/build.rs:1:null clippy::cargo_common_metadata "package `anyhow` is missing `package.keywords` metadata"
+target/lintcheck/sources/anyhow-1.0.38/src/error.rs:350:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+target/lintcheck/sources/anyhow-1.0.38/src/lib.rs:1:null clippy::cargo_common_metadata "package `anyhow` is missing `package.keywords` metadata"
+target/lintcheck/sources/async-trait-0.1.42/src/expand.rs:130:1 clippy::too_many_lines "this function has too many lines (104/100)"
+target/lintcheck/sources/async-trait-0.1.42/src/expand.rs:156:26 clippy::default_trait_access "calling `syn::token::Where::default()` is more clear than this expression"
+target/lintcheck/sources/async-trait-0.1.42/src/expand.rs:259:1 clippy::too_many_lines "this function has too many lines (204/100)"
+target/lintcheck/sources/async-trait-0.1.42/src/expand.rs:414:35 clippy::shadow_unrelated "`generics` is being shadowed"
+target/lintcheck/sources/async-trait-0.1.42/src/expand.rs:464:32 clippy::if_not_else "unnecessary `!=` operation"
+target/lintcheck/sources/async-trait-0.1.42/src/lib.rs:102:7 clippy::doc_markdown "you should put `async_trait` between ticks in the documentation"
+target/lintcheck/sources/async-trait-0.1.42/src/lib.rs:159:64 clippy::doc_markdown "you should put `async_trait` between ticks in the documentation"
+target/lintcheck/sources/async-trait-0.1.42/src/lib.rs:1:null clippy::cargo_common_metadata "package `async-trait` is missing `package.categories` metadata"
+target/lintcheck/sources/async-trait-0.1.42/src/lib.rs:1:null clippy::cargo_common_metadata "package `async-trait` is missing `package.keywords` metadata"
+target/lintcheck/sources/async-trait-0.1.42/src/lib.rs:240:15 clippy::doc_markdown "you should put `async_trait` between ticks in the documentation"
+target/lintcheck/sources/async-trait-0.1.42/src/lifetime.rs:5:1 clippy::module_name_repetitions "item name ends with its containing module's name"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:102:34 clippy::similar_names "binding's name is too similar to existing binding"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:107:29 clippy::similar_names "binding's name is too similar to existing binding"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:137:38 clippy::default_trait_access "calling `syn::token::Colon2::default()` is more clear than this expression"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:162:55 clippy::default_trait_access "calling `syn::token::Colon2::default()` is more clear than this expression"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:167:42 clippy::default_trait_access "calling `syn::token::Colon2::default()` is more clear than this expression"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:73:1 clippy::module_name_repetitions "item name ends with its containing module's name"
+target/lintcheck/sources/async-trait-0.1.42/src/receiver.rs:97:34 clippy::similar_names "binding's name is too similar to existing binding"
 target/lintcheck/sources/cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.categories` metadata"
 target/lintcheck/sources/cargo-0.49.0/build.rs:1:null clippy::cargo_common_metadata "package `cargo` is missing `package.keywords` metadata"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/cli.rs:104:34 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
@@ -1427,6 +1448,23 @@ target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:52:1 clippy::m
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:56:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:60:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:64:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/cxx-1.0.32/src/rust_string.rs:15:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_string.rs:19:24 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:21:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:25:24 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:74:35 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:78:39 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:90:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:94:24 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/shared_ptr.rs:108:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/shared_ptr.rs:165:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+target/lintcheck/sources/cxx-1.0.32/src/shared_ptr.rs:54:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/shared_ptr.rs:62:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/shared_ptr.rs:75:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/unique_ptr.rs:185:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+target/lintcheck/sources/cxx-1.0.32/src/unwind.rs:22:5 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+target/lintcheck/sources/cxx-1.0.32/src/weak_ptr.rs:47:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/cxx-1.0.32/src/weak_ptr.rs:80:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
 target/lintcheck/sources/iron-0.6.1/src/error.rs:24:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 target/lintcheck/sources/iron-0.6.1/src/iron.rs:105:13 clippy::redundant_field_names "redundant field names in struct initialization"
 target/lintcheck/sources/iron-0.6.1/src/iron.rs:119:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -3176,12 +3214,14 @@ target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:1638:9 clippy::let_undersco
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:1649:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:952:13 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:986:13 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
+target/lintcheck/sources/serde_yaml-0.8.17/src/lib.rs:1:null clippy::cargo_common_metadata "package `serde_yaml` is missing `package.categories` metadata"
 target/lintcheck/sources/syn-1.0.54/build.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
 target/lintcheck/sources/syn-1.0.54/src/lib.rs:1:null clippy::cargo_common_metadata "package `syn` is missing `package.keywords` metadata"
 target/lintcheck/sources/syn-1.0.54/src/lit.rs:1397:40 clippy::redundant_else "redundant else block"
 target/lintcheck/sources/syn-1.0.54/src/lit.rs:1405:28 clippy::redundant_else "redundant else block"
 target/lintcheck/sources/syn-1.0.54/src/lit.rs:1485:32 clippy::redundant_else "redundant else block"
 target/lintcheck/sources/syn-1.0.54/src/token.rs:974:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+target/lintcheck/sources/thiserror-1.0.24/src/lib.rs:1:null clippy::cargo_common_metadata "package `thiserror` is missing `package.keywords` metadata"
 target/lintcheck/sources/unicode-xid-0.2.1/src/lib.rs:1:null clippy::cargo_common_metadata "package `unicode-xid` is missing `package.categories` metadata"
 target/lintcheck/sources/unicode-xid-0.2.1/src/lib.rs:57:64 clippy::doc_markdown "you should put `XID_Start` between ticks in the documentation"
 target/lintcheck/sources/unicode-xid-0.2.1/src/lib.rs:60:10 clippy::doc_markdown "you should put `XID_Start` between ticks in the documentation"
@@ -3426,7 +3466,6 @@ clippy::len_without_is_empty 5
 clippy::match_like_matches_macro 5
 clippy::needless_return 5
 clippy::new_without_default 5
-clippy::ptr_as_ptr 5
 clippy::collapsible_else_if 6
 clippy::manual_strip 6
 clippy::non_ascii_literal 6
@@ -3446,42 +3485,43 @@ clippy::match_wildcard_for_single_variants 10
 clippy::missing_safety_doc 10
 clippy::needless_doctest_main 10
 clippy::needless_lifetimes 12
-clippy::cargo_common_metadata 13
-clippy::shadow_unrelated 13
 clippy::linkedlist 14
+clippy::shadow_unrelated 14
 clippy::single_char_add_str 14
 clippy::option_if_let_else 15
 clippy::needless_pass_by_value 18
+clippy::cargo_common_metadata 19
 clippy::cast_possible_wrap 19
 clippy::cast_sign_loss 19
+clippy::ptr_as_ptr 19
 clippy::unnecessary_wraps 19
 clippy::unused_self 19
 clippy::unusual_byte_groupings 19
 clippy::map_unwrap_or 20
 clippy::struct_excessive_bools 20
 clippy::redundant_static_lifetimes 21
-clippy::default_trait_access 22
 clippy::cast_lossless 23
-clippy::let_underscore_drop 23
+clippy::default_trait_access 26
+clippy::let_underscore_drop 26
 clippy::trivially_copy_pass_by_ref 26
 clippy::redundant_else 29
-clippy::too_many_lines 32
-clippy::if_not_else 35
+clippy::too_many_lines 34
+clippy::if_not_else 36
 clippy::enum_glob_use 40
 clippy::unseparated_literal_suffix 41
 clippy::cast_precision_loss 44
 clippy::single_match_else 45
-clippy::missing_panics_doc 56
+clippy::missing_panics_doc 57
 clippy::inline_always 59
 clippy::match_same_arms 60
-clippy::similar_names 78
+clippy::similar_names 81
 clippy::cast_possible_truncation 95
 clippy::redundant_field_names 111
 clippy::redundant_closure_for_method_calls 135
 clippy::items_after_statements 139
-clippy::module_name_repetitions 142
+clippy::module_name_repetitions 144
 clippy::wildcard_imports 163
-clippy::doc_markdown 178
+clippy::doc_markdown 181
 clippy::missing_errors_doc 343
 clippy::unreadable_literal 365
 clippy::must_use_candidate 565
