@@ -3,15 +3,13 @@
 use crate::{
     expander::{Binding, Bindings, Fragment},
     parser::{Op, RepeatKind, Separator},
-    subtree_source::SubtreeTokenSource,
     tt_iter::TtIter,
     ExpandError, MetaTemplate,
 };
 
 use super::ExpandResult;
-use parser::{FragmentKind::*, TreeSink};
-use syntax::{SmolStr, SyntaxKind};
-use tt::buffer::{Cursor, TokenBuffer};
+use parser::FragmentKind::*;
+use syntax::SmolStr;
 
 impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
@@ -407,68 +405,6 @@ impl<'a> TtIter<'a> {
             ],
         }
         .into())
-    }
-
-    fn expect_fragment(
-        &mut self,
-        fragment_kind: parser::FragmentKind,
-    ) -> ExpandResult<Option<tt::TokenTree>> {
-        struct OffsetTokenSink<'a> {
-            cursor: Cursor<'a>,
-            error: bool,
-        }
-
-        impl<'a> TreeSink for OffsetTokenSink<'a> {
-            fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
-                if kind == SyntaxKind::LIFETIME_IDENT {
-                    n_tokens = 2;
-                }
-                for _ in 0..n_tokens {
-                    self.cursor = self.cursor.bump_subtree();
-                }
-            }
-            fn start_node(&mut self, _kind: SyntaxKind) {}
-            fn finish_node(&mut self) {}
-            fn error(&mut self, _error: parser::ParseError) {
-                self.error = true;
-            }
-        }
-
-        let buffer = TokenBuffer::from_tokens(&self.inner.as_slice());
-        let mut src = SubtreeTokenSource::new(&buffer);
-        let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
-
-        parser::parse_fragment(&mut src, &mut sink, fragment_kind);
-
-        let mut err = None;
-        if !sink.cursor.is_root() || sink.error {
-            err = Some(err!("expected {:?}", fragment_kind));
-        }
-
-        let mut curr = buffer.begin();
-        let mut res = vec![];
-
-        if sink.cursor.is_root() {
-            while curr != sink.cursor {
-                if let Some(token) = curr.token_tree() {
-                    res.push(token);
-                }
-                curr = curr.bump();
-            }
-        }
-        self.inner = self.inner.as_slice()[res.len()..].iter();
-        if res.len() == 0 && err.is_none() {
-            err = Some(err!("no tokens consumed"));
-        }
-        let res = match res.len() {
-            1 => Some(res[0].cloned()),
-            0 => None,
-            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: None,
-                token_trees: res.into_iter().map(|it| it.cloned()).collect(),
-            })),
-        };
-        ExpandResult { value: res, err }
     }
 
     fn eat_vis(&mut self) -> Option<tt::TokenTree> {
