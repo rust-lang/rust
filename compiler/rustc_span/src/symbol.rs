@@ -527,6 +527,7 @@ symbols! {
         f32_runtime,
         f64,
         f64_runtime,
+        f_strings,
         fabsf32,
         fabsf64,
         fadd_fast,

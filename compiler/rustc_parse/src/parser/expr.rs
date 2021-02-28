@@ -1286,6 +1286,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         if let TokenKind::Literal(lit) = self.token.kind {
             if let token::FStr(..) = lit.kind {
+                self.sess.gated_spans.gate(sym::f_strings, self.token.span);
                 let mut segments = vec![];
 
                 let (symbol, mut end_delimiter) = self
