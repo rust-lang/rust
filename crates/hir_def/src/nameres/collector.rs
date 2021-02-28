@@ -13,7 +13,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    HirFileId, MacroCallId, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -24,11 +24,13 @@ use tt::{Leaf, TokenTree};
 use crate::{
     attr::Attrs,
     db::DefDatabase,
+    item_attr_as_call_id,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
         self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroRules, Mod, ModItem, ModKind,
         StructDefKind,
     },
+    macro_call_as_call_id,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
@@ -36,9 +38,9 @@ use crate::{
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AsMacroCall, AstId, AstIdWithPath, ConstLoc, ContainerId, EnumLoc, EnumVariantId,
-    FunctionLoc, ImplLoc, Intern, LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc,
-    TypeAliasLoc, UnionLoc,
+    AdtId, AstId, AstIdWithPath, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc,
+    ImplLoc, Intern, LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc,
+    UnionLoc, UnresolvedMacro,
 };
 
 const GLOB_RECURSION_LIMIT: usize = 100;
@@ -790,8 +792,11 @@ impl DefCollector<'_> {
                 return false;
             }
 
-            if let Some(call_id) =
-                directive.ast_id.as_call_id(self.db, self.def_map.krate, |path| {
+            match macro_call_as_call_id(
+                &directive.ast_id,
+                self.db,
+                self.def_map.krate,
+                |path| {
                     let resolved_res = self.def_map.resolve_path_fp_with_macro(
                         self.db,
                         ResolveMode::Other,
@@ -800,24 +805,29 @@ impl DefCollector<'_> {
                         BuiltinShadowMode::Module,
                     );
                     resolved_res.resolved_def.take_macros()
-                })
-            {
-                resolved.push((directive.module_id, call_id, directive.depth));
-                res = ReachedFixedPoint::No;
-                return false;
+                },
+                &mut |_err| (),
+            ) {
+                Ok(Ok(call_id)) => {
+                    resolved.push((directive.module_id, call_id, directive.depth));
+                    res = ReachedFixedPoint::No;
+                    return false;
+                }
+                Err(UnresolvedMacro) | Ok(Err(_)) => {}
             }
 
             true
         });
         attribute_macros.retain(|directive| {
-            if let Some(call_id) =
-                directive.ast_id.as_call_id(self.db, self.def_map.krate, |path| {
-                    self.resolve_attribute_macro(&directive, &path)
-                })
-            {
-                resolved.push((directive.module_id, call_id, 0));
-                res = ReachedFixedPoint::No;
-                return false;
+            match item_attr_as_call_id(&directive.ast_id, self.db, self.def_map.krate, |path| {
+                self.resolve_attribute_macro(&directive, &path)
+            }) {
+                Ok(call_id) => {
+                    resolved.push((directive.module_id, call_id, 0));
+                    res = ReachedFixedPoint::No;
+                    return false;
+                }
+                Err(UnresolvedMacro) => (),
             }
 
             true
@@ -902,7 +912,8 @@ impl DefCollector<'_> {
 
         for directive in &self.unexpanded_macros {
             let mut error = None;
-            directive.ast_id.as_call_id_with_errors(
+            match macro_call_as_call_id(
+                &directive.ast_id,
                 self.db,
                 self.def_map.krate,
                 |path| {
@@ -918,15 +929,15 @@ impl DefCollector<'_> {
                 &mut |e| {
                     error.get_or_insert(e);
                 },
-            );
-
-            if let Some(err) = error {
-                self.def_map.diagnostics.push(DefDiagnostic::macro_error(
-                    directive.module_id,
-                    MacroCallKind::FnLike(directive.ast_id.ast_id),
-                    err.to_string(),
-                ));
-            }
+            ) {
+                Ok(_) => (),
+                Err(UnresolvedMacro) => {
+                    self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
+                        directive.module_id,
+                        directive.ast_id.ast_id,
+                    ));
+                }
+            };
         }
 
         // Emit diagnostics for all remaining unresolved imports.
@@ -1446,8 +1457,11 @@ impl ModCollector<'_, '_> {
         let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
-        if let Some(macro_call_id) =
-            ast_id.as_call_id(self.def_collector.db, self.def_collector.def_map.krate, |path| {
+        if let Ok(Ok(macro_call_id)) = macro_call_as_call_id(
+            &ast_id,
+            self.def_collector.db,
+            self.def_collector.def_map.krate,
+            |path| {
                 path.as_ident().and_then(|name| {
                     self.def_collector.def_map.with_ancestor_maps(
                         self.def_collector.db,
@@ -1455,8 +1469,9 @@ impl ModCollector<'_, '_> {
                         &mut |map, module| map[module].scope.get_legacy_macro(&name),
                     )
                 })
-            })
-        {
+            },
+            &mut |_err| (),
+        ) {
             self.def_collector.unexpanded_macros.push(MacroDirective {
                 module_id: self.module_id,
                 ast_id,

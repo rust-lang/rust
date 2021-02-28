@@ -95,6 +95,34 @@ impl Diagnostic for UnresolvedImport {
     }
 }
 
+// Diagnostic: unresolved-macro-call
+//
+// This diagnostic is triggered if rust-analyzer is unable to resolove path to a
+// macro in a macro invocation.
+#[derive(Debug)]
+pub struct UnresolvedMacroCall {
+    pub file: HirFileId,
+    pub node: AstPtr<ast::MacroCall>,
+}
+
+impl Diagnostic for UnresolvedMacroCall {
+    fn code(&self) -> DiagnosticCode {
+        DiagnosticCode("unresolved-macro-call")
+    }
+    fn message(&self) -> String {
+        "unresolved macro call".to_string()
+    }
+    fn display_source(&self) -> InFile<SyntaxNodePtr> {
+        InFile::new(self.file, self.node.clone().into())
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+    fn is_experimental(&self) -> bool {
+        true
+    }
+}
+
 // Diagnostic: inactive-code
 //
 // This diagnostic is shown for code with inactive `#[cfg]` attributes.

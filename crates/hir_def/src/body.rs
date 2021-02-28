@@ -123,7 +123,7 @@ impl Expander {
             Some(it) => it,
             None => {
                 if err.is_none() {
-                    eprintln!("no error despite `as_call_id_with_errors` returning `None`");
+                    log::warn!("no error despite `as_call_id_with_errors` returning `None`");
                 }
                 return ExpandResult { value: None, err };
             }
