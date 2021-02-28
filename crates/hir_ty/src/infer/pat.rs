@@ -138,7 +138,7 @@ impl<'a> InferenceContext<'a> {
                 inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
                 inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
 
-                Ty::Tuple { cardinality: inner_tys.len() as u16, substs: Substs(inner_tys.into()) }
+                Ty::Tuple(inner_tys.len(), Substs(inner_tys.into()))
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {

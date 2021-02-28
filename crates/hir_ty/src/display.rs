@@ -330,7 +330,7 @@ impl HirDisplay for Ty {
                     write!(f, "{}", ty_display)?;
                 }
             }
-            Ty::Tuple { substs, .. } => {
+            Ty::Tuple(_, substs) => {
                 if substs.len() == 1 {
                     write!(f, "(")?;
                     substs[0].hir_fmt(f)?;

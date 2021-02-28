@@ -120,7 +120,7 @@ pub enum Ty {
     Scalar(Scalar),
 
     /// A tuple type.  For example, `(i32, bool)`.
-    Tuple { cardinality: u16, substs: Substs },
+    Tuple(usize, Substs),
 
     /// An array with the given length. Written as `[T; n]`.
     Array(Substs),
@@ -582,7 +582,7 @@ impl TypeWalk for FnSig {
 
 impl Ty {
     pub fn unit() -> Self {
-        Ty::Tuple { cardinality: 0, substs: Substs::empty() }
+        Ty::Tuple(0, Substs::empty())
     }
 
     pub fn fn_ptr(sig: FnSig) -> Self {
@@ -642,7 +642,7 @@ impl Ty {
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Tuple { substs: parameters, .. } => Some(parameters),
+            Ty::Tuple(_, substs) => Some(substs),
             _ => None,
         }
     }
@@ -684,9 +684,7 @@ impl Ty {
                 Ty::FnPtr { num_args, is_varargs, .. },
                 Ty::FnPtr { num_args: num_args2, is_varargs: is_varargs2, .. },
             ) => num_args == num_args2 && is_varargs == is_varargs2,
-            (Ty::Tuple { cardinality, .. }, Ty::Tuple { cardinality: cardinality2, .. }) => {
-                cardinality == cardinality2
-            }
+            (Ty::Tuple(cardinality, _), Ty::Tuple(cardinality2, _)) => cardinality == cardinality2,
             (Ty::Str, Ty::Str) | (Ty::Never, Ty::Never) => true,
             (Ty::Scalar(scalar), Ty::Scalar(scalar2)) => scalar == scalar2,
             _ => false,
@@ -754,7 +752,7 @@ impl Ty {
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::FnPtr { substs, .. }
-            | Ty::Tuple { substs, .. }
+            | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
             | Ty::ForeignType(_, substs)
@@ -778,7 +776,7 @@ impl Ty {
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::FnPtr { substs, .. }
-            | Ty::Tuple { substs, .. }
+            | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
             | Ty::ForeignType(_, substs)
@@ -796,7 +794,7 @@ impl Ty {
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::FnPtr { substs, .. }
-            | Ty::Tuple { substs, .. }
+            | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
             | Ty::ForeignType(_, substs)

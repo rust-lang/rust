@@ -63,7 +63,7 @@ impl ToChalk for Ty {
 
             Ty::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
-            Ty::Tuple { cardinality, substs } => {
+            Ty::Tuple(cardinality, substs) => {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
             }
@@ -199,7 +199,7 @@ impl ToChalk for Ty {
 
             chalk_ir::TyKind::Scalar(scalar) => Ty::Scalar(scalar),
             chalk_ir::TyKind::Tuple(cardinality, subst) => {
-                Ty::Tuple { cardinality: cardinality as u16, substs: from_chalk(db, subst) }
+                Ty::Tuple(cardinality, from_chalk(db, subst))
             }
             chalk_ir::TyKind::Raw(mutability, ty) => {
                 Ty::RawPtr(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))

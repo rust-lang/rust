@@ -82,7 +82,7 @@ impl<'a> InferenceContext<'a> {
             arg_tys.push(arg);
         }
         let parameters = param_builder.build();
-        let arg_ty = Ty::Tuple { cardinality: num_args as u16, substs: parameters };
+        let arg_ty = Ty::Tuple(num_args, parameters);
         let substs =
             Substs::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
@@ -424,7 +424,7 @@ impl<'a> InferenceContext<'a> {
                     },
                 )
                 .find_map(|derefed_ty| match canonicalized.decanonicalize_ty(derefed_ty.value) {
-                    Ty::Tuple { substs, .. } => {
+                    Ty::Tuple(_, substs) => {
                         name.as_tuple_index().and_then(|idx| substs.0.get(idx).cloned())
                     }
                     Ty::Adt(AdtId::StructId(s), parameters) => {
@@ -635,7 +635,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Tuple { exprs } => {
                 let mut tys = match &expected.ty {
-                    Ty::Tuple { substs, .. } => substs
+                    Ty::Tuple(_, substs) => substs
                         .iter()
                         .cloned()
                         .chain(repeat_with(|| self.table.new_type_var()))
@@ -648,7 +648,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
-                Ty::Tuple { cardinality: tys.len() as u16, substs: Substs(tys.into()) }
+                Ty::Tuple(tys.len(), Substs(tys.into()))
             }
             Expr::Array(array) => {
                 let elem_ty = match &expected.ty {

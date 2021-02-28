@@ -148,7 +148,7 @@ impl Ty {
             TypeRef::Never => Ty::Never,
             TypeRef::Tuple(inner) => {
                 let inner_tys: Arc<[Ty]> = inner.iter().map(|tr| Ty::from_hir(ctx, tr)).collect();
-                Ty::Tuple { cardinality: inner_tys.len() as u16, substs: Substs(inner_tys) }
+                Ty::Tuple(inner_tys.len(), Substs(inner_tys))
             }
             TypeRef::Path(path) => {
                 let (ty, res_) = Ty::from_hir_path(ctx, path);
