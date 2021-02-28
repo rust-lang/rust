@@ -48,12 +48,11 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::{AsAssocItem, ModPath, ScopeDef};
+use hir::{AsAssocItem, ItemInNs, ModPath, ScopeDef};
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
 };
-use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
@@ -92,19 +91,17 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
-    let scope_definitions = scope_definitions(ctx);
     let mut all_mod_paths = import_assets
         .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
         .into_iter()
         .map(|import| {
             let proposed_def = match import.item_to_display() {
-                hir::ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
-                hir::ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
-                hir::ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
+                ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
+                ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
+                ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
             };
             (import, proposed_def)
         })
-        .filter(|(_, proposed_def)| !scope_definitions.contains(proposed_def))
         .collect::<Vec<_>>();
     all_mod_paths.sort_by_cached_key(|(import, _)| {
         compute_fuzzy_completion_order_key(import.display_path(), &user_input_lowercased)
@@ -125,14 +122,6 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     Some(())
 }
 
-fn scope_definitions(ctx: &CompletionContext) -> FxHashSet<ScopeDef> {
-    let mut scope_definitions = FxHashSet::default();
-    ctx.scope.process_all_names(&mut |_, scope_def| {
-        scope_definitions.insert(scope_def);
-    });
-    scope_definitions
-}
-
 pub(crate) fn position_for_import<'a>(
     ctx: &'a CompletionContext,
     import_candidate: Option<&ImportCandidate>,
@@ -150,13 +139,14 @@ pub(crate) fn position_for_import<'a>(
     })
 }
 
-fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
+fn import_assets<'a>(ctx: &'a CompletionContext, fuzzy_name: String) -> Option<ImportAssets<'a>> {
     let current_module = ctx.scope.module()?;
     if let Some(dot_receiver) = &ctx.dot_receiver {
         ImportAssets::for_fuzzy_method_call(
             current_module,
             ctx.sema.type_of_expr(dot_receiver)?,
             fuzzy_name,
+            ctx.scope.clone(),
         )
     } else {
         let fuzzy_name_length = fuzzy_name.len();
@@ -165,6 +155,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
             ctx.path_qual.clone(),
             fuzzy_name,
             &ctx.sema,
+            ctx.scope.clone(),
         )?;
 
         if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))

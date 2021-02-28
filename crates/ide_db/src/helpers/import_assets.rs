@@ -2,7 +2,7 @@
 use either::Either;
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, PathResolution, PrefixKind, Semantics, Type,
+    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
@@ -62,33 +62,38 @@ impl NameToImport {
 }
 
 #[derive(Debug)]
-pub struct ImportAssets {
+pub struct ImportAssets<'a> {
     import_candidate: ImportCandidate,
     module_with_candidate: Module,
+    scope: SemanticsScope<'a>,
 }
 
-impl ImportAssets {
+impl<'a> ImportAssets<'a> {
     pub fn for_method_call(
         method_call: &ast::MethodCallExpr,
-        sema: &Semantics<RootDatabase>,
+        sema: &'a Semantics<RootDatabase>,
     ) -> Option<Self> {
+        let scope = sema.scope(method_call.syntax());
         Some(Self {
             import_candidate: ImportCandidate::for_method_call(sema, method_call)?,
-            module_with_candidate: sema.scope(method_call.syntax()).module()?,
+            module_with_candidate: scope.module()?,
+            scope,
         })
     }
 
     pub fn for_exact_path(
         fully_qualified_path: &ast::Path,
-        sema: &Semantics<RootDatabase>,
+        sema: &'a Semantics<RootDatabase>,
     ) -> Option<Self> {
         let syntax_under_caret = fully_qualified_path.syntax();
         if syntax_under_caret.ancestors().find_map(ast::Use::cast).is_some() {
             return None;
         }
+        let scope = sema.scope(syntax_under_caret);
         Some(Self {
             import_candidate: ImportCandidate::for_regular_path(sema, fully_qualified_path)?,
-            module_with_candidate: sema.scope(syntax_under_caret).module()?,
+            module_with_candidate: scope.module()?,
+            scope,
         })
     }
 
@@ -97,10 +102,12 @@ impl ImportAssets {
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
         sema: &Semantics<RootDatabase>,
+        scope: SemanticsScope<'a>,
     ) -> Option<Self> {
         Some(Self {
             import_candidate: ImportCandidate::for_fuzzy_path(qualifier, fuzzy_name, sema)?,
             module_with_candidate,
+            scope,
         })
     }
 
@@ -108,6 +115,7 @@ impl ImportAssets {
         module_with_method_call: Module,
         receiver_ty: Type,
         fuzzy_method_name: String,
+        scope: SemanticsScope<'a>,
     ) -> Option<Self> {
         Some(Self {
             import_candidate: ImportCandidate::TraitMethod(TraitImportCandidate {
@@ -115,6 +123,7 @@ impl ImportAssets {
                 name: NameToImport::Fuzzy(fuzzy_method_name),
             }),
             module_with_candidate: module_with_method_call,
+            scope,
         })
     }
 }
@@ -155,7 +164,7 @@ impl LocatedImport {
     }
 }
 
-impl ImportAssets {
+impl<'a> ImportAssets<'a> {
     pub fn import_candidate(&self) -> &ImportCandidate {
         &self.import_candidate
     }
@@ -189,6 +198,7 @@ impl ImportAssets {
         prefixed: Option<PrefixKind>,
     ) -> Vec<LocatedImport> {
         let current_crate = self.module_with_candidate.krate();
+        let scope_definitions = self.scope_definitions();
 
         let imports_for_candidate_name = match self.name_to_import() {
             NameToImport::Exact(exact_name) => {
@@ -219,7 +229,23 @@ impl ImportAssets {
         self.applicable_defs(sema.db, prefixed, imports_for_candidate_name)
             .into_iter()
             .filter(|import| import.import_path().len() > 1)
+            .filter(|import| {
+                let proposed_def = match import.item_to_import() {
+                    ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
+                    ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
+                    ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
+                };
+                !scope_definitions.contains(&proposed_def)
+            })
             .collect()
+    }
+
+    fn scope_definitions(&self) -> FxHashSet<ScopeDef> {
+        let mut scope_definitions = FxHashSet::default();
+        self.scope.process_all_names(&mut |_, scope_def| {
+            scope_definitions.insert(scope_def);
+        });
+        scope_definitions
     }
 
     fn applicable_defs(
@@ -297,7 +323,6 @@ fn path_applicable_imports(
         Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => (first_segment, qualifier),
     };
 
-    // TODO kb zz.syntax().ast_node() <- two options are now proposed despite the trait being imported
     let unresolved_qualifier_string = unresolved_qualifier.to_string();
     let unresolved_first_segment_string = unresolved_first_segment.to_string();
 
