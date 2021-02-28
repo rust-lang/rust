@@ -970,6 +970,29 @@ fn test_meta_doc_comments() {
 }
 
 #[test]
+fn test_meta_doc_comments_non_latin() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+            ($(#[$ i:meta])+) => (
+                $(#[$ i])+
+                fn bar() {}
+            )
+        }
+"#,
+    ).
+    assert_expand_items(
+        r#"foo! {
+            /// 錦瑟無端五十弦，一弦一柱思華年。
+            /**
+                莊生曉夢迷蝴蝶，望帝春心託杜鵑。
+            */
+        }"#,
+        "# [doc = \" 錦瑟無端五十弦，一弦一柱思華年。\"] # [doc = \"\\\\n                莊生曉夢迷蝴蝶，望帝春心託杜鵑。\\\\n            \"] fn bar () {}",
+    );
+}
+
+#[test]
 fn test_tt_block() {
     parse_macro(
         r#"
