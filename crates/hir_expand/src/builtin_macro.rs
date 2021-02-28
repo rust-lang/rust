@@ -6,7 +6,7 @@ use crate::{
 
 use base_db::{AnchoredPath, FileId};
 use either::Either;
-use mbe::{parse_to_token_tree, ExpandResult};
+use mbe::{parse_exprs_with_sep, parse_to_token_tree, ExpandResult};
 use parser::FragmentKind;
 use syntax::ast::{self, AstToken};
 
@@ -238,35 +238,21 @@ fn format_args_expand(
     // ])
     // ```,
     // which is still not really correct, but close enough for now
-    let mut args = Vec::new();
-    let mut current = Vec::new();
-    for tt in tt.token_trees.iter().cloned() {
-        match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
-                args.push(current);
-                current = Vec::new();
-            }
-            _ => {
-                current.push(tt);
-            }
-        }
-    }
-    if !current.is_empty() {
-        args.push(current);
-    }
+    let mut args = parse_exprs_with_sep(tt, ',');
+
     if args.is_empty() {
         return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule);
     }
     for arg in &mut args {
         // Remove `key =`.
-        if matches!(arg.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' && p.spacing != tt::Spacing::Joint)
+        if matches!(arg.token_trees.get(1), Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p))) if p.char == '=' && p.spacing != tt::Spacing::Joint)
         {
-            arg.drain(..2);
+            arg.token_trees.drain(..2);
         }
     }
     let _format_string = args.remove(0);
     let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { std::fmt::ArgumentV1::new(&(##arg), std::fmt::Display::fmt), }
+        quote! { std::fmt::ArgumentV1::new(&(#arg), std::fmt::Display::fmt), }
     }.token_trees).collect::<Vec<_>>();
     let expanded = quote! {
         std::fmt::Arguments::new_v1(&[], &[##arg_tts])
@@ -716,6 +702,25 @@ mod tests {
         assert_eq!(
             expanded,
             r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
+        );
+    }
+
+    #[test]
+    fn test_format_args_expand_with_comma_exprs() {
+        let expanded = expand_builtin_macro(
+            r#"
+            #[rustc_builtin_macro]
+            macro_rules! format_args {
+                ($fmt:expr) => ({ /* compiler built-in */ });
+                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+            }
+            format_args!("{} {:?}", a::<A,B>(), b);
+            "#,
+        );
+
+        assert_eq!(
+            expanded,
+            r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A,B>()),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(b),std::fmt::Display::fmt),])"#
         );
     }
 
