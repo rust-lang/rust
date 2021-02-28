@@ -313,7 +313,7 @@ mod tests {
             }
             ",
             r"
-            PubMod3::PubStruct
+            PubMod1::PubStruct
 
             pub mod PubMod1 {
                 pub struct PubStruct;

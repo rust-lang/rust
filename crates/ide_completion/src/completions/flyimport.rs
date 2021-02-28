@@ -669,8 +669,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
                 fn weird_function() (dep::test_mod::TestTrait) -> () DEPRECATED
+                ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
             "#]],
         );
     }

@@ -43,7 +43,7 @@ pub struct PathImportCandidate {
 #[derive(Debug)]
 pub enum Qualifier {
     Absent,
-    FirstSegmentUnresolved(ast::PathSegment, ast::Path),
+    FirstSegmentUnresolved(ast::NameRef, ModPath),
 }
 
 #[derive(Debug)]
@@ -297,8 +297,7 @@ fn path_applicable_imports(
         Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => (first_segment, qualifier),
     };
 
-    // TODO kb need to remove turbofish from the qualifier, maybe use the segments instead?
-    // TODO kb sorting is changed now, return back?
+    // TODO kb zz.syntax().ast_node() <- two options are now proposed despite the trait being imported
     let unresolved_qualifier_string = unresolved_qualifier.to_string();
     let unresolved_first_segment_string = unresolved_first_segment.to_string();
 
@@ -525,12 +524,15 @@ fn path_import_candidate(
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             None => {
                 let qualifier_start =
-                    qualifier.syntax().descendants().find_map(ast::PathSegment::cast)?;
+                    qualifier.syntax().descendants().find_map(ast::NameRef::cast)?;
                 let qualifier_start_path =
                     qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
                 if sema.resolve_path(&qualifier_start_path).is_none() {
                     ImportCandidate::Path(PathImportCandidate {
-                        qualifier: Qualifier::FirstSegmentUnresolved(qualifier_start, qualifier),
+                        qualifier: Qualifier::FirstSegmentUnresolved(
+                            qualifier_start,
+                            ModPath::from_src_unhygienic(qualifier)?,
+                        ),
                         name,
                     })
                 } else {
