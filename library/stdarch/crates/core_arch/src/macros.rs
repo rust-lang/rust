@@ -1,46 +1,60 @@
 //! Utility macros.
 
-// Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
-// out of `bits`-bit range.
-pub(crate) struct ValidateConstImm<const IMM: i32, const BITS: i32>;
-impl<const IMM: i32, const BITS: i32> ValidateConstImm<IMM, BITS> {
+// Helper struct used to trigger const eval errors when the const generic immediate value `IMM` is
+// out of `[MIN-MAX]` range.
+pub(crate) struct ValidateConstImm<const IMM: i32, const MIN: i32, const MAX: i32>;
+impl<const IMM: i32, const MIN: i32, const MAX: i32> ValidateConstImm<IMM, MIN, MAX> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM >= 0 && IMM < (1 << BITS)) as usize);
+        let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
     };
 }
 
-#[allow(unused)]
+#[allow(unused_macros)]
 macro_rules! static_assert_imm1 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 1>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 1) - 1 }>::VALID;
     };
 }
 
-#[allow(unused)]
+#[allow(unused_macros)]
 macro_rules! static_assert_imm2 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 2>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 2) - 1 }>::VALID;
     };
 }
 
-#[allow(unused)]
+#[allow(unused_macros)]
 macro_rules! static_assert_imm3 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 3>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 3) - 1 }>::VALID;
     };
 }
 
-#[allow(unused)]
+#[allow(unused_macros)]
 macro_rules! static_assert_imm4 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 4>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 4) - 1 }>::VALID;
     };
 }
 
-#[allow(unused)]
+#[allow(unused_macros)]
+macro_rules! static_assert_imm5 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 5) - 1 }>::VALID;
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! static_assert_imm6 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 6) - 1 }>::VALID;
+    };
+}
+
+#[allow(unused_macros)]
 macro_rules! static_assert_imm8 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 8>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 8) - 1 }>::VALID;
     };
 }
 
