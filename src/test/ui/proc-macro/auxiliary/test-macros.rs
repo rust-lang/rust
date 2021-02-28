@@ -128,6 +128,20 @@ pub fn print_attr_args(args: TokenStream, input: TokenStream) -> TokenStream {
     input
 }
 
+#[proc_macro_attribute]
+pub fn print_target_and_args(args: TokenStream, input: TokenStream) -> TokenStream {
+    print_helper(args, "ATTR_ARGS");
+    print_helper(input.clone(), "ATTR");
+    input
+}
+
+#[proc_macro_attribute]
+pub fn print_target_and_args_consume(args: TokenStream, input: TokenStream) -> TokenStream {
+    print_helper(args, "ATTR_ARGS");
+    print_helper(input.clone(), "ATTR");
+    TokenStream::new()
+}
+
 #[proc_macro_derive(Print, attributes(print_helper))]
 pub fn print_derive(input: TokenStream) -> TokenStream {
     print_helper(input, "DERIVE");
