@@ -1,5 +1,11 @@
 //! Utility macros.
 
+macro_rules! static_assert_imm_s10 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -512, 511>::VALID;
+    };
+}
+
 //immediate value: -4096:4088
 macro_rules! constify_imm_s13 {
     ($imm_s13:expr, $expand:ident) => {
