@@ -565,7 +565,7 @@ are:
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
 [rustforge]: https://forge.rust-lang.org/
-[tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
+[tlgba]: https://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
 [rctd]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 [cheatsheet]: https://bors.rust-lang.org/

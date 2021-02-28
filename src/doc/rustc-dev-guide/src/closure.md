@@ -118,7 +118,7 @@ the *free variables* meaning they are not bound to the context of the closure.
 [`compiler/rustc_middle/src/ty/query/mod.rs`][upvars] defines a query called *upv.rs_mentioned*
 for this purpose.
 
-[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/query/queries/struct.upvars_mentioned.html
+[upvars]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_query_impl/queries/struct.upvars_mentioned.html
 
 Other than lazy invocation, one other thing that distinguishes a closure from a
 normal function is that it can use the upvars. It borrows these upvars from its surrounding
