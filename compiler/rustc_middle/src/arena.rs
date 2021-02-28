@@ -91,7 +91,7 @@ macro_rules! arena_types {
             [] predicates: rustc_middle::ty::PredicateInner<$tcx>,
 
             // HIR query types
-            [few] indexed_hir: rustc_middle::hir::map::IndexedHir<$tcx>,
+            [few] indexed_hir: rustc_middle::hir::IndexedHir<$tcx>,
             [few] hir_definitions: rustc_hir::definitions::Definitions,
             [] hir_owner: rustc_middle::hir::Owner<$tcx>,
             [] hir_owner_nodes: rustc_middle::hir::OwnerNodes<$tcx>,

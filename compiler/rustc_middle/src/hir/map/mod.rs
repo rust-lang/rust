@@ -1,8 +1,11 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{Owner, OwnerNodes};
+use crate::hir::{HirOwnerData, IndexedHir};
+use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -11,7 +14,6 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
-use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -84,20 +86,6 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
         Some(b) => b.hir_id == hir_id,
         None => false,
     }
-}
-
-#[derive(Debug)]
-pub(super) struct HirOwnerData<'hir> {
-    pub(super) signature: Option<&'hir Owner<'hir>>,
-    pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
-}
-
-#[derive(Debug)]
-pub struct IndexedHir<'hir> {
-    /// The SVH of the local crate.
-    pub crate_hash: Svh,
-
-    pub(super) map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
 }
 
 #[derive(Copy, Clone)]
@@ -935,19 +923,82 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
-    let (map, crate_hash) = {
+    let map = {
         let hcx = tcx.create_stable_hashing_context();
 
         let mut collector =
             NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
         intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
-        let crate_disambiguator = tcx.sess.local_crate_disambiguator();
-        let cmdline_args = tcx.sess.opts.dep_tracking_hash(true);
-        collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
+        collector.finalize_and_compute_crate_hash()
     };
 
-    tcx.arena.alloc(IndexedHir { crate_hash, map })
+    tcx.arena.alloc(IndexedHir { map })
+}
+
+pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
+    let mut hir_body_nodes: Vec<_> = tcx
+        .index_hir(crate_num)
+        .map
+        .iter_enumerated()
+        .filter_map(|(def_id, hod)| {
+            let def_path_hash = tcx.definitions.def_path_hash(def_id);
+            let hash = hod.with_bodies.as_ref()?.hash;
+            Some((def_path_hash, hash))
+        })
+        .collect();
+    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
+
+    let node_hashes = hir_body_nodes.iter().fold(
+        Fingerprint::ZERO,
+        |combined_fingerprint, &(def_path_hash, fingerprint)| {
+            combined_fingerprint.combine(def_path_hash.0.combine(fingerprint))
+        },
+    );
+
+    let upstream_crates = upstream_crates(&*tcx.cstore);
+
+    // We hash the final, remapped names of all local source files so we
+    // don't have to include the path prefix remapping commandline args.
+    // If we included the full mapping in the SVH, we could only have
+    // reproducible builds by compiling from the same directory. So we just
+    // hash the result of the mapping instead of the mapping itself.
+    let mut source_file_names: Vec<_> = tcx
+        .sess
+        .source_map()
+        .files()
+        .iter()
+        .filter(|source_file| source_file.cnum == LOCAL_CRATE)
+        .map(|source_file| source_file.name_hash)
+        .collect();
+
+    source_file_names.sort_unstable();
+
+    let mut hcx = tcx.create_stable_hashing_context();
+    let mut stable_hasher = StableHasher::new();
+    node_hashes.hash_stable(&mut hcx, &mut stable_hasher);
+    upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+    source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.sess.local_crate_disambiguator().to_fingerprint().hash_stable(&mut hcx, &mut stable_hasher);
+
+    let crate_hash: Fingerprint = stable_hasher.finish();
+    Svh::new(crate_hash.to_smaller_hash())
+}
+
+fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
+    let mut upstream_crates: Vec<_> = cstore
+        .crates_untracked()
+        .iter()
+        .map(|&cnum| {
+            let name = cstore.crate_name_untracked(cnum);
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
+            let hash = cstore.crate_hash_untracked(cnum);
+            (name, disambiguator, hash)
+        })
+        .collect();
+    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+    upstream_crates
 }
 
 fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {

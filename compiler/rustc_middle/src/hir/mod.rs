@@ -20,6 +20,17 @@ use rustc_span::DUMMY_SP;
 use std::collections::BTreeMap;
 
 #[derive(Debug)]
+struct HirOwnerData<'hir> {
+    signature: Option<&'hir Owner<'hir>>,
+    with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
+}
+
+#[derive(Debug)]
+pub struct IndexedHir<'hir> {
+    map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
+}
+
+#[derive(Debug)]
 pub struct Owner<'tcx> {
     parent: HirId,
     node: Node<'tcx>,
@@ -117,6 +128,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_crate = |tcx, _| tcx.untracked_crate;
     providers.index_hir = map::index_hir;
+    providers.crate_hash = map::crate_hash;
     providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();

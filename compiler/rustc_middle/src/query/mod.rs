@@ -28,7 +28,7 @@ rustc_queries! {
 
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
-    query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
+    query index_hir(_: CrateNum) -> &'tcx crate::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
         desc { "index HIR" }
