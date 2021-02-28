@@ -1199,7 +1199,7 @@ impl<'a> Parser<'a> {
                 self.maybe_recover_from_bad_qpath(expr, true)
             }
             None => {
-                if let Some(expr) = self.parse_opt_f_str_expr(attrs) {
+                if let Some(expr) = self.parse_opt_f_str_expr(attrs)? {
                     Ok(expr)
                 } else {
                     self.try_macro_suggestion()
@@ -1228,28 +1228,67 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_opt_f_str_expr(&mut self, attrs: AttrVec) -> Option<P<Expr>> {
-        let lo = self.token.span;
-        if let TokenKind::Literal(literal) = self.token.kind {
-            if let token::FStr(start, end) = literal.kind {
-                let symbol = self.unescape_f_str(literal, self.token.span);
-                let segments = match (start, end) {
-                    (token::FStrDelimiter::Quote, token::FStrDelimiter::Quote) => {
-                        vec![FStrSegment::Str(symbol)]
-                    },
-                    _ => rustc_errors::FatalError.raise()
-                };
+    pub fn error_expected_f_string_start_delimiter(&self, expected: token::FStrDelimiter, found: token::FStrDelimiter) {
+        let span_data = self.token.span.data();
+        let span = span_data.with_hi(span_data.lo + BytePos(found.display(true).len() as u32));
+        let msg = format!("expected f-string to start with `{}`, found `{}`", expected.display(true), found.display(true));
+        self.struct_span_err(span, &msg)
+            .span_suggestion(
+                span,
+                "replace the delimiter with the expected one",
+                expected.display(true).to_string(),
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
+    }
 
+    pub fn error_expected_f_string(&self) -> DiagnosticBuilder<'a> {
+        // TODO: f-string name
+        // TODO: Also, side-note - should f-string be capitalised when at the beginning of a sentence?
+        //       (Not in error messages, but in comments) Like this: "F-strings are..."
+        let msg = format!("expected f-string expression, found {}", super::token_descr(&self.token));
+        self.struct_span_err(self.token.span, &msg)
+    }
+
+    fn parse_f_str_segment(&mut self, expected_start_delimiter: token::FStrDelimiter) -> Option<(Symbol, token::FStrDelimiter)> {
+        // TODO: Change span to be whole literal?
+        if let TokenKind::Literal(lit) = self.token.kind {
+            if let token::FStr(start_delimiter, end_delimiter) = lit.kind {
+                if start_delimiter != expected_start_delimiter {
+                    self.error_expected_f_string_start_delimiter(expected_start_delimiter, start_delimiter);
+                }
+                let symbol = self.unescape_f_str(lit, self.token.span);
                 self.bump();
-
-                // TODO: Check if attrs are passed through
-                let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::FStr(FStr { segments }), attrs);
-                // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
-
-                return Some(expr);
+                return Some((symbol, end_delimiter));
             }
         }
         None
+    }
+
+    fn parse_opt_f_str_expr(&mut self, attrs: AttrVec) -> PResult<'a, Option<P<Expr>>> {
+        let lo = self.token.span;
+        if let TokenKind::Literal(lit) = self.token.kind {
+            if let token::FStr(..) = lit.kind {
+                let mut segments = vec![];
+
+                let (symbol, mut end_delimiter) = self.parse_f_str_segment(token::FStrDelimiter::Quote).ok_or_else(|| self.error_expected_f_string())?;
+                segments.push(FStrSegment::Str(symbol));
+                while end_delimiter == token::FStrDelimiter::Brace {
+                    let expr = self.parse_expr()?;
+                    segments.push(FStrSegment::Expr(expr));
+
+                    let segment = self.parse_f_str_segment(token::FStrDelimiter::Brace).ok_or_else(|| self.error_expected_f_string())?;
+                    end_delimiter = segment.1;
+                    segments.push(FStrSegment::Str(segment.0));
+                }
+
+                // TODO: Check if attrs should be passed through
+                let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::FStr(FStr { segments }), attrs);
+                // TODO: Need this?: self.maybe_recover_from_bad_qpath(expr, true)
+                return Ok(Some(expr));
+            }
+        }
+        Ok(None)
     }
 
     fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
