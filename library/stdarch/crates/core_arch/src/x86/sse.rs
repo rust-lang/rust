@@ -1010,7 +1010,7 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_ps<const mask: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert!(mask: i32 where mask >= 0 && mask <= 255);
+    static_assert_imm8!(mask);
     simd_shuffle4(
         a,
         b,

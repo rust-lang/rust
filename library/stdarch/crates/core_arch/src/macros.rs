@@ -1,5 +1,21 @@
 //! Utility macros.
 
+// Helper struct used to trigger const eval errors when a const generic immediate value is
+// out of range.
+pub(crate) struct ValidateConstImm8<const imm8: i32>();
+impl<const imm8: i32> ValidateConstImm8<imm8> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((imm8 >= 0 && imm8 <= 255) as usize);
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_imm8 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm8::<$imm>::VALID;
+    };
+}
+
 #[allow(unused)]
 macro_rules! static_assert {
     ($imm:ident : $ty:ty where $e:expr) => {
@@ -279,48 +295,6 @@ macro_rules! constify_imm8 {
 }
 
 //immediate value: 0:31
-#[allow(unused)]
-macro_rules! constify_imm5 {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b1_1111 {
-            0 => $expand!(0),
-            1 => $expand!(1),
-            2 => $expand!(2),
-            3 => $expand!(3),
-            4 => $expand!(4),
-            5 => $expand!(5),
-            6 => $expand!(6),
-            7 => $expand!(7),
-            8 => $expand!(8),
-            9 => $expand!(9),
-            10 => $expand!(10),
-            11 => $expand!(11),
-            12 => $expand!(12),
-            13 => $expand!(13),
-            14 => $expand!(14),
-            15 => $expand!(15),
-            16 => $expand!(16),
-            17 => $expand!(17),
-            18 => $expand!(18),
-            19 => $expand!(19),
-            20 => $expand!(20),
-            21 => $expand!(21),
-            22 => $expand!(22),
-            23 => $expand!(23),
-            24 => $expand!(24),
-            25 => $expand!(25),
-            26 => $expand!(26),
-            27 => $expand!(27),
-            28 => $expand!(28),
-            29 => $expand!(29),
-            30 => $expand!(30),
-            _ => $expand!(31),
-        }
-    };
-}
-
-//immediate value: -16:15
 #[allow(unused)]
 macro_rules! constify_imm5 {
     ($imm8:expr, $expand:ident) => {
