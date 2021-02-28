@@ -1,17 +1,20 @@
-# The walking tour of rustdoc
+# Rustdoc overview
 
 Rustdoc actually uses the rustc internals directly. It lives in-tree with the
 compiler and standard library. This chapter is about how it works.
 For information about Rustdoc's features and how to use them, see
 the [Rustdoc book](https://doc.rust-lang.org/nightly/rustdoc/).
+For more details about how rustdoc works, see the ["Rustdoc internals" chapter].
+
+["Rustdoc internals" chapter]: ./rustdoc-internals.md
 
 Rustdoc is implemented entirely within the crate [`librustdoc`][rd]. It runs
 the compiler up to the point where we have an internal representation of a
 crate (HIR) and the ability to run some queries about the types of items. [HIR]
 and [queries] are discussed in the linked chapters.
 
-[HIR]: ./hir.html
-[queries]: ./query.html
+[HIR]: ./hir.md
+[queries]: ./query.md
 [rd]: https://github.com/rust-lang/rust/tree/master/src/librustdoc
 
 `librustdoc` performs two major steps after that to render a set of
@@ -59,9 +62,3 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Tests on search index generation are located in `src/test/rustdoc-js`, as a
   series of JavaScript files that encode queries on the standard library search
   index and expected results.
-
-## See also
-
-For more details about how rustdoc works, see the page on [rustdoc internals].
-
-[rustdoc internals]: ./rustdoc-internals.md

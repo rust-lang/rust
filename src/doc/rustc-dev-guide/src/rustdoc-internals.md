@@ -3,7 +3,7 @@
 <!-- toc -->
 
 This page describes rustdoc's passes and modes. For an overview of rustdoc,
-see [`rustdoc`](./rustdoc.md).
+see the ["Rustdoc overview" chapter](./rustdoc.md).
 
 ## From crate to clean
 
