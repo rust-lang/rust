@@ -83,9 +83,10 @@ def test_cargo_miri_run():
         },
     )
     # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
-    test_no_rebuild("`cargo miri run` (no rebuild, no isolation)",
+    test_no_rebuild("`cargo miri run` (no rebuild)",
         cargo_miri("run", quiet=False) + ["--", ""],
-        env={'MIRITESTVAR': "wrongval"},
+        env={'MIRITESTVAR': "wrongval"}, # changing the env var causes a rebuild (re-runs build.rs),
+                                         # so keep it set
     )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
