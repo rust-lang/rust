@@ -75,13 +75,15 @@ where
             // The Chars iterator moved forward.
             callback(0..(literal_text.len() - chars.as_str().len()), result);
         }
-        Mode::Str | Mode::ByteStr => unescape_str_or_byte_str_or_f_str(literal_text, mode, callback),
+        Mode::Str | Mode::ByteStr => {
+            unescape_str_or_byte_str_or_f_str(literal_text, mode, callback)
+        }
         // NOTE: Raw strings do not perform any explicit character escaping, here we
         // only translate CRLF to LF and produce errors on bare CR.
         Mode::RawStr | Mode::RawByteStr => {
             unescape_raw_str_or_byte_str(literal_text, mode, callback)
         }
-        Mode::FStr => unescape_str_or_byte_str_or_f_str(literal_text, mode, callback)
+        Mode::FStr => unescape_str_or_byte_str_or_f_str(literal_text, mode, callback),
     }
 }
 
@@ -153,8 +155,8 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
         return match chars.next() {
             None => Err(EscapeError::LoneBrace),
             Some(second_char) if second_char != first_char => Err(EscapeError::LoneBrace), // TODO: Improve error?
-            Some(_) => Ok(first_char)
-        }
+            Some(_) => Ok(first_char),
+        };
     } else if first_char != '\\' {
         // Previous character was not a slash, and we don't expect it to be
         // an escape-only character.

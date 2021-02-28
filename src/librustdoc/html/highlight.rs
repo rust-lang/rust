@@ -125,10 +125,7 @@ struct TokenIter<'a> {
 }
 impl<'a> TokenIter<'a> {
     pub fn new(src: &'a str) -> TokenIter<'a> {
-        TokenIter {
-            src,
-            lexer: Lexer::new(src)
-        }
+        TokenIter { src, lexer: Lexer::new(src) }
     }
 }
 

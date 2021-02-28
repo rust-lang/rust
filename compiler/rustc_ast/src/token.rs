@@ -116,7 +116,9 @@ impl fmt::Display for Lit {
                 delim = "#".repeat(n as usize),
                 string = symbol
             )?,
-            FStr(start, end) => write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?,
+            FStr(start, end) => {
+                write!(f, "{}{}{}", start.display(true), symbol, end.display(false))?
+            }
             Integer | Float | Bool | Err => write!(f, "{}", symbol)?,
         }
 

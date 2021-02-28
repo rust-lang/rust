@@ -258,7 +258,11 @@ pub(crate) fn emit_unescape_error(
             // TODO: Bubble brace up, output here, to improve help message?
             // TODO: "invalid trailing brace in literal" instead?
             let msg = "invalid brace in format string literal";
-            handler.struct_span_err(span, msg).span_label(span, msg).help("curly braces in f-strings are escaped with `{{` and `}}`").emit();
+            handler
+                .struct_span_err(span, msg)
+                .span_label(span, msg)
+                .help("curly braces in f-strings are escaped with `{{` and `}}`")
+                .emit();
         }
     }
 }

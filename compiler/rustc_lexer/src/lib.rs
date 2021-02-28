@@ -223,7 +223,9 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ { Lexer::new(input) }
+pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+    Lexer::new(input)
+}
 
 /// True if `c` is considered a whitespace according to Rust language definition.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/whitespace.html)
@@ -300,7 +302,12 @@ pub struct Lexer<'a> {
 }
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Lexer<'a> {
-        Lexer { cursor: Cursor::new(input), last_token_cursor_index: 0, brace_count: 0, brace_f_string_triggers: vec![] }
+        Lexer {
+            cursor: Cursor::new(input),
+            last_token_cursor_index: 0,
+            brace_count: 0,
+            brace_f_string_triggers: vec![],
+        }
     }
 
     /// Parses a token from the input string.
@@ -368,15 +375,13 @@ impl<'a> Lexer<'a> {
             },
 
             // f-string or identifier.
-            'f' => {
-                match self.cursor.first() {
-                    '\"' => {
-                        self.cursor.bump();
-                        self.f_string(FStrDelimiter::Quote)
-                    }
-                    _ => self.ident(),
+            'f' => match self.cursor.first() {
+                '\"' => {
+                    self.cursor.bump();
+                    self.f_string(FStrDelimiter::Quote)
                 }
-            }
+                _ => self.ident(),
+            },
 
             // Identifier (this should be checked after other variant that can
             // start as identifier).
@@ -399,11 +404,12 @@ impl<'a> Lexer<'a> {
             '{' => {
                 self.brace_count += 1;
                 OpenBrace
-            },
+            }
             '}' => {
                 self.brace_count -= 1;
                 if self.brace_f_string_triggers.len() > 0 {
-                    let brace_trigger = self.brace_f_string_triggers[self.brace_f_string_triggers.len() - 1];
+                    let brace_trigger =
+                        self.brace_f_string_triggers[self.brace_f_string_triggers.len() - 1];
                     if brace_trigger == self.brace_count {
                         self.brace_f_string_triggers.pop();
                         self.f_string(FStrDelimiter::Brace)
@@ -413,7 +419,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     CloseBrace
                 }
-            },
+            }
             '[' => OpenBracket,
             ']' => CloseBracket,
             '@' => At,
@@ -801,7 +807,7 @@ impl<'a> Lexer<'a> {
                     let suffix_start = self.current_token_len_consumed();
                     self.eat_literal_suffix();
                     return Literal { kind, suffix_start };
-                },
+                }
                 '{' if self.cursor.first() == '{' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
@@ -811,7 +817,7 @@ impl<'a> Lexer<'a> {
                     self.brace_f_string_triggers.push(self.brace_count);
                     self.brace_count += 1;
                     return Literal { kind, suffix_start: self.current_token_len_consumed() };
-                },
+                }
                 '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
