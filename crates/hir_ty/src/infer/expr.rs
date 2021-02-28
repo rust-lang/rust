@@ -18,8 +18,8 @@ use crate::{
     primitive::{self, UintTy},
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    Binders, CallableDefId, InferTy, Mutability, Obligation, OpaqueTyId, Rawness, Scalar, Substs,
-    TraitRef, Ty,
+    Binders, CallableDefId, FnPointer, FnSig, InferTy, Mutability, Obligation, OpaqueTyId, Rawness,
+    Scalar, Substs, TraitRef, Ty,
 };
 
 use super::{
@@ -247,13 +247,12 @@ impl<'a> InferenceContext<'a> {
                     None => self.table.new_type_var(),
                 };
                 sig_tys.push(ret_ty.clone());
-                let sig_ty = Ty::FnPtr {
-                    num_args: sig_tys.len() as u16 - 1,
-                    is_varargs: false,
+                let sig_ty = Ty::Function(FnPointer {
+                    num_args: sig_tys.len() - 1,
+                    sig: FnSig { variadic: false },
                     substs: Substs(sig_tys.clone().into()),
-                };
-                let closure_ty =
-                    Ty::Closure { def: self.owner, expr: tgt_expr, substs: Substs::single(sig_ty) };
+                });
+                let closure_ty = Ty::Closure(self.owner, tgt_expr, Substs::single(sig_ty));
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to

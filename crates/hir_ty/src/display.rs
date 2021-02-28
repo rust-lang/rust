@@ -3,8 +3,8 @@
 use std::{borrow::Cow, fmt};
 
 use crate::{
-    db::HirDatabase, primitive, utils::generics, CallableDefId, FnSig, GenericPredicate, Lifetime,
-    Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty,
+    db::HirDatabase, primitive, utils::generics, CallableDefId, CallableSig, GenericPredicate,
+    Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty,
 };
 use arrayvec::ArrayVec;
 use hir_def::{
@@ -341,8 +341,8 @@ impl HirDisplay for Ty {
                     write!(f, ")")?;
                 }
             }
-            Ty::FnPtr { is_varargs, substs, .. } => {
-                let sig = FnSig::from_fn_ptr_substs(&substs, *is_varargs);
+            Ty::Function(fn_ptr) => {
+                let sig = CallableSig::from_fn_ptr(fn_ptr);
                 sig.hir_fmt(f)?;
             }
             Ty::FnDef(def, parameters) => {
@@ -494,7 +494,7 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            Ty::Closure { substs, .. } => {
+            Ty::Closure(.., substs) => {
                 let sig = substs[0].callable_sig(f.db);
                 if let Some(sig) = sig {
                     if sig.params().is_empty() {
@@ -571,7 +571,7 @@ impl HirDisplay for Ty {
     }
 }
 
-impl HirDisplay for FnSig {
+impl HirDisplay for CallableSig {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write!(f, "fn(")?;
         f.write_joined(self.params(), ", ")?;

@@ -19,7 +19,7 @@ use crate::{
     display::HirDisplay,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
-    BoundVar, CallableDefId, DebruijnIndex, FnSig, GenericPredicate, ProjectionPredicate,
+    BoundVar, CallableDefId, CallableSig, DebruijnIndex, GenericPredicate, ProjectionPredicate,
     ProjectionTy, Substs, TraitRef, Ty,
 };
 use mapping::{
@@ -286,9 +286,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     ) -> chalk_ir::Binders<rust_ir::FnDefInputsAndOutputDatum<Interner>> {
         let sig_ty: Ty =
             from_chalk(self.db, substs.at(&Interner, 0).assert_ty_ref(&Interner).clone());
-        let sig = FnSig::from_fn_ptr_substs(
+        let sig = CallableSig::from_substs(
             &sig_ty.substs().expect("first closure param should be fn ptr"),
-            false,
         );
         let io = rust_ir::FnDefInputsAndOutputDatum {
             argument_types: sig.params().iter().map(|ty| ty.clone().to_chalk(self.db)).collect(),

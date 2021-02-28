@@ -89,14 +89,14 @@ impl<'a> InferenceContext<'a> {
             | (Ty::Ref(Mutability::Shared, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
 
             // `{function_type}` -> `fn()`
-            (Ty::FnDef(..), Ty::FnPtr { .. }) => match from_ty.callable_sig(self.db) {
+            (Ty::FnDef(..), Ty::Function { .. }) => match from_ty.callable_sig(self.db) {
                 None => return false,
                 Some(sig) => {
                     from_ty = Ty::fn_ptr(sig);
                 }
             },
 
-            (Ty::Closure { substs, .. }, Ty::FnPtr { .. }) => {
+            (Ty::Closure(.., substs), Ty::Function { .. }) => {
                 from_ty = substs[0].clone();
             }
 

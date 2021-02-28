@@ -16,8 +16,8 @@ use crate::{
     db::HirDatabase,
     primitive::UintTy,
     traits::{Canonical, Obligation},
-    CallableDefId, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId, ProjectionPredicate,
-    ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind,
+    CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
+    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind,
 };
 
 use super::interner::*;
@@ -29,15 +29,11 @@ impl ToChalk for Ty {
         match self {
             Ty::Ref(m, parameters) => ref_to_chalk(db, m, parameters),
             Ty::Array(parameters) => array_to_chalk(db, parameters),
-            Ty::FnPtr { num_args: _, is_varargs, substs } => {
+            Ty::Function(FnPointer { sig: FnSig { variadic }, substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.to_chalk(db).shifted_in(&Interner));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: 0,
-                    sig: chalk_ir::FnSig {
-                        abi: (),
-                        safety: chalk_ir::Safety::Safe,
-                        variadic: is_varargs,
-                    },
+                    sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic },
                     substitution,
                 })
                 .intern(&Interner)
@@ -82,7 +78,7 @@ impl ToChalk for Ty {
             }
             Ty::Never => chalk_ir::TyKind::Never.intern(&Interner),
 
-            Ty::Closure { def, expr, substs } => {
+            Ty::Closure(def, expr, substs) => {
                 let closure_id = db.intern_closure((def, expr));
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Closure(closure_id.into(), substitution).intern(&Interner)
@@ -164,15 +160,15 @@ impl ToChalk for Ty {
                 ..
             }) => {
                 assert_eq!(num_binders, 0);
-                let parameters: Substs = from_chalk(
+                let substs: Substs = from_chalk(
                     db,
                     substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
                 );
-                Ty::FnPtr {
-                    num_args: (parameters.len() - 1) as u16,
-                    is_varargs: variadic,
-                    substs: parameters,
-                }
+                Ty::Function(FnPointer {
+                    num_args: (substs.len() - 1),
+                    sig: FnSig { variadic },
+                    substs,
+                })
             }
             chalk_ir::TyKind::BoundVar(idx) => Ty::Bound(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => Ty::Unknown,
@@ -218,7 +214,7 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Closure(id, subst) => {
                 let id: crate::db::ClosureId = id.into();
                 let (def, expr) = db.lookup_intern_closure(id);
-                Ty::Closure { def, expr, substs: from_chalk(db, subst) }
+                Ty::Closure(def, expr, from_chalk(db, subst))
             }
 
             chalk_ir::TyKind::Foreign(foreign_def_id) => {

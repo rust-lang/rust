@@ -31,9 +31,9 @@ use hir_ty::{
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
-    BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate, InEnvironment,
-    Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, Ty, TyDefId,
-    TyKind,
+    BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
+    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
+    Ty, TyDefId, TyKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -1692,7 +1692,7 @@ impl Type {
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.value, Ty::FnDef(..) | Ty::FnPtr { .. })
+        matches!(&self.ty.value, Ty::FnDef(..) | Ty::Function { .. })
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
@@ -1974,7 +1974,7 @@ impl HirDisplay for Type {
 #[derive(Debug)]
 pub struct Callable {
     ty: Type,
-    sig: FnSig,
+    sig: CallableSig,
     def: Option<CallableDefId>,
     pub(crate) is_bound_method: bool,
 }
