@@ -41,7 +41,7 @@ crate fn parse_token_trees<'a>(
         end_src_index: src.len(),
         src,
         override_span,
-        lexer: Lexer::new(&src[start_pos.to_usize()..]),
+        lexer: Lexer::new(src),
     }
     .into_token_trees()
 }
@@ -70,11 +70,11 @@ impl<'a> StringReader<'a> {
         let mut spacing = Spacing::Joint;
 
         // Skip `#!` at the start of the file
-        let start_src_index = self.src_index(self.pos);
-        let text: &str = &self.src[start_src_index..self.end_src_index];
         let is_beginning_of_file = self.pos == self.start_pos;
         if is_beginning_of_file {
-            if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
+            if let Some(shebang_len) =
+                rustc_lexer::strip_shebang(&self.src[self.src_index(self.pos)..self.end_src_index])
+            {
                 self.pos = self.pos + BytePos::from_usize(shebang_len);
                 spacing = Spacing::Alone;
                 self.lexer = Lexer::new(&self.src[self.src_index(self.pos)..self.end_src_index]);
@@ -387,12 +387,14 @@ impl<'a> StringReader<'a> {
                 (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
             }
             rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter } => {
-                if end_delimiter.is_none() {
-                    let lo = if start_delimiter == rustc_lexer::FStrDelimiter::Quote {
-                        start + BytePos(1)
-                    } else {
-                        start
-                    };
+                let start_delimiter = translate_f_str_delimiter(start_delimiter);
+                let end_delimiter = end_delimiter.map(translate_f_str_delimiter);
+
+                let prefix_len = start_delimiter.display(true).len();
+                let end_delimiter = if let Some(end_delimiter) = end_delimiter {
+                    end_delimiter
+                } else {
+                    let lo = start + BytePos::from_usize(prefix_len - 1);
                     self.sess
                         .span_diagnostic
                         .struct_span_fatal_with_code(
@@ -402,19 +404,12 @@ impl<'a> StringReader<'a> {
                         )
                         .emit();
                     FatalError.raise();
-                }
-                let prefix_len = match start_delimiter {
-                    rustc_lexer::FStrDelimiter::Quote => 2,
-                    rustc_lexer::FStrDelimiter::Brace => 1,
                 };
                 (
-                    token::FStr(
-                        translate_f_str_delimiter(start_delimiter),
-                        translate_f_str_delimiter(end_delimiter.unwrap()),
-                    ),
+                    token::FStr(start_delimiter, end_delimiter),
                     Mode::FStr,
-                    prefix_len,
-                    1,
+                    prefix_len as u32,
+                    end_delimiter.display(false).len() as u32,
                 )
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
