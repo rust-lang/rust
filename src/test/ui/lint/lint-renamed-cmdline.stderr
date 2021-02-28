@@ -10,10 +10,6 @@ warning: lint `bare_trait_object` has been renamed to `bare_trait_objects`
    |
    = note: requested on the command line with `-D bare_trait_object`
 
-warning: lint `bare_trait_object` has been renamed to `bare_trait_objects`
-   |
-   = note: requested on the command line with `-D bare_trait_object`
-
 error: unused variable: `unused`
   --> $DIR/lint-renamed-cmdline.rs:8:17
    |
@@ -27,5 +23,5 @@ LL | #[deny(unused)]
    |        ^^^^^^
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to previous error; 3 warnings emitted
 

@@ -1,5 +1,5 @@
 // aux-build:multispan.rs
-// compile-flags: --error-format human-annotate-rs
+// compile-flags: --error-format human-annotate-rs -Z unstable-options
 
 #![feature(proc_macro_hygiene)]
 

@@ -2,8 +2,8 @@
 
 // revisions: correct incorrect
 // check-pass
-// [correct]compile-flags:--test --test-run-directory={{src-base}}
-// [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage
+// [correct]compile-flags:--test --test-run-directory={{src-base}} -Zunstable-options
+// [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage -Zunstable-options
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
