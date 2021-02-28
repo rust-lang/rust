@@ -3,137 +3,63 @@
 //! * during type inference, they can be uncertain (ie, `let x = 92;`)
 //! * they don't belong to any particular crate.
 
-use std::fmt;
+pub use chalk_ir::{FloatTy, IntTy, UintTy};
+pub use hir_def::builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint};
 
-pub use hir_def::builtin_type::{BuiltinFloat, BuiltinInt, FloatBitness, IntBitness, Signedness};
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct IntTy {
-    pub signedness: Signedness,
-    pub bitness: IntBitness,
-}
-
-impl fmt::Debug for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+pub fn int_ty_to_string(ty: IntTy) -> &'static str {
+    match ty {
+        IntTy::Isize => "isize",
+        IntTy::I8 => "i8",
+        IntTy::I16 => "i16",
+        IntTy::I32 => "i32",
+        IntTy::I64 => "i64",
+        IntTy::I128 => "i128",
     }
 }
 
-impl fmt::Display for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
+pub fn uint_ty_to_string(ty: UintTy) -> &'static str {
+    match ty {
+        UintTy::Usize => "usize",
+        UintTy::U8 => "u8",
+        UintTy::U16 => "u16",
+        UintTy::U32 => "u32",
+        UintTy::U64 => "u64",
+        UintTy::U128 => "u128",
     }
 }
 
-impl IntTy {
-    pub fn isize() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::Xsize }
-    }
-
-    pub fn i8() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::X8 }
-    }
-
-    pub fn i16() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::X16 }
-    }
-
-    pub fn i32() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::X32 }
-    }
-
-    pub fn i64() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::X64 }
-    }
-
-    pub fn i128() -> IntTy {
-        IntTy { signedness: Signedness::Signed, bitness: IntBitness::X128 }
-    }
-
-    pub fn usize() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::Xsize }
-    }
-
-    pub fn u8() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X8 }
-    }
-
-    pub fn u16() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X16 }
-    }
-
-    pub fn u32() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X32 }
-    }
-
-    pub fn u64() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X64 }
-    }
-
-    pub fn u128() -> IntTy {
-        IntTy { signedness: Signedness::Unsigned, bitness: IntBitness::X128 }
-    }
-
-    pub fn ty_to_string(self) -> &'static str {
-        match (self.signedness, self.bitness) {
-            (Signedness::Signed, IntBitness::Xsize) => "isize",
-            (Signedness::Signed, IntBitness::X8) => "i8",
-            (Signedness::Signed, IntBitness::X16) => "i16",
-            (Signedness::Signed, IntBitness::X32) => "i32",
-            (Signedness::Signed, IntBitness::X64) => "i64",
-            (Signedness::Signed, IntBitness::X128) => "i128",
-            (Signedness::Unsigned, IntBitness::Xsize) => "usize",
-            (Signedness::Unsigned, IntBitness::X8) => "u8",
-            (Signedness::Unsigned, IntBitness::X16) => "u16",
-            (Signedness::Unsigned, IntBitness::X32) => "u32",
-            (Signedness::Unsigned, IntBitness::X64) => "u64",
-            (Signedness::Unsigned, IntBitness::X128) => "u128",
-        }
+pub fn float_ty_to_string(ty: FloatTy) -> &'static str {
+    match ty {
+        FloatTy::F32 => "f32",
+        FloatTy::F64 => "f64",
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct FloatTy {
-    pub bitness: FloatBitness,
-}
-
-impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+pub(super) fn int_ty_from_builtin(t: BuiltinInt) -> IntTy {
+    match t {
+        BuiltinInt::Isize => IntTy::Isize,
+        BuiltinInt::I8 => IntTy::I8,
+        BuiltinInt::I16 => IntTy::I16,
+        BuiltinInt::I32 => IntTy::I32,
+        BuiltinInt::I64 => IntTy::I64,
+        BuiltinInt::I128 => IntTy::I128,
     }
 }
 
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
+pub(super) fn uint_ty_from_builtin(t: BuiltinUint) -> UintTy {
+    match t {
+        BuiltinUint::Usize => UintTy::Usize,
+        BuiltinUint::U8 => UintTy::U8,
+        BuiltinUint::U16 => UintTy::U16,
+        BuiltinUint::U32 => UintTy::U32,
+        BuiltinUint::U64 => UintTy::U64,
+        BuiltinUint::U128 => UintTy::U128,
     }
 }
 
-impl FloatTy {
-    pub fn f32() -> FloatTy {
-        FloatTy { bitness: FloatBitness::X32 }
-    }
-
-    pub fn f64() -> FloatTy {
-        FloatTy { bitness: FloatBitness::X64 }
-    }
-
-    pub fn ty_to_string(self) -> &'static str {
-        match self.bitness {
-            FloatBitness::X32 => "f32",
-            FloatBitness::X64 => "f64",
-        }
-    }
-}
-
-impl From<BuiltinInt> for IntTy {
-    fn from(t: BuiltinInt) -> Self {
-        IntTy { signedness: t.signedness, bitness: t.bitness }
-    }
-}
-
-impl From<BuiltinFloat> for FloatTy {
-    fn from(t: BuiltinFloat) -> Self {
-        FloatTy { bitness: t.bitness }
+pub(super) fn float_ty_from_builtin(t: BuiltinFloat) -> FloatTy {
+    match t {
+        BuiltinFloat::F32 => FloatTy::F32,
+        BuiltinFloat::F64 => FloatTy::F64,
     }
 }

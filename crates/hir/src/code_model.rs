@@ -32,8 +32,8 @@ use hir_ty::{
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
     ApplicationTy, BoundVar, CallableDefId, Canonical, DebruijnIndex, FnSig, GenericPredicate,
-    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, Ty,
-    TyDefId, TyKind, TypeCtor,
+    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
+    Ty, TyDefId, TyKind, TypeCtor,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -1553,7 +1553,10 @@ impl Type {
         )
     }
     pub fn is_bool(&self) -> bool {
-        matches!(self.ty.value, Ty::Apply(ApplicationTy { ctor: TypeCtor::Bool, .. }))
+        matches!(
+            self.ty.value,
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Scalar(Scalar::Bool), .. })
+        )
     }
 
     pub fn is_mutable_reference(&self) -> bool {

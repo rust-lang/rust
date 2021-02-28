@@ -41,7 +41,7 @@ use super::{
     InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 use crate::{
-    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode, Scalar,
 };
 
 pub(crate) use unify::unify;
@@ -684,8 +684,8 @@ impl InferTy {
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(IntTy::i32())),
-            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(FloatTy::f64())),
+            InferTy::IntVar(..) => Ty::simple(TypeCtor::Scalar(Scalar::Int(IntTy::I32))),
+            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Scalar(Scalar::Float(FloatTy::F64))),
             InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
         }
     }

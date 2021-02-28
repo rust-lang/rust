@@ -3,8 +3,9 @@
 use std::{borrow::Cow, fmt};
 
 use crate::{
-    db::HirDatabase, utils::generics, ApplicationTy, CallableDefId, FnSig, GenericPredicate,
-    Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    db::HirDatabase, primitive, utils::generics, ApplicationTy, CallableDefId, FnSig,
+    GenericPredicate, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs,
+    TraitRef, Ty, TypeCtor,
 };
 use arrayvec::ArrayVec;
 use hir_def::{
@@ -241,10 +242,13 @@ impl HirDisplay for ApplicationTy {
         }
 
         match self.ctor {
-            TypeCtor::Bool => write!(f, "bool")?,
-            TypeCtor::Char => write!(f, "char")?,
-            TypeCtor::Int(t) => write!(f, "{}", t)?,
-            TypeCtor::Float(t) => write!(f, "{}", t)?,
+            TypeCtor::Scalar(Scalar::Bool) => write!(f, "bool")?,
+            TypeCtor::Scalar(Scalar::Char) => write!(f, "char")?,
+            TypeCtor::Scalar(Scalar::Float(t)) => {
+                write!(f, "{}", primitive::float_ty_to_string(t))?
+            }
+            TypeCtor::Scalar(Scalar::Int(t)) => write!(f, "{}", primitive::int_ty_to_string(t))?,
+            TypeCtor::Scalar(Scalar::Uint(t)) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
             TypeCtor::Str => write!(f, "str")?,
             TypeCtor::Slice => {
                 let t = self.parameters.as_single();
