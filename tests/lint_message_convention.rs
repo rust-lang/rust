@@ -28,7 +28,7 @@ impl Message {
         ])
         .unwrap();
 
-        // sometimes the first character is capitalized and it is legal (like in "Iterator...") or
+        // sometimes the first character is capitalized and it is legal (like in "C-like enum variants") or
         // we want to ask a question ending in "?"
         let exceptions_set: RegexSet = RegexSet::new(&[
             r".*C-like enum variant discriminant is not portable to 32-bit targets",
