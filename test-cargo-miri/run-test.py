@@ -50,12 +50,15 @@ def test(name, cmd, stdout_ref, stderr_ref, stdin=b'', env={}):
     print("--- END stderr ---")
     fail("exit code was {}".format(p.returncode))
 
-def test_no_rebuild(name, cmd):
+def test_no_rebuild(name, cmd, env={}):
     print("Testing {}...".format(name))
+    p_env = os.environ.copy()
+    p_env.update(env)
     p = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=p_env,
     )
     (stdout, stderr) = p.communicate()
     stdout = stdout.decode("UTF-8")
@@ -79,6 +82,12 @@ def test_cargo_miri_run():
             'MIRITESTVAR': "wrongval", # make sure the build.rs value takes precedence
         },
     )
+    # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
+    test_no_rebuild("`cargo miri run` (no rebuild)",
+        cargo_miri("run", quiet=False) + ["--", ""],
+        env={'MIRITESTVAR': "wrongval"}, # changing the env var causes a rebuild (re-runs build.rs),
+                                         # so keep it set
+    )
     test("`cargo miri run` (with arguments and target)",
         cargo_miri("run") + ["--bin", "cargo-miri-test", "--", "hello world", '"hello world"'],
         "run.args.stdout.ref", "run.args.stderr.ref",
@@ -87,12 +96,6 @@ def test_cargo_miri_run():
         cargo_miri("run") + ["-p", "subcrate"],
         "run.subcrate.stdout.ref", "run.subcrate.stderr.ref",
         env={'MIRIFLAGS': "-Zmiri-disable-isolation"},
-    )
-    # Special test: run it again *without* `-q` to make sure nothing is being rebuilt (Miri issue #1722)
-    # FIXME: move this test up to right after the first `test`
-    # (currently that fails, only the 3rd and later runs are really clean... see Miri issue #1722)
-    test_no_rebuild("`cargo miri run` (no rebuild)",
-        cargo_miri("run", quiet=False) + ["--", ""],
     )
 
 def test_cargo_miri_test():
