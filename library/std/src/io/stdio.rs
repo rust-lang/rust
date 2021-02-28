@@ -497,7 +497,7 @@ pub struct Stdout {
 /// A locked reference to the [`Stdout`] handle.
 ///
 /// This handle implements the [`Write`] trait, and is constructed via
-/// the [`Stdout::lock`] method.
+/// the [`Stdout::lock`] method. See its documentation for more.
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -711,7 +711,7 @@ pub struct Stderr {
 /// A locked reference to the [`Stderr`] handle.
 ///
 /// This handle implements the [`Write`] trait and is constructed via
-/// the [`Stderr::lock`] method.
+/// the [`Stderr::lock`] method. See its documentation for more.
 ///
 /// ### Note: Windows Portability Consideration
 /// When operating in a console, the Windows implementation of this stream does not support

@@ -226,6 +226,16 @@ impl<'mir, 'tcx, Tag> Frame<'mir, 'tcx, Tag> {
 }
 
 impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+    /// Get the current location within the Frame.
+    ///
+    /// If this is `Err`, we are not currently executing any particular statement in
+    /// this frame (can happen e.g. during frame initialization, and during unwinding on
+    /// frames without cleanup code).
+    /// We basically abuse `Result` as `Either`.
+    pub fn current_loc(&self) -> Result<mir::Location, Span> {
+        self.loc
+    }
+
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
         self.loc.ok().map(|loc| self.body.source_info(loc))
