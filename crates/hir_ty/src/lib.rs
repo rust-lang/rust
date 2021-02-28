@@ -38,7 +38,6 @@ use itertools::Itertools;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
-    primitive::{FloatTy, IntTy, UintTy},
     utils::{generics, make_mut_slice, Generics},
 };
 
@@ -50,23 +49,12 @@ pub use lower::{
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
-pub use chalk_ir::{BoundVar, DebruijnIndex};
+pub use chalk_ir::{BoundVar, DebruijnIndex, Scalar};
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
     Parameter(LifetimeParamId),
     Static,
-}
-
-/// Types of scalar values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[allow(missing_docs)]
-pub enum Scalar {
-    Bool,
-    Char,
-    Int(IntTy),
-    Uint(UintTy),
-    Float(FloatTy),
 }
 
 /// A type constructor or type name: this might be something like the primitive
@@ -736,9 +724,13 @@ impl Ty {
             BuiltinType::Char => TypeCtor::Scalar(Scalar::Char),
             BuiltinType::Bool => TypeCtor::Scalar(Scalar::Bool),
             BuiltinType::Str => TypeCtor::Str,
-            BuiltinType::Int(t) => TypeCtor::Scalar(Scalar::Int(t.into())),
-            BuiltinType::Uint(t) => TypeCtor::Scalar(Scalar::Uint(t.into())),
-            BuiltinType::Float(t) => TypeCtor::Scalar(Scalar::Float(t.into())),
+            BuiltinType::Int(t) => TypeCtor::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))),
+            BuiltinType::Uint(t) => {
+                TypeCtor::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t)))
+            }
+            BuiltinType::Float(t) => {
+                TypeCtor::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t)))
+            }
         })
     }
 

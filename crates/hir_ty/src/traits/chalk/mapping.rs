@@ -14,7 +14,7 @@ use hir_def::{type_ref::Mutability, AssocContainerId, GenericDefId, Lookup, Type
 
 use crate::{
     db::HirDatabase,
-    primitive::{FloatTy, IntTy, UintTy},
+    primitive::UintTy,
     traits::{Canonical, Obligation},
     ApplicationTy, CallableDefId, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
     ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind,
@@ -64,31 +64,7 @@ impl ToChalk for Ty {
                     chalk_ir::TyKind::Foreign(foreign_type_id).intern(&Interner)
                 }
 
-                TypeCtor::Scalar(scalar) => chalk_ir::TyKind::Scalar(match scalar {
-                    Scalar::Bool => chalk_ir::Scalar::Bool,
-                    Scalar::Char => chalk_ir::Scalar::Char,
-                    Scalar::Int(it) => chalk_ir::Scalar::Int(match it {
-                        IntTy::Isize => chalk_ir::IntTy::Isize,
-                        IntTy::I8 => chalk_ir::IntTy::I8,
-                        IntTy::I16 => chalk_ir::IntTy::I16,
-                        IntTy::I32 => chalk_ir::IntTy::I32,
-                        IntTy::I64 => chalk_ir::IntTy::I64,
-                        IntTy::I128 => chalk_ir::IntTy::I128,
-                    }),
-                    Scalar::Uint(it) => chalk_ir::Scalar::Uint(match it {
-                        UintTy::Usize => chalk_ir::UintTy::Usize,
-                        UintTy::U8 => chalk_ir::UintTy::U8,
-                        UintTy::U16 => chalk_ir::UintTy::U16,
-                        UintTy::U32 => chalk_ir::UintTy::U32,
-                        UintTy::U64 => chalk_ir::UintTy::U64,
-                        UintTy::U128 => chalk_ir::UintTy::U128,
-                    }),
-                    Scalar::Float(it) => chalk_ir::Scalar::Float(match it {
-                        FloatTy::F32 => chalk_ir::FloatTy::F32,
-                        FloatTy::F64 => chalk_ir::FloatTy::F64,
-                    }),
-                })
-                .intern(&Interner),
+                TypeCtor::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
                 TypeCtor::Tuple { cardinality } => {
                     let substitution = apply_ty.parameters.to_chalk(db);
@@ -232,38 +208,7 @@ impl ToChalk for Ty {
                 apply_ty_from_chalk(db, TypeCtor::OpaqueType(from_chalk(db, opaque_type_id)), subst)
             }
 
-            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Bool) => {
-                Ty::simple(TypeCtor::Scalar(Scalar::Bool))
-            }
-            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Char) => {
-                Ty::simple(TypeCtor::Scalar(Scalar::Char))
-            }
-            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(int_ty)) => {
-                Ty::simple(TypeCtor::Scalar(Scalar::Int(match int_ty {
-                    chalk_ir::IntTy::Isize => IntTy::Isize,
-                    chalk_ir::IntTy::I8 => IntTy::I8,
-                    chalk_ir::IntTy::I16 => IntTy::I16,
-                    chalk_ir::IntTy::I32 => IntTy::I32,
-                    chalk_ir::IntTy::I64 => IntTy::I64,
-                    chalk_ir::IntTy::I128 => IntTy::I128,
-                })))
-            }
-            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(int_ty)) => {
-                Ty::simple(TypeCtor::Scalar(Scalar::Uint(match int_ty {
-                    chalk_ir::UintTy::Usize => UintTy::Usize,
-                    chalk_ir::UintTy::U8 => UintTy::U8,
-                    chalk_ir::UintTy::U16 => UintTy::U16,
-                    chalk_ir::UintTy::U32 => UintTy::U32,
-                    chalk_ir::UintTy::U64 => UintTy::U64,
-                    chalk_ir::UintTy::U128 => UintTy::U128,
-                })))
-            }
-            chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Float(float_ty)) => {
-                Ty::simple(TypeCtor::Scalar(Scalar::Float(match float_ty {
-                    chalk_ir::FloatTy::F32 => FloatTy::F32,
-                    chalk_ir::FloatTy::F64 => FloatTy::F64,
-                })))
-            }
+            chalk_ir::TyKind::Scalar(scalar) => Ty::simple(TypeCtor::Scalar(scalar)),
             chalk_ir::TyKind::Tuple(cardinality, subst) => {
                 apply_ty_from_chalk(db, TypeCtor::Tuple { cardinality: cardinality as u16 }, subst)
             }
@@ -321,8 +266,7 @@ fn ref_to_chalk(
 /// fake constant here, because Chalks built-in logic may expect it to be there.
 fn array_to_chalk(db: &dyn HirDatabase, subst: Substs) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
-    let usize_ty =
-        chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(&Interner);
+    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
     let const_ = chalk_ir::ConstData {
         ty: usize_ty,
         value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),

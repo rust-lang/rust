@@ -15,7 +15,7 @@ use test_utils::mark;
 
 use crate::{
     autoderef, method_resolution, op,
-    primitive::UintTy,
+    primitive::{self, UintTy},
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     ApplicationTy, Binders, CallableDefId, InferTy, Mutability, Obligation, OpaqueTyId, Rawness,
@@ -730,17 +730,21 @@ impl<'a> InferenceContext<'a> {
                 }
                 Literal::Char(..) => Ty::simple(TypeCtor::Scalar(Scalar::Char)),
                 Literal::Int(_v, ty) => match ty {
-                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Int((*int_ty).into()))),
+                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Int(
+                        primitive::int_ty_from_builtin(*int_ty),
+                    ))),
                     None => self.table.new_integer_var(),
                 },
                 Literal::Uint(_v, ty) => match ty {
-                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Uint((*int_ty).into()))),
+                    Some(int_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Uint(
+                        primitive::uint_ty_from_builtin(*int_ty),
+                    ))),
                     None => self.table.new_integer_var(),
                 },
                 Literal::Float(_v, ty) => match ty {
-                    Some(float_ty) => {
-                        Ty::simple(TypeCtor::Scalar(Scalar::Float((*float_ty).into())))
-                    }
+                    Some(float_ty) => Ty::simple(TypeCtor::Scalar(Scalar::Float(
+                        primitive::float_ty_from_builtin(*float_ty),
+                    ))),
                     None => self.table.new_float_var(),
                 },
             },

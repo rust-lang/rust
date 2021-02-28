@@ -16,7 +16,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     autoderef,
     db::HirDatabase,
-    primitive::{FloatTy, IntTy, UintTy},
+    primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
     ApplicationTy, Canonical, DebruijnIndex, InEnvironment, Scalar, Substs, TraitEnvironment,
     TraitRef, Ty, TyKind, TypeCtor, TypeWalk,
@@ -225,8 +225,12 @@ impl Ty {
                     FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
                     FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
                 },
-                TypeCtor::Scalar(Scalar::Int(t)) => lang_item_crate!(t.ty_to_string()),
-                TypeCtor::Scalar(Scalar::Uint(t)) => lang_item_crate!(t.ty_to_string()),
+                TypeCtor::Scalar(Scalar::Int(t)) => {
+                    lang_item_crate!(primitive::int_ty_to_string(t))
+                }
+                TypeCtor::Scalar(Scalar::Uint(t)) => {
+                    lang_item_crate!(primitive::uint_ty_to_string(t))
+                }
                 TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
                 TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
                 TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),
