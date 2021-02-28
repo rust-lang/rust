@@ -471,14 +471,9 @@ impl HirDisplay for Ty {
                     projection_ty.hir_fmt(f)?;
                 }
             }
-            Ty::ForeignType(type_alias, parameters) => {
+            Ty::ForeignType(type_alias) => {
                 let type_alias = f.db.type_alias_data(*type_alias);
                 write!(f, "{}", type_alias.name)?;
-                if parameters.len() > 0 {
-                    write!(f, "<")?;
-                    f.write_joined(&*parameters.0, ", ")?;
-                    write!(f, ">")?;
-                }
             }
             Ty::OpaqueType(opaque_ty_id, parameters) => {
                 match opaque_ty_id {

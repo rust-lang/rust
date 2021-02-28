@@ -235,7 +235,7 @@ impl Ty {
             Ty::Adt(def_id, _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
-            Ty::ForeignType(type_alias_id, _) => {
+            Ty::ForeignType(type_alias_id) => {
                 return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
             }
             Ty::Scalar(Scalar::Bool) => lang_item_crate!("bool"),

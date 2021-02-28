@@ -1100,10 +1100,10 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let resolver = t.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
-    let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
     if db.type_alias_data(t).is_extern {
-        Binders::new(substs.len(), Ty::ForeignType(t, substs))
+        Binders::new(0, Ty::ForeignType(t))
     } else {
+        let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
         let type_ref = &db.type_alias_data(t).type_ref;
         let inner = Ty::from_hir(&ctx, type_ref.as_ref().unwrap_or(&TypeRef::Error));
         Binders::new(substs.len(), inner)

@@ -169,7 +169,7 @@ pub enum Ty {
     Closure { def: DefWithBodyId, expr: ExprId, substs: Substs },
 
     /// Represents a foreign type declared in external blocks.
-    ForeignType(TypeAliasId, Substs),
+    ForeignType(TypeAliasId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -755,7 +755,6 @@ impl Ty {
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::ForeignType(_, substs)
             | Ty::Closure { substs, .. } => {
                 assert_eq!(substs.len(), new_substs.len());
                 *substs = new_substs;
@@ -779,7 +778,6 @@ impl Ty {
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::ForeignType(_, substs)
             | Ty::Closure { substs, .. } => Some(substs),
             _ => None,
         }
@@ -797,7 +795,6 @@ impl Ty {
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::ForeignType(_, substs)
             | Ty::Closure { substs, .. } => Some(substs),
             _ => None,
         }
