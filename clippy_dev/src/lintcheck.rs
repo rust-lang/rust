@@ -496,7 +496,7 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
+fn lintcheck_needs_rerun(lintcheck_logs_path: &PathBuf) -> bool {
     let clippy_modified: std::time::SystemTime = {
         let mut times = [CLIPPY_DRIVER_PATH, CARGO_CLIPPY_PATH].iter().map(|p| {
             std::fs::metadata(p)
@@ -505,17 +505,17 @@ fn lintcheck_needs_rerun(toml_path: &PathBuf) -> bool {
                 .expect("failed to get modification date")
         });
         // the oldest modification of either of the binaries
-        std::cmp::min(times.next().unwrap(), times.next().unwrap())
+        std::cmp::max(times.next().unwrap(), times.next().unwrap())
     };
 
-    let logs_modified: std::time::SystemTime = std::fs::metadata(toml_path)
+    let logs_modified: std::time::SystemTime = std::fs::metadata(lintcheck_logs_path)
         .expect("failed to get metadata of file")
         .modified()
         .expect("failed to get modification date");
 
-    // if clippys modification time is smaller (older) than the logs mod time, we need to rerun
-    // lintcheck
-    clippy_modified < logs_modified
+    // time is represented in seconds since X
+    // logs_modified 2 and clippy_modified 5 means clippy binary is older and we need to recheck
+    logs_modified < clippy_modified
 }
 
 /// lintchecks `main()` function
@@ -528,7 +528,7 @@ pub fn run(clap_config: &ArgMatches) {
 
     // if the clippy bin is newer than our logs, throw away target dirs to force clippy to
     // refresh the logs
-    if lintcheck_needs_rerun(&config.sources_toml_path) {
+    if lintcheck_needs_rerun(&config.lintcheck_results_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
         match std::fs::metadata(&shared_target_dir) {
             Ok(metadata) => {
@@ -538,8 +538,7 @@ pub fn run(clap_config: &ArgMatches) {
                         .expect("failed to remove target/lintcheck/shared_target_dir");
                 }
             },
-            Err(_) => { // dir probably does not exist, don't remove anything
-            },
+            Err(_) => { /*  dir probably does not exist, don't remove anything  */ },
         }
     }
 
@@ -565,6 +564,8 @@ pub fn run(clap_config: &ArgMatches) {
 
     let crates = read_crates(&config.sources_toml_path);
     let old_stats = read_stats_from_file(&config.lintcheck_results_path);
+
+    let counter = AtomicUsize::new(1);
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -595,8 +596,6 @@ pub fn run(clap_config: &ArgMatches) {
         if config.max_jobs > 1 {
             // run parallel with rayon
 
-            let counter = AtomicUsize::new(0);
-
             // Ask rayon for thread count. Assume that half of that is the number of physical cores
             // Use one target dir for each core so that we can run N clippys in parallel.
             // We need to use different target dirs because cargo would lock them for a single build otherwise,
@@ -623,7 +622,7 @@ pub fn run(clap_config: &ArgMatches) {
             crates
                 .into_iter()
                 .map(|krate| krate.download_and_extract())
-                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, num_crates))
+                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates))
                 .flatten()
                 .collect()
         }
