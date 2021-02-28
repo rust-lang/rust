@@ -76,6 +76,12 @@ fn inline(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     if body.source.promoted.is_some() {
         return false;
     }
+    // Avoid inlining into generators, since their `optimized_mir` is used for layout computation,
+    // which can create a cycle, even when no attempt is made to inline the function in the other
+    // direction.
+    if body.generator_kind.is_some() {
+        return false;
+    }
 
     let mut this = Inliner {
         tcx,
@@ -210,14 +216,6 @@ impl Inliner<'tcx> {
 
         if let Some(callee_def_id) = callee.def_id().as_local() {
             let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
-            // Avoid inlining into generators,
-            // since their `optimized_mir` is used for layout computation, which can
-            // create a cycle, even when no attempt is made to inline the function
-            // in the other direction.
-            if caller_body.generator_kind.is_some() {
-                return Err("local generator (query cycle avoidance)");
-            }
-
             // Avoid a cycle here by only using `instance_mir` only if we have
             // a lower `HirId` than the callee. This ensures that the callee will
             // not inline us. This trick only works without incremental compilation.
