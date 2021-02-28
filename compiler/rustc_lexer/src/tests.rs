@@ -255,6 +255,8 @@ b"a"
 2us
 r###"raw"###suffix
 br###"raw"###suffix
+f"fstr"suffix
+f"foo{not_a_suffix + 2}bar"suffix
 "####,
         expect![[r#"
             Token { kind: Whitespace, len: 1 }
@@ -281,6 +283,16 @@ br###"raw"###suffix
             Token { kind: Literal { kind: RawStr { n_hashes: 3, err: None }, suffix_start: 12 }, len: 18 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: RawByteStr { n_hashes: 3, err: None }, suffix_start: 13 }, len: 19 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Quote) }, suffix_start: 7 }, len: 13 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Ident, len: 12 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 11 }
             Token { kind: Whitespace, len: 1 }
         "#]],
     )
@@ -375,6 +387,48 @@ fn monster_f_string_literal() {
             Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 2 }, len: 2 }
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 5 }
+        "#]],
+    )
+}
+
+#[test]
+fn unterminated_f_string_literal() {
+    check_lexing(
+        r#"f"foo"#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: None }, suffix_start: 5 }, len: 5 }
+        "#]],
+    )
+}
+
+#[test]
+fn escaped_f_string_literal() {
+    check_lexing(
+        r#"f"this whole{{string should}}be one\\}}literal\\{{""#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Quote) }, suffix_start: 51 }, len: 51 }
+        "#]],
+    )
+}
+
+#[test]
+fn multiline_f_string_literal() {
+    check_lexing(
+        r#"f"
+foo{
+1 + 2
+}bar
+"#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 7 }, len: 7 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: None }, suffix_start: 5 }, len: 5 }
         "#]],
     )
 }
