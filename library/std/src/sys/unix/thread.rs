@@ -202,7 +202,7 @@ impl Drop for Thread {
     not(target_os = "linux"),
     not(target_os = "freebsd"),
     not(target_os = "macos"),
-    not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
+    not(target_os = "netbsd"),
     not(target_os = "openbsd"),
     not(target_os = "solaris")
 ))]
@@ -222,7 +222,7 @@ pub mod guard {
     target_os = "linux",
     target_os = "freebsd",
     target_os = "macos",
-    all(target_os = "netbsd", not(target_vendor = "rumprun")),
+    target_os = "netbsd",
     target_os = "openbsd",
     target_os = "solaris"
 ))]
