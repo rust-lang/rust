@@ -19,16 +19,13 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_span::DUMMY_SP;
 use std::collections::BTreeMap;
 
-/// Result of HIR indexing.
-#[derive(Debug)]
+/// Result of HIR indexing for a given HIR owner.
+#[derive(Debug, HashStable)]
 pub struct IndexedHir<'hir> {
-    /// Contents of the HIR owned by each definition. None for definitions that are not HIR owners.
-    // The `mut` comes from construction time, and is harmless since we only ever hand out
-    // immutable refs to IndexedHir.
-    map: IndexVec<LocalDefId, Option<&'hir mut OwnerNodes<'hir>>>,
-    /// Map from each owner to its parent's HirId inside another owner.
-    // This map is separate from `map` to eventually allow for per-owner indexing.
-    parenting: FxHashMap<LocalDefId, HirId>,
+    /// Contents of the HIR.
+    nodes: OwnerNodes<'hir>,
+    /// Map from each nested owner to its parent's local id.
+    parenting: FxHashMap<LocalDefId, ItemLocalId>,
 }
 
 /// Top-level HIR node for current owner. This only contains the node for which
@@ -142,15 +139,24 @@ pub fn provide(providers: &mut Providers) {
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| {
-        let owner = tcx.index_hir(()).map[id].as_ref()?;
-        let node = owner.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
+        let owner = tcx.index_hir(id)?;
+        let node = owner.nodes.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
         Some(Owner { node })
     };
-    providers.hir_owner_nodes = |tcx, id| tcx.index_hir(()).map[id].as_deref();
+    providers.hir_owner_nodes = |tcx, id| tcx.index_hir(id).map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
-        let index = tcx.index_hir(());
-        index.parenting.get(&id).copied().unwrap_or(CRATE_HIR_ID)
+        let parent = tcx.untracked_resolutions.definitions.def_key(id).parent;
+        let parent = parent.map_or(CRATE_HIR_ID, |local_def_index| {
+            let def_id = LocalDefId { local_def_index };
+            let mut parent_hir_id =
+                tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id);
+            if let Some(local_id) = tcx.index_hir(parent_hir_id.owner).unwrap().parenting.get(&id) {
+                parent_hir_id.local_id = *local_id;
+            }
+            parent_hir_id
+        });
+        parent
     };
     providers.hir_attrs = |tcx, id| AttributeMap { map: &tcx.untracked_crate.attrs, prefix: id };
     providers.source_span = |tcx, def_id| tcx.resolutions(()).definitions.def_span(def_id);

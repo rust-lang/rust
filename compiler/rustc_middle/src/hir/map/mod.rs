@@ -1,5 +1,3 @@
-use self::collector::NodeCollector;
-
 use crate::hir::{AttributeMap, IndexedHir, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
@@ -306,7 +304,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap_or(CRATE_HIR_ID)
+        self.find_parent_node(hir_id).unwrap()
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -938,38 +936,31 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tcx> {
-    let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
-
-    // We can access untracked state since we are an eval_always query.
-    let hcx = tcx.create_stable_hashing_context();
-    let mut collector = NodeCollector::root(
+pub(super) fn index_hir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: LocalDefId,
+) -> Option<&'tcx IndexedHir<'tcx>> {
+    let map = collector::collect(
         tcx.sess,
-        &**tcx.arena,
         tcx.untracked_crate,
         &tcx.untracked_resolutions.definitions,
-        hcx,
-    );
-    let top_mod = tcx.untracked_crate.module();
-    collector.visit_mod(top_mod, top_mod.inner, CRATE_HIR_ID);
+        tcx.create_stable_hashing_context(),
+        owner,
+    )?;
 
-    let map = collector.finalize_and_compute_crate_hash();
-    tcx.arena.alloc(map)
+    Some(&*tcx.arena.alloc(map))
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
-    // We can access untracked state since we are an eval_always query.
-    let mut hcx = tcx.create_stable_hashing_context();
-
+    debug_assert_eq!(crate_num, LOCAL_CRATE);
     let mut hir_body_nodes: Vec<_> = tcx
-        .index_hir(())
-        .map
-        .iter_enumerated()
-        .filter_map(|(def_id, hod)| {
-            let def_path_hash = tcx.untracked_resolutions.definitions.def_path_hash(def_id);
-            let hash = hod.as_ref()?.hash;
+        .untracked_resolutions
+        .definitions
+        .def_path_table()
+        .all_def_path_hashes_and_def_ids()
+        .filter_map(|(def_path_hash, local_def_index)| {
+            let def_id = LocalDefId { local_def_index };
+            let hash = tcx.index_hir(def_id).as_ref()?.nodes.hash;
             Some((def_path_hash, hash, def_id))
         })
         .collect();
@@ -993,6 +984,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
 
     source_file_names.sort_unstable();
 
+    let mut hcx = tcx.create_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
     for (def_path_hash, fingerprint, def_id) in hir_body_nodes.iter() {
         def_path_hash.0.hash_stable(&mut hcx, &mut stable_hasher);
