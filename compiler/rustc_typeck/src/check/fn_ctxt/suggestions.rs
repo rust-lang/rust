@@ -11,7 +11,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, ItemKind, Node};
 use rustc_infer::infer;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Binder, Ty};
 use rustc_span::symbol::kw;
 
 use std::iter;
@@ -487,6 +487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let found = self.resolve_vars_with_obligations(found);
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = AstConv::ast_ty_to_ty(self, ty);
+            let ty = self.tcx.erase_late_bound_regions(Binder::bind(ty));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(
