@@ -488,6 +488,12 @@ impl<'a> InferenceContext<'a> {
                 if let Some(box_) = self.resolve_boxed_box() {
                     let mut sb = Substs::builder(generics(self.db.upcast(), box_.into()).len());
                     sb = sb.push(inner_ty);
+                    match self.db.generic_defaults(box_.into()).as_ref() {
+                        [_, alloc_ty, ..] if !alloc_ty.value.is_unknown() => {
+                            sb = sb.push(alloc_ty.value.clone());
+                        }
+                        _ => (),
+                    }
                     sb = sb.fill(repeat_with(|| self.table.new_type_var()));
                     Ty::Adt(box_, sb.build())
                 } else {

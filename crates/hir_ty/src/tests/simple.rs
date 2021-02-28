@@ -2491,3 +2491,58 @@ fn inner_use_enum_rename() {
         "#]],
     )
 }
+
+#[test]
+fn box_into_vec() {
+    check_infer(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+#[lang = "unsize"]
+pub trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+pub unsafe trait Allocator {}
+
+pub struct Global;
+unsafe impl Allocator for Global {}
+
+#[lang = "owned_box"]
+#[fundamental]
+pub struct Box<T: ?Sized, A: Allocator = Global>;
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
+
+pub struct Vec<T, A: Allocator = Global> {}
+
+#[lang = "slice"]
+impl<T> [T] {}
+
+#[lang = "slice_alloc"]
+impl<T> [T] {
+    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+        unimplemented!()
+    }
+}
+
+fn test() {
+    let vec = <[_]>::into_vec(box [1i32]);
+}
+"#,
+        expect![[r#"
+            569..573 'self': Box<[T], A>
+            602..634 '{     ...     }': Vec<T, A>
+            612..628 'unimpl...ted!()': Vec<T, A>
+            648..694 '{     ...2]); }': ()
+            658..661 'vec': Vec<i32, Global>
+            664..679 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
+            664..691 '<[_]>:...1i32])': Vec<i32, Global>
+            680..690 'box [1i32]': Box<[i32; _], Global>
+            684..690 '[1i32]': [i32; _]
+            685..689 '1i32': i32
+        "#]],
+    )
+}
