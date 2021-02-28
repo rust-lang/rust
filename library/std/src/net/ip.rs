@@ -128,7 +128,6 @@ pub struct Ipv6Addr {
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 #[stable(feature = "ip", since = "1.48.0")]
 #[non_exhaustive]
-#[stable(feature = "ip", since = "1.47.0")]
 pub enum Ipv6MulticastScope {
     /// Interface-Local scope. See [RFC 4291] and [RFC 7346]
     ///
@@ -1690,10 +1689,6 @@ impl Ipv6Addr {
     #[stable(feature = "ip", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
-        use crate::net::Ipv6MulticastScope::{
-            AdminLocal, Global, InterfaceLocal, LinkLocal, OrganizationLocal, RealmLocal, Reserved,
-            SiteLocal, Unassigned,
-        };
         if self.is_multicast() {
             match self.segments()[0] & 0x000f {
                 1 => Some(Ipv6MulticastScope::InterfaceLocal),
