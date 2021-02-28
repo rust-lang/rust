@@ -182,25 +182,10 @@ fn assert_expand(
     // ```,
     // which is wrong but useful.
 
-    let mut args = Vec::new();
-    let mut current = Vec::new();
-    for tt in tt.token_trees.iter().cloned() {
-        match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
-                args.push(current);
-                current = Vec::new();
-            }
-            _ => {
-                current.push(tt);
-            }
-        }
-    }
-    if !current.is_empty() {
-        args.push(current);
-    }
+    let args = parse_exprs_with_sep(tt, ',');
 
     let arg_tts = args.into_iter().flat_map(|arg| {
-        quote! { &(##arg), }
+        quote! { &(#arg), }
     }.token_trees).collect::<Vec<_>>();
 
     let expanded = quote! {
