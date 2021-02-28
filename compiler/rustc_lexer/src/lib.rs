@@ -165,7 +165,7 @@ pub enum LiteralKind {
     /// `br"abc"`, `br#"abc"#`, `br####"ab"###"c"####`, `br#"a`
     RawByteStr { n_hashes: u16, err: Option<RawStrError> },
     /// `f"foo{`, `} bar {`, `} quux"`, or `f"foo"`
-    FStr { start: FStrDelimiter, end: FStrDelimiter, terminated: bool },
+    FStr { start: FStrDelimiter, end: Option<FStrDelimiter> },
 }
 
 /// Error produced validating a raw string. Represents cases like:
@@ -380,11 +380,11 @@ impl Cursor<'_> {
 
                         // TODO: Actually parse correctly
                         let terminated = self.double_quoted_string();
+                        let kind = FStr { start: FStrDelimiter::Quote, end: if terminated { FStrDelimiter::Quote } else { None } };
                         let suffix_start = self.len_consumed();
                         if terminated {
                             self.eat_literal_suffix();
                         }
-                        let kind = FStr { start: FStrDelimiter::Quote, end: FStrDelimiter::Quote, terminated };
                         Literal { kind, suffix_start }
                     }
                     _ => self.ident(),

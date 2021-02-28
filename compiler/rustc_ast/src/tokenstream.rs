@@ -50,7 +50,7 @@ pub enum CanSynthesizeMissingTokens {
     No,
 }
 
-// Ensure all fields of `TokenTree` is `Send` and `Sync`.
+// Ensure all fields of `TokenTree` are `Send` and `Sync`.
 #[cfg(parallel_compiler)]
 fn _dummy()
 where

@@ -376,8 +376,8 @@ impl<'a> StringReader<'a> {
                 let n = u32::from(n_hashes);
                 (token::ByteStrRaw(n_hashes), Mode::RawByteStr, 3 + n, 1 + n) // br##" "##
             }
-            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter, terminated } => {
-                if !terminated {
+            rustc_lexer::LiteralKind::FStr { start: start_delimiter, end: end_delimiter } => {
+                if end_delimiter.is_none() {
                     let lo = if start_delimiter == rustc_lexer::FStrDelimiter::Quote { start + BytePos(1) } else { start };
                     self.sess
                         .span_diagnostic
@@ -393,7 +393,7 @@ impl<'a> StringReader<'a> {
                     rustc_lexer::FStrDelimiter::Quote => 2,
                     rustc_lexer::FStrDelimiter::Brace => 1
                 };
-                (token::FStr(translate_f_str_delimiter(start_delimiter), translate_f_str_delimiter(end_delimiter)), Mode::FStr, prefix_len, 1)
+                (token::FStr(translate_f_str_delimiter(start_delimiter), translate_f_str_delimiter(end_delimiter.unwrap())), Mode::FStr, prefix_len, 1)
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
                 return if empty_int {
