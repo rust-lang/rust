@@ -1287,12 +1287,12 @@ impl<'a> Parser<'a> {
         if let TokenKind::Literal(lit) = self.token.kind {
             if let token::FStr(..) = lit.kind {
                 self.sess.gated_spans.gate(sym::f_strings, self.token.span);
-                let mut segments = vec![];
 
                 let (symbol, mut end_delimiter) = self
                     .parse_f_str_segment(token::FStrDelimiter::Quote)
                     .ok_or_else(|| self.error_expected_f_string())?;
-                segments.push(FStrSegment::Str(symbol));
+                let mut segments = vec![FStrSegment::Str(symbol)];
+
                 while end_delimiter == token::FStrDelimiter::Brace {
                     let expr = self.parse_expr()?;
                     segments.push(FStrSegment::Expr(expr));
@@ -1301,10 +1301,10 @@ impl<'a> Parser<'a> {
                         .parse_f_str_segment(token::FStrDelimiter::Brace)
                         .ok_or_else(|| self.error_expected_f_string())?;
                     end_delimiter = segment.1;
+                    // TODO: Add span information to `FStrSegment::Str`s?
                     segments.push(FStrSegment::Str(segment.0));
                 }
 
-                // TODO: Add span information to `FStrSegment`s?
                 // TODO: Check if attrs should be passed through
                 let expr = self.mk_expr(
                     lo.to(self.prev_token.span),
