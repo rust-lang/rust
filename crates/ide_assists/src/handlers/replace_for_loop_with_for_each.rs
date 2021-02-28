@@ -7,7 +7,7 @@ use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: convert_for_to_iter_for_each
+// Assist: replace_for_loop_with_for_each
 //
 // Converts a for loop into a for_each loop on the Iterator.
 //
@@ -28,7 +28,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //     });
 // }
 // ```
-pub(crate) fn convert_for_to_iter_for_each(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
+pub(crate) fn replace_for_loop_with_for_each(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let for_loop = ctx.find_node_at_offset::<ast::ForExpr>()?;
     let iterable = for_loop.iterable()?;
     let pat = for_loop.pat()?;
@@ -39,8 +39,8 @@ pub(crate) fn convert_for_to_iter_for_each(acc: &mut Assists, ctx: &AssistContex
     }
 
     acc.add(
-        AssistId("convert_for_to_iter_for_each", AssistKind::RefactorRewrite),
-        "Convert a for loop into an Iterator::for_each",
+        AssistId("replace_for_loop_with_for_each", AssistKind::RefactorRewrite),
+        "Replace this for loop with `Iterator::for_each`",
         for_loop.syntax().text_range(),
         |builder| {
             let mut buf = String::new();
@@ -150,13 +150,13 @@ pub struct NoIterMethod;
             FamousDefs::FIXTURE,
             EMPTY_ITER_FIXTURE
         );
-        check_assist(convert_for_to_iter_for_each, before, after);
+        check_assist(replace_for_loop_with_for_each, before, after);
     }
 
     #[test]
     fn test_not_for() {
         check_assist_not_applicable(
-            convert_for_to_iter_for_each,
+            replace_for_loop_with_for_each,
             r"
 let mut x = vec![1, 2, 3];
 x.iter_mut().$0for_each(|v| *v *= 2);
@@ -167,7 +167,7 @@ x.iter_mut().$0for_each(|v| *v *= 2);
     #[test]
     fn test_simple_for() {
         check_assist(
-            convert_for_to_iter_for_each,
+            replace_for_loop_with_for_each,
             r"
 fn main() {
     let x = vec![1, 2, 3];
@@ -189,7 +189,7 @@ fn main() {
     fn not_available_in_body() {
         mark::check!(not_available_in_body);
         check_assist_not_applicable(
-            convert_for_to_iter_for_each,
+            replace_for_loop_with_for_each,
             r"
 fn main() {
     let x = vec![1, 2, 3];
@@ -275,7 +275,7 @@ fn main() {
     #[test]
     fn test_for_borrowed_mut_behind_var() {
         check_assist(
-            convert_for_to_iter_for_each,
+            replace_for_loop_with_for_each,
             r"
 fn main() {
     let x = vec![1, 2, 3];
