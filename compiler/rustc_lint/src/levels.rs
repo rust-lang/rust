@@ -321,17 +321,18 @@ impl<'s> LintLevelsBuilder<'s> {
                     None
                 };
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
-                match store.check_lint_name(&name.as_str(), tool_name) {
+                let lint_result = store.check_lint_name(&name.as_str(), tool_name);
+                match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintLevelSource::Node(name, li.span(), reason);
-                        for &id in ids {
+                        for &id in *ids {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
                     }
 
                     CheckLintNameResult::Tool(result) => {
-                        match result {
+                        match *result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintLevelSource::Node(
@@ -343,7 +344,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     self.insert_spec(&mut specs, *id, (level, src));
                                 }
                             }
-                            Err((Some(ids), new_lint_name)) => {
+                            Err((Some(ids), ref new_lint_name)) => {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
@@ -392,21 +393,21 @@ impl<'s> LintLevelsBuilder<'s> {
 
                     CheckLintNameResult::Warning(msg, renamed) => {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                        let (level, src) =
+                        let (renamed_lint_level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
                         struct_lint_level(
                             self.sess,
                             lint,
-                            level,
+                            renamed_lint_level,
                             src,
                             Some(li.span().into()),
                             |lint| {
                                 let mut err = lint.build(&msg);
-                                if let Some(new_name) = renamed {
+                                if let Some(new_name) = &renamed {
                                     err.span_suggestion(
                                         li.span(),
                                         "use the new name",
-                                        new_name,
+                                        new_name.to_string(),
                                         Applicability::MachineApplicable,
                                     );
                                 }
@@ -442,6 +443,22 @@ impl<'s> LintLevelsBuilder<'s> {
                                 db.emit();
                             },
                         );
+                    }
+                }
+                // If this lint was renamed, apply the new lint instead of ignoring the attribute.
+                // This happens outside of the match because the new lint should be applied even if
+                // we don't warn about the name change.
+                if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
+                    // Ignore any errors or warnings that happen because the new name is inaccurate
+                    if let CheckLintNameResult::Ok(ids) =
+                        store.check_lint_name(&new_name, tool_name)
+                    {
+                        let src =
+                            LintLevelSource::Node(Symbol::intern(&new_name), li.span(), reason);
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            self.insert_spec(&mut specs, id, (level, src));
+                        }
                     }
                 }
             }
