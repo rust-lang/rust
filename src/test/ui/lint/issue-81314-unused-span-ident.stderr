@@ -1,0 +1,21 @@
+error: unused variable: `rest`
+  --> $DIR/issue-81314-unused-span-ident.rs:8:10
+   |
+LL |     let [rest @ ..] = [1, 2, 3];
+   |          ^^^^ help: if this is intentional, prefix it with an underscore: `_rest`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-81314-unused-span-ident.rs:5:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+
+error: unused variable: `rest`
+  --> $DIR/issue-81314-unused-span-ident.rs:11:13
+   |
+LL | pub fn foo([rest @ ..]: &[i32]) {
+   |             ^^^^ help: if this is intentional, prefix it with an underscore: `_rest`
+
+error: aborting due to 2 previous errors
+
