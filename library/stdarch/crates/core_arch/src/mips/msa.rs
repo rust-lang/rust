@@ -2870,14 +2870,10 @@ pub unsafe fn __msa_ceqi_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cfcmsa, imm5 = 0b11111))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_cfcmsa(imm5: i32) -> i32 {
-    macro_rules! call {
-        ($imm5:expr) => {
-            msa_cfcmsa($imm5)
-        };
-    }
-    constify_imm5!(imm5, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_cfcmsa<const IMM5: i32>() -> i32 {
+    static_assert_imm5!(IMM5);
+    msa_cfcmsa(IMM5)
 }
 
 /// Vector Compare Signed Less Than or Equal
@@ -3578,14 +3574,10 @@ pub unsafe fn __msa_copy_u_d(a: v2i64, imm1: i32) -> u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ctcmsa, imm1 = 0b1))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_ctcmsa(imm5: i32, a: i32) -> () {
-    macro_rules! call {
-        ($imm5:expr) => {
-            msa_ctcmsa($imm5, a)
-        };
-    }
-    constify_imm5!(imm5, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_ctcmsa<const IMM5: i32>(a: i32) -> () {
+    static_assert_imm5!(IMM5);
+    msa_ctcmsa(IMM5, a)
 }
 
 /// Vector Signed Divide
@@ -6026,14 +6018,10 @@ pub unsafe fn __msa_ld_d(mem_addr: *mut u8, imm_s13: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.b, imm_s10 = 0b1111111111))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_ldi_b(imm_s10: i32) -> v16i8 {
-    macro_rules! call {
-        ($imm_s10:expr) => {
-            msa_ldi_b($imm_s10)
-        };
-    }
-    constify_imm_s10!(imm_s10, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_ldi_b<const IMM_S10: i32>() -> v16i8 {
+    static_assert_imm_s10!(IMM_S10);
+    msa_ldi_b(IMM_S10)
 }
 
 /// Immediate Load
@@ -6045,14 +6033,10 @@ pub unsafe fn __msa_ldi_b(imm_s10: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.h, imm_s10 = 0b1111111111))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_ldi_h(imm_s10: i32) -> v8i16 {
-    macro_rules! call {
-        ($imm_s10:expr) => {
-            msa_ldi_h($imm_s10)
-        };
-    }
-    constify_imm_s10!(imm_s10, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_ldi_h<const IMM_S10: i32>() -> v8i16 {
+    static_assert_imm_s10!(IMM_S10);
+    msa_ldi_h(IMM_S10)
 }
 
 /// Immediate Load
@@ -6064,14 +6048,10 @@ pub unsafe fn __msa_ldi_h(imm_s10: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.w, imm_s10 = 0b1111111111))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_ldi_w(imm_s10: i32) -> v4i32 {
-    macro_rules! call {
-        ($imm_s10:expr) => {
-            msa_ldi_w($imm_s10)
-        };
-    }
-    constify_imm_s10!(imm_s10, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_ldi_w<const IMM_S10: i32>() -> v4i32 {
+    static_assert_imm_s10!(IMM_S10);
+    msa_ldi_w(IMM_S10)
 }
 
 /// Immediate Load
@@ -6083,14 +6063,10 @@ pub unsafe fn __msa_ldi_w(imm_s10: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.d, imm_s10 = 0b1111111111))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __msa_ldi_d(imm_s10: i32) -> v2i64 {
-    macro_rules! call {
-        ($imm_s10:expr) => {
-            msa_ldi_d($imm_s10)
-        };
-    }
-    constify_imm_s10!(imm_s10, call)
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __msa_ldi_d<const IMM_S10: i32>() -> v2i64 {
+    static_assert_imm_s10!(IMM_S10);
+    msa_ldi_d(IMM_S10)
 }
 
 /// Vector Fixed-Point Multiply and Add
