@@ -65,11 +65,11 @@ Next, let's talk about what the inputs to the `Analysis` are, precisely.
 
 Rust Analyzer never does any I/O itself, all inputs get passed explicitly via
 the `AnalysisHost::apply_change` method, which accepts a single argument, a
-`AnalysisChange`. [`AnalysisChange`] is a builder for a single change
+`Change`. [`Change`] is a builder for a single change
 "transaction", so it suffices to study its methods to understand all of the
 input data.
 
-[`AnalysisChange`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L119-L167
+[`Change`]: https://github.com/rust-analyzer/rust-analyzer/blob/master/crates/base_db/src/change.rs#L14-L89
 
 The `(add|change|remove)_file` methods control the set of the input files, where
 each file has an integer id (`FileId`, picked by the client), text (`String`)
@@ -158,7 +158,7 @@ it should be possible to dynamically reconfigure it later without restart.
 [main_loop.rs#L62-L70](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L62-L70)
 
 The [`ProjectModel`] we get after this step is very Cargo and sysroot specific,
-it needs to be lowered to get the input in the form of `AnalysisChange`. This
+it needs to be lowered to get the input in the form of `Change`. This
 happens in [`ServerWorldState::new`] method. Specifically
 
 * Create a `SourceRoot` for each Cargo package and sysroot.
@@ -175,7 +175,7 @@ of the main loop, just like any other change. Here's where we handle:
 * [File system changes](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L194)
 * [Changes from the editor](https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L377)
 
-After a single loop's turn, we group the changes into one `AnalysisChange` and
+After a single loop's turn, we group the changes into one `Change` and
 [apply] it. This always happens on the main thread and blocks the loop.
 
 [apply]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
@@ -256,7 +256,7 @@ database.
 [`RootDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/db.rs#L88-L134
 
 Salsa input queries are defined in [`FilesDatabase`] (which is a part of
-`RootDatabase`). They closely mirror the familiar `AnalysisChange` structure:
+`RootDatabase`). They closely mirror the familiar `Change` structure:
 indeed, what `apply_change` does is it sets the values of input queries.
 
 [`FilesDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/base_db/src/input.rs#L150-L174
