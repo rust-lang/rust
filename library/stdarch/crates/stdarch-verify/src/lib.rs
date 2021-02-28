@@ -119,6 +119,15 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                      #[rustc_legacy_const_generics]"
                 );
             }
+
+            // The list of required consts, used to verify the arguments, comes from either the
+            // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
+            let required_const = if required_const.is_empty() {
+                legacy_const_generics.clone()
+            } else {
+                required_const
+            };
+
             legacy_const_generics.sort();
             for (idx, ty) in legacy_const_generics
                 .into_iter()

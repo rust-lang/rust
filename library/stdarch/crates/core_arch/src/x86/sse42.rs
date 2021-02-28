@@ -71,17 +71,11 @@ pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistrm, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistrm128(a, b, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8, call))
+pub unsafe fn _mm_cmpistrm<const imm8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(pcmpistrm128(a.as_i8x16(), b.as_i8x16(), imm8 as i8))
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -265,17 +259,11 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistri128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistri<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistri128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -286,17 +274,11 @@ pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistriz128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistrz<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistriz128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -307,17 +289,11 @@ pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistric128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistrc<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistric128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -328,17 +304,11 @@ pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistris128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistrs<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistris128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -348,17 +318,11 @@ pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistrio128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistro<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistrio128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
@@ -369,17 +333,11 @@ pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpistria128(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpistra<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpistria128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -389,17 +347,11 @@ pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestrm, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrm(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> __m128i {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestrm128(a, la, b, lb, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8, call))
+pub unsafe fn _mm_cmpestrm<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> __m128i {
+    static_assert_imm8!(imm8);
+    transmute(pcmpestrm128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8))
 }
 
 /// Compares packed strings `a` and `b` with lengths `la` and `lb` using the
@@ -484,17 +436,11 @@ pub unsafe fn _mm_cmpestrm(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestri(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestri128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestri<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestri128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -505,17 +451,11 @@ pub unsafe fn _mm_cmpestri(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrz(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestriz128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestrz<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestriz128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -526,17 +466,11 @@ pub unsafe fn _mm_cmpestrz(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrc(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestric128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestrc<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestric128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -547,17 +481,11 @@ pub unsafe fn _mm_cmpestrc(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrs(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestris128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestrs<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestris128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -568,17 +496,11 @@ pub unsafe fn _mm_cmpestrs(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestro(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestrio128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestro<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestrio128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
@@ -590,17 +512,11 @@ pub unsafe fn _mm_cmpestro(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) 
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
-#[rustc_args_required_const(4)]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestra(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32) -> i32 {
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            pcmpestria128(a, la, b, lb, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_cmpestra<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(imm8);
+    pcmpestria128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
@@ -719,7 +635,7 @@ mod tests {
     unsafe fn test_mm_cmpistrm() {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
-        let i = _mm_cmpistrm(a, b, _SIDD_UNIT_MASK);
+        let i = _mm_cmpistrm::<_SIDD_UNIT_MASK>(a, b);
         #[rustfmt::skip]
         let res = _mm_setr_epi8(
             0x00, !0, !0, !0, !0, !0, !0, 0x00,
@@ -732,7 +648,7 @@ mod tests {
     unsafe fn test_mm_cmpistri() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"   Hello        ");
-        let i = _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistri::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
         assert_eq!(3, i);
     }
 
@@ -740,7 +656,7 @@ mod tests {
     unsafe fn test_mm_cmpistrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
-        let i = _mm_cmpistrz(a, b, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistrz::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
         assert_eq!(1, i);
     }
 
@@ -748,7 +664,7 @@ mod tests {
     unsafe fn test_mm_cmpistrc() {
         let a = str_to_m128i(b"                ");
         let b = str_to_m128i(b"       !        ");
-        let i = _mm_cmpistrc(a, b, _SIDD_UNIT_MASK);
+        let i = _mm_cmpistrc::<_SIDD_UNIT_MASK>(a, b);
         assert_eq!(1, i);
     }
 
@@ -756,7 +672,7 @@ mod tests {
     unsafe fn test_mm_cmpistrs() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"");
-        let i = _mm_cmpistrs(a, b, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpistrs::<_SIDD_CMP_EQUAL_ORDERED>(a, b);
         assert_eq!(1, i);
     }
 
@@ -774,7 +690,7 @@ mod tests {
         );
         let a = a_bytes;
         let b = b_bytes;
-        let i = _mm_cmpistro(a, b, _SIDD_UWORD_OPS | _SIDD_UNIT_MASK);
+        let i = _mm_cmpistro::<{ _SIDD_UWORD_OPS | _SIDD_UNIT_MASK }>(a, b);
         assert_eq!(0, i);
     }
 
@@ -782,7 +698,7 @@ mod tests {
     unsafe fn test_mm_cmpistra() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello!!!!!!!!!!!");
-        let i = _mm_cmpistra(a, b, _SIDD_UNIT_MASK);
+        let i = _mm_cmpistra::<_SIDD_UNIT_MASK>(a, b);
         assert_eq!(1, i);
     }
 
@@ -790,7 +706,7 @@ mod tests {
     unsafe fn test_mm_cmpestrm() {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
-        let i = _mm_cmpestrm(a, 5, b, 5, _SIDD_UNIT_MASK);
+        let i = _mm_cmpestrm::<_SIDD_UNIT_MASK>(a, 5, b, 5);
         #[rustfmt::skip]
         let r = _mm_setr_epi8(
             !0, !0, !0, !0, !0, 0x00, 0x00, 0x00,
@@ -803,7 +719,7 @@ mod tests {
     unsafe fn test_mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
-        let i = _mm_cmpestri(a, 3, b, 6, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpestri::<_SIDD_CMP_EQUAL_ORDERED>(a, 3, b, 6);
         assert_eq!(3, i);
     }
 
@@ -811,7 +727,7 @@ mod tests {
     unsafe fn test_mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
-        let i = _mm_cmpestrz(a, 16, b, 6, _SIDD_CMP_EQUAL_ORDERED);
+        let i = _mm_cmpestrz::<_SIDD_CMP_EQUAL_ORDERED>(a, 16, b, 6);
         assert_eq!(1, i);
     }
 
@@ -819,7 +735,7 @@ mod tests {
     unsafe fn test_mm_cmpestrc() {
         let va = str_to_m128i(b"!!!!!!!!");
         let vb = str_to_m128i(b"        ");
-        let i = _mm_cmpestrc(va, 7, vb, 7, _SIDD_UNIT_MASK);
+        let i = _mm_cmpestrc::<_SIDD_UNIT_MASK>(va, 7, vb, 7);
         assert_eq!(0, i);
     }
 
@@ -832,7 +748,7 @@ mod tests {
         );
         let a = a_bytes;
         let b = _mm_set1_epi8(0x00);
-        let i = _mm_cmpestrs(a, 8, b, 0, _SIDD_UWORD_OPS);
+        let i = _mm_cmpestrs::<_SIDD_UWORD_OPS>(a, 8, b, 0);
         assert_eq!(0, i);
     }
 
@@ -840,7 +756,7 @@ mod tests {
     unsafe fn test_mm_cmpestro() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"World");
-        let i = _mm_cmpestro(a, 5, b, 5, _SIDD_UBYTE_OPS);
+        let i = _mm_cmpestro::<_SIDD_UBYTE_OPS>(a, 5, b, 5);
         assert_eq!(0, i);
     }
 
@@ -848,7 +764,7 @@ mod tests {
     unsafe fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
-        let i = _mm_cmpestra(a, 14, b, 16, _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK);
+        let i = _mm_cmpestra::<{ _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK }>(a, 14, b, 16);
         assert_eq!(1, i);
     }
 
