@@ -38,7 +38,7 @@ macro_rules! expand_group {
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
+        $( $(#[attr:meta])* $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -47,6 +47,8 @@ macro_rules! language_item_table {
             pub enum LangItem {
                 $(
                     #[doc = concat!("The `", stringify!($name), "` lang item.")]
+                    ///
+                    $(#[attr])*
                     $variant,
                 )*
             }
@@ -196,15 +198,15 @@ language_item_table! {
 
     Sized,                   sym::sized,               sized_trait,                Target::Trait;
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait;
-    // Trait injected by #[derive(PartialEq)], (i.e. "Partial EQ").
+    /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait;
-    // Trait injected by #[derive(Eq)], (i.e. "Total EQ"; no, I will not apologize).
+    /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
     StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait;
     Clone,                   sym::clone,               clone_trait,                Target::Trait;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait;
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait;
-    // The associated item of `trait DiscriminantKind`.
+    /// The associated item of the [`DiscriminantKind`] trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait;
@@ -279,7 +281,7 @@ language_item_table! {
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn;
-    // libstd panic entry point. Necessary for const eval to be able to catch it
+    /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn;
@@ -301,7 +303,7 @@ language_item_table! {
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union;
 
-    // Align offset for stride != 1; must not panic.
+    /// Align offset for stride != 1; must not panic.
     AlignOffset,             sym::align_offset,        align_offset_fn,            Target::Fn;
 
     Termination,             sym::termination,         termination,                Target::Trait;
