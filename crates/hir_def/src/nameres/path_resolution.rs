@@ -77,7 +77,7 @@ impl DefMap {
         original_module: LocalModuleId,
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
-        match visibility {
+        let mut vis = match visibility {
             RawVisibility::Module(path) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, &path, BuiltinShadowMode::Module);
@@ -86,15 +86,28 @@ impl DefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Some(Visibility::Module(m)),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m),
                     _ => {
                         // error: visibility needs to refer to module
-                        None
+                        return None;
                     }
                 }
             }
-            RawVisibility::Public => Some(Visibility::Public),
+            RawVisibility::Public => Visibility::Public,
+        };
+
+        // In block expressions, `self` normally refers to the containing non-block module, and
+        // `super` to its parent (etc.). However, visibilities must only refer to a module in the
+        // DefMap they're written in, so we restrict them when that happens.
+        if let Visibility::Module(m) = vis {
+            if self.block_id() != m.block {
+                mark::hit!(adjust_vis_in_block_def_map);
+                vis = Visibility::Module(self.module_id(self.root()));
+                log::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
+            }
         }
+
+        Some(vis)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change
