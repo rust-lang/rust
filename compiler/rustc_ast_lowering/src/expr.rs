@@ -338,7 +338,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = vec![];
         for (idx, arg) in args.into_iter().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                let parent_def_id = self.current_hir_id_owner.0;
                 let node_id = self.resolver.next_node_id();
 
                 // Add a definition for the in-band const def.
