@@ -8,7 +8,7 @@
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
+use super::UnixAncillary;
 use super::{sockaddr_un, SocketAddr};
 #[cfg(any(
     target_os = "android",
@@ -335,7 +335,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAncillary, AncillaryData};
+    /// use std::os::unix::net::{UnixDatagram, UnixAncillary, UnixAncillaryData};
     /// use std::io::IoSliceMut;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -350,11 +350,11 @@ impl UnixDatagram {
     ///     ][..];
     ///     let mut fds = [0; 8];
     ///     let mut ancillary_buffer = [0; 128];
-    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let mut ancillary = UnixAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated, sender) = sock.recv_vectored_with_ancillary_from(bufs, &mut ancillary)?;
     ///     println!("received {}", size);
     ///     for ancillary_result in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
+    ///         if let UnixAncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
@@ -376,9 +376,10 @@ impl UnixDatagram {
     pub fn recv_vectored_with_ancillary_from(
         &self,
         bufs: &mut [IoSliceMut<'_>],
-        ancillary: &mut SocketAncillary<'_>,
+        ancillary: &mut UnixAncillary<'_>,
     ) -> io::Result<(usize, bool, SocketAddr)> {
-        let (count, truncated, addr) = recv_vectored_with_ancillary_from(&self.0, bufs, ancillary)?;
+        let (count, truncated, addr) =
+            self.0.recv_vectored_with_ancillary_from_unix(bufs, ancillary)?;
         let addr = addr?;
 
         Ok((count, truncated, addr))
@@ -392,7 +393,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAncillary, AncillaryData};
+    /// use std::os::unix::net::{UnixDatagram, UnixAncillary, UnixAncillaryData};
     /// use std::io::IoSliceMut;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -407,11 +408,11 @@ impl UnixDatagram {
     ///     ][..];
     ///     let mut fds = [0; 8];
     ///     let mut ancillary_buffer = [0; 128];
-    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let mut ancillary = UnixAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated) = sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
     ///     println!("received {}", size);
     ///     for ancillary_result in ancillary.messages() {
-    ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
+    ///         if let UnixAncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
     ///                 println!("receive file descriptor: {}", fd);
     ///             }
@@ -433,9 +434,10 @@ impl UnixDatagram {
     pub fn recv_vectored_with_ancillary(
         &self,
         bufs: &mut [IoSliceMut<'_>],
-        ancillary: &mut SocketAncillary<'_>,
+        ancillary: &mut UnixAncillary<'_>,
     ) -> io::Result<(usize, bool)> {
-        let (count, truncated, addr) = recv_vectored_with_ancillary_from(&self.0, bufs, ancillary)?;
+        let (count, truncated, addr) =
+            self.0.recv_vectored_with_ancillary_from_unix(bufs, ancillary)?;
         addr?;
 
         Ok((count, truncated))
@@ -505,7 +507,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAncillary};
+    /// use std::os::unix::net::{UnixDatagram, UnixAncillary};
     /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -520,7 +522,7 @@ impl UnixDatagram {
     ///     ][..];
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
-    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let mut ancillary = UnixAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
     ///     sock.send_vectored_with_ancillary_to(bufs, &mut ancillary, "/some/sock")
     ///         .expect("send_vectored_with_ancillary_to function failed");
@@ -540,10 +542,10 @@ impl UnixDatagram {
     pub fn send_vectored_with_ancillary_to<P: AsRef<Path>>(
         &self,
         bufs: &[IoSlice<'_>],
-        ancillary: &mut SocketAncillary<'_>,
+        ancillary: &mut UnixAncillary<'_>,
         path: P,
     ) -> io::Result<usize> {
-        send_vectored_with_ancillary_to(&self.0, Some(path.as_ref()), bufs, ancillary)
+        self.0.send_vectored_with_ancillary_to_unix(Some(path.as_ref()), bufs, ancillary)
     }
 
     /// Sends data and ancillary data on the socket.
@@ -554,7 +556,7 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAncillary};
+    /// use std::os::unix::net::{UnixDatagram, UnixAncillary};
     /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -569,7 +571,7 @@ impl UnixDatagram {
     ///     ][..];
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
-    ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
+    ///     let mut ancillary = UnixAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
     ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)
     ///         .expect("send_vectored_with_ancillary function failed");
@@ -589,9 +591,9 @@ impl UnixDatagram {
     pub fn send_vectored_with_ancillary(
         &self,
         bufs: &[IoSlice<'_>],
-        ancillary: &mut SocketAncillary<'_>,
+        ancillary: &mut UnixAncillary<'_>,
     ) -> io::Result<usize> {
-        send_vectored_with_ancillary_to(&self.0, None, bufs, ancillary)
+        self.0.send_vectored_with_ancillary_to_unix(None, bufs, ancillary)
     }
 
     /// Sets the read timeout for the socket.
@@ -742,7 +744,7 @@ impl UnixDatagram {
         self.0.set_nonblocking(nonblocking)
     }
 
-    /// Moves the socket to pass unix credentials as control message in [`SocketAncillary`].
+    /// Moves the socket to pass unix credentials as control message in [`UnixAncillary`].
     ///
     /// Set the socket option `SO_PASSCRED`.
     ///
@@ -765,7 +767,7 @@ impl UnixDatagram {
         self.0.set_passcred(passcred)
     }
 
-    /// Get the current value of the socket for passing unix credentials in [`SocketAncillary`].
+    /// Get the current value of the socket for passing unix credentials in [`UnixAncillary`].
     /// This value can be change by [`set_passcred`].
     ///
     /// Get the socket option `SO_PASSCRED`.
