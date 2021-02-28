@@ -27,7 +27,7 @@ cxx = {name = "cxx", versions = ['1.0.32']}
 ryu = {name = "ryu", version = ['1.0.5']}
 serde_yaml = {name = "serde_yaml", versions = ['0.8.17']}
 thiserror = {name = "thiserror", versions = ['1.0.24']}
-# some embark crates there are other interesting crates but
+# some embark crates, there are other interesting crates but
 # unfortunately adding them increases lintcheck runtime drastically
 cfg-expr = {name = "cfg-expr", versions = ['0.7.1']}
 puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}

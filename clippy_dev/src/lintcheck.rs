@@ -318,8 +318,8 @@ impl LintcheckConfig {
 
         let sources_toml_path = PathBuf::from(sources_toml);
 
-        // for the path where we save the lint results, get the filename without extenstion ( so for
-        // wasd.toml, use "wasd"....)
+        // for the path where we save the lint results, get the filename without extension (so for
+        // wasd.toml, use "wasd"...)
         let filename: PathBuf = sources_toml_path.file_stem().unwrap().into();
         let lintcheck_results_path = PathBuf::from(format!("lintcheck-logs/{}_logs.txt", filename.display()));
 

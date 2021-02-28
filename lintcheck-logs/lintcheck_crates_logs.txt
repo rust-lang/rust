@@ -1448,6 +1448,36 @@ target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:52:1 clippy::m
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:56:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:60:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/workspace.rs:64:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/cfg-expr-0.7.1/src/error.rs:107:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
+target/lintcheck/sources/cfg-expr-0.7.1/src/error.rs:5:1 clippy::module_name_repetitions "item name ends with its containing module's name"
+target/lintcheck/sources/cfg-expr-0.7.1/src/error.rs:74:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
+target/lintcheck/sources/cfg-expr-0.7.1/src/error.rs:91:24 clippy::if_not_else "unnecessary boolean `not` operation"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:102:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:125:33 clippy::redundant_slicing "redundant slicing of the whole range"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:4:5 clippy::doc_markdown "you should put bare URLs between `<`/`>` or make a proper Markdown link"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:58:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:76:1 clippy::module_name_repetitions "item name starts with its containing module's name"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/lexer.rs:97:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:351:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:464:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:57:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:586:33 clippy::match_same_arms "this `match` has identical arm bodies"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:599:32 clippy::match_same_arms "this `match` has identical arm bodies"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:116:31 clippy::similar_names "binding's name is too similar to existing binding"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:124:36 clippy::similar_names "binding's name is too similar to existing binding"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:17:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:17:5 clippy::too_many_lines "this function has too many lines (345/100)"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:22:13 clippy::shadow_unrelated "`original` is being shadowed"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:243:36 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:254:34 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:25:9 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:390:9 clippy::single_match_else "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:392:17 clippy::if_not_else "unnecessary `!=` operation"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:67:13 clippy::items_after_statements "adding items after statements is confusing, since items exist from the start of the scope"
+target/lintcheck/sources/cfg-expr-0.7.1/src/lib.rs:1:null clippy::cargo_common_metadata "package `cfg-expr` is missing `package.categories` metadata"
+target/lintcheck/sources/cfg-expr-0.7.1/src/targets/builtins.rs:11:5 clippy::wildcard_imports "usage of wildcard import"
+target/lintcheck/sources/cfg-expr-0.7.1/src/targets/mod.rs:139:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+target/lintcheck/sources/cfg-expr-0.7.1/src/targets/mod.rs:153:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
 target/lintcheck/sources/cxx-1.0.32/src/rust_string.rs:15:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
 target/lintcheck/sources/cxx-1.0.32/src/rust_string.rs:19:24 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
 target/lintcheck/sources/cxx-1.0.32/src/rust_vec.rs:21:20 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
@@ -3207,6 +3237,12 @@ target/lintcheck/sources/ripgrep-12.1.1/crates/core/search.rs:533:36 clippy::cas
 target/lintcheck/sources/ripgrep-12.1.1/crates/core/search.rs:533:5 clippy::cast_precision_loss "casting `u64` to `f64` causes a loss of precision (`u64` is 64 bits wide, but `f64`'s mantissa is only 52 bits wide)"
 target/lintcheck/sources/ripgrep-12.1.1/crates/core/subject.rs:20:1 clippy::module_name_repetitions "item name starts with its containing module's name"
 target/lintcheck/sources/ripgrep-12.1.1/crates/core/subject.rs:4:1 clippy::single_component_path_imports "this import is redundant"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:103:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:114:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:71:73 clippy::doc_markdown "you should put bare URLs between `<`/`>` or make a proper Markdown link"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:72:50 clippy::doc_markdown "you should put bare URLs between `<`/`>` or make a proper Markdown link"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:92:9 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
+target/lintcheck/sources/rpmalloc-0.2.0/src/lib.rs:95:21 clippy::ptr_as_ptr "`as` casting between raw pointers without changing its mutability"
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:1592:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:1616:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
 target/lintcheck/sources/serde-1.0.118/src/de/mod.rs:1627:9 clippy::let_underscore_drop "non-binding `let` on a type that implements `Drop`"
@@ -3221,6 +3257,25 @@ target/lintcheck/sources/syn-1.0.54/src/lit.rs:1397:40 clippy::redundant_else "r
 target/lintcheck/sources/syn-1.0.54/src/lit.rs:1405:28 clippy::redundant_else "redundant else block"
 target/lintcheck/sources/syn-1.0.54/src/lit.rs:1485:32 clippy::redundant_else "redundant else block"
 target/lintcheck/sources/syn-1.0.54/src/token.rs:974:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/errors.rs:9:5 clippy::upper_case_acronyms "name `HTTP` contains a capitalized acronym"
+target/lintcheck/sources/tame-oidc-0.1.0/src/lib.rs:1:null clippy::cargo_common_metadata "package `tame-oidc` is missing `package.categories` metadata"
+target/lintcheck/sources/tame-oidc-0.1.0/src/oidc.rs:111:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/oidc.rs:127:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/oidc.rs:52:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/oidc.rs:60:1 clippy::from_over_into "an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true"
+target/lintcheck/sources/tame-oidc-0.1.0/src/oidc.rs:76:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:107:1 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:107:1 clippy::must_use_candidate "this function could have a `#[must_use]` attribute"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:118:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:143:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:159:1 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:26:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:38:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:57:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:71:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:77:12 clippy::upper_case_acronyms "name `JWK` contains a capitalized acronym"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:90:12 clippy::upper_case_acronyms "name `JWKS` contains a capitalized acronym"
+target/lintcheck/sources/tame-oidc-0.1.0/src/provider.rs:95:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/thiserror-1.0.24/src/lib.rs:1:null clippy::cargo_common_metadata "package `thiserror` is missing `package.keywords` metadata"
 target/lintcheck/sources/unicode-xid-0.2.1/src/lib.rs:1:null clippy::cargo_common_metadata "package `unicode-xid` is missing `package.categories` metadata"
 target/lintcheck/sources/unicode-xid-0.2.1/src/lib.rs:57:64 clippy::doc_markdown "you should put `XID_Start` between ticks in the documentation"
@@ -3416,7 +3471,6 @@ clippy::comparison_chain 1
 clippy::expect_fun_call 1
 clippy::explicit_deref_methods 1
 clippy::from_iter_instead_of_collect 1
-clippy::from_over_into 1
 clippy::int_plus_one 1
 clippy::manual_flatten 1
 clippy::manual_saturating_arithmetic 1
@@ -3426,7 +3480,6 @@ clippy::or_fun_call 1
 clippy::precedence 1
 clippy::pub_enum_variant_names 1
 clippy::redundant_clone 1
-clippy::redundant_slicing 1
 clippy::same_item_push 1
 clippy::should_implement_trait 1
 clippy::stable_sort_primitive 1
@@ -3438,6 +3491,7 @@ clippy::while_let_on_iterator 1
 clippy::comparison_to_empty 2
 clippy::expl_impl_clone_on_copy 2
 clippy::filter_map 2
+clippy::from_over_into 2
 clippy::len_zero 2
 clippy::manual_non_exhaustive 2
 clippy::match_on_vec_items 2
@@ -3445,6 +3499,7 @@ clippy::option_as_ref_deref 2
 clippy::option_option 2
 clippy::question_mark 2
 clippy::redundant_pattern_matching 2
+clippy::redundant_slicing 2
 clippy::type_complexity 2
 clippy::unnecessary_cast 2
 clippy::unused_unit 2
@@ -3458,7 +3513,6 @@ clippy::mut_mut 3
 clippy::ptr_arg 3
 clippy::zero_ptr 3
 clippy::too_many_arguments 4
-clippy::upper_case_acronyms 4
 clippy::explicit_iter_loop 5
 clippy::field_reassign_with_default 5
 clippy::identity_op 5
@@ -3476,6 +3530,7 @@ clippy::implicit_clone 7
 clippy::map_clone 7
 clippy::option_map_unit_fn 7
 clippy::range_plus_one 7
+clippy::upper_case_acronyms 7
 clippy::invalid_upcast_comparisons 8
 clippy::needless_question_mark 8
 clippy::wrong_self_convention 8
@@ -3486,43 +3541,43 @@ clippy::missing_safety_doc 10
 clippy::needless_doctest_main 10
 clippy::needless_lifetimes 12
 clippy::linkedlist 14
-clippy::shadow_unrelated 14
 clippy::single_char_add_str 14
 clippy::option_if_let_else 15
+clippy::shadow_unrelated 15
 clippy::needless_pass_by_value 18
-clippy::cargo_common_metadata 19
 clippy::cast_possible_wrap 19
 clippy::cast_sign_loss 19
-clippy::ptr_as_ptr 19
 clippy::unnecessary_wraps 19
 clippy::unused_self 19
 clippy::unusual_byte_groupings 19
 clippy::map_unwrap_or 20
 clippy::struct_excessive_bools 20
+clippy::cargo_common_metadata 21
+clippy::ptr_as_ptr 21
 clippy::redundant_static_lifetimes 21
 clippy::cast_lossless 23
 clippy::default_trait_access 26
 clippy::let_underscore_drop 26
 clippy::trivially_copy_pass_by_ref 26
 clippy::redundant_else 29
-clippy::too_many_lines 34
-clippy::if_not_else 36
-clippy::enum_glob_use 40
+clippy::too_many_lines 35
+clippy::if_not_else 38
 clippy::unseparated_literal_suffix 41
 clippy::cast_precision_loss 44
-clippy::single_match_else 45
-clippy::missing_panics_doc 57
+clippy::enum_glob_use 44
+clippy::single_match_else 48
 clippy::inline_always 59
-clippy::match_same_arms 60
-clippy::similar_names 81
+clippy::missing_panics_doc 59
+clippy::match_same_arms 62
+clippy::similar_names 83
 clippy::cast_possible_truncation 95
 clippy::redundant_field_names 111
 clippy::redundant_closure_for_method_calls 135
-clippy::items_after_statements 139
-clippy::module_name_repetitions 144
-clippy::wildcard_imports 163
-clippy::doc_markdown 181
-clippy::missing_errors_doc 343
+clippy::items_after_statements 143
+clippy::module_name_repetitions 146
+clippy::wildcard_imports 164
+clippy::doc_markdown 184
+clippy::missing_errors_doc 356
 clippy::unreadable_literal 365
-clippy::must_use_candidate 565
+clippy::must_use_candidate 571
 ICEs:
