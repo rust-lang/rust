@@ -388,7 +388,7 @@ impl Types {
                                 hir_ty.span,
                                 "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                                 None,
-                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.",
+                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation",
                             );
                             return; // don't recurse into the type
                         }
@@ -554,7 +554,7 @@ impl Types {
                                     cx,
                                     VEC_BOX,
                                     hir_ty.span,
-                                    "`Vec<T>` is already on the heap, the boxing is unnecessary.",
+                                    "`Vec<T>` is already on the heap, the boxing is unnecessary",
                                     "try",
                                     format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
                                     Applicability::MachineApplicable,
@@ -578,7 +578,7 @@ impl Types {
                             cx,
                             LINKEDLIST,
                             hir_ty.span,
-                            "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                            "you seem to be using a `LinkedList`! Perhaps you meant some other data structure?",
                             None,
                             "a `VecDeque` might work",
                         );

@@ -1,4 +1,4 @@
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:23:12
    |
 LL |     return Some(to.magic?);
@@ -6,79 +6,79 @@ LL |     return Some(to.magic?);
    |
    = note: `-D clippy::needless-question-mark` implied by `-D warnings`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:31:12
    |
 LL |     return Some(to.magic?)
    |            ^^^^^^^^^^^^^^^ help: try: `to.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:36:5
    |
 LL |     Some(to.magic?)
    |     ^^^^^^^^^^^^^^^ help: try: `to.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:41:21
    |
 LL |     to.and_then(|t| Some(t.magic?))
    |                     ^^^^^^^^^^^^^^ help: try: `t.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:50:9
    |
 LL |         Some(t.magic?)
    |         ^^^^^^^^^^^^^^ help: try: `t.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:55:12
    |
 LL |     return Ok(tr.magic?);
    |            ^^^^^^^^^^^^^ help: try: `tr.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:62:12
    |
 LL |     return Ok(tr.magic?)
    |            ^^^^^^^^^^^^^ help: try: `tr.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:66:5
    |
 LL |     Ok(tr.magic?)
    |     ^^^^^^^^^^^^^ help: try: `tr.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:70:21
    |
 LL |     tr.and_then(|t| Ok(t.magic?))
    |                     ^^^^^^^^^^^^ help: try: `t.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:78:9
    |
 LL |         Ok(t.magic?)
    |         ^^^^^^^^^^^^ help: try: `t.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:85:16
    |
 LL |         return Ok(t.magic?);
    |                ^^^^^^^^^^^^ help: try: `t.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:138:9
    |
 LL |         Ok(to.magic?) // should be triggered
    |         ^^^^^^^^^^^^^ help: try: `to.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:154:9
    |
 LL |         Some(to.magic?) // should be triggered
    |         ^^^^^^^^^^^^^^^ help: try: `to.magic`
 
-error: Question mark operator is useless here
+error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:162:9
    |
 LL |         Ok(to.magic?) // should be triggered

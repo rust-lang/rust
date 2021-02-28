@@ -116,7 +116,7 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
                     cx,
                     AWAIT_HOLDING_LOCK,
                     ty_cause.span,
-                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await.",
+                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await",
                     ty_cause.scope_span.or(Some(span)),
                     "these are all the await points this lock is held through",
                 );
@@ -126,7 +126,7 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
                         cx,
                         AWAIT_HOLDING_REFCELL_REF,
                         ty_cause.span,
-                        "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await.",
+                        "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
                         ty_cause.scope_span.or(Some(span)),
                         "these are all the await points this ref is held through",
                     );

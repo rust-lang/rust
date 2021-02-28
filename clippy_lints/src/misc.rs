@@ -292,7 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                     TOPLEVEL_REF_ARG,
                     arg.pat.span,
                     "`ref` directly on a function argument is ignored. \
-                    Consider using a reference type instead.",
+                    Consider using a reference type instead",
                 );
             }
         }
@@ -422,7 +422,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 expr.span,
                 &format!(
                     "used binding `{}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used.",
+                     underscore signals that a binding will not be used",
                     binding
                 ),
             );

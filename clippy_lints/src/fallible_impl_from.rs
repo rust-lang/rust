@@ -133,7 +133,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                         move |diag| {
                             diag.help(
                                 "`From` is intended for infallible conversions only. \
-                                Use `TryFrom` if there's a possibility for the conversion to fail.");
+                                Use `TryFrom` if there's a possibility for the conversion to fail");
                             diag.span_note(fpu.result, "potential failure(s)");
                         });
                 }

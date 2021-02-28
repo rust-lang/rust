@@ -9,7 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::comparison-chain` implied by `-D warnings`
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:27:5
@@ -23,7 +23,7 @@ LL | |         c()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:35:5
@@ -37,7 +37,7 @@ LL | |         c()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:43:5
@@ -51,7 +51,7 @@ LL | |         c()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:117:5
@@ -63,7 +63,7 @@ LL | |         b()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:123:5
@@ -77,7 +77,7 @@ LL | |         c()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:131:5
@@ -91,7 +91,7 @@ LL | |         c()
 LL | |     }
    | |_____^
    |
-   = help: Consider rewriting the `if` chain to use `cmp` and `match`.
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
 
 error: aborting due to 7 previous errors
 
