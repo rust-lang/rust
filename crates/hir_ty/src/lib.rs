@@ -99,6 +99,18 @@ impl TypeWalk for ProjectionTy {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub struct FnSig {
+    pub variadic: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct FnPointer {
+    pub num_args: usize,
+    pub sig: FnSig,
+    pub substs: Substs,
+}
+
 /// A type.
 ///
 /// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
@@ -166,7 +178,7 @@ pub enum Ty {
     ///
     /// The closure signature is stored in a `FnPtr` type in the first type
     /// parameter.
-    Closure { def: DefWithBodyId, expr: ExprId, substs: Substs },
+    Closure(DefWithBodyId, ExprId, Substs),
 
     /// Represents a foreign type declared in external blocks.
     ForeignType(TypeAliasId),
@@ -179,8 +191,7 @@ pub enum Ty {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    // FIXME make this a Ty variant like in Chalk
-    FnPtr { num_args: u16, is_varargs: bool, substs: Substs },
+    Function(FnPointer),
 
     /// A "projection" type corresponds to an (unnormalized)
     /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
@@ -535,22 +546,29 @@ pub enum TyKind {
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FnSig {
+pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
 }
 
 /// A polymorphic function signature.
-pub type PolyFnSig = Binders<FnSig>;
+pub type PolyFnSig = Binders<CallableSig>;
 
-impl FnSig {
-    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> FnSig {
+impl CallableSig {
+    pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> CallableSig {
         params.push(ret);
-        FnSig { params_and_return: params.into(), is_varargs }
+        CallableSig { params_and_return: params.into(), is_varargs }
     }
 
-    pub fn from_fn_ptr_substs(substs: &Substs, is_varargs: bool) -> FnSig {
-        FnSig { params_and_return: Arc::clone(&substs.0), is_varargs }
+    pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
+        CallableSig {
+            params_and_return: Arc::clone(&fn_ptr.substs.0),
+            is_varargs: fn_ptr.sig.variadic,
+        }
+    }
+
+    pub fn from_substs(substs: &Substs) -> CallableSig {
+        CallableSig { params_and_return: Arc::clone(&substs.0), is_varargs: false }
     }
 
     pub fn params(&self) -> &[Ty] {
@@ -562,7 +580,7 @@ impl FnSig {
     }
 }
 
-impl TypeWalk for FnSig {
+impl TypeWalk for CallableSig {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         for t in self.params_and_return.iter() {
             t.walk(f);
@@ -585,12 +603,12 @@ impl Ty {
         Ty::Tuple(0, Substs::empty())
     }
 
-    pub fn fn_ptr(sig: FnSig) -> Self {
-        Ty::FnPtr {
-            num_args: sig.params().len() as u16,
-            is_varargs: sig.is_varargs,
+    pub fn fn_ptr(sig: CallableSig) -> Self {
+        Ty::Function(FnPointer {
+            num_args: sig.params().len(),
+            sig: FnSig { variadic: sig.is_varargs },
             substs: Substs(sig.params_and_return),
-        }
+        })
     }
 
     pub fn builtin(builtin: BuiltinType) -> Self {
@@ -673,7 +691,7 @@ impl Ty {
             (Ty::OpaqueType(ty_id, ..), Ty::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
             (Ty::AssociatedType(ty_id, ..), Ty::AssociatedType(ty_id2, ..))
             | (Ty::ForeignType(ty_id, ..), Ty::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
-            (Ty::Closure { def, expr, .. }, Ty::Closure { def: def2, expr: expr2, .. }) => {
+            (Ty::Closure(def, expr, _), Ty::Closure(def2, expr2, _)) => {
                 expr == expr2 && def == def2
             }
             (Ty::Ref(mutability, ..), Ty::Ref(mutability2, ..))
@@ -681,9 +699,9 @@ impl Ty {
                 mutability == mutability2
             }
             (
-                Ty::FnPtr { num_args, is_varargs, .. },
-                Ty::FnPtr { num_args: num_args2, is_varargs: is_varargs2, .. },
-            ) => num_args == num_args2 && is_varargs == is_varargs2,
+                Ty::Function(FnPointer { num_args, sig, .. }),
+                Ty::Function(FnPointer { num_args: num_args2, sig: sig2, .. }),
+            ) => num_args == num_args2 && sig == sig2,
             (Ty::Tuple(cardinality, _), Ty::Tuple(cardinality2, _)) => cardinality == cardinality2,
             (Ty::Str, Ty::Str) | (Ty::Never, Ty::Never) => true,
             (Ty::Scalar(scalar), Ty::Scalar(scalar2)) => scalar == scalar2,
@@ -722,17 +740,15 @@ impl Ty {
         }
     }
 
-    pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
+    pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
         match self {
-            Ty::FnPtr { is_varargs, substs: parameters, .. } => {
-                Some(FnSig::from_fn_ptr_substs(&parameters, *is_varargs))
-            }
+            Ty::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
             Ty::FnDef(def, parameters) => {
                 let sig = db.callable_item_signature(*def);
                 Some(sig.subst(&parameters))
             }
-            Ty::Closure { substs: parameters, .. } => {
-                let sig_param = &parameters[0];
+            Ty::Closure(.., substs) => {
+                let sig_param = &substs[0];
                 sig_param.callable_sig(db)
             }
             _ => None,
@@ -751,11 +767,11 @@ impl Ty {
             | Ty::RawPtr(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
-            | Ty::FnPtr { substs, .. }
+            | Ty::Function(FnPointer { substs, .. })
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::Closure { substs, .. } => {
+            | Ty::Closure(.., substs) => {
                 assert_eq!(substs.len(), new_substs.len());
                 *substs = new_substs;
             }
@@ -774,11 +790,11 @@ impl Ty {
             | Ty::RawPtr(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
-            | Ty::FnPtr { substs, .. }
+            | Ty::Function(FnPointer { substs, .. })
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::Closure { substs, .. } => Some(substs),
+            | Ty::Closure(.., substs) => Some(substs),
             _ => None,
         }
     }
@@ -791,11 +807,11 @@ impl Ty {
             | Ty::RawPtr(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
-            | Ty::FnPtr { substs, .. }
+            | Ty::Function(FnPointer { substs, .. })
             | Ty::Tuple(_, substs)
             | Ty::OpaqueType(_, substs)
             | Ty::AssociatedType(_, substs)
-            | Ty::Closure { substs, .. } => Some(substs),
+            | Ty::Closure(.., substs) => Some(substs),
             _ => None,
         }
     }

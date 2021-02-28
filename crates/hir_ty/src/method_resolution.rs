@@ -18,8 +18,8 @@ use crate::{
     db::HirDatabase,
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    Canonical, DebruijnIndex, InEnvironment, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
-    TyKind, TypeWalk,
+    Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Scalar, Substs, TraitEnvironment,
+    TraitRef, Ty, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -35,7 +35,7 @@ pub enum TyFingerprint {
     Dyn(TraitId),
     Tuple(usize),
     ForeignType(TypeAliasId),
-    FnPtr { num_args: u16, is_varargs: bool },
+    FnPtr(usize, FnSig),
 }
 
 impl TyFingerprint {
@@ -53,9 +53,7 @@ impl TyFingerprint {
             &Ty::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
             &Ty::RawPtr(mutability, ..) => TyFingerprint::RawPtr(mutability),
             &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
-            &Ty::FnPtr { num_args, is_varargs, .. } => {
-                TyFingerprint::FnPtr { num_args, is_varargs }
-            }
+            &Ty::Function(FnPointer { num_args, sig, .. }) => TyFingerprint::FnPtr(num_args, sig),
             Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
             _ => return None,
         };
