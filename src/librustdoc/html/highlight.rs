@@ -10,7 +10,7 @@ use crate::html::escape::Escape;
 use std::fmt::Display;
 use std::iter::Peekable;
 
-use rustc_lexer::{LiteralKind, TokenKind};
+use rustc_lexer::{Lexer, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::with_default_session_globals;
@@ -121,15 +121,25 @@ enum Highlight<'a> {
 
 struct TokenIter<'a> {
     src: &'a str,
+    lexer: Lexer<'a>,
+}
+impl<'a> TokenIter<'a> {
+    pub fn new(src: &'a str) -> TokenIter<'a> {
+        TokenIter {
+            src,
+            lexer: Lexer::new(src)
+        }
+    }
 }
 
 impl Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
-        if self.src.is_empty() {
+        let token = if let Some(token) = self.lexer.next() {
+            token
+        } else {
             return None;
-        }
-        let token = rustc_lexer::first_token(self.src);
+        };
         let (text, rest) = self.src.split_at(token.len);
         self.src = rest;
         Some((token.kind, text))
@@ -148,7 +158,7 @@ struct Classifier<'a> {
 
 impl<'a> Classifier<'a> {
     fn new(src: &str, edition: Edition) -> Classifier<'_> {
-        let tokens = TokenIter { src }.peekable();
+        let tokens = TokenIter::new(src).peekable();
         Classifier {
             tokens,
             in_attribute: false,
