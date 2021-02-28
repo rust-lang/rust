@@ -4,9 +4,9 @@ use expect_test::{expect, Expect};
 
 fn check_raw_str(s: &str, expected_hashes: u16, expected_err: Option<RawStrError>) {
     let s = &format!("r{}", s);
-    let mut cursor = Cursor::new(s);
-    cursor.bump();
-    let (n_hashes, err) = cursor.raw_double_quoted_string(0);
+    let mut lexer = Lexer::new(s);
+    lexer.cursor.bump();
+    let (n_hashes, err) = lexer.raw_double_quoted_string(0);
     assert_eq!(n_hashes, expected_hashes);
     assert_eq!(err, expected_err);
 }
@@ -282,6 +282,99 @@ br###"raw"###suffix
             Token { kind: Whitespace, len: 1 }
             Token { kind: Literal { kind: RawByteStr { n_hashes: 3, err: None }, suffix_start: 13 }, len: 19 }
             Token { kind: Whitespace, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn f_string_literals() {
+    check_lexing(
+        r#"
+f"foobar"
+f"foo{ 1 + 1 }bar"
+f"foo{ 1 + { 5 } }bar"
+f"foo{ 1 + { 5 + { 10 } } }bar"
+"#,
+        expect![[r#"
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Quote) }, suffix_start: 9 }, len: 9 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 5 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: CloseBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 5 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 1 }, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: OpenBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Int { base: Decimal, empty_int: false }, suffix_start: 2 }, len: 2 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: CloseBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: CloseBrace, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 5 }
+            Token { kind: Whitespace, len: 1 }
+        "#]],
+    )
+}
+
+#[test]
+fn monster_f_string_literal() {
+    check_lexing(
+        r#"f"foo{ ident + f"nested { bar + "f-strings" + f"just }} a plain {{ string" }" }bar""#,
+        expect![[r#"
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 6 }, len: 6 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Ident, len: 5 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Brace) }, suffix_start: 10 }, len: 10 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Ident, len: 3 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: Str { terminated: true }, suffix_start: 11 }, len: 11 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Plus, len: 1 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Quote, end: Some(Quote) }, suffix_start: 28 }, len: 28 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 2 }, len: 2 }
+            Token { kind: Whitespace, len: 1 }
+            Token { kind: Literal { kind: FStr { start: Brace, end: Some(Quote) }, suffix_start: 5 }, len: 5 }
         "#]],
     )
 }

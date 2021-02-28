@@ -294,12 +294,13 @@ pub fn is_ident(string: &str) -> bool {
 
 pub struct Lexer<'a> {
     cursor: Cursor<'a>,
-    //_brace_count: usize,
-    //_brace_count: usize,
+    last_token_cursor_index: usize,
+    brace_count: i32,
+    brace_f_string_triggers: Vec<i32>,
 }
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Lexer<'a> {
-        Lexer { cursor: Cursor::new(input) }
+        Lexer { cursor: Cursor::new(input), last_token_cursor_index: 0, brace_count: 0, brace_f_string_triggers: vec![] }
     }
 
     /// Parses a token from the input string.
@@ -321,7 +322,7 @@ impl<'a> Lexer<'a> {
                 ('#', c1) if is_id_start(c1) => self.raw_ident(),
                 ('#', _) | ('"', _) => {
                     let (n_hashes, err) = self.raw_double_quoted_string(1);
-                    let suffix_start = self.cursor.len_consumed();
+                    let suffix_start = self.current_token_len_consumed();
                     if err.is_none() {
                         self.eat_literal_suffix();
                     }
@@ -336,7 +337,7 @@ impl<'a> Lexer<'a> {
                 ('\'', _) => {
                     self.cursor.bump();
                     let terminated = self.single_quoted_string();
-                    let suffix_start = self.cursor.len_consumed();
+                    let suffix_start = self.current_token_len_consumed();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -346,7 +347,7 @@ impl<'a> Lexer<'a> {
                 ('"', _) => {
                     self.cursor.bump();
                     let terminated = self.double_quoted_string();
-                    let suffix_start = self.cursor.len_consumed();
+                    let suffix_start = self.current_token_len_consumed();
                     if terminated {
                         self.eat_literal_suffix();
                     }
@@ -356,7 +357,7 @@ impl<'a> Lexer<'a> {
                 ('r', '"') | ('r', '#') => {
                     self.cursor.bump();
                     let (n_hashes, err) = self.raw_double_quoted_string(2);
-                    let suffix_start = self.cursor.len_consumed();
+                    let suffix_start = self.current_token_len_consumed();
                     if err.is_none() {
                         self.eat_literal_suffix();
                     }
@@ -371,15 +372,7 @@ impl<'a> Lexer<'a> {
                 match self.cursor.first() {
                     '\"' => {
                         self.cursor.bump();
-
-                        // TODO: Actually parse correctly
-                        let end = self.f_string();
-                        let kind = FStr { start: FStrDelimiter::Quote, end };
-                        let suffix_start = self.cursor.len_consumed();
-                        if end == Some(FStrDelimiter::Quote) {
-                            self.eat_literal_suffix();
-                        }
-                        Literal { kind, suffix_start }
+                        self.f_string(FStrDelimiter::Quote)
                     }
                     _ => self.ident(),
                 }
@@ -392,7 +385,7 @@ impl<'a> Lexer<'a> {
             // Numeric literal.
             c @ '0'..='9' => {
                 let literal_kind = self.number(c);
-                let suffix_start = self.cursor.len_consumed();
+                let suffix_start = self.current_token_len_consumed();
                 self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
@@ -403,8 +396,24 @@ impl<'a> Lexer<'a> {
             '.' => Dot,
             '(' => OpenParen,
             ')' => CloseParen,
-            '{' => OpenBrace,
-            '}' => CloseBrace,
+            '{' => {
+                self.brace_count += 1;
+                OpenBrace
+            },
+            '}' => {
+                self.brace_count -= 1;
+                if self.brace_f_string_triggers.len() > 0 {
+                    let brace_trigger = self.brace_f_string_triggers[self.brace_f_string_triggers.len() - 1];
+                    if brace_trigger == self.brace_count {
+                        self.brace_f_string_triggers.pop();
+                        self.f_string(FStrDelimiter::Brace)
+                    } else {
+                        CloseBrace
+                    }
+                } else {
+                    CloseBrace
+                }
+            },
             '[' => OpenBracket,
             ']' => CloseBracket,
             '@' => At,
@@ -431,7 +440,7 @@ impl<'a> Lexer<'a> {
             // String literal.
             '"' => {
                 let terminated = self.double_quoted_string();
-                let suffix_start = self.cursor.len_consumed();
+                let suffix_start = self.current_token_len_consumed();
                 if terminated {
                     self.eat_literal_suffix();
                 }
@@ -440,7 +449,13 @@ impl<'a> Lexer<'a> {
             }
             _ => Unknown,
         };
-        Token::new(token_kind, self.cursor.len_consumed())
+        let current_token_len_consumed = self.current_token_len_consumed();
+        self.last_token_cursor_index = self.cursor.len_consumed();
+        Token::new(token_kind, current_token_len_consumed)
+    }
+
+    fn current_token_len_consumed(&mut self) -> usize {
+        self.cursor.len_consumed() - self.last_token_cursor_index
     }
 
     fn line_comment(&mut self) -> TokenKind {
@@ -606,7 +621,7 @@ impl<'a> Lexer<'a> {
 
         if !can_be_a_lifetime {
             let terminated = self.single_quoted_string();
-            let suffix_start = self.cursor.len_consumed();
+            let suffix_start = self.current_token_len_consumed();
             if terminated {
                 self.eat_literal_suffix();
             }
@@ -631,7 +646,7 @@ impl<'a> Lexer<'a> {
         if self.cursor.first() == '\'' {
             self.cursor.bump();
             let kind = Char { terminated: true };
-            Literal { kind, suffix_start: self.cursor.len_consumed() }
+            Literal { kind, suffix_start: self.current_token_len_consumed() }
         } else {
             Lifetime { starts_with_number }
         }
@@ -713,7 +728,7 @@ impl<'a> Lexer<'a> {
 
     fn raw_string_unvalidated(&mut self, prefix_len: usize) -> (usize, Option<RawStrError>) {
         debug_assert!(self.cursor.prev() == 'r');
-        let start_pos = self.cursor.len_consumed();
+        let start_pos = self.current_token_len_consumed();
         let mut possible_terminator_offset = None;
         let mut max_hashes = 0;
 
@@ -770,23 +785,33 @@ impl<'a> Lexer<'a> {
                 // Keep track of possible terminators to give a hint about
                 // where there might be a missing terminator
                 possible_terminator_offset =
-                    Some(self.cursor.len_consumed() - start_pos - n_end_hashes + prefix_len);
+                    Some(self.current_token_len_consumed() - start_pos - n_end_hashes + prefix_len);
                 max_hashes = n_end_hashes;
             }
         }
     }
 
     /// Eats an f-string segment and returns the delimiter that it terminates with.
-    fn f_string(&mut self) -> Option<FStrDelimiter> {
+    fn f_string(&mut self, start: FStrDelimiter) -> TokenKind {
         debug_assert!(self.cursor.prev() == '"' || self.cursor.prev() == '}');
         while let Some(c) = self.cursor.bump() {
             match c {
-                '"' => return Some(FStrDelimiter::Quote),
+                '"' => {
+                    let kind = FStr { start, end: Some(FStrDelimiter::Quote) };
+                    let suffix_start = self.current_token_len_consumed();
+                    self.eat_literal_suffix();
+                    return Literal { kind, suffix_start };
+                },
                 '{' if self.cursor.first() == '{' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
                 }
-                '{' => return Some(FStrDelimiter::Brace),
+                '{' => {
+                    let kind = FStr { start, end: Some(FStrDelimiter::Brace) };
+                    self.brace_f_string_triggers.push(self.brace_count);
+                    self.brace_count += 1;
+                    return Literal { kind, suffix_start: self.current_token_len_consumed() };
+                },
                 '\\' if self.cursor.first() == '\\' || self.cursor.first() == '"' => {
                     // Bump again to skip escaped character.
                     self.cursor.bump();
@@ -795,7 +820,8 @@ impl<'a> Lexer<'a> {
             }
         }
         // End of file reached.
-        return None;
+        let kind = FStr { start, end: None };
+        Literal { kind, suffix_start: self.current_token_len_consumed() }
     }
 
     fn eat_decimal_digits(&mut self) -> bool {
