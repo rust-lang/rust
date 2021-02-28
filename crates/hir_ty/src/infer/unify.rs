@@ -9,7 +9,7 @@ use test_utils::mark;
 use super::{InferenceContext, Obligation};
 use crate::{
     BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferTy, Scalar, Substs,
-    Ty, TyKind, TypeCtor, TypeWalk,
+    Ty, TyKind, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -257,12 +257,14 @@ impl InferenceTable {
         // try to resolve type vars first
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
-        match (&*ty1, &*ty2) {
-            (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
-                self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
+        if ty1.equals_ctor(&ty2) {
+            match (ty1.substs(), ty2.substs()) {
+                (Some(st1), Some(st2)) => self.unify_substs(st1, st2, depth + 1),
+                (None, None) => true,
+                _ => false,
             }
-
-            _ => self.unify_inner_trivial(&ty1, &ty2, depth),
+        } else {
+            self.unify_inner_trivial(&ty1, &ty2, depth)
         }
     }
 
@@ -300,24 +302,12 @@ impl InferenceTable {
             | (other, Ty::Infer(InferTy::TypeVar(tv)))
             | (Ty::Infer(InferTy::MaybeNeverTypeVar(tv)), other)
             | (other, Ty::Infer(InferTy::MaybeNeverTypeVar(tv)))
-            | (Ty::Infer(InferTy::IntVar(tv)), other @ ty_app!(TypeCtor::Scalar(Scalar::Int(_))))
-            | (other @ ty_app!(TypeCtor::Scalar(Scalar::Int(_))), Ty::Infer(InferTy::IntVar(tv)))
-            | (
-                Ty::Infer(InferTy::IntVar(tv)),
-                other @ ty_app!(TypeCtor::Scalar(Scalar::Uint(_))),
-            )
-            | (
-                other @ ty_app!(TypeCtor::Scalar(Scalar::Uint(_))),
-                Ty::Infer(InferTy::IntVar(tv)),
-            )
-            | (
-                Ty::Infer(InferTy::FloatVar(tv)),
-                other @ ty_app!(TypeCtor::Scalar(Scalar::Float(_))),
-            )
-            | (
-                other @ ty_app!(TypeCtor::Scalar(Scalar::Float(_))),
-                Ty::Infer(InferTy::FloatVar(tv)),
-            ) => {
+            | (Ty::Infer(InferTy::IntVar(tv)), other @ Ty::Scalar(Scalar::Int(_)))
+            | (other @ Ty::Scalar(Scalar::Int(_)), Ty::Infer(InferTy::IntVar(tv)))
+            | (Ty::Infer(InferTy::IntVar(tv)), other @ Ty::Scalar(Scalar::Uint(_)))
+            | (other @ Ty::Scalar(Scalar::Uint(_)), Ty::Infer(InferTy::IntVar(tv)))
+            | (Ty::Infer(InferTy::FloatVar(tv)), other @ Ty::Scalar(Scalar::Float(_)))
+            | (other @ Ty::Scalar(Scalar::Float(_)), Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
                 true

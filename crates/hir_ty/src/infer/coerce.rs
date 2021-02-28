@@ -7,7 +7,7 @@
 use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
 use test_utils::mark;
 
-use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty, TypeCtor};
+use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty};
 
 use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
 
@@ -33,7 +33,7 @@ impl<'a> InferenceContext<'a> {
         } else if self.coerce(ty2, ty1) {
             ty1.clone()
         } else {
-            if let (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnDef(_))) = (ty1, ty2) {
+            if let (Ty::FnDef(..), Ty::FnDef(..)) = (ty1, ty2) {
                 mark::hit!(coerce_fn_reification);
                 // Special case: two function types. Try to coerce both to
                 // pointers to have a chance at getting a match. See
@@ -53,12 +53,12 @@ impl<'a> InferenceContext<'a> {
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
         match (&from_ty, to_ty) {
             // Never type will make type variable to fallback to Never Type instead of Unknown.
-            (ty_app!(TypeCtor::Never), Ty::Infer(InferTy::TypeVar(tv))) => {
+            (Ty::Never, Ty::Infer(InferTy::TypeVar(tv))) => {
                 let var = self.table.new_maybe_never_type_var();
                 self.table.var_unification_table.union_value(*tv, TypeVarValue::Known(var));
                 return true;
             }
-            (ty_app!(TypeCtor::Never), _) => return true,
+            (Ty::Never, _) => return true,
 
             // Trivial cases, this should go after `never` check to
             // avoid infer result type to be never
@@ -71,38 +71,33 @@ impl<'a> InferenceContext<'a> {
 
         // Pointer weakening and function to pointer
         match (&mut from_ty, to_ty) {
-            // `*mut T`, `&mut T, `&T`` -> `*const T`
+            // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
-            // `&mut T` -> `*mut T`
-            (ty_app!(c1@TypeCtor::RawPtr(_)), ty_app!(c2@TypeCtor::RawPtr(Mutability::Shared)))
-            | (ty_app!(c1@TypeCtor::Ref(_)), ty_app!(c2@TypeCtor::RawPtr(Mutability::Shared)))
-            | (ty_app!(c1@TypeCtor::Ref(_)), ty_app!(c2@TypeCtor::Ref(Mutability::Shared)))
-            | (ty_app!(c1@TypeCtor::Ref(Mutability::Mut)), ty_app!(c2@TypeCtor::RawPtr(_))) => {
-                *c1 = *c2;
+            (Ty::RawPtr(m1, ..), Ty::RawPtr(m2 @ Mutability::Shared, ..))
+            | (Ty::Ref(m1, ..), Ty::Ref(m2 @ Mutability::Shared, ..)) => {
+                *m1 = *m2;
+            }
+            // `&T` -> `*const T`
+            // `&mut T` -> `*mut T`/`*const T`
+            (Ty::Ref(.., substs), &Ty::RawPtr(m2 @ Mutability::Shared, ..))
+            | (Ty::Ref(Mutability::Mut, substs), &Ty::RawPtr(m2, ..)) => {
+                from_ty = Ty::RawPtr(m2, substs.clone());
             }
 
-            // Illegal mutablity conversion
-            (
-                ty_app!(TypeCtor::RawPtr(Mutability::Shared)),
-                ty_app!(TypeCtor::RawPtr(Mutability::Mut)),
-            )
-            | (
-                ty_app!(TypeCtor::Ref(Mutability::Shared)),
-                ty_app!(TypeCtor::Ref(Mutability::Mut)),
-            ) => return false,
+            // Illegal mutability conversion
+            (Ty::RawPtr(Mutability::Shared, ..), Ty::RawPtr(Mutability::Mut, ..))
+            | (Ty::Ref(Mutability::Shared, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
 
             // `{function_type}` -> `fn()`
-            (ty_app!(TypeCtor::FnDef(_)), ty_app!(TypeCtor::FnPtr { .. })) => {
-                match from_ty.callable_sig(self.db) {
-                    None => return false,
-                    Some(sig) => {
-                        from_ty = Ty::fn_ptr(sig);
-                    }
+            (Ty::FnDef(..), Ty::FnPtr { .. }) => match from_ty.callable_sig(self.db) {
+                None => return false,
+                Some(sig) => {
+                    from_ty = Ty::fn_ptr(sig);
                 }
-            }
+            },
 
-            (ty_app!(TypeCtor::Closure { .. }, params), ty_app!(TypeCtor::FnPtr { .. })) => {
-                from_ty = params[0].clone();
+            (Ty::Closure { substs, .. }, Ty::FnPtr { .. }) => {
+                from_ty = substs[0].clone();
             }
 
             _ => {}
@@ -115,9 +110,7 @@ impl<'a> InferenceContext<'a> {
         // Auto Deref if cannot coerce
         match (&from_ty, to_ty) {
             // FIXME: DerefMut
-            (ty_app!(TypeCtor::Ref(_), st1), ty_app!(TypeCtor::Ref(_), st2)) => {
-                self.unify_autoderef_behind_ref(&st1[0], &st2[0])
-            }
+            (Ty::Ref(_, st1), Ty::Ref(_, st2)) => self.unify_autoderef_behind_ref(&st1[0], &st2[0]),
 
             // Otherwise, normal unify
             _ => self.unify(&from_ty, to_ty),
@@ -178,17 +171,17 @@ impl<'a> InferenceContext<'a> {
             },
         ) {
             let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);
-            match (&*self.resolve_ty_shallow(&derefed_ty), &*to_ty) {
-                // Stop when constructor matches.
-                (ty_app!(from_ctor, st1), ty_app!(to_ctor, st2)) if from_ctor == to_ctor => {
-                    // It will not recurse to `coerce`.
-                    return self.table.unify_substs(st1, st2, 0);
-                }
-                _ => {
-                    if self.table.unify_inner_trivial(&derefed_ty, &to_ty, 0) {
-                        return true;
-                    }
-                }
+            let from_ty = self.resolve_ty_shallow(&derefed_ty);
+            // Stop when constructor matches.
+            if from_ty.equals_ctor(&to_ty) {
+                // It will not recurse to `coerce`.
+                return match (from_ty.substs(), to_ty.substs()) {
+                    (Some(st1), Some(st2)) => self.table.unify_substs(st1, st2, 0),
+                    (None, None) => true,
+                    _ => false,
+                };
+            } else if self.table.unify_inner_trivial(&derefed_ty, &to_ty, 0) {
+                return true;
             }
         }
 

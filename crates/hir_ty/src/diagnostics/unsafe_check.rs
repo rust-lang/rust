@@ -11,9 +11,7 @@ use hir_def::{
 };
 use hir_expand::diagnostics::DiagnosticSink;
 
-use crate::{
-    db::HirDatabase, diagnostics::MissingUnsafe, ApplicationTy, InferenceResult, Ty, TypeCtor,
-};
+use crate::{db::HirDatabase, diagnostics::MissingUnsafe, InferenceResult, Ty};
 
 pub(super) struct UnsafeValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
@@ -112,7 +110,7 @@ fn walk_unsafe(
             }
         }
         Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-            if let Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(..), .. }) = &infer[*expr] {
+            if let Ty::RawPtr(..) = &infer[*expr] {
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
             }
         }

@@ -25,7 +25,7 @@ mod test_db;
 
 use std::{iter, mem, ops::Deref, sync::Arc};
 
-use base_db::{salsa, CrateId};
+use base_db::salsa;
 use hir_def::{
     builtin_type::BuiltinType,
     expr::ExprId,
@@ -55,192 +55,6 @@ pub use chalk_ir::{BoundVar, DebruijnIndex, Scalar};
 pub enum Lifetime {
     Parameter(LifetimeParamId),
     Static,
-}
-
-/// A type constructor or type name: this might be something like the primitive
-/// type `bool`, a struct like `Vec`, or things like function pointers or
-/// tuples.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum TypeCtor {
-    /// a scalar type like `bool` or `u32`
-    Scalar(Scalar),
-
-    /// Structures, enumerations and unions.
-    Adt(AdtId),
-
-    /// The pointee of a string slice. Written as `str`.
-    Str,
-
-    /// The pointee of an array slice.  Written as `[T]`.
-    Slice,
-
-    /// An array with the given length. Written as `[T; n]`.
-    Array,
-
-    /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(Mutability),
-
-    /// A reference; a pointer with an associated lifetime. Written as
-    /// `&'a mut T` or `&'a T`.
-    Ref(Mutability),
-
-    /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type, which is output (for a function
-    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
-    ///
-    /// This includes tuple struct / enum variant constructors as well.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```
-    /// fn foo() -> i32 { 1 }
-    /// let bar = foo; // bar: fn() -> i32 {foo}
-    /// ```
-    FnDef(CallableDefId),
-
-    /// A pointer to a function.  Written as `fn() -> i32`.
-    ///
-    /// For example the type of `bar` here:
-    ///
-    /// ```
-    /// fn foo() -> i32 { 1 }
-    /// let bar: fn() -> i32 = foo;
-    /// ```
-    // FIXME make this a Ty variant like in Chalk
-    FnPtr { num_args: u16, is_varargs: bool },
-
-    /// The never type `!`.
-    Never,
-
-    /// A tuple type.  For example, `(i32, bool)`.
-    Tuple { cardinality: u16 },
-
-    /// Represents an associated item like `Iterator::Item`.  This is used
-    /// when we have tried to normalize a projection like `T::Item` but
-    /// couldn't find a better representation.  In that case, we generate
-    /// an **application type** like `(Iterator::Item)<T>`.
-    AssociatedType(TypeAliasId),
-
-    /// This represents a placeholder for an opaque type in situations where we
-    /// don't know the hidden type (i.e. currently almost always). This is
-    /// analogous to the `AssociatedType` type constructor.
-    /// It is also used as the type of async block, with one type parameter
-    /// representing the Future::Output type.
-    OpaqueType(OpaqueTyId),
-
-    /// Represents a foreign type declared in external blocks.
-    ForeignType(TypeAliasId),
-
-    /// The type of a specific closure.
-    ///
-    /// The closure signature is stored in a `FnPtr` type in the first type
-    /// parameter.
-    Closure { def: DefWithBodyId, expr: ExprId },
-}
-
-impl TypeCtor {
-    pub fn num_ty_params(self, db: &dyn HirDatabase) -> usize {
-        match self {
-            TypeCtor::Scalar(_)
-            | TypeCtor::Str
-            | TypeCtor::Never => 0,
-            TypeCtor::Slice
-            | TypeCtor::Array
-            | TypeCtor::RawPtr(_)
-            | TypeCtor::Ref(_)
-            | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
-            => 1,
-            TypeCtor::Adt(adt) => {
-                let generic_params = generics(db.upcast(), adt.into());
-                generic_params.len()
-            }
-            TypeCtor::FnDef(callable) => {
-                let generic_params = generics(db.upcast(), callable.into());
-                generic_params.len()
-            }
-            TypeCtor::AssociatedType(type_alias) => {
-                let generic_params = generics(db.upcast(), type_alias.into());
-                generic_params.len()
-            }
-            TypeCtor::ForeignType(type_alias) => {
-                let generic_params = generics(db.upcast(), type_alias.into());
-                generic_params.len()
-            }
-            TypeCtor::OpaqueType(opaque_ty_id) => {
-                match opaque_ty_id {
-                    OpaqueTyId::ReturnTypeImplTrait(func, _) => {
-                        let generic_params = generics(db.upcast(), func.into());
-                        generic_params.len()
-                    }
-                    // 1 param representing Future::Output type.
-                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => 1,
-                }
-            }
-            TypeCtor::FnPtr { num_args, is_varargs: _ } => num_args as usize + 1,
-            TypeCtor::Tuple { cardinality } => cardinality as usize,
-        }
-    }
-
-    pub fn krate(self, db: &dyn HirDatabase) -> Option<CrateId> {
-        match self {
-            TypeCtor::Scalar(_)
-            | TypeCtor::Str
-            | TypeCtor::Never
-            | TypeCtor::Slice
-            | TypeCtor::Array
-            | TypeCtor::RawPtr(_)
-            | TypeCtor::Ref(_)
-            | TypeCtor::FnPtr { .. }
-            | TypeCtor::Tuple { .. } => None,
-            // Closure's krate is irrelevant for coherence I would think?
-            TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => Some(adt.module(db.upcast()).krate()),
-            TypeCtor::FnDef(callable) => Some(callable.krate(db)),
-            TypeCtor::AssociatedType(type_alias) => {
-                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate())
-            }
-            TypeCtor::ForeignType(type_alias) => {
-                Some(type_alias.lookup(db.upcast()).module(db.upcast()).krate())
-            }
-            TypeCtor::OpaqueType(opaque_ty_id) => match opaque_ty_id {
-                OpaqueTyId::ReturnTypeImplTrait(func, _) => {
-                    Some(func.lookup(db.upcast()).module(db.upcast()).krate())
-                }
-                OpaqueTyId::AsyncBlockTypeImplTrait(def, _) => {
-                    Some(def.module(db.upcast()).krate())
-                }
-            },
-        }
-    }
-
-    pub fn as_generic_def(self) -> Option<GenericDefId> {
-        match self {
-            TypeCtor::Scalar(_)
-            | TypeCtor::Str
-            | TypeCtor::Never
-            | TypeCtor::Slice
-            | TypeCtor::Array
-            | TypeCtor::RawPtr(_)
-            | TypeCtor::Ref(_)
-            | TypeCtor::FnPtr { .. }
-            | TypeCtor::Tuple { .. }
-            | TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => Some(adt.into()),
-            TypeCtor::FnDef(callable) => Some(callable.into()),
-            TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
-            TypeCtor::ForeignType(type_alias) => Some(type_alias.into()),
-            TypeCtor::OpaqueType(_impl_trait_id) => None,
-        }
-    }
-}
-
-/// A nominal type with (maybe 0) type parameters. This might be a primitive
-/// type like `bool`, a struct, tuple, function pointer, reference or
-/// several other things.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct ApplicationTy {
-    pub ctor: TypeCtor,
-    pub parameters: Substs,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -293,10 +107,80 @@ impl TypeWalk for ProjectionTy {
 /// This should be cheap to clone.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Ty {
-    /// A nominal type with (maybe 0) type parameters. This might be a primitive
-    /// type like `bool`, a struct, tuple, function pointer, reference or
-    /// several other things.
-    Apply(ApplicationTy),
+    /// Structures, enumerations and unions.
+    Adt(AdtId, Substs),
+
+    /// Represents an associated item like `Iterator::Item`.  This is used
+    /// when we have tried to normalize a projection like `T::Item` but
+    /// couldn't find a better representation.  In that case, we generate
+    /// an **application type** like `(Iterator::Item)<T>`.
+    AssociatedType(TypeAliasId, Substs),
+
+    /// a scalar type like `bool` or `u32`
+    Scalar(Scalar),
+
+    /// A tuple type.  For example, `(i32, bool)`.
+    Tuple { cardinality: u16, substs: Substs },
+
+    /// An array with the given length. Written as `[T; n]`.
+    Array(Substs),
+
+    /// The pointee of an array slice.  Written as `[T]`.
+    Slice(Substs),
+
+    /// A raw pointer. Written as `*mut T` or `*const T`
+    RawPtr(Mutability, Substs),
+
+    /// A reference; a pointer with an associated lifetime. Written as
+    /// `&'a mut T` or `&'a T`.
+    Ref(Mutability, Substs),
+
+    /// This represents a placeholder for an opaque type in situations where we
+    /// don't know the hidden type (i.e. currently almost always). This is
+    /// analogous to the `AssociatedType` type constructor.
+    /// It is also used as the type of async block, with one type parameter
+    /// representing the Future::Output type.
+    OpaqueType(OpaqueTyId, Substs),
+
+    /// The anonymous type of a function declaration/definition. Each
+    /// function has a unique type, which is output (for a function
+    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
+    ///
+    /// This includes tuple struct / enum variant constructors as well.
+    ///
+    /// For example the type of `bar` here:
+    ///
+    /// ```
+    /// fn foo() -> i32 { 1 }
+    /// let bar = foo; // bar: fn() -> i32 {foo}
+    /// ```
+    FnDef(CallableDefId, Substs),
+
+    /// The pointee of a string slice. Written as `str`.
+    Str,
+
+    /// The never type `!`.
+    Never,
+
+    /// The type of a specific closure.
+    ///
+    /// The closure signature is stored in a `FnPtr` type in the first type
+    /// parameter.
+    Closure { def: DefWithBodyId, expr: ExprId, substs: Substs },
+
+    /// Represents a foreign type declared in external blocks.
+    ForeignType(TypeAliasId, Substs),
+
+    /// A pointer to a function.  Written as `fn() -> i32`.
+    ///
+    /// For example the type of `bar` here:
+    ///
+    /// ```
+    /// fn foo() -> i32 { 1 }
+    /// let bar: fn() -> i32 = foo;
+    /// ```
+    // FIXME make this a Ty variant like in Chalk
+    FnPtr { num_args: u16, is_varargs: bool, substs: Substs },
 
     /// A "projection" type corresponds to an (unnormalized)
     /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
@@ -418,10 +302,6 @@ impl Substs {
 
     pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
         Substs::builder(generic_params.len())
-    }
-
-    pub fn build_for_type_ctor(db: &dyn HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {
-        Substs::builder(type_ctor.num_ty_params(db))
     }
 
     fn builder(param_count: usize) -> SubstsBuilder {
@@ -701,54 +581,42 @@ impl TypeWalk for FnSig {
 }
 
 impl Ty {
-    pub fn simple(ctor: TypeCtor) -> Ty {
-        Ty::Apply(ApplicationTy { ctor, parameters: Substs::empty() })
-    }
-    pub fn apply_one(ctor: TypeCtor, param: Ty) -> Ty {
-        Ty::Apply(ApplicationTy { ctor, parameters: Substs::single(param) })
-    }
-    pub fn apply(ctor: TypeCtor, parameters: Substs) -> Ty {
-        Ty::Apply(ApplicationTy { ctor, parameters })
-    }
     pub fn unit() -> Self {
-        Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
+        Ty::Tuple { cardinality: 0, substs: Substs::empty() }
     }
+
     pub fn fn_ptr(sig: FnSig) -> Self {
-        Ty::apply(
-            TypeCtor::FnPtr { num_args: sig.params().len() as u16, is_varargs: sig.is_varargs },
-            Substs(sig.params_and_return),
-        )
+        Ty::FnPtr {
+            num_args: sig.params().len() as u16,
+            is_varargs: sig.is_varargs,
+            substs: Substs(sig.params_and_return),
+        }
     }
+
     pub fn builtin(builtin: BuiltinType) -> Self {
-        Ty::simple(match builtin {
-            BuiltinType::Char => TypeCtor::Scalar(Scalar::Char),
-            BuiltinType::Bool => TypeCtor::Scalar(Scalar::Bool),
-            BuiltinType::Str => TypeCtor::Str,
-            BuiltinType::Int(t) => TypeCtor::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))),
-            BuiltinType::Uint(t) => {
-                TypeCtor::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t)))
-            }
-            BuiltinType::Float(t) => {
-                TypeCtor::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t)))
-            }
-        })
+        match builtin {
+            BuiltinType::Char => Ty::Scalar(Scalar::Char),
+            BuiltinType::Bool => Ty::Scalar(Scalar::Bool),
+            BuiltinType::Str => Ty::Str,
+            BuiltinType::Int(t) => Ty::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))),
+            BuiltinType::Uint(t) => Ty::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))),
+            BuiltinType::Float(t) => Ty::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))),
+        }
     }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(mutability), parameters }) => {
-                Some((parameters.as_single(), *mutability))
-            }
+            Ty::Ref(mutability, parameters) => Some((parameters.as_single(), *mutability)),
             _ => None,
         }
     }
 
     pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(mutability), parameters }) => {
+            Ty::Ref(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::Ref, *mutability))
             }
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::RawPtr(mutability), parameters }) => {
+            Ty::RawPtr(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::RawPtr, *mutability))
             }
             _ => None,
@@ -758,7 +626,7 @@ impl Ty {
     pub fn strip_references(&self) -> &Ty {
         let mut t: &Ty = self;
 
-        while let Ty::Apply(ApplicationTy { ctor: TypeCtor::Ref(_mutability), parameters }) = t {
+        while let Ty::Ref(_mutability, parameters) = t {
             t = parameters.as_single();
         }
 
@@ -767,28 +635,62 @@ impl Ty {
 
     pub fn as_adt(&self) -> Option<(AdtId, &Substs)> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {
-                Some((*adt_def, parameters))
-            }
+            Ty::Adt(adt_def, parameters) => Some((*adt_def, parameters)),
             _ => None,
         }
     }
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple { .. }, parameters }) => {
-                Some(parameters)
-            }
+            Ty::Tuple { substs: parameters, .. } => Some(parameters),
+            _ => None,
+        }
+    }
+
+    pub fn as_generic_def(&self) -> Option<GenericDefId> {
+        match *self {
+            Ty::Adt(adt, ..) => Some(adt.into()),
+            Ty::FnDef(callable, ..) => Some(callable.into()),
+            Ty::AssociatedType(type_alias, ..) => Some(type_alias.into()),
+            Ty::ForeignType(type_alias, ..) => Some(type_alias.into()),
             _ => None,
         }
     }
 
     pub fn is_never(&self) -> bool {
-        matches!(self, Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }))
+        matches!(self, Ty::Never)
     }
 
     pub fn is_unknown(&self) -> bool {
         matches!(self, Ty::Unknown)
+    }
+
+    pub fn equals_ctor(&self, other: &Ty) -> bool {
+        match (self, other) {
+            (Ty::Adt(adt, ..), Ty::Adt(adt2, ..)) => adt == adt2,
+            (Ty::Slice(_), Ty::Slice(_)) | (Ty::Array(_), Ty::Array(_)) => true,
+            (Ty::FnDef(def_id, ..), Ty::FnDef(def_id2, ..)) => def_id == def_id2,
+            (Ty::OpaqueType(ty_id, ..), Ty::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
+            (Ty::AssociatedType(ty_id, ..), Ty::AssociatedType(ty_id2, ..))
+            | (Ty::ForeignType(ty_id, ..), Ty::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
+            (Ty::Closure { def, expr, .. }, Ty::Closure { def: def2, expr: expr2, .. }) => {
+                expr == expr2 && def == def2
+            }
+            (Ty::Ref(mutability, ..), Ty::Ref(mutability2, ..))
+            | (Ty::RawPtr(mutability, ..), Ty::RawPtr(mutability2, ..)) => {
+                mutability == mutability2
+            }
+            (
+                Ty::FnPtr { num_args, is_varargs, .. },
+                Ty::FnPtr { num_args: num_args2, is_varargs: is_varargs2, .. },
+            ) => num_args == num_args2 && is_varargs == is_varargs2,
+            (Ty::Tuple { cardinality, .. }, Ty::Tuple { cardinality: cardinality2, .. }) => {
+                cardinality == cardinality2
+            }
+            (Ty::Str, Ty::Str) | (Ty::Never, Ty::Never) => true,
+            (Ty::Scalar(scalar), Ty::Scalar(scalar2)) => scalar == scalar2,
+            _ => false,
+        }
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
@@ -809,41 +711,32 @@ impl Ty {
 
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
-                TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
-                _ => None,
-            },
+            Ty::Ref(.., parameters) => Some(Ty::clone(parameters.as_single())),
+            Ty::RawPtr(.., parameters) => Some(Ty::clone(parameters.as_single())),
             _ => None,
         }
     }
 
     pub fn as_fn_def(&self) -> Option<FunctionId> {
         match self {
-            &Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::FnDef(CallableDefId::FunctionId(func)),
-                ..
-            }) => Some(func),
+            &Ty::FnDef(CallableDefId::FunctionId(func), ..) => Some(func),
             _ => None,
         }
     }
 
     pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<FnSig> {
         match self {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnPtr { is_varargs, .. } => {
-                    Some(FnSig::from_fn_ptr_substs(&a_ty.parameters, is_varargs))
-                }
-                TypeCtor::FnDef(def) => {
-                    let sig = db.callable_item_signature(def);
-                    Some(sig.subst(&a_ty.parameters))
-                }
-                TypeCtor::Closure { .. } => {
-                    let sig_param = &a_ty.parameters[0];
-                    sig_param.callable_sig(db)
-                }
-                _ => None,
-            },
+            Ty::FnPtr { is_varargs, substs: parameters, .. } => {
+                Some(FnSig::from_fn_ptr_substs(&parameters, *is_varargs))
+            }
+            Ty::FnDef(def, parameters) => {
+                let sig = db.callable_item_signature(*def);
+                Some(sig.subst(&parameters))
+            }
+            Ty::Closure { substs: parameters, .. } => {
+                let sig_param = &parameters[0];
+                sig_param.callable_sig(db)
+            }
             _ => None,
         }
     }
@@ -852,28 +745,69 @@ impl Ty {
     /// the `Substs` for these type parameters with the given ones. (So e.g. if
     /// `self` is `Option<_>` and the substs contain `u32`, we'll have
     /// `Option<u32>` afterwards.)
-    pub fn apply_substs(self, substs: Substs) -> Ty {
-        match self {
-            Ty::Apply(ApplicationTy { ctor, parameters: previous_substs }) => {
-                assert_eq!(previous_substs.len(), substs.len());
-                Ty::Apply(ApplicationTy { ctor, parameters: substs })
+    pub fn apply_substs(mut self, new_substs: Substs) -> Ty {
+        match &mut self {
+            Ty::Adt(_, substs)
+            | Ty::Slice(substs)
+            | Ty::Array(substs)
+            | Ty::RawPtr(_, substs)
+            | Ty::Ref(_, substs)
+            | Ty::FnDef(_, substs)
+            | Ty::FnPtr { substs, .. }
+            | Ty::Tuple { substs, .. }
+            | Ty::OpaqueType(_, substs)
+            | Ty::AssociatedType(_, substs)
+            | Ty::ForeignType(_, substs)
+            | Ty::Closure { substs, .. } => {
+                assert_eq!(substs.len(), new_substs.len());
+                *substs = new_substs;
             }
-            _ => self,
+            _ => (),
         }
+        self
     }
 
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
-    pub fn substs(&self) -> Option<Substs> {
+    pub fn substs(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { parameters, .. }) => Some(parameters.clone()),
+            Ty::Adt(_, substs)
+            | Ty::Slice(substs)
+            | Ty::Array(substs)
+            | Ty::RawPtr(_, substs)
+            | Ty::Ref(_, substs)
+            | Ty::FnDef(_, substs)
+            | Ty::FnPtr { substs, .. }
+            | Ty::Tuple { substs, .. }
+            | Ty::OpaqueType(_, substs)
+            | Ty::AssociatedType(_, substs)
+            | Ty::ForeignType(_, substs)
+            | Ty::Closure { substs, .. } => Some(substs),
+            _ => None,
+        }
+    }
+
+    pub fn substs_mut(&mut self) -> Option<&mut Substs> {
+        match self {
+            Ty::Adt(_, substs)
+            | Ty::Slice(substs)
+            | Ty::Array(substs)
+            | Ty::RawPtr(_, substs)
+            | Ty::Ref(_, substs)
+            | Ty::FnDef(_, substs)
+            | Ty::FnPtr { substs, .. }
+            | Ty::Tuple { substs, .. }
+            | Ty::OpaqueType(_, substs)
+            | Ty::AssociatedType(_, substs)
+            | Ty::ForeignType(_, substs)
+            | Ty::Closure { substs, .. } => Some(substs),
             _ => None,
         }
     }
 
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::OpaqueType(opaque_ty_id), .. }) => {
+            Ty::OpaqueType(opaque_ty_id, ..) => {
                 match opaque_ty_id {
                     OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
@@ -934,7 +868,7 @@ impl Ty {
 
     pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::AssociatedType(type_alias_id), .. }) => {
+            Ty::AssociatedType(type_alias_id, ..) => {
                 match type_alias_id.lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
@@ -1049,11 +983,6 @@ pub trait TypeWalk {
 impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
-            Ty::Apply(a_ty) => {
-                for t in a_ty.parameters.iter() {
-                    t.walk(f);
-                }
-            }
             Ty::Projection(p_ty) => {
                 for t in p_ty.parameters.iter() {
                     t.walk(f);
@@ -1069,7 +998,13 @@ impl TypeWalk for Ty {
                     t.walk(f);
                 }
             }
-            Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+            _ => {
+                if let Some(substs) = self.substs() {
+                    for t in substs.iter() {
+                        t.walk(f);
+                    }
+                }
+            }
         }
         f(self);
     }
@@ -1080,9 +1015,6 @@ impl TypeWalk for Ty {
         binders: DebruijnIndex,
     ) {
         match self {
-            Ty::Apply(a_ty) => {
-                a_ty.parameters.walk_mut_binders(f, binders);
-            }
             Ty::Projection(p_ty) => {
                 p_ty.parameters.walk_mut_binders(f, binders);
             }
@@ -1094,7 +1026,11 @@ impl TypeWalk for Ty {
             Ty::Opaque(o_ty) => {
                 o_ty.parameters.walk_mut_binders(f, binders);
             }
-            Ty::Placeholder { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+            _ => {
+                if let Some(substs) = self.substs_mut() {
+                    substs.walk_mut_binders(f, binders);
+                }
+            }
         }
         f(self, binders);
     }
