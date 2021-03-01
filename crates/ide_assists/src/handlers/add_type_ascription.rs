@@ -9,7 +9,7 @@ use crate::{
 
 // Assist: add_type_ascription
 //
-// Adds `: _` before the assignment operator to prompt the user for a type
+// Adds `: _` before the assignment operator to prompt the user for a type.
 //
 // ```
 // fn make<T>() -> T { todo!() }
@@ -28,7 +28,7 @@ pub(crate) fn add_type_ascription(acc: &mut Assists, ctx: &AssistContext) -> Opt
     let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
     if let_stmt.colon_token().is_some() {
         mark::hit!(add_type_ascription_already_typed);
-        return None
+        return None;
     }
     let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
 
