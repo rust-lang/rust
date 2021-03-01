@@ -593,16 +593,12 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dp_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vdpps, imm8 = 0x0))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vdpps, IMM8 = 0x0))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_dp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            vdpps(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_imm8!(IMM8);
+    vdpps(a, b, IMM8)
 }
 
 /// Horizontal addition of adjacent pairs in the two packed vectors
@@ -3579,7 +3575,7 @@ mod tests {
     unsafe fn test_mm256_dp_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
-        let r = _mm256_dp_ps(a, b, 0xFF);
+        let r = _mm256_dp_ps::<0xFF>(a, b);
         let e = _mm256_setr_ps(200., 200., 200., 200., 2387., 2387., 2387., 2387.);
         assert_eq_m256(r, e);
     }
