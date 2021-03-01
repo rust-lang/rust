@@ -3496,4 +3496,33 @@ mod foo$0;
             "#]],
         );
     }
+
+    #[test]
+    fn hover_self_in_use() {
+        check(
+            r#"
+//! This should not appear
+mod foo {
+    /// But this should appear
+    pub mod bar {}
+}
+use foo::bar::{self$0};
+"#,
+            expect![[r#"
+                *self*
+
+                ```rust
+                test::foo
+                ```
+
+                ```rust
+                pub mod bar
+                ```
+
+                ---
+
+                But this should appear
+            "#]],
+        );
+    }
 }
