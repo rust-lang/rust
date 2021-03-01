@@ -2000,5 +2000,176 @@ macro_rules! int_impl {
         pub const fn max_value() -> Self {
             Self::MAX
         }
+
+        /// Adds to the current value, returning the previous value.
+        ///
+        /// This operation wraps around on overflow.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 0;")]
+        /// assert_eq!(foo.fetch_add(10), 0);
+        /// assert_eq!(foo, 10);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_add(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = self.wrapping_add(val);
+            old
+        }
+
+        /// Subtracts from the current value, returning the previous value.
+        ///
+        /// This operation wraps around on overflow.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 20;")]
+        /// assert_eq!(foo.fetch_sub(10), 20);
+        /// assert_eq!(foo, 10);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_sub(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = self.wrapping_sub(val);
+            old
+        }
+
+        /// Bitwise "and" with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 0b101101;")]
+        /// assert_eq!(foo.fetch_and(0b110011), 0b101101);
+        /// assert_eq!(foo, 0b100001);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_and(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = *self & val;
+            old
+        }
+
+        /// Bitwise "nand" with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 0x13;")]
+        /// assert_eq!(foo.fetch_nand(0x31), 0x13);
+        /// assert_eq!(foo, !(0x13 & 0x31));
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_nand(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = !(*self & val);
+            old
+        }
+
+        /// Bitwise "or" with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 0b101101;")]
+        /// assert_eq!(foo.fetch_or(0b110011), 0b101101);
+        /// assert_eq!(foo, 0b111111);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_or(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = *self | val;
+            old
+        }
+
+        /// Bitwise "xor" with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 0b101101;")]
+        /// assert_eq!(foo.fetch_xor(0b110011), 0b101101);
+        /// assert_eq!(foo, 0b011110);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_xor(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = *self ^ val;
+            old
+        }
+
+        /// Fetches the value, and applies a function to it, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 7;")]
+        /// assert_eq!(foo.fetch_update(|foo| foo + 1), 7);
+        /// assert_eq!(foo.fetch_update(|foo| foo + 1), 8);
+        /// assert_eq!(foo, 9);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_update<F>(&mut self, f: F) -> Self
+            where F: FnOnce($SelfT) -> $SelfT
+        {
+            let old = *self;
+            *self = f(*self);
+            old
+        }
+
+        /// Maximum with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 23;")]
+        /// assert_eq!(foo.fetch_max(42), 23);
+        /// assert_eq!(foo, 42);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_max(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = (*self).max(val);
+            old
+        }
+
+        /// Minimum with the current value, returning the previous value.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_fetch_ops)]
+        #[doc = concat!("let mut foo: ", stringify!($SelfT), " = 23;")]
+        /// assert_eq!(foo.fetch_min(42), 23);
+        /// assert_eq!(foo, 23);
+        /// assert_eq!(foo.fetch_min(22), 23);
+        /// assert_eq!(foo, 22);
+        /// ```
+        #[inline]
+        #[unstable(feature = "int_fetch_ops", issue = "none")]
+        pub fn fetch_min(&mut self, val: Self) -> Self {
+            let old = *self;
+            *self = (*self).min(val);
+            old
+        }
     }
 }
