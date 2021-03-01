@@ -19,7 +19,7 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
     Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Scalar, Substs, TraitEnvironment,
-    TraitRef, Ty, TyKind, TypeWalk,
+    TraitRef, Ty, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -667,7 +667,7 @@ pub(crate) fn inherent_impl_substs(
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
     let mut kinds = self_ty.kinds.to_vec();
-    kinds.extend(iter::repeat(TyKind::General).take(vars.len()));
+    kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(vars.len()));
     let tys = Canonical { kinds: kinds.into(), value: (self_ty_with_vars, self_ty.value.clone()) };
     let substs = super::infer::unify(&tys);
     // We only want the substs for the vars we added, not the ones from self_ty.
@@ -759,7 +759,7 @@ fn generic_implements_goal(
         .push(self_ty.value)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    kinds.extend(iter::repeat(TyKind::General).take(substs.len() - 1));
+    kinds.extend(iter::repeat(chalk_ir::TyVariableKind::General).take(substs.len() - 1));
     let trait_ref = TraitRef { trait_, substs };
     let obligation = super::Obligation::Trait(trait_ref);
     Canonical { kinds: kinds.into(), value: InEnvironment::new(env, obligation) }

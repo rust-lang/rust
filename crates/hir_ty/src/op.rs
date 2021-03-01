@@ -1,7 +1,8 @@
 //! Helper functions for binary operator type inference.
+use chalk_ir::TyVariableKind;
 use hir_def::expr::{ArithOp, BinaryOp, CmpOp};
 
-use crate::{InferTy, Scalar, Ty};
+use crate::{Scalar, Ty};
 
 pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
     match op {
@@ -11,14 +12,16 @@ pub(super) fn binary_op_return_ty(op: BinaryOp, lhs_ty: Ty, rhs_ty: Ty) -> Ty {
             Ty::Scalar(Scalar::Int(_))
             | Ty::Scalar(Scalar::Uint(_))
             | Ty::Scalar(Scalar::Float(_)) => lhs_ty,
-            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => lhs_ty,
+            Ty::InferenceVar(_, TyVariableKind::Integer)
+            | Ty::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::ArithOp(_) => match rhs_ty {
             Ty::Scalar(Scalar::Int(_))
             | Ty::Scalar(Scalar::Uint(_))
             | Ty::Scalar(Scalar::Float(_)) => rhs_ty,
-            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => rhs_ty,
+            Ty::InferenceVar(_, TyVariableKind::Integer)
+            | Ty::InferenceVar(_, TyVariableKind::Float) => rhs_ty,
             _ => Ty::Unknown,
         },
     }
@@ -30,7 +33,8 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
         BinaryOp::Assignment { op: None } => lhs_ty,
         BinaryOp::CmpOp(CmpOp::Eq { .. }) => match lhs_ty {
             Ty::Scalar(_) | Ty::Str => lhs_ty,
-            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => lhs_ty,
+            Ty::InferenceVar(_, TyVariableKind::Integer)
+            | Ty::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
             _ => Ty::Unknown,
         },
         BinaryOp::ArithOp(ArithOp::Shl) | BinaryOp::ArithOp(ArithOp::Shr) => Ty::Unknown,
@@ -40,7 +44,8 @@ pub(super) fn binary_op_rhs_expectation(op: BinaryOp, lhs_ty: Ty) -> Ty {
             Ty::Scalar(Scalar::Int(_))
             | Ty::Scalar(Scalar::Uint(_))
             | Ty::Scalar(Scalar::Float(_)) => lhs_ty,
-            Ty::Infer(InferTy::IntVar(..)) | Ty::Infer(InferTy::FloatVar(..)) => lhs_ty,
+            Ty::InferenceVar(_, TyVariableKind::Integer)
+            | Ty::InferenceVar(_, TyVariableKind::Float) => lhs_ty,
             _ => Ty::Unknown,
         },
     }

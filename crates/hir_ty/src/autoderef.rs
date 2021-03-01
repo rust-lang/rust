@@ -89,8 +89,10 @@ fn deref_by_trait(
 
     let in_env = InEnvironment { value: obligation, environment: ty.environment };
 
-    let canonical =
-        Canonical::new(in_env, ty.value.kinds.iter().copied().chain(Some(super::TyKind::General)));
+    let canonical = Canonical::new(
+        in_env,
+        ty.value.kinds.iter().copied().chain(Some(chalk_ir::TyVariableKind::General)),
+    );
 
     let solution = db.trait_solve(krate, canonical)?;
 

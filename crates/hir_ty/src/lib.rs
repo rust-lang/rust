@@ -42,14 +42,14 @@ use crate::{
 };
 
 pub use autoderef::autoderef;
-pub use infer::{InferTy, InferenceResult};
+pub use infer::{InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
-pub use chalk_ir::{BoundVar, DebruijnIndex, Scalar};
+pub use chalk_ir::{BoundVar, DebruijnIndex, Scalar, TyVariableKind};
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -218,7 +218,7 @@ pub enum Ty {
     Bound(BoundVar),
 
     /// A type variable used during type checking.
-    Infer(InferTy),
+    InferenceVar(InferenceVar, TyVariableKind),
 
     /// A trait object (`dyn Trait` or bare `Trait` in pre-2018 Rust).
     ///
@@ -527,20 +527,13 @@ impl TypeWalk for GenericPredicate {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Canonical<T> {
     pub value: T,
-    pub kinds: Arc<[TyKind]>,
+    pub kinds: Arc<[TyVariableKind]>,
 }
 
 impl<T> Canonical<T> {
-    pub fn new(value: T, kinds: impl IntoIterator<Item = TyKind>) -> Self {
+    pub fn new(value: T, kinds: impl IntoIterator<Item = TyVariableKind>) -> Self {
         Self { value, kinds: kinds.into_iter().collect() }
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum TyKind {
-    General,
-    Integer,
-    Float,
 }
 
 /// A function signature as seen by type inference: Several parameter types and

@@ -565,7 +565,7 @@ impl HirDisplay for Ty {
                 }
                 write!(f, "{{unknown}}")?;
             }
-            Ty::Infer(..) => write!(f, "_")?,
+            Ty::InferenceVar(..) => write!(f, "_")?,
         }
         Ok(())
     }

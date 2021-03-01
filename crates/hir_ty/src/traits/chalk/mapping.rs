@@ -17,7 +17,7 @@ use crate::{
     primitive::UintTy,
     traits::{Canonical, Obligation},
     CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
-    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind,
+    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -107,7 +107,7 @@ impl ToChalk for Ty {
                 .to_ty::<Interner>(&Interner)
             }
             Ty::Bound(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
-            Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
+            Ty::InferenceVar(..) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
                 let where_clauses = chalk_ir::QuantifiedWhereClauses::from_iter(
                     &Interner,
@@ -532,20 +532,12 @@ where
     type Chalk = chalk_ir::Canonical<T::Chalk>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Canonical<T::Chalk> {
-        let kinds = self
-            .kinds
-            .iter()
-            .map(|k| match k {
-                TyKind::General => chalk_ir::TyVariableKind::General,
-                TyKind::Integer => chalk_ir::TyVariableKind::Integer,
-                TyKind::Float => chalk_ir::TyVariableKind::Float,
-            })
-            .map(|tk| {
-                chalk_ir::CanonicalVarKind::new(
-                    chalk_ir::VariableKind::Ty(tk),
-                    chalk_ir::UniverseIndex::ROOT,
-                )
-            });
+        let kinds = self.kinds.iter().map(|&tk| {
+            chalk_ir::CanonicalVarKind::new(
+                chalk_ir::VariableKind::Ty(tk),
+                chalk_ir::UniverseIndex::ROOT,
+            )
+        });
         let value = self.value.to_chalk(db);
         chalk_ir::Canonical {
             value,
@@ -558,17 +550,13 @@ where
             .binders
             .iter(&Interner)
             .map(|k| match k.kind {
-                chalk_ir::VariableKind::Ty(tk) => match tk {
-                    chalk_ir::TyVariableKind::General => TyKind::General,
-                    chalk_ir::TyVariableKind::Integer => TyKind::Integer,
-                    chalk_ir::TyVariableKind::Float => TyKind::Float,
-                },
+                chalk_ir::VariableKind::Ty(tk) => tk,
                 // HACK: Chalk can sometimes return new lifetime variables. We
                 // want to just skip them, but to not mess up the indices of
                 // other variables, we'll just create a new type variable in
                 // their place instead. This should not matter (we never see the
                 // actual *uses* of the lifetime variable).
-                chalk_ir::VariableKind::Lifetime => TyKind::General,
+                chalk_ir::VariableKind::Lifetime => chalk_ir::TyVariableKind::General,
                 chalk_ir::VariableKind::Const(_) => panic!("unexpected const from Chalk"),
             })
             .collect();

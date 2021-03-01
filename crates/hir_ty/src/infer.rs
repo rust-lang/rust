@@ -36,12 +36,11 @@ use stdx::impl_from;
 use syntax::SmolStr;
 
 use super::{
-    primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
     InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
-    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode, Scalar,
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
 };
 
 pub(crate) use unify::unify;
@@ -655,30 +654,17 @@ impl<'a> InferenceContext<'a> {
 /// two are used for inference of literal values (e.g. `100` could be one of
 /// several integer types).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum InferTy {
-    TypeVar(unify::TypeVarId),
-    IntVar(unify::TypeVarId),
-    FloatVar(unify::TypeVarId),
-    MaybeNeverTypeVar(unify::TypeVarId),
+pub struct InferenceVar {
+    index: u32,
 }
 
-impl InferTy {
+impl InferenceVar {
     fn to_inner(self) -> unify::TypeVarId {
-        match self {
-            InferTy::TypeVar(ty)
-            | InferTy::IntVar(ty)
-            | InferTy::FloatVar(ty)
-            | InferTy::MaybeNeverTypeVar(ty) => ty,
-        }
+        unify::TypeVarId(self.index)
     }
 
-    fn fallback_value(self) -> Ty {
-        match self {
-            InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => Ty::Scalar(Scalar::Int(IntTy::I32)),
-            InferTy::FloatVar(..) => Ty::Scalar(Scalar::Float(FloatTy::F64)),
-            InferTy::MaybeNeverTypeVar(..) => Ty::Never,
-        }
+    fn from_inner(unify::TypeVarId(index): unify::TypeVarId) -> Self {
+        InferenceVar { index }
     }
 }
 
