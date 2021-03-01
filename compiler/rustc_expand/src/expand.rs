@@ -206,30 +206,36 @@ ast_fragments! {
     }
 }
 
+pub enum SupportsMacroExpansion {
+    No,
+    Yes { supports_inner_attrs: bool },
+}
+
 impl AstFragmentKind {
     crate fn dummy(self, span: Span) -> AstFragment {
         self.make_from(DummyResult::any(span)).expect("couldn't create a dummy AST fragment")
     }
 
-    /// Fragment supports macro expansion and not just inert attributes, `cfg` and `cfg_attr`.
-    pub fn supports_macro_expansion(self) -> bool {
+    pub fn supports_macro_expansion(self) -> SupportsMacroExpansion {
         match self {
             AstFragmentKind::OptExpr
             | AstFragmentKind::Expr
-            | AstFragmentKind::Pat
-            | AstFragmentKind::Ty
             | AstFragmentKind::Stmts
-            | AstFragmentKind::Items
+            | AstFragmentKind::Ty
+            | AstFragmentKind::Pat => SupportsMacroExpansion::Yes { supports_inner_attrs: false },
+            AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
-            | AstFragmentKind::ForeignItems => true,
+            | AstFragmentKind::ForeignItems => {
+                SupportsMacroExpansion::Yes { supports_inner_attrs: true }
+            }
             AstFragmentKind::Arms
             | AstFragmentKind::Fields
             | AstFragmentKind::FieldPats
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
             | AstFragmentKind::StructFields
-            | AstFragmentKind::Variants => false,
+            | AstFragmentKind::Variants => SupportsMacroExpansion::No,
         }
     }
 
