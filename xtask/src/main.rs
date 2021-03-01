@@ -15,7 +15,6 @@ mod tidy;
 mod install;
 mod release;
 mod dist;
-mod pre_commit;
 mod metrics;
 mod pre_cache;
 
@@ -39,10 +38,6 @@ use crate::{
 };
 
 fn main() -> Result<()> {
-    if env::args().next().map(|it| it.contains("pre-commit")) == Some(true) {
-        return pre_commit::run_hook();
-    }
-
     let _d = pushd(project_root())?;
 
     let mut args = Arguments::from_env();
@@ -103,14 +98,6 @@ FLAGS:
             finish_args(args)?;
             CodegenCmd { features }.run()
         }
-        "format" => {
-            finish_args(args)?;
-            run_rustfmt(Mode::Overwrite)
-        }
-        "install-pre-commit-hook" => {
-            finish_args(args)?;
-            pre_commit::install_hook()
-        }
         "lint" => {
             finish_args(args)?;
             run_clippy()
@@ -164,8 +151,6 @@ USAGE:
     cargo xtask <SUBCOMMAND>
 
 SUBCOMMANDS:
-    format
-    install-pre-commit-hook
     fuzz-tests
     codegen
     install

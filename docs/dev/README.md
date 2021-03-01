@@ -58,8 +58,6 @@ Use `env RUN_SLOW_TESTS=1 cargo test` to run the full suite.
 
 We use bors-ng to enforce the [not rocket science](https://graydon2.dreamwidth.org/1597.html) rule.
 
-You can run `cargo xtask install-pre-commit-hook` to install git-hook to run rustfmt on commit.
-
 # Launching rust-analyzer
 
 Debugging the language server can be tricky.
