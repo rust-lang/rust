@@ -479,7 +479,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
-                    Rawness::RawPtr => Ty::RawPtr(*mutability, Substs::single(inner_ty)),
+                    Rawness::RawPtr => Ty::Raw(*mutability, Substs::single(inner_ty)),
                     Rawness::Ref => Ty::Ref(*mutability, Substs::single(inner_ty)),
                 }
             }

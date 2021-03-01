@@ -3,8 +3,9 @@
 use std::{borrow::Cow, fmt};
 
 use crate::{
-    db::HirDatabase, primitive, utils::generics, CallableDefId, CallableSig, GenericPredicate,
-    Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty,
+    db::HirDatabase, primitive, utils::generics, AliasTy, CallableDefId, CallableSig,
+    GenericPredicate, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs,
+    TraitRef, Ty,
 };
 use arrayvec::ArrayVec;
 use hir_def::{
@@ -284,12 +285,12 @@ impl HirDisplay for Ty {
                 t.hir_fmt(f)?;
                 write!(f, "; _]")?;
             }
-            Ty::RawPtr(m, parameters) | Ty::Ref(m, parameters) => {
+            Ty::Raw(m, parameters) | Ty::Ref(m, parameters) => {
                 let t = parameters.as_single();
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
-                if matches!(self, Ty::RawPtr(..)) {
+                if matches!(self, Ty::Raw(..)) {
                     write!(f, "*{}", m.as_keyword_for_ptr())?;
                 } else {
                     write!(f, "&{}", m.as_keyword_for_ref())?;
@@ -300,10 +301,10 @@ impl HirDisplay for Ty {
                     Ty::Dyn(predicates) if predicates.len() > 1 => {
                         Cow::Borrowed(predicates.as_ref())
                     }
-                    &Ty::Opaque(OpaqueTy {
+                    &Ty::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id: OpaqueTyId::ReturnTypeImplTrait(func, idx),
                         ref parameters,
-                    }) => {
+                    })) => {
                         datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
@@ -518,7 +519,6 @@ impl HirDisplay for Ty {
                     write!(f, "{{closure}}")?;
                 }
             }
-            Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Placeholder(id) => {
                 let generics = generics(f.db.upcast(), id.parent);
                 let param_data = &generics.params.types[id.local_id];
@@ -537,11 +537,12 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            Ty::Bound(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
+            Ty::BoundVar(idx) => write!(f, "?{}.{}", idx.debruijn.depth(), idx.index)?,
             Ty::Dyn(predicates) => {
                 write_bounds_like_dyn_trait_with_prefix("dyn", predicates, f)?;
             }
-            Ty::Opaque(opaque_ty) => {
+            Ty::Alias(AliasTy::Projection(p_ty)) => p_ty.hir_fmt(f)?,
+            Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
                 match opaque_ty.opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         let datas =

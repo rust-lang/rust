@@ -90,7 +90,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             ty: &Ty,
             binders: &CanonicalVarKinds<Interner>,
         ) -> Option<chalk_ir::TyVariableKind> {
-            if let Ty::Bound(bv) = ty {
+            if let Ty::BoundVar(bv) = ty {
                 let binders = binders.as_slice(&Interner);
                 if bv.debruijn == DebruijnIndex::INNERMOST {
                     if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {
@@ -220,18 +220,18 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let impl_bound = GenericPredicate::Implemented(TraitRef {
                         trait_: future_trait,
                         // Self type as the first parameter.
-                        substs: Substs::single(Ty::Bound(BoundVar {
+                        substs: Substs::single(Ty::BoundVar(BoundVar {
                             debruijn: DebruijnIndex::INNERMOST,
                             index: 0,
                         })),
                     });
                     let proj_bound = GenericPredicate::Projection(ProjectionPredicate {
                         // The parameter of the opaque type.
-                        ty: Ty::Bound(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 }),
+                        ty: Ty::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 }),
                         projection_ty: ProjectionTy {
                             associated_ty: future_output,
                             // Self type as the first parameter.
-                            parameters: Substs::single(Ty::Bound(BoundVar::new(
+                            parameters: Substs::single(Ty::BoundVar(BoundVar::new(
                                 DebruijnIndex::INNERMOST,
                                 0,
                             ))),
@@ -392,7 +392,7 @@ pub(crate) fn associated_ty_data_query(
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
     let ctx = crate::TyLoweringContext::new(db, &resolver)
         .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
-    let self_ty = Ty::Bound(crate::BoundVar::new(crate::DebruijnIndex::INNERMOST, 0));
+    let self_ty = Ty::BoundVar(crate::BoundVar::new(crate::DebruijnIndex::INNERMOST, 0));
     let bounds = type_alias_data
         .bounds
         .iter()

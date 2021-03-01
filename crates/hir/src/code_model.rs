@@ -31,7 +31,7 @@ use hir_ty::{
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
-    BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
+    AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
     Ty, TyDefId, TyVariableKind,
 };
@@ -1648,7 +1648,7 @@ impl Type {
             .build();
         let predicate = ProjectionPredicate {
             projection_ty: ProjectionTy { associated_ty: alias.id, parameters: subst },
-            ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)),
+            ty: Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)),
         };
         let goal = Canonical {
             value: InEnvironment::new(
@@ -1709,7 +1709,7 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.value, Ty::RawPtr(..))
+        matches!(&self.ty.value, Ty::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
@@ -1937,7 +1937,7 @@ impl Type {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
                 }
-                Ty::Opaque(opaque_ty) => {
+                Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }

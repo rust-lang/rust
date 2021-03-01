@@ -73,19 +73,19 @@ impl<'a> InferenceContext<'a> {
         match (&mut from_ty, to_ty) {
             // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
-            (Ty::RawPtr(m1, ..), Ty::RawPtr(m2 @ Mutability::Shared, ..))
+            (Ty::Raw(m1, ..), Ty::Raw(m2 @ Mutability::Shared, ..))
             | (Ty::Ref(m1, ..), Ty::Ref(m2 @ Mutability::Shared, ..)) => {
                 *m1 = *m2;
             }
             // `&T` -> `*const T`
             // `&mut T` -> `*mut T`/`*const T`
-            (Ty::Ref(.., substs), &Ty::RawPtr(m2 @ Mutability::Shared, ..))
-            | (Ty::Ref(Mutability::Mut, substs), &Ty::RawPtr(m2, ..)) => {
-                from_ty = Ty::RawPtr(m2, substs.clone());
+            (Ty::Ref(.., substs), &Ty::Raw(m2 @ Mutability::Shared, ..))
+            | (Ty::Ref(Mutability::Mut, substs), &Ty::Raw(m2, ..)) => {
+                from_ty = Ty::Raw(m2, substs.clone());
             }
 
             // Illegal mutability conversion
-            (Ty::RawPtr(Mutability::Shared, ..), Ty::RawPtr(Mutability::Mut, ..))
+            (Ty::Raw(Mutability::Shared, ..), Ty::Raw(Mutability::Mut, ..))
             | (Ty::Ref(Mutability::Shared, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
 
             // `{function_type}` -> `fn()`

@@ -31,8 +31,8 @@ use crate::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         make_mut_slice, variant_data,
     },
-    Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, GenericPredicate, OpaqueTy,
-    OpaqueTyId, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
+    AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, GenericPredicate,
+    OpaqueTy, OpaqueTyId, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
     ReturnTypeImplTraits, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 
@@ -157,7 +157,7 @@ impl Ty {
             }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::RawPtr(*mutability, Substs::single(inner_ty))
+                Ty::Raw(*mutability, Substs::single(inner_ty))
             }
             TypeRef::Array(inner) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
@@ -181,7 +181,7 @@ impl Ty {
                 })
             }
             TypeRef::DynTrait(bounds) => {
-                let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
+                let self_ty = Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0));
                 let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     bounds
                         .iter()
@@ -225,7 +225,10 @@ impl Ty {
                         let impl_trait_id = OpaqueTyId::ReturnTypeImplTrait(func, idx);
                         let generics = generics(ctx.db.upcast(), func.into());
                         let parameters = Substs::bound_vars(&generics, ctx.in_binders);
-                        Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
+                        Ty::Alias(AliasTy::Opaque(OpaqueTy {
+                            opaque_ty_id: impl_trait_id,
+                            parameters,
+                        }))
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = ctx.impl_trait_counter.get();
@@ -256,7 +259,7 @@ impl Ty {
                             } else {
                                 (0, 0, 0, 0)
                             };
-                        Ty::Bound(BoundVar::new(
+                        Ty::BoundVar(BoundVar::new(
                             ctx.in_binders,
                             idx as usize + parent_params + self_params + list_params,
                         ))
@@ -328,7 +331,7 @@ impl Ty {
             TypeNs::TraitId(trait_) => {
                 // if this is a bare dyn Trait, we'll directly put the required ^0 for the self type in there
                 let self_ty = if remaining_segments.len() == 0 {
-                    Some(Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0)))
+                    Some(Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)))
                 } else {
                     None
                 };
@@ -344,10 +347,10 @@ impl Ty {
                     match found {
                         Some((super_trait_ref, associated_ty)) => {
                             // FIXME handle type parameters on the segment
-                            Ty::Projection(ProjectionTy {
+                            Ty::Alias(AliasTy::Projection(ProjectionTy {
                                 associated_ty,
                                 parameters: super_trait_ref.substs,
-                            })
+                            }))
                         }
                         None => {
                             // FIXME: report error (associated type not found)
@@ -371,7 +374,7 @@ impl Ty {
                     TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
-                        Ty::Bound(BoundVar::new(ctx.in_binders, idx))
+                        Ty::BoundVar(BoundVar::new(ctx.in_binders, idx))
                     }
                 }
             }
@@ -469,10 +472,10 @@ impl Ty {
                         // associated_type_shorthand_candidates does not do that
                         let substs = substs.shift_bound_vars(ctx.in_binders);
                         // FIXME handle type parameters on the segment
-                        return Some(Ty::Projection(ProjectionTy {
+                        return Some(Ty::Alias(AliasTy::Projection(ProjectionTy {
                             associated_ty,
                             parameters: substs,
-                        }));
+                        })));
                     }
 
                     None
@@ -673,7 +676,7 @@ impl GenericPredicate {
                             TypeParamLoweringMode::Placeholder => Ty::Placeholder(param_id),
                             TypeParamLoweringMode::Variable => {
                                 let idx = generics.param_idx(param_id).expect("matching generics");
-                                Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, idx))
+                                Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                             }
                         }
                     }
@@ -747,7 +750,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
                 preds.extend(GenericPredicate::from_type_bound(
                     ctx,
                     bound,
-                    Ty::Projection(projection_ty.clone()),
+                    Ty::Alias(AliasTy::Projection(projection_ty.clone())),
                 ));
             }
             preds
@@ -757,7 +760,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 impl ReturnTypeImplTrait {
     fn from_hir(ctx: &TyLoweringContext, bounds: &[TypeBound]) -> Self {
         mark::hit!(lower_rpit);
-        let self_ty = Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, 0));
+        let self_ty = Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0));
         let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             bounds
                 .iter()
@@ -981,7 +984,7 @@ pub(crate) fn generic_defaults_query(
             // Each default can only refer to previous parameters.
             ty.walk_mut_binders(
                 &mut |ty, binders| match ty {
-                    Ty::Bound(BoundVar { debruijn, index }) if *debruijn == binders => {
+                    Ty::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
                         if *index >= idx {
                             // type variable default referring to parameter coming
                             // after it. This is forbidden (FIXME: report

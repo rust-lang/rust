@@ -68,7 +68,7 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
                     } else {
                         let root = self.ctx.table.var_unification_table.find(inner);
                         let position = self.add(InferenceVar::from_inner(root), kind);
-                        Ty::Bound(BoundVar::new(binders, position))
+                        Ty::BoundVar(BoundVar::new(binders, position))
                     }
                 }
                 _ => ty,
@@ -110,7 +110,7 @@ impl<T> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::Bound(bound) = ty {
+                if let &mut Ty::BoundVar(bound) = ty {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
                         *ty = Ty::InferenceVar(v, k);
@@ -168,7 +168,7 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
     // (kind of hacky)
     for (i, var) in vars.iter().enumerate() {
         if &*table.resolve_ty_shallow(var) == var {
-            table.unify(var, &Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i)));
+            table.unify(var, &Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i)));
         }
     }
     Some(

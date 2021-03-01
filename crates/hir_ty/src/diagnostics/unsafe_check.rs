@@ -110,7 +110,7 @@ fn walk_unsafe(
             }
         }
         Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-            if let Ty::RawPtr(..) = &infer[*expr] {
+            if let Ty::Raw(..) = &infer[*expr] {
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
             }
         }
