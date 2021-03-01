@@ -1,6 +1,6 @@
 // check-pass
 
-#![doc(no_default_passes, passes = "collapse-docs unindent-comments")]
+#![doc(no_default_passes, passes = "unindent-comments")]
 
 struct SomeStruct;
 
