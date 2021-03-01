@@ -54,6 +54,9 @@ version = "0.0.0"
 use std::collections::Spam;
 "#,
     )
+    .with_config(serde_json::json!({
+        "cargo": { "noSysroot": false }
+    }))
     .server()
     .wait_until_workspace_is_loaded();
 
@@ -450,6 +453,9 @@ fn main() {{}}
 "#,
         librs, libs
     ))
+    .with_config(serde_json::json!({
+        "cargo": { "noSysroot": false }
+    }))
     .server()
     .wait_until_workspace_is_loaded();
 
@@ -572,7 +578,10 @@ fn main() {
 "###,
     )
     .with_config(serde_json::json!({
-        "cargo": { "loadOutDirsFromCheck": true }
+        "cargo": {
+            "loadOutDirsFromCheck": true,
+            "noSysroot": true,
+        }
     }))
     .server()
     .wait_until_workspace_is_loaded();
@@ -715,7 +724,10 @@ pub fn foo(_input: TokenStream) -> TokenStream {
 "###,
     )
     .with_config(serde_json::json!({
-        "cargo": { "loadOutDirsFromCheck": true },
+        "cargo": {
+            "loadOutDirsFromCheck": true,
+            "noSysroot": true,
+        },
         "procMacro": {
             "enable": true,
             "server": PathBuf::from(env!("CARGO_BIN_EXE_rust-analyzer")),
