@@ -237,7 +237,7 @@ impl<'a> InferenceContext<'a> {
                     };
 
                     let inner_ty = self.infer_pat(*inner, inner_expected, default_bm);
-                    Ty::Adt(box_adt, Substs::single(inner_ty))
+                    Ty::adt_ty(box_adt, Substs::single(inner_ty))
                 }
                 None => Ty::Unknown,
             },
