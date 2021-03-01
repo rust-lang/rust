@@ -97,6 +97,10 @@ impl ModuleId {
     pub fn krate(&self) -> CrateId {
         self.krate
     }
+
+    pub fn containing_module(&self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
+        self.def_map(db).containing_module(self.local_id)
+    }
 }
 
 /// An ID of a module, **local** to a specific crate
@@ -526,6 +530,25 @@ impl HasModule for GenericDefId {
 impl HasModule for StaticLoc {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         self.container.module(db)
+    }
+}
+
+impl ModuleDefId {
+    /// Returns the module containing `self` (or `self`, if `self` is itself a module).
+    ///
+    /// Returns `None` if `self` refers to a primitive type.
+    pub fn module(&self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
+        Some(match self {
+            ModuleDefId::ModuleId(id) => *id,
+            ModuleDefId::FunctionId(id) => id.lookup(db).module(db),
+            ModuleDefId::AdtId(id) => id.module(db),
+            ModuleDefId::EnumVariantId(id) => id.parent.lookup(db).container.module(db),
+            ModuleDefId::ConstId(id) => id.lookup(db).container.module(db),
+            ModuleDefId::StaticId(id) => id.lookup(db).container.module(db),
+            ModuleDefId::TraitId(id) => id.lookup(db).container.module(db),
+            ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db),
+            ModuleDefId::BuiltinType(_) => return None,
+        })
     }
 }
 

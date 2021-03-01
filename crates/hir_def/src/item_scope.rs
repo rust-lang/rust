@@ -12,8 +12,8 @@ use stdx::format_to;
 use test_utils::mark;
 
 use crate::{
-    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroDefId, ModuleDefId, ModuleId, TraitId,
+    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId,
+    LocalModuleId, MacroDefId, ModuleDefId, ModuleId, TraitId,
 };
 
 #[derive(Copy, Clone)]
@@ -375,19 +375,9 @@ impl ItemInNs {
 
     /// Returns the crate defining this item (or `None` if `self` is built-in).
     pub fn krate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
-        Some(match self {
-            ItemInNs::Types(did) | ItemInNs::Values(did) => match did {
-                ModuleDefId::ModuleId(id) => id.krate,
-                ModuleDefId::FunctionId(id) => id.lookup(db).module(db).krate,
-                ModuleDefId::AdtId(id) => id.module(db).krate,
-                ModuleDefId::EnumVariantId(id) => id.parent.lookup(db).container.module(db).krate,
-                ModuleDefId::ConstId(id) => id.lookup(db).container.module(db).krate,
-                ModuleDefId::StaticId(id) => id.lookup(db).container.module(db).krate,
-                ModuleDefId::TraitId(id) => id.lookup(db).container.module(db).krate,
-                ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db).krate,
-                ModuleDefId::BuiltinType(_) => return None,
-            },
-            ItemInNs::Macros(id) => return Some(id.krate),
-        })
+        match self {
+            ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate),
+            ItemInNs::Macros(id) => Some(id.krate),
+        }
     }
 }
