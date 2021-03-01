@@ -50,7 +50,7 @@ If you want to sponsor:
 
 ## Quick start
 
-1. Install [rustup] the rust toolchain
+1. Install [rustup]
 2. Install the [rust-analyzer extension]
 
 [rustup]: https://rustup.rs
