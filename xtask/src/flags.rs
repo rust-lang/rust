@@ -46,7 +46,7 @@ xflags::args_parser! {
         }
         /// Builds a benchmark version of rust-analyzer and puts it into `./target`.
         cmd bb
-            required suffix : String
+            required suffix: String
         {}
     }
 }
