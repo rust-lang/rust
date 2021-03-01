@@ -32,8 +32,7 @@ LL | / fn func2(a: bool, b: bool) -> Option<i32> {
 LL | |     if a && b {
 LL | |         return Some(10);
 LL | |     }
-...  |
-LL | |     }
+LL | |     if a { Some(20) } else { Some(30) }
 LL | | }
    | |_^
    |
@@ -45,14 +44,11 @@ help: ...and then change returning expressions
    |
 LL |         return 10;
 LL |     }
-LL |     if a {
-LL |         20
-LL |     } else {
-LL |         30
+LL |     if a { 20 } else { 30 }
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:51:1
+  --> $DIR/unnecessary_wraps.rs:39:1
    |
 LL | / fn func5() -> Option<i32> {
 LL | |     Some(1)
@@ -69,7 +65,7 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Result`
-  --> $DIR/unnecessary_wraps.rs:61:1
+  --> $DIR/unnecessary_wraps.rs:49:1
    |
 LL | / fn func7() -> Result<i32, ()> {
 LL | |     Ok(1)
@@ -86,7 +82,7 @@ LL |     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
-  --> $DIR/unnecessary_wraps.rs:93:5
+  --> $DIR/unnecessary_wraps.rs:77:5
    |
 LL | /     fn func12() -> Option<i32> {
 LL | |         Some(1)
@@ -103,7 +99,7 @@ LL |         1
    |
 
 error: this function's return value is unnecessary
-  --> $DIR/unnecessary_wraps.rs:120:1
+  --> $DIR/unnecessary_wraps.rs:104:1
    |
 LL | / fn issue_6640_1(a: bool, b: bool) -> Option<()> {
 LL | |     if a && b {
@@ -129,7 +125,7 @@ LL |     } else {
  ...
 
 error: this function's return value is unnecessary
-  --> $DIR/unnecessary_wraps.rs:133:1
+  --> $DIR/unnecessary_wraps.rs:117:1
    |
 LL | / fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
 LL | |     if a && b {

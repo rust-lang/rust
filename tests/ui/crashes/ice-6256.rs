@@ -8,6 +8,7 @@ impl dyn TT {
     fn func(&self) {}
 }
 
+#[rustfmt::skip]
 fn main() {
     let f = |x: &dyn TT| x.func(); //[default]~ ERROR: mismatched types
                                    //[nll]~^ ERROR: borrowed data escapes outside of closure

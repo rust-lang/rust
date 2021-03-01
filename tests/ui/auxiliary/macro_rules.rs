@@ -23,11 +23,7 @@ macro_rules! try_err {
         pub fn try_err_fn() -> Result<i32, i32> {
             let err: i32 = 1;
             // To avoid warnings during rustfix
-            if true {
-                Err(err)?
-            } else {
-                Ok(2)
-            }
+            if true { Err(err)? } else { Ok(2) }
         }
     };
 }

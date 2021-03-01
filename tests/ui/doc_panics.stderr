@@ -67,19 +67,15 @@ error: docs for function which may panic missing `# Panics` section
   --> $DIR/doc_panics.rs:32:1
    |
 LL | / pub fn unreachable_and_panic() {
-LL | |     if true {
-LL | |         unreachable!()
-LL | |     } else {
-LL | |         panic!()
-LL | |     }
+LL | |     if true { unreachable!() } else { panic!() }
 LL | | }
    | |_^
    |
 note: first possible panic found here
-  --> $DIR/doc_panics.rs:36:9
+  --> $DIR/doc_panics.rs:33:39
    |
-LL |         panic!()
-   |         ^^^^^^^^
+LL |     if true { unreachable!() } else { panic!() }
+   |                                       ^^^^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors

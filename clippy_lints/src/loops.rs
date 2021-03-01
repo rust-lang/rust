@@ -3158,11 +3158,7 @@ fn detect_iter_and_into_iters<'tcx>(block: &'tcx Block<'tcx>, identifier: Ident)
         seen_other: false,
     };
     visitor.visit_block(block);
-    if visitor.seen_other {
-        None
-    } else {
-        Some(visitor.uses)
-    }
+    if visitor.seen_other { None } else { Some(visitor.uses) }
 }
 
 fn shorten_needless_collect_span(expr: &Expr<'_>) -> Span {

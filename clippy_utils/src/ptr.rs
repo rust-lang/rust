@@ -36,11 +36,7 @@ fn extract_clone_suggestions<'tcx>(
         abort: false,
     };
     visitor.visit_body(body);
-    if visitor.abort {
-        None
-    } else {
-        Some(visitor.spans)
-    }
+    if visitor.abort { None } else { Some(visitor.spans) }
 }
 
 struct PtrCloneVisitor<'a, 'tcx> {

@@ -145,11 +145,7 @@ fn count_digits(s: &str) -> usize {
         .take_while(|c| *c != 'e' && *c != 'E')
         .fold(0, |count, c| {
             // leading zeros
-            if c == '0' && count == 0 {
-                count
-            } else {
-                count + 1
-            }
+            if c == '0' && count == 0 { count } else { count + 1 }
         })
 }
 
