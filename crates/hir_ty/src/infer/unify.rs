@@ -225,36 +225,27 @@ impl InferenceTable {
         }
     }
 
+    fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
+        self.type_variable_table.push(TypeVariableData { diverging });
+        let key = self.var_unification_table.new_key(TypeVarValue::Unknown);
+        assert_eq!(key.0 as usize, self.type_variable_table.inner.len() - 1);
+        Ty::InferenceVar(InferenceVar::from_inner(key), kind)
+    }
+
     pub(crate) fn new_type_var(&mut self) -> Ty {
-        self.type_variable_table.push(TypeVariableData { diverging: false });
-        Ty::InferenceVar(
-            InferenceVar::from_inner(self.var_unification_table.new_key(TypeVarValue::Unknown)),
-            TyVariableKind::General,
-        )
+        self.new_var(TyVariableKind::General, false)
     }
 
     pub(crate) fn new_integer_var(&mut self) -> Ty {
-        self.type_variable_table.push(TypeVariableData { diverging: false });
-        Ty::InferenceVar(
-            InferenceVar::from_inner(self.var_unification_table.new_key(TypeVarValue::Unknown)),
-            TyVariableKind::Integer,
-        )
+        self.new_var(TyVariableKind::Integer, false)
     }
 
     pub(crate) fn new_float_var(&mut self) -> Ty {
-        self.type_variable_table.push(TypeVariableData { diverging: false });
-        Ty::InferenceVar(
-            InferenceVar::from_inner(self.var_unification_table.new_key(TypeVarValue::Unknown)),
-            TyVariableKind::Float,
-        )
+        self.new_var(TyVariableKind::Float, false)
     }
 
     pub(crate) fn new_maybe_never_var(&mut self) -> Ty {
-        self.type_variable_table.push(TypeVariableData { diverging: true });
-        Ty::InferenceVar(
-            InferenceVar::from_inner(self.var_unification_table.new_key(TypeVarValue::Unknown)),
-            TyVariableKind::General,
-        )
+        self.new_var(TyVariableKind::General, true)
     }
 
     pub(crate) fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {

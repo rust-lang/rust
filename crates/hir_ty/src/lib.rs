@@ -527,11 +527,11 @@ impl TypeWalk for GenericPredicate {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Canonical<T> {
     pub value: T,
-    pub kinds: Arc<[chalk_ir::TyVariableKind]>,
+    pub kinds: Arc<[TyVariableKind]>,
 }
 
 impl<T> Canonical<T> {
-    pub fn new(value: T, kinds: impl IntoIterator<Item = chalk_ir::TyVariableKind>) -> Self {
+    pub fn new(value: T, kinds: impl IntoIterator<Item = TyVariableKind>) -> Self {
         Self { value, kinds: kinds.into_iter().collect() }
     }
 }
