@@ -48,7 +48,7 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::{AsAssocItem, ItemInNs, ModPath, ScopeDef};
+use hir::{AsAssocItem, ModPath, ModuleDef, ScopeDef};
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
@@ -91,33 +91,26 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
-    let mut all_mod_paths = import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
-        .into_iter()
-        .map(|import| {
-            let def_to_display = match import.item_to_display() {
-                ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
-                ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
-                ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
-            };
-            (import, def_to_display)
-        })
-        .collect::<Vec<_>>();
-    all_mod_paths.sort_by_cached_key(|(import, _)| {
+    let mut all_imports =
+        import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
+    all_imports.sort_by_cached_key(|import| {
         compute_fuzzy_completion_order_key(import.display_path(), &user_input_lowercased)
     });
 
-    acc.add_all(all_mod_paths.into_iter().filter_map(|(import, def_to_display)| {
-        let import_for_trait_assoc_item = match def_to_display {
-            ScopeDef::ModuleDef(module_def) => module_def
-                .as_assoc_item(ctx.db)
-                .and_then(|assoc| assoc.containing_trait(ctx.db))
-                .is_some(),
-            _ => false,
-        };
-        let import_edit =
-            ImportEdit { import, import_scope: import_scope.clone(), import_for_trait_assoc_item };
-        render_resolution_with_import(RenderContext::new(ctx), import_edit, &def_to_display)
+    acc.add_all(all_imports.into_iter().filter_map(|import| {
+        let import_for_trait_assoc_item = import
+            .item_to_display()
+            .as_module_def_id()
+            .and_then(|module_def_id| {
+                ModuleDef::from(module_def_id).as_assoc_item(ctx.db)?.containing_trait(ctx.db)
+            })
+            .is_some();
+        let def_to_display = ScopeDef::from(import.item_to_display());
+        render_resolution_with_import(
+            RenderContext::new(ctx),
+            ImportEdit { import, import_scope: import_scope.clone(), import_for_trait_assoc_item },
+            &def_to_display,
+        )
     }));
     Some(())
 }

@@ -130,7 +130,6 @@ impl<'a> ImportAssets<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LocatedImport {
-    // TODO kb extract both into a separate struct + add another field:  `assoc_item_name: Optional<String|Name>`
     import_path: ModPath,
     item_to_import: ItemInNs,
     data_to_display: Option<(ModPath, ItemInNs)>,
@@ -146,7 +145,7 @@ impl LocatedImport {
     }
 
     pub fn display_path(&self) -> &ModPath {
-        self.data_to_display.as_ref().map(|(mod_pathh, _)| mod_pathh).unwrap_or(&self.import_path)
+        self.data_to_display.as_ref().map(|(mod_path, _)| mod_path).unwrap_or(&self.import_path)
     }
 
     pub fn import_path(&self) -> &ModPath {
@@ -227,14 +226,7 @@ impl<'a> ImportAssets<'a> {
         self.applicable_defs(sema.db, prefixed, defs_for_candidate_name)
             .into_iter()
             .filter(|import| import.import_path().len() > 1)
-            .filter(|import| {
-                let proposed_def = match import.item_to_import() {
-                    ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
-                    ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
-                    ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
-                };
-                !scope_definitions.contains(&proposed_def)
-            })
+            .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import())))
             .collect()
     }
 
@@ -314,8 +306,8 @@ fn import_for_item(
     unresolved_qualifier: &str,
     original_item: ItemInNs,
 ) -> Option<LocatedImport> {
-    let (item_candidate, trait_to_import) = match original_item {
-        ItemInNs::Types(module_def_id) | ItemInNs::Values(module_def_id) => {
+    let (item_candidate, trait_to_import) = match original_item.as_module_def_id() {
+        Some(module_def_id) => {
             match ModuleDef::from(module_def_id).as_assoc_item(db).map(|assoc| assoc.container(db))
             {
                 Some(AssocItemContainer::Trait(trait_)) => {
@@ -328,7 +320,7 @@ fn import_for_item(
                 None => (original_item, None),
             }
         }
-        ItemInNs::Macros(_) => (original_item, None),
+        None => (original_item, None),
     };
     let import_path_candidate = mod_path(item_candidate)?;
 
