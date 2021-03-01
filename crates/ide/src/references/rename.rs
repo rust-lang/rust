@@ -59,6 +59,15 @@ pub(crate) fn prepare_rename(
     Ok(RangeInfo::new(range, ()))
 }
 
+// Feature: Rename
+//
+// Renames the item below the cursor and all of its references
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[F2]
+// |===
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
