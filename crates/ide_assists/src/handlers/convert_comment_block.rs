@@ -1,8 +1,14 @@
-use ast::{Comment, CommentShape};
 use itertools::Itertools;
 use std::convert::identity;
 use syntax::{
-    ast::{self, edit::IndentLevel, CommentKind, Whitespace},
+    ast::{
+        self,
+        edit::IndentLevel,
+        Comment, CommentKind,
+        CommentPlacement::{Inner, Outer},
+        CommentShape::{self, Block, Line},
+        Whitespace,
+    },
     AstToken, Direction, SyntaxElement, TextRange,
 };
 
@@ -42,34 +48,37 @@ pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext) -> O
 }
 
 fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
-    let indentation = IndentLevel::from_token(comment.syntax());
-    let line_prefix =
-        comment_kind_prefix(CommentKind { shape: CommentShape::Line, ..comment.kind() });
-
-    let text = comment.text();
-    let text = &text[comment.prefix().len()..(text.len() - "*/".len())].trim();
-
-    let lines = text.lines().peekable();
-
-    let indent_spaces = indentation.to_string();
-    let output = lines
-        .map(|l| l.trim_start_matches(&indent_spaces))
-        .map(|l| {
-            // Don't introduce trailing whitespace
-            if l.is_empty() {
-                line_prefix.to_string()
-            } else {
-                format!("{} {}", line_prefix, l.trim_start_matches(&indent_spaces))
-            }
-        })
-        .join(&format!("\n{}", indent_spaces));
-
     let target = comment.syntax().text_range();
+
     acc.add(
         AssistId("block_to_line", AssistKind::RefactorRewrite),
         "Replace block comment with line comments",
         target,
-        |edit| edit.replace(target, output),
+        |edit| {
+            let indentation = IndentLevel::from_token(comment.syntax());
+            let line_prefix =
+                comment_kind_prefix(CommentKind { shape: CommentShape::Line, ..comment.kind() });
+
+            let text = comment.text();
+            let text = &text[comment.prefix().len()..(text.len() - "*/".len())].trim();
+
+            let lines = text.lines().peekable();
+
+            let indent_spaces = indentation.to_string();
+            let output = lines
+                .map(|l| l.trim_start_matches(&indent_spaces))
+                .map(|l| {
+                    // Don't introduce trailing whitespace
+                    if l.is_empty() {
+                        line_prefix.to_string()
+                    } else {
+                        format!("{} {}", line_prefix, l.trim_start_matches(&indent_spaces))
+                    }
+                })
+                .join(&format!("\n{}", indent_spaces));
+
+            edit.replace(target, output)
+        },
     )
 }
 
@@ -83,24 +92,27 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
         comments.last().unwrap().syntax().text_range().end(),
     );
 
-    // We pick a single indentation level for the whole block comment based on the
-    // comment where the assist was invoked. This will be prepended to the
-    // contents of each line comment when they're put into the block comment.
-    let indentation = IndentLevel::from_token(&comment.syntax());
-
-    let block_comment_body =
-        comments.into_iter().map(|c| line_comment_text(indentation, c)).join("\n");
-
-    let block_prefix =
-        comment_kind_prefix(CommentKind { shape: CommentShape::Block, ..comment.kind() });
-
-    let output = format!("{}\n{}\n{}*/", block_prefix, block_comment_body, indentation.to_string());
-
     acc.add(
         AssistId("line_to_block", AssistKind::RefactorRewrite),
         "Replace line comments with a single block comment",
         target,
-        |edit| edit.replace(target, output),
+        |edit| {
+            // We pick a single indentation level for the whole block comment based on the
+            // comment where the assist was invoked. This will be prepended to the
+            // contents of each line comment when they're put into the block comment.
+            let indentation = IndentLevel::from_token(&comment.syntax());
+
+            let block_comment_body =
+                comments.into_iter().map(|c| line_comment_text(indentation, c)).join("\n");
+
+            let block_prefix =
+                comment_kind_prefix(CommentKind { shape: CommentShape::Block, ..comment.kind() });
+
+            let output =
+                format!("{}\n{}\n{}*/", block_prefix, block_comment_body, indentation.to_string());
+
+            edit.replace(target, output)
+        },
     )
 }
 
@@ -160,27 +172,18 @@ fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //
 // But since such comments aren't idiomatic we're okay with this.
 fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
-    let contents = trim_one(comm.text().strip_prefix(comm.prefix()).unwrap()).to_owned();
+    let contents_without_prefix = comm.text().strip_prefix(comm.prefix()).unwrap();
+    let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
     if contents.is_empty() {
-        contents
+        contents.to_owned()
     } else {
         indentation.to_string() + &contents
     }
 }
 
-fn trim_one(text: &str) -> &str {
-    if text.starts_with(' ') {
-        &text[1..]
-    } else {
-        text
-    }
-}
-
 fn comment_kind_prefix(ck: ast::CommentKind) -> &'static str {
-    use ast::CommentPlacement::{Inner, Outer};
-    use ast::CommentShape::{Block, Line};
     match (ck.shape, ck.doc) {
         (Line, Some(Inner)) => "//!",
         (Line, Some(Outer)) => "///",
