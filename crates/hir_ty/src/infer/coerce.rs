@@ -4,12 +4,13 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
+use chalk_ir::TyVariableKind;
 use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
 use test_utils::mark;
 
 use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty};
 
-use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
+use super::{InEnvironment, InferenceContext};
 
 impl<'a> InferenceContext<'a> {
     /// Unify two types, but may coerce the first one to the second one
@@ -53,9 +54,8 @@ impl<'a> InferenceContext<'a> {
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
         match (&from_ty, to_ty) {
             // Never type will make type variable to fallback to Never Type instead of Unknown.
-            (Ty::Never, Ty::Infer(InferTy::TypeVar(tv))) => {
-                let var = self.table.new_maybe_never_type_var();
-                self.table.var_unification_table.union_value(*tv, TypeVarValue::Known(var));
+            (Ty::Never, Ty::InferenceVar(tv, TyVariableKind::General)) => {
+                self.table.type_variable_table.set_diverging(*tv, true);
                 return true;
             }
             (Ty::Never, _) => return true,

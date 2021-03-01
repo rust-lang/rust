@@ -3,6 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
+use chalk_ir::TyVariableKind;
 use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
@@ -18,8 +19,8 @@ use crate::{
     primitive::{self, UintTy},
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    Binders, CallableDefId, FnPointer, FnSig, InferTy, Mutability, Obligation, OpaqueTyId, Rawness,
-    Scalar, Substs, TraitRef, Ty,
+    Binders, CallableDefId, FnPointer, FnSig, Mutability, Obligation, OpaqueTyId, Rawness, Scalar,
+    Substs, TraitRef, Ty,
 };
 
 use super::{
@@ -527,8 +528,8 @@ impl<'a> InferenceContext<'a> {
                             Ty::Scalar(Scalar::Int(_))
                             | Ty::Scalar(Scalar::Uint(_))
                             | Ty::Scalar(Scalar::Float(_))
-                            | Ty::Infer(InferTy::IntVar(..))
-                            | Ty::Infer(InferTy::FloatVar(..)) => inner_ty,
+                            | Ty::InferenceVar(_, TyVariableKind::Integer)
+                            | Ty::InferenceVar(_, TyVariableKind::Float) => inner_ty,
                             // Otherwise we resolve via the std::ops::Neg trait
                             _ => self
                                 .resolve_associated_type(inner_ty, self.resolve_ops_neg_output()),
@@ -540,7 +541,7 @@ impl<'a> InferenceContext<'a> {
                             Ty::Scalar(Scalar::Bool)
                             | Ty::Scalar(Scalar::Int(_))
                             | Ty::Scalar(Scalar::Uint(_))
-                            | Ty::Infer(InferTy::IntVar(..)) => inner_ty,
+                            | Ty::InferenceVar(_, TyVariableKind::Integer) => inner_ty,
                             // Otherwise we resolve via the std::ops::Not trait
                             _ => self
                                 .resolve_associated_type(inner_ty, self.resolve_ops_not_output()),
@@ -761,7 +762,7 @@ impl<'a> InferenceContext<'a> {
             // `!`).
             if self.diverges.is_always() {
                 // we don't even make an attempt at coercion
-                self.table.new_maybe_never_type_var()
+                self.table.new_maybe_never_var()
             } else {
                 self.coerce(&Ty::unit(), expected.coercion_target());
                 Ty::unit()

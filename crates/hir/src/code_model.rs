@@ -33,7 +33,7 @@ use hir_ty::{
     traits::{FnTrait, Solution, SolutionVariables},
     BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
     InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
-    Ty, TyDefId, TyKind,
+    Ty, TyDefId, TyVariableKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -1655,7 +1655,7 @@ impl Type {
                 self.ty.environment.clone(),
                 Obligation::Projection(predicate),
             ),
-            kinds: Arc::new([TyKind::General]),
+            kinds: Arc::new([TyVariableKind::General]),
         };
 
         match db.trait_solve(self.krate, goal)? {
