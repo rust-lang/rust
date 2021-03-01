@@ -30,6 +30,7 @@ pub(crate) fn add_type_ascription(acc: &mut Assists, ctx: &AssistContext) -> Opt
         mark::hit!(add_type_ascription_already_typed);
         return None
     }
+    let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
 
     let ident = ctx.find_token_syntax_at_offset(SyntaxKind::IDENT).or_else(|| {
         let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
@@ -58,14 +59,13 @@ pub(crate) fn add_type_ascription(acc: &mut Assists, ctx: &AssistContext) -> Opt
         mark::hit!(add_type_ascription_non_generic);
         return None;
     }
-    let pat = let_stmt.pat()?.syntax().last_token()?.text_range().end();
     acc.add(
         AssistId("add_type_ascription", AssistKind::RefactorRewrite),
         "Add `: _` before assignment operator",
         ident.text_range(),
         |builder| match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, pat, ": ${0:_}"),
-            None => builder.insert(pat, ": _"),
+            Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
+            None => builder.insert(type_pos, ": _"),
         },
     )
 }
