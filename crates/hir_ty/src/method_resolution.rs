@@ -6,9 +6,10 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::CrateId;
+use chalk_ir::Mutability;
 use hir_def::{
-    lang_item::LangItemTarget, type_ref::Mutability, AdtId, AssocContainerId, AssocItemId,
-    FunctionId, GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
+    lang_item::LangItemTarget, AdtId, AssocContainerId, AssocItemId, FunctionId, GenericDefId,
+    HasModule, ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -251,7 +252,7 @@ impl Ty {
             }
             Ty::Str => lang_item_crate!("str_alloc", "str"),
             Ty::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
-            Ty::Raw(Mutability::Shared, _) => lang_item_crate!("const_ptr"),
+            Ty::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
             Ty::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
             Ty::Dyn(_) => {
                 return self.dyn_trait().and_then(|trait_| {
@@ -429,7 +430,7 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: Ty::Ref(Mutability::Shared, Substs::single(deref_chain[0].value.clone())),
+        value: Ty::Ref(Mutability::Not, Substs::single(deref_chain[0].value.clone())),
     };
     if iterate_method_candidates_by_receiver(
         &refed,

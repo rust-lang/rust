@@ -3,7 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
-use chalk_ir::TyVariableKind;
+use chalk_ir::{Mutability, TyVariableKind};
 use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
@@ -15,12 +15,14 @@ use syntax::ast::RangeOp;
 use test_utils::mark;
 
 use crate::{
-    autoderef, method_resolution, op,
+    autoderef,
+    lower::lower_to_chalk_mutability,
+    method_resolution, op,
     primitive::{self, UintTy},
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    Binders, CallableDefId, FnPointer, FnSig, Mutability, Obligation, OpaqueTyId, Rawness, Scalar,
-    Substs, TraitRef, Ty,
+    Binders, CallableDefId, FnPointer, FnSig, Obligation, OpaqueTyId, Rawness, Scalar, Substs,
+    TraitRef, Ty,
 };
 
 use super::{
@@ -462,10 +464,11 @@ impl<'a> InferenceContext<'a> {
                 cast_ty
             }
             Expr::Ref { expr, rawness, mutability } => {
+                let mutability = lower_to_chalk_mutability(*mutability);
                 let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
                     &expected.ty.as_reference_or_ptr()
                 {
-                    if *exp_mutability == Mutability::Mut && *mutability == Mutability::Shared {
+                    if *exp_mutability == Mutability::Mut && mutability == Mutability::Not {
                         // FIXME: throw type error - expected mut reference but found shared ref,
                         // which cannot be coerced
                     }
@@ -479,8 +482,8 @@ impl<'a> InferenceContext<'a> {
                 };
                 let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 match rawness {
-                    Rawness::RawPtr => Ty::Raw(*mutability, Substs::single(inner_ty)),
-                    Rawness::Ref => Ty::Ref(*mutability, Substs::single(inner_ty)),
+                    Rawness::RawPtr => Ty::Raw(mutability, Substs::single(inner_ty)),
+                    Rawness::Ref => Ty::Ref(mutability, Substs::single(inner_ty)),
                 }
             }
             Expr::Box { expr } => {
@@ -684,11 +687,11 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => Ty::Scalar(Scalar::Bool),
-                Literal::String(..) => Ty::Ref(Mutability::Shared, Substs::single(Ty::Str)),
+                Literal::String(..) => Ty::Ref(Mutability::Not, Substs::single(Ty::Str)),
                 Literal::ByteString(..) => {
                     let byte_type = Ty::Scalar(Scalar::Uint(UintTy::U8));
                     let array_type = Ty::Array(Substs::single(byte_type));
-                    Ty::Ref(Mutability::Shared, Substs::single(array_type))
+                    Ty::Ref(Mutability::Not, Substs::single(array_type))
                 }
                 Literal::Char(..) => Ty::Scalar(Scalar::Char),
                 Literal::Int(_v, ty) => match ty {

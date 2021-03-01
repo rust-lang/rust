@@ -4,8 +4,8 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use chalk_ir::TyVariableKind;
-use hir_def::{lang_item::LangItemTarget, type_ref::Mutability};
+use chalk_ir::{Mutability, TyVariableKind};
+use hir_def::lang_item::LangItemTarget;
 use test_utils::mark;
 
 use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty};
@@ -73,20 +73,20 @@ impl<'a> InferenceContext<'a> {
         match (&mut from_ty, to_ty) {
             // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
-            (Ty::Raw(m1, ..), Ty::Raw(m2 @ Mutability::Shared, ..))
-            | (Ty::Ref(m1, ..), Ty::Ref(m2 @ Mutability::Shared, ..)) => {
+            (Ty::Raw(m1, ..), Ty::Raw(m2 @ Mutability::Not, ..))
+            | (Ty::Ref(m1, ..), Ty::Ref(m2 @ Mutability::Not, ..)) => {
                 *m1 = *m2;
             }
             // `&T` -> `*const T`
             // `&mut T` -> `*mut T`/`*const T`
-            (Ty::Ref(.., substs), &Ty::Raw(m2 @ Mutability::Shared, ..))
+            (Ty::Ref(.., substs), &Ty::Raw(m2 @ Mutability::Not, ..))
             | (Ty::Ref(Mutability::Mut, substs), &Ty::Raw(m2, ..)) => {
                 from_ty = Ty::Raw(m2, substs.clone());
             }
 
             // Illegal mutability conversion
-            (Ty::Raw(Mutability::Shared, ..), Ty::Raw(Mutability::Mut, ..))
-            | (Ty::Ref(Mutability::Shared, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
+            (Ty::Raw(Mutability::Not, ..), Ty::Raw(Mutability::Mut, ..))
+            | (Ty::Ref(Mutability::Not, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
 
             // `{function_type}` -> `fn()`
             (Ty::FnDef(..), Ty::Function { .. }) => match from_ty.callable_sig(self.db) {

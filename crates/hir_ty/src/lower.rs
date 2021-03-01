@@ -8,6 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
+use chalk_ir::Mutability;
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -157,7 +158,7 @@ impl Ty {
             }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::Raw(*mutability, Substs::single(inner_ty))
+                Ty::Raw(lower_to_chalk_mutability(*mutability), Substs::single(inner_ty))
             }
             TypeRef::Array(inner) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
@@ -169,7 +170,7 @@ impl Ty {
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = Ty::from_hir(ctx, inner);
-                Ty::Ref(*mutability, Substs::single(inner_ty))
+                Ty::Ref(lower_to_chalk_mutability(*mutability), Substs::single(inner_ty))
             }
             TypeRef::Placeholder => Ty::Unknown,
             TypeRef::Fn(params, is_varargs) => {
@@ -1257,5 +1258,12 @@ pub(crate) fn return_type_impl_traits(
         None
     } else {
         Some(Arc::new(Binders::new(num_binders, return_type_impl_traits)))
+    }
+}
+
+pub(crate) fn lower_to_chalk_mutability(m: hir_def::type_ref::Mutability) -> Mutability {
+    match m {
+        hir_def::type_ref::Mutability::Shared => Mutability::Not,
+        hir_def::type_ref::Mutability::Mut => Mutability::Mut,
     }
 }
