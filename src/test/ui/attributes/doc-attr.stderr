@@ -1,0 +1,14 @@
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:4:7
+   |
+LL | #[doc(as_ptr)]
+   |       ^^^^^^
+
+error: unknown `doc` attribute `as_ptr`
+  --> $DIR/doc-attr.rs:2:8
+   |
+LL | #![doc(as_ptr)]
+   |        ^^^^^^
+
+error: aborting due to 2 previous errors
+
