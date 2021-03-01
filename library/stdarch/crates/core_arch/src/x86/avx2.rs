@@ -4415,14 +4415,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm_broadcastb_epi8() {
-        let a = _mm_insert_epi8(_mm_set1_epi8(0x00), 0x2a, 0);
+        let a = _mm_insert_epi8::<0>(_mm_set1_epi8(0x00), 0x2a);
         let res = _mm_broadcastb_epi8(a);
         assert_eq_m128i(res, _mm_set1_epi8(0x2a));
     }
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_broadcastb_epi8() {
-        let a = _mm_insert_epi8(_mm_set1_epi8(0x00), 0x2a, 0);
+        let a = _mm_insert_epi8::<0>(_mm_set1_epi8(0x00), 0x2a);
         let res = _mm256_broadcastb_epi8(a);
         assert_eq_m256i(res, _mm256_set1_epi8(0x2a));
     }
@@ -5204,7 +5204,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_sll_epi32() {
         let a = _mm256_set1_epi32(0xFFFF);
-        let b = _mm_insert_epi32(_mm_set1_epi32(0), 4, 0);
+        let b = _mm_insert_epi32::<0>(_mm_set1_epi32(0), 4);
         let r = _mm256_sll_epi32(a, b);
         assert_eq_m256i(r, _mm256_set1_epi32(0xFFFF0));
     }
@@ -5295,7 +5295,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_sra_epi32() {
         let a = _mm256_set1_epi32(-1);
-        let b = _mm_insert_epi32(_mm_set1_epi32(0), 1, 0);
+        let b = _mm_insert_epi32::<0>(_mm_set1_epi32(0), 1);
         let r = _mm256_sra_epi32(a, b);
         assert_eq_m256i(r, _mm256_set1_epi32(-1));
     }
@@ -5365,7 +5365,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srl_epi32() {
         let a = _mm256_set1_epi32(0xFFFF);
-        let b = _mm_insert_epi32(_mm_set1_epi32(0), 4, 0);
+        let b = _mm_insert_epi32::<0>(_mm_set1_epi32(0), 4);
         let r = _mm256_srl_epi32(a, b);
         assert_eq_m256i(r, _mm256_set1_epi32(0xFFF));
     }

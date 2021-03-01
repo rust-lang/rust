@@ -1,18 +1,39 @@
 //! Utility macros.
 
-// Helper struct used to trigger const eval errors when a const generic immediate value is
-// out of range.
-pub(crate) struct ValidateConstImm8<const imm8: i32>();
-impl<const imm8: i32> ValidateConstImm8<imm8> {
+// Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
+// out of `bits`-bit range.
+pub(crate) struct ValidateConstImm<const imm: i32, const bits: i32>;
+impl<const imm: i32, const bits: i32> ValidateConstImm<imm, bits> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((imm8 >= 0 && imm8 <= 255) as usize);
+        let _ = 1 / ((imm >= 0 && imm < (1 << bits)) as usize);
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_imm2 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 2>::VALID;
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_imm3 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 3>::VALID;
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_imm4 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 4>::VALID;
     };
 }
 
 #[allow(unused)]
 macro_rules! static_assert_imm8 {
     ($imm:ident) => {
-        let _ = $crate::core_arch::macros::ValidateConstImm8::<$imm>::VALID;
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 8>::VALID;
     };
 }
 
