@@ -992,7 +992,7 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 }
 
 /// Shuffles packed single-precision (32-bit) floating-point elements in `a` and
-/// `b` using `mask`.
+/// `b` using `MASK`.
 ///
 /// The lower half of result takes values from `a` and the higher half from
 /// `b`. Mask is split to 2 control bits each to index the element from inputs.
@@ -1006,19 +1006,19 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 /// does not cause a problem in C, however Rust's commitment to strong typing does not allow this.
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(shufps, mask = 3))]
+#[cfg_attr(test, assert_instr(shufps, MASK = 3))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_shuffle_ps<const mask: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm8!(mask);
+pub unsafe fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_imm8!(MASK);
     simd_shuffle4(
         a,
         b,
         [
-            mask as u32 & 0b11,
-            (mask as u32 >> 2) & 0b11,
-            ((mask as u32 >> 4) & 0b11) + 4,
-            ((mask as u32 >> 6) & 0b11) + 4,
+            MASK as u32 & 0b11,
+            (MASK as u32 >> 2) & 0b11,
+            ((MASK as u32 >> 4) & 0b11) + 4,
+            ((MASK as u32 >> 6) & 0b11) + 4,
         ],
     )
 }
@@ -1701,9 +1701,9 @@ pub const _MM_HINT_ET0: i32 = 7;
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_ET1: i32 = 6;
 
-/// Fetch the cache line that contains address `p` using the given `strategy`.
+/// Fetch the cache line that contains address `p` using the given `STRATEGY`.
 ///
-/// The `strategy` must be one of:
+/// The `STRATEGY` must be one of:
 ///
 /// * [`_MM_HINT_T0`](constant._MM_HINT_T0.html): Fetch into all levels of the
 ///   cache hierarchy.
@@ -1745,16 +1745,16 @@ pub const _MM_HINT_ET1: i32 = 6;
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_prefetch)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(prefetcht0, strategy = _MM_HINT_T0))]
-#[cfg_attr(test, assert_instr(prefetcht1, strategy = _MM_HINT_T1))]
-#[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
-#[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
+#[cfg_attr(test, assert_instr(prefetcht0, STRATEGY = _MM_HINT_T0))]
+#[cfg_attr(test, assert_instr(prefetcht1, STRATEGY = _MM_HINT_T1))]
+#[cfg_attr(test, assert_instr(prefetcht2, STRATEGY = _MM_HINT_T2))]
+#[cfg_attr(test, assert_instr(prefetchnta, STRATEGY = _MM_HINT_NTA))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_prefetch<const strategy: i32>(p: *const i8) {
+pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     // We use the `llvm.prefetch` instrinsic with `cache type` = 1 (data cache).
-    // `locality` and `rw` are based on our `strategy`.
-    prefetch(p, (strategy >> 2) & 1, strategy & 3, 1);
+    // `locality` and `rw` are based on our `STRATEGY`.
+    prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
 }
 
 /// Returns vector of type __m128 with undefined elements.

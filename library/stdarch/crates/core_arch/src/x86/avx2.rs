@@ -2923,46 +2923,46 @@ pub unsafe fn _mm256_sll_epi64(a: __m256i, count: __m128i) -> __m256i {
     transmute(psllq(a.as_i64x4(), count.as_i64x2()))
 }
 
-/// Shifts packed 16-bit integers in `a` left by `imm8` while
+/// Shifts packed 16-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsllw, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsllw, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi16<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(pslliw(a.as_i16x16(), imm8))
+pub unsafe fn _mm256_slli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(pslliw(a.as_i16x16(), IMM8))
 }
 
-/// Shifts packed 32-bit integers in `a` left by `imm8` while
+/// Shifts packed 32-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpslld, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpslld, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi32<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psllid(a.as_i32x8(), imm8))
+pub unsafe fn _mm256_slli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psllid(a.as_i32x8(), IMM8))
 }
 
-/// Shifts packed 64-bit integers in `a` left by `imm8` while
+/// Shifts packed 64-bit integers in `a` left by `IMM8` while
 /// shifting in zeros, return the results;
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsllq, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsllq, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_epi64<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(pslliq(a.as_i64x4(), imm8))
+pub unsafe fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(pslliq(a.as_i64x4(), IMM8))
 }
 
 /// Shifts 128-bit lanes in `a` left by `imm8` bytes while shifting in zeros.
@@ -3077,32 +3077,32 @@ pub unsafe fn _mm256_sra_epi32(a: __m256i, count: __m128i) -> __m256i {
     transmute(psrad(a.as_i32x8(), count.as_i32x4()))
 }
 
-/// Shifts packed 16-bit integers in `a` right by `imm8` while
+/// Shifts packed 16-bit integers in `a` right by `IMM8` while
 /// shifting in sign bits.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsraw, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsraw, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srai_epi16<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psraiw(a.as_i16x16(), imm8))
+pub unsafe fn _mm256_srai_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psraiw(a.as_i16x16(), IMM8))
 }
 
-/// Shifts packed 32-bit integers in `a` right by `imm8` while
+/// Shifts packed 32-bit integers in `a` right by `IMM8` while
 /// shifting in sign bits.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srai_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrad, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsrad, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srai_epi32<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psraid(a.as_i32x8(), imm8))
+pub unsafe fn _mm256_srai_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psraid(a.as_i32x8(), IMM8))
 }
 
 /// Shifts packed 32-bit integers in `a` right by the amount specified by the
@@ -3201,46 +3201,46 @@ pub unsafe fn _mm256_srl_epi64(a: __m256i, count: __m128i) -> __m256i {
     transmute(psrlq(a.as_i64x4(), count.as_i64x2()))
 }
 
-/// Shifts packed 16-bit integers in `a` right by `imm8` while shifting in
+/// Shifts packed 16-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrlw, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi16<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psrliw(a.as_i16x16(), imm8))
+pub unsafe fn _mm256_srli_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psrliw(a.as_i16x16(), IMM8))
 }
 
-/// Shifts packed 32-bit integers in `a` right by `imm8` while shifting in
+/// Shifts packed 32-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrld, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsrld, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi32<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psrlid(a.as_i32x8(), imm8))
+pub unsafe fn _mm256_srli_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psrlid(a.as_i32x8(), IMM8))
 }
 
-/// Shifts packed 64-bit integers in `a` right by `imm8` while shifting in
+/// Shifts packed 64-bit integers in `a` right by `IMM8` while shifting in
 /// zeros
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrlq, imm8 = 7))]
+#[cfg_attr(test, assert_instr(vpsrlq, IMM8 = 7))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_epi64<const imm8: i32>(a: __m256i) -> __m256i {
-    static_assert_imm8!(imm8);
-    transmute(psrliq(a.as_i64x4(), imm8))
+pub unsafe fn _mm256_srli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(psrliq(a.as_i64x4(), IMM8))
 }
 
 /// Shifts packed 32-bit integers in `a` right by the amount specified by

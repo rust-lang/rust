@@ -53,8 +53,7 @@
     clippy::shadow_reuse,
     clippy::cognitive_complexity,
     clippy::similar_names,
-    clippy::many_single_char_names,
-    non_upper_case_globals
+    clippy::many_single_char_names
 )]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]

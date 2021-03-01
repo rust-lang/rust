@@ -2,10 +2,10 @@
 
 // Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
 // out of `bits`-bit range.
-pub(crate) struct ValidateConstImm<const imm: i32, const bits: i32>;
-impl<const imm: i32, const bits: i32> ValidateConstImm<imm, bits> {
+pub(crate) struct ValidateConstImm<const IMM: i32, const BITS: i32>;
+impl<const IMM: i32, const BITS: i32> ValidateConstImm<IMM, BITS> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((imm >= 0 && imm < (1 << bits)) as usize);
+        let _ = 1 / ((IMM >= 0 && IMM < (1 << BITS)) as usize);
     };
 }
 

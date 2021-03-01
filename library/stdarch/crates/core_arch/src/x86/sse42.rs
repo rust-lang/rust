@@ -65,27 +65,27 @@ pub const _SIDD_BIT_MASK: i32 = 0b0000_0000;
 pub const _SIDD_UNIT_MASK: i32 = 0b0100_0000;
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return the generated mask.
+/// control in `IMM8`, and return the generated mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrm)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistrm, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistrm, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrm<const imm8: i32>(a: __m128i, b: __m128i) -> __m128i {
-    static_assert_imm8!(imm8);
-    transmute(pcmpistrm128(a.as_i8x16(), b.as_i8x16(), imm8 as i8))
+pub unsafe fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    transmute(pcmpistrm128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8))
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8` and return the generated index. Similar to
+/// control in `IMM8` and return the generated index. Similar to
 /// [`_mm_cmpestri`] with the exception that [`_mm_cmpestri`] requires the
 /// lengths of `a` and `b` to be explicitly specified.
 ///
 /// # Control modes
 ///
-/// The control specified by `imm8` may be one or more of the following.
+/// The control specified by `IMM8` may be one or more of the following.
 ///
 /// ## Data size and signedness
 ///
@@ -258,110 +258,110 @@ pub unsafe fn _mm_cmpistrm<const imm8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistri)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistri<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistri128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistri<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistri128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return `1` if any character in `b` was null.
+/// control in `IMM8`, and return `1` if any character in `b` was null.
 /// and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrz)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrz<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistriz128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistrz<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistriz128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return `1` if the resulting mask was non-zero,
+/// control in `IMM8`, and return `1` if the resulting mask was non-zero,
 /// and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrc)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrc<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistric128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistrc<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistric128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and returns `1` if any character in `a` was null,
+/// control in `IMM8`, and returns `1` if any character in `a` was null,
 /// and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistrs)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistrs<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistris128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistrs<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistris128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return bit `0` of the resulting bit mask.
+/// control in `IMM8`, and return bit `0` of the resulting bit mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistro)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistro<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistrio128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistro<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistrio128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings with implicit lengths in `a` and `b` using the
-/// control in `imm8`, and return `1` if `b` did not contain a null
+/// control in `IMM8`, and return `1` if `b` did not contain a null
 /// character and the resulting mask was zero, and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpistra)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpistri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpistri, IMM8 = 0))]
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpistra<const imm8: i32>(a: __m128i, b: __m128i) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpistria128(a.as_i8x16(), b.as_i8x16(), imm8 as i8)
+pub unsafe fn _mm_cmpistra<const IMM8: i32>(a: __m128i, b: __m128i) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpistria128(a.as_i8x16(), b.as_i8x16(), IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return the generated mask.
+/// using the control in `IMM8`, and return the generated mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrm)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestrm, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestrm, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrm<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> __m128i {
-    static_assert_imm8!(imm8);
-    transmute(pcmpestrm128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8))
+pub unsafe fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> __m128i {
+    static_assert_imm8!(IMM8);
+    transmute(pcmpestrm128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8))
 }
 
 /// Compares packed strings `a` and `b` with lengths `la` and `lb` using the
-/// control in `imm8` and return the generated index. Similar to
+/// control in `IMM8` and return the generated index. Similar to
 /// [`_mm_cmpistri`] with the exception that [`_mm_cmpistri`] implicitly
 /// determines the length of `a` and `b`.
 ///
 /// # Control modes
 ///
-/// The control specified by `imm8` may be one or more of the following.
+/// The control specified by `IMM8` may be one or more of the following.
 ///
 /// ## Data size and signedness
 ///
@@ -435,88 +435,88 @@ pub unsafe fn _mm_cmpestrm<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestri)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestri<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestri128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestri<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestri128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return `1` if any character in
+/// using the control in `IMM8`, and return `1` if any character in
 /// `b` was null, and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrz)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrz<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestriz128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestrz<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestriz128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return `1` if the resulting mask
+/// using the control in `IMM8`, and return `1` if the resulting mask
 /// was non-zero, and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrc)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrc<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestric128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestrc<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestric128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return `1` if any character in
+/// using the control in `IMM8`, and return `1` if any character in
 /// a was null, and `0` otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestrs)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestrs<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestris128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestrs<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestris128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return bit `0` of the resulting
+/// using the control in `IMM8`, and return bit `0` of the resulting
 /// bit mask.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestro)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestro<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestrio128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestro<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestrio128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Compares packed strings in `a` and `b` with lengths `la` and `lb`
-/// using the control in `imm8`, and return `1` if `b` did not
+/// using the control in `IMM8`, and return `1` if `b` did not
 /// contain a null character and the resulting mask was zero, and `0`
 /// otherwise.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpestra)
 #[inline]
 #[target_feature(enable = "sse4.2")]
-#[cfg_attr(test, assert_instr(pcmpestri, imm8 = 0))]
+#[cfg_attr(test, assert_instr(pcmpestri, IMM8 = 0))]
 #[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmpestra<const imm8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
-    static_assert_imm8!(imm8);
-    pcmpestria128(a.as_i8x16(), la, b.as_i8x16(), lb, imm8 as i8)
+pub unsafe fn _mm_cmpestra<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -> i32 {
+    static_assert_imm8!(IMM8);
+    pcmpestria128(a.as_i8x16(), la, b.as_i8x16(), lb, IMM8 as i8)
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
