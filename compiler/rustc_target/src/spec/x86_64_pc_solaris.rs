@@ -4,7 +4,7 @@ pub fn target() -> Target {
     let mut base = super::solaris_base::opts();
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
     base.cpu = "x86-64".to_string();
-    base.vendor = "sun".to_string();
+    base.vendor = "pc".to_string();
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
 
