@@ -2,9 +2,8 @@ use std::borrow::Cow;
 use std::ops::Range;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet_with_applicability;
-use if_chain::if_chain;
-use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, LitKind, MacCall, StrLit, StrStyle};
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
+use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, LitKind, MacCall, Path, StrLit, StrStyle};
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
@@ -12,8 +11,9 @@ use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::kw;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::symbol::{kw, Symbol};
+use rustc_span::{sym, BytePos, Span, DUMMY_SP};
+use smallvec::SmallVec;
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -354,7 +354,117 @@ fn newline_span(fmtstr: &StrLit) -> Span {
     sp.with_lo(newline_sp_hi - newline_sp_len).with_hi(newline_sp_hi)
 }
 
+/// Stores a list of replacement spans for each argument, but only if all the replacements used an
+/// empty format string.
+#[derive(Default)]
+struct SimpleFormatArgs {
+    unnamed: Vec<SmallVec<[Span; 1]>>,
+    named: Vec<(Symbol, SmallVec<[Span; 1]>)>,
+}
+impl SimpleFormatArgs {
+    fn get_unnamed(&self) -> impl Iterator<Item = &[Span]> {
+        self.unnamed.iter().map(|x| match x.as_slice() {
+            // Ignore the dummy span added from out of order format arguments.
+            [DUMMY_SP] => &[],
+            x => x,
+        })
+    }
+
+    fn get_named(&self, n: &Path) -> &[Span] {
+        self.named.iter().find(|x| *n == x.0).map_or(&[], |x| x.1.as_slice())
+    }
+
+    fn push(&mut self, arg: rustc_parse_format::Argument<'_>, span: Span) {
+        use rustc_parse_format::{
+            AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec,
+        };
+
+        const SIMPLE: FormatSpec<'_> = FormatSpec {
+            fill: None,
+            align: AlignUnknown,
+            flags: 0,
+            precision: CountImplied,
+            precision_span: None,
+            width: CountImplied,
+            width_span: None,
+            ty: "",
+            ty_span: None,
+        };
+
+        match arg.position {
+            ArgumentIs(n) | ArgumentImplicitlyIs(n) => {
+                if self.unnamed.len() <= n {
+                    // Use a dummy span to mark all unseen arguments.
+                    self.unnamed.resize_with(n, || SmallVec::from([DUMMY_SP]));
+                    if arg.format == SIMPLE {
+                        self.unnamed.push(SmallVec::from([span]));
+                    } else {
+                        self.unnamed.push(SmallVec::new());
+                    }
+                } else {
+                    let args = &mut self.unnamed[n];
+                    match (args.as_mut_slice(), arg.format == SIMPLE) {
+                        // A non-empty format string has been seen already.
+                        ([], _) => (),
+                        // Replace the dummy span, if it exists.
+                        ([dummy @ DUMMY_SP], true) => *dummy = span,
+                        ([_, ..], true) => args.push(span),
+                        ([_, ..], false) => *args = SmallVec::new(),
+                    }
+                }
+            },
+            ArgumentNamed(n) => {
+                if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
+                    match x.1.as_slice() {
+                        // A non-empty format string has been seen already.
+                        [] => (),
+                        [_, ..] if arg.format == SIMPLE => x.1.push(span),
+                        [_, ..] => x.1 = SmallVec::new(),
+                    }
+                } else if arg.format == SIMPLE {
+                    self.named.push((n, SmallVec::from([span])));
+                } else {
+                    self.named.push((n, SmallVec::new()));
+                }
+            },
+        };
+    }
+}
+
 impl Write {
+    /// Parses a format string into a collection of spans for each argument. This only keeps track
+    /// of empty format arguments. Will also lint usages of debug format strings outside of debug
+    /// impls.
+    fn parse_fmt_string(&self, cx: &EarlyContext<'_>, str: &StrLit) -> Option<SimpleFormatArgs> {
+        use rustc_parse_format::{ParseMode, Parser, Piece};
+
+        let str_sym = str.symbol.as_str();
+        let style = match str.style {
+            StrStyle::Cooked => None,
+            StrStyle::Raw(n) => Some(n as usize),
+        };
+
+        let mut parser = Parser::new(&str_sym, style, snippet_opt(cx, str.span), false, ParseMode::Format);
+        let mut args = SimpleFormatArgs::default();
+
+        while let Some(arg) = parser.next() {
+            let arg = match arg {
+                Piece::String(_) => continue,
+                Piece::NextArgument(arg) => arg,
+            };
+            let span = parser.arg_places.last().map_or(DUMMY_SP, |&x| str.span.from_inner(x));
+
+            if !self.in_debug_impl && arg.format.ty == "?" {
+                // FIXME: modify rustc's fmt string parser to give us the current span
+                span_lint(cx, USE_DEBUG, str.span, "use of `Debug`-based formatting");
+            }
+
+            args.push(arg, span);
+        }
+
+        parser.errors.is_empty().then(move || args)
+    }
+
     /// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
     /// `Option`s. The first `Option` of the tuple is the macro's format string. It includes
     /// the contents of the string, whether it's a raw string, and the span of the literal in the
@@ -376,57 +486,31 @@ impl Write {
     /// ```
     #[allow(clippy::too_many_lines)]
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
-        use rustc_parse_format::{
-            AlignUnknown, ArgumentImplicitlyIs, ArgumentIs, ArgumentNamed, CountImplied, FormatSpec, ParseMode, Parser,
-            Piece,
-        };
-
         let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, false, None);
-        let mut expr: Option<Expr> = None;
-        if is_write {
-            expr = match parser.parse_expr().map_err(|mut err| err.cancel()) {
-                Ok(p) => Some(p.into_inner()),
-                Err(_) => return (None, None),
-            };
-            // might be `writeln!(foo)`
-            if parser.expect(&token::Comma).map_err(|mut err| err.cancel()).is_err() {
-                return (None, expr);
+        let expr = if is_write {
+            match parser.parse_expr().map(|e| e.into_inner()).map_err(|mut e| e.cancel()) {
+                // write!(e, ...)
+                Ok(p) if parser.eat(&token::Comma) => Some(p),
+                // write!(e) or error
+                e => return (None, e.ok()),
             }
-        }
+        } else {
+            None
+        };
 
         let fmtstr = match parser.parse_str_lit() {
             Ok(fmtstr) => fmtstr,
             Err(_) => return (None, expr),
         };
-        let tmp = fmtstr.symbol.as_str();
-        let mut args = vec![];
-        let mut fmt_parser = Parser::new(&tmp, None, None, false, ParseMode::Format);
-        while let Some(piece) = fmt_parser.next() {
-            if !fmt_parser.errors.is_empty() {
-                return (None, expr);
-            }
-            if let Piece::NextArgument(arg) = piece {
-                if !self.in_debug_impl && arg.format.ty == "?" {
-                    // FIXME: modify rustc's fmt string parser to give us the current span
-                    span_lint(cx, USE_DEBUG, parser.prev_token.span, "use of `Debug`-based formatting");
-                }
-                args.push(arg);
-            }
-        }
+
+        let args = match self.parse_fmt_string(cx, &fmtstr) {
+            Some(args) => args,
+            None => return (Some(fmtstr), expr),
+        };
+
         let lint = if is_write { WRITE_LITERAL } else { PRINT_LITERAL };
-        let mut idx = 0;
+        let mut unnamed_args = args.get_unnamed();
         loop {
-            const SIMPLE: FormatSpec<'_> = FormatSpec {
-                fill: None,
-                align: AlignUnknown,
-                flags: 0,
-                precision: CountImplied,
-                precision_span: None,
-                width: CountImplied,
-                width_span: None,
-                ty: "",
-                ty_span: None,
-            };
             if !parser.eat(&token::Comma) {
                 return (Some(fmtstr), expr);
             }
@@ -435,52 +519,26 @@ impl Write {
             } else {
                 return (Some(fmtstr), None);
             };
-            match &token_expr.kind {
+            let (fmt_spans, span) = match &token_expr.kind {
                 ExprKind::Lit(lit) if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) => {
-                    let mut all_simple = true;
-                    let mut seen = false;
-                    for arg in &args {
-                        match arg.position {
-                            ArgumentImplicitlyIs(n) | ArgumentIs(n) => {
-                                if n == idx {
-                                    all_simple &= arg.format == SIMPLE;
-                                    seen = true;
-                                }
-                            },
-                            ArgumentNamed(_) => {},
-                        }
-                    }
-                    if all_simple && seen {
-                        span_lint(cx, lint, token_expr.span, "literal with an empty format string");
-                    }
-                    idx += 1;
+                    (unnamed_args.next().unwrap_or(&[]), token_expr.span)
                 },
-                ExprKind::Assign(lhs, rhs, _) => {
-                    if_chain! {
-                        if let ExprKind::Lit(ref lit) = rhs.kind;
-                        if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..));
-                        if let ExprKind::Path(_, p) = &lhs.kind;
-                        then {
-                            let mut all_simple = true;
-                            let mut seen = false;
-                            for arg in &args {
-                                match arg.position {
-                                    ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
-                                    ArgumentNamed(name) => {
-                                        if *p == name {
-                                            seen = true;
-                                            all_simple &= arg.format == SIMPLE;
-                                        }
-                                    },
-                                }
-                            }
-                            if all_simple && seen {
-                                span_lint(cx, lint, rhs.span, "literal with an empty format string");
-                            }
-                        }
-                    }
+                ExprKind::Assign(lhs, rhs, _) => match (&lhs.kind, &rhs.kind) {
+                    (ExprKind::Path(_, p), ExprKind::Lit(lit))
+                        if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) =>
+                    {
+                        (args.get_named(p), rhs.span)
+                    },
+                    _ => continue,
                 },
-                _ => idx += 1,
+                _ => {
+                    unnamed_args.next();
+                    continue;
+                },
+            };
+
+            if !fmt_spans.is_empty() {
+                span_lint(cx, lint, span, "literal with an empty format string");
             }
         }
     }
