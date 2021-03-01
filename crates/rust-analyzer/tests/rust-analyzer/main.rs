@@ -54,7 +54,6 @@ version = "0.0.0"
 use std::collections::Spam;
 "#,
     )
-    .with_sysroot(true)
     .server()
     .wait_until_workspace_is_loaded();
 
@@ -451,7 +450,6 @@ fn main() {{}}
 "#,
         librs, libs
     ))
-    .with_sysroot(true)
     .server()
     .wait_until_workspace_is_loaded();
 

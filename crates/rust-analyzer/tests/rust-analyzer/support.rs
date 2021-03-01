@@ -20,7 +20,6 @@ use crate::testdir::TestDir;
 
 pub(crate) struct Project<'a> {
     fixture: &'a str,
-    with_sysroot: bool,
     tmp_dir: Option<TestDir>,
     roots: Vec<PathBuf>,
     config: serde_json::Value,
@@ -28,13 +27,7 @@ pub(crate) struct Project<'a> {
 
 impl<'a> Project<'a> {
     pub(crate) fn with_fixture(fixture: &str) -> Project {
-        Project {
-            fixture,
-            tmp_dir: None,
-            roots: vec![],
-            with_sysroot: false,
-            config: serde_json::Value::Null,
-        }
+        Project { fixture, tmp_dir: None, roots: vec![], config: serde_json::Value::Null }
     }
 
     pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
@@ -44,11 +37,6 @@ impl<'a> Project<'a> {
 
     pub(crate) fn root(mut self, path: &str) -> Project<'a> {
         self.roots.push(path.into());
-        self
-    }
-
-    pub(crate) fn with_sysroot(mut self, yes: bool) -> Project<'a> {
-        self.with_sysroot = yes;
         self
     }
 
