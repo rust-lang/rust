@@ -1265,6 +1265,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_PRINT_STEP_TIMINGS", "1");
         }
 
+        if self.config.print_step_rusage {
+            cargo.env("RUSTC_PRINT_STEP_RUSAGE", "1");
+        }
+
         if self.config.backtrace_on_ice {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
