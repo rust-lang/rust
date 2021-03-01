@@ -456,7 +456,7 @@ impl Write {
 
             if !self.in_debug_impl && arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
-                span_lint(cx, USE_DEBUG, str.span, "use of `Debug`-based formatting");
+                span_lint(cx, USE_DEBUG, span, "use of `Debug`-based formatting");
             }
 
             args.push(arg, span);
