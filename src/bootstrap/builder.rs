@@ -939,6 +939,12 @@ impl<'a> Builder<'a> {
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
         let mut rustdocflags = rustflags.clone();
+        rustdocflags.propagate_cargo_env("RUSTDOCFLAGS");
+        if stage == 0 {
+            rustdocflags.env("RUSTDOCFLAGS_BOOTSTRAP");
+        } else {
+            rustdocflags.env("RUSTDOCFLAGS_NOT_BOOTSTRAP");
+        }
 
         if let Ok(s) = env::var("CARGOFLAGS") {
             cargo.args(s.split_whitespace());
@@ -1259,6 +1265,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_PRINT_STEP_TIMINGS", "1");
         }
 
+        if self.config.print_step_rusage {
+            cargo.env("RUSTC_PRINT_STEP_RUSAGE", "1");
+        }
+
         if self.config.backtrace_on_ice {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
@@ -1544,21 +1554,27 @@ impl<'a> Builder<'a> {
 mod tests;
 
 #[derive(Debug, Clone)]
-struct Rustflags(String);
+struct Rustflags(String, TargetSelection);
 
 impl Rustflags {
     fn new(target: TargetSelection) -> Rustflags {
-        let mut ret = Rustflags(String::new());
-
-        // Inherit `RUSTFLAGS` by default ...
-        ret.env("RUSTFLAGS");
-
-        // ... and also handle target-specific env RUSTFLAGS if they're
-        // configured.
-        let target_specific = format!("CARGO_TARGET_{}_RUSTFLAGS", crate::envify(&target.triple));
-        ret.env(&target_specific);
-
+        let mut ret = Rustflags(String::new(), target);
+        ret.propagate_cargo_env("RUSTFLAGS");
         ret
+    }
+
+    /// By default, cargo will pick up on various variables in the environment. However, bootstrap
+    /// reuses those variables to pass additional flags to rustdoc, so by default they get overriden.
+    /// Explicitly add back any previous value in the environment.
+    ///
+    /// `prefix` is usually `RUSTFLAGS` or `RUSTDOCFLAGS`.
+    fn propagate_cargo_env(&mut self, prefix: &str) {
+        // Inherit `RUSTFLAGS` by default ...
+        self.env(prefix);
+
+        // ... and also handle target-specific env RUSTFLAGS if they're configured.
+        let target_specific = format!("CARGO_TARGET_{}_{}", crate::envify(&self.1.triple), prefix);
+        self.env(&target_specific);
     }
 
     fn env(&mut self, env: &str) {

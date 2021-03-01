@@ -1,5 +1,5 @@
 warning: derive helper attribute is used before it is introduced
-  --> $DIR/issue-75930-derive-cfg.rs:16:3
+  --> $DIR/issue-75930-derive-cfg.rs:19:3
    |
 LL | #[print_helper(a)]
    |   ^^^^^^^^^^^^

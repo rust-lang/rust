@@ -290,6 +290,12 @@ changelog-seen = 2
 # tracking over time)
 #print-step-timings = false
 
+# Print out resource usage data for each rustbuild step, as defined by the Unix
+# struct rusage. (Note that this setting is completely unstable: the data it
+# captures, what platforms it supports, the format of its associated output, and
+# this setting's very existence, are all subject to change.)
+#print-step-rusage = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
