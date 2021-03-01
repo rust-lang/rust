@@ -4,12 +4,12 @@ use xshell::{cmd, cp, pushd, read_dir, write_file};
 
 use crate::{codegen, date_iso, is_release_tag, project_root, Mode, Result};
 
-pub struct ReleaseCmd {
-    pub dry_run: bool,
+pub(crate) struct ReleaseCmd {
+    pub(crate) dry_run: bool,
 }
 
 impl ReleaseCmd {
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         if !self.dry_run {
             cmd!("git switch release").run()?;
             cmd!("git fetch upstream --tags --force").run()?;
@@ -86,12 +86,12 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
     }
 }
 
-pub struct PromoteCmd {
-    pub dry_run: bool,
+pub(crate) struct PromoteCmd {
+    pub(crate) dry_run: bool,
 }
 
 impl PromoteCmd {
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         let _dir = pushd("../rust-rust-analyzer")?;
         cmd!("git switch master").run()?;
         cmd!("git fetch upstream").run()?;

@@ -12,7 +12,7 @@ use crate::{
     project_root, Result,
 };
 
-pub fn generate_parser_tests(mode: Mode) -> Result<()> {
+pub(crate) fn generate_parser_tests(mode: Mode) -> Result<()> {
     let tests = tests_from_dir(&project_root().join(Path::new("crates/parser/src/grammar")))?;
     fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
         let tests_dir = project_root().join(into);

@@ -7,7 +7,7 @@ use crate::{
     project_root, rust_files, Result,
 };
 
-pub fn generate_feature_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_feature_docs(mode: Mode) -> Result<()> {
     let features = Feature::collect()?;
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());

@@ -20,7 +20,7 @@ use xshell::{cmd, pushenv, read_file, write_file};
 
 use crate::{ensure_rustfmt, project_root, Result};
 
-pub use self::{
+pub(crate) use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
     gen_diagnostic_docs::generate_diagnostic_docs,
     gen_feature_docs::generate_feature_docs,
@@ -30,17 +30,17 @@ pub use self::{
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Mode {
+pub(crate) enum Mode {
     Overwrite,
     Verify,
 }
 
-pub struct CodegenCmd {
-    pub features: bool,
+pub(crate) struct CodegenCmd {
+    pub(crate) features: bool,
 }
 
 impl CodegenCmd {
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         if self.features {
             generate_lint_completions(Mode::Overwrite)?;
         }

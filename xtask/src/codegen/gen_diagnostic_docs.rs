@@ -7,7 +7,7 @@ use crate::{
     project_root, rust_files, Result,
 };
 
-pub fn generate_diagnostic_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_diagnostic_docs(mode: Mode) -> Result<()> {
     let diagnostics = Diagnostic::collect()?;
     let contents =
         diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
