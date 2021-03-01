@@ -4384,8 +4384,8 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_blendv_epi8() {
         let (a, b) = (_mm256_set1_epi8(4), _mm256_set1_epi8(2));
-        let mask = _mm256_insert_epi8(_mm256_set1_epi8(0), -1, 2);
-        let e = _mm256_insert_epi8(_mm256_set1_epi8(4), 2, 2);
+        let mask = _mm256_insert_epi8::<2>(_mm256_set1_epi8(0), -1);
+        let e = _mm256_insert_epi8::<2>(_mm256_set1_epi8(4), 2);
         let r = _mm256_blendv_epi8(a, b, mask);
         assert_eq_m256i(r, e);
     }
@@ -4504,7 +4504,7 @@ mod tests {
             7, 6, 5, 4, 3, 2, 1, 0,
         );
         let r = _mm256_cmpeq_epi8(a, b);
-        assert_eq_m256i(r, _mm256_insert_epi8(_mm256_set1_epi8(0), !0, 2));
+        assert_eq_m256i(r, _mm256_insert_epi8::<2>(_mm256_set1_epi8(0), !0));
     }
 
     #[simd_test(enable = "avx2")]
@@ -4543,10 +4543,10 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cmpgt_epi8() {
-        let a = _mm256_insert_epi8(_mm256_set1_epi8(0), 5, 0);
+        let a = _mm256_insert_epi8::<0>(_mm256_set1_epi8(0), 5);
         let b = _mm256_set1_epi8(0);
         let r = _mm256_cmpgt_epi8(a, b);
-        assert_eq_m256i(r, _mm256_insert_epi8(_mm256_set1_epi8(0), !0, 0));
+        assert_eq_m256i(r, _mm256_insert_epi8::<0>(_mm256_set1_epi8(0), !0));
     }
 
     #[simd_test(enable = "avx2")]
