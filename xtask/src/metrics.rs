@@ -9,13 +9,11 @@ use std::{
 use anyhow::{bail, format_err, Result};
 use xshell::{cmd, mkdir_p, pushd, pushenv, read_file, rm_rf};
 
+use crate::flags;
+
 type Unit = String;
 
-pub(crate) struct MetricsCmd {
-    pub(crate) dry_run: bool,
-}
-
-impl MetricsCmd {
+impl flags::Metrics {
     pub(crate) fn run(self) -> Result<()> {
         let mut metrics = Metrics::new()?;
         if !self.dry_run {

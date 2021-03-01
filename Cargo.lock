@@ -1922,6 +1922,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06069a848f95fceae3e5e03c0ddc8cb78452b56654ee0c8e68f938cf790fb9e3"
 
 [[package]]
+name = "xflags"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a6292b9528efc06cb25a41b8a0814dd3a9590c0fe2cd95341fe41bbe034fafb"
+dependencies = [
+ "xflags-macros",
+]
+
+[[package]]
+name = "xflags-macros"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba2108d40e49a0653f2ee4eda59f51447e0cab5cc2cc197a5abd96525c6bd89e"
+dependencies = [
+ "proc-macro2",
+]
+
+[[package]]
 name = "xshell"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1942,11 +1960,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flate2",
- "pico-args",
  "proc-macro2",
  "quote",
  "ungrammar",
  "walkdir",
  "write-json",
+ "xflags",
  "xshell",
 ]

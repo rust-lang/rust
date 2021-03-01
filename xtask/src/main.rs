@@ -7,6 +7,8 @@
 //!
 //! This binary is integrated into the `cargo` command line by using an alias in
 //! `.cargo/config`.
+mod flags;
+
 mod codegen;
 mod ast_src;
 #[cfg(test)]
@@ -19,8 +21,6 @@ mod metrics;
 mod pre_cache;
 
 use anyhow::{bail, Result};
-use codegen::CodegenCmd;
-use pico_args::Arguments;
 use std::{
     env,
     path::{Path, PathBuf},
@@ -32,42 +32,19 @@ use crate::{
     codegen::Mode,
     dist::DistCmd,
     install::{InstallCmd, Malloc, ServerOpt},
-    metrics::MetricsCmd,
-    pre_cache::PreCacheCmd,
-    release::{PromoteCmd, ReleaseCmd},
 };
 
 fn main() -> Result<()> {
     let _d = pushd(project_root())?;
 
-    let mut args = Arguments::from_env();
-    let subcommand = args.subcommand()?.unwrap_or_default();
-
-    match subcommand.as_str() {
-        "install" => {
-            if args.contains(["-h", "--help"]) {
-                eprintln!(
-                    "\
-cargo xtask install
-Install rust-analyzer server or editor plugin.
-
-USAGE:
-    cargo xtask install [FLAGS]
-
-FLAGS:
-        --client[=CLIENT] Install only VS Code plugin.
-                          CLIENT is one of 'code', 'code-exploration', 'code-insiders', 'codium', or 'code-oss'
-        --server          Install only the language server
-        --mimalloc        Use mimalloc allocator for server
-        --jemalloc        Use jemalloc allocator for server
-    -h, --help            Prints help information
-        "
-                );
-                return Ok(());
-            }
-            let server = args.contains("--server");
-            let client_code = args.contains("--client");
-            if server && client_code {
+    let flags = flags::Xtask::from_env()?;
+    match flags.subcommand {
+        flags::XtaskCmd::Help(_) => {
+            println!("{}", flags::Xtask::HELP);
+            return Ok(());
+        }
+        flags::XtaskCmd::Install(flags) => {
+            if flags.server && flags.client {
                 eprintln!(
                     "error: The argument `--server` cannot be used with `--client`\n\n\
                      For more information try --help"
@@ -75,100 +52,41 @@ FLAGS:
                 return Ok(());
             }
 
-            let malloc = if args.contains("--mimalloc") {
+            let malloc = if flags.mimalloc {
                 Malloc::Mimalloc
-            } else if args.contains("--jemalloc") {
+            } else if flags.jemalloc {
                 Malloc::Jemalloc
             } else {
                 Malloc::System
             };
 
-            let client_opt = args.opt_value_from_str("--client")?;
-
-            finish_args(args)?;
+            let client_bin = flags.code_bin.map(|it| it.parse()).transpose()?;
 
             InstallCmd {
-                client: if server { None } else { Some(client_opt.unwrap_or_default()) },
-                server: if client_code { None } else { Some(ServerOpt { malloc }) },
+                client: if flags.server { None } else { client_bin },
+                server: if flags.client { None } else { Some(ServerOpt { malloc }) },
             }
             .run()
         }
-        "codegen" => {
-            let features = args.contains("--features");
-            finish_args(args)?;
-            CodegenCmd { features }.run()
+        flags::XtaskCmd::Codegen(cmd) => cmd.run(),
+        flags::XtaskCmd::Lint(_) => run_clippy(),
+        flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
+        flags::XtaskCmd::PreCache(cmd) => cmd.run(),
+        flags::XtaskCmd::Release(cmd) => cmd.run(),
+        flags::XtaskCmd::Promote(cmd) => cmd.run(),
+        flags::XtaskCmd::Dist(flags) => {
+            DistCmd { nightly: flags.nightly, client_version: flags.client }.run()
         }
-        "lint" => {
-            finish_args(args)?;
-            run_clippy()
-        }
-        "fuzz-tests" => {
-            finish_args(args)?;
-            run_fuzzer()
-        }
-        "pre-cache" => {
-            finish_args(args)?;
-            PreCacheCmd.run()
-        }
-        "release" => {
-            let dry_run = args.contains("--dry-run");
-            finish_args(args)?;
-            ReleaseCmd { dry_run }.run()
-        }
-        "promote" => {
-            let dry_run = args.contains("--dry-run");
-            finish_args(args)?;
-            PromoteCmd { dry_run }.run()
-        }
-        "dist" => {
-            let nightly = args.contains("--nightly");
-            let client_version: Option<String> = args.opt_value_from_str("--client")?;
-            finish_args(args)?;
-            DistCmd { nightly, client_version }.run()
-        }
-        "metrics" => {
-            let dry_run = args.contains("--dry-run");
-            finish_args(args)?;
-            MetricsCmd { dry_run }.run()
-        }
-        "bb" => {
-            let suffix: String = args.free_from_str()?;
-            finish_args(args)?;
+        flags::XtaskCmd::Metrics(cmd) => cmd.run(),
+        flags::XtaskCmd::Bb(cmd) => {
             {
                 let _d = pushd("./crates/rust-analyzer")?;
                 cmd!("cargo build --release --features jemalloc").run()?;
             }
-            cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", suffix))?;
-            Ok(())
-        }
-        _ => {
-            eprintln!(
-                "\
-cargo xtask
-Run custom build command.
-
-USAGE:
-    cargo xtask <SUBCOMMAND>
-
-SUBCOMMANDS:
-    fuzz-tests
-    codegen
-    install
-    lint
-    dist
-    promote
-    bb"
-            );
+            cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", cmd.suffix))?;
             Ok(())
         }
     }
-}
-
-fn finish_args(args: Arguments) -> Result<()> {
-    if !args.finish().is_empty() {
-        bail!("Unused arguments.");
-    }
-    Ok(())
 }
 
 fn project_root() -> PathBuf {
