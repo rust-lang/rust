@@ -4543,7 +4543,7 @@ mod tests {
             7, 6, 5, 4, 3, 2, 1, 0,
         );
         let r = _mm256_cmpeq_epi16(a, b);
-        assert_eq_m256i(r, _mm256_insert_epi16(_mm256_set1_epi16(0), !0, 2));
+        assert_eq_m256i(r, _mm256_insert_epi16::<2>(_mm256_set1_epi16(0), !0));
     }
 
     #[simd_test(enable = "avx2")]
@@ -4574,10 +4574,10 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cmpgt_epi16() {
-        let a = _mm256_insert_epi16(_mm256_set1_epi16(0), 5, 0);
+        let a = _mm256_insert_epi16::<0>(_mm256_set1_epi16(0), 5);
         let b = _mm256_set1_epi16(0);
         let r = _mm256_cmpgt_epi16(a, b);
-        assert_eq_m256i(r, _mm256_insert_epi16(_mm256_set1_epi16(0), !0, 0));
+        assert_eq_m256i(r, _mm256_insert_epi16::<0>(_mm256_set1_epi16(0), !0));
     }
 
     #[simd_test(enable = "avx2")]
@@ -4741,8 +4741,8 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_hadds_epi16() {
         let a = _mm256_set1_epi16(2);
-        let a = _mm256_insert_epi16(a, 0x7fff, 0);
-        let a = _mm256_insert_epi16(a, 1, 1);
+        let a = _mm256_insert_epi16::<0>(a, 0x7fff);
+        let a = _mm256_insert_epi16::<1>(a, 1);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_hadds_epi16(a, b);
         #[rustfmt::skip]
@@ -4774,11 +4774,11 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_hsubs_epi16() {
         let a = _mm256_set1_epi16(2);
-        let a = _mm256_insert_epi16(a, 0x7fff, 0);
-        let a = _mm256_insert_epi16(a, -1, 1);
+        let a = _mm256_insert_epi16::<0>(a, 0x7fff);
+        let a = _mm256_insert_epi16::<1>(a, -1);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_hsubs_epi16(a, b);
-        let e = _mm256_insert_epi16(_mm256_set1_epi16(0), 0x7FFF, 0);
+        let e = _mm256_insert_epi16::<0>(_mm256_set1_epi16(0), 0x7FFF);
         assert_eq_m256i(r, e);
     }
 

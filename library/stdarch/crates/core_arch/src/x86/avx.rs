@@ -1513,16 +1513,11 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
-    let a = a.as_i16x16();
-    macro_rules! call {
-        ($index:expr) => {
-            simd_insert(a, $index, i)
-        };
-    }
-    transmute(constify_imm4!((index & 15), call))
+pub unsafe fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
+    static_assert_imm4!(INDEX);
+    transmute(simd_insert(a.as_i16x16(), INDEX as u32, i))
 }
 
 /// Copies `a` to result, and inserts the 32-bit integer `i` into result
@@ -3983,7 +3978,7 @@ mod tests {
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        let r = _mm256_insert_epi16(a, 0, 15);
+        let r = _mm256_insert_epi16::<15>(a, 0);
         #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
