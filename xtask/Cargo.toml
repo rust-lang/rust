@@ -6,9 +6,6 @@ authors = ["rust-analyzer developers"]
 publish = false
 license = "MIT OR Apache-2.0"
 
-[lib]
-doctest = false
-
 [dependencies]
 anyhow = "1.0.26"
 flate2 = "1.0"

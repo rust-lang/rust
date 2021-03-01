@@ -18,7 +18,7 @@ use crate::{
     project_root, Result,
 };
 
-pub fn generate_syntax(mode: Mode) -> Result<()> {
+pub(crate) fn generate_syntax(mode: Mode) -> Result<()> {
     let grammar = rust_grammar();
     let ast = lower(&grammar);
 

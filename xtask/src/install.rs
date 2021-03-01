@@ -8,13 +8,13 @@ use xshell::{cmd, pushd};
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 50;
 
-pub struct InstallCmd {
-    pub client: Option<ClientOpt>,
-    pub server: Option<ServerOpt>,
+pub(crate) struct InstallCmd {
+    pub(crate) client: Option<ClientOpt>,
+    pub(crate) server: Option<ServerOpt>,
 }
 
 #[derive(Clone, Copy)]
-pub enum ClientOpt {
+pub(crate) enum ClientOpt {
     VsCode,
     VsCodeExploration,
     VsCodeInsiders,
@@ -24,7 +24,7 @@ pub enum ClientOpt {
 }
 
 impl ClientOpt {
-    pub const fn as_cmds(&self) -> &'static [&'static str] {
+    pub(crate) const fn as_cmds(&self) -> &'static [&'static str] {
         match self {
             ClientOpt::VsCode => &["code"],
             ClientOpt::VsCodeExploration => &["code-exploration"],
@@ -60,18 +60,18 @@ impl std::str::FromStr for ClientOpt {
     }
 }
 
-pub struct ServerOpt {
-    pub malloc: Malloc,
+pub(crate) struct ServerOpt {
+    pub(crate) malloc: Malloc,
 }
 
-pub enum Malloc {
+pub(crate) enum Malloc {
     System,
     Mimalloc,
     Jemalloc,
 }
 
 impl InstallCmd {
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         if cfg!(target_os = "macos") {
             fix_path_for_mac().context("Fix path for mac")?
         }

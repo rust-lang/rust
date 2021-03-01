@@ -10,7 +10,7 @@ use crate::{
     run_rustfmt,
 };
 
-pub fn generate_lint_completions(mode: Mode) -> Result<()> {
+pub(crate) fn generate_lint_completions(mode: Mode) -> Result<()> {
     if !Path::new("./target/rust").exists() {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run()?;
     }

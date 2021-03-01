@@ -4,7 +4,8 @@ use std::{
 };
 
 use xshell::{cmd, read_file};
-use xtask::{
+
+use crate::{
     cargo_files,
     codegen::{self, Mode},
     project_root, run_rustfmt, rust_files,

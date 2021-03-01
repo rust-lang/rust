@@ -7,12 +7,12 @@ use crate::{
     project_root, rust_files_in, Result,
 };
 
-pub fn generate_assists_tests(mode: Mode) -> Result<()> {
+pub(crate) fn generate_assists_tests(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
     generate_tests(&assists, mode)
 }
 
-pub fn generate_assists_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_assists_docs(mode: Mode) -> Result<()> {
     let assists = Assist::collect()?;
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());

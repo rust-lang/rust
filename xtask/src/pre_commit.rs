@@ -9,7 +9,7 @@ use crate::{project_root, run_rustfmt, Mode};
 
 // FIXME: if there are changed `.ts` files, also reformat TypeScript (by
 // shelling out to `npm fmt`).
-pub fn run_hook() -> Result<()> {
+pub(crate) fn run_hook() -> Result<()> {
     run_rustfmt(Mode::Overwrite)?;
 
     let diff = cmd!("git diff --diff-filter=MAR --name-only --cached").read()?;
@@ -23,7 +23,7 @@ pub fn run_hook() -> Result<()> {
     Ok(())
 }
 
-pub fn install_hook() -> Result<()> {
+pub(crate) fn install_hook() -> Result<()> {
     let hook_path: PathBuf =
         format!("./.git/hooks/pre-commit{}", std::env::consts::EXE_SUFFIX).into();
 

@@ -11,12 +11,12 @@ use xshell::{cmd, mkdir_p, pushd, pushenv, read_file, rm_rf};
 
 type Unit = String;
 
-pub struct MetricsCmd {
-    pub dry_run: bool,
+pub(crate) struct MetricsCmd {
+    pub(crate) dry_run: bool,
 }
 
 impl MetricsCmd {
-    pub fn run(self) -> Result<()> {
+    pub(crate) fn run(self) -> Result<()> {
         let mut metrics = Metrics::new()?;
         if !self.dry_run {
             rm_rf("./target/release")?;
