@@ -871,16 +871,12 @@ pub unsafe fn _mm_cmp_sd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ss)
 #[inline]
 #[target_feature(enable = "avx,sse")]
-#[cfg_attr(test, assert_instr(vcmpeqss, imm8 = 0))] // TODO Validate vcmpss
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vcmpeqss, IMM8 = 0))] // TODO Validate vcmpss
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            vcmpss(a, b, $imm8)
-        };
-    }
-    constify_imm6!(imm8, call)
+pub unsafe fn _mm_cmp_ss<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_imm5!(IMM8);
+    vcmpss(a, b, IMM8 as i8)
 }
 
 /// Converts packed 32-bit integers in `a` to packed double-precision (64-bit)
@@ -3662,7 +3658,7 @@ mod tests {
     unsafe fn test_mm_cmp_ss() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
-        let r = _mm_cmp_ss(a, b, _CMP_GE_OS);
+        let r = _mm_cmp_ss::<_CMP_GE_OS>(a, b);
         assert!(get_m128(r, 0).is_nan());
         assert_eq!(get_m128(r, 1), 3.);
         assert_eq!(get_m128(r, 2), 2.);
