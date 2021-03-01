@@ -212,6 +212,7 @@ impl Step for Cargo {
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
+        cargo.arg("--").args(builder.config.cmd.test_args());
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
