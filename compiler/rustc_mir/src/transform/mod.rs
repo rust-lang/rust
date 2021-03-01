@@ -42,6 +42,7 @@ pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
 pub mod remove_noop_landing_pads;
+pub mod remove_storage_markers;
 pub mod remove_unneeded_drops;
 pub mod required_consts;
 pub mod rustc_peek;
@@ -493,6 +494,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &remove_storage_markers::RemoveStorageMarkers,
         &const_goto::ConstGoto,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
