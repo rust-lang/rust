@@ -23,7 +23,7 @@ macro_rules! test_vsli {
             let b = [$($b as $t),*];
             let n_bit_mask: $t = (1 << $n) - 1;
             let e = [$(($a as $t & n_bit_mask) | ($b as $t << $n)),*];
-            let r = $fn_id(transmute(a), transmute(b), $n);
+            let r = $fn_id::<$n>(transmute(a), transmute(b));
             let mut d = e;
             d = transmute(r);
             assert_eq!(d, e);
