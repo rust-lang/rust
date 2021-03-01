@@ -1,5 +1,7 @@
 //! An algorithm to find a path to refer to a certain item.
 
+use std::iter;
+
 use hir_expand::name::{known, AsName, Name};
 use rustc_hash::FxHashSet;
 use test_utils::mark;
@@ -95,7 +97,7 @@ fn find_path_inner(
     item: ItemInNs,
     from: ModuleId,
     max_len: usize,
-    prefixed: Option<PrefixKind>,
+    mut prefixed: Option<PrefixKind>,
 ) -> Option<ModPath> {
     if max_len == 0 {
         return None;
@@ -114,8 +116,9 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root, return `crate`
-    let root = def_map.module_id(def_map.root());
+    let root = def_map.crate_root(db);
     if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) && def_map.block_id().is_none() {
+        // FIXME: the `block_id()` check should be unnecessary, but affects the result
         return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
     }
 
@@ -165,7 +168,7 @@ fn find_path_inner(
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
 
-    let crate_root = def_map.module_id(def_map.root());
+    let crate_root = def_map.crate_root(db);
     let crate_attrs = db.attrs(crate_root.into());
     let prefer_no_std = crate_attrs.by_key("no_std").exists();
     let mut best_path = None;
@@ -228,12 +231,16 @@ fn find_path_inner(
         }
     }
 
-    if let Some(mut prefix) = prefixed.map(PrefixKind::prefix) {
-        if matches!(prefix, PathKind::Crate | PathKind::Super(0)) && def_map.block_id().is_some() {
-            // Inner items cannot be referred to via `crate::` or `self::` paths.
-            prefix = PathKind::Plain;
+    // If the item is declared inside a block expression, don't use a prefix, as we don't handle
+    // that correctly (FIXME).
+    if let Some(item_module) = item.as_module_def_id().and_then(|did| did.module(db)) {
+        if item_module.def_map(db).block_id().is_some() && prefixed.is_some() {
+            mark::hit!(prefixed_in_block_expression);
+            prefixed = Some(PrefixKind::Plain);
         }
+    }
 
+    if let Some(prefix) = prefixed.map(PrefixKind::prefix) {
         best_path.or_else(|| {
             scope_name.map(|scope_name| ModPath::from_segments(prefix, vec![scope_name]))
         })
@@ -285,11 +292,11 @@ fn find_local_import_locations(
     let data = &def_map[from.local_id];
     let mut worklist =
         data.children.values().map(|child| def_map.module_id(*child)).collect::<Vec<_>>();
-    let mut parent = data.parent;
-    while let Some(p) = parent {
-        worklist.push(def_map.module_id(p));
-        parent = def_map[p].parent;
+    for ancestor in iter::successors(from.containing_module(db), |m| m.containing_module(db)) {
+        worklist.push(ancestor);
     }
+
+    let def_map = def_map.crate_root(db).def_map(db);
 
     let mut seen: FxHashSet<_> = FxHashSet::default();
 
@@ -301,7 +308,14 @@ fn find_local_import_locations(
 
         let ext_def_map;
         let data = if module.krate == from.krate {
-            &def_map[module.local_id]
+            if module.block.is_some() {
+                // Re-query the block's DefMap
+                ext_def_map = module.def_map(db);
+                &ext_def_map[module.local_id]
+            } else {
+                // Reuse the root DefMap
+                &def_map[module.local_id]
+            }
         } else {
             // The crate might reexport a module defined in another crate.
             ext_def_map = module.def_map(db);
@@ -828,6 +842,7 @@ mod tests {
 
     #[test]
     fn inner_items_from_inner_module() {
+        mark::check!(prefixed_in_block_expression);
         check_found_path(
             r#"
             fn main() {
@@ -868,5 +883,25 @@ mod tests {
             "super::Struct",
             "super::Struct",
         );
+    }
+
+    #[test]
+    fn outer_items_with_inner_items_present() {
+        check_found_path(
+            r#"
+            mod module {
+                pub struct CompleteMe;
+            }
+
+            fn main() {
+                fn inner() {}
+                $0
+            }
+            "#,
+            "module::CompleteMe",
+            "module::CompleteMe",
+            "crate::module::CompleteMe",
+            "self::module::CompleteMe",
+        )
     }
 }

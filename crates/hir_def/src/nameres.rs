@@ -343,6 +343,18 @@ impl DefMap {
         Some(self.block?.parent)
     }
 
+    /// Returns the module containing `local_mod`, either the parent `mod`, or the module containing
+    /// the block, if `self` corresponds to a block expression.
+    pub fn containing_module(&self, local_mod: LocalModuleId) -> Option<ModuleId> {
+        match &self[local_mod].parent {
+            Some(parent) => Some(self.module_id(*parent)),
+            None => match &self.block {
+                Some(block) => Some(block.parent),
+                None => None,
+            },
+        }
+    }
+
     // FIXME: this can use some more human-readable format (ideally, an IR
     // even), as this should be a great debugging aid.
     pub fn dump(&self, db: &dyn DefDatabase) -> String {
