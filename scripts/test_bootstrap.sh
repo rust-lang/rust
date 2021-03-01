@@ -19,8 +19,8 @@ index 5bd1147cad5..10d68a2ff14 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -111,5 +111,7 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
- # source code for this crate.
- backtrace = { path = "library/backtrace" }
+ rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
+ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
  
 +compiler_builtins = { path = "../build_sysroot/compiler-builtins" }
 +
