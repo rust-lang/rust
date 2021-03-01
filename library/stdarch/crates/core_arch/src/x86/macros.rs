@@ -72,6 +72,7 @@ macro_rules! constify_imm6 {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! constify_imm4 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
