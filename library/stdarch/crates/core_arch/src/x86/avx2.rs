@@ -2246,19 +2246,12 @@ pub unsafe fn _mm256_movemask_epi8(a: __m256i) -> i32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mpsadbw_epu8)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vmpsadbw, imm8 = 0))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vmpsadbw, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_mpsadbw_epu8(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_u8x32();
-    let b = b.as_u8x32();
-    macro_rules! call {
-        ($imm8:expr) => {
-            mpsadbw(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8!(imm8, call);
-    transmute(r)
+pub unsafe fn _mm256_mpsadbw_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(mpsadbw(a.as_u8x32(), b.as_u8x32(), IMM8))
 }
 
 /// Multiplies the low 32-bit integers from each packed 64-bit element in
@@ -4997,7 +4990,7 @@ mod tests {
     unsafe fn test_mm256_mpsadbw_epu8() {
         let a = _mm256_set1_epi8(2);
         let b = _mm256_set1_epi8(4);
-        let r = _mm256_mpsadbw_epu8(a, b, 0);
+        let r = _mm256_mpsadbw_epu8::<0>(a, b);
         let e = _mm256_set1_epi16(8);
         assert_eq_m256i(r, e);
     }
