@@ -1494,12 +1494,13 @@ impl<'tcx> Liveness<'_, 'tcx> {
         // bindings, and we also consider the first pattern to be the "authoritative" set of ids.
         // However, we should take the ids and spans of variables with the same name from the later
         // patterns so the suggestions to prefix with underscores will apply to those too.
-        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span)>)> = <_>::default();
+        let mut vars: FxIndexMap<Symbol, (LiveNode, Variable, Vec<(HirId, Span, Span)>)> =
+            <_>::default();
 
         pat.each_binding(|_, hir_id, pat_sp, ident| {
             let ln = entry_ln.unwrap_or_else(|| self.live_node(hir_id, pat_sp));
             let var = self.variable(hir_id, ident.span);
-            let id_and_sp = (hir_id, pat_sp);
+            let id_and_sp = (hir_id, pat_sp, ident.span);
             vars.entry(self.ir.variable_name(var))
                 .and_modify(|(.., hir_ids_and_spans)| hir_ids_and_spans.push(id_and_sp))
                 .or_insert_with(|| (ln, var, vec![id_and_sp]));
@@ -1508,7 +1509,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         for (_, (ln, var, hir_ids_and_spans)) in vars {
             if self.used_on_entry(ln, var) {
                 let id = hir_ids_and_spans[0].0;
-                let spans = hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect();
+                let spans =
+                    hir_ids_and_spans.into_iter().map(|(_, _, ident_span)| ident_span).collect();
                 on_used_on_entry(spans, id, ln, var);
             } else {
                 self.report_unused(hir_ids_and_spans, ln, var);
@@ -1516,7 +1518,12 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn report_unused(&self, hir_ids_and_spans: Vec<(HirId, Span)>, ln: LiveNode, var: Variable) {
+    fn report_unused(
+        &self,
+        hir_ids_and_spans: Vec<(HirId, Span, Span)>,
+        ln: LiveNode,
+        var: Variable,
+    ) {
         let first_hir_id = hir_ids_and_spans[0].0;
 
         if let Some(name) = self.should_warn(var).filter(|name| name != "self") {
@@ -1530,7 +1537,10 @@ impl<'tcx> Liveness<'_, 'tcx> {
                 self.ir.tcx.struct_span_lint_hir(
                     lint::builtin::UNUSED_VARIABLES,
                     first_hir_id,
-                    hir_ids_and_spans.into_iter().map(|(_, sp)| sp).collect::<Vec<_>>(),
+                    hir_ids_and_spans
+                        .into_iter()
+                        .map(|(_, _, ident_span)| ident_span)
+                        .collect::<Vec<_>>(),
                     |lint| {
                         lint.build(&format!("variable `{}` is assigned to, but never used", name))
                             .note(&format!("consider using `_{}` instead", name))
@@ -1538,54 +1548,67 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     },
                 )
             } else {
-                self.ir.tcx.struct_span_lint_hir(
-                    lint::builtin::UNUSED_VARIABLES,
-                    first_hir_id,
-                    hir_ids_and_spans.iter().map(|(_, sp)| *sp).collect::<Vec<_>>(),
-                    |lint| {
-                        let mut err = lint.build(&format!("unused variable: `{}`", name));
+                let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
+                    hir_ids_and_spans.iter().copied().partition(|(hir_id, _, ident_span)| {
+                        let var = self.variable(*hir_id, *ident_span);
+                        self.ir.variable_is_shorthand(var)
+                    });
 
-                        let (shorthands, non_shorthands): (Vec<_>, Vec<_>) =
-                            hir_ids_and_spans.into_iter().partition(|(hir_id, span)| {
-                                let var = self.variable(*hir_id, *span);
-                                self.ir.variable_is_shorthand(var)
-                            });
+                // If we have both shorthand and non-shorthand, prefer the "try ignoring
+                // the field" message, and suggest `_` for the non-shorthands. If we only
+                // have non-shorthand, then prefix with an underscore instead.
+                if !shorthands.is_empty() {
+                    let shorthands = shorthands
+                        .into_iter()
+                        .map(|(_, pat_span, _)| (pat_span, format!("{}: _", name)))
+                        .chain(
+                            non_shorthands
+                                .into_iter()
+                                .map(|(_, pat_span, _)| (pat_span, "_".to_string())),
+                        )
+                        .collect::<Vec<_>>();
 
-                        let mut shorthands = shorthands
-                            .into_iter()
-                            .map(|(_, span)| (span, format!("{}: _", name)))
-                            .collect::<Vec<_>>();
-
-                        // If we have both shorthand and non-shorthand, prefer the "try ignoring
-                        // the field" message, and suggest `_` for the non-shorthands. If we only
-                        // have non-shorthand, then prefix with an underscore instead.
-                        if !shorthands.is_empty() {
-                            shorthands.extend(
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, "_".to_string()))
-                                    .collect::<Vec<_>>(),
-                            );
-
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, pat_span, _)| *pat_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "try ignoring the field",
                                 shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        } else {
+                            err.emit()
+                        },
+                    );
+                } else {
+                    let non_shorthands = non_shorthands
+                        .into_iter()
+                        .map(|(_, _, ident_span)| (ident_span, format!("_{}", name)))
+                        .collect::<Vec<_>>();
+
+                    self.ir.tcx.struct_span_lint_hir(
+                        lint::builtin::UNUSED_VARIABLES,
+                        first_hir_id,
+                        hir_ids_and_spans
+                            .iter()
+                            .map(|(_, _, ident_span)| *ident_span)
+                            .collect::<Vec<_>>(),
+                        |lint| {
+                            let mut err = lint.build(&format!("unused variable: `{}`", name));
                             err.multipart_suggestion(
                                 "if this is intentional, prefix it with an underscore",
-                                non_shorthands
-                                    .into_iter()
-                                    .map(|(_, span)| (span, format!("_{}", name)))
-                                    .collect::<Vec<_>>(),
+                                non_shorthands,
                                 Applicability::MachineApplicable,
                             );
-                        }
-
-                        err.emit()
-                    },
-                );
+                            err.emit()
+                        },
+                    );
+                }
             }
         }
     }
