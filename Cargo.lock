@@ -158,9 +158,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.58.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e625b7c688272783140509a0de8f7aa9000217cb0982c9b10606a12b0b747ba8"
+checksum = "4b9000fbcb67353dc8973ab9fd136277d321d85b79bd36b8756bb3ae0979a94a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -170,9 +170,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.58.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c220d870128959d7d56667060d556ffdebd490f32ee0fc9f4060a76c1193f206"
+checksum = "b23528d61b3557c676eccf508fa0771a38453b379f0b780154eaa7f70afe8dfc"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -181,9 +181,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.58.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d8cd81a15aa936215378e695a8907b9f1af8626a27a32ee22e97a50984960da"
+checksum = "a8bdd37afc666b771de8b4429fe014363d0e74aae5cc26f320f60a3eab34d744"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -194,14 +194,14 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.58.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55571250dfe096a4c899be88c81418284c952ce1c8a06aa16afb5781b298e9c9"
+checksum = "4182c42ca319cb71c89898ebc3d2671d1fa7d928123b171b66f1797a2000b9c8"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
  "ena",
- "itertools 0.9.0",
+ "itertools",
  "petgraph",
  "rustc-hash",
  "tracing",
@@ -475,7 +475,7 @@ dependencies = [
  "hir_def",
  "hir_expand",
  "hir_ty",
- "itertools 0.10.0",
+ "itertools",
  "log",
  "profile",
  "rustc-hash",
@@ -497,7 +497,7 @@ dependencies = [
  "fst",
  "hir_expand",
  "indexmap",
- "itertools 0.10.0",
+ "itertools",
  "la-arena",
  "log",
  "mbe",
@@ -541,7 +541,7 @@ dependencies = [
  "expect-test",
  "hir_def",
  "hir_expand",
- "itertools 0.10.0",
+ "itertools",
  "la-arena",
  "log",
  "once_cell",
@@ -579,7 +579,7 @@ dependencies = [
  "ide_db",
  "ide_ssr",
  "indexmap",
- "itertools 0.10.0",
+ "itertools",
  "log",
  "oorandom",
  "profile",
@@ -601,7 +601,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
- "itertools 0.10.0",
+ "itertools",
  "profile",
  "rustc-hash",
  "stdx",
@@ -619,7 +619,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
- "itertools 0.10.0",
+ "itertools",
  "log",
  "profile",
  "rustc-hash",
@@ -638,7 +638,7 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
- "itertools 0.10.0",
+ "itertools",
  "log",
  "once_cell",
  "profile",
@@ -657,7 +657,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide_db",
- "itertools 0.10.0",
+ "itertools",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -712,15 +712,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
 ]
 
 [[package]]
@@ -1206,7 +1197,7 @@ dependencies = [
  "base_db",
  "cargo_metadata",
  "cfg",
- "itertools 0.10.0",
+ "itertools",
  "la-arena",
  "log",
  "paths",
@@ -1338,7 +1329,7 @@ dependencies = [
  "ide",
  "ide_db",
  "ide_ssr",
- "itertools 0.10.0",
+ "itertools",
  "jemallocator",
  "jod-thread",
  "log",
@@ -1593,7 +1584,7 @@ dependencies = [
  "arrayvec",
  "expect-test",
  "indexmap",
- "itertools 0.10.0",
+ "itertools",
  "once_cell",
  "parser",
  "profile",
