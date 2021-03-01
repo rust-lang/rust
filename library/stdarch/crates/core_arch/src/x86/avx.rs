@@ -332,7 +332,7 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 }
 
 /// Rounds packed double-precision (64-bit) floating point elements in `a`
-/// according to the flag `b`. The value of `b` may be as follows:
+/// according to the flag `ROUNDING`. The value of `ROUNDING` may be as follows:
 ///
 /// - `0x00`: Round to the nearest whole number.
 /// - `0x01`: Round down, toward negative infinity.
@@ -346,16 +346,12 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_round_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vroundpd, b = 0x3))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vroundpd, ROUNDING = 0x3))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            roundpd256(a, $imm8)
-        };
-    }
-    constify_imm8!(b, call)
+pub unsafe fn _mm256_round_pd<const ROUNDING: i32>(a: __m256d) -> __m256d {
+    static_assert_imm4!(ROUNDING);
+    roundpd256(a, ROUNDING)
 }
 
 /// Rounds packed double-precision (64-bit) floating point elements in `a`
@@ -3445,9 +3441,9 @@ mod tests {
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_round_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
-        let result_closest = _mm256_round_pd(a, 0b00000000);
-        let result_down = _mm256_round_pd(a, 0b00000001);
-        let result_up = _mm256_round_pd(a, 0b00000010);
+        let result_closest = _mm256_round_pd::<0b0000>(a);
+        let result_down = _mm256_round_pd::<0b0001>(a);
+        let result_up = _mm256_round_pd::<0b0010>(a);
         let expected_closest = _mm256_setr_pd(2., 2., 4., -1.);
         let expected_down = _mm256_setr_pd(1., 2., 3., -2.);
         let expected_up = _mm256_setr_pd(2., 3., 4., -1.);
