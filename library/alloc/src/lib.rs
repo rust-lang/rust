@@ -92,6 +92,7 @@
 #![feature(const_fn)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
+#![feature(destructuring_assignment)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]

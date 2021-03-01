@@ -1,11 +1,8 @@
 use core::borrow::Borrow;
-use core::cmp::Ordering;
-use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::RangeBounds;
 use core::ptr;
 
 use super::node::{marker, ForceResult::*, Handle, NodeRef};
-use super::search::SearchResult;
 
 pub struct LeafRange<BorrowType, K, V> {
     pub front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
@@ -30,100 +27,50 @@ impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
     }
 }
 
-/// Finds the leaf edges delimiting a specified range in or underneath a node.
-///
-/// The result is meaningful only if the tree is ordered by key, like the tree
-/// in a `BTreeMap` is.
-fn range_search<BorrowType: marker::BorrowType, K, V, Q, R>(
-    root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    range: R,
-) -> LeafRange<BorrowType, K, V>
-where
-    Q: ?Sized + Ord,
-    K: Borrow<Q>,
-    R: RangeBounds<Q>,
-{
-    // WARNING: Inlining these variables would be unsound (#81138)
-    // We assume the bounds reported by `range` remain the same, but
-    // an adversarial implementation could change between calls
-    let start = range.start_bound();
-    let end = range.end_bound();
-    match (start, end) {
-        (Excluded(s), Excluded(e)) if s == e => {
-            panic!("range start and end are equal and excluded in BTreeMap")
-        }
-        (Included(s) | Excluded(s), Included(e) | Excluded(e)) if s > e => {
-            panic!("range start is greater than range end in BTreeMap")
-        }
-        _ => {}
-    };
-
-    let mut min_node = root1;
-    let mut max_node = root2;
-    let mut min_found = false;
-    let mut max_found = false;
-
-    loop {
-        // Using `range` again would be unsound (#81138)
-        let front = match (min_found, start) {
-            (false, Included(key)) => match min_node.search_node(key) {
-                SearchResult::Found(kv) => {
-                    min_found = true;
-                    kv.left_edge()
+impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
+    /// Finds the distinct leaf edges delimiting a specified range in a tree.
+    /// Returns either a pair of different handles into the same tree or a pair
+    /// of empty options.
+    /// # Safety
+    /// Unless `BorrowType` is `Immut`, do not use the duplicate handles to
+    /// visit the same KV twice.
+    unsafe fn find_leaf_edges_spanning_range<Q: ?Sized, R>(
+        self,
+        range: R,
+    ) -> LeafRange<BorrowType, K, V>
+    where
+        Q: Ord,
+        K: Borrow<Q>,
+        R: RangeBounds<Q>,
+    {
+        match self.search_tree_for_bifurcation(&range) {
+            Err(_) => LeafRange::none(),
+            Ok((
+                node,
+                lower_edge_idx,
+                upper_edge_idx,
+                mut lower_child_bound,
+                mut upper_child_bound,
+            )) => {
+                let mut lower_edge = unsafe { Handle::new_edge(ptr::read(&node), lower_edge_idx) };
+                let mut upper_edge = unsafe { Handle::new_edge(node, upper_edge_idx) };
+                loop {
+                    match (lower_edge.force(), upper_edge.force()) {
+                        (Leaf(f), Leaf(b)) => return LeafRange { front: Some(f), back: Some(b) },
+                        (Internal(f), Internal(b)) => {
+                            (lower_edge, lower_child_bound) =
+                                f.descend().find_lower_bound_edge(lower_child_bound);
+                            (upper_edge, upper_child_bound) =
+                                b.descend().find_upper_bound_edge(upper_child_bound);
+                        }
+                        _ => unreachable!("BTreeMap has different depths"),
+                    }
                 }
-                SearchResult::GoDown(edge) => edge,
-            },
-            (false, Excluded(key)) => match min_node.search_node(key) {
-                SearchResult::Found(kv) => {
-                    min_found = true;
-                    kv.right_edge()
-                }
-                SearchResult::GoDown(edge) => edge,
-            },
-            (true, Included(_)) => min_node.last_edge(),
-            (true, Excluded(_)) => min_node.first_edge(),
-            (_, Unbounded) => min_node.first_edge(),
-        };
-
-        // Using `range` again would be unsound (#81138)
-        let back = match (max_found, end) {
-            (false, Included(key)) => match max_node.search_node(key) {
-                SearchResult::Found(kv) => {
-                    max_found = true;
-                    kv.right_edge()
-                }
-                SearchResult::GoDown(edge) => edge,
-            },
-            (false, Excluded(key)) => match max_node.search_node(key) {
-                SearchResult::Found(kv) => {
-                    max_found = true;
-                    kv.left_edge()
-                }
-                SearchResult::GoDown(edge) => edge,
-            },
-            (true, Included(_)) => max_node.first_edge(),
-            (true, Excluded(_)) => max_node.last_edge(),
-            (_, Unbounded) => max_node.last_edge(),
-        };
-
-        if front.partial_cmp(&back) == Some(Ordering::Greater) {
-            panic!("Ord is ill-defined in BTreeMap range");
-        }
-        match (front.force(), back.force()) {
-            (Leaf(f), Leaf(b)) => {
-                return LeafRange { front: Some(f), back: Some(b) };
             }
-            (Internal(min_int), Internal(max_int)) => {
-                min_node = min_int.descend();
-                max_node = max_int.descend();
-            }
-            _ => unreachable!("BTreeMap has different depths"),
-        };
+        }
     }
 }
 
-/// Equivalent to `range_search(root1, root2, ..)` but without the `Ord` bound.
 /// Equivalent to `(root1.first_leaf_edge(), root2.last_leaf_edge())` but more efficient.
 fn full_range<BorrowType: marker::BorrowType, K, V>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
@@ -158,7 +105,8 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
-        range_search(self, self, range)
+        // SAFETY: our borrow type is immutable.
+        unsafe { self.find_leaf_edges_spanning_range(range) }
     }
 
     /// Finds the pair of leaf edges delimiting an entire tree.
@@ -174,16 +122,16 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
+    ///
+    /// # Safety
+    /// Do not use the duplicate handles to visit the same KV twice.
     pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
-        // We duplicate the root NodeRef here -- we will never visit the same KV
-        // twice, and never end up with overlapping value references.
-        let self2 = unsafe { ptr::read(&self) };
-        range_search(self, self2, range)
+        unsafe { self.find_leaf_edges_spanning_range(range) }
     }
 
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.

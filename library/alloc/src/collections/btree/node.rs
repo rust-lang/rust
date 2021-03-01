@@ -31,7 +31,6 @@
 //   since leaf edges are empty and need no data representation. In an internal node,
 //   an edge both identifies a position and contains a pointer to a child node.
 
-use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
@@ -739,15 +738,6 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     fn eq(&self, other: &Self) -> bool {
         let Self { node, idx, _marker } = self;
         node.eq(&other.node) && *idx == other.idx
-    }
-}
-
-impl<BorrowType, K, V, NodeType, HandleType> PartialOrd
-    for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let Self { node, idx, _marker } = self;
-        if node.eq(&other.node) { Some(idx.cmp(&other.idx)) } else { None }
     }
 }
 
