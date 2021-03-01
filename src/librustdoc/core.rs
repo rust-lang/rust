@@ -572,6 +572,8 @@ crate fn run_global_ctxt(
 
         if name == "no_default_passes" {
             msg.help("you may want to use `#![doc(document_private_items)]`");
+        } else if name.starts_with("plugins") {
+            msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
         }
 
         msg.emit();
@@ -618,10 +620,6 @@ crate fn run_global_ctxt(
                 }
                 sym::plugins => {
                     report_deprecated_attr("plugins = \"...\"", diag, attr.span());
-                    eprintln!(
-                        "WARNING: `#![doc(plugins = \"...\")]` \
-                         no longer functions; see CVE-2018-1000622"
-                    );
                     continue;
                 }
                 _ => continue,

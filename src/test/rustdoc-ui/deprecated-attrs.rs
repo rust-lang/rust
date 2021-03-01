@@ -11,3 +11,7 @@
 //~| NOTE see issue #44136
 //~| WARNING ignoring unknown pass
 //~| NOTE `collapse-docs` pass was removed
+#![doc(plugins = "xxx")]
+//~^ WARNING attribute is deprecated
+//~| NOTE see issue #44136
+//~| WARNING no longer functions; see CVE
