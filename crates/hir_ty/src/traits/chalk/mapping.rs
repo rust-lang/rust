@@ -16,8 +16,8 @@ use crate::{
     db::HirDatabase,
     primitive::UintTy,
     traits::{Canonical, Obligation},
-    CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy, OpaqueTyId,
-    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
+    AliasTy, CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy,
+    OpaqueTyId, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -63,7 +63,7 @@ impl ToChalk for Ty {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
             }
-            Ty::RawPtr(mutability, substs) => {
+            Ty::Raw(mutability, substs) => {
                 let ty = substs[0].clone().to_chalk(db);
                 chalk_ir::TyKind::Raw(mutability.to_chalk(db), ty).intern(&Interner)
             }
@@ -88,7 +88,7 @@ impl ToChalk for Ty {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Adt(chalk_ir::AdtId(adt_id), substitution).intern(&Interner)
             }
-            Ty::Projection(proj_ty) => {
+            Ty::Alias(AliasTy::Projection(proj_ty)) => {
                 let associated_ty_id = TypeAliasAsAssocType(proj_ty.associated_ty).to_chalk(db);
                 let substitution = proj_ty.parameters.to_chalk(db);
                 chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
@@ -106,7 +106,7 @@ impl ToChalk for Ty {
                 }
                 .to_ty::<Interner>(&Interner)
             }
-            Ty::Bound(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
+            Ty::BoundVar(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
             Ty::InferenceVar(..) => panic!("uncanonicalized infer ty"),
             Ty::Dyn(predicates) => {
                 let where_clauses = chalk_ir::QuantifiedWhereClauses::from_iter(
@@ -119,7 +119,7 @@ impl ToChalk for Ty {
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
-            Ty::Opaque(opaque_ty) => {
+            Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
                 let opaque_ty_id = opaque_ty.opaque_ty_id.to_chalk(db);
                 let substitution = opaque_ty.parameters.to_chalk(db);
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
@@ -146,12 +146,12 @@ impl ToChalk for Ty {
                 let associated_ty =
                     from_chalk::<TypeAliasAsAssocType, _>(db, proj.associated_ty_id).0;
                 let parameters = from_chalk(db, proj.substitution);
-                Ty::Projection(ProjectionTy { associated_ty, parameters })
+                Ty::Alias(AliasTy::Projection(ProjectionTy { associated_ty, parameters }))
             }
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
                 let impl_trait_id = from_chalk(db, opaque_ty.opaque_ty_id);
                 let parameters = from_chalk(db, opaque_ty.substitution);
-                Ty::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters })
+                Ty::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters }))
             }
             chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,
@@ -170,7 +170,7 @@ impl ToChalk for Ty {
                     substs,
                 })
             }
-            chalk_ir::TyKind::BoundVar(idx) => Ty::Bound(idx),
+            chalk_ir::TyKind::BoundVar(idx) => Ty::BoundVar(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => Ty::Unknown,
             chalk_ir::TyKind::Dyn(where_clauses) => {
                 assert_eq!(where_clauses.bounds.binders.len(&Interner), 1);
@@ -198,7 +198,7 @@ impl ToChalk for Ty {
                 Ty::Tuple(cardinality, from_chalk(db, subst))
             }
             chalk_ir::TyKind::Raw(mutability, ty) => {
-                Ty::RawPtr(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))
+                Ty::Raw(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))
             }
             chalk_ir::TyKind::Slice(ty) => Ty::Slice(Substs::single(from_chalk(db, ty))),
             chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {

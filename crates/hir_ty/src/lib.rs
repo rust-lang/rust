@@ -111,6 +111,19 @@ pub struct FnPointer {
     pub substs: Substs,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum AliasTy {
+    /// A "projection" type corresponds to an (unnormalized)
+    /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
+    /// trait and all its parameters are fully known.
+    Projection(ProjectionTy),
+    /// An opaque type (`impl Trait`).
+    ///
+    /// This is currently only used for return type impl trait; each instance of
+    /// `impl Trait` in a return type gets its own ID.
+    Opaque(OpaqueTy),
+}
+
 /// A type.
 ///
 /// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
@@ -141,7 +154,7 @@ pub enum Ty {
     Slice(Substs),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    RawPtr(Mutability, Substs),
+    Raw(Mutability, Substs),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
@@ -193,16 +206,11 @@ pub enum Ty {
     /// ```
     Function(FnPointer),
 
-    /// A "projection" type corresponds to an (unnormalized)
-    /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
-    /// trait and all its parameters are fully known.
-    Projection(ProjectionTy),
-
-    /// An opaque type (`impl Trait`).
-    ///
-    /// This is currently only used for return type impl trait; each instance of
-    /// `impl Trait` in a return type gets its own ID.
-    Opaque(OpaqueTy),
+    /// An "alias" type represents some form of type alias, such as:
+    /// - An associated type projection like `<T as Iterator>::Item`
+    /// - `impl Trait` types
+    /// - Named type aliases like `type Foo<X> = Vec<X>`
+    Alias(AliasTy),
 
     /// A placeholder for a type parameter; for example, `T` in `fn f<T>(x: T)
     /// {}` when we're type-checking the body of that function. In this
@@ -215,7 +223,7 @@ pub enum Ty {
     /// parameters get turned into variables; during trait resolution, inference
     /// variables get turned into bound variables and back; and in `Dyn` the
     /// `Self` type is represented with a bound variable as well.
-    Bound(BoundVar),
+    BoundVar(BoundVar),
 
     /// A type variable used during type checking.
     InferenceVar(InferenceVar, TyVariableKind),
@@ -299,7 +307,7 @@ impl Substs {
             generic_params
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Ty::Bound(BoundVar::new(debruijn, idx)))
+                .map(|(idx, _)| Ty::BoundVar(BoundVar::new(debruijn, idx)))
                 .collect(),
         )
     }
@@ -347,7 +355,7 @@ impl SubstsBuilder {
     }
 
     pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
-        self.fill((starting_from..).map(|idx| Ty::Bound(BoundVar::new(debruijn, idx))))
+        self.fill((starting_from..).map(|idx| Ty::BoundVar(BoundVar::new(debruijn, idx))))
     }
 
     pub fn fill_with_unknown(self) -> Self {
@@ -627,7 +635,7 @@ impl Ty {
             Ty::Ref(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::Ref, *mutability))
             }
-            Ty::RawPtr(mutability, parameters) => {
+            Ty::Raw(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::RawPtr, *mutability))
             }
             _ => None,
@@ -688,9 +696,7 @@ impl Ty {
                 expr == expr2 && def == def2
             }
             (Ty::Ref(mutability, ..), Ty::Ref(mutability2, ..))
-            | (Ty::RawPtr(mutability, ..), Ty::RawPtr(mutability2, ..)) => {
-                mutability == mutability2
-            }
+            | (Ty::Raw(mutability, ..), Ty::Raw(mutability2, ..)) => mutability == mutability2,
             (
                 Ty::Function(FnPointer { num_args, sig, .. }),
                 Ty::Function(FnPointer { num_args: num_args2, sig: sig2, .. }),
@@ -721,7 +727,7 @@ impl Ty {
     fn builtin_deref(&self) -> Option<Ty> {
         match self {
             Ty::Ref(.., parameters) => Some(Ty::clone(parameters.as_single())),
-            Ty::RawPtr(.., parameters) => Some(Ty::clone(parameters.as_single())),
+            Ty::Raw(.., parameters) => Some(Ty::clone(parameters.as_single())),
             _ => None,
         }
     }
@@ -757,7 +763,7 @@ impl Ty {
             Ty::Adt(_, substs)
             | Ty::Slice(substs)
             | Ty::Array(substs)
-            | Ty::RawPtr(_, substs)
+            | Ty::Raw(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::Function(FnPointer { substs, .. })
@@ -780,7 +786,7 @@ impl Ty {
             Ty::Adt(_, substs)
             | Ty::Slice(substs)
             | Ty::Array(substs)
-            | Ty::RawPtr(_, substs)
+            | Ty::Raw(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::Function(FnPointer { substs, .. })
@@ -797,7 +803,7 @@ impl Ty {
             Ty::Adt(_, substs)
             | Ty::Slice(substs)
             | Ty::Array(substs)
-            | Ty::RawPtr(_, substs)
+            | Ty::Raw(_, substs)
             | Ty::Ref(_, substs)
             | Ty::FnDef(_, substs)
             | Ty::Function(FnPointer { substs, .. })
@@ -834,7 +840,7 @@ impl Ty {
                     OpaqueTyId::ReturnTypeImplTrait(..) => None,
                 }
             }
-            Ty::Opaque(opaque_ty) => {
+            Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
                 let predicates = match opaque_ty.opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
@@ -878,7 +884,7 @@ impl Ty {
                     _ => None,
                 }
             }
-            Ty::Projection(projection_ty) => {
+            Ty::Alias(AliasTy::Projection(projection_ty)) => {
                 match projection_ty.associated_ty.lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
@@ -956,7 +962,7 @@ pub trait TypeWalk {
     {
         self.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::Bound(bound) = ty {
+                if let &mut Ty::BoundVar(bound) = ty {
                     if bound.debruijn >= binders {
                         *ty = substs.0[bound.index].clone().shift_bound_vars(binders);
                     }
@@ -974,8 +980,8 @@ pub trait TypeWalk {
     {
         self.fold_binders(
             &mut |ty, binders| match ty {
-                Ty::Bound(bound) if bound.debruijn >= binders => {
-                    Ty::Bound(bound.shifted_in_from(n))
+                Ty::BoundVar(bound) if bound.debruijn >= binders => {
+                    Ty::BoundVar(bound.shifted_in_from(n))
                 }
                 ty => ty,
             },
@@ -987,19 +993,19 @@ pub trait TypeWalk {
 impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
-            Ty::Projection(p_ty) => {
+            Ty::Alias(AliasTy::Projection(p_ty)) => {
                 for t in p_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::Alias(AliasTy::Opaque(o_ty)) => {
+                for t in o_ty.parameters.iter() {
                     t.walk(f);
                 }
             }
             Ty::Dyn(predicates) => {
                 for p in predicates.iter() {
                     p.walk(f);
-                }
-            }
-            Ty::Opaque(o_ty) => {
-                for t in o_ty.parameters.iter() {
-                    t.walk(f);
                 }
             }
             _ => {
@@ -1019,7 +1025,7 @@ impl TypeWalk for Ty {
         binders: DebruijnIndex,
     ) {
         match self {
-            Ty::Projection(p_ty) => {
+            Ty::Alias(AliasTy::Projection(p_ty)) => {
                 p_ty.parameters.walk_mut_binders(f, binders);
             }
             Ty::Dyn(predicates) => {
@@ -1027,7 +1033,7 @@ impl TypeWalk for Ty {
                     p.walk_mut_binders(f, binders.shifted_in());
                 }
             }
-            Ty::Opaque(o_ty) => {
+            Ty::Alias(AliasTy::Opaque(o_ty)) => {
                 o_ty.parameters.walk_mut_binders(f, binders);
             }
             _ => {

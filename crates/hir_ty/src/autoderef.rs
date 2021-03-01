@@ -81,7 +81,7 @@ fn deref_by_trait(
 
     // Now do the assoc type projection
     let projection = super::traits::ProjectionPredicate {
-        ty: Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len())),
+        ty: Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len())),
         projection_ty: super::ProjectionTy { associated_ty: target, parameters },
     };
 
@@ -114,7 +114,8 @@ fn deref_by_trait(
             // new variables in that case
 
             for i in 1..vars.0.kinds.len() {
-                if vars.0.value[i - 1] != Ty::Bound(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
+                if vars.0.value[i - 1]
+                    != Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.value, solution);
                     return None;

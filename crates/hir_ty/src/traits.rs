@@ -129,7 +129,7 @@ pub(crate) fn trait_solve_query(
     log::info!("trait_solve_query({})", goal.value.value.display(db));
 
     if let Obligation::Projection(pred) = &goal.value.value {
-        if let Ty::Bound(_) = &pred.projection_ty.parameters[0] {
+        if let Ty::BoundVar(_) = &pred.projection_ty.parameters[0] {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

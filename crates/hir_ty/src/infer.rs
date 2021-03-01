@@ -40,7 +40,7 @@ use super::{
     InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
-    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode, AliasTy,
 };
 
 pub(crate) use unify::unify;
@@ -395,7 +395,7 @@ impl<'a> InferenceContext<'a> {
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
         let ty = self.resolve_ty_as_possible(ty);
         ty.fold(&mut |ty| match ty {
-            Ty::Projection(proj_ty) => self.normalize_projection_ty(proj_ty),
+            Ty::Alias(AliasTy::Projection(proj_ty)) => self.normalize_projection_ty(proj_ty),
             _ => ty,
         })
     }

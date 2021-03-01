@@ -51,7 +51,7 @@ impl TyFingerprint {
             &Ty::Scalar(scalar) => TyFingerprint::Scalar(scalar),
             &Ty::Adt(adt, _) => TyFingerprint::Adt(adt),
             &Ty::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
-            &Ty::RawPtr(mutability, ..) => TyFingerprint::RawPtr(mutability),
+            &Ty::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
             &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
             &Ty::Function(FnPointer { num_args, sig, .. }) => TyFingerprint::FnPtr(num_args, sig),
             Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
@@ -251,8 +251,8 @@ impl Ty {
             }
             Ty::Str => lang_item_crate!("str_alloc", "str"),
             Ty::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
-            Ty::RawPtr(Mutability::Shared, _) => lang_item_crate!("const_ptr"),
-            Ty::RawPtr(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
+            Ty::Raw(Mutability::Shared, _) => lang_item_crate!("const_ptr"),
+            Ty::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
             Ty::Dyn(_) => {
                 return self.dyn_trait().and_then(|trait_| {
                     mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
@@ -683,7 +683,7 @@ pub(crate) fn inherent_impl_substs(
 fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
     s.fold_binders(
         &mut |ty, binders| {
-            if let Ty::Bound(bound) = &ty {
+            if let Ty::BoundVar(bound) = &ty {
                 if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
                     Ty::Unknown
                 } else {
