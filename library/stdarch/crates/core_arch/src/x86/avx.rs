@@ -822,16 +822,12 @@ pub unsafe fn _mm256_cmp_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ps)
 #[inline]
 #[target_feature(enable = "avx,sse")]
-#[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vcmpeqps, IMM8 = 0))] // TODO Validate vcmpps
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            vcmpps(a, b, $imm8)
-        };
-    }
-    constify_imm6!(imm8, call)
+pub unsafe fn _mm_cmp_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_imm5!(IMM8);
+    vcmpps(a, b, IMM8 as i8)
 }
 
 /// Compares packed single-precision (32-bit) floating-point
@@ -3645,7 +3641,7 @@ mod tests {
     unsafe fn test_mm_cmp_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
-        let r = _mm_cmp_ps(a, b, _CMP_GE_OS);
+        let r = _mm_cmp_ps::<_CMP_GE_OS>(a, b);
         assert!(get_m128(r, 0).is_nan());
         assert_eq!(get_m128(r, 1), 0.);
         assert_eq!(get_m128(r, 2), 0.);
