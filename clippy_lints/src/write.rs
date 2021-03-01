@@ -1,10 +1,11 @@
 use std::borrow::Cow;
-use std::ops::Range;
+use std::iter;
+use std::ops::{Deref, Range};
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, LitKind, MacCall, Path, StrLit, StrStyle};
-use rustc_ast::token;
+use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
+use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
@@ -438,7 +439,7 @@ impl Write {
     fn parse_fmt_string(&self, cx: &EarlyContext<'_>, str: &StrLit) -> Option<SimpleFormatArgs> {
         use rustc_parse_format::{ParseMode, Parser, Piece};
 
-        let str_sym = str.symbol.as_str();
+        let str_sym = str.symbol_unescaped.as_str();
         let style = match str.style {
             StrStyle::Cooked => None,
             StrStyle::Raw(n) => Some(n as usize),
@@ -514,21 +515,17 @@ impl Write {
             if !parser.eat(&token::Comma) {
                 return (Some(fmtstr), expr);
             }
+
+            let comma_span = parser.prev_token.span;
             let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|mut err| err.cancel()) {
                 expr
             } else {
                 return (Some(fmtstr), None);
             };
-            let (fmt_spans, span) = match &token_expr.kind {
-                ExprKind::Lit(lit) if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) => {
-                    (unnamed_args.next().unwrap_or(&[]), token_expr.span)
-                },
+            let (fmt_spans, lit) = match &token_expr.kind {
+                ExprKind::Lit(lit) => (unnamed_args.next().unwrap_or(&[]), lit),
                 ExprKind::Assign(lhs, rhs, _) => match (&lhs.kind, &rhs.kind) {
-                    (ExprKind::Path(_, p), ExprKind::Lit(lit))
-                        if !matches!(lit.kind, LitKind::Int(..) | LitKind::Float(..)) =>
-                    {
-                        (args.get_named(p), rhs.span)
-                    },
+                    (ExprKind::Path(_, p), ExprKind::Lit(lit)) => (args.get_named(p), lit),
                     _ => continue,
                 },
                 _ => {
@@ -537,8 +534,45 @@ impl Write {
                 },
             };
 
+            let replacement: String = match lit.token.kind {
+                LitKind::Integer | LitKind::Float | LitKind::Err => continue,
+                LitKind::StrRaw(_) | LitKind::ByteStrRaw(_) if matches!(fmtstr.style, StrStyle::Raw(_)) => {
+                    lit.token.symbol.as_str().replace("{", "{{").replace("}", "}}")
+                },
+                LitKind::Str | LitKind::ByteStr if matches!(fmtstr.style, StrStyle::Cooked) => {
+                    lit.token.symbol.as_str().replace("{", "{{").replace("}", "}}")
+                },
+                LitKind::StrRaw(_) | LitKind::Str | LitKind::ByteStrRaw(_) | LitKind::ByteStr => continue,
+                LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str().deref() {
+                    "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
+                    "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
+                    "\\\\" if matches!(fmtstr.style, StrStyle::Raw(_)) => "\\",
+                    "\\'" => "'",
+                    "{" => "{{",
+                    "}" => "}}",
+                    x if matches!(fmtstr.style, StrStyle::Raw(_)) && x.starts_with("\\") => continue,
+                    x => x,
+                }
+                .into(),
+                LitKind::Bool => lit.token.symbol.as_str().deref().into(),
+            };
+
             if !fmt_spans.is_empty() {
-                span_lint(cx, lint, span, "literal with an empty format string");
+                span_lint_and_then(
+                    cx,
+                    lint,
+                    token_expr.span,
+                    "literal with an empty format string",
+                    |diag| {
+                        diag.multipart_suggestion(
+                            "try this",
+                            iter::once((comma_span.to(token_expr.span), String::new()))
+                                .chain(fmt_spans.iter().cloned().zip(iter::repeat(replacement)))
+                                .collect(),
+                            Applicability::MachineApplicable,
+                        );
+                    },
+                );
             }
         }
     }
