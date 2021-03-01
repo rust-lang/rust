@@ -29,6 +29,42 @@
 #![doc(cfg(unix))]
 #![allow(missing_docs)]
 
+cfg_if::cfg_if! {
+    if #[cfg(doc)] {
+        // Use linux as the default platform when documenting on other platforms like Windows
+        use crate::os::linux as platform;
+    } else {
+        #[cfg(target_os = "android")]
+        use crate::os::android as platform;
+        #[cfg(target_os = "dragonfly")]
+        use crate::os::dragonfly as platform;
+        #[cfg(target_os = "emscripten")]
+        use crate::os::emscripten as platform;
+        #[cfg(target_os = "freebsd")]
+        use crate::os::freebsd as platform;
+        #[cfg(target_os = "fuchsia")]
+        use crate::os::fuchsia as platform;
+        #[cfg(target_os = "haiku")]
+        use crate::os::haiku as platform;
+        #[cfg(target_os = "illumos")]
+        use crate::os::illumos as platform;
+        #[cfg(target_os = "ios")]
+        use crate::os::ios as platform;
+        #[cfg(any(target_os = "linux", target_os = "l4re"))]
+        use crate::os::linux as platform;
+        #[cfg(target_os = "macos")]
+        use crate::os::macos as platform;
+        #[cfg(target_os = "netbsd")]
+        use crate::os::netbsd as platform;
+        #[cfg(target_os = "openbsd")]
+        use crate::os::openbsd as platform;
+        #[cfg(target_os = "redox")]
+        use crate::os::redox as platform;
+        #[cfg(target_os = "solaris")]
+        use crate::os::solaris as platform;
+    }
+}
+
 pub mod ffi;
 pub mod fs;
 pub mod io;

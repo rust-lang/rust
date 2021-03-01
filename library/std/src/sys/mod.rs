@@ -70,8 +70,6 @@ cfg_if::cfg_if! {
         #[allow(missing_docs)]
         pub mod unix_ext {}
     } else {
-        // On other platforms like Windows document the bare bones of unix
-        use crate::os::linux as platform;
         #[path = "unix/ext/mod.rs"]
         pub mod unix_ext;
     }
