@@ -60,7 +60,7 @@ pub unsafe fn get_m256d(a: __m256d, idx: usize) -> f64 {
 
 #[target_feature(enable = "avx")]
 pub unsafe fn assert_eq_m256(a: __m256, b: __m256) {
-    let cmp = _mm256_cmp_ps(a, b, _CMP_EQ_OQ);
+    let cmp = _mm256_cmp_ps::<_CMP_EQ_OQ>(a, b);
     if _mm256_movemask_ps(cmp) != 0b11111111 {
         panic!("{:?} != {:?}", a, b);
     }

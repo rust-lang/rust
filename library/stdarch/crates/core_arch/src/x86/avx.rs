@@ -837,16 +837,12 @@ pub unsafe fn _mm_cmp_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmp_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vcmpeqps, imm8 = 0))] // TODO Validate vcmpps
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vcmpeqps, IMM8 = 0))] // TODO Validate vcmpps
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            vcmpps256(a, b, $imm8)
-        };
-    }
-    constify_imm6!(imm8, call)
+pub unsafe fn _mm256_cmp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_imm5!(IMM8);
+    vcmpps256(a, b, IMM8 as u8)
 }
 
 /// Compares the lower double-precision (64-bit) floating-point element in
@@ -3652,7 +3648,7 @@ mod tests {
     unsafe fn test_mm256_cmp_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
-        let r = _mm256_cmp_ps(a, b, _CMP_GE_OS);
+        let r = _mm256_cmp_ps::<_CMP_GE_OS>(a, b);
         let e = _mm256_set1_ps(0.);
         assert_eq_m256(r, e);
     }
