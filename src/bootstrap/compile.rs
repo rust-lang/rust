@@ -63,6 +63,12 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
+        // These artifacts were already copied (in `impl Step for Sysroot`).
+        // Don't recompile them.
+        if builder.config.download_rustc {
+            return;
+        }
+
         if builder.config.keep_stage.contains(&compiler.stage)
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
@@ -506,6 +512,13 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
+
+        if builder.config.download_rustc {
+            // Copy the existing artifacts instead of rebuilding them.
+            // NOTE: this path is only taken for tools linking to rustc-dev.
+            builder.ensure(Sysroot { compiler });
+            return;
+        }
 
         builder.ensure(Std { compiler, target });
 
