@@ -1,0 +1,94 @@
+PRINT-DERIVE INPUT (DISPLAY): struct Foo
+{
+    my_array :
+    [bool ; { struct Inner { non_removed_inner_field : usize, } 0 }],
+}
+PRINT-DERIVE INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+    },
+    Ident {
+        ident: "Foo",
+        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Ident {
+                ident: "my_array",
+                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "bool",
+                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                    },
+                    Punct {
+                        ch: ';',
+                        spacing: Alone,
+                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                    },
+                    Group {
+                        delimiter: Brace,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "struct",
+                                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                            },
+                            Ident {
+                                ident: "Inner",
+                                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                            },
+                            Group {
+                                delimiter: Brace,
+                                stream: TokenStream [
+                                    Ident {
+                                        ident: "non_removed_inner_field",
+                                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                                    },
+                                    Punct {
+                                        ch: ':',
+                                        spacing: Alone,
+                                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                                    },
+                                    Ident {
+                                        ident: "usize",
+                                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                                    },
+                                    Punct {
+                                        ch: ',',
+                                        spacing: Alone,
+                                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                                    },
+                                ],
+                                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                            },
+                            Literal {
+                                kind: Integer,
+                                symbol: "0",
+                                suffix: None,
+                                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                            },
+                        ],
+                        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+                    },
+                ],
+                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+            },
+        ],
+        span: $DIR/nested-derive-cfg.rs:12:1: 21:2 (#0),
+    },
+]
