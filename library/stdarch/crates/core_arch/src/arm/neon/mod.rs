@@ -3846,22 +3846,22 @@ pub unsafe fn vsliq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_s8(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     vshiftins_v8i8(a, b, int8x8_t(n, n, n, n, n, n, n, n))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     vshiftins_v16i8(
         a,
         b,
@@ -3872,73 +3872,73 @@ pub unsafe fn vsriq_n_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_s16(a: int16x4_t, b: int16x4_t, n: i32) -> int16x4_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     vshiftins_v4i16(a, b, int16x4_t(n, n, n, n))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_s16(a: int16x8_t, b: int16x8_t, n: i32) -> int16x8_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     vshiftins_v8i16(a, b, int16x8_t(n, n, n, n, n, n, n, n))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.32", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_s32(a: int32x2_t, b: int32x2_t, n: i32) -> int32x2_t {
-    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
-    vshiftins_v2i32(a, b, int32x2_t(-n, -n))
+#[cfg_attr(test, assert_instr("vsri.32", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    static_assert!(N : i32 where 1 <= N && N <= 32);
+    vshiftins_v2i32(a, b, int32x2_t(-N, -N))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.32", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_s32(a: int32x4_t, b: int32x4_t, n: i32) -> int32x4_t {
-    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
-    vshiftins_v4i32(a, b, int32x4_t(-n, -n, -n, -n))
+#[cfg_attr(test, assert_instr("vsri.32", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    static_assert!(N : i32 where 1 <= N && N <= 32);
+    vshiftins_v4i32(a, b, int32x4_t(-N, -N, -N, -N))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.64", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_s64(a: int64x1_t, b: int64x1_t, n: i32) -> int64x1_t {
-    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
-    vshiftins_v1i64(a, b, int64x1_t(-n as i64))
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_s64<const N: i32>(a: int64x1_t, b: int64x1_t) -> int64x1_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
+    vshiftins_v1i64(a, b, int64x1_t(-N as i64))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.64", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_s64(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t {
-    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
-    vshiftins_v2i64(a, b, int64x2_t(-n as i64, -n as i64))
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
+    vshiftins_v2i64(a, b, int64x2_t(-N as i64, -N as i64))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_u8(a: uint8x8_t, b: uint8x8_t, n: i32) -> uint8x8_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     transmute(vshiftins_v8i8(
         transmute(a),
         transmute(b),
@@ -3949,11 +3949,11 @@ pub unsafe fn vsri_n_u8(a: uint8x8_t, b: uint8x8_t, n: i32) -> uint8x8_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_u8(a: uint8x16_t, b: uint8x16_t, n: i32) -> uint8x16_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     transmute(vshiftins_v16i8(
         transmute(a),
         transmute(b),
@@ -3964,11 +3964,11 @@ pub unsafe fn vsriq_n_u8(a: uint8x16_t, b: uint8x16_t, n: i32) -> uint8x16_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_u16(a: uint16x4_t, b: uint16x4_t, n: i32) -> uint16x4_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     transmute(vshiftins_v4i16(
         transmute(a),
         transmute(b),
@@ -3979,11 +3979,11 @@ pub unsafe fn vsri_n_u16(a: uint16x4_t, b: uint16x4_t, n: i32) -> uint16x4_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_u16(a: uint16x8_t, b: uint16x8_t, n: i32) -> uint16x8_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     transmute(vshiftins_v8i16(
         transmute(a),
         transmute(b),
@@ -3994,67 +3994,67 @@ pub unsafe fn vsriq_n_u16(a: uint16x8_t, b: uint16x8_t, n: i32) -> uint16x8_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.32", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_u32(a: uint32x2_t, b: uint32x2_t, n: i32) -> uint32x2_t {
-    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+#[cfg_attr(test, assert_instr("vsri.32", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    static_assert!(N : i32 where 1 <= N && N <= 32);
     transmute(vshiftins_v2i32(
         transmute(a),
         transmute(b),
-        int32x2_t(-n, -n),
+        int32x2_t(-N, -N),
     ))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.32", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_u32(a: uint32x4_t, b: uint32x4_t, n: i32) -> uint32x4_t {
-    assert!(1 <= n && n <= 32, "must have 1 ≤ n ≤ 32, but n = {}", n);
+#[cfg_attr(test, assert_instr("vsri.32", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    static_assert!(N : i32 where 1 <= N && N <= 32);
     transmute(vshiftins_v4i32(
         transmute(a),
         transmute(b),
-        int32x4_t(-n, -n, -n, -n),
+        int32x4_t(-N, -N, -N, -N),
     ))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.64", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_u64(a: uint64x1_t, b: uint64x1_t, n: i32) -> uint64x1_t {
-    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_u64<const N: i32>(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
     transmute(vshiftins_v1i64(
         transmute(a),
         transmute(b),
-        int64x1_t(-n as i64),
+        int64x1_t(-N as i64),
     ))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.64", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_u64(a: uint64x2_t, b: uint64x2_t, n: i32) -> uint64x2_t {
-    assert!(1 <= n && n <= 64, "must have 1 ≤ n ≤ 64, but n = {}", n);
+#[cfg_attr(test, assert_instr("vsri.64", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    static_assert!(N : i32 where 1 <= N && N <= 64);
     transmute(vshiftins_v2i64(
         transmute(a),
         transmute(b),
-        int64x2_t(-n as i64, -n as i64),
+        int64x2_t(-N as i64, -N as i64),
     ))
 }
 /// Shift Right and Insert (immediate)
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_p8(a: poly8x8_t, b: poly8x8_t, n: i32) -> poly8x8_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     transmute(vshiftins_v8i8(
         transmute(a),
         transmute(b),
@@ -4065,11 +4065,11 @@ pub unsafe fn vsri_n_p8(a: poly8x8_t, b: poly8x8_t, n: i32) -> poly8x8_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.8", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_p8(a: poly8x16_t, b: poly8x16_t, n: i32) -> poly8x16_t {
-    assert!(1 <= n && n <= 8, "must have 1 ≤ n ≤ 8, but n = {}", n);
-    let n = -n as i8;
+#[cfg_attr(test, assert_instr("vsri.8", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
+    static_assert!(N : i32 where 1 <= N && N <= 8);
+    let n = -N as i8;
     transmute(vshiftins_v16i8(
         transmute(a),
         transmute(b),
@@ -4080,11 +4080,11 @@ pub unsafe fn vsriq_n_p8(a: poly8x16_t, b: poly8x16_t, n: i32) -> poly8x16_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsri_n_p16(a: poly16x4_t, b: poly16x4_t, n: i32) -> poly16x4_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsri_n_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     transmute(vshiftins_v4i16(
         transmute(a),
         transmute(b),
@@ -4095,11 +4095,11 @@ pub unsafe fn vsri_n_p16(a: poly16x4_t, b: poly16x4_t, n: i32) -> poly16x4_t {
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,v7")]
-#[cfg_attr(test, assert_instr("vsri.16", n = 1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vsriq_n_p16(a: poly16x8_t, b: poly16x8_t, n: i32) -> poly16x8_t {
-    assert!(1 <= n && n <= 16, "must have 1 ≤ n ≤ 16, but n = {}", n);
-    let n = -n as i16;
+#[cfg_attr(test, assert_instr("vsri.16", N = 1))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
+    static_assert!(N : i32 where 1 <= N && N <= 16);
+    let n = -N as i16;
     transmute(vshiftins_v8i16(
         transmute(a),
         transmute(b),
