@@ -365,6 +365,22 @@ impl <T: PartialEq> PartialEq for Option<T> {
     }
 }
 
+#[lang = "shl"]
+pub trait Shl<RHS = Self> {
+    type Output;
+
+    #[must_use]
+    fn shl(self, rhs: RHS) -> Self::Output;
+}
+
+impl Shl for u128 {
+    type Output = u128;
+
+    fn shl(self, rhs: u128) -> u128 {
+        self << rhs
+    }
+}
+
 #[lang = "neg"]
 pub trait Neg {
     type Output;
