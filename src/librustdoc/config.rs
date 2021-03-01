@@ -4,9 +4,7 @@ use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
 use rustc_session::config::{
     build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
@@ -266,20 +264,6 @@ crate struct RenderOptions {
     /// Document items that have `doc(hidden)`.
     crate document_hidden: bool,
     crate unstable_features: rustc_feature::UnstableFeatures,
-}
-
-/// Temporary storage for data obtained during `RustdocVisitor::clean()`.
-/// Later on moved into `cache`.
-#[derive(Default, Clone)]
-crate struct RenderInfo {
-    crate inlined: FxHashSet<DefId>,
-    crate external_paths: crate::core::ExternalPaths,
-    crate exact_paths: FxHashMap<DefId, Vec<String>>,
-    crate access_levels: AccessLevels<DefId>,
-    crate deref_trait_did: Option<DefId>,
-    crate deref_mut_trait_did: Option<DefId>,
-    crate owned_box_did: Option<DefId>,
-    crate output_format: OutputFormat,
 }
 
 impl Options {

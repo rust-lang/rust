@@ -2,7 +2,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 
@@ -18,7 +18,6 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        render_info: RenderInfo,
         edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
@@ -49,26 +48,16 @@ crate trait FormatRenderer<'tcx>: Clone {
 crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
-    render_info: RenderInfo,
+    cache: Cache,
     diag: &rustc_errors::Handler,
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, cache) = tcx.sess.time("create_format_cache", || {
-        Cache::from_krate(
-            render_info.clone(),
-            options.document_private,
-            &options.extern_html_root_urls,
-            &options.output,
-            krate,
-            tcx,
-        )
-    });
     let prof = &tcx.sess.prof;
 
     let (mut format_renderer, mut krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, render_info, edition, cache, tcx))?;
+        .run(|| T::init(krate, options, edition, cache, tcx))?;
 
     let mut item = match krate.module.take() {
         Some(i) => i,
