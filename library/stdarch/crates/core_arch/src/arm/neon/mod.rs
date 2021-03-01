@@ -2977,14 +2977,14 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", IMM5 = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, IMM5 = 1))]
 // Based on the discussion in https://github.com/rust-lang/stdarch/pull/792
 // `mov` seems to be an acceptable intrinsic to compile to
-// #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(vmov, imm5 = 1))]
-pub unsafe fn vgetq_lane_u64<const imm5: i32>(v: uint64x2_t) -> u64 {
-    static_assert_imm1!(imm5);
-    simd_extract(v, imm5 as u32)
+// #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(vmov, IMM5 = 1))]
+pub unsafe fn vgetq_lane_u64<const IMM5: i32>(v: uint64x2_t) -> u64 {
+    static_assert_imm1!(IMM5);
+    simd_extract(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -2992,12 +2992,12 @@ pub unsafe fn vgetq_lane_u64<const imm5: i32>(v: uint64x2_t) -> u64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov, imm5 = 0))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", IMM5 = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov, IMM5 = 0))]
 // FIXME: no 32bit this seems to be turned into two vmov.32 instructions
 // validate correctness
-pub unsafe fn vget_lane_u64<const imm5: i32>(v: uint64x1_t) -> u64 {
-    static_assert!(imm5 : i32 where imm5 == 0);
+pub unsafe fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
+    static_assert!(IMM5 : i32 where IMM5 == 0);
     simd_extract(v, 0)
 }
 
@@ -3006,11 +3006,11 @@ pub unsafe fn vget_lane_u64<const imm5: i32>(v: uint64x1_t) -> u64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u16", imm5 = 2))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
-pub unsafe fn vgetq_lane_u16<const imm5: i32>(v: uint16x8_t) -> u16 {
-    static_assert_imm3!(imm5);
-    simd_extract(v, imm5 as u32)
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u16", IMM5 = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, IMM5 = 2))]
+pub unsafe fn vgetq_lane_u16<const IMM5: i32>(v: uint16x8_t) -> u16 {
+    static_assert_imm3!(IMM5);
+    simd_extract(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -3018,11 +3018,11 @@ pub unsafe fn vgetq_lane_u16<const imm5: i32>(v: uint16x8_t) -> u16 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
-pub unsafe fn vgetq_lane_u32<const imm5: i32>(v: uint32x4_t) -> u32 {
-    static_assert_imm2!(imm5);
-    simd_extract(v, imm5 as u32)
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", IMM5 = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, IMM5 = 2))]
+pub unsafe fn vgetq_lane_u32<const IMM5: i32>(v: uint32x4_t) -> u32 {
+    static_assert_imm2!(IMM5);
+    simd_extract(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -3030,11 +3030,11 @@ pub unsafe fn vgetq_lane_u32<const imm5: i32>(v: uint32x4_t) -> u32 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
-pub unsafe fn vgetq_lane_s32<const imm5: i32>(v: int32x4_t) -> i32 {
-    static_assert_imm2!(imm5);
-    simd_extract(v, imm5 as u32)
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", IMM5 = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, IMM5 = 2))]
+pub unsafe fn vgetq_lane_s32<const IMM5: i32>(v: int32x4_t) -> i32 {
+    static_assert_imm2!(IMM5);
+    simd_extract(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -3042,11 +3042,11 @@ pub unsafe fn vgetq_lane_s32<const imm5: i32>(v: int32x4_t) -> i32 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[rustc_legacy_const_generics(1)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u8", imm5 = 2))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
-pub unsafe fn vget_lane_u8<const imm5: i32>(v: uint8x8_t) -> u8 {
-    static_assert_imm3!(imm5);
-    simd_extract(v, imm5 as u32)
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u8", IMM5 = 2))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, IMM5 = 2))]
+pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
+    static_assert_imm3!(IMM5);
+    simd_extract(v, IMM5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3143,30 +3143,30 @@ pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshr.u8", imm3 = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("ushr", imm3 = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshr.u8", IMM3 = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("ushr", IMM3 = 1))]
 #[rustc_legacy_const_generics(1)]
-pub unsafe fn vshrq_n_u8<const imm3: i32>(a: uint8x16_t) -> uint8x16_t {
-    if imm3 < 0 || imm3 > 7 {
+pub unsafe fn vshrq_n_u8<const IMM3: i32>(a: uint8x16_t) -> uint8x16_t {
+    if IMM3 < 0 || IMM3 > 7 {
         unreachable_unchecked();
     } else {
         uint8x16_t(
-            a.0 >> imm3,
-            a.1 >> imm3,
-            a.2 >> imm3,
-            a.3 >> imm3,
-            a.4 >> imm3,
-            a.5 >> imm3,
-            a.6 >> imm3,
-            a.7 >> imm3,
-            a.8 >> imm3,
-            a.9 >> imm3,
-            a.10 >> imm3,
-            a.11 >> imm3,
-            a.12 >> imm3,
-            a.13 >> imm3,
-            a.14 >> imm3,
-            a.15 >> imm3,
+            a.0 >> IMM3,
+            a.1 >> IMM3,
+            a.2 >> IMM3,
+            a.3 >> IMM3,
+            a.4 >> IMM3,
+            a.5 >> IMM3,
+            a.6 >> IMM3,
+            a.7 >> IMM3,
+            a.8 >> IMM3,
+            a.9 >> IMM3,
+            a.10 >> IMM3,
+            a.11 >> IMM3,
+            a.12 >> IMM3,
+            a.13 >> IMM3,
+            a.14 >> IMM3,
+            a.15 >> IMM3,
         )
     }
 }
@@ -3175,30 +3175,30 @@ pub unsafe fn vshrq_n_u8<const imm3: i32>(a: uint8x16_t) -> uint8x16_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshl.s8", imm3 = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, imm3 = 1))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshl.s8", IMM3 = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, IMM3 = 1))]
 #[rustc_legacy_const_generics(1)]
-pub unsafe fn vshlq_n_u8<const imm3: i32>(a: uint8x16_t) -> uint8x16_t {
-    if imm3 < 0 || imm3 > 7 {
+pub unsafe fn vshlq_n_u8<const IMM3: i32>(a: uint8x16_t) -> uint8x16_t {
+    if IMM3 < 0 || IMM3 > 7 {
         unreachable_unchecked();
     } else {
         uint8x16_t(
-            a.0 << imm3,
-            a.1 << imm3,
-            a.2 << imm3,
-            a.3 << imm3,
-            a.4 << imm3,
-            a.5 << imm3,
-            a.6 << imm3,
-            a.7 << imm3,
-            a.8 << imm3,
-            a.9 << imm3,
-            a.10 << imm3,
-            a.11 << imm3,
-            a.12 << imm3,
-            a.13 << imm3,
-            a.14 << imm3,
-            a.15 << imm3,
+            a.0 << IMM3,
+            a.1 << IMM3,
+            a.2 << IMM3,
+            a.3 << IMM3,
+            a.4 << IMM3,
+            a.5 << IMM3,
+            a.6 << IMM3,
+            a.7 << IMM3,
+            a.8 << IMM3,
+            a.9 << IMM3,
+            a.10 << IMM3,
+            a.11 << IMM3,
+            a.12 << IMM3,
+            a.13 << IMM3,
+            a.14 << IMM3,
+            a.15 << IMM3,
         )
     }
 }
