@@ -2024,14 +2024,10 @@ pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.b, imm3 = 0b111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
-    macro_rules! call {
-        ($imm3:expr) => {
-            msa_binsli_b(a, mem::transmute(b), $imm3)
-        };
-    }
-    constify_imm3!(imm3, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsli_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
+    static_assert_imm3!(IMM3);
+    msa_binsli_b(a, mem::transmute(b), IMM3)
 }
 
 /// Immediate Bit Insert Left
@@ -2043,14 +2039,10 @@ pub unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.h, imm4 = 0b1111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
-    macro_rules! call {
-        ($imm4:expr) => {
-            msa_binsli_h(a, mem::transmute(b), $imm4)
-        };
-    }
-    constify_imm4!(imm4, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsli_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
+    static_assert_imm4!(IMM4);
+    msa_binsli_h(a, mem::transmute(b), IMM4)
 }
 
 /// Immediate Bit Insert Left
@@ -2062,14 +2054,10 @@ pub unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.w, imm5 = 0b11111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
-    macro_rules! call {
-        ($imm5:expr) => {
-            msa_binsli_w(a, mem::transmute(b), $imm5)
-        };
-    }
-    constify_imm5!(imm5, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsli_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
+    static_assert_imm5!(IMM5);
+    msa_binsli_w(a, mem::transmute(b), IMM5)
 }
 
 /// Immediate Bit Insert Left
@@ -2081,14 +2069,10 @@ pub unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.d, imm6 = 0b111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
-    macro_rules! call {
-        ($imm6:expr) => {
-            msa_binsli_d(a, mem::transmute(b), $imm6)
-        };
-    }
-    constify_imm6!(imm6, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsli_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
+    static_assert_imm6!(IMM6);
+    msa_binsli_d(a, mem::transmute(b), IMM6)
 }
 
 /// Vector Bit Insert Right
@@ -2156,14 +2140,10 @@ pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.b, imm3 = 0b111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
-    macro_rules! call {
-        ($imm3:expr) => {
-            msa_binsri_b(a, mem::transmute(b), $imm3)
-        };
-    }
-    constify_imm3!(imm3, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsri_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
+    static_assert_imm3!(IMM3);
+    msa_binsri_b(a, mem::transmute(b), IMM3)
 }
 
 /// Immediate Bit Insert Right
@@ -2175,14 +2155,10 @@ pub unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.h, imm4 = 0b1111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
-    macro_rules! call {
-        ($imm4:expr) => {
-            msa_binsri_h(a, mem::transmute(b), $imm4)
-        };
-    }
-    constify_imm4!(imm4, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsri_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
+    static_assert_imm4!(IMM4);
+    msa_binsri_h(a, mem::transmute(b), IMM4)
 }
 
 /// Immediate Bit Insert Right
@@ -2194,14 +2170,10 @@ pub unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.w, imm5 = 0b11111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
-    macro_rules! call {
-        ($imm5:expr) => {
-            msa_binsri_w(a, mem::transmute(b), $imm5)
-        };
-    }
-    constify_imm5!(imm5, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsri_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
+    static_assert_imm5!(IMM5);
+    msa_binsri_w(a, mem::transmute(b), IMM5)
 }
 
 /// Immediate Bit Insert Right
@@ -2213,14 +2185,10 @@ pub unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.d, imm6 = 0b111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
-    macro_rules! call {
-        ($imm6:expr) => {
-            msa_binsri_d(a, mem::transmute(b), $imm6)
-        };
-    }
-    constify_imm6!(imm6, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_binsri_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
+    static_assert_imm6!(IMM6);
+    msa_binsri_d(a, mem::transmute(b), IMM6)
 }
 
 /// Vector Bit Move If Not Zero
@@ -2246,14 +2214,10 @@ pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmnzi.b, imm8 = 0b11111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            msa_bmnzi_b(a, mem::transmute(b), $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_bmnzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
+    static_assert_imm8!(IMM8);
+    msa_bmnzi_b(a, mem::transmute(b), IMM8)
 }
 
 /// Vector Bit Move If Zero
@@ -2279,14 +2243,10 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmzi.b, imm8 = 0b11111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            msa_bmzi_b(a, mem::transmute(b), $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_bmzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
+    static_assert_imm8!(IMM8);
+    msa_bmzi_b(a, mem::transmute(b), IMM8)
 }
 
 /// Vector Bit Negate
@@ -2484,14 +2444,10 @@ pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseli.b, imm8 = 0b11111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            msa_bseli_b(a, mem::transmute(b), $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_bseli_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
+    static_assert_imm8!(IMM8);
+    msa_bseli_b(a, mem::transmute(b), IMM8)
 }
 
 /// Vector Bit Set
@@ -7450,14 +7406,10 @@ pub unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.b, imm4 = 0b1111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
-    macro_rules! call {
-        ($imm4:expr) => {
-            msa_sldi_b(a, mem::transmute(b), $imm4)
-        };
-    }
-    constify_imm4!(imm4, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_sldi_b<const IMM4: i32>(a: v16i8, b: v16i8) -> v16i8 {
+    static_assert_imm4!(IMM4);
+    msa_sldi_b(a, mem::transmute(b), IMM4)
 }
 
 /// Immediate Columns Slide
@@ -7474,14 +7426,10 @@ pub unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.h, imm3 = 0b111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
-    macro_rules! call {
-        ($imm3:expr) => {
-            msa_sldi_h(a, mem::transmute(b), $imm3)
-        };
-    }
-    constify_imm3!(imm3, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_sldi_h<const IMM3: i32>(a: v8i16, b: v8i16) -> v8i16 {
+    static_assert_imm3!(IMM3);
+    msa_sldi_h(a, mem::transmute(b), IMM3)
 }
 
 /// Immediate Columns Slide
@@ -7498,14 +7446,10 @@ pub unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.w, imm2 = 0b11))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
-    macro_rules! call {
-        ($imm2:expr) => {
-            msa_sldi_w(a, mem::transmute(b), $imm2)
-        };
-    }
-    constify_imm2!(imm2, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_sldi_w<const IMM2: i32>(a: v4i32, b: v4i32) -> v4i32 {
+    static_assert_imm2!(IMM2);
+    msa_sldi_w(a, mem::transmute(b), IMM2)
 }
 
 /// Immediate Columns Slide
@@ -7522,14 +7466,10 @@ pub unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.d, imm1 = 0b1))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
-    macro_rules! call {
-        ($imm1:expr) => {
-            msa_sldi_d(a, mem::transmute(b), $imm1)
-        };
-    }
-    constify_imm1!(imm1, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_sldi_d<const IMM1: i32>(a: v2i64, b: v2i64) -> v2i64 {
+    static_assert_imm1!(IMM1);
+    msa_sldi_d(a, mem::transmute(b), IMM1)
 }
 
 /// Vector Shift Left
@@ -8249,14 +8189,10 @@ pub unsafe fn __msa_srlri_d<const IMM6: i32>(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.b, imm_s10 = 0b1111111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut u8, imm_s10: i32) -> () {
-    macro_rules! call {
-        ($imm_s10:expr) => {
-            msa_st_b(a, mem_addr, $imm_s10)
-        };
-    }
-    constify_imm_s10!(imm_s10, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_st_b<const IMM_S10: i32>(a: v16i8, mem_addr: *mut u8) -> () {
+    static_assert_imm_s10!(IMM_S10);
+    msa_st_b(a, mem_addr, IMM_S10)
 }
 
 /// Vector Store
@@ -8268,14 +8204,11 @@ pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut u8, imm_s10: i32) -> () {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.h, imm_s11 = 0b11111111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut u8, imm_s11: i32) -> () {
-    macro_rules! call {
-        ($imm_s11:expr) => {
-            msa_st_h(a, mem_addr, $imm_s11)
-        };
-    }
-    constify_imm_s11!(imm_s11, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_st_h<const IMM_S11: i32>(a: v8i16, mem_addr: *mut u8) -> () {
+    static_assert_imm_s11!(IMM_S11);
+    static_assert!(IMM_S11: i32 where IMM_S11 % 2 == 0);
+    msa_st_h(a, mem_addr, IMM_S11)
 }
 
 /// Vector Store
@@ -8287,14 +8220,11 @@ pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut u8, imm_s11: i32) -> () {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.w, imm_s12 = 0b111111111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut u8, imm_s12: i32) -> () {
-    macro_rules! call {
-        ($imm_s12:expr) => {
-            msa_st_w(a, mem_addr, $imm_s12)
-        };
-    }
-    constify_imm_s12!(imm_s12, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_st_w<const IMM_S12: i32>(a: v4i32, mem_addr: *mut u8) -> () {
+    static_assert_imm_s12!(IMM_S12);
+    static_assert!(IMM_S12: i32 where IMM_S12 % 4 == 0);
+    msa_st_w(a, mem_addr, IMM_S12)
 }
 
 /// Vector Store
@@ -8306,14 +8236,11 @@ pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut u8, imm_s12: i32) -> () {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.d, imm_s13 = 0b1111111111111))]
-#[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut u8, imm_s13: i32) -> () {
-    macro_rules! call {
-        ($imm_s13:expr) => {
-            msa_st_d(a, mem_addr, $imm_s13)
-        };
-    }
-    constify_imm_s13!(imm_s13, call)
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn __msa_st_d<const IMM_S13: i32>(a: v2i64, mem_addr: *mut u8) -> () {
+    static_assert_imm_s13!(IMM_S13);
+    static_assert!(IMM_S13: i32 where IMM_S13 % 8 == 0);
+    msa_st_d(a, mem_addr, IMM_S13)
 }
 
 /// Vector Signed Saturated Subtract of Signed Values
