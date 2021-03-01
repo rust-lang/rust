@@ -89,11 +89,19 @@ fn collect_item(
     }
 }
 
-/// Extract the first `rustc_diagnostic_item = "$name"` out of a list of attributes.
+/// Extract `#[rustc_diagnostic_item = "$name"]` from a list of attributes
 fn extract(sess: &Session, attrs: &[ast::Attribute]) -> Option<Symbol> {
-    attrs.iter().find_map(|attr| {
-        if sess.check_name(attr, sym::rustc_diagnostic_item) { attr.value_str() } else { None }
-    })
+    let mut result = None;
+    for attr in attrs {
+        if sess.check_name(attr, sym::rustc_diagnostic_item) {
+            if let Some(value) = attr.value_str() {
+                if result.replace(value).is_some() {
+                    span_bug!(attr.span, "item has multiple rustc_diagnostic_item attributes")
+                }
+            }
+        }
+    }
+    result
 }
 
 /// Traverse and collect the diagnostic items in the current
