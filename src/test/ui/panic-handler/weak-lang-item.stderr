@@ -10,9 +10,9 @@ help: you can use `as` to change the binding name of the import
 LL | extern crate core as other_core;
    |
 
-error: `#[panic_handler]` function required, but not found
-
 error: language item required, but not found: `eh_personality`
+
+error: `#[panic_handler]` function required, but not found
 
 error: aborting due to 3 previous errors
 
