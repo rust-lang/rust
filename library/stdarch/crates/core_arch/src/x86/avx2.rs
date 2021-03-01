@@ -3777,16 +3777,11 @@ pub unsafe fn _mm256_extract_epi16<const IMM8: i32>(a: __m256i) -> i32 {
 #[inline]
 #[target_feature(enable = "avx2")]
 // This intrinsic has no corresponding instruction.
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi32(a: __m256i, imm8: i32) -> i32 {
-    let a = a.as_i32x8();
-    macro_rules! call {
-        ($imm3:expr) => {
-            simd_extract(a, $imm3)
-        };
-    }
-    constify_imm3!((imm8 & 7), call)
+pub unsafe fn _mm256_extract_epi32<const IMM8: i32>(a: __m256i) -> i32 {
+    static_assert_imm3!(IMM8);
+    simd_extract(a.as_i32x8(), IMM8 as u32)
 }
 
 /// Returns the first element of the input vector of `[4 x double]`.
@@ -6147,8 +6142,8 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi32() {
         let a = _mm256_setr_epi32(-1, 1, 2, 3, 4, 5, 6, 7);
-        let r1 = _mm256_extract_epi32(a, 0);
-        let r2 = _mm256_extract_epi32(a, 11);
+        let r1 = _mm256_extract_epi32::<0>(a);
+        let r2 = _mm256_extract_epi32::<3>(a);
         assert_eq!(r1, -1);
         assert_eq!(r2, 3);
     }
