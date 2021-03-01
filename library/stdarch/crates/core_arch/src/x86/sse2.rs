@@ -1361,17 +1361,12 @@ pub unsafe fn _mm_extract_epi16<const IMM8: i32>(a: __m128i) -> i32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_insert_epi16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(pinsrw, imm8 = 9))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(pinsrw, IMM8 = 7))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_insert_epi16(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    let a = a.as_i16x8();
-    macro_rules! call {
-        ($imm3:expr) => {
-            transmute(simd_insert(a, $imm3, i as i16))
-        };
-    }
-    constify_imm3!(imm8, call)
+pub unsafe fn _mm_insert_epi16<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
+    static_assert_imm3!(IMM8);
+    transmute(simd_insert(a.as_i16x8(), IMM8 as u32, i as i16))
 }
 
 /// Returns a mask of the most significant bit of each element in `a`.
@@ -3888,7 +3883,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_insert_epi16() {
         let a = _mm_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7);
-        let r = _mm_insert_epi16(a, 9, 0);
+        let r = _mm_insert_epi16::<0>(a, 9);
         let e = _mm_setr_epi16(9, 1, 2, 3, 4, 5, 6, 7);
         assert_eq_m128i(r, e);
     }
