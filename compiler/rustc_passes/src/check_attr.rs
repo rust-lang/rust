@@ -544,6 +544,41 @@ impl CheckAttrVisitor<'tcx> {
                         {
                             return false;
                         }
+                    } else if let Some(i_meta) = meta.meta_item() {
+                        if ![
+                            sym::cfg,
+                            sym::hidden,
+                            sym::html_favicon_url,
+                            sym::html_logo_url,
+                            sym::html_no_source,
+                            sym::html_playground_url,
+                            sym::html_root_url,
+                            sym::include,
+                            sym::inline,
+                            sym::issue_tracker_base_url,
+                            sym::masked,
+                            sym::no_default_passes, // deprecated
+                            sym::no_inline,
+                            sym::passes, // deprecated
+                            sym::primitive,
+                            sym::spotlight,
+                            sym::test,
+                        ]
+                        .iter()
+                        .any(|m| i_meta.has_name(*m))
+                        {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    meta.span(),
+                                    &format!(
+                                        "unknown `doc` attribute `{}`",
+                                        i_meta.name_or_empty(),
+                                    ),
+                                )
+                                .emit();
+                            return false;
+                        }
                     }
                 }
             }
