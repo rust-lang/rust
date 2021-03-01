@@ -2680,14 +2680,14 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
-            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) && params_len == 2 {
+            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
                     snippet(cx, params[0].span, "K"),
                     snippet(cx, params[1].span, "V"),
                 ))
-            } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) && params_len == 1 {
+            } else if is_type_diagnostic_item(cx, ty, sym::hashset_type) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
                     hir_ty.span,
                     ty,
