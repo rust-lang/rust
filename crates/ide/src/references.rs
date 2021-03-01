@@ -39,6 +39,15 @@ pub struct Declaration {
     pub access: Option<ReferenceAccess>,
 }
 
+// Feature: Find All References
+//
+// Shows all references of the item at the cursor location
+//
+// |===
+// | Editor  | Shortcut
+//
+// | VS Code | kbd:[Shift+Alt+F12]
+// |===
 pub(crate) fn find_all_refs(
     sema: &Semantics<RootDatabase>,
     position: FilePosition,

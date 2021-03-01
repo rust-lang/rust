@@ -27,7 +27,15 @@ pub(crate) struct Project<'a> {
 
 impl<'a> Project<'a> {
     pub(crate) fn with_fixture(fixture: &str) -> Project {
-        Project { fixture, tmp_dir: None, roots: vec![], config: serde_json::Value::Null }
+        Project {
+            fixture,
+            tmp_dir: None,
+            roots: vec![],
+            config: serde_json::json!({
+                // Loading standard library is costly, let's ignore it by default
+                "cargo": { "noSysroot": true }
+            }),
+        }
     }
 
     pub(crate) fn tmp_dir(mut self, tmp_dir: TestDir) -> Project<'a> {
