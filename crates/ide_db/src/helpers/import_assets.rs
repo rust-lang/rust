@@ -244,6 +244,7 @@ impl<'a> ImportAssets<'a> {
         prefixed: Option<PrefixKind>,
         defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
     ) -> FxHashSet<LocatedImport> {
+        let _p = profile::span("import_assets::applicable_defs");
         let current_crate = self.module_with_candidate.krate();
 
         let mod_path = |item| get_mod_path(db, item, &self.module_with_candidate, prefixed);
@@ -278,6 +279,8 @@ fn path_applicable_imports(
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
     defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
 ) -> FxHashSet<LocatedImport> {
+    let _p = profile::span("import_assets::path_applicable_imports");
+
     let items_for_candidate_name =
         defs_for_candidate_name.map(|def| def.either(ItemInNs::from, ItemInNs::from));
 
@@ -306,6 +309,7 @@ fn import_for_item(
     unresolved_qualifier: &str,
     original_item: ItemInNs,
 ) -> Option<LocatedImport> {
+    let _p = profile::span("import_assets::import_for_item");
     let (item_candidate, trait_to_import) = match original_item.as_module_def_id() {
         Some(module_def_id) => {
             match ModuleDef::from(module_def_id).as_assoc_item(db).map(|assoc| assoc.container(db))
@@ -397,6 +401,7 @@ fn trait_applicable_items(
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
     defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
 ) -> FxHashSet<LocatedImport> {
+    let _p = profile::span("import_assets::trait_applicable_items");
     let mut required_assoc_items = FxHashSet::default();
 
     let trait_candidates = defs_for_candidate_name
