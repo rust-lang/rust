@@ -4552,7 +4552,7 @@ mod tests {
         let b = _mm256_setr_epi32(7, 6, 2, 4, 3, 2, 1, 0);
         let r = _mm256_cmpeq_epi32(a, b);
         let e = _mm256_set1_epi32(0);
-        let e = _mm256_insert_epi32(e, !0, 2);
+        let e = _mm256_insert_epi32::<2>(e, !0);
         assert_eq_m256i(r, e);
     }
 
@@ -4582,10 +4582,10 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cmpgt_epi32() {
-        let a = _mm256_insert_epi32(_mm256_set1_epi32(0), 5, 0);
+        let a = _mm256_insert_epi32::<0>(_mm256_set1_epi32(0), 5);
         let b = _mm256_set1_epi32(0);
         let r = _mm256_cmpgt_epi32(a, b);
-        assert_eq_m256i(r, _mm256_insert_epi32(_mm256_set1_epi32(0), !0, 0));
+        assert_eq_m256i(r, _mm256_insert_epi32::<0>(_mm256_set1_epi32(0), !0));
     }
 
     #[simd_test(enable = "avx2")]
