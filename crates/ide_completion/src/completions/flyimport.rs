@@ -21,6 +21,45 @@
 //! ```
 //!
 //! Also completes associated items, that require trait imports.
+//! If any unresolved and/or partially-qualified path predeces the input, it will be taken into account: only the items with import string
+//! containing this whole path will be considered and the corresponding path import will be added:
+//!
+//! ```
+//! mod foo {
+//!     pub mod bar {
+//!         pub struct Item;
+//!
+//!         impl Item {
+//!             pub const TEST_ASSOC: usize = 3;
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     bar::Item::TEST_A$0
+//! }
+//! ```
+//! ->
+//! ```
+//! use foo::bar;
+//!
+//! mod foo {
+//!     pub mod bar {
+//!         pub struct Item;
+//!
+//!         impl Item {
+//!             pub const TEST_ASSOC: usize = 3;
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     bar::Item::TEST_ASSOC
+//! }
+//! ```
+//!
+//! NOTE: currently, if an assoc item comes from a trait that's not currently imported and it also has an unresolved and/or partially-qualified path,
+//! no imports will be proposed.
 //!
 //! .Fuzzy search details
 //!
