@@ -589,352 +589,264 @@ pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1_lane_s8(ptr: *const i8, src: int8x8_t, lane: i32) -> int8x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> int8x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 15))]
-pub unsafe fn vld1q_lane_s8(ptr: *const i8, src: int8x16_t, lane: i32) -> int8x16_t {
-    assert!(
-        0 <= lane && lane <= 15,
-        "must have 0 ≤ lane ≤ 15, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> int8x16_t {
+    static_assert_imm4!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1_lane_s16(ptr: *const i16, src: int16x4_t, lane: i32) -> int16x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) -> int16x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1q_lane_s16(ptr: *const i16, src: int16x8_t, lane: i32) -> int16x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -> int16x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 1))]
-pub unsafe fn vld1_lane_s32(ptr: *const i32, src: int32x2_t, lane: i32) -> int32x2_t {
-    assert!(
-        0 <= lane && lane <= 1,
-        "must have 0 ≤ lane ≤ 1, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) -> int32x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1q_lane_s32(ptr: *const i32, src: int32x4_t, lane: i32) -> int32x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -> int32x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", lane = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, lane = 0))]
-pub unsafe fn vld1_lane_s64(ptr: *const i64, src: int64x1_t, lane: i32) -> int64x1_t {
-    assert!(
-        0 <= lane && lane <= 0,
-        "must have 0 ≤ lane ≤ 0, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", lane = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 1))]
-pub unsafe fn vld1q_lane_s64(ptr: *const i64, src: int64x2_t, lane: i32) -> int64x2_t {
-    assert!(
-        0 <= lane && lane <= 1,
-        "must have 0 ≤ lane ≤ 1, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1_lane_u8(ptr: *const u8, src: uint8x8_t, lane: i32) -> uint8x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> uint8x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 15))]
-pub unsafe fn vld1q_lane_u8(ptr: *const u8, src: uint8x16_t, lane: i32) -> uint8x16_t {
-    assert!(
-        0 <= lane && lane <= 15,
-        "must have 0 ≤ lane ≤ 15, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) -> uint8x16_t {
+    static_assert_imm4!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1_lane_u16(ptr: *const u16, src: uint16x4_t, lane: i32) -> uint16x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -> uint16x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1q_lane_u16(ptr: *const u16, src: uint16x8_t, lane: i32) -> uint16x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) -> uint16x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 1))]
-pub unsafe fn vld1_lane_u32(ptr: *const u32, src: uint32x2_t, lane: i32) -> uint32x2_t {
-    assert!(
-        0 <= lane && lane <= 1,
-        "must have 0 ≤ lane ≤ 1, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -> uint32x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1q_lane_u32(ptr: *const u32, src: uint32x4_t, lane: i32) -> uint32x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) -> uint32x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", lane = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, lane = 0))]
-pub unsafe fn vld1_lane_u64(ptr: *const u64, src: uint64x1_t, lane: i32) -> uint64x1_t {
-    assert!(
-        0 <= lane && lane <= 0,
-        "must have 0 ≤ lane ≤ 0, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr, LANE = 0))]
+pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", lane = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 1))]
-pub unsafe fn vld1q_lane_u64(ptr: *const u64, src: uint64x2_t, lane: i32) -> uint64x2_t {
-    assert!(
-        0 <= lane && lane <= 1,
-        "must have 0 ≤ lane ≤ 1, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1_lane_p8(ptr: *const p8, src: poly8x8_t, lane: i32) -> poly8x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> poly8x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", lane = 15))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 15))]
-pub unsafe fn vld1q_lane_p8(ptr: *const p8, src: poly8x16_t, lane: i32) -> poly8x16_t {
-    assert!(
-        0 <= lane && lane <= 15,
-        "must have 0 ≤ lane ≤ 15, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8", LANE = 15))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 15))]
+pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) -> poly8x16_t {
+    static_assert_imm4!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1_lane_p16(ptr: *const p16, src: poly16x4_t, lane: i32) -> poly16x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -> poly16x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", lane = 7))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 7))]
-pub unsafe fn vld1q_lane_p16(ptr: *const p16, src: poly16x8_t, lane: i32) -> poly16x8_t {
-    assert!(
-        0 <= lane && lane <= 7,
-        "must have 0 ≤ lane ≤ 7, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16", LANE = 7))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 7))]
+pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) -> poly16x8_t {
+    static_assert_imm3!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 1))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 1))]
-pub unsafe fn vld1_lane_f32(ptr: *const f32, src: float32x2_t, lane: i32) -> float32x2_t {
-    assert!(
-        0 <= lane && lane <= 1,
-        "must have 0 ≤ lane ≤ 1, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 1))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 1))]
+pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) -> float32x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(2)]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", lane = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, lane = 3))]
-pub unsafe fn vld1q_lane_f32(ptr: *const f32, src: float32x4_t, lane: i32) -> float32x4_t {
-    assert!(
-        0 <= lane && lane <= 3,
-        "must have 0 ≤ lane ≤ 3, but lane = {}",
-        lane
-    );
-    simd_insert(src, lane as u32, *ptr)
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32", LANE = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1, LANE = 3))]
+pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t) -> float32x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -944,7 +856,7 @@ pub unsafe fn vld1q_lane_f32(ptr: *const f32, src: float32x4_t, lane: i32) -> fl
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
-    let x = vld1_lane_s8(ptr, transmute(i8x8::splat(0)), 0);
+    let x = vld1_lane_s8::<0>(ptr, transmute(i8x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -955,7 +867,7 @@ pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
-    let x = vld1q_lane_s8(ptr, transmute(i8x16::splat(0)), 0);
+    let x = vld1q_lane_s8::<0>(ptr, transmute(i8x16::splat(0)));
     simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -966,7 +878,7 @@ pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
-    let x = vld1_lane_s16(ptr, transmute(i16x4::splat(0)), 0);
+    let x = vld1_lane_s16::<0>(ptr, transmute(i16x4::splat(0)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -977,7 +889,7 @@ pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
-    let x = vld1q_lane_s16(ptr, transmute(i16x8::splat(0)), 0);
+    let x = vld1q_lane_s16::<0>(ptr, transmute(i16x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -988,7 +900,7 @@ pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
-    let x = vld1_lane_s32(ptr, transmute(i32x2::splat(0)), 0);
+    let x = vld1_lane_s32::<0>(ptr, transmute(i32x2::splat(0)));
     simd_shuffle2(x, x, [0, 0])
 }
 
@@ -999,7 +911,7 @@ pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
-    let x = vld1q_lane_s32(ptr, transmute(i32x4::splat(0)), 0);
+    let x = vld1q_lane_s32::<0>(ptr, transmute(i32x4::splat(0)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -1022,7 +934,7 @@ pub unsafe fn vld1_dup_s64(ptr: *const i64) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
-    let x = vld1q_lane_s64(ptr, transmute(i64x2::splat(0)), 0);
+    let x = vld1q_lane_s64::<0>(ptr, transmute(i64x2::splat(0)));
     simd_shuffle2(x, x, [0, 0])
 }
 
@@ -1033,7 +945,7 @@ pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
-    let x = vld1_lane_u8(ptr, transmute(u8x8::splat(0)), 0);
+    let x = vld1_lane_u8::<0>(ptr, transmute(u8x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1044,7 +956,7 @@ pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
-    let x = vld1q_lane_u8(ptr, transmute(u8x16::splat(0)), 0);
+    let x = vld1q_lane_u8::<0>(ptr, transmute(u8x16::splat(0)));
     simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1055,7 +967,7 @@ pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
-    let x = vld1_lane_u16(ptr, transmute(u16x4::splat(0)), 0);
+    let x = vld1_lane_u16::<0>(ptr, transmute(u16x4::splat(0)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -1066,7 +978,7 @@ pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
-    let x = vld1q_lane_u16(ptr, transmute(u16x8::splat(0)), 0);
+    let x = vld1q_lane_u16::<0>(ptr, transmute(u16x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1077,7 +989,7 @@ pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
-    let x = vld1_lane_u32(ptr, transmute(u32x2::splat(0)), 0);
+    let x = vld1_lane_u32::<0>(ptr, transmute(u32x2::splat(0)));
     simd_shuffle2(x, x, [0, 0])
 }
 
@@ -1088,7 +1000,7 @@ pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
-    let x = vld1q_lane_u32(ptr, transmute(u32x4::splat(0)), 0);
+    let x = vld1q_lane_u32::<0>(ptr, transmute(u32x4::splat(0)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -1111,7 +1023,7 @@ pub unsafe fn vld1_dup_u64(ptr: *const u64) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
-    let x = vld1q_lane_u64(ptr, transmute(u64x2::splat(0)), 0);
+    let x = vld1q_lane_u64::<0>(ptr, transmute(u64x2::splat(0)));
     simd_shuffle2(x, x, [0, 0])
 }
 
@@ -1122,7 +1034,7 @@ pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
-    let x = vld1_lane_p8(ptr, transmute(u8x8::splat(0)), 0);
+    let x = vld1_lane_p8::<0>(ptr, transmute(u8x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1133,7 +1045,7 @@ pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
-    let x = vld1q_lane_p8(ptr, transmute(u8x16::splat(0)), 0);
+    let x = vld1q_lane_p8::<0>(ptr, transmute(u8x16::splat(0)));
     simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1144,7 +1056,7 @@ pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
-    let x = vld1_lane_p16(ptr, transmute(u16x4::splat(0)), 0);
+    let x = vld1_lane_p16::<0>(ptr, transmute(u16x4::splat(0)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -1155,7 +1067,7 @@ pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
-    let x = vld1q_lane_p16(ptr, transmute(u16x8::splat(0)), 0);
+    let x = vld1q_lane_p16::<0>(ptr, transmute(u16x8::splat(0)));
     simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
@@ -1166,7 +1078,7 @@ pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
-    let x = vld1_lane_f32(ptr, transmute(f32x2::splat(0.)), 0);
+    let x = vld1_lane_f32::<0>(ptr, transmute(f32x2::splat(0.)));
     simd_shuffle2(x, x, [0, 0])
 }
 
@@ -1177,7 +1089,7 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_f32(ptr: *const f32) -> float32x4_t {
-    let x = vld1q_lane_f32(ptr, transmute(f32x4::splat(0.)), 0);
+    let x = vld1q_lane_f32::<0>(ptr, transmute(f32x4::splat(0.)));
     simd_shuffle4(x, x, [0, 0, 0, 0])
 }
 
@@ -3064,14 +2976,14 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 1))]
 // Based on the discussion in https://github.com/rust-lang/stdarch/pull/792
 // `mov` seems to be an acceptable intrinsic to compile to
 // #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(vmov, imm5 = 1))]
-pub unsafe fn vgetq_lane_u64(v: uint64x2_t, imm5: i32) -> u64 {
-    assert!(imm5 >= 0 && imm5 <= 1);
+pub unsafe fn vgetq_lane_u64<const imm5: i32>(v: uint64x2_t) -> u64 {
+    static_assert_imm1!(imm5);
     simd_extract(v, imm5 as u32)
 }
 
@@ -3079,13 +2991,13 @@ pub unsafe fn vgetq_lane_u64(v: uint64x2_t, imm5: i32) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmov, imm5 = 0))]
 // FIXME: no 32bit this seems to be turned into two vmov.32 instructions
 // validate correctness
-pub unsafe fn vget_lane_u64(v: uint64x1_t, imm5: i32) -> u64 {
-    assert!(imm5 == 0);
+pub unsafe fn vget_lane_u64<const imm5: i32>(v: uint64x1_t) -> u64 {
+    static_assert!(imm5 : i32 where imm5 == 0);
     simd_extract(v, 0)
 }
 
@@ -3093,11 +3005,11 @@ pub unsafe fn vget_lane_u64(v: uint64x1_t, imm5: i32) -> u64 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u16", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
-pub unsafe fn vgetq_lane_u16(v: uint16x8_t, imm5: i32) -> u16 {
-    assert!(imm5 >= 0 && imm5 <= 7);
+pub unsafe fn vgetq_lane_u16<const imm5: i32>(v: uint16x8_t) -> u16 {
+    static_assert_imm3!(imm5);
     simd_extract(v, imm5 as u32)
 }
 
@@ -3105,11 +3017,11 @@ pub unsafe fn vgetq_lane_u16(v: uint16x8_t, imm5: i32) -> u16 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
-pub unsafe fn vgetq_lane_u32(v: uint32x4_t, imm5: i32) -> u32 {
-    assert!(imm5 >= 0 && imm5 <= 3);
+pub unsafe fn vgetq_lane_u32<const imm5: i32>(v: uint32x4_t) -> u32 {
+    static_assert_imm2!(imm5);
     simd_extract(v, imm5 as u32)
 }
 
@@ -3117,11 +3029,11 @@ pub unsafe fn vgetq_lane_u32(v: uint32x4_t, imm5: i32) -> u32 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.32", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov, imm5 = 2))]
-pub unsafe fn vgetq_lane_s32(v: int32x4_t, imm5: i32) -> i32 {
-    assert!(imm5 >= 0 && imm5 <= 3);
+pub unsafe fn vgetq_lane_s32<const imm5: i32>(v: int32x4_t) -> i32 {
+    static_assert_imm2!(imm5);
     simd_extract(v, imm5 as u32)
 }
 
@@ -3129,11 +3041,11 @@ pub unsafe fn vgetq_lane_s32(v: int32x4_t, imm5: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov.u8", imm5 = 2))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umov, imm5 = 2))]
-pub unsafe fn vget_lane_u8(v: uint8x8_t, imm5: i32) -> u8 {
-    assert!(imm5 >= 0 && imm5 <= 7);
+pub unsafe fn vget_lane_u8<const imm5: i32>(v: uint8x8_t) -> u8 {
+    static_assert_imm3!(imm5);
     simd_extract(v, imm5 as u32)
 }
 
@@ -3233,8 +3145,8 @@ pub unsafe fn vreinterpretq_u8_s8(a: int8x16_t) -> uint8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshr.u8", imm3 = 1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr("ushr", imm3 = 1))]
-#[rustc_args_required_const(1)]
-pub unsafe fn vshrq_n_u8(a: uint8x16_t, imm3: i32) -> uint8x16_t {
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshrq_n_u8<const imm3: i32>(a: uint8x16_t) -> uint8x16_t {
     if imm3 < 0 || imm3 > 7 {
         unreachable_unchecked();
     } else {
@@ -3265,8 +3177,8 @@ pub unsafe fn vshrq_n_u8(a: uint8x16_t, imm3: i32) -> uint8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshl.s8", imm3 = 1))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(shl, imm3 = 1))]
-#[rustc_args_required_const(1)]
-pub unsafe fn vshlq_n_u8(a: uint8x16_t, imm3: i32) -> uint8x16_t {
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshlq_n_u8<const imm3: i32>(a: uint8x16_t) -> uint8x16_t {
     if imm3 < 0 || imm3 > 7 {
         unreachable_unchecked();
     } else {
@@ -3295,14 +3207,14 @@ pub unsafe fn vshlq_n_u8(a: uint8x16_t, imm3: i32) -> uint8x16_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", n = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, n = 3))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vextq_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
-    if n < 0 || n > 15 {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    if N < 0 || N > 15 {
         unreachable_unchecked();
     };
-    match n & 0b1111 {
+    match N & 0b1111 {
         0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         1 => simd_shuffle16(
             a,
@@ -3401,14 +3313,14 @@ pub unsafe fn vextq_s8(a: int8x16_t, b: int8x16_t, n: i32) -> int8x16_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", n = 3))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, n = 3))]
-#[rustc_args_required_const(2)]
-pub unsafe fn vextq_u8(a: uint8x16_t, b: uint8x16_t, n: i32) -> uint8x16_t {
-    if n < 0 || n > 15 {
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vext.8", N = 3))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext, N = 3))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    if N < 0 || N > 15 {
         unreachable_unchecked();
     };
-    match n & 0b1111 {
+    match N & 0b1111 {
         0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
         1 => simd_shuffle16(
             a,
@@ -4440,7 +4352,7 @@ mod tests {
         let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: i8 = 42;
         let e = i8x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: i8x8 = transmute(vld1_lane_s8(&elem, transmute(a), 7));
+        let r: i8x8 = transmute(vld1_lane_s8::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4449,7 +4361,7 @@ mod tests {
         let a = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let elem: i8 = 42;
         let e = i8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 42);
-        let r: i8x16 = transmute(vld1q_lane_s8(&elem, transmute(a), 15));
+        let r: i8x16 = transmute(vld1q_lane_s8::<15>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4458,7 +4370,7 @@ mod tests {
         let a = i16x4::new(0, 1, 2, 3);
         let elem: i16 = 42;
         let e = i16x4::new(0, 1, 2, 42);
-        let r: i16x4 = transmute(vld1_lane_s16(&elem, transmute(a), 3));
+        let r: i16x4 = transmute(vld1_lane_s16::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4467,7 +4379,7 @@ mod tests {
         let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: i16 = 42;
         let e = i16x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: i16x8 = transmute(vld1q_lane_s16(&elem, transmute(a), 7));
+        let r: i16x8 = transmute(vld1q_lane_s16::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4476,7 +4388,7 @@ mod tests {
         let a = i32x2::new(0, 1);
         let elem: i32 = 42;
         let e = i32x2::new(0, 42);
-        let r: i32x2 = transmute(vld1_lane_s32(&elem, transmute(a), 1));
+        let r: i32x2 = transmute(vld1_lane_s32::<1>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4485,7 +4397,7 @@ mod tests {
         let a = i32x4::new(0, 1, 2, 3);
         let elem: i32 = 42;
         let e = i32x4::new(0, 1, 2, 42);
-        let r: i32x4 = transmute(vld1q_lane_s32(&elem, transmute(a), 3));
+        let r: i32x4 = transmute(vld1q_lane_s32::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4494,7 +4406,7 @@ mod tests {
         let a = i64x1::new(0);
         let elem: i64 = 42;
         let e = i64x1::new(42);
-        let r: i64x1 = transmute(vld1_lane_s64(&elem, transmute(a), 0));
+        let r: i64x1 = transmute(vld1_lane_s64::<0>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4503,7 +4415,7 @@ mod tests {
         let a = i64x2::new(0, 1);
         let elem: i64 = 42;
         let e = i64x2::new(0, 42);
-        let r: i64x2 = transmute(vld1q_lane_s64(&elem, transmute(a), 1));
+        let r: i64x2 = transmute(vld1q_lane_s64::<1>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4512,7 +4424,7 @@ mod tests {
         let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: u8 = 42;
         let e = u8x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: u8x8 = transmute(vld1_lane_u8(&elem, transmute(a), 7));
+        let r: u8x8 = transmute(vld1_lane_u8::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4521,7 +4433,7 @@ mod tests {
         let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let elem: u8 = 42;
         let e = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 42);
-        let r: u8x16 = transmute(vld1q_lane_u8(&elem, transmute(a), 15));
+        let r: u8x16 = transmute(vld1q_lane_u8::<15>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4530,7 +4442,7 @@ mod tests {
         let a = u16x4::new(0, 1, 2, 3);
         let elem: u16 = 42;
         let e = u16x4::new(0, 1, 2, 42);
-        let r: u16x4 = transmute(vld1_lane_u16(&elem, transmute(a), 3));
+        let r: u16x4 = transmute(vld1_lane_u16::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4539,7 +4451,7 @@ mod tests {
         let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: u16 = 42;
         let e = u16x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: u16x8 = transmute(vld1q_lane_u16(&elem, transmute(a), 7));
+        let r: u16x8 = transmute(vld1q_lane_u16::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4548,7 +4460,7 @@ mod tests {
         let a = u32x2::new(0, 1);
         let elem: u32 = 42;
         let e = u32x2::new(0, 42);
-        let r: u32x2 = transmute(vld1_lane_u32(&elem, transmute(a), 1));
+        let r: u32x2 = transmute(vld1_lane_u32::<1>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4557,7 +4469,7 @@ mod tests {
         let a = u32x4::new(0, 1, 2, 3);
         let elem: u32 = 42;
         let e = u32x4::new(0, 1, 2, 42);
-        let r: u32x4 = transmute(vld1q_lane_u32(&elem, transmute(a), 3));
+        let r: u32x4 = transmute(vld1q_lane_u32::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4566,7 +4478,7 @@ mod tests {
         let a = u64x1::new(0);
         let elem: u64 = 42;
         let e = u64x1::new(42);
-        let r: u64x1 = transmute(vld1_lane_u64(&elem, transmute(a), 0));
+        let r: u64x1 = transmute(vld1_lane_u64::<0>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4575,7 +4487,7 @@ mod tests {
         let a = u64x2::new(0, 1);
         let elem: u64 = 42;
         let e = u64x2::new(0, 42);
-        let r: u64x2 = transmute(vld1q_lane_u64(&elem, transmute(a), 1));
+        let r: u64x2 = transmute(vld1q_lane_u64::<1>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4584,7 +4496,7 @@ mod tests {
         let a = u8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: p8 = 42;
         let e = u8x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: u8x8 = transmute(vld1_lane_p8(&elem, transmute(a), 7));
+        let r: u8x8 = transmute(vld1_lane_p8::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4593,7 +4505,7 @@ mod tests {
         let a = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let elem: p8 = 42;
         let e = u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 42);
-        let r: u8x16 = transmute(vld1q_lane_p8(&elem, transmute(a), 15));
+        let r: u8x16 = transmute(vld1q_lane_p8::<15>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4602,7 +4514,7 @@ mod tests {
         let a = u16x4::new(0, 1, 2, 3);
         let elem: p16 = 42;
         let e = u16x4::new(0, 1, 2, 42);
-        let r: u16x4 = transmute(vld1_lane_p16(&elem, transmute(a), 3));
+        let r: u16x4 = transmute(vld1_lane_p16::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4611,7 +4523,7 @@ mod tests {
         let a = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let elem: p16 = 42;
         let e = u16x8::new(0, 1, 2, 3, 4, 5, 6, 42);
-        let r: u16x8 = transmute(vld1q_lane_p16(&elem, transmute(a), 7));
+        let r: u16x8 = transmute(vld1q_lane_p16::<7>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4620,7 +4532,7 @@ mod tests {
         let a = f32x2::new(0., 1.);
         let elem: f32 = 42.;
         let e = f32x2::new(0., 42.);
-        let r: f32x2 = transmute(vld1_lane_f32(&elem, transmute(a), 1));
+        let r: f32x2 = transmute(vld1_lane_f32::<1>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4629,7 +4541,7 @@ mod tests {
         let a = f32x4::new(0., 1., 2., 3.);
         let elem: f32 = 42.;
         let e = f32x4::new(0., 1., 2., 42.);
-        let r: f32x4 = transmute(vld1q_lane_f32(&elem, transmute(a), 3));
+        let r: f32x4 = transmute(vld1q_lane_f32::<3>(&elem, transmute(a)));
         assert_eq!(r, e)
     }
 
@@ -4836,35 +4748,35 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vget_lane_u8() {
         let v = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = vget_lane_u8(transmute(v), 1);
+        let r = vget_lane_u8::<1>(transmute(v));
         assert_eq!(r, 2);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vgetq_lane_u32() {
         let v = i32x4::new(1, 2, 3, 4);
-        let r = vgetq_lane_u32(transmute(v), 1);
+        let r = vgetq_lane_u32::<1>(transmute(v));
         assert_eq!(r, 2);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vgetq_lane_s32() {
         let v = i32x4::new(1, 2, 3, 4);
-        let r = vgetq_lane_s32(transmute(v), 1);
+        let r = vgetq_lane_s32::<1>(transmute(v));
         assert_eq!(r, 2);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vget_lane_u64() {
         let v: u64 = 1;
-        let r = vget_lane_u64(transmute(v), 0);
+        let r = vget_lane_u64::<0>(transmute(v));
         assert_eq!(r, 1);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vgetq_lane_u16() {
         let v = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = vgetq_lane_u16(transmute(v), 1);
+        let r = vgetq_lane_u16::<1>(transmute(v));
         assert_eq!(r, 2);
     }
 
@@ -4875,7 +4787,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 31, 32,
         );
         let e = i8x16::new(4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
-        let r: i8x16 = transmute(vextq_s8(transmute(a), transmute(b), 3));
+        let r: i8x16 = transmute(vextq_s8::<3>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4886,7 +4798,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 31, 32,
         );
         let e = u8x16::new(4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
-        let r: u8x16 = transmute(vextq_u8(transmute(a), transmute(b), 3));
+        let r: u8x16 = transmute(vextq_u8::<3>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -4894,7 +4806,7 @@ mod tests {
     unsafe fn test_vshrq_n_u8() {
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let e = u8x16::new(0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4);
-        let r: u8x16 = transmute(vshrq_n_u8(transmute(a), 2));
+        let r: u8x16 = transmute(vshrq_n_u8::<2>(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -4902,7 +4814,7 @@ mod tests {
     unsafe fn test_vshlq_n_u8() {
         let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let e = u8x16::new(4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64);
-        let r: u8x16 = transmute(vshlq_n_u8(transmute(a), 2));
+        let r: u8x16 = transmute(vshlq_n_u8::<2>(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -4957,7 +4869,7 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vgetq_lane_u64() {
         let v = i64x2::new(1, 2);
-        let r = vgetq_lane_u64(transmute(v), 1);
+        let r = vgetq_lane_u64::<1>(transmute(v));
         assert_eq!(r, 2);
     }
 

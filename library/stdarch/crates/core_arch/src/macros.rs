@@ -10,6 +10,13 @@ impl<const IMM: i32, const BITS: i32> ValidateConstImm<IMM, BITS> {
 }
 
 #[allow(unused)]
+macro_rules! static_assert_imm1 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 1>::VALID;
+    };
+}
+
+#[allow(unused)]
 macro_rules! static_assert_imm2 {
     ($imm:ident) => {
         let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 2>::VALID;
