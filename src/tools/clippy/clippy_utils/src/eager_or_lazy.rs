@@ -18,6 +18,7 @@ use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_span::sym;
 
 /// Is the expr pure (is it free from side-effects)?
 /// This function is named so to stress that it isn't exhaustive and returns FNs.
@@ -99,7 +100,7 @@ fn identify_some_potentially_expensive_patterns<'tcx>(cx: &LateContext<'tcx>, ex
                 ExprKind::Call(..) => !is_ctor_or_promotable_const_function(self.cx, expr),
                 ExprKind::Index(obj, _) => {
                     let ty = self.cx.typeck_results().expr_ty(obj);
-                    is_type_diagnostic_item(self.cx, ty, sym!(hashmap_type))
+                    is_type_diagnostic_item(self.cx, ty, sym::hashmap_type)
                         || match_type(self.cx, ty, &paths::BTREEMAP)
                 },
                 ExprKind::MethodCall(..) => true,

@@ -177,7 +177,10 @@ impl<T> SyncOnceCell<T> {
 
     /// Sets the contents of this cell to `value`.
     ///
-    /// Returns `Ok(())` if the cell's value was updated.
+    /// May block if another thread is currently attempting to initialize the cell. The cell is
+    /// guaranteed to contain a value when set returns, though not necessarily the one provided.
+    ///
+    /// Returns `Ok(())` if the cell's value was set by this call.
     ///
     /// # Examples
     ///

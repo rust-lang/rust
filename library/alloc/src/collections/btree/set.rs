@@ -61,6 +61,7 @@ use super::Recover;
 /// ```
 #[derive(Hash, PartialEq, Eq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "BTreeSet")]
 pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }

@@ -57,14 +57,6 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// `true` here can still be overwritten by `should_run` calling `default_condition`.
     const DEFAULT: bool = false;
 
-    /// Whether this step should be run even when `download-rustc` is set.
-    ///
-    /// Most steps are not important when the compiler is downloaded, since they will be included in
-    /// the pre-compiled sysroot. Steps can set this to `true` to be built anyway.
-    ///
-    /// When in doubt, set this to `false`.
-    const ENABLE_DOWNLOAD_RUSTC: bool = false;
-
     /// If true, then this rule should be skipped if --target was specified, but --host was not
     const ONLY_HOSTS: bool = false;
 
@@ -107,7 +99,6 @@ impl RunConfig<'_> {
 
 struct StepDescription {
     default: bool,
-    enable_download_rustc: bool,
     only_hosts: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
     make_run: fn(RunConfig<'_>),
@@ -162,7 +153,6 @@ impl StepDescription {
     fn from<S: Step>() -> StepDescription {
         StepDescription {
             default: S::DEFAULT,
-            enable_download_rustc: S::ENABLE_DOWNLOAD_RUSTC,
             only_hosts: S::ONLY_HOSTS,
             should_run: S::should_run,
             make_run: S::make_run,
@@ -179,14 +169,6 @@ impl StepDescription {
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
             );
-        } else if builder.config.download_rustc && !self.enable_download_rustc {
-            if !builder.config.dry_run {
-                eprintln!(
-                    "Not running {} because its artifacts have been downloaded from CI (`download-rustc` is set)",
-                    self.name
-                );
-            }
-            return;
         }
 
         // Determine the targets participating in this rule.

@@ -24,7 +24,7 @@ use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, SymbolStr};
+use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
@@ -2598,7 +2598,7 @@ fn lint_iter_nth<'tcx>(
         "slice"
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vecdeque_type) {
         "VecDeque"
     } else {
         let nth_args = nth_and_iter_args[0];
@@ -2652,10 +2652,10 @@ fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args:
     } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym::vecdeque_type) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym!(hashmap_type)) {
+    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::hashmap_type) {
         needs_ref = true;
         "HashMap"
     } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
@@ -3619,7 +3619,7 @@ fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symbol, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let mutbl = match self_ref_ty.kind() {
             ty::Ref(_, _, mutbl) => mutbl,

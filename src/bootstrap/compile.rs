@@ -63,6 +63,12 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
+        // These artifacts were already copied (in `impl Step for Sysroot`).
+        // Don't recompile them.
+        if builder.config.download_rustc {
+            return;
+        }
+
         if builder.config.keep_stage.contains(&compiler.stage)
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
@@ -178,7 +184,9 @@ fn copy_self_contained_objects(
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
     // and link with them manually in the self-contained mode.
     if target.contains("musl") {
-        let srcdir = builder.musl_libdir(target).unwrap();
+        let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
+            panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
+        });
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(
                 builder,
@@ -196,7 +204,12 @@ fn copy_self_contained_objects(
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
     } else if target.ends_with("-wasi") {
-        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
+        let srcdir = builder
+            .wasi_root(target)
+            .unwrap_or_else(|| {
+                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+            })
+            .join("lib/wasm32-wasi");
         for &obj in &["crt1.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -499,6 +512,13 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
+
+        if builder.config.download_rustc {
+            // Copy the existing artifacts instead of rebuilding them.
+            // NOTE: this path is only taken for tools linking to rustc-dev.
+            builder.ensure(Sysroot { compiler });
+            return;
+        }
 
         builder.ensure(Std { compiler, target });
 
