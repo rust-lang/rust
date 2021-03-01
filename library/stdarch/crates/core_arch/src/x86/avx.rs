@@ -379,7 +379,7 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 }
 
 /// Rounds packed single-precision (32-bit) floating point elements in `a`
-/// according to the flag `b`. The value of `b` may be as follows:
+/// according to the flag `ROUNDING`. The value of `ROUNDING` may be as follows:
 ///
 /// - `0x00`: Round to the nearest whole number.
 /// - `0x01`: Round down, toward negative infinity.
@@ -393,16 +393,12 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_round_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vroundps, b = 0x00))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vroundps, ROUNDING = 0x00))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            roundps256(a, $imm8)
-        };
-    }
-    constify_imm8!(b, call)
+pub unsafe fn _mm256_round_ps<const ROUNDING: i32>(a: __m256) -> __m256 {
+    static_assert_imm4!(ROUNDING);
+    roundps256(a, ROUNDING)
 }
 
 /// Rounds packed single-precision (32-bit) floating point elements in `a`
@@ -3471,9 +3467,9 @@ mod tests {
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_round_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
-        let result_closest = _mm256_round_ps(a, 0b00000000);
-        let result_down = _mm256_round_ps(a, 0b00000001);
-        let result_up = _mm256_round_ps(a, 0b00000010);
+        let result_closest = _mm256_round_ps::<0b0000>(a);
+        let result_down = _mm256_round_ps::<0b0001>(a);
+        let result_up = _mm256_round_ps::<0b0010>(a);
         let expected_closest = _mm256_setr_ps(2., 2., 4., -1., 2., 2., 4., -1.);
         let expected_down = _mm256_setr_ps(1., 2., 3., -2., 1., 2., 3., -2.);
         let expected_up = _mm256_setr_ps(2., 3., 4., -1., 2., 3., 4., -1.);
