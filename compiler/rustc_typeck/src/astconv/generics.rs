@@ -499,7 +499,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let expected_min = if infer_args {
                 0
             } else {
-                param_counts.consts + named_type_param_count - default_counts.types
+                param_counts.consts + named_type_param_count
+                    - default_counts.types
+                    - default_counts.consts
             };
 
             check_generics(

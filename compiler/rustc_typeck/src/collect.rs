@@ -1527,7 +1527,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         |lint| {
                             lint.build(
                                 "defaults for type parameters are only allowed in \
-                                 `struct`, `enum`, `type`, or `trait` definitions.",
+                                 `struct`, `enum`, `type`, or `trait` definitions",
                             )
                             .emit();
                         },
@@ -1554,6 +1554,14 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(param_def)
         }
         GenericParamKind::Const { default, .. } => {
+            if !allow_defaults && default.is_some() {
+                tcx.sess.span_err(
+                    param.span,
+                    "defaults for const parameters are only allowed in \
+                    `struct`, `enum`, `type`, or `trait` definitions",
+                );
+            }
+
             let param_def = ty::GenericParamDef {
                 index: type_start + i as u32,
                 name: param.name.ident().name,

@@ -1,9 +1,8 @@
-error[E0282]: type annotations needed
-  --> $DIR/default_function_param.rs:6:28
+error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/default_function_param.rs:5:14
    |
-LL | fn foo<const SIZE: usize = 5>() {}
-   |                            ^ cannot infer type for type `{integer}`
+LL | fn foo<const SIZE: usize = 5usize>() {}
+   |              ^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.

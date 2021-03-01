@@ -228,7 +228,7 @@ enum ResolutionError<'a> {
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
-    /// Error E0128: type parameters with a default cannot use forward-declared identifiers.
+    /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam(Symbol),
@@ -238,7 +238,7 @@ enum ResolutionError<'a> {
     ///
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst { name: Symbol, is_type: bool },
-    /// Error E0735: type parameters with a default cannot use `Self`
+    /// Error E0735: generic parameters with a default cannot use `Self`
     SelfInTyParamDefault,
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },

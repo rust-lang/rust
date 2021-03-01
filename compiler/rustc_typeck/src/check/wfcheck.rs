@@ -759,7 +759,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 fcx.tcx.mk_param_from_def(param)
             }
 
-            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            GenericParamDefKind::Type { .. } => {
                 // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ty = fcx.tcx.type_of(param.def_id);
@@ -771,6 +771,16 @@ fn check_where_clauses<'tcx, 'fcx>(
                 }
 
                 fcx.tcx.mk_param_from_def(param)
+            }
+            GenericParamDefKind::Const { .. } => {
+                if is_our_default(param) {
+                    let default_ct = ty::Const::from_anon_const(tcx, param.def_id.expect_local());
+                    // Const params have to currently be concrete.
+                    assert!(!default_ct.needs_subst());
+                    default_ct.into()
+                } else {
+                    fcx.tcx.mk_param_from_def(param)
+                }
             }
         }
     });

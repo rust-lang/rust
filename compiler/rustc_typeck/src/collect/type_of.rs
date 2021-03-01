@@ -436,6 +436,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     .discr_type()
                     .to_ty(tcx),
 
+                Node::GenericParam(&GenericParam {
+                    hir_id: param_hir_id,
+                    kind: GenericParamKind::Const { default: Some(ct), .. },
+                    ..
+                }) if ct.hir_id == hir_id => tcx.type_of(tcx.hir().local_def_id(param_hir_id)),
+
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
                     &format!("unexpected const parent in type_of_def_id(): {:?}", x),

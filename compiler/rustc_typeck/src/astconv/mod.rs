@@ -505,34 +505,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
-                        let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            let c = substs.unwrap()[param.index as usize].expect_const();
-                            ty::subst::GenericArg::from(c)
-                        } else if infer_args {
-                            self.astconv.ct_infer(ty, Some(param), self.span).into()
+                            ty::Const::from_anon_const(tcx, param.def_id.expect_local()).into()
                         } else {
-                            // We've already errored above about the mismatch.
-                            tcx.const_error(ty).into()
-                        }
-                        // FIXME(const_generic_defaults)
-                        /*
-                        if !infer_args && has_default {
-                            /*
-                            if default_needs_object_self(param) {
-                                missing_type_params.push(param.name.to_string());
-                                tcx.const_error(ty).into()
+                            let ty = tcx.at(self.span).type_of(param.def_id);
+                            if infer_args {
+                                self.astconv.ct_infer(ty, Some(param), self.span).into()
                             } else {
+                                // We've already errored above about the mismatch.
+                                tcx.const_error(ty).into()
                             }
-                            */
-                        } else if infer_args {
-                            // No const parameters were provided, we can infer all.
-                            self.astconv.ct_infer(ty, Some(param), self.span).into()
-                        } else {
-                            // We've already errored above about the mismatch.
-                            tcx.const_error(ty).into()
                         }
-                        */
                     }
                 }
             }
