@@ -177,7 +177,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt
             let c = 1013904223;
             *seed = usize::wrapping_add(usize::wrapping_mul(*seed, a), c);
             return *seed;
-        };
+        }
         fn make_ident(ident: &str) -> tt::TokenTree {
             tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), text: SmolStr::new(ident) })
                 .into()
