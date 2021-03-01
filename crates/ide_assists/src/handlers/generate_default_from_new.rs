@@ -1,10 +1,10 @@
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils, AssistId,
+    AssistId,
 };
 use syntax::{
-    ast::{self, Adt, Impl, NameOwner},
-    AstNode, Direction,
+    ast::{self, Impl, NameOwner},
+    AstNode,
 };
 use test_utils::mark;
 
@@ -60,28 +60,23 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
         "Generate a Default impl from a new fn",
         insert_location,
         move |builder| {
-            let default_fn_syntax = default_fn_node_for_new(impl_);
-            if let Some(code) = default_fn_syntax {
-                builder.insert(insert_location.end(), code)
-            }
+            let code = default_fn_node_for_new(impl_);
+            builder.insert(insert_location.end(), code);
         },
     )
 }
 
-fn default_fn_node_for_new(impl_: Impl) -> Option<String> {
-    // the code string is this way due to formatting reason
-    let code = r#"    fn default() -> Self {
-        Self::new()
-    }"#;
-    let struct_name = impl_.self_ty()?.syntax().to_string();
-    let struct_ = impl_
-        .syntax()
-        .siblings(Direction::Prev)
-        .filter_map(ast::Struct::cast)
-        .find(|struct_| struct_.name().unwrap().text() == struct_name)?;
+fn default_fn_node_for_new(impl_: Impl) -> String {
+    format!(
+        "
 
-    let adt = Adt::cast(struct_.syntax().clone())?;
-    Some(utils::generate_trait_impl_text(&adt, "Default", code))
+impl Default for {} {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}",
+        impl_.self_ty().unwrap().syntax().text()
+    )
 }
 
 #[cfg(test)]
@@ -233,7 +228,7 @@ struct Example { _inner: () }
 struct Test { value: u32 }
 
 impl Example {
-    pub fn new$0 () -> Self {
+    pub fn new$0() -> Self {
         Self { _inner: () }
     }
 }
@@ -243,7 +238,7 @@ struct Example { _inner: () }
 struct Test { value: u32 }
 
 impl Example {
-    pub fn new () -> Self {
+    pub fn new() -> Self {
         Self { _inner: () }
     }
 }
@@ -253,6 +248,37 @@ impl Default for Example {
         Self::new()
     }
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn when_struct_is_after_impl() {
+        check_assist(
+            generate_default_from_new,
+            r#"
+impl Example {
+    pub fn $0new() -> Self {
+        Self { _inner: () }
+    }
+}
+
+struct Example { _inner: () }
+"#,
+            r#"
+impl Example {
+    pub fn new() -> Self {
+        Self { _inner: () }
+    }
+}
+
+impl Default for Example {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+struct Example { _inner: () }
 "#,
         );
     }
