@@ -203,7 +203,12 @@ fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> boo
 
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             match e.kind {
-                ExprKind::Break(..) | ExprKind::Continue(_) | ExprKind::Ret(_) => {
+                ExprKind::Break(..)
+                | ExprKind::Continue(_)
+                | ExprKind::Ret(_)
+                | ExprKind::Yield(..)
+                | ExprKind::InlineAsm(_)
+                | ExprKind::LlvmInlineAsm(_) => {
                     self.make_closure = false;
                 },
                 // Accessing a field of a local value can only be done if the type isn't

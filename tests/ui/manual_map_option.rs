@@ -1,3 +1,4 @@
+// edition:2018
 // run-rustfix
 
 #![warn(clippy::manual_map)]
@@ -173,4 +174,16 @@ fn main() {
         Some(x) => Some(String::from(x)),
         None => None,
     };
+
+    // #6819
+    async fn f2(x: u32) -> u32 {
+        x
+    }
+
+    async fn f3() {
+        match Some(0) {
+            Some(x) => Some(f2(x).await),
+            None => None,
+        };
+    }
 }
