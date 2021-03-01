@@ -1835,7 +1835,10 @@ impl Step for RustcGuide {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let src = builder.src.join("src/doc/rustc-dev-guide");
+        let relative_path = Path::new("src").join("doc").join("rustc-dev-guide");
+        builder.update_submodule(&relative_path);
+
+        let src = builder.src.join(relative_path);
         let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         let toolstate = if try_run(builder, rustbook_cmd.arg("linkcheck").arg(&src)) {
             ToolState::TestPass

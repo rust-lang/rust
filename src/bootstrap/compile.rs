@@ -79,6 +79,8 @@ impl Step for Std {
             return;
         }
 
+        builder.update_submodule(&Path::new("library").join("stdarch"));
+
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
