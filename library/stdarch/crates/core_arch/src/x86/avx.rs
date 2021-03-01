@@ -1326,16 +1326,12 @@ pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2f128_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vperm2f128, imm8 = 0x5))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 0x5))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_permute2f128_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            vperm2f128ps256(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_imm8!(IMM8);
+    vperm2f128ps256(a, b, IMM8 as i8)
 }
 
 /// Shuffles 256 bits (composed of 4 packed double-precision (64-bit)
@@ -3884,7 +3880,7 @@ mod tests {
     unsafe fn test_mm256_permute2f128_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
-        let r = _mm256_permute2f128_ps(a, b, 0x13);
+        let r = _mm256_permute2f128_ps::<0x13>(a, b);
         let e = _mm256_setr_ps(5., 6., 7., 8., 1., 2., 3., 4.);
         assert_eq_m256(r, e);
     }
