@@ -2483,18 +2483,12 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute2x128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vperm2f128, imm8 = 9))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vperm2f128, IMM8 = 9))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_permute2x128_si256(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_i64x4();
-    let b = b.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vperm2i128(a, b, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8, call))
+pub unsafe fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    transmute(vperm2i128(a.as_i64x4(), b.as_i64x4(), IMM8 as i8))
 }
 
 /// Shuffles 64-bit floating-point elements in `a` across lanes using the
@@ -5614,7 +5608,7 @@ mod tests {
     unsafe fn test_mm256_permute2x128_si256() {
         let a = _mm256_setr_epi64x(100, 200, 500, 600);
         let b = _mm256_setr_epi64x(300, 400, 700, 800);
-        let r = _mm256_permute2x128_si256(a, b, 0b00_01_00_11);
+        let r = _mm256_permute2x128_si256::<0b00_01_00_11>(a, b);
         let e = _mm256_setr_epi64x(700, 800, 500, 600);
         assert_eq_m256i(r, e);
     }
