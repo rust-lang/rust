@@ -1080,6 +1080,7 @@ declare_lint! {
     pub UNALIGNED_REFERENCES,
     Allow,
     "detects unaligned references to fields of packed structs",
+    report_in_external_macro
 }
 
 declare_lint! {
