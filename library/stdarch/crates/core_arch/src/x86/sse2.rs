@@ -1348,17 +1348,12 @@ pub unsafe fn _mm_packus_epi16(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi16)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(test, assert_instr(pextrw, imm8 = 9))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(pextrw, IMM8 = 7))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
-    let a = a.as_u16x8();
-    macro_rules! call {
-        ($imm3:expr) => {
-            simd_extract::<_, u16>(a, $imm3) as i32
-        };
-    }
-    constify_imm3!(imm8, call)
+pub unsafe fn _mm_extract_epi16<const IMM8: i32>(a: __m128i) -> i32 {
+    static_assert_imm3!(IMM8);
+    simd_extract::<_, u16>(a.as_u16x8(), IMM8 as u32) as i32
 }
 
 /// Returns a new vector where the `imm8` element of `a` is replaced with `i`.
@@ -3884,8 +3879,8 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_extract_epi16() {
         let a = _mm_setr_epi16(-1, 1, 2, 3, 4, 5, 6, 7);
-        let r1 = _mm_extract_epi16(a, 0);
-        let r2 = _mm_extract_epi16(a, 11);
+        let r1 = _mm_extract_epi16::<0>(a);
+        let r2 = _mm_extract_epi16::<3>(a);
         assert_eq!(r1, 0xFFFF);
         assert_eq!(r2, 3);
     }
