@@ -2859,6 +2859,10 @@ function defocusSearchBar() {
     function enableSearchInput() {
         if (search_input) {
             search_input.removeAttribute('disabled');
+            var params = getQueryStringParams();
+            if (search_input.value !== "" || (params && params.search)) {
+                search_input.focus();
+            }
         }
     }
 
