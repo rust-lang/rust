@@ -2,13 +2,9 @@ use std::fmt::Write;
 
 use xshell::{cmd, cp, pushd, read_dir, write_file};
 
-use crate::{codegen, date_iso, is_release_tag, project_root, Mode, Result};
+use crate::{codegen, date_iso, flags, is_release_tag, project_root, Mode, Result};
 
-pub(crate) struct ReleaseCmd {
-    pub(crate) dry_run: bool,
-}
-
-impl ReleaseCmd {
+impl flags::Release {
     pub(crate) fn run(self) -> Result<()> {
         if !self.dry_run {
             cmd!("git switch release").run()?;
@@ -86,11 +82,7 @@ https://github.com/sponsors/rust-analyzer[GitHub Sponsors].
     }
 }
 
-pub(crate) struct PromoteCmd {
-    pub(crate) dry_run: bool,
-}
-
-impl PromoteCmd {
+impl flags::Promote {
     pub(crate) fn run(self) -> Result<()> {
         let _dir = pushd("../rust-rust-analyzer")?;
         cmd!("git switch master").run()?;

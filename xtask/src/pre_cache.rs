@@ -6,9 +6,9 @@ use std::{
 use anyhow::Result;
 use xshell::rm_rf;
 
-pub(crate) struct PreCacheCmd;
+use crate::flags;
 
-impl PreCacheCmd {
+impl flags::PreCache {
     /// Cleans the `./target` dir after the build such that only
     /// dependencies are cached on CI.
     pub(crate) fn run(self) -> Result<()> {

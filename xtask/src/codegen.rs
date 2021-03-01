@@ -18,7 +18,7 @@ use std::{
 };
 use xshell::{cmd, pushenv, read_file, write_file};
 
-use crate::{ensure_rustfmt, project_root, Result};
+use crate::{ensure_rustfmt, flags, project_root, Result};
 
 pub(crate) use self::{
     gen_assists_docs::{generate_assists_docs, generate_assists_tests},
@@ -35,11 +35,7 @@ pub(crate) enum Mode {
     Verify,
 }
 
-pub(crate) struct CodegenCmd {
-    pub(crate) features: bool,
-}
-
-impl CodegenCmd {
+impl flags::Codegen {
     pub(crate) fn run(self) -> Result<()> {
         if self.features {
             generate_lint_completions(Mode::Overwrite)?;
