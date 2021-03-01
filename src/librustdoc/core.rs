@@ -491,6 +491,7 @@ crate fn run_global_ctxt(
             tcx.ensure().check_mod_attrs(module);
         }
     });
+    rustc_passes::stability::check_unused_or_stable_features(tcx);
 
     let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
     // Convert from a HirId set to a DefId set since we don't always have easy access
