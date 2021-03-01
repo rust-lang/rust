@@ -1,10 +1,10 @@
 use crate::{
     assist_context::{AssistContext, Assists},
-    AssistId,
+    utils, AssistId,
 };
 use syntax::{
-    ast::{self, NameOwner},
-    AstNode, SyntaxKind, SyntaxNode, SyntaxText,
+    ast::{self, Adt, Impl, NameOwner},
+    AstNode, Direction,
 };
 use test_utils::mark;
 
@@ -38,54 +38,50 @@ use test_utils::mark;
 // }
 // ```
 pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let fn_node: ast::Fn = ctx.find_node_at_offset()?;
-    let fn_name = fn_node.name()?.to_string();
+    let fn_node = ctx.find_node_at_offset::<ast::Fn>()?;
+    let fn_name = fn_node.name()?;
 
-    if !fn_name.eq("new") {
+    if fn_name.text() != "new" {
         mark::hit!(other_function_than_new);
         return None;
     }
 
-    if fn_node.param_list()?.params().count() != 0 {
+    if fn_node.param_list()?.params().next().is_some() {
         mark::hit!(new_function_with_parameters);
         return None;
     }
 
-    let insert_after = scope_for_fn_insertion_node(&fn_node.syntax())?;
-    let impl_obj = ast::Impl::cast(insert_after)?;
-    let struct_name = impl_obj.self_ty()?.syntax().text();
+    let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
 
-    let default_fn_syntax = default_fn_node_for_new(struct_name);
+    let insert_location = impl_.syntax().text_range();
 
     acc.add(
         AssistId("generate_default_from_new", crate::AssistKind::Generate),
         "Generate a Default impl from a new fn",
-        impl_obj.syntax().text_range(),
+        insert_location,
         move |builder| {
-            // FIXME: indentation logic can also go here.
-            // let new_indent = IndentLevel::from_node(&insert_after);
-            let insert_location = impl_obj.syntax().text_range().end();
-            builder.insert(insert_location, default_fn_syntax);
+            let default_fn_syntax = default_fn_node_for_new(impl_);
+            if let Some(code) = default_fn_syntax {
+                builder.insert(insert_location.end(), code)
+            }
         },
     )
 }
 
-fn scope_for_fn_insertion_node(node: &SyntaxNode) -> Option<SyntaxNode> {
-    node.ancestors().into_iter().find(|node| node.kind() == SyntaxKind::IMPL)
-}
-
-fn default_fn_node_for_new(struct_name: SyntaxText) -> String {
-    // FIXME: Update the implementation to consider the code indentation.
-    format!(
-        r#"
-
-impl Default for {} {{
-    fn default() -> Self {{
+fn default_fn_node_for_new(impl_: Impl) -> Option<String> {
+    // the code string is this way due to formatting reason
+    let code = r#"    fn default() -> Self {
         Self::new()
-    }}
-}}"#,
-        struct_name
-    )
+    }"#;
+    let struct_name = impl_.self_ty()?.syntax().to_string();
+    let struct_ = impl_
+        .syntax()
+        .siblings(Direction::Prev)
+        .filter_map(ast::Struct::cast)
+        .find(|struct_| struct_.name().unwrap().text() == struct_name)?;
+
+    let adt = Adt::cast(struct_.syntax().clone())?;
+    Some(utils::generate_trait_impl_text(&adt, "Default", code))
 }
 
 #[cfg(test)]
@@ -223,6 +219,39 @@ impl Exmaple {
             r#"
 fn n$0ew() -> u32 {
     0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn multiple_struct_blocks() {
+        check_assist(
+            generate_default_from_new,
+            r#"
+struct Example { _inner: () }
+struct Test { value: u32 }
+
+impl Example {
+    pub fn new$0 () -> Self {
+        Self { _inner: () }
+    }
+}
+"#,
+            r#"
+struct Example { _inner: () }
+struct Test { value: u32 }
+
+impl Example {
+    pub fn new () -> Self {
+        Self { _inner: () }
+    }
+}
+
+impl Default for Example {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 "#,
         );
