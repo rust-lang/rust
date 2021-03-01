@@ -200,7 +200,22 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
             if !in_external_macro(cx.tcx.sess, expr_span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);
+
+            let defaults = &[
+                paths::DEFAULT_TRAIT_METHOD.as_ref(),
+                paths::STRING_NEW.as_ref(),
+                paths::VEC_NEW.as_ref(),
+                paths::VEC_DEQUE_NEW.as_ref(),
+                paths::LINKED_LIST_NEW.as_ref(),
+                paths::HASHMAP_NEW.as_ref(),
+                paths::BTREEMAP_NEW.as_ref(),
+                paths::HASHSET_NEW.as_ref(),
+                paths::BTREESET_NEW.as_ref(),
+                paths::BINARY_HEAP_NEW.as_ref(),
+            ];
+
+            if defaults.iter().any(|x| match_def_path(cx, repl_def_id, &x));
+
             then {
                 span_lint_and_then(
                     cx,
