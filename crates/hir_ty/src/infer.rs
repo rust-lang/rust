@@ -18,6 +18,7 @@ use std::mem;
 use std::ops::Index;
 use std::sync::Arc;
 
+use chalk_ir::Mutability;
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -25,7 +26,7 @@ use hir_def::{
     lang_item::LangItemTarget,
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{Mutability, TypeRef},
+    type_ref::TypeRef,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, Lookup, TraitId,
     TypeAliasId, VariantId,
 };
@@ -87,7 +88,7 @@ impl BindingMode {
     fn convert(annotation: BindingAnnotation) -> BindingMode {
         match annotation {
             BindingAnnotation::Unannotated | BindingAnnotation::Mutable => BindingMode::Move,
-            BindingAnnotation::Ref => BindingMode::Ref(Mutability::Shared),
+            BindingAnnotation::Ref => BindingMode::Ref(Mutability::Not),
             BindingAnnotation::RefMut => BindingMode::Ref(Mutability::Mut),
         }
     }

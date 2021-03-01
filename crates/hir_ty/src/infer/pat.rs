@@ -3,17 +3,17 @@
 use std::iter::repeat;
 use std::sync::Arc;
 
+use chalk_ir::Mutability;
 use hir_def::{
     expr::{BindingAnnotation, Expr, Literal, Pat, PatId, RecordFieldPat},
     path::Path,
-    type_ref::Mutability,
     FieldId,
 };
 use hir_expand::name::Name;
 use test_utils::mark;
 
 use super::{BindingMode, Expectation, InferenceContext};
-use crate::{utils::variant_data, Substs, Ty};
+use crate::{lower::lower_to_chalk_mutability, utils::variant_data, Substs, Ty};
 
 impl<'a> InferenceContext<'a> {
     fn infer_tuple_struct_pat(
@@ -103,7 +103,7 @@ impl<'a> InferenceContext<'a> {
                 expected = inner;
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
-                    BindingMode::Ref(Mutability::Shared) => BindingMode::Ref(Mutability::Shared),
+                    BindingMode::Ref(Mutability::Not) => BindingMode::Ref(Mutability::Not),
                     BindingMode::Ref(Mutability::Mut) => BindingMode::Ref(mutability),
                 }
             }
@@ -152,9 +152,10 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Pat::Ref { pat, mutability } => {
+                let mutability = lower_to_chalk_mutability(*mutability);
                 let expectation = match expected.as_reference() {
                     Some((inner_ty, exp_mut)) => {
-                        if *mutability != exp_mut {
+                        if mutability != exp_mut {
                             // FIXME: emit type error?
                         }
                         inner_ty
@@ -162,7 +163,7 @@ impl<'a> InferenceContext<'a> {
                     _ => &Ty::Unknown,
                 };
                 let subty = self.infer_pat(*pat, expectation, default_bm);
-                Ty::Ref(*mutability, Substs::single(subty))
+                Ty::Ref(mutability, Substs::single(subty))
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_ref(),

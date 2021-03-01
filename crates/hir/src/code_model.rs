@@ -14,7 +14,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
-    type_ref::{Mutability, TypeRef},
+    type_ref::TypeRef,
     AdtId, AssocContainerId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule, ImplId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
@@ -32,8 +32,8 @@ use hir_ty::{
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
-    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
-    Ty, TyDefId, TyVariableKind,
+    InEnvironment, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs,
+    TraitEnvironment, Ty, TyDefId, TyVariableKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -836,7 +836,7 @@ pub enum Access {
 impl From<Mutability> for Access {
     fn from(mutability: Mutability) -> Access {
         match mutability {
-            Mutability::Shared => Access::Shared,
+            Mutability::Not => Access::Shared,
             Mutability::Mut => Access::Exclusive,
         }
     }
@@ -865,7 +865,10 @@ impl SelfParam {
             .params
             .first()
             .map(|param| match *param {
-                TypeRef::Reference(.., mutability) => mutability.into(),
+                TypeRef::Reference(.., mutability) => match mutability {
+                    hir_def::type_ref::Mutability::Shared => Access::Shared,
+                    hir_def::type_ref::Mutability::Mut => Access::Exclusive,
+                },
                 _ => Access::Owned,
             })
             .unwrap_or(Access::Owned)

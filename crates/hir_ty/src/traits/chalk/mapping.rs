@@ -10,7 +10,7 @@ use chalk_ir::{
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
-use hir_def::{type_ref::Mutability, AssocContainerId, GenericDefId, Lookup, TypeAliasId};
+use hir_def::{AssocContainerId, GenericDefId, Lookup, TypeAliasId};
 
 use crate::{
     db::HirDatabase,
@@ -65,7 +65,7 @@ impl ToChalk for Ty {
             }
             Ty::Raw(mutability, substs) => {
                 let ty = substs[0].clone().to_chalk(db);
-                chalk_ir::TyKind::Raw(mutability.to_chalk(db), ty).intern(&Interner)
+                chalk_ir::TyKind::Raw(mutability, ty).intern(&Interner)
             }
             Ty::Slice(substs) => {
                 chalk_ir::TyKind::Slice(substs[0].clone().to_chalk(db)).intern(&Interner)
@@ -198,11 +198,11 @@ impl ToChalk for Ty {
                 Ty::Tuple(cardinality, from_chalk(db, subst))
             }
             chalk_ir::TyKind::Raw(mutability, ty) => {
-                Ty::Raw(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))
+                Ty::Raw(mutability, Substs::single(from_chalk(db, ty)))
             }
             chalk_ir::TyKind::Slice(ty) => Ty::Slice(Substs::single(from_chalk(db, ty))),
             chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
-                Ty::Ref(from_chalk(db, mutability), Substs::single(from_chalk(db, ty)))
+                Ty::Ref(mutability, Substs::single(from_chalk(db, ty)))
             }
             chalk_ir::TyKind::Str => Ty::Str,
             chalk_ir::TyKind::Never => Ty::Never,
@@ -230,12 +230,12 @@ impl ToChalk for Ty {
 /// fake lifetime here, because Chalks built-in logic may expect it to be there.
 fn ref_to_chalk(
     db: &dyn HirDatabase,
-    mutability: Mutability,
+    mutability: chalk_ir::Mutability,
     subst: Substs,
 ) -> chalk_ir::Ty<Interner> {
     let arg = subst[0].clone().to_chalk(db);
     let lifetime = LifetimeData::Static.intern(&Interner);
-    chalk_ir::TyKind::Ref(mutability.to_chalk(db), lifetime, arg).intern(&Interner)
+    chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 
 /// We currently don't model constants, but Chalk does. So, we have to insert a
@@ -310,22 +310,6 @@ impl ToChalk for OpaqueTyId {
         opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
     ) -> OpaqueTyId {
         db.lookup_intern_impl_trait_id(opaque_ty_id.into())
-    }
-}
-
-impl ToChalk for Mutability {
-    type Chalk = chalk_ir::Mutability;
-    fn to_chalk(self, _db: &dyn HirDatabase) -> Self::Chalk {
-        match self {
-            Mutability::Shared => chalk_ir::Mutability::Not,
-            Mutability::Mut => chalk_ir::Mutability::Mut,
-        }
-    }
-    fn from_chalk(_db: &dyn HirDatabase, chalk: Self::Chalk) -> Self {
-        match chalk {
-            chalk_ir::Mutability::Mut => Mutability::Mut,
-            chalk_ir::Mutability::Not => Mutability::Shared,
-        }
     }
 }
 

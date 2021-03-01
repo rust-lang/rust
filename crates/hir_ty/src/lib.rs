@@ -27,11 +27,9 @@ use std::{iter, mem, ops::Deref, sync::Arc};
 
 use base_db::salsa;
 use hir_def::{
-    builtin_type::BuiltinType,
-    expr::ExprId,
-    type_ref::{Mutability, Rawness},
-    AdtId, AssocContainerId, DefWithBodyId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
-    Lookup, TraitId, TypeAliasId, TypeParamId,
+    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AdtId, AssocContainerId,
+    DefWithBodyId, FunctionId, GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId,
+    TypeAliasId, TypeParamId,
 };
 use itertools::Itertools;
 
@@ -49,7 +47,7 @@ pub use lower::{
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
-pub use chalk_ir::{BoundVar, DebruijnIndex, Scalar, TyVariableKind};
+pub use chalk_ir::{BoundVar, DebruijnIndex, Mutability, Scalar, TyVariableKind};
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {

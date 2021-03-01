@@ -8,6 +8,7 @@ use crate::{
     TraitRef, Ty,
 };
 use arrayvec::ArrayVec;
+use chalk_ir::Mutability;
 use hir_def::{
     db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId,
     AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
@@ -291,9 +292,23 @@ impl HirDisplay for Ty {
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 
                 if matches!(self, Ty::Raw(..)) {
-                    write!(f, "*{}", m.as_keyword_for_ptr())?;
+                    write!(
+                        f,
+                        "*{}",
+                        match m {
+                            Mutability::Not => "const ",
+                            Mutability::Mut => "mut ",
+                        }
+                    )?;
                 } else {
-                    write!(f, "&{}", m.as_keyword_for_ref())?;
+                    write!(
+                        f,
+                        "&{}",
+                        match m {
+                            Mutability::Not => "",
+                            Mutability::Mut => "mut ",
+                        }
+                    )?;
                 }
 
                 let datas;
