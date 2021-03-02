@@ -1422,7 +1422,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match ctxt.outer_expn().expn_data().macro_def_id {
+            match ctxt.outer_expn_data().macro_def_id {
                 Some(def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
