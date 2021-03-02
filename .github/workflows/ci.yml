@@ -129,7 +129,7 @@ jobs:
           ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
           ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
         run: |
-          ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure" \
+          ~/.local/bin/zulip-send --stream miri --subject "Cron Job Failure $(date -uI)" \
             --message 'Dear @**RalfJ** and @**oli**
 
           It would appear that the Miri cron job build failed. Would you mind investigating this issue?
