@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead
     /// ```
     pub NAIVE_BYTECOUNT,
-    perf,
+    pedantic,
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
 }
 
