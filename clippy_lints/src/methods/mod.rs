@@ -1,6 +1,7 @@
 mod bind_instead_of_map;
 mod bytes_nth;
 mod expect_used;
+mod filetype_is_file;
 mod filter_map_identity;
 mod filter_next;
 mod get_unwrap;
@@ -1725,7 +1726,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
             },
-            ["is_file", ..] => lint_filetype_is_file(cx, expr, arg_lists[0]),
+            ["is_file", ..] => filetype_is_file::check(cx, expr, arg_lists[0]),
             ["map", "as_ref"] => {
                 option_as_ref_deref::check(cx, expr, arg_lists[1], arg_lists[0], false, self.msrv.as_ref())
             },
@@ -3857,38 +3858,6 @@ fn check_pointer_offset(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir:
             span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
         }
     }
-}
-
-fn lint_filetype_is_file(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let ty = cx.typeck_results().expr_ty(&args[0]);
-
-    if !match_type(cx, ty, &paths::FILE_TYPE) {
-        return;
-    }
-
-    let span: Span;
-    let verb: &str;
-    let lint_unary: &str;
-    let help_unary: &str;
-    if_chain! {
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(op, _) = parent.kind;
-        if op == hir::UnOp::Not;
-        then {
-            lint_unary = "!";
-            verb = "denies";
-            help_unary = "";
-            span = parent.span;
-        } else {
-            lint_unary = "";
-            verb = "covers";
-            help_unary = "!";
-            span = expr.span;
-        }
-    }
-    let lint_msg = format!("`{}FileType::is_file()` only {} regular files", lint_unary, verb);
-    let help_msg = format!("use `{}FileType::is_dir()` instead", help_unary);
-    span_lint_and_help(cx, FILETYPE_IS_FILE, span, &lint_msg, None, &help_msg);
 }
 
 fn lint_from_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
