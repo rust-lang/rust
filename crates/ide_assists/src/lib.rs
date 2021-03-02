@@ -115,6 +115,7 @@ mod handlers {
     mod auto_import;
     mod change_visibility;
     mod convert_integer_literal;
+    mod convert_comment_block;
     mod early_return;
     mod expand_glob_import;
     mod extract_function;
@@ -178,6 +179,7 @@ mod handlers {
             auto_import::auto_import,
             change_visibility::change_visibility,
             convert_integer_literal::convert_integer_literal,
+            convert_comment_block::convert_comment_block,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,

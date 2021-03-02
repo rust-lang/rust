@@ -85,8 +85,9 @@ pub enum CommentPlacement {
 }
 
 impl CommentKind {
-    const BY_PREFIX: [(&'static str, CommentKind); 8] = [
+    const BY_PREFIX: [(&'static str, CommentKind); 9] = [
         ("/**/", CommentKind { shape: CommentShape::Block, doc: None }),
+        ("/***", CommentKind { shape: CommentShape::Block, doc: None }),
         ("////", CommentKind { shape: CommentShape::Line, doc: None }),
         ("///", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Outer) }),
         ("//!", CommentKind { shape: CommentShape::Line, doc: Some(CommentPlacement::Inner) }),
