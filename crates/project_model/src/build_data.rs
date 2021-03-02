@@ -1,14 +1,14 @@
 //! Handles build script specific information
 
 use std::{
-    ffi::OsStr,
     io::BufReader,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Command, Stdio},
     sync::Arc,
 };
 
 use anyhow::Result;
+use cargo_metadata::camino::Utf8Path;
 use cargo_metadata::{BuildScript, Message};
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
@@ -162,8 +162,8 @@ fn collect_from_workspace(
                     let res = res.entry(package_id.repr.clone()).or_default();
                     // cargo_metadata crate returns default (empty) path for
                     // older cargos, which is not absolute, so work around that.
-                    if out_dir != PathBuf::default() {
-                        let out_dir = AbsPathBuf::assert(out_dir);
+                    if !out_dir.as_str().is_empty() {
+                        let out_dir = AbsPathBuf::assert(PathBuf::from(out_dir.into_os_string()));
                         res.out_dir = Some(out_dir);
                         res.cfgs = cfgs;
                     }
@@ -178,7 +178,7 @@ fn collect_from_workspace(
                         // Skip rmeta file
                         if let Some(filename) = message.filenames.iter().find(|name| is_dylib(name))
                         {
-                            let filename = AbsPathBuf::assert(filename.clone());
+                            let filename = AbsPathBuf::assert(PathBuf::from(&filename));
                             let res = res.entry(package_id.repr.clone()).or_default();
                             res.proc_macro_dylib_path = Some(filename);
                         }
@@ -187,9 +187,9 @@ fn collect_from_workspace(
                 Message::CompilerMessage(message) => {
                     progress(message.target.name.clone());
                 }
-                Message::Unknown => (),
                 Message::BuildFinished(_) => {}
                 Message::TextLine(_) => {}
+                _ => {}
             }
         }
     }
@@ -209,8 +209,8 @@ fn collect_from_workspace(
 }
 
 // FIXME: File a better way to know if it is a dylib
-fn is_dylib(path: &Path) -> bool {
-    match path.extension().and_then(OsStr::to_str).map(|it| it.to_string().to_lowercase()) {
+fn is_dylib(path: &Utf8Path) -> bool {
+    match path.extension().map(|e| e.to_string().to_lowercase()) {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }
@@ -227,9 +227,7 @@ fn inject_cargo_env(package: &cargo_metadata::Package, build_data: &mut BuildDat
 
     let mut manifest_dir = package.manifest_path.clone();
     manifest_dir.pop();
-    if let Some(cargo_manifest_dir) = manifest_dir.to_str() {
-        env.push(("CARGO_MANIFEST_DIR".into(), cargo_manifest_dir.into()));
-    }
+    env.push(("CARGO_MANIFEST_DIR".into(), manifest_dir.into_string()));
 
     // Not always right, but works for common cases.
     env.push(("CARGO".into(), "cargo".into()));
@@ -251,7 +249,6 @@ fn inject_cargo_env(package: &cargo_metadata::Package, build_data: &mut BuildDat
     env.push(("CARGO_PKG_REPOSITORY".into(), package.repository.clone().unwrap_or_default()));
     env.push(("CARGO_PKG_LICENSE".into(), package.license.clone().unwrap_or_default()));
 
-    let license_file =
-        package.license_file.as_ref().map(|buf| buf.display().to_string()).unwrap_or_default();
+    let license_file = package.license_file.as_ref().map(|buf| buf.to_string()).unwrap_or_default();
     env.push(("CARGO_PKG_LICENSE_FILE".into(), license_file));
 }

@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use std::path::PathBuf;
 use std::{convert::TryInto, ops, process::Command, sync::Arc};
 
 use anyhow::{Context, Result};
@@ -249,11 +250,12 @@ impl CargoWorkspace {
             let edition = edition
                 .parse::<Edition>()
                 .with_context(|| format!("Failed to parse edition {}", edition))?;
+
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
                 name: name.clone(),
                 version: version.to_string(),
-                manifest: AbsPathBuf::assert(manifest_path.clone()),
+                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)),
                 targets: Vec::new(),
                 is_member,
                 edition,
@@ -268,7 +270,7 @@ impl CargoWorkspace {
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name: meta_tgt.name.clone(),
-                    root: AbsPathBuf::assert(meta_tgt.src_path.clone()),
+                    root: AbsPathBuf::assert(PathBuf::from(&meta_tgt.src_path)),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                     is_proc_macro,
                 });
@@ -305,7 +307,8 @@ impl CargoWorkspace {
             packages[source].active_features.extend(node.features);
         }
 
-        let workspace_root = AbsPathBuf::assert(meta.workspace_root);
+        let workspace_root =
+            AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
         let build_data_config = BuildDataConfig::new(
             cargo_toml.to_path_buf(),
             config.clone(),
