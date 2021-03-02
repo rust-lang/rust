@@ -38,15 +38,9 @@ fn test_unique_id() {
         "assoc_type.Item-1",
     ];
 
-    let map = RefCell::new(IdMap::new());
-    let test = || {
-        let mut map = map.borrow_mut();
-        let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
-        assert_eq!(&actual[..], expected);
-    };
-    test();
-    map.borrow_mut().reset();
-    test();
+    let mut map = IdMap::new();
+    let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+    assert_eq!(&actual[..], expected);
 }
 
 #[test]

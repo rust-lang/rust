@@ -40,7 +40,6 @@ use crate::html::{layout, sources};
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-#[derive(Clone)]
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -156,11 +155,6 @@ impl<'tcx> Context<'tcx> {
             extra_scripts: &[],
             static_extra_scripts: &[],
         };
-
-        {
-            self.id_map.borrow_mut().reset();
-            self.id_map.borrow_mut().populate(&INITIAL_IDS);
-        }
 
         if !self.render_redirect_pages {
             layout::render(
@@ -434,6 +428,21 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         write_shared(&cx, &krate, index, &md_opts)?;
         Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
         Ok((cx, krate))
+    }
+
+    fn make_child_renderer(&self) -> Self {
+        let mut id_map = IdMap::new();
+        id_map.populate(&INITIAL_IDS);
+
+        Self {
+            current: self.current.clone(),
+            dst: self.dst.clone(),
+            render_redirect_pages: self.render_redirect_pages,
+            id_map: Box::new(RefCell::new(id_map)),
+            deref_id_map: Box::new(RefCell::new(FxHashMap::default())),
+            shared: Rc::clone(&self.shared),
+            cache: Rc::clone(&self.cache),
+        }
     }
 
     fn after_krate(
