@@ -101,21 +101,44 @@ fn cargo_files_are_tidy() {
         let mut section = None;
         for (line_no, text) in read_file(&cargo).unwrap().lines().enumerate() {
             let text = text.trim();
-            if text.starts_with("[") {
+            if text.starts_with('[') {
+                if !text.ends_with(']') {
+                    panic!(
+                        "\nplease don't add comments or trailing whitespace in section lines.\n\
+                            {}:{}\n",
+                        cargo.display(),
+                        line_no + 1
+                    )
+                }
                 section = Some(text);
                 continue;
             }
-            if !section.map(|it| it.starts_with("[dependencies")).unwrap_or(false) {
+            let text: String = text.split_whitespace().collect();
+            if !text.contains("path=") {
                 continue;
             }
-            let text: String = text.split_whitespace().collect();
-            if text.contains("path=") && !text.contains("version") {
-                panic!(
-                    "\ncargo internal dependencies should have version.\n\
-                     {}:{}\n",
-                    cargo.display(),
-                    line_no + 1
-                )
+            match section {
+                Some(s) if s.contains("dev-dependencies") => {
+                    if text.contains("version") {
+                        panic!(
+                            "\ncargo internal dev-dependencies should not have a version.\n\
+                            {}:{}\n",
+                            cargo.display(),
+                            line_no + 1
+                        );
+                    }
+                }
+                Some(s) if s.contains("dependencies") => {
+                    if !text.contains("version") {
+                        panic!(
+                            "\ncargo internal dependencies should have a version.\n\
+                            {}:{}\n",
+                            cargo.display(),
+                            line_no + 1
+                        );
+                    }
+                }
+                _ => {}
             }
         }
     }
