@@ -5,14 +5,19 @@
 // positives.
 
 #![cfg(feature = "lintcheck")]
-#![allow(clippy::filter_map)]
+#![allow(clippy::filter_map, clippy::collapsible_else_if)]
+#![allow(clippy::blocks_in_if_conditions)] // FP on `if x.iter().any(|x| ...)`
 
 use crate::clippy_project_root;
 
 use std::collections::HashMap;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{env, fmt, fs::write, path::PathBuf};
+use std::{
+    env, fmt,
+    fs::write,
+    path::{Path, PathBuf},
+};
 
 use clap::ArgMatches;
 use rayon::prelude::*;
@@ -196,11 +201,9 @@ impl CrateSource {
                 if !crate_root.exists() {
                     println!("Copying {} to {}", path.display(), copy_dest.display());
 
-                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).expect(&format!(
-                        "Failed to copy from {}, to  {}",
-                        path.display(),
-                        crate_root.display()
-                    ));
+                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).unwrap_or_else(|_| {
+                        panic!("Failed to copy from {}, to  {}", path.display(), crate_root.display())
+                    });
                 } else {
                     println!(
                         "Not copying {} to {}, destination already exists",
@@ -225,7 +228,7 @@ impl Crate {
     /// issued
     fn run_clippy_lints(
         &self,
-        cargo_clippy_path: &PathBuf,
+        cargo_clippy_path: &Path,
         target_dir_index: &AtomicUsize,
         thread_limit: usize,
         total_crates_to_lint: usize,
@@ -308,13 +311,13 @@ impl LintcheckConfig {
         // first, check if we got anything passed via the LINTCHECK_TOML env var,
         // if not, ask clap if we got any value for --crates-toml  <foo>
         // if not, use the default "clippy_dev/lintcheck_crates.toml"
-        let sources_toml = env::var("LINTCHECK_TOML").unwrap_or(
+        let sources_toml = env::var("LINTCHECK_TOML").unwrap_or_else(|_| {
             clap_config
                 .value_of("crates-toml")
                 .clone()
                 .unwrap_or("clippy_dev/lintcheck_crates.toml")
-                .to_string(),
-        );
+                .to_string()
+        });
 
         let sources_toml_path = PathBuf::from(sources_toml);
 
@@ -330,7 +333,7 @@ impl LintcheckConfig {
             Some(threads) => {
                 let threads: usize = threads
                     .parse()
-                    .expect(&format!("Failed to parse '{}' to a digit", threads));
+                    .unwrap_or_else(|_| panic!("Failed to parse '{}' to a digit", threads));
                 if threads == 0 {
                     // automatic choice
                     // Rayon seems to return thread count so half that for core count
@@ -387,7 +390,7 @@ fn build_clippy() {
 }
 
 /// Read a `toml` file and return a list of `CrateSources` that we want to check with clippy
-fn read_crates(toml_path: &PathBuf) -> Vec<CrateSource> {
+fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
     let toml_content: String =
         std::fs::read_to_string(&toml_path).unwrap_or_else(|_| panic!("Failed to read {}", toml_path.display()));
     let crate_list: SourceList =
@@ -499,7 +502,7 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
-fn lintcheck_needs_rerun(lintcheck_logs_path: &PathBuf) -> bool {
+fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
     let clippy_modified: std::time::SystemTime = {
         let mut times = [CLIPPY_DRIVER_PATH, CARGO_CLIPPY_PATH].iter().map(|p| {
             std::fs::metadata(p)
@@ -533,15 +536,13 @@ pub fn run(clap_config: &ArgMatches) {
     // refresh the logs
     if lintcheck_needs_rerun(&config.lintcheck_results_path) {
         let shared_target_dir = "target/lintcheck/shared_target_dir";
-        match std::fs::metadata(&shared_target_dir) {
-            Ok(metadata) => {
-                if metadata.is_dir() {
-                    println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
-                    std::fs::remove_dir_all(&shared_target_dir)
-                        .expect("failed to remove target/lintcheck/shared_target_dir");
-                }
-            },
-            Err(_) => { /*  dir probably does not exist, don't remove anything  */ },
+        // if we get an Err here, the shared target dir probably does simply not exist
+        if let Ok(metadata) = std::fs::metadata(&shared_target_dir) {
+            if metadata.is_dir() {
+                println!("Clippy is newer than lint check logs, clearing lintcheck shared target dir...");
+                std::fs::remove_dir_all(&shared_target_dir)
+                    .expect("failed to remove target/lintcheck/shared_target_dir");
+            }
         }
     }
 
@@ -660,7 +661,7 @@ pub fn run(clap_config: &ArgMatches) {
 }
 
 /// read the previous stats from the lintcheck-log file
-fn read_stats_from_file(file_path: &PathBuf) -> HashMap<String, usize> {
+fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
     let file_content: String = match std::fs::read_to_string(file_path).ok() {
         Some(content) => content,
         None => {
@@ -678,9 +679,9 @@ fn read_stats_from_file(file_path: &PathBuf) -> HashMap<String, usize> {
     let stats_lines = &lines[start + 1..=end - 1];
 
     stats_lines
-        .into_iter()
+        .iter()
         .map(|line| {
-            let mut spl = line.split(" ").into_iter();
+            let mut spl = line.split(' ');
             (
                 spl.next().unwrap().to_string(),
                 spl.next().unwrap().parse::<usize>().unwrap(),
