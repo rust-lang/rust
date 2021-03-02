@@ -113,44 +113,21 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 0x1))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
-    let imm8 = (imm8 & 0xFF) as u8;
-    macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, b, [$a, $b, $c, $d])
-        };
-    }
-    macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr) => {
-            match (imm8 >> 3) & 0x1 {
-                0 => shuffle4!($a, $b, $c, 6),
-                _ => shuffle4!($a, $b, $c, 7),
-            }
-        };
-    }
-    macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
-            match (imm8 >> 2) & 0x1 {
-                0 => shuffle3!($a, $b, 2),
-                _ => shuffle3!($a, $b, 3),
-            }
-        };
-    }
-    macro_rules! shuffle1 {
-        ($a:expr) => {
-            match (imm8 >> 1) & 0x1 {
-                0 => shuffle2!($a, 4),
-                _ => shuffle2!($a, 5),
-            }
-        };
-    }
-    match imm8 & 0x1 {
-        0 => shuffle1!(0),
-        _ => shuffle1!(1),
-    }
+pub unsafe fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
+    static_assert_imm8!(MASK);
+    simd_shuffle4(
+        a,
+        b,
+        [
+            MASK as u32 & 0b1,
+            ((MASK as u32 >> 1) & 0b1) + 4,
+            ((MASK as u32 >> 2) & 0b1) + 2,
+            ((MASK as u32 >> 3) & 0b1) + 6,
+        ],
+    )
 }
 
 /// Shuffles single-precision (32-bit) floating-point elements in `a` within
@@ -159,61 +136,25 @@ pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 0x0))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
-    let imm8 = (imm8 & 0xFF) as u8;
-    macro_rules! shuffle4 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $e:expr,
-            $f:expr,
-            $g:expr,
-            $h:expr
-        ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
-        };
-    }
-    macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr, $e:expr, $f:expr, $g:expr) => {
-            match (imm8 >> 6) & 0x3 {
-                0 => shuffle4!($a, $b, $c, 8, $e, $f, $g, 12),
-                1 => shuffle4!($a, $b, $c, 9, $e, $f, $g, 13),
-                2 => shuffle4!($a, $b, $c, 10, $e, $f, $g, 14),
-                _ => shuffle4!($a, $b, $c, 11, $e, $f, $g, 15),
-            }
-        };
-    }
-    macro_rules! shuffle2 {
-        ($a:expr, $b:expr, $e:expr, $f:expr) => {
-            match (imm8 >> 4) & 0x3 {
-                0 => shuffle3!($a, $b, 8, $e, $f, 12),
-                1 => shuffle3!($a, $b, 9, $e, $f, 13),
-                2 => shuffle3!($a, $b, 10, $e, $f, 14),
-                _ => shuffle3!($a, $b, 11, $e, $f, 15),
-            }
-        };
-    }
-    macro_rules! shuffle1 {
-        ($a:expr, $e:expr) => {
-            match (imm8 >> 2) & 0x3 {
-                0 => shuffle2!($a, 0, $e, 4),
-                1 => shuffle2!($a, 1, $e, 5),
-                2 => shuffle2!($a, 2, $e, 6),
-                _ => shuffle2!($a, 3, $e, 7),
-            }
-        };
-    }
-    match imm8 & 0x3 {
-        0 => shuffle1!(0, 4),
-        1 => shuffle1!(1, 5),
-        2 => shuffle1!(2, 6),
-        _ => shuffle1!(3, 7),
-    }
+pub unsafe fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_imm8!(MASK);
+    simd_shuffle8(
+        a,
+        b,
+        [
+            MASK as u32 & 0b11,
+            (MASK as u32 >> 2) & 0b11,
+            ((MASK as u32 >> 4) & 0b11) + 8,
+            ((MASK as u32 >> 6) & 0b11) + 8,
+            (MASK as u32 & 0b11) + 4,
+            ((MASK as u32 >> 2) & 0b11) + 4,
+            ((MASK as u32 >> 4) & 0b11) + 12,
+            ((MASK as u32 >> 6) & 0b11) + 12,
+        ],
+    )
 }
 
 /// Computes the bitwise NOT of packed double-precision (64-bit) floating-point
@@ -3381,7 +3322,7 @@ mod tests {
     unsafe fn test_mm256_shuffle_pd() {
         let a = _mm256_setr_pd(1., 4., 5., 8.);
         let b = _mm256_setr_pd(2., 3., 6., 7.);
-        let r = _mm256_shuffle_pd(a, b, 0xF);
+        let r = _mm256_shuffle_pd::<0b11_11_11_11>(a, b);
         let e = _mm256_setr_pd(4., 3., 8., 7.);
         assert_eq_m256d(r, e);
     }
@@ -3390,7 +3331,7 @@ mod tests {
     unsafe fn test_mm256_shuffle_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
-        let r = _mm256_shuffle_ps(a, b, 0x0F);
+        let r = _mm256_shuffle_ps::<0b00_00_11_11>(a, b);
         let e = _mm256_setr_ps(8., 8., 2., 2., 16., 16., 10., 10.);
         assert_eq_m256(r, e);
     }

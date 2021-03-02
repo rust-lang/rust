@@ -4872,23 +4872,13 @@ pub unsafe fn _mm_maskz_getexp_pd(k: __mmask8, a: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_roundscale_ps&expand=4784)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_roundscale_ps(a: __m512, imm8: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_roundscale_ps<const IMM8: i32>(a: __m512) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps(
-                a,
-                $imm8,
-                zero,
-                0b11111111_11111111,
-                _MM_FROUND_CUR_DIRECTION,
-            )
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps(a, IMM8, zero, 0b11111111_11111111, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -4903,17 +4893,17 @@ pub unsafe fn _mm512_roundscale_ps(a: __m512, imm8: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_roundscale_ps&expand=4782)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_roundscale_ps(src: __m512, k: __mmask16, a: __m512, imm8: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_roundscale_ps<const IMM8: i32>(
+    src: __m512,
+    k: __mmask16,
+    a: __m512,
+) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let src = src.as_f32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps(a, $imm8, src, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps(a, IMM8, src, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -4928,17 +4918,13 @@ pub unsafe fn _mm512_mask_roundscale_ps(src: __m512, k: __mmask16, a: __m512, im
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_roundscale_ps&expand=4783)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_roundscale_ps(k: __mmask16, a: __m512, imm8: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_roundscale_ps<const IMM8: i32>(k: __mmask16, a: __m512) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps(a, $imm8, zero, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps(a, IMM8, zero, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -4953,17 +4939,13 @@ pub unsafe fn _mm512_maskz_roundscale_ps(k: __mmask16, a: __m512, imm8: i32) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_roundscale_ps&expand=4781)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 250))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm256_roundscale_ps(a: __m256, imm8: i32) -> __m256 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 250))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm256_roundscale_ps<const IMM8: i32>(a: __m256) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let zero = _mm256_setzero_ps().as_f32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps256(a, $imm8, zero, 0b11111111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps256(a, IMM8, zero, 0b11111111);
     transmute(r)
 }
 
@@ -4978,17 +4960,17 @@ pub unsafe fn _mm256_roundscale_ps(a: __m256, imm8: i32) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_roundscale_ps&expand=4779)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_mask_roundscale_ps(src: __m256, k: __mmask8, a: __m256, imm8: i32) -> __m256 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_mask_roundscale_ps<const IMM8: i32>(
+    src: __m256,
+    k: __mmask8,
+    a: __m256,
+) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let src = src.as_f32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps256(a, $imm8, src, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps256(a, IMM8, src, k);
     transmute(r)
 }
 
@@ -5003,17 +4985,13 @@ pub unsafe fn _mm256_mask_roundscale_ps(src: __m256, k: __mmask8, a: __m256, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_roundscale_ps&expand=4780)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_maskz_roundscale_ps(k: __mmask8, a: __m256, imm8: i32) -> __m256 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_maskz_roundscale_ps<const IMM8: i32>(k: __mmask8, a: __m256) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let zero = _mm256_setzero_ps().as_f32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps256(a, $imm8, zero, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps256(a, IMM8, zero, k);
     transmute(r)
 }
 
@@ -5028,17 +5006,13 @@ pub unsafe fn _mm256_maskz_roundscale_ps(k: __mmask8, a: __m256, imm8: i32) -> _
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_roundscale_ps&expand=4778)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 250))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm_roundscale_ps(a: __m128, imm8: i32) -> __m128 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 250))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm_roundscale_ps<const IMM8: i32>(a: __m128) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let zero = _mm_setzero_ps().as_f32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps128(a, $imm8, zero, 0b00001111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps128(a, IMM8, zero, 0b00001111);
     transmute(r)
 }
 
@@ -5053,17 +5027,17 @@ pub unsafe fn _mm_roundscale_ps(a: __m128, imm8: i32) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_roundscale_ps&expand=4776)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_mask_roundscale_ps(src: __m128, k: __mmask8, a: __m128, imm8: i32) -> __m128 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_mask_roundscale_ps<const IMM8: i32>(
+    src: __m128,
+    k: __mmask8,
+    a: __m128,
+) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let src = src.as_f32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps128(a, $imm8, src, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps128(a, IMM8, src, k);
     transmute(r)
 }
 
@@ -5078,17 +5052,13 @@ pub unsafe fn _mm_mask_roundscale_ps(src: __m128, k: __mmask8, a: __m128, imm8: 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_roundscale_ps&expand=4777)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscaleps, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_maskz_roundscale_ps(k: __mmask8, a: __m128, imm8: i32) -> __m128 {
+#[cfg_attr(test, assert_instr(vrndscaleps, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_maskz_roundscale_ps<const IMM8: i32>(k: __mmask8, a: __m128) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let zero = _mm_setzero_ps().as_f32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscaleps128(a, $imm8, zero, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscaleps128(a, IMM8, zero, k);
     transmute(r)
 }
 
@@ -5103,17 +5073,13 @@ pub unsafe fn _mm_maskz_roundscale_ps(k: __mmask8, a: __m128, imm8: i32) -> __m1
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_roundscale_pd&expand=4775)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_roundscale_pd(a: __m512d, imm8: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_roundscale_pd<const IMM8: i32>(a: __m512d) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd(a, $imm8, zero, 0b11111111, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd(a, IMM8, zero, 0b11111111, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5128,22 +5094,17 @@ pub unsafe fn _mm512_roundscale_pd(a: __m512d, imm8: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_roundscale_pd&expand=4773)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_roundscale_pd(
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_roundscale_pd<const IMM8: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
-    imm8: i32,
 ) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let src = src.as_f64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd(a, $imm8, src, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd(a, IMM8, src, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5158,17 +5119,13 @@ pub unsafe fn _mm512_mask_roundscale_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_roundscale_pd&expand=4774)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_roundscale_pd(k: __mmask8, a: __m512d, imm8: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m512d) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd(a, $imm8, zero, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd(a, IMM8, zero, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5183,17 +5140,13 @@ pub unsafe fn _mm512_maskz_roundscale_pd(k: __mmask8, a: __m512d, imm8: i32) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_roundscale_pd&expand=4772)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm256_roundscale_pd(a: __m256d, imm8: i32) -> __m256d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm256_roundscale_pd<const IMM8: i32>(a: __m256d) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let zero = _mm256_setzero_pd().as_f64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd256(a, $imm8, zero, 0b00001111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd256(a, IMM8, zero, 0b00001111);
     transmute(r)
 }
 
@@ -5208,22 +5161,17 @@ pub unsafe fn _mm256_roundscale_pd(a: __m256d, imm8: i32) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_roundscale_pd&expand=4770)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_mask_roundscale_pd(
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_mask_roundscale_pd<const IMM8: i32>(
     src: __m256d,
     k: __mmask8,
     a: __m256d,
-    imm8: i32,
 ) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let src = src.as_f64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd256(a, $imm8, src, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd256(a, IMM8, src, k);
     transmute(r)
 }
 
@@ -5238,17 +5186,13 @@ pub unsafe fn _mm256_mask_roundscale_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_roundscale_pd&expand=4771)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_maskz_roundscale_pd(k: __mmask8, a: __m256d, imm8: i32) -> __m256d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m256d) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let zero = _mm256_setzero_pd().as_f64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd256(a, $imm8, zero, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd256(a, IMM8, zero, k);
     transmute(r)
 }
 
@@ -5263,17 +5207,13 @@ pub unsafe fn _mm256_maskz_roundscale_pd(k: __mmask8, a: __m256d, imm8: i32) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_roundscale_pd&expand=4769)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm_roundscale_pd(a: __m128d, imm8: i32) -> __m128d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm_roundscale_pd<const IMM8: i32>(a: __m128d) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let zero = _mm_setzero_pd().as_f64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd128(a, $imm8, zero, 0b00000011)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd128(a, IMM8, zero, 0b00000011);
     transmute(r)
 }
 
@@ -5288,17 +5228,17 @@ pub unsafe fn _mm_roundscale_pd(a: __m128d, imm8: i32) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_roundscale_pd&expand=4767)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_mask_roundscale_pd(src: __m128d, k: __mmask8, a: __m128d, imm8: i32) -> __m128d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_mask_roundscale_pd<const IMM8: i32>(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let src = src.as_f64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd128(a, $imm8, src, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd128(a, IMM8, src, k);
     transmute(r)
 }
 
@@ -5313,17 +5253,13 @@ pub unsafe fn _mm_mask_roundscale_pd(src: __m128d, k: __mmask8, a: __m128d, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_roundscale_pd&expand=4768)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vrndscalepd, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_maskz_roundscale_pd(k: __mmask8, a: __m128d, imm8: i32) -> __m128d {
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m128d) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let zero = _mm_setzero_pd().as_f64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vrndscalepd128(a, $imm8, zero, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vrndscalepd128(a, IMM8, zero, k);
     transmute(r)
 }
 
@@ -5588,25 +5524,14 @@ pub unsafe fn _mm_maskz_scalef_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m128
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fixupimm_ps&expand=2499)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fixupimm_ps(a: __m512, b: __m512, c: __m512i, imm8: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fixupimm_ps<const IMM8: i32>(a: __m512, b: __m512, c: __m512i) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps(
-                a,
-                b,
-                c,
-                $imm8,
-                0b11111111_11111111,
-                _MM_FROUND_CUR_DIRECTION,
-            )
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps(a, b, c, IMM8, 0b11111111_11111111, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5615,24 +5540,19 @@ pub unsafe fn _mm512_fixupimm_ps(a: __m512, b: __m512, c: __m512i, imm8: i32) ->
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fixupimm_ps&expand=2500)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fixupimm_ps<const IMM8: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512i,
-    imm8: i32,
 ) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps(a, b, c, $imm8, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps(a, b, c, IMM8, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5641,24 +5561,19 @@ pub unsafe fn _mm512_mask_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fixupimm_ps&expand=2501)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fixupimm_ps<const IMM8: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512i,
-    imm8: i32,
 ) -> __m512 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpsz(a, b, c, $imm8, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpsz(a, b, c, IMM8, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5667,18 +5582,14 @@ pub unsafe fn _mm512_maskz_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fixupimm_ps&expand=2496)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_fixupimm_ps(a: __m256, b: __m256, c: __m256i, imm8: i32) -> __m256 {
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_fixupimm_ps<const IMM8: i32>(a: __m256, b: __m256, c: __m256i) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let b = b.as_f32x8();
     let c = c.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps256(a, b, c, $imm8, 0b11111111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps256(a, b, c, IMM8, 0b11111111);
     transmute(r)
 }
 
@@ -5687,24 +5598,19 @@ pub unsafe fn _mm256_fixupimm_ps(a: __m256, b: __m256, c: __m256i, imm8: i32) ->
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_fixupimm_ps&expand=2497)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_fixupimm_ps<const IMM8: i32>(
     a: __m256,
     k: __mmask8,
     b: __m256,
     c: __m256i,
-    imm8: i32,
 ) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let b = b.as_f32x8();
     let c = c.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps256(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps256(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5713,24 +5619,19 @@ pub unsafe fn _mm256_mask_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_fixupimm_ps&expand=2498)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_maskz_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_maskz_fixupimm_ps<const IMM8: i32>(
     k: __mmask8,
     a: __m256,
     b: __m256,
     c: __m256i,
-    imm8: i32,
 ) -> __m256 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x8();
     let b = b.as_f32x8();
     let c = c.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpsz256(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpsz256(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5739,18 +5640,14 @@ pub unsafe fn _mm256_maskz_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fixupimm_ps&expand=2493)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_fixupimm_ps(a: __m128, b: __m128, c: __m128i, imm8: i32) -> __m128 {
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_fixupimm_ps<const IMM8: i32>(a: __m128, b: __m128, c: __m128i) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let b = b.as_f32x4();
     let c = c.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps128(a, b, c, $imm8, 0b00001111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps128(a, b, c, IMM8, 0b00001111);
     transmute(r)
 }
 
@@ -5759,24 +5656,19 @@ pub unsafe fn _mm_fixupimm_ps(a: __m128, b: __m128, c: __m128i, imm8: i32) -> __
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_fixupimm_ps&expand=2494)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_fixupimm_ps<const IMM8: i32>(
     a: __m128,
     k: __mmask8,
     b: __m128,
     c: __m128i,
-    imm8: i32,
 ) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let b = b.as_f32x4();
     let c = c.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmps128(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmps128(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5785,24 +5677,19 @@ pub unsafe fn _mm_mask_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_fixupimm_ps&expand=2495)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_maskz_fixupimm_ps(
+#[cfg_attr(test, assert_instr(vfixupimmps, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_maskz_fixupimm_ps<const IMM8: i32>(
     k: __mmask8,
     a: __m128,
     b: __m128,
     c: __m128i,
-    imm8: i32,
 ) -> __m128 {
+    static_assert_imm8!(IMM8);
     let a = a.as_f32x4();
     let b = b.as_f32x4();
     let c = c.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpsz128(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpsz128(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5811,18 +5698,14 @@ pub unsafe fn _mm_maskz_fixupimm_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fixupimm_pd&expand=2490)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fixupimm_pd(a: __m512d, b: __m512d, c: __m512i, imm8: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fixupimm_pd<const IMM8: i32>(a: __m512d, b: __m512d, c: __m512i) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd(a, b, c, $imm8, 0b11111111, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd(a, b, c, IMM8, 0b11111111, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5831,24 +5714,19 @@ pub unsafe fn _mm512_fixupimm_pd(a: __m512d, b: __m512d, c: __m512i, imm8: i32) 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fixupimm_pd&expand=2491)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fixupimm_pd<const IMM8: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512i,
-    imm8: i32,
 ) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd(a, b, c, $imm8, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd(a, b, c, IMM8, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5857,24 +5735,19 @@ pub unsafe fn _mm512_mask_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fixupimm_pd&expand=2492)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fixupimm_pd<const IMM8: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512i,
-    imm8: i32,
 ) -> __m512d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpdz(a, b, c, $imm8, k, _MM_FROUND_CUR_DIRECTION)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpdz(a, b, c, IMM8, k, _MM_FROUND_CUR_DIRECTION);
     transmute(r)
 }
 
@@ -5883,18 +5756,14 @@ pub unsafe fn _mm512_maskz_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fixupimm_pd&expand=2487)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_fixupimm_pd(a: __m256d, b: __m256d, c: __m256i, imm8: i32) -> __m256d {
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_fixupimm_pd<const IMM8: i32>(a: __m256d, b: __m256d, c: __m256i) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let b = b.as_f64x4();
     let c = c.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd256(a, b, c, $imm8, 0b00001111)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd256(a, b, c, IMM8, 0b00001111);
     transmute(r)
 }
 
@@ -5903,24 +5772,19 @@ pub unsafe fn _mm256_fixupimm_pd(a: __m256d, b: __m256d, c: __m256i, imm8: i32) 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_fixupimm_pd&expand=2488)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_fixupimm_pd<const IMM8: i32>(
     a: __m256d,
     k: __mmask8,
     b: __m256d,
     c: __m256i,
-    imm8: i32,
 ) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let b = b.as_f64x4();
     let c = c.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd256(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd256(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5929,24 +5793,19 @@ pub unsafe fn _mm256_mask_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_fixupimm_pd&expand=2489)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_maskz_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_maskz_fixupimm_pd<const IMM8: i32>(
     k: __mmask8,
     a: __m256d,
     b: __m256d,
     c: __m256i,
-    imm8: i32,
 ) -> __m256d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x4();
     let b = b.as_f64x4();
     let c = c.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpdz256(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpdz256(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -5955,18 +5814,14 @@ pub unsafe fn _mm256_maskz_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fixupimm_pd&expand=2484)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_fixupimm_pd(a: __m128d, b: __m128d, c: __m128i, imm8: i32) -> __m128d {
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_fixupimm_pd<const IMM8: i32>(a: __m128d, b: __m128d, c: __m128i) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let b = b.as_f64x2();
     let c = c.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd128(a, b, c, $imm8, 0b00000011)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd128(a, b, c, IMM8, 0b00000011);
     transmute(r)
 }
 
@@ -5975,24 +5830,19 @@ pub unsafe fn _mm_fixupimm_pd(a: __m128d, b: __m128d, c: __m128i, imm8: i32) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_fixupimm_pd&expand=2485)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_fixupimm_pd<const IMM8: i32>(
     a: __m128d,
     k: __mmask8,
     b: __m128d,
     c: __m128i,
-    imm8: i32,
 ) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let b = b.as_f64x2();
     let c = c.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpd128(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpd128(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -6001,24 +5851,19 @@ pub unsafe fn _mm_mask_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_fixupimm_pd&expand=2486)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vfixupimmpd, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_maskz_fixupimm_pd(
+#[cfg_attr(test, assert_instr(vfixupimmpd, IMM8 = 0))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_maskz_fixupimm_pd<const IMM8: i32>(
     k: __mmask8,
     a: __m128d,
     b: __m128d,
     c: __m128i,
-    imm8: i32,
 ) -> __m128d {
+    static_assert_imm8!(IMM8);
     let a = a.as_f64x2();
     let b = b.as_f64x2();
     let c = c.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vfixupimmpdz128(a, b, c, $imm8, k)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vfixupimmpdz128(a, b, c, IMM8, k);
     transmute(r)
 }
 
@@ -6027,18 +5872,18 @@ pub unsafe fn _mm_maskz_fixupimm_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_ternarylogic_epi32&expand=5867)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_ternarylogic_epi32(a: __m512i, b: __m512i, c: __m512i, imm8: i32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_ternarylogic_epi32<const IMM8: i32>(
+    a: __m512i,
+    b: __m512i,
+    c: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x16();
     let b = b.as_i32x16();
     let c = c.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6047,25 +5892,20 @@ pub unsafe fn _mm512_ternarylogic_epi32(a: __m512i, b: __m512i, c: __m512i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_ternarylogic_epi32&expand=5865)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_ternarylogic_epi32<const IMM8: i32>(
     src: __m512i,
     k: __mmask16,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i32x16();
     let a = a.as_i32x16();
     let b = b.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogd(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 32-bit granularity (32-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6073,26 +5913,21 @@ pub unsafe fn _mm512_mask_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_ternarylogic_epi32&expand=5866)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_ternarylogic_epi32<const IMM8: i32>(
     k: __mmask16,
     a: __m512i,
     b: __m512i,
     c: __m512i,
-    imm8: i32,
 ) -> __m512i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x16();
     let b = b.as_i32x16();
     let c = c.as_i32x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd(a, b, c, IMM8);
     let zero = _mm512_setzero_si512().as_i32x16();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
@@ -6100,18 +5935,18 @@ pub unsafe fn _mm512_maskz_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_ternarylogic_epi32&expand=5864)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_ternarylogic_epi32(a: __m256i, b: __m256i, c: __m256i, imm8: i32) -> __m256i {
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_ternarylogic_epi32<const IMM8: i32>(
+    a: __m256i,
+    b: __m256i,
+    c: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x8();
     let b = b.as_i32x8();
     let c = c.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd256(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd256(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6120,25 +5955,20 @@ pub unsafe fn _mm256_ternarylogic_epi32(a: __m256i, b: __m256i, c: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_ternarylogic_epi32&expand=5862)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_ternarylogic_epi32<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i32x8();
     let a = a.as_i32x8();
     let b = b.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd256(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogd256(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 32-bit granularity (32-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6146,26 +5976,21 @@ pub unsafe fn _mm256_mask_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_ternarylogic_epi32&expand=5863)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_maskz_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_maskz_ternarylogic_epi32<const IMM8: i32>(
     k: __mmask8,
     a: __m256i,
     b: __m256i,
     c: __m256i,
-    imm8: i32,
 ) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x8();
     let b = b.as_i32x8();
     let c = c.as_i32x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd256(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd256(a, b, c, IMM8);
     let zero = _mm256_setzero_si256().as_i32x8();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
@@ -6173,18 +5998,18 @@ pub unsafe fn _mm256_maskz_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ternarylogic_epi32&expand=5861)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_ternarylogic_epi32(a: __m128i, b: __m128i, c: __m128i, imm8: i32) -> __m128i {
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_ternarylogic_epi32<const IMM8: i32>(
+    a: __m128i,
+    b: __m128i,
+    c: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     let c = c.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd128(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd128(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6193,25 +6018,20 @@ pub unsafe fn _mm_ternarylogic_epi32(a: __m128i, b: __m128i, c: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_ternarylogic_epi32&expand=5859)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_ternarylogic_epi32<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i32x4();
     let a = a.as_i32x4();
     let b = b.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd128(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogd128(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 32-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 32-bit granularity (32-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6219,26 +6039,21 @@ pub unsafe fn _mm_mask_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_ternarylogic_epi32&expand=5860)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogd, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_maskz_ternarylogic_epi32(
+#[cfg_attr(test, assert_instr(vpternlogd, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_maskz_ternarylogic_epi32<const IMM8: i32>(
     k: __mmask8,
     a: __m128i,
     b: __m128i,
     c: __m128i,
-    imm8: i32,
 ) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     let c = c.as_i32x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogd128(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogd128(a, b, c, IMM8);
     let zero = _mm_setzero_si128().as_i32x4();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
@@ -6246,18 +6061,18 @@ pub unsafe fn _mm_maskz_ternarylogic_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_ternarylogic_epi64&expand=5876)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_ternarylogic_epi64(a: __m512i, b: __m512i, c: __m512i, imm8: i32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_ternarylogic_epi64<const IMM8: i32>(
+    a: __m512i,
+    b: __m512i,
+    c: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x8();
     let b = b.as_i64x8();
     let c = c.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6266,25 +6081,20 @@ pub unsafe fn _mm512_ternarylogic_epi64(a: __m512i, b: __m512i, c: __m512i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_ternarylogic_epi64&expand=5874)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_ternarylogic_epi64<const IMM8: i32>(
     src: __m512i,
     k: __mmask8,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i64x8();
     let a = a.as_i64x8();
     let b = b.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogq(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 64-bit granularity (64-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6292,26 +6102,21 @@ pub unsafe fn _mm512_mask_ternarylogic_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_ternarylogic_epi64&expand=5875)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_ternarylogic_epi64<const IMM8: i32>(
     k: __mmask8,
     a: __m512i,
     b: __m512i,
     c: __m512i,
-    imm8: i32,
 ) -> __m512i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x8();
     let b = b.as_i64x8();
     let c = c.as_i64x8();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq(a, b, c, IMM8);
     let zero = _mm512_setzero_si512().as_i64x8();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
@@ -6319,18 +6124,18 @@ pub unsafe fn _mm512_maskz_ternarylogic_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_ternarylogic_epi64&expand=5873)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_ternarylogic_epi64(a: __m256i, b: __m256i, c: __m256i, imm8: i32) -> __m256i {
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_ternarylogic_epi64<const IMM8: i32>(
+    a: __m256i,
+    b: __m256i,
+    c: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x4();
     let b = b.as_i64x4();
     let c = c.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq256(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq256(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6339,25 +6144,20 @@ pub unsafe fn _mm256_ternarylogic_epi64(a: __m256i, b: __m256i, c: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_ternarylogic_epi64&expand=5871)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_ternarylogic_epi64<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i64x4();
     let a = a.as_i64x4();
     let b = b.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq256(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogq256(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 64-bit granularity (64-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6365,26 +6165,21 @@ pub unsafe fn _mm256_mask_ternarylogic_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_ternarylogic_epi64&expand=5872)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_maskz_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_maskz_ternarylogic_epi64<const IMM8: i32>(
     k: __mmask8,
     a: __m256i,
     b: __m256i,
     c: __m256i,
-    imm8: i32,
 ) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x4();
     let b = b.as_i64x4();
     let c = c.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq256(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq256(a, b, c, IMM8);
     let zero = _mm256_setzero_si256().as_i64x4();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst.
@@ -6392,18 +6187,18 @@ pub unsafe fn _mm256_maskz_ternarylogic_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ternarylogic_epi64&expand=5870)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_ternarylogic_epi64(a: __m128i, b: __m128i, c: __m128i, imm8: i32) -> __m128i {
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_ternarylogic_epi64<const IMM8: i32>(
+    a: __m128i,
+    b: __m128i,
+    c: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x2();
     let b = b.as_i64x2();
     let c = c.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq128(a, b, c, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq128(a, b, c, IMM8);
     transmute(r)
 }
 
@@ -6412,25 +6207,20 @@ pub unsafe fn _mm_ternarylogic_epi64(a: __m128i, b: __m128i, c: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_ternarylogic_epi64&expand=5868)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_ternarylogic_epi64<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
+    static_assert_imm8!(IMM8);
     let src = src.as_i64x2();
     let a = a.as_i64x2();
     let b = b.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq128(src, a, b, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
-    transmute(simd_select_bitmask(k, ternarylogic, src))
+    let r = vpternlogq128(src, a, b, IMM8);
+    transmute(simd_select_bitmask(k, r, src))
 }
 
 /// Bitwise ternary logic that provides the capability to implement any three-operand binary function; the specific binary function is specified by value in imm8. For each bit in each packed 64-bit integer, the corresponding bit from a, b, and c are used to form a 3 bit index into imm8, and the value at that bit in imm8 is written to the corresponding bit in dst using zeromask k at 64-bit granularity (64-bit elements are zeroed out when the corresponding mask bit is not set).
@@ -6438,26 +6228,21 @@ pub unsafe fn _mm_mask_ternarylogic_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_ternarylogic_epi64&expand=5869)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpternlogq, imm8 = 114))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_maskz_ternarylogic_epi64(
+#[cfg_attr(test, assert_instr(vpternlogq, IMM8 = 114))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_maskz_ternarylogic_epi64<const IMM8: i32>(
     k: __mmask8,
     a: __m128i,
     b: __m128i,
     c: __m128i,
-    imm8: i32,
 ) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i64x2();
     let b = b.as_i64x2();
     let c = c.as_i64x2();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpternlogq128(a, b, c, $imm8)
-        };
-    }
-    let ternarylogic = constify_imm8_sae!(imm8, call);
+    let r = vpternlogq128(a, b, c, IMM8);
     let zero = _mm_setzero_si128().as_i64x2();
-    transmute(simd_select_bitmask(k, ternarylogic, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Normalize the mantissas of packed single-precision (32-bit) floating-point elements in a, and store the results in dst. This intrinsic essentially calculates ±(2^k)*|x.significand|, where k depends on the interval range defined by interv and the sign depends on sc and the source sign.
@@ -7078,17 +6863,13 @@ pub unsafe fn _mm_maskz_getmant_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_add_round_ps&expand=145)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_add_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vaddps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_add_round_ps<const ROUNDING: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vaddps(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7104,24 +6885,19 @@ pub unsafe fn _mm512_add_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_add_round_ps&expand=146)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddps, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_add_round_ps(
+#[cfg_attr(test, assert_instr(vaddps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_add_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddps(a, b, $imm4)
-        };
-    }
-    let addround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, addround, src.as_f32x16()))
+    let r = vaddps(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Add packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7136,24 +6912,19 @@ pub unsafe fn _mm512_mask_add_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_add_round_ps&expand=147)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_add_round_ps(
+#[cfg_attr(test, assert_instr(vaddps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_add_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddps(a, b, $imm4)
-        };
-    }
-    let addround = constify_imm4_round!(rounding, call);
+    let r = vaddps(a, b, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, addround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Add packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst.\
@@ -7168,17 +6939,13 @@ pub unsafe fn _mm512_maskz_add_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_add_round_pd&expand=142)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_add_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vaddpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_add_round_pd<const ROUNDING: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vaddpd(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7194,24 +6961,19 @@ pub unsafe fn _mm512_add_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_add_round_pd&expand=143)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddpd, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_add_round_pd(
+#[cfg_attr(test, assert_instr(vaddpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_add_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddpd(a, b, $imm4)
-        };
-    }
-    let addround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, addround, src.as_f64x8()))
+    let r = vaddpd(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Add packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7226,24 +6988,19 @@ pub unsafe fn _mm512_mask_add_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_add_round_pd&expand=144)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vaddpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_add_round_pd(
+#[cfg_attr(test, assert_instr(vaddpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_add_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vaddpd(a, b, $imm4)
-        };
-    }
-    let addround = constify_imm4_round!(rounding, call);
+    let r = vaddpd(a, b, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, addround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Subtract packed single-precision (32-bit) floating-point elements in b from packed single-precision (32-bit) floating-point elements in a, and store the results in dst.\
@@ -22525,75 +22282,32 @@ pub unsafe fn _mm_maskz_shuffle_epi32(k: __mmask8, a: __m128i, imm8: _MM_PERM_EN
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shuffle_ps&expand=5203)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 0))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shuffle_ps(a: __m512, b: __m512, imm8: i32) -> __m512 {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let imm8 = (imm8 & 0xFF) as u8;
-    macro_rules! shuffle4 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $e:expr,
-            $f:expr,
-            $g:expr,
-            $h:expr,
-            $i:expr,
-            $j:expr,
-            $k:expr,
-            $l:expr,
-            $m:expr,
-            $n:expr,
-            $o:expr,
-            $p:expr
-        ) => {
-            simd_shuffle16(
-                a,
-                b,
-                [
-                    $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
-                ],
-            )
-        };
-    }
-    macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr, $e:expr, $f:expr, $g:expr, $i:expr, $j:expr, $k:expr, $m:expr, $n:expr, $o:expr) => {
-            match (imm8 >> 6) & 0x3 {
-                0 => shuffle4!($a, $b, $c, 16, $e, $f, $g, 20, $i, $j, $k, 24, $m, $n, $o, 28),
-                1 => shuffle4!($a, $b, $c, 17, $e, $f, $g, 21, $i, $j, $k, 25, $m, $n, $o, 29),
-                2 => shuffle4!($a, $b, $c, 18, $e, $f, $g, 22, $i, $j, $k, 26, $m, $n, $o, 30),
-                _ => shuffle4!($a, $b, $c, 19, $e, $f, $g, 23, $i, $j, $k, 27, $m, $n, $o, 31),
-            }
-        };
-    }
-    macro_rules! shuffle2 {
-        ($a:expr, $b:expr, $e:expr, $f:expr, $i:expr, $j:expr, $m:expr, $n:expr) => {
-            match (imm8 >> 4) & 0x3 {
-                0 => shuffle3!($a, $b, 16, $e, $f, 20, $i, $j, 24, $m, $n, 28),
-                1 => shuffle3!($a, $b, 17, $e, $f, 21, $i, $j, 25, $m, $n, 29),
-                2 => shuffle3!($a, $b, 18, $e, $f, 22, $i, $j, 26, $m, $n, 30),
-                _ => shuffle3!($a, $b, 19, $e, $f, 23, $i, $j, 27, $m, $n, 31),
-            }
-        };
-    }
-    macro_rules! shuffle1 {
-        ($a:expr, $e:expr, $i: expr, $m: expr) => {
-            match (imm8 >> 2) & 0x3 {
-                0 => shuffle2!($a, 0, $e, 4, $i, 8, $m, 12),
-                1 => shuffle2!($a, 1, $e, 5, $i, 9, $m, 13),
-                2 => shuffle2!($a, 2, $e, 6, $i, 10, $m, 14),
-                _ => shuffle2!($a, 3, $e, 7, $i, 11, $m, 15),
-            }
-        };
-    }
-    match imm8 & 0x3 {
-        0 => shuffle1!(0, 4, 8, 12),
-        1 => shuffle1!(1, 5, 9, 13),
-        2 => shuffle1!(2, 6, 10, 14),
-        _ => shuffle1!(3, 7, 11, 15),
-    }
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shuffle_ps<const MASK: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_imm8!(MASK);
+    simd_shuffle16(
+        a,
+        b,
+        [
+            MASK as u32 & 0b11,
+            (MASK as u32 >> 2) & 0b11,
+            ((MASK as u32 >> 4) & 0b11) + 16,
+            ((MASK as u32 >> 6) & 0b11) + 16,
+            (MASK as u32 & 0b11) + 4,
+            ((MASK as u32 >> 2) & 0b11) + 4,
+            ((MASK as u32 >> 4) & 0b11) + 20,
+            ((MASK as u32 >> 6) & 0b11) + 20,
+            (MASK as u32 & 0b11) + 8,
+            ((MASK as u32 >> 2) & 0b11) + 8,
+            ((MASK as u32 >> 4) & 0b11) + 24,
+            ((MASK as u32 >> 6) & 0b11) + 24,
+            (MASK as u32 & 0b11) + 12,
+            ((MASK as u32 >> 2) & 0b11) + 12,
+            ((MASK as u32 >> 4) & 0b11) + 28,
+            ((MASK as u32 >> 6) & 0b11) + 28,
+        ],
+    )
 }
 
 /// Shuffle single-precision (32-bit) floating-point elements in a within 128-bit lanes using the control in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22601,21 +22315,15 @@ pub unsafe fn _mm512_shuffle_ps(a: __m512, b: __m512, imm8: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shuffle_ps&expand=5201)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 0))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shuffle_ps(
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shuffle_ps<const MASK: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    imm8: i32,
 ) -> __m512 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm512_shuffle_ps(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm512_shuffle_ps::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f32x16(), src.as_f32x16()))
 }
 
@@ -22624,15 +22332,14 @@ pub unsafe fn _mm512_mask_shuffle_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shuffle_ps&expand=5202)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 0))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shuffle_ps(k: __mmask16, a: __m512, b: __m512, imm8: i32) -> __m512 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm512_shuffle_ps(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shuffle_ps<const MASK: i32>(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    let r = _mm512_shuffle_ps::<MASK>(a, b);
     let zero = _mm512_setzero_ps().as_f32x16();
     transmute(simd_select_bitmask(k, r.as_f32x16(), zero))
 }
@@ -22642,21 +22349,15 @@ pub unsafe fn _mm512_maskz_shuffle_ps(k: __mmask16, a: __m512, b: __m512, imm8: 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shuffle_ps&expand=5198)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 9))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shuffle_ps(
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shuffle_ps<const MASK: i32>(
     src: __m256,
     k: __mmask8,
     a: __m256,
     b: __m256,
-    imm8: i32,
 ) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm256_shuffle_ps(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm256_shuffle_ps::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f32x8(), src.as_f32x8()))
 }
 
@@ -22665,15 +22366,14 @@ pub unsafe fn _mm256_mask_shuffle_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shuffle_ps&expand=5199)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 9))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shuffle_ps(k: __mmask8, a: __m256, b: __m256, imm8: i32) -> __m256 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm256_shuffle_ps(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shuffle_ps<const MASK: i32>(
+    k: __mmask8,
+    a: __m256,
+    b: __m256,
+) -> __m256 {
+    let r = _mm256_shuffle_ps::<MASK>(a, b);
     let zero = _mm256_setzero_ps().as_f32x8();
     transmute(simd_select_bitmask(k, r.as_f32x8(), zero))
 }
@@ -22683,21 +22383,15 @@ pub unsafe fn _mm256_maskz_shuffle_ps(k: __mmask8, a: __m256, b: __m256, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shuffle_ps&expand=5195)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 9))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shuffle_ps(
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shuffle_ps<const MASK: i32>(
     src: __m128,
     k: __mmask8,
     a: __m128,
     b: __m128,
-    imm8: i32,
 ) -> __m128 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_shuffle_ps::<$imm8>(a, b)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm_shuffle_ps::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f32x4(), src.as_f32x4()))
 }
 
@@ -22706,15 +22400,10 @@ pub unsafe fn _mm_mask_shuffle_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shuffle_ps&expand=5196)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufps, imm8 = 9))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shuffle_ps(k: __mmask8, a: __m128, b: __m128, imm8: i32) -> __m128 {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_shuffle_ps::<$imm8>(a, b)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufps, MASK = 3))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shuffle_ps<const MASK: i32>(k: __mmask8, a: __m128, b: __m128) -> __m128 {
+    let r = _mm_shuffle_ps::<MASK>(a, b);
     let zero = _mm_setzero_ps().as_f32x4();
     transmute(simd_select_bitmask(k, r.as_f32x4(), zero))
 }
@@ -22724,76 +22413,24 @@ pub unsafe fn _mm_maskz_shuffle_ps(k: __mmask8, a: __m128, b: __m128, imm8: i32)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shuffle_pd&expand=5192)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 3))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shuffle_pd(a: __m512d, b: __m512d, imm8: i32) -> __m512d {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let imm8 = (imm8 & 0xFF) as u8;
-    macro_rules! shuffle8 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
-        };
-    }
-    macro_rules! shuffle7 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr) => {
-            match (imm8 >> 7) & 0x1 {
-                0 => shuffle8!($a, $b, $c, $d, $e, $f, $g, 14),
-                _ => shuffle8!($a, $b, $c, $d, $e, $f, $g, 15),
-            }
-        };
-    }
-    macro_rules! shuffle6 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {
-            match (imm8 >> 6) & 0x1 {
-                0 => shuffle7!($a, $b, $c, $d, $e, $f, 6),
-                _ => shuffle7!($a, $b, $c, $d, $e, $f, 7),
-            }
-        };
-    }
-    macro_rules! shuffle5 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr) => {
-            match (imm8 >> 5) & 0x1 {
-                0 => shuffle6!($a, $b, $c, $d, $e, 12),
-                _ => shuffle6!($a, $b, $c, $d, $e, 13),
-            }
-        };
-    }
-    macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            match (imm8 >> 4) & 0x1 {
-                0 => shuffle5!($a, $b, $c, $d, 4),
-                _ => shuffle5!($a, $b, $c, $d, 5),
-            }
-        };
-    }
-    macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr) => {
-            match (imm8 >> 3) & 0x1 {
-                0 => shuffle4!($a, $b, $c, 10),
-                _ => shuffle4!($a, $b, $c, 11),
-            }
-        };
-    }
-    macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
-            match (imm8 >> 2) & 0x1 {
-                0 => shuffle3!($a, $b, 2),
-                _ => shuffle3!($a, $b, 3),
-            }
-        };
-    }
-    macro_rules! shuffle1 {
-        ($a:expr) => {
-            match (imm8 >> 1) & 0x1 {
-                0 => shuffle2!($a, 8),
-                _ => shuffle2!($a, 9),
-            }
-        };
-    }
-    match imm8 & 0x1 {
-        0 => shuffle1!(0),
-        _ => shuffle1!(1),
-    }
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shuffle_pd<const MASK: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_imm8!(MASK);
+    simd_shuffle8(
+        a,
+        b,
+        [
+            MASK as u32 & 0b1,
+            ((MASK as u32 >> 1) & 0b1) + 8,
+            ((MASK as u32 >> 2) & 0b1) + 2,
+            ((MASK as u32 >> 3) & 0b1) + 10,
+            ((MASK as u32 >> 4) & 0b1) + 4,
+            ((MASK as u32 >> 5) & 0b1) + 12,
+            ((MASK as u32 >> 6) & 0b1) + 6,
+            ((MASK as u32 >> 7) & 0b1) + 14,
+        ],
+    )
 }
 
 /// Shuffle double-precision (64-bit) floating-point elements within 128-bit lanes using the control in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22801,21 +22438,15 @@ pub unsafe fn _mm512_shuffle_pd(a: __m512d, b: __m512d, imm8: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shuffle_pd&expand=5190)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 3))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shuffle_pd(
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shuffle_pd<const MASK: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    imm8: i32,
 ) -> __m512d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm512_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm512_shuffle_pd::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f64x8(), src.as_f64x8()))
 }
 
@@ -22824,15 +22455,14 @@ pub unsafe fn _mm512_mask_shuffle_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shuffle_pd&expand=5191)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 3))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shuffle_pd(k: __mmask8, a: __m512d, b: __m512d, imm8: i32) -> __m512d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm512_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shuffle_pd<const MASK: i32>(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    let r = _mm512_shuffle_pd::<MASK>(a, b);
     let zero = _mm512_setzero_pd().as_f64x8();
     transmute(simd_select_bitmask(k, r.as_f64x8(), zero))
 }
@@ -22842,21 +22472,15 @@ pub unsafe fn _mm512_maskz_shuffle_pd(k: __mmask8, a: __m512d, b: __m512d, imm8:
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shuffle_pd&expand=5187)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 9))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shuffle_pd(
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shuffle_pd<const MASK: i32>(
     src: __m256d,
     k: __mmask8,
     a: __m256d,
     b: __m256d,
-    imm8: i32,
 ) -> __m256d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm256_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm256_shuffle_pd::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f64x4(), src.as_f64x4()))
 }
 
@@ -22865,15 +22489,14 @@ pub unsafe fn _mm256_mask_shuffle_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shuffle_pd&expand=5188)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 9))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shuffle_pd(k: __mmask8, a: __m256d, b: __m256d, imm8: i32) -> __m256d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm256_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 3))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shuffle_pd<const MASK: i32>(
+    k: __mmask8,
+    a: __m256d,
+    b: __m256d,
+) -> __m256d {
+    let r = _mm256_shuffle_pd::<MASK>(a, b);
     let zero = _mm256_setzero_pd().as_f64x4();
     transmute(simd_select_bitmask(k, r.as_f64x4(), zero))
 }
@@ -22883,21 +22506,15 @@ pub unsafe fn _mm256_maskz_shuffle_pd(k: __mmask8, a: __m256d, b: __m256d, imm8:
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shuffle_pd&expand=5184)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 9))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shuffle_pd(
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 1))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shuffle_pd<const MASK: i32>(
     src: __m128d,
     k: __mmask8,
     a: __m128d,
     b: __m128d,
-    imm8: i32,
 ) -> __m128d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = _mm_shuffle_pd::<MASK>(a, b);
     transmute(simd_select_bitmask(k, r.as_f64x2(), src.as_f64x2()))
 }
 
@@ -22906,15 +22523,14 @@ pub unsafe fn _mm_mask_shuffle_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shuffle_pd&expand=5185)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vshufpd, imm8 = 9))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shuffle_pd(k: __mmask8, a: __m128d, b: __m128d, imm8: i32) -> __m128d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_shuffle_pd(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vshufpd, MASK = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shuffle_pd<const MASK: i32>(
+    k: __mmask8,
+    a: __m128d,
+    b: __m128d,
+) -> __m128d {
+    let r = _mm_shuffle_pd::<MASK>(a, b);
     let zero = _mm_setzero_pd().as_f64x2();
     transmute(simd_select_bitmask(k, r.as_f64x2(), zero))
 }
@@ -42201,7 +41817,7 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_roundscale_ps() {
         let a = _mm512_set1_ps(1.1);
-        let r = _mm512_roundscale_ps(a, 0);
+        let r = _mm512_roundscale_ps::<0b00_00_00_00>(a);
         let e = _mm512_set1_ps(1.0);
         assert_eq_m512(r, e);
     }
@@ -42209,10 +41825,10 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_roundscale_ps() {
         let a = _mm512_set1_ps(1.1);
-        let r = _mm512_mask_roundscale_ps(a, 0, a, 0);
+        let r = _mm512_mask_roundscale_ps::<0b00_00_00_00>(a, 0, a);
         let e = _mm512_set1_ps(1.1);
         assert_eq_m512(r, e);
-        let r = _mm512_mask_roundscale_ps(a, 0b11111111_11111111, a, 0);
+        let r = _mm512_mask_roundscale_ps::<0b00_00_00_00>(a, 0b11111111_11111111, a);
         let e = _mm512_set1_ps(1.0);
         assert_eq_m512(r, e);
     }
@@ -42220,9 +41836,9 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_roundscale_ps() {
         let a = _mm512_set1_ps(1.1);
-        let r = _mm512_maskz_roundscale_ps(0, a, 0);
+        let r = _mm512_maskz_roundscale_ps::<0b00_00_00_00>(0, a);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_roundscale_ps(0b11111111_11111111, a, 0);
+        let r = _mm512_maskz_roundscale_ps::<0b00_00_00_00>(0b11111111_11111111, a);
         let e = _mm512_set1_ps(1.0);
         assert_eq_m512(r, e);
     }
@@ -42230,7 +41846,7 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_roundscale_ps() {
         let a = _mm256_set1_ps(1.1);
-        let r = _mm256_roundscale_ps(a, 0);
+        let r = _mm256_roundscale_ps::<0b00_00_00_00>(a);
         let e = _mm256_set1_ps(1.0);
         assert_eq_m256(r, e);
     }
@@ -42238,10 +41854,10 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_mask_roundscale_ps() {
         let a = _mm256_set1_ps(1.1);
-        let r = _mm256_mask_roundscale_ps(a, 0, a, 0);
+        let r = _mm256_mask_roundscale_ps::<0b00_00_00_00>(a, 0, a);
         let e = _mm256_set1_ps(1.1);
         assert_eq_m256(r, e);
-        let r = _mm256_mask_roundscale_ps(a, 0b11111111, a, 0);
+        let r = _mm256_mask_roundscale_ps::<0b00_00_00_00>(a, 0b11111111, a);
         let e = _mm256_set1_ps(1.0);
         assert_eq_m256(r, e);
     }
@@ -42249,9 +41865,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_maskz_roundscale_ps() {
         let a = _mm256_set1_ps(1.1);
-        let r = _mm256_maskz_roundscale_ps(0, a, 0);
+        let r = _mm256_maskz_roundscale_ps::<0b00_00_00_00>(0, a);
         assert_eq_m256(r, _mm256_setzero_ps());
-        let r = _mm256_maskz_roundscale_ps(0b11111111, a, 0);
+        let r = _mm256_maskz_roundscale_ps::<0b00_00_00_00>(0b11111111, a);
         let e = _mm256_set1_ps(1.0);
         assert_eq_m256(r, e);
     }
@@ -42259,7 +41875,7 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_roundscale_ps() {
         let a = _mm_set1_ps(1.1);
-        let r = _mm_roundscale_ps(a, 0);
+        let r = _mm_roundscale_ps::<0b00_00_00_00>(a);
         let e = _mm_set1_ps(1.0);
         assert_eq_m128(r, e);
     }
@@ -42267,10 +41883,10 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_mask_roundscale_ps() {
         let a = _mm_set1_ps(1.1);
-        let r = _mm_mask_roundscale_ps(a, 0, a, 0);
+        let r = _mm_mask_roundscale_ps::<0b00_00_00_00>(a, 0, a);
         let e = _mm_set1_ps(1.1);
         assert_eq_m128(r, e);
-        let r = _mm_mask_roundscale_ps(a, 0b00001111, a, 0);
+        let r = _mm_mask_roundscale_ps::<0b00_00_00_00>(a, 0b00001111, a);
         let e = _mm_set1_ps(1.0);
         assert_eq_m128(r, e);
     }
@@ -42278,9 +41894,9 @@ mod tests {
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_maskz_roundscale_ps() {
         let a = _mm_set1_ps(1.1);
-        let r = _mm_maskz_roundscale_ps(0, a, 0);
+        let r = _mm_maskz_roundscale_ps::<0b00_00_00_00>(0, a);
         assert_eq_m128(r, _mm_setzero_ps());
-        let r = _mm_maskz_roundscale_ps(0b00001111, a, 0);
+        let r = _mm_maskz_roundscale_ps::<0b00_00_00_00>(0b00001111, a);
         let e = _mm_set1_ps(1.0);
         assert_eq_m128(r, e);
     }
@@ -42387,7 +42003,8 @@ mod tests {
         let a = _mm512_set1_ps(f32::NAN);
         let b = _mm512_set1_ps(f32::MAX);
         let c = _mm512_set1_epi32(i32::MAX);
-        let r = _mm512_fixupimm_ps(a, b, c, 5);
+        //let r = _mm512_fixupimm_ps(a, b, c, 5);
+        let r = _mm512_fixupimm_ps::<5>(a, b, c);
         let e = _mm512_set1_ps(0.0);
         assert_eq_m512(r, e);
     }
@@ -42403,7 +42020,7 @@ mod tests {
         );
         let b = _mm512_set1_ps(f32::MAX);
         let c = _mm512_set1_epi32(i32::MAX);
-        let r = _mm512_mask_fixupimm_ps(a, 0b11111111_00000000, b, c, 5);
+        let r = _mm512_mask_fixupimm_ps::<5>(a, 0b11111111_00000000, b, c);
         let e = _mm512_set_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
@@ -42421,7 +42038,7 @@ mod tests {
         );
         let b = _mm512_set1_ps(f32::MAX);
         let c = _mm512_set1_epi32(i32::MAX);
-        let r = _mm512_maskz_fixupimm_ps(0b11111111_00000000, a, b, c, 5);
+        let r = _mm512_maskz_fixupimm_ps::<5>(0b11111111_00000000, a, b, c);
         let e = _mm512_set_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
@@ -42433,7 +42050,7 @@ mod tests {
         let a = _mm256_set1_ps(f32::NAN);
         let b = _mm256_set1_ps(f32::MAX);
         let c = _mm256_set1_epi32(i32::MAX);
-        let r = _mm256_fixupimm_ps(a, b, c, 5);
+        let r = _mm256_fixupimm_ps::<5>(a, b, c);
         let e = _mm256_set1_ps(0.0);
         assert_eq_m256(r, e);
     }
@@ -42443,7 +42060,7 @@ mod tests {
         let a = _mm256_set1_ps(f32::NAN);
         let b = _mm256_set1_ps(f32::MAX);
         let c = _mm256_set1_epi32(i32::MAX);
-        let r = _mm256_mask_fixupimm_ps(a, 0b11111111, b, c, 5);
+        let r = _mm256_mask_fixupimm_ps::<5>(a, 0b11111111, b, c);
         let e = _mm256_set1_ps(0.0);
         assert_eq_m256(r, e);
     }
@@ -42453,7 +42070,7 @@ mod tests {
         let a = _mm256_set1_ps(f32::NAN);
         let b = _mm256_set1_ps(f32::MAX);
         let c = _mm256_set1_epi32(i32::MAX);
-        let r = _mm256_maskz_fixupimm_ps(0b11111111, a, b, c, 5);
+        let r = _mm256_maskz_fixupimm_ps::<5>(0b11111111, a, b, c);
         let e = _mm256_set1_ps(0.0);
         assert_eq_m256(r, e);
     }
@@ -42463,7 +42080,7 @@ mod tests {
         let a = _mm_set1_ps(f32::NAN);
         let b = _mm_set1_ps(f32::MAX);
         let c = _mm_set1_epi32(i32::MAX);
-        let r = _mm_fixupimm_ps(a, b, c, 5);
+        let r = _mm_fixupimm_ps::<5>(a, b, c);
         let e = _mm_set1_ps(0.0);
         assert_eq_m128(r, e);
     }
@@ -42473,7 +42090,7 @@ mod tests {
         let a = _mm_set1_ps(f32::NAN);
         let b = _mm_set1_ps(f32::MAX);
         let c = _mm_set1_epi32(i32::MAX);
-        let r = _mm_mask_fixupimm_ps(a, 0b00001111, b, c, 5);
+        let r = _mm_mask_fixupimm_ps::<5>(a, 0b00001111, b, c);
         let e = _mm_set1_ps(0.0);
         assert_eq_m128(r, e);
     }
@@ -42483,7 +42100,7 @@ mod tests {
         let a = _mm_set1_ps(f32::NAN);
         let b = _mm_set1_ps(f32::MAX);
         let c = _mm_set1_epi32(i32::MAX);
-        let r = _mm_maskz_fixupimm_ps(0b00001111, a, b, c, 5);
+        let r = _mm_maskz_fixupimm_ps::<5>(0b00001111, a, b, c);
         let e = _mm_set1_ps(0.0);
         assert_eq_m128(r, e);
     }
@@ -42493,7 +42110,7 @@ mod tests {
         let a = _mm512_set1_epi32(1 << 2);
         let b = _mm512_set1_epi32(1 << 1);
         let c = _mm512_set1_epi32(1 << 0);
-        let r = _mm512_ternarylogic_epi32(a, b, c, 8);
+        let r = _mm512_ternarylogic_epi32::<8>(a, b, c);
         let e = _mm512_set1_epi32(0);
         assert_eq_m512i(r, e);
     }
@@ -42503,9 +42120,9 @@ mod tests {
         let src = _mm512_set1_epi32(1 << 2);
         let a = _mm512_set1_epi32(1 << 1);
         let b = _mm512_set1_epi32(1 << 0);
-        let r = _mm512_mask_ternarylogic_epi32(src, 0, a, b, 8);
+        let r = _mm512_mask_ternarylogic_epi32::<8>(src, 0, a, b);
         assert_eq_m512i(r, src);
-        let r = _mm512_mask_ternarylogic_epi32(src, 0b11111111_11111111, a, b, 8);
+        let r = _mm512_mask_ternarylogic_epi32::<8>(src, 0b11111111_11111111, a, b);
         let e = _mm512_set1_epi32(0);
         assert_eq_m512i(r, e);
     }
@@ -42515,9 +42132,9 @@ mod tests {
         let a = _mm512_set1_epi32(1 << 2);
         let b = _mm512_set1_epi32(1 << 1);
         let c = _mm512_set1_epi32(1 << 0);
-        let r = _mm512_maskz_ternarylogic_epi32(0, a, b, c, 9);
+        let r = _mm512_maskz_ternarylogic_epi32::<9>(0, a, b, c);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_ternarylogic_epi32(0b11111111_11111111, a, b, c, 8);
+        let r = _mm512_maskz_ternarylogic_epi32::<8>(0b11111111_11111111, a, b, c);
         let e = _mm512_set1_epi32(0);
         assert_eq_m512i(r, e);
     }
@@ -42527,7 +42144,7 @@ mod tests {
         let a = _mm256_set1_epi32(1 << 2);
         let b = _mm256_set1_epi32(1 << 1);
         let c = _mm256_set1_epi32(1 << 0);
-        let r = _mm256_ternarylogic_epi32(a, b, c, 8);
+        let r = _mm256_ternarylogic_epi32::<8>(a, b, c);
         let e = _mm256_set1_epi32(0);
         assert_eq_m256i(r, e);
     }
@@ -42537,9 +42154,9 @@ mod tests {
         let src = _mm256_set1_epi32(1 << 2);
         let a = _mm256_set1_epi32(1 << 1);
         let b = _mm256_set1_epi32(1 << 0);
-        let r = _mm256_mask_ternarylogic_epi32(src, 0, a, b, 8);
+        let r = _mm256_mask_ternarylogic_epi32::<8>(src, 0, a, b);
         assert_eq_m256i(r, src);
-        let r = _mm256_mask_ternarylogic_epi32(src, 0b11111111, a, b, 8);
+        let r = _mm256_mask_ternarylogic_epi32::<8>(src, 0b11111111, a, b);
         let e = _mm256_set1_epi32(0);
         assert_eq_m256i(r, e);
     }
@@ -42549,9 +42166,9 @@ mod tests {
         let a = _mm256_set1_epi32(1 << 2);
         let b = _mm256_set1_epi32(1 << 1);
         let c = _mm256_set1_epi32(1 << 0);
-        let r = _mm256_maskz_ternarylogic_epi32(0, a, b, c, 9);
+        let r = _mm256_maskz_ternarylogic_epi32::<9>(0, a, b, c);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_ternarylogic_epi32(0b11111111, a, b, c, 8);
+        let r = _mm256_maskz_ternarylogic_epi32::<8>(0b11111111, a, b, c);
         let e = _mm256_set1_epi32(0);
         assert_eq_m256i(r, e);
     }
@@ -42561,7 +42178,7 @@ mod tests {
         let a = _mm_set1_epi32(1 << 2);
         let b = _mm_set1_epi32(1 << 1);
         let c = _mm_set1_epi32(1 << 0);
-        let r = _mm_ternarylogic_epi32(a, b, c, 8);
+        let r = _mm_ternarylogic_epi32::<8>(a, b, c);
         let e = _mm_set1_epi32(0);
         assert_eq_m128i(r, e);
     }
@@ -42571,9 +42188,9 @@ mod tests {
         let src = _mm_set1_epi32(1 << 2);
         let a = _mm_set1_epi32(1 << 1);
         let b = _mm_set1_epi32(1 << 0);
-        let r = _mm_mask_ternarylogic_epi32(src, 0, a, b, 8);
+        let r = _mm_mask_ternarylogic_epi32::<8>(src, 0, a, b);
         assert_eq_m128i(r, src);
-        let r = _mm_mask_ternarylogic_epi32(src, 0b00001111, a, b, 8);
+        let r = _mm_mask_ternarylogic_epi32::<8>(src, 0b00001111, a, b);
         let e = _mm_set1_epi32(0);
         assert_eq_m128i(r, e);
     }
@@ -42583,9 +42200,9 @@ mod tests {
         let a = _mm_set1_epi32(1 << 2);
         let b = _mm_set1_epi32(1 << 1);
         let c = _mm_set1_epi32(1 << 0);
-        let r = _mm_maskz_ternarylogic_epi32(0, a, b, c, 9);
+        let r = _mm_maskz_ternarylogic_epi32::<9>(0, a, b, c);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_ternarylogic_epi32(0b00001111, a, b, c, 8);
+        let r = _mm_maskz_ternarylogic_epi32::<8>(0b00001111, a, b, c);
         let e = _mm_set1_epi32(0);
         assert_eq_m128i(r, e);
     }
@@ -42691,7 +42308,7 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(-1.);
-        let r = _mm512_add_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_add_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             -1., 0.5, 1., 2.5,
@@ -42700,7 +42317,7 @@ mod tests {
             11., 12.5, 13., -0.99999994,
         );
         assert_eq_m512(r, e);
-        let r = _mm512_add_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_add_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b);
         let e = _mm512_setr_ps(
             -1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999,
         );
@@ -42713,14 +42330,13 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(-1.);
-        let r = _mm512_mask_add_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_add_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, 0, a, b);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_add_round_ps(
+        let r = _mm512_mask_add_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42738,13 +42354,12 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(-1.);
-        let r = _mm512_maskz_add_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_add_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_add_round_ps(
+        let r = _mm512_maskz_add_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -49133,7 +48748,7 @@ mod tests {
         let b = _mm512_setr_ps(
             2., 3., 6., 7., 10., 11., 14., 15., 2., 3., 6., 7., 10., 11., 14., 15.,
         );
-        let r = _mm512_shuffle_ps(a, b, 0x0F);
+        let r = _mm512_shuffle_ps::<0b00_00_11_11>(a, b);
         let e = _mm512_setr_ps(
             8., 8., 2., 2., 16., 16., 10., 10., 8., 8., 2., 2., 16., 16., 10., 10.,
         );
@@ -49148,9 +48763,9 @@ mod tests {
         let b = _mm512_setr_ps(
             2., 3., 6., 7., 10., 11., 14., 15., 2., 3., 6., 7., 10., 11., 14., 15.,
         );
-        let r = _mm512_mask_shuffle_ps(a, 0, a, b, 0x0F);
+        let r = _mm512_mask_shuffle_ps::<0b00_00_11_11>(a, 0, a, b);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_shuffle_ps(a, 0b11111111_11111111, a, b, 0x0F);
+        let r = _mm512_mask_shuffle_ps::<0b00_00_11_11>(a, 0b11111111_11111111, a, b);
         let e = _mm512_setr_ps(
             8., 8., 2., 2., 16., 16., 10., 10., 8., 8., 2., 2., 16., 16., 10., 10.,
         );
@@ -49165,9 +48780,9 @@ mod tests {
         let b = _mm512_setr_ps(
             2., 3., 6., 7., 10., 11., 14., 15., 2., 3., 6., 7., 10., 11., 14., 15.,
         );
-        let r = _mm512_maskz_shuffle_ps(0, a, b, 0x0F);
+        let r = _mm512_maskz_shuffle_ps::<0b00_00_11_11>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_shuffle_ps(0b00000000_11111111, a, b, 0x0F);
+        let r = _mm512_maskz_shuffle_ps::<0b00_00_11_11>(0b00000000_11111111, a, b);
         let e = _mm512_setr_ps(
             8., 8., 2., 2., 16., 16., 10., 10., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
@@ -49178,9 +48793,9 @@ mod tests {
     unsafe fn test_mm256_mask_shuffle_ps() {
         let a = _mm256_set_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_set_ps(2., 3., 6., 7., 10., 11., 14., 15.);
-        let r = _mm256_mask_shuffle_ps(a, 0, a, b, 0x0F);
+        let r = _mm256_mask_shuffle_ps::<0b11_11_11_11>(a, 0, a, b);
         assert_eq_m256(r, a);
-        let r = _mm256_mask_shuffle_ps(a, 0b11111111, a, b, 0x0F);
+        let r = _mm256_mask_shuffle_ps::<0b00_00_11_11>(a, 0b11111111, a, b);
         let e = _mm256_set_ps(7., 7., 1., 1., 15., 15., 9., 9.);
         assert_eq_m256(r, e);
     }
@@ -49189,9 +48804,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shuffle_ps() {
         let a = _mm256_set_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_set_ps(2., 3., 6., 7., 10., 11., 14., 15.);
-        let r = _mm256_maskz_shuffle_ps(0, a, b, 0x0F);
+        let r = _mm256_maskz_shuffle_ps::<0b11_11_11_11>(0, a, b);
         assert_eq_m256(r, _mm256_setzero_ps());
-        let r = _mm256_maskz_shuffle_ps(0b11111111, a, b, 0x0F);
+        let r = _mm256_maskz_shuffle_ps::<0b00_00_11_11>(0b11111111, a, b);
         let e = _mm256_set_ps(7., 7., 1., 1., 15., 15., 9., 9.);
         assert_eq_m256(r, e);
     }
@@ -49200,9 +48815,9 @@ mod tests {
     unsafe fn test_mm_mask_shuffle_ps() {
         let a = _mm_set_ps(1., 4., 5., 8.);
         let b = _mm_set_ps(2., 3., 6., 7.);
-        let r = _mm_mask_shuffle_ps(a, 0, a, b, 0x0F);
+        let r = _mm_mask_shuffle_ps::<0b11_11_11_11>(a, 0, a, b);
         assert_eq_m128(r, a);
-        let r = _mm_mask_shuffle_ps(a, 0b00001111, a, b, 0x0F);
+        let r = _mm_mask_shuffle_ps::<0b00_00_11_11>(a, 0b00001111, a, b);
         let e = _mm_set_ps(7., 7., 1., 1.);
         assert_eq_m128(r, e);
     }
@@ -49211,9 +48826,9 @@ mod tests {
     unsafe fn test_mm_maskz_shuffle_ps() {
         let a = _mm_set_ps(1., 4., 5., 8.);
         let b = _mm_set_ps(2., 3., 6., 7.);
-        let r = _mm_maskz_shuffle_ps(0, a, b, 0x0F);
+        let r = _mm_maskz_shuffle_ps::<0b11_11_11_11>(0, a, b);
         assert_eq_m128(r, _mm_setzero_ps());
-        let r = _mm_maskz_shuffle_ps(0b00001111, a, b, 0x0F);
+        let r = _mm_maskz_shuffle_ps::<0b00_00_11_11>(0b00001111, a, b);
         let e = _mm_set_ps(7., 7., 1., 1.);
         assert_eq_m128(r, e);
     }
@@ -55376,5 +54991,36 @@ mod tests {
         let r = _mm512_cvtsi512_si32(a);
         let e: i32 = 1;
         assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_shuffle_pd() {
+        let a = _mm512_setr_pd(1., 4., 5., 8., 1., 4., 5., 8.);
+        let b = _mm512_setr_pd(2., 3., 6., 7., 2., 3., 6., 7.);
+        let r = _mm512_shuffle_pd::<0b11_11_11_11>(a, b);
+        let e = _mm512_setr_pd(4., 3., 8., 7., 4., 3., 8., 7.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_mask_shuffle_pd() {
+        let a = _mm512_setr_pd(1., 4., 5., 8., 1., 4., 5., 8.);
+        let b = _mm512_setr_pd(2., 3., 6., 7., 2., 3., 6., 7.);
+        let r = _mm512_mask_shuffle_pd::<0b11_11_11_11>(a, 0, a, b);
+        assert_eq_m512d(r, a);
+        let r = _mm512_mask_shuffle_pd::<0b11_11_11_11>(a, 0b11111111, a, b);
+        let e = _mm512_setr_pd(4., 3., 8., 7., 4., 3., 8., 7.);
+        assert_eq_m512d(r, e);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm512_maskz_shuffle_pd() {
+        let a = _mm512_setr_pd(1., 4., 5., 8., 1., 4., 5., 8.);
+        let b = _mm512_setr_pd(2., 3., 6., 7., 2., 3., 6., 7.);
+        let r = _mm512_maskz_shuffle_pd::<0b11_11_11_11>(0, a, b);
+        assert_eq_m512d(r, _mm512_setzero_pd());
+        let r = _mm512_maskz_shuffle_pd::<0b11_11_11_11>(0b00001111, a, b);
+        let e = _mm512_setr_pd(4., 3., 8., 7., 0., 0., 0., 0.);
+        assert_eq_m512d(r, e);
     }
 }

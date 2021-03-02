@@ -2653,21 +2653,17 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(
     all(test, any(not(target_os = "windows"), target_arch = "x86")),
-    assert_instr(shufps, imm8 = 1)
+    cfg_attr(test, assert_instr(shufps, MASK = 2)) // FIXME shufpd expected
 )]
 #[cfg_attr(
     all(test, all(target_os = "windows", target_arch = "x86_64")),
-    assert_instr(shufpd, imm8 = 1)
+    cfg_attr(test, assert_instr(shufpd, MASK = 1))
 )]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_shuffle_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
-    match imm8 & 0b11 {
-        0b00 => simd_shuffle2(a, b, [0, 2]),
-        0b01 => simd_shuffle2(a, b, [1, 2]),
-        0b10 => simd_shuffle2(a, b, [0, 3]),
-        _ => simd_shuffle2(a, b, [1, 3]),
-    }
+pub unsafe fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d {
+    static_assert_imm8!(MASK);
+    simd_shuffle2(a, b, [MASK as u32 & 0b1, ((MASK as u32 >> 1) & 0b1) + 2])
 }
 
 /// Constructs a 128-bit floating-point vector of `[2 x double]`. The lower
@@ -4852,7 +4848,7 @@ mod tests {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(3., 4.);
         let expected = _mm_setr_pd(1., 3.);
-        let r = _mm_shuffle_pd(a, b, 0);
+        let r = _mm_shuffle_pd::<0b00_00_00_00>(a, b);
         assert_eq_m128d(r, expected);
     }
 
