@@ -34,7 +34,7 @@ error[E0075]: SIMD vector cannot have more than 32768 elements
 LL | struct TooBig([f32; 65536]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0075, E0076, E0077.
 For more information about an error, try `rustc --explain E0075`.
