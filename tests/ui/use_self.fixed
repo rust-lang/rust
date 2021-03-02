@@ -329,11 +329,7 @@ mod issue4140 {
         type To = Self;
 
         fn from(value: bool) -> Self {
-            if value {
-                100
-            } else {
-                0
-            }
+            if value { 100 } else { 0 }
         }
     }
 }

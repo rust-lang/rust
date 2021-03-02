@@ -123,13 +123,13 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
             }
             if is_refcell_ref(cx, adt.did) {
                 span_lint_and_note(
-                        cx,
-                        AWAIT_HOLDING_REFCELL_REF,
-                        ty_cause.span,
-                        "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
-                        ty_cause.scope_span.or(Some(span)),
-                        "these are all the await points this ref is held through",
-                    );
+                    cx,
+                    AWAIT_HOLDING_REFCELL_REF,
+                    ty_cause.span,
+                    "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
+                    ty_cause.scope_span.or(Some(span)),
+                    "these are all the await points this ref is held through",
+                );
             }
         }
     }

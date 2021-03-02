@@ -73,11 +73,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     }
 
     fn expr_span(&self) -> Option<Span> {
-        if self.found {
-            self.expr_span
-        } else {
-            None
-        }
+        if self.found { self.expr_span } else { None }
     }
 }
 

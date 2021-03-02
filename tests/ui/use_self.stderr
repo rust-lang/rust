@@ -169,7 +169,7 @@ LL |         type To = T::To;
    |                   ^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:457:13
+  --> $DIR/use_self.rs:453:13
    |
 LL |             A::new::<submod::B>(submod::B {})
    |             ^ help: use the applicable keyword: `Self`

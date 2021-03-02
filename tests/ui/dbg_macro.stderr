@@ -1,17 +1,17 @@
 error: `dbg!` macro is intended as a debugging tool
   --> $DIR/dbg_macro.rs:4:22
    |
-LL |     if let Some(n) = dbg!(n.checked_sub(4)) {
+LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::dbg-macro` implied by `-D warnings`
 help: ensure to avoid having uses of it in version control
    |
-LL |     if let Some(n) = n.checked_sub(4) {
+LL |     if let Some(n) = n.checked_sub(4) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:12:8
+  --> $DIR/dbg_macro.rs:8:8
    |
 LL |     if dbg!(n <= 1) {
    |        ^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     if n <= 1 {
    |        ^^^^^^
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:13:9
+  --> $DIR/dbg_macro.rs:9:9
    |
 LL |         dbg!(1)
    |         ^^^^^^^
@@ -33,7 +33,7 @@ LL |         1
    |
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:15:9
+  --> $DIR/dbg_macro.rs:11:9
    |
 LL |         dbg!(n * factorial(n - 1))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |         n * factorial(n - 1)
    |
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:20:5
+  --> $DIR/dbg_macro.rs:16:5
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
@@ -55,7 +55,7 @@ LL |     42;
    |     ^^
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:21:5
+  --> $DIR/dbg_macro.rs:17:5
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |     dbg!(dbg!(42));
    |     ^^^^^^^^^^^^^^
 
 error: `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:22:14
+  --> $DIR/dbg_macro.rs:18:14
    |
 LL |     foo(3) + dbg!(factorial(4));
    |              ^^^^^^^^^^^^^^^^^^
