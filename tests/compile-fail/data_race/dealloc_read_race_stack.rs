@@ -27,9 +27,6 @@ pub fn main() {
     //  3. stack-deallocate
     unsafe {
         let j1 = spawn(move || {
-            // Concurrent allocate the memory.
-            // Uses relaxed semantics to not generate
-            // a release sequence.
             let pointer = &*ptr.0;
             {
                 let mut stack_var = 0usize;
@@ -37,6 +34,8 @@ pub fn main() {
                 pointer.store(&mut stack_var as *mut _, Ordering::Release);
 
                 sleep(Duration::from_millis(200));
+
+                // Now `stack_var` gets deallocated.
 
             } //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Read on Thread(id = 2)
         });

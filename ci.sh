@@ -24,8 +24,9 @@ function run_tests {
 
   ./miri test --locked
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
-    # Only for host architecture: tests with MIR optimizations
-    MIRIFLAGS="-Z mir-opt-level=3" ./miri test --locked
+    # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
+    # optimizations up all the way).
+    MIRIFLAGS="-O -Zmir-opt-level=3" ./miri test --locked
   fi
 
   # On Windows, there is always "python", not "python3" or "python2".
