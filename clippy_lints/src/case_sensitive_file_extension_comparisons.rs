@@ -1,12 +1,11 @@
-use crate::utils::paths::STRING;
-use crate::utils::{match_def_path, span_lint_and_help};
+use crate::utils::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{source_map::Spanned, Span};
+use rustc_span::{source_map::Spanned, symbol::sym, Span};
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -59,7 +58,7 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
                     return Some(span);
                 },
                 ty::Adt(&ty::AdtDef { did, .. }, _) => {
-                    if match_def_path(ctx, did, &STRING) {
+                    if ctx.tcx.is_diagnostic_item(sym::string_type, did) {
                         return Some(span);
                     }
                 },
