@@ -5,6 +5,7 @@ use hir::{
 use ide_db::{
     base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
+    helpers::FamousDefs,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -107,16 +108,14 @@ pub(crate) fn hover(
         }
     };
     if let Some(definition) = definition {
-        if let Some(markup) = hover_for_definition(db, definition) {
-            let markup = markup.as_str();
-            let markup = if !markdown {
-                remove_markdown(markup)
-            } else if links_in_hover {
-                rewrite_links(db, markup, &definition)
-            } else {
-                remove_links(markup)
-            };
-            res.markup = Markup::from(markup);
+        let famous_defs = match &definition {
+            Definition::ModuleDef(ModuleDef::BuiltinType(_)) => {
+                Some(FamousDefs(&sema, sema.scope(&node).krate()))
+            }
+            _ => None,
+        };
+        if let Some(markup) = hover_for_definition(db, definition, famous_defs.as_ref()) {
+            res.markup = process_markup(sema.db, definition, &markup, links_in_hover, markdown);
             if let Some(action) = show_implementations_action(db, definition) {
                 res.actions.push(action);
             }
@@ -137,6 +136,9 @@ pub(crate) fn hover(
     if token.kind() == syntax::SyntaxKind::COMMENT {
         // don't highlight the entire parent node on comment hover
         return None;
+    }
+    if let res @ Some(_) = hover_for_keyword(&sema, links_in_hover, markdown, &token) {
+        return res;
     }
 
     let node = token
@@ -272,6 +274,24 @@ fn hover_markup(
     }
 }
 
+fn process_markup(
+    db: &RootDatabase,
+    def: Definition,
+    markup: &Markup,
+    links_in_hover: bool,
+    markdown: bool,
+) -> Markup {
+    let markup = markup.as_str();
+    let markup = if !markdown {
+        remove_markdown(markup)
+    } else if links_in_hover {
+        rewrite_links(db, markup, &def)
+    } else {
+        remove_links(markup)
+    };
+    Markup::from(markup)
+}
+
 fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> {
     match def {
         Definition::Field(f) => Some(f.parent_def(db).name(db)),
@@ -304,7 +324,11 @@ fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
     def.module(db).map(|module| render_path(db, module, definition_owner_name(db, def)))
 }
 
-fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
+fn hover_for_definition(
+    db: &RootDatabase,
+    def: Definition,
+    famous_defs: Option<&FamousDefs>,
+) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     return match def {
         Definition::Macro(it) => {
@@ -339,7 +363,9 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
             ModuleDef::Static(it) => from_def_source(db, it, mod_path),
             ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
             ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
-            ModuleDef::BuiltinType(it) => Some(Markup::fenced_block(&it.name())),
+            ModuleDef::BuiltinType(it) => famous_defs
+                .and_then(|fd| hover_for_builtin(fd, it))
+                .or_else(|| Some(Markup::fenced_block(&it.name()))),
         },
         Definition::Local(it) => Some(Markup::fenced_block(&it.ty(db).display(db))),
         Definition::SelfType(impl_def) => {
@@ -380,11 +406,52 @@ fn hover_for_definition(db: &RootDatabase, def: Definition) -> Option<Markup> {
     }
 }
 
+fn hover_for_keyword(
+    sema: &Semantics<RootDatabase>,
+    links_in_hover: bool,
+    markdown: bool,
+    token: &SyntaxToken,
+) -> Option<RangeInfo<HoverResult>> {
+    if !token.kind().is_keyword() {
+        return None;
+    }
+    let famous_defs = FamousDefs(&sema, sema.scope(&token.parent()).krate());
+    // std exposes {}_keyword modules with docstrings on the root to document keywords
+    let keyword_mod = format!("{}_keyword", token.text());
+    let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
+    let docs = doc_owner.attrs(sema.db).docs()?;
+    let markup = process_markup(
+        sema.db,
+        Definition::ModuleDef(doc_owner.into()),
+        &hover_markup(Some(docs.into()), Some(token.text().into()), None)?,
+        links_in_hover,
+        markdown,
+    );
+    Some(RangeInfo::new(token.text_range(), HoverResult { markup, actions: Default::default() }))
+}
+
+fn hover_for_builtin(famous_defs: &FamousDefs, builtin: hir::BuiltinType) -> Option<Markup> {
+    // std exposes prim_{} modules with docstrings on the root to document the builtins
+    let primitive_mod = format!("prim_{}", builtin.name());
+    let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
+    let docs = doc_owner.attrs(famous_defs.0.db).docs()?;
+    hover_markup(Some(docs.into()), Some(builtin.name().to_string()), None)
+}
+
+fn find_std_module(famous_defs: &FamousDefs, name: &str) -> Option<hir::Module> {
+    let db = famous_defs.0.db;
+    let std_crate = famous_defs.std()?;
+    let std_root_module = std_crate.root_module(db);
+    std_root_module
+        .children(db)
+        .find(|module| module.name(db).map_or(false, |module| module.to_string() == name))
+}
+
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
     return tokens.max_by_key(priority);
     fn priority(n: &SyntaxToken) -> usize {
         match n.kind() {
-            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] => 3,
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,
             T!['('] | T![')'] => 2,
             kind if kind.is_trivia() => 0,
             _ => 1,
@@ -3522,6 +3589,48 @@ use foo::bar::{self$0};
                 ---
 
                 But this should appear
+            "#]],
+        )
+    }
+
+    #[test]
+    fn hover_keyword() {
+        let ra_fixture = r#"//- /main.rs crate:main deps:std
+fn f() { retur$0n; }"#;
+        let fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        check(
+            &fixture,
+            expect![[r#"
+                *return*
+
+                ```rust
+                return
+                ```
+
+                ---
+
+                Docs for return_keyword
+            "#]],
+        );
+    }
+
+    #[test]
+    fn hover_builtin() {
+        let ra_fixture = r#"//- /main.rs crate:main deps:std
+cosnt _: &str$0 = ""; }"#;
+        let fixture = format!("{}\n{}", ra_fixture, FamousDefs::FIXTURE);
+        check(
+            &fixture,
+            expect![[r#"
+                *str*
+
+                ```rust
+                str
+                ```
+
+                ---
+
+                Docs for prim_str
             "#]],
         );
     }

@@ -41,6 +41,10 @@ pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Option<Cr
 impl FamousDefs<'_, '_> {
     pub const FIXTURE: &'static str = include_str!("helpers/famous_defs_fixture.rs");
 
+    pub fn std(&self) -> Option<Crate> {
+        self.find_crate("std")
+    }
+
     pub fn core(&self) -> Option<Crate> {
         self.find_crate("core")
     }
