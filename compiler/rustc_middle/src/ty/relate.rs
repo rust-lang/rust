@@ -506,18 +506,21 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         "cannot relate constants of different types"
     );
 
-    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
+    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env());
+    let a = eagerly_eval(a);
+    let b = eagerly_eval(b);
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
-    let new_const_val = match (eagerly_eval(a), eagerly_eval(b)) {
+    match (a.val, b.val) {
         (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
         }
 
-        (ty::ConstKind::Error(d), _) | (_, ty::ConstKind::Error(d)) => Ok(ty::ConstKind::Error(d)),
+        (ty::ConstKind::Error(_), _) => Ok(a),
+        (_, ty::ConstKind::Error(_)) => Ok(b),
 
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
             return Ok(a);
@@ -526,15 +529,15 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             return Ok(a);
         }
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
-            let new_val = match (a_val, b_val) {
+            match (a_val, b_val) {
                 (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) => {
                     if a_val == b_val {
-                        Ok(ConstValue::Scalar(a_val))
+                        Ok(a)
                     } else if let ty::FnPtr(_) = a.ty.kind() {
                         let a_instance = tcx.global_alloc(a_val.assert_ptr().alloc_id).unwrap_fn();
                         let b_instance = tcx.global_alloc(b_val.assert_ptr().alloc_id).unwrap_fn();
                         if a_instance == b_instance {
-                            Ok(ConstValue::Scalar(a_val))
+                            Ok(a)
                         } else {
                             Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
                         }
@@ -547,7 +550,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                     let a_bytes = get_slice_bytes(&tcx, a_val);
                     let b_bytes = get_slice_bytes(&tcx, b_val);
                     if a_bytes == b_bytes {
-                        Ok(a_val)
+                        Ok(a)
                     } else {
                         Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
                     }
@@ -567,7 +570,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                                     relation.consts(a_field, b_field)?;
                                 }
 
-                                Ok(a_val)
+                                Ok(a)
                             } else {
                                 Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
                             }
@@ -585,9 +588,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 }
 
                 _ => Err(TypeError::ConstMismatch(expected_found(relation, a, b))),
-            };
-
-            new_val.map(ty::ConstKind::Value)
+            }
         }
 
         (
@@ -595,7 +596,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             ty::ConstKind::Unevaluated(b_def, b_substs, None),
         ) if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() => {
             if tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs))) {
-                Ok(a.val)
+                Ok(a)
             } else {
                 Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
             }
@@ -610,11 +611,13 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         ) if a_def == b_def && a_promoted == b_promoted => {
             let substs =
                 relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
-            Ok(ty::ConstKind::Unevaluated(a_def, substs, a_promoted))
+            Ok(tcx.mk_const(ty::Const {
+                val: ty::ConstKind::Unevaluated(a_def, substs, a_promoted),
+                ty: a.ty,
+            }))
         }
         _ => Err(TypeError::ConstMismatch(expected_found(relation, a, b))),
-    };
-    new_const_val.map(|val| tcx.mk_const(ty::Const { val, ty: a.ty }))
+    }
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
