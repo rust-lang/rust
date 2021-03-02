@@ -18,3 +18,20 @@ pub enum Node<'tcx> {
     UnaryOp(mir::UnOp, NodeId),
     FunctionCall(NodeId, &'tcx [NodeId]),
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub enum NotConstEvaluatable {
+    Error(rustc_errors::ErrorReported),
+    MentionsInfer,
+    MentionsParam,
+}
+
+impl From<rustc_errors::ErrorReported> for NotConstEvaluatable {
+    fn from(e: rustc_errors::ErrorReported) -> NotConstEvaluatable {
+        NotConstEvaluatable::Error(e)
+    }
+}
+
+TrivialTypeFoldableAndLiftImpls! {
+    NotConstEvaluatable,
+}

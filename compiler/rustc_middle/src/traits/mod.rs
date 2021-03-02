@@ -9,7 +9,7 @@ pub mod specialization_graph;
 mod structural_impls;
 
 use crate::infer::canonical::Canonical;
-use crate::mir::interpret::ErrorHandled;
+use crate::mir::abstract_const::NotConstEvaluatable;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
@@ -398,7 +398,7 @@ pub enum SelectionError<'tcx> {
         ty::error::TypeError<'tcx>,
     ),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ErrorHandled),
+    NotConstEvaluatable(NotConstEvaluatable),
     Overflow,
 }
 
