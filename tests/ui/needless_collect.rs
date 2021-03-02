@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused, clippy::suspicious_map)]
+#![allow(unused, clippy::suspicious_map, clippy::iter_count)]
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 

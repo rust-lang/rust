@@ -4,6 +4,7 @@ mod filter_map_identity;
 mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
+mod iter_count;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
@@ -1540,6 +1541,32 @@ declare_clippy_lint! {
     "implicitly cloning a value by invoking a function on its dereferenced type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `.iter().count()`.
+    ///
+    /// **Why is this bad?** `.len()` is more efficient and more
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.iter().count();
+    /// let _ = &some_vec[..].iter().count();
+    ///
+    /// // Good
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.len();
+    /// let _ = &some_vec[..].len();
+    /// ```
+    pub ITER_COUNT,
+    complexity,
+    "replace `.iter().count()` with `.len()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1585,6 +1612,7 @@ impl_lint_pass!(Methods => [
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NEXT_SLICE,
+    ITER_COUNT,
     ITER_NTH,
     ITER_NTH_ZERO,
     BYTES_NTH,
@@ -1664,6 +1692,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
+            ["count", "into_iter"] => iter_count::lints(cx, expr, &arg_lists[1], "into_iter"),
+            ["count", "iter"] => iter_count::lints(cx, expr, &arg_lists[1], "iter"),
+            ["count", "iter_mut"] => iter_count::lints(cx, expr, &arg_lists[1], "iter_mut"),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),

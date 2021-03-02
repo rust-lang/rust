@@ -2135,6 +2135,7 @@ Released 2018-09-13
 [`invisible_characters`]: https://rust-lang.github.io/rust-clippy/master/index.html#invisible_characters
 [`items_after_statements`]: https://rust-lang.github.io/rust-clippy/master/index.html#items_after_statements
 [`iter_cloned_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_cloned_collect
+[`iter_count`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_count
 [`iter_next_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_next_loop
 [`iter_next_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_next_slice
 [`iter_nth`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_nth
