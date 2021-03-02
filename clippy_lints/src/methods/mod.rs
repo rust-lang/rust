@@ -11,6 +11,7 @@ mod iter_count;
 mod manual_saturating_arithmetic;
 mod ok_expect;
 mod option_map_unwrap_or;
+mod skip_while_next;
 mod unnecessary_filter_map;
 mod unnecessary_lazy_eval;
 mod unwrap_used;
@@ -1679,7 +1680,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
             },
             ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
-            ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
+            ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
             ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, false),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2963,25 +2964,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint use of `skip_while().next()` for `Iterators`
-fn lint_skip_while_next<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _skip_while_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.skip_while().next()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_lint_and_help(
-            cx,
-            SKIP_WHILE_NEXT,
-            expr.span,
-            "called `skip_while(<p>).next()` on an `Iterator`",
-            None,
-            "this is more succinctly expressed by calling `.find(!<p>)` instead",
-        );
-    }
 }
 
 /// lint use of `filter().map()` or `find().map()` for `Iterators`
