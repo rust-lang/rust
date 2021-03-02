@@ -6,7 +6,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty;
 
 /// Checks for the `FOR_KV_MAP` lint.
-pub(super) fn check_for_loop_over_map_kv<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,

@@ -21,7 +21,7 @@ use std::mem;
 /// Checks for looping over a range and then indexing a sequence with it.
 /// The iteratee must be a range literal.
 #[allow(clippy::too_many_lines)]
-pub(super) fn check_for_loop_range<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,

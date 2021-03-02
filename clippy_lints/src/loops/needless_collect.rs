@@ -15,7 +15,7 @@ use rustc_span::symbol::{sym, Ident};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
-pub(super) fn check_needless_collect<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     check_needless_collect_direct_usage(expr, cx);
     check_needless_collect_indirect_usage(expr, cx);
 }

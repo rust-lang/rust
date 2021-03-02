@@ -11,7 +11,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use std::iter::Iterator;
 
-pub(super) fn check_infinite_loop<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) {
     if constant(cx, cx.typeck_results(), cond).is_some() {
         // A pure constant condition (e.g., `while false`) is not linted.
         return;

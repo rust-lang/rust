@@ -559,24 +559,24 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         }
 
         // check for never_loop
-        never_loop::check_never_loop(cx, expr);
+        never_loop::check(cx, expr);
 
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
         if let ExprKind::Loop(ref block, _, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
-            empty_loop::check_empty_loop(cx, expr, block);
-            while_let_loop::check_while_let_loop(cx, expr, block);
+            empty_loop::check(cx, expr, block);
+            while_let_loop::check(cx, expr, block);
         }
 
-        while_let_on_iterator::check_while_let_on_iterator(cx, expr);
+        while_let_on_iterator::check(cx, expr);
 
         if let Some((cond, body)) = higher::while_loop(&expr) {
-            while_immutable_condition::check_infinite_loop(cx, cond, body);
+            while_immutable_condition::check(cx, cond, body);
         }
 
-        needless_collect::check_needless_collect(expr, cx);
+        needless_collect::check(expr, cx);
     }
 }
 
@@ -588,17 +588,17 @@ fn check_for_loop<'tcx>(
     expr: &'tcx Expr<'_>,
     span: Span,
 ) {
-    let is_manual_memcpy_triggered = manual_memcpy::detect_manual_memcpy(cx, pat, arg, body, expr);
+    let is_manual_memcpy_triggered = manual_memcpy::check(cx, pat, arg, body, expr);
     if !is_manual_memcpy_triggered {
-        needless_range_loop::check_for_loop_range(cx, pat, arg, body, expr);
-        explicit_counter_loop::check_for_loop_explicit_counter(cx, pat, arg, body, expr);
+        needless_range_loop::check(cx, pat, arg, body, expr);
+        explicit_counter_loop::check(cx, pat, arg, body, expr);
     }
     check_for_loop_arg(cx, pat, arg, expr);
-    for_kv_map::check_for_loop_over_map_kv(cx, pat, arg, body, expr);
-    mut_range_bound::check_for_mut_range_bound(cx, arg, body);
-    single_element_loop::check_for_single_element_loop(cx, pat, arg, body, expr);
-    same_item_push::detect_same_item_push(cx, pat, arg, body, expr);
-    manual_flatten::check_manual_flatten(cx, pat, arg, body, span);
+    for_kv_map::check(cx, pat, arg, body, expr);
+    mut_range_bound::check(cx, arg, body);
+    single_element_loop::check(cx, pat, arg, body, expr);
+    same_item_push::check(cx, pat, arg, body, expr);
+    manual_flatten::check(cx, pat, arg, body, span);
 }
 
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
@@ -610,13 +610,13 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
             if method_name == "iter" || method_name == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
-                    explicit_iter_loop::lint_iter_method(cx, args, arg, method_name);
+                    explicit_iter_loop::check(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
                 let receiver_ty = cx.typeck_results().expr_ty(&args[0]);
                 let receiver_ty_adjusted = cx.typeck_results().expr_ty_adjusted(&args[0]);
                 if TyS::same_type(receiver_ty, receiver_ty_adjusted) {
-                    explicit_into_iter_loop::check_explicit_into_iter_loop(cx, args, arg);
+                    explicit_into_iter_loop::check(cx, args, arg);
                 } else {
                     let ref_receiver_ty = cx.tcx.mk_ref(
                         cx.tcx.lifetimes.re_erased,
@@ -626,17 +626,17 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr:
                         },
                     );
                     if TyS::same_type(receiver_ty_adjusted, ref_receiver_ty) {
-                        explicit_iter_loop::lint_iter_method(cx, args, arg, method_name)
+                        explicit_iter_loop::check(cx, args, arg, method_name)
                     }
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
-                iter_next_loop::lint(cx, expr);
+                iter_next_loop::check(cx, expr);
                 next_loop_linted = true;
             }
         }
     }
     if !next_loop_linted {
-        for_loops_over_fallibles::check_arg_type(cx, pat, arg);
+        for_loops_over_fallibles::check(cx, pat, arg);
     }
 }
 

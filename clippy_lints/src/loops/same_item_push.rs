@@ -10,7 +10,7 @@ use rustc_span::symbol::sym;
 use std::iter::Iterator;
 
 /// Detects for loop pushing the same item into a Vec
-pub(super) fn detect_same_item_push<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     _: &'tcx Expr<'_>,

@@ -14,7 +14,7 @@ use rustc_middle::hir::map::Map;
 
 use rustc_span::symbol::sym;
 
-pub(super) fn check_while_let_on_iterator(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let ExprKind::Match(ref match_expr, ref arms, MatchSource::WhileLetDesugar) = expr.kind {
         let pat = &arms[0].pat.kind;
         if let (

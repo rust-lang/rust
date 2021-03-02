@@ -5,7 +5,7 @@ use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
 /// Checks for `for` loops over `Option`s and `Result`s.
-pub(super) fn check_arg_type(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(arg);
     if is_type_diagnostic_item(cx, ty, sym::option_type) {
         span_lint_and_help(

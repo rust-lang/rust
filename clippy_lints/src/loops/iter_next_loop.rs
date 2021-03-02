@@ -3,7 +3,7 @@ use crate::utils::span_lint;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 
-pub(super) fn lint(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     span_lint(
         cx,
         ITER_NEXT_LOOP,

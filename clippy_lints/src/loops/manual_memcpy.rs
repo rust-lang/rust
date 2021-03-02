@@ -15,7 +15,7 @@ use std::iter::Iterator;
 
 /// Checks for for loops that sequentially copy items from one slice-like
 /// object to another.
-pub(super) fn detect_manual_memcpy<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,

@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 
-pub(super) fn check_for_single_element_loop<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,

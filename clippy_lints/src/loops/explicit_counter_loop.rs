@@ -11,7 +11,7 @@ use rustc_lint::LateContext;
 // To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
 // incremented exactly once in the loop body, and initialized to zero
 // at the start of the loop.
-pub(super) fn check_for_loop_explicit_counter<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &'tcx Pat<'_>,
     arg: &'tcx Expr<'_>,

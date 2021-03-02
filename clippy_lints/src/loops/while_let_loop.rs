@@ -5,7 +5,7 @@ use rustc_hir::{Block, Expr, ExprKind, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 
-pub(super) fn check_while_let_loop(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
+pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
     // extract the expression from the first statement (if any) in a block
     let inner_stmt_expr = extract_expr_from_first_stmt(loop_block);
     // or extract the first expression (if any) from the block
