@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::implementation::{Direction, Graph, NodeIndex, INCOMING};
 
-use super::{DepKind, DepNode};
+use super::{DepKind, DepNode, DepNodeIndex};
 
 pub struct DepGraphQuery<K> {
     pub graph: Graph<DepNode<K>, ()>,
@@ -9,26 +9,25 @@ pub struct DepGraphQuery<K> {
 }
 
 impl<K: DepKind> DepGraphQuery<K> {
-    pub fn new(
-        nodes: &[DepNode<K>],
-        edge_list_indices: &[(usize, usize)],
-        edge_list_data: &[usize],
-    ) -> DepGraphQuery<K> {
-        let mut graph = Graph::with_capacity(nodes.len(), edge_list_data.len());
-        let mut indices = FxHashMap::default();
-        for node in nodes {
-            indices.insert(*node, graph.add_node(*node));
-        }
+    pub fn new(prev_node_count: usize) -> DepGraphQuery<K> {
+        let node_count = prev_node_count + prev_node_count / 4;
+        let edge_count = 6 * node_count;
 
-        for (source, &(start, end)) in edge_list_indices.iter().enumerate() {
-            for &target in &edge_list_data[start..end] {
-                let source = indices[&nodes[source]];
-                let target = indices[&nodes[target]];
-                graph.add_edge(source, target, ());
-            }
-        }
+        let graph = Graph::with_capacity(node_count, edge_count);
+        let indices = FxHashMap::default();
 
         DepGraphQuery { graph, indices }
+    }
+
+    pub fn push(&mut self, index: DepNodeIndex, node: DepNode<K>, edges: &[DepNodeIndex]) {
+        let source = self.graph.add_node(node);
+        debug_assert_eq!(index.index(), source.0);
+        self.indices.insert(node, source);
+
+        for &target in edges.iter() {
+            let target = NodeIndex(target.index());
+            self.graph.add_edge(source, target, ());
+        }
     }
 
     pub fn nodes(&self) -> Vec<&DepNode<K>> {

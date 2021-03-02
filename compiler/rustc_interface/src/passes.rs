@@ -1021,9 +1021,6 @@ pub fn start_codegen<'tcx>(
         rustc_symbol_mangling::test::report_symbol_names(tcx);
     }
 
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
-
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
