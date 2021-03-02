@@ -10,12 +10,6 @@ error[E0075]: SIMD vector cannot be empty
 LL | struct empty2([f32; 0]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0075]: SIMD vector length must be a power of two
-  --> $DIR/simd-type.rs:13:1
-   |
-LL | struct pow2([f32; 7]);
-   | ^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0076]: SIMD vector should be homogeneous
   --> $DIR/simd-type.rs:16:1
    |
