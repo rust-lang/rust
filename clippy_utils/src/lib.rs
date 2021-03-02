@@ -73,11 +73,11 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::hygiene::{self, ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, SyntaxContext, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
@@ -472,6 +472,18 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
+/// Checks whether a type can be partially moved.
+pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    if has_drop(cx, ty) || is_copy(cx, ty) {
+        return false;
+    }
+    match ty.kind() {
+        ty::Param(_) => false,
+        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs))),
+        _ => true,
+    }
+}
+
 /// Returns the method names and argument list of nested method call expressions that make up
 /// `expr`. method/span lists are sorted with the most recent call first.
 pub fn method_calls<'tcx>(
@@ -760,6 +772,35 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
     let snip = snippet_with_applicability(cx, span, default, applicability);
     let indent = indent_relative_to.and_then(|s| indent_of(cx, s));
     reindent_multiline(snip, true, indent)
+}
+
+/// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
+/// will result in the macro call, rather then the expansion, if the span is from a child context.
+/// If the span is not from a child context, it will be used directly instead.
+///
+/// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
+/// would result in `box []`. If given the context of the address of expression, this function will
+/// correctly get a snippet of `vec![]`.
+pub fn snippet_with_context(
+    cx: &LateContext<'_>,
+    span: Span,
+    outer: SyntaxContext,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> Cow<'a, str> {
+    let outer_span = hygiene::walk_chain(span, outer);
+    let span = if outer_span.ctxt() == outer {
+        outer_span
+    } else {
+        // The span is from a macro argument, and the outer context is the macro using the argument
+        if *applicability != Applicability::Unspecified {
+            *applicability = Applicability::MaybeIncorrect;
+        }
+        // TODO: get the argument span.
+        span
+    };
+
+    snippet_with_applicability(cx, span, default, applicability)
 }
 
 /// Returns a new Span that extends the original Span to the first non-whitespace char of the first
