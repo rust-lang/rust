@@ -1673,14 +1673,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             },
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
             ["and_then", ..] => {
-                let biom_option_linted = bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
-                let biom_result_linted = bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
+                let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, arg_lists[0]);
+                let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, arg_lists[0]);
                 if !biom_option_linted && !biom_result_linted {
                     unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "and");
                 }
             },
             ["or_else", ..] => {
-                if !bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]) {
+                if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, arg_lists[0]) {
                     unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "or");
                 }
             },
@@ -1703,12 +1703,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["count", "into_iter"] => iter_count::lints(cx, expr, &arg_lists[1], "into_iter"),
-            ["count", "iter"] => iter_count::lints(cx, expr, &arg_lists[1], "iter"),
-            ["count", "iter_mut"] => iter_count::lints(cx, expr, &arg_lists[1], "iter_mut"),
+            ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
+            ["count", "iter"] => iter_count::check(cx, expr, &arg_lists[1], "iter"),
+            ["count", "iter_mut"] => iter_count::check(cx, expr, &arg_lists[1], "iter_mut"),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
-            ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
+            ["nth", "bytes"] => bytes_nth::check(cx, expr, &arg_lists[1]),
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
@@ -1717,13 +1717,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
             ["filter_map", ..] => {
-                unnecessary_filter_map::lint(cx, expr, arg_lists[0]);
+                unnecessary_filter_map::check(cx, expr, arg_lists[0]);
                 filter_map_identity::check(cx, expr, arg_lists[0], method_spans[0]);
             },
             ["count", "map"] => suspicious_map::check(cx, expr),
             ["assume_init"] => uninit_assumed_init::check(cx, &arg_lists[0][0], expr),
             ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
-                manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
+                manual_saturating_arithmetic::check(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
             ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
                 check_pointer_offset(cx, expr, arg_lists[0])
@@ -1739,7 +1739,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
-            ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
+            ["for_each", "inspect"] => inspect_for_each::check(cx, expr, method_spans[1]),
             ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
             ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
             ["to_path_buf", ..] => implicit_clone::check(cx, expr, sym::Path),
@@ -1765,7 +1765,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
                 if args.len() == 1 && method_call.ident.name == sym!(to_string) {
-                    inefficient_to_string::lint(cx, expr, &args[0], self_ty);
+                    inefficient_to_string::check(cx, expr, &args[0], self_ty);
                 }
 
                 if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
