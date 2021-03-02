@@ -1,14 +1,19 @@
 mod bind_instead_of_map;
 mod bytes_nth;
+mod expect_used;
 mod filter_map_identity;
+mod filter_next;
+mod get_unwrap;
 mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod iter_count;
 mod manual_saturating_arithmetic;
+mod ok_expect;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
 mod unnecessary_lazy_eval;
+mod unwrap_used;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -1649,15 +1654,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
 
         match method_names.as_slice() {
-            ["unwrap", "get"] => lint_get_unwrap(cx, expr, arg_lists[1], false),
-            ["unwrap", "get_mut"] => lint_get_unwrap(cx, expr, arg_lists[1], true),
-            ["unwrap", ..] => lint_unwrap(cx, expr, arg_lists[0]),
-            ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
-            ["expect", ..] => lint_expect(cx, expr, arg_lists[0]),
-            ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
+            ["unwrap", "get"] => get_unwrap::check(cx, expr, arg_lists[1], false),
+            ["unwrap", "get_mut"] => get_unwrap::check(cx, expr, arg_lists[1], true),
+            ["unwrap", ..] => unwrap_used::check(cx, expr, arg_lists[0]),
+            ["expect", "ok"] => ok_expect::check(cx, expr, arg_lists[1]),
+            ["expect", ..] => expect_used::check(cx, expr, arg_lists[0]),
+            ["unwrap_or", "map"] => option_map_unwrap_or::check(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => {
                 if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0], self.msrv.as_ref()) {
-                    unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or");
+                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or");
                 }
             },
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
@@ -1665,15 +1670,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 let biom_option_linted = bind_instead_of_map::OptionAndThenSome::lint(cx, expr, arg_lists[0]);
                 let biom_result_linted = bind_instead_of_map::ResultAndThenOk::lint(cx, expr, arg_lists[0]);
                 if !biom_option_linted && !biom_result_linted {
-                    unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "and");
+                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "and");
                 }
             },
             ["or_else", ..] => {
                 if !bind_instead_of_map::ResultOrElseErrInfo::lint(cx, expr, arg_lists[0]) {
-                    unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "or");
+                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "or");
                 }
             },
-            ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
+            ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => lint_skip_while_next(cx, expr, arg_lists[1]),
             ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, false),
@@ -1724,9 +1729,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["map", "as_mut"] => {
                 lint_option_as_ref_deref(cx, expr, arg_lists[1], arg_lists[0], true, self.msrv.as_ref())
             },
-            ["unwrap_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "unwrap_or"),
-            ["get_or_insert_with", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "get_or_insert"),
-            ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
+            ["unwrap_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or"),
+            ["get_or_insert_with", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "get_or_insert"),
+            ["ok_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
             ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
             ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
@@ -2712,79 +2717,6 @@ fn lint_iter_nth_zero<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_ar
     }
 }
 
-fn lint_get_unwrap<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args: &'tcx [hir::Expr<'_>], is_mut: bool) {
-    // Note: we don't want to lint `get_mut().unwrap` for `HashMap` or `BTreeMap`,
-    // because they do not implement `IndexMut`
-    let mut applicability = Applicability::MachineApplicable;
-    let expr_ty = cx.typeck_results().expr_ty(&get_args[0]);
-    let get_args_str = if get_args.len() > 1 {
-        snippet_with_applicability(cx, get_args[1].span, "..", &mut applicability)
-    } else {
-        return; // not linting on a .get().unwrap() chain or variant
-    };
-    let mut needs_ref;
-    let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
-        needs_ref = get_args_str.parse::<usize>().is_ok();
-        "slice"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
-        needs_ref = get_args_str.parse::<usize>().is_ok();
-        "Vec"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym::vecdeque_type) {
-        needs_ref = get_args_str.parse::<usize>().is_ok();
-        "VecDeque"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::hashmap_type) {
-        needs_ref = true;
-        "HashMap"
-    } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {
-        needs_ref = true;
-        "BTreeMap"
-    } else {
-        return; // caller is not a type that we want to lint
-    };
-
-    let mut span = expr.span;
-
-    // Handle the case where the result is immediately dereferenced
-    // by not requiring ref and pulling the dereference into the
-    // suggestion.
-    if_chain! {
-        if needs_ref;
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind;
-        then {
-            needs_ref = false;
-            span = parent.span;
-        }
-    }
-
-    let mut_str = if is_mut { "_mut" } else { "" };
-    let borrow_str = if !needs_ref {
-        ""
-    } else if is_mut {
-        "&mut "
-    } else {
-        "&"
-    };
-
-    span_lint_and_sugg(
-        cx,
-        GET_UNWRAP,
-        span,
-        &format!(
-            "called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
-            mut_str, caller_type
-        ),
-        "try this",
-        format!(
-            "{}{}[{}]",
-            borrow_str,
-            snippet_with_applicability(cx, get_args[0].span, "..", &mut applicability),
-            get_args_str
-        ),
-        applicability,
-    );
-}
-
 fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir::Expr<'_>]) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
@@ -2839,80 +2771,6 @@ fn derefs_to_slice<'tcx>(
                 }
             },
             _ => None,
-        }
-    }
-}
-
-/// lint use of `unwrap()` for `Option`s and `Result`s
-fn lint_unwrap(cx: &LateContext<'_>, expr: &hir::Expr<'_>, unwrap_args: &[hir::Expr<'_>]) {
-    let obj_ty = cx.typeck_results().expr_ty(&unwrap_args[0]).peel_refs();
-
-    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::option_type) {
-        Some((UNWRAP_USED, "an Option", "None"))
-    } else if is_type_diagnostic_item(cx, obj_ty, sym::result_type) {
-        Some((UNWRAP_USED, "a Result", "Err"))
-    } else {
-        None
-    };
-
-    if let Some((lint, kind, none_value)) = mess {
-        span_lint_and_help(
-            cx,
-            lint,
-            expr.span,
-            &format!("used `unwrap()` on `{}` value", kind,),
-            None,
-            &format!(
-                "if you don't want to handle the `{}` case gracefully, consider \
-                using `expect()` to provide a better panic message",
-                none_value,
-            ),
-        );
-    }
-}
-
-/// lint use of `expect()` for `Option`s and `Result`s
-fn lint_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expect_args: &[hir::Expr<'_>]) {
-    let obj_ty = cx.typeck_results().expr_ty(&expect_args[0]).peel_refs();
-
-    let mess = if is_type_diagnostic_item(cx, obj_ty, sym::option_type) {
-        Some((EXPECT_USED, "an Option", "None"))
-    } else if is_type_diagnostic_item(cx, obj_ty, sym::result_type) {
-        Some((EXPECT_USED, "a Result", "Err"))
-    } else {
-        None
-    };
-
-    if let Some((lint, kind, none_value)) = mess {
-        span_lint_and_help(
-            cx,
-            lint,
-            expr.span,
-            &format!("used `expect()` on `{}` value", kind,),
-            None,
-            &format!("if this value is an `{}`, it will panic", none_value,),
-        );
-    }
-}
-
-/// lint use of `ok().expect()` for `Result`s
-fn lint_ok_expect(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ok_args: &[hir::Expr<'_>]) {
-    if_chain! {
-        // lint if the caller of `ok()` is a `Result`
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&ok_args[0]), sym::result_type);
-        let result_type = cx.typeck_results().expr_ty(&ok_args[0]);
-        if let Some(error_type) = get_error_type(cx, result_type);
-        if has_debug_impl(error_type, cx);
-
-        then {
-            span_lint_and_help(
-                cx,
-                OK_EXPECT,
-                expr.span,
-                "called `ok().expect()` on a `Result` value",
-                None,
-                "you can call `expect()` directly on the `Result`",
-            );
         }
     }
 }
@@ -3105,31 +2963,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint use of `filter().next()` for `Iterators`
-fn lint_filter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
-    // lint if caller of `.filter().next()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find(..)` instead";
-        let filter_snippet = snippet(cx, filter_args[1].span, "..");
-        if filter_snippet.lines().count() <= 1 {
-            let iter_snippet = snippet(cx, filter_args[0].span, "..");
-            // add note if not multi-line
-            span_lint_and_sugg(
-                cx,
-                FILTER_NEXT,
-                expr.span,
-                msg,
-                "try this",
-                format!("{}.find({})", iter_snippet, filter_snippet),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint(cx, FILTER_NEXT, expr.span, msg);
-        }
-    }
 }
 
 /// lint use of `skip_while().next()` for `Iterators`
@@ -3912,21 +3745,6 @@ fn lint_map_collect(
             );
         }
     }
-}
-
-/// Given a `Result<T, E>` type, return its error type (`E`).
-fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
-    match ty.kind() {
-        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::result_type) => substs.types().nth(1),
-        _ => None,
-    }
-}
-
-/// This checks whether a given type is known to implement Debug.
-fn has_debug_impl<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    cx.tcx
-        .get_diagnostic_item(sym::debug_trait)
-        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }
 
 enum Convention {

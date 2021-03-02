@@ -9,7 +9,7 @@ use super::UNNECESSARY_LAZY_EVALUATIONS;
 
 /// lint use of `<fn>_else(simple closure)` for `Option`s and `Result`s that can be
 /// replaced with `<fn>(return value of simple closure)`
-pub(super) fn lint<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'_>,
     args: &'tcx [hir::Expr<'_>],
