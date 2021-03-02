@@ -12,7 +12,7 @@ use ide_db::{
     RootDatabase,
 };
 use stdx::{format_to, trim_indent};
-use syntax::TextRange;
+use syntax::{ast, AstNode, TextRange};
 use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, Assists};
@@ -178,6 +178,50 @@ fn labels(assists: &[Assist]) -> String {
         .collect::<Vec<_>>();
     labels.dedup();
     labels.into_iter().collect::<String>()
+}
+
+pub(crate) type NameSuggestion = fn(&ast::Expr, &Semantics<'_, RootDatabase>) -> Option<String>;
+
+#[track_caller]
+pub(crate) fn check_name_suggestion(
+    suggestion: NameSuggestion,
+    ra_fixture: &str,
+    suggested_name: &str,
+) {
+    check_name(suggestion, ra_fixture, Some(suggested_name));
+}
+
+#[track_caller]
+pub(crate) fn check_name_suggestion_not_applicable(suggestion: NameSuggestion, ra_fixture: &str) {
+    check_name(suggestion, ra_fixture, None);
+}
+
+#[track_caller]
+fn check_name(suggestion: NameSuggestion, ra_fixture: &str, expected: Option<&str>) {
+    let (db, file_with_carret_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
+    let frange = FileRange { file_id: file_with_carret_id, range: range_or_offset.into() };
+
+    let sema = Semantics::new(&db);
+    let source_file = sema.parse(frange.file_id);
+    let element = source_file.syntax().covering_element(frange.range);
+    let expr =
+        element.ancestors().find_map(ast::Expr::cast).expect("selection is not an expression");
+    assert_eq!(
+        expr.syntax().text_range(),
+        frange.range,
+        "selection is not an expression(yet contained in one)"
+    );
+
+    let name = suggestion(&expr, &sema);
+
+    match (name, expected) {
+        (Some(name), Some(expected_name)) => {
+            assert_eq_text!(&name, expected_name);
+        }
+        (Some(_), None) => panic!("name suggestion should not be applicable"),
+        (None, Some(_)) => panic!("name suggestion is not applicable"),
+        (None, None) => (),
+    }
 }
 
 #[test]

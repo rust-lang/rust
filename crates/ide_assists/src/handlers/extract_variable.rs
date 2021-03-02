@@ -8,7 +8,7 @@ use syntax::{
 };
 use test_utils::mark;
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: extract_variable
 //
@@ -54,7 +54,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let var_name = match &field_shorthand {
                 Some(it) => it.to_string(),
-                None => "var_name".to_string(),
+                None => suggest_name::variable(&to_extract, &ctx.sema),
             };
             let expr_range = match &field_shorthand {
                 Some(it) => it.syntax().text_range().cover(to_extract.syntax().text_range()),
@@ -274,8 +274,8 @@ fn foo() {
 "#,
             r#"
 fn foo() {
-    let $0var_name = bar(1 + 1);
-    var_name
+    let $0bar = bar(1 + 1);
+    bar
 }
 "#,
         )
@@ -401,8 +401,8 @@ fn main() {
 ",
             "
 fn main() {
-    let $0var_name = bar.foo();
-    let v = var_name;
+    let $0foo = bar.foo();
+    let v = foo;
 }
 ",
         );
@@ -551,6 +551,202 @@ struct S {
 fn main() {
     let $0foo = 1 + 1;
     S { foo }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_type() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Test(i32);
+
+fn foo() -> Test {
+    $0{ Test(10) }$0
+}
+"#,
+            r#"
+struct Test(i32);
+
+fn foo() -> Test {
+    let $0test = { Test(10) };
+    test
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    bar(1, $01+1$0);
+}
+"#,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    let $0size = 1+1;
+    bar(1, size);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_parameter_name_has_precedence_over_type() {
+        check_assist(
+            extract_variable,
+            r#"
+struct TextSize(u32);
+fn bar(test: u32, size: TextSize)
+
+fn foo() {
+    bar(1, $0{ TextSize(1+1) }$0);
+}
+"#,
+            r#"
+struct TextSize(u32);
+fn bar(test: u32, size: TextSize)
+
+fn foo() {
+    let $0size = { TextSize(1+1) };
+    bar(1, size);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_function() {
+        check_assist(
+            extract_variable,
+            r#"
+fn is_required(test: u32, size: u32) -> bool
+
+fn foo() -> bool {
+    $0is_required(1, 2)$0
+}
+"#,
+            r#"
+fn is_required(test: u32, size: u32) -> bool
+
+fn foo() -> bool {
+    let $0is_required = is_required(1, 2);
+    is_required
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_method() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32) -> u32 { n }
+}
+
+fn foo() -> u32 {
+    $0S.bar(1)$0
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32) -> u32 { n }
+}
+
+fn foo() -> u32 {
+    let $0bar = S.bar(1);
+    bar
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_method_param() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    S.bar($01 + 1$0, 2)
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    let $0n = 1 + 1;
+    S.bar(n, 2)
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_name_from_ufcs_method_param() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    S::bar(&S, $01 + 1$0, 2)
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn bar(&self, n: u32, size: u32) { n }
+}
+
+fn foo() {
+    let $0n = 1 + 1;
+    S::bar(&S, n, 2)
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_var_parameter_name_has_precedence_over_function() {
+        check_assist(
+            extract_variable,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    bar(1, $0symbol_size(1, 2)$0);
+}
+"#,
+            r#"
+fn bar(test: u32, size: u32)
+
+fn foo() {
+    let $0size = symbol_size(1, 2);
+    bar(1, size);
 }
 "#,
         )

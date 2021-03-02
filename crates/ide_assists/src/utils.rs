@@ -1,5 +1,7 @@
 //! Assorted functions shared by several assists.
 
+pub(crate) mod suggest_name;
+
 use std::ops;
 
 use ast::TypeBoundsOwner;
