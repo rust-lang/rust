@@ -111,7 +111,6 @@ mod handlers {
     mod add_lifetime_to_type;
     mod add_missing_impl_members;
     mod add_turbo_fish;
-    mod add_type_ascription;
     mod apply_demorgan;
     mod auto_import;
     mod change_visibility;
@@ -176,7 +175,6 @@ mod handlers {
             add_explicit_type::add_explicit_type,
             add_lifetime_to_type::add_lifetime_to_type,
             add_turbo_fish::add_turbo_fish,
-            add_type_ascription::add_type_ascription,
             apply_demorgan::apply_demorgan,
             auto_import::auto_import,
             change_visibility::change_visibility,
