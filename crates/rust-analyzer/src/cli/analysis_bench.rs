@@ -68,7 +68,7 @@ impl BenchCmd {
             load_out_dirs_from_check: self.load_output_dirs,
             with_proc_macro: self.with_proc_macro,
         };
-        let (mut host, vfs) =
+        let (mut host, vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
         eprintln!("{:?}\n", start.elapsed());
 
