@@ -312,6 +312,19 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             let emit_as_lint = if let Some(def) = def.as_local() {
                 // (Associated) consts only emit a lint, since they might be unused.
                 matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
+                    || {
+                        let mut did = def.did.to_def_id();
+                        loop {
+                            use rustc_middle::ty::DefIdTree;
+                            match tcx.parent(did) {
+                                Some(parent) => match tcx.def_kind(did) {
+                                    DefKind::TyAlias => break true,
+                                    _ => did = parent,
+                                },
+                                None => break false,
+                            }
+                        }
+                    }
             } else {
                 // use of broken constant from other crate: always an error
                 false

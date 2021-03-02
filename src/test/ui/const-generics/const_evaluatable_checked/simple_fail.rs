@@ -3,12 +3,16 @@
 #![cfg_attr(full, feature(const_evaluatable_checked))]
 #![allow(incomplete_features)]
 
-type Arr<const N: usize> = [u8; N - 1]; //[full]~ ERROR evaluation of constant
+type Arr<const N: usize> = [u8; N - 1]; //[full]~ ERROR any use of this value will cause an error
 //[min]~^ ERROR generic parameters may not be used in const operations
+//[full]~^^ WARN this was previously accepted by the compiler but is being phased out
 
-fn test<const N: usize>() -> Arr<N> where [u8; N - 1]: Sized {
-//[min]~^ ERROR generic parameters may not be used in const operations
-//[full]~^^ ERROR evaluation of constant
+fn test<const N: usize>() -> Arr<N>
+where
+    [u8; N - 1]: Sized,
+    //[min]~^ ERROR generic parameters may not be used in const operations
+    //[full]~^^ ERROR evaluation of constant
+{
     todo!()
 }
 
