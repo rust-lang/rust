@@ -53,7 +53,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.renderinfo.access_levels.is_public(item.def_id)
+    if !cx.cache.access_levels.is_public(item.def_id)
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
