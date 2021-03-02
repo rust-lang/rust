@@ -275,7 +275,6 @@ impl CompletionItem {
 pub struct ImportEdit {
     pub import: LocatedImport,
     pub import_scope: ImportScope,
-    pub import_for_trait_assoc_item: bool,
 }
 
 impl ImportEdit {
@@ -286,7 +285,7 @@ impl ImportEdit {
 
         let rewriter = insert_use::insert_use(
             &self.import_scope,
-            mod_path_to_ast(self.import.import_path()),
+            mod_path_to_ast(&self.import.import_path),
             cfg,
         );
         let old_ast = rewriter.rewrite_root()?;
@@ -303,6 +302,7 @@ impl ImportEdit {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
+    // TODO kb also add a db here, to resolve the completion label?
     import_to_add: Option<ImportEdit>,
     label: String,
     insert_text: Option<String>,
@@ -322,19 +322,22 @@ impl Builder {
     pub(crate) fn build(self) -> CompletionItem {
         let _p = profile::span("item::Builder::build");
 
-        let mut label = self.label;
-        let mut lookup = self.lookup;
-        let mut insert_text = self.insert_text;
+        let label = self.label;
+        let lookup = self.lookup;
+        let insert_text = self.insert_text;
 
-        if let Some(import_to_add) = self.import_to_add.as_ref() {
-            lookup = lookup.or_else(|| Some(label.clone()));
-            insert_text = insert_text.or_else(|| Some(label.clone()));
-            let display_path = import_to_add.import.display_path();
-            if import_to_add.import_for_trait_assoc_item {
-                label = format!("{} ({})", label, display_path);
-            } else {
-                label = display_path.to_string();
-            }
+        if let Some(_import_to_add) = self.import_to_add.as_ref() {
+            todo!("todo kb")
+            // let import = &import_to_add.import;
+            // let item_to_import = import.item_to_import();
+            // lookup = lookup.or_else(|| Some(label.clone()));
+            // insert_text = insert_text.or_else(|| Some(label.clone()));
+            // let display_path = import_to_add.import.display_path();
+            // if import_to_add.import {
+            //     label = format!("{} ({})", label, display_path);
+            // } else {
+            //     label = display_path.to_string();
+            // }
         }
 
         let text_edit = match self.text_edit {
@@ -438,8 +441,8 @@ impl Builder {
     }
 }
 
-impl<'a> Into<CompletionItem> for Builder {
-    fn into(self) -> CompletionItem {
-        self.build()
-    }
-}
+// impl<'a> Into<CompletionItem> for Builder {
+//     fn into(self) -> CompletionItem {
+//         self.build()
+//     }
+// }

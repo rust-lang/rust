@@ -53,18 +53,20 @@ pub(crate) fn render_resolution<'a>(
 pub(crate) fn render_resolution_with_import<'a>(
     ctx: RenderContext<'a>,
     import_edit: ImportEdit,
-    resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
+    let resolution = ScopeDef::from(import_edit.import.original_item);
     let local_name = match resolution {
         ScopeDef::ModuleDef(ModuleDef::Function(f)) => f.name(ctx.completion.db).to_string(),
         ScopeDef::ModuleDef(ModuleDef::Const(c)) => c.name(ctx.completion.db)?.to_string(),
         ScopeDef::ModuleDef(ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db).to_string(),
-        _ => item_name(ctx.db(), import_edit.import.item_to_display())?.to_string(),
+        _ => item_name(ctx.db(), import_edit.import.original_item)?.to_string(),
     };
-    Render::new(ctx).render_resolution(local_name, Some(import_edit), resolution).map(|mut item| {
-        item.completion_kind = CompletionKind::Magic;
-        item
-    })
+    Render::new(ctx).render_resolution(local_name, Some(import_edit), &resolution).map(
+        |mut item| {
+            item.completion_kind = CompletionKind::Magic;
+            item
+        },
+    )
 }
 
 /// Interface for data and methods required for items rendering.

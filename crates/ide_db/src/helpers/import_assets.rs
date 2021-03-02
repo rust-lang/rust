@@ -1,14 +1,13 @@
 //! Look up accessible paths for items.
-use either::Either;
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
+    ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    imports_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
+    items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
 
@@ -130,34 +129,23 @@ impl<'a> ImportAssets<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LocatedImport {
-    import_path: ModPath,
-    item_to_import: ItemInNs,
-    data_to_display: Option<(ModPath, ItemInNs)>,
+    pub import_path: ModPath,
+    pub item_to_import: ItemInNs,
+    pub original_item: ItemInNs,
 }
 
 impl LocatedImport {
-    pub fn new(
-        import_path: ModPath,
-        item_to_import: ItemInNs,
-        data_to_display: Option<(ModPath, ItemInNs)>,
-    ) -> Self {
-        Self { import_path, item_to_import, data_to_display }
+    pub fn new(import_path: ModPath, item_to_import: ItemInNs, original_item: ItemInNs) -> Self {
+        Self { import_path, item_to_import, original_item }
     }
 
-    pub fn display_path(&self) -> &ModPath {
-        self.data_to_display.as_ref().map(|(mod_path, _)| mod_path).unwrap_or(&self.import_path)
-    }
-
-    pub fn import_path(&self) -> &ModPath {
-        &self.import_path
-    }
-
-    pub fn item_to_display(&self) -> ItemInNs {
-        self.data_to_display.as_ref().map(|&(_, item)| item).unwrap_or(self.item_to_import)
-    }
-
-    pub fn item_to_import(&self) -> ItemInNs {
-        self.item_to_import
+    pub fn original_item_name(&self, db: &RootDatabase) -> Option<Name> {
+        match self.original_item {
+            ItemInNs::Types(module_def_id) | ItemInNs::Values(module_def_id) => {
+                ModuleDef::from(module_def_id).name(db)
+            }
+            ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
+        }
     }
 }
 
@@ -166,25 +154,20 @@ impl<'a> ImportAssets<'a> {
         &self.import_candidate
     }
 
-    fn name_to_import(&self) -> &NameToImport {
-        match &self.import_candidate {
-            ImportCandidate::Path(candidate) => &candidate.name,
-            ImportCandidate::TraitAssocItem(candidate)
-            | ImportCandidate::TraitMethod(candidate) => &candidate.name,
-        }
-    }
-
     pub fn search_for_imports(
         &self,
         sema: &Semantics<RootDatabase>,
         prefix_kind: PrefixKind,
-    ) -> Vec<LocatedImport> {
+    ) -> FxHashSet<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
         self.search_for(sema, Some(prefix_kind))
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
-    pub fn search_for_relative_paths(&self, sema: &Semantics<RootDatabase>) -> Vec<LocatedImport> {
+    pub fn search_for_relative_paths(
+        &self,
+        sema: &Semantics<RootDatabase>,
+    ) -> FxHashSet<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
     }
@@ -193,14 +176,13 @@ impl<'a> ImportAssets<'a> {
         &self,
         sema: &Semantics<RootDatabase>,
         prefixed: Option<PrefixKind>,
-    ) -> Vec<LocatedImport> {
-        let current_crate = self.module_with_candidate.krate();
-        let scope_definitions = self.scope_definitions();
-
-        let defs_for_candidate_name = match self.name_to_import() {
-            NameToImport::Exact(exact_name) => {
-                imports_locator::find_exact_imports(sema, current_crate, exact_name.clone())
-            }
+    ) -> FxHashSet<LocatedImport> {
+        let items_with_candidate_name = match self.name_to_import() {
+            NameToImport::Exact(exact_name) => items_locator::with_for_exact_name(
+                sema,
+                self.module_with_candidate.krate(),
+                exact_name.clone(),
+            ),
             // FIXME: ideally, we should avoid using `fst` for seacrhing trait imports for assoc items:
             // instead, we need to look up all trait impls for a certain struct and search through them only
             // see https://github.com/rust-analyzer/rust-analyzer/pull/7293#issuecomment-761585032
@@ -213,9 +195,9 @@ impl<'a> ImportAssets<'a> {
                     (AssocItemSearch::Include, Some(DEFAULT_QUERY_SEARCH_LIMIT))
                 };
 
-                imports_locator::find_similar_imports(
+                items_locator::with_similar_name(
                     sema,
-                    current_crate,
+                    self.module_with_candidate.krate(),
                     fuzzy_name.clone(),
                     assoc_item_search,
                     limit,
@@ -223,10 +205,11 @@ impl<'a> ImportAssets<'a> {
             }
         };
 
-        self.applicable_defs(sema.db, prefixed, defs_for_candidate_name)
+        let scope_definitions = self.scope_definitions();
+        self.applicable_defs(sema.db, prefixed, items_with_candidate_name)
             .into_iter()
-            .filter(|import| import.import_path().len() > 1)
-            .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import())))
+            .filter(|import| import.import_path.len() > 1)
+            .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import)))
             .collect()
     }
 
@@ -238,11 +221,19 @@ impl<'a> ImportAssets<'a> {
         scope_definitions
     }
 
+    fn name_to_import(&self) -> &NameToImport {
+        match &self.import_candidate {
+            ImportCandidate::Path(candidate) => &candidate.name,
+            ImportCandidate::TraitAssocItem(candidate)
+            | ImportCandidate::TraitMethod(candidate) => &candidate.name,
+        }
+    }
+
     fn applicable_defs(
         &self,
         db: &RootDatabase,
         prefixed: Option<PrefixKind>,
-        defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+        items_with_candidate_name: FxHashSet<ItemInNs>,
     ) -> FxHashSet<LocatedImport> {
         let _p = profile::span("import_assets::applicable_defs");
         let current_crate = self.module_with_candidate.krate();
@@ -251,7 +242,7 @@ impl<'a> ImportAssets<'a> {
 
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => {
-                path_applicable_imports(db, path_candidate, mod_path, defs_for_candidate_name)
+                path_applicable_imports(db, path_candidate, mod_path, items_with_candidate_name)
             }
             ImportCandidate::TraitAssocItem(trait_candidate) => trait_applicable_items(
                 db,
@@ -259,7 +250,7 @@ impl<'a> ImportAssets<'a> {
                 trait_candidate,
                 true,
                 mod_path,
-                defs_for_candidate_name,
+                items_with_candidate_name,
             ),
             ImportCandidate::TraitMethod(trait_candidate) => trait_applicable_items(
                 db,
@@ -267,7 +258,7 @@ impl<'a> ImportAssets<'a> {
                 trait_candidate,
                 false,
                 mod_path,
-                defs_for_candidate_name,
+                items_with_candidate_name,
             ),
         }
     }
@@ -277,17 +268,15 @@ fn path_applicable_imports(
     db: &RootDatabase,
     path_candidate: &PathImportCandidate,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath> + Copy,
-    defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+    items_with_candidate_name: FxHashSet<ItemInNs>,
 ) -> FxHashSet<LocatedImport> {
     let _p = profile::span("import_assets::path_applicable_imports");
 
-    let items_for_candidate_name =
-        defs_for_candidate_name.map(|def| def.either(ItemInNs::from, ItemInNs::from));
-
     let (unresolved_first_segment, unresolved_qualifier) = match &path_candidate.qualifier {
         Qualifier::Absent => {
-            return items_for_candidate_name
-                .filter_map(|item| Some(LocatedImport::new(mod_path(item)?, item, None)))
+            return items_with_candidate_name
+                .into_iter()
+                .filter_map(|item| Some(LocatedImport::new(mod_path(item)?, item, item)))
                 .collect();
         }
         Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => {
@@ -295,7 +284,8 @@ fn path_applicable_imports(
         }
     };
 
-    items_for_candidate_name
+    items_with_candidate_name
+        .into_iter()
         .filter_map(|item| {
             import_for_item(db, mod_path, &unresolved_first_segment, &unresolved_qualifier, item)
         })
@@ -336,7 +326,6 @@ fn import_for_item(
     }
 
     let segment_import = find_import_for_segment(db, item_candidate, &unresolved_first_segment)?;
-    let data_to_display = Some((import_path_candidate.clone(), original_item));
     Some(match (segment_import == item_candidate, trait_to_import) {
         (true, Some(_)) => {
             // FIXME we should be able to import both the trait and the segment,
@@ -345,11 +334,11 @@ fn import_for_item(
             return None;
         }
         (false, Some(trait_to_import)) => {
-            LocatedImport::new(mod_path(trait_to_import)?, trait_to_import, data_to_display)
+            LocatedImport::new(mod_path(trait_to_import)?, trait_to_import, original_item)
         }
-        (true, None) => LocatedImport::new(import_path_candidate, item_candidate, data_to_display),
+        (true, None) => LocatedImport::new(import_path_candidate, item_candidate, original_item),
         (false, None) => {
-            LocatedImport::new(mod_path(segment_import)?, segment_import, data_to_display)
+            LocatedImport::new(mod_path(segment_import)?, segment_import, original_item)
         }
     })
 }
@@ -399,16 +388,14 @@ fn trait_applicable_items(
     trait_candidate: &TraitImportCandidate,
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
-    defs_for_candidate_name: impl Iterator<Item = Either<ModuleDef, MacroDef>>,
+    items_with_candidate_name: FxHashSet<ItemInNs>,
 ) -> FxHashSet<LocatedImport> {
     let _p = profile::span("import_assets::trait_applicable_items");
     let mut required_assoc_items = FxHashSet::default();
 
-    let trait_candidates = defs_for_candidate_name
-        .filter_map(|input| match input {
-            Either::Left(module_def) => module_def.as_assoc_item(db),
-            _ => None,
-        })
+    let trait_candidates = items_with_candidate_name
+        .into_iter()
+        .filter_map(|input| ModuleDef::from(input.as_module_def_id()?).as_assoc_item(db))
         .filter_map(|assoc| {
             let assoc_item_trait = assoc.containing_trait(db)?;
             required_assoc_items.insert(assoc);
@@ -433,20 +420,10 @@ fn trait_applicable_items(
                     }
 
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
-                    let item_path = mod_path(item)?;
-
-                    let assoc_item = assoc_to_item(assoc);
-                    let assoc_item_path = match assoc.container(db) {
-                        AssocItemContainer::Trait(_) => item_path.clone(),
-                        AssocItemContainer::Impl(impl_) => mod_path(ItemInNs::from(
-                            ModuleDef::from(impl_.target_ty(db).as_adt()?),
-                        ))?,
-                    };
-
                     located_imports.insert(LocatedImport::new(
-                        item_path,
+                        mod_path(item)?,
                         item,
-                        Some((assoc_item_path, assoc_item)),
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>
@@ -462,20 +439,10 @@ fn trait_applicable_items(
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
-                    let item_path = mod_path(item)?;
-
-                    let assoc_item = assoc_to_item(assoc);
-                    let assoc_item_path = match assoc.container(db) {
-                        AssocItemContainer::Trait(_) => item_path.clone(),
-                        AssocItemContainer::Impl(impl_) => mod_path(ItemInNs::from(
-                            ModuleDef::from(impl_.target_ty(db).as_adt()?),
-                        ))?,
-                    };
-
                     located_imports.insert(LocatedImport::new(
-                        item_path,
+                        mod_path(item)?,
                         item,
-                        Some((assoc_item_path, assoc_item)),
+                        assoc_to_item(assoc),
                     ));
                 }
                 None::<()>

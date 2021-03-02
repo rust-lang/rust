@@ -2,7 +2,7 @@ use std::iter;
 
 use hir::AsAssocItem;
 use ide_db::helpers::{
-    import_assets::{ImportCandidate, Qualifier},
+    import_assets::{ImportCandidate, LocatedImport, Qualifier},
     mod_path_to_ast,
 };
 use ide_db::RootDatabase;
@@ -78,13 +78,13 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         acc.add_group(
             &group_label,
             AssistId("qualify_path", AssistKind::QuickFix),
-            label(candidate, import.display_path()),
+            label(ctx.db(), candidate, &import),
             range,
             |builder| {
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
-                    import.import_path(),
-                    import.item_to_import(),
+                    &import.import_path,
+                    import.item_to_import,
                 )
             },
         );
@@ -197,17 +197,21 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     GroupLabel(format!("Qualify {}", name))
 }
 
-fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
+fn label(db: &RootDatabase, candidate: &ImportCandidate, import: &LocatedImport) -> String {
+    let display_path = match import.original_item_name(db) {
+        Some(display_path) => display_path.to_string(),
+        None => "{unknown}".to_string(),
+    };
     match candidate {
         ImportCandidate::Path(candidate) => {
             if !matches!(candidate.qualifier, Qualifier::Absent) {
-                format!("Qualify with `{}`", &import)
+                format!("Qualify with `{}`", display_path)
             } else {
-                format!("Qualify as `{}`", &import)
+                format!("Qualify as `{}`", display_path)
             }
         }
-        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", &import),
-        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", &import),
+        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", display_path),
+        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", display_path),
     }
 }
 

@@ -87,11 +87,12 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::{AsAssocItem, ModPath, ModuleDef, ScopeDef};
+use hir::ModPath;
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
 };
+use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
@@ -130,27 +131,23 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
-    let mut all_imports =
-        import_assets.search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind);
-    all_imports.sort_by_cached_key(|import| {
-        compute_fuzzy_completion_order_key(import.display_path(), &user_input_lowercased)
-    });
-
-    acc.add_all(all_imports.into_iter().filter_map(|import| {
-        let import_for_trait_assoc_item = import
-            .item_to_display()
-            .as_module_def_id()
-            .and_then(|module_def_id| {
-                ModuleDef::from(module_def_id).as_assoc_item(ctx.db)?.containing_trait(ctx.db)
+    acc.add_all(
+        import_assets
+            .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
+            .into_iter()
+            .sorted_by_key(|located_import| {
+                compute_fuzzy_completion_order_key(
+                    &located_import.import_path,
+                    &user_input_lowercased,
+                )
             })
-            .is_some();
-        let def_to_display = ScopeDef::from(import.item_to_display());
-        render_resolution_with_import(
-            RenderContext::new(ctx),
-            ImportEdit { import, import_scope: import_scope.clone(), import_for_trait_assoc_item },
-            &def_to_display,
-        )
-    }));
+            .filter_map(|import| {
+                render_resolution_with_import(
+                    RenderContext::new(ctx),
+                    ImportEdit { import, import_scope: import_scope.clone() },
+                )
+            }),
+    );
     Some(())
 }
 
@@ -190,6 +187,7 @@ fn import_assets<'a>(ctx: &'a CompletionContext, fuzzy_name: String) -> Option<I
             ctx.scope.clone(),
         )?;
 
+        // TODO kb bad: with the path prefix, the "min 3 symbols" limit applies. Fix in a separate PR on the symbol_index level
         if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
             && fuzzy_name_length < 2
         {
@@ -796,9 +794,7 @@ fn main() {
 
     #[test]
     fn unresolved_qualifier() {
-        check_edit(
-            "Item",
-            r#"
+        let fixture = r#"
 mod foo {
     pub mod bar {
         pub mod baz {
@@ -809,31 +805,34 @@ mod foo {
 
 fn main() {
     bar::baz::Ite$0
-}
-"#,
+}"#;
+
+        check(fixture, expect![["st Item (foo::bar::baz::Item)"]]);
+
+        check_edit(
+            "Item",
+            fixture,
             r#"
-use foo::bar;
+        use foo::bar;
 
-mod foo {
-    pub mod bar {
-        pub mod baz {
-            pub struct Item;
+        mod foo {
+            pub mod bar {
+                pub mod baz {
+                    pub struct Item;
+                }
+            }
         }
-    }
-}
 
-fn main() {
-    bar::baz::Item
-}
-"#,
+        fn main() {
+            bar::baz::Item
+        }
+        "#,
         );
     }
 
     #[test]
     fn unresolved_assoc_item_container() {
-        check_edit(
-            "TEST_ASSOC",
-            r#"
+        let fixture = r#"
 mod foo {
     pub struct Item;
 
@@ -844,8 +843,13 @@ mod foo {
 
 fn main() {
     Item::TEST_A$0
-}
-"#,
+}"#;
+
+        check(fixture, expect![["ct TEST_ASSOC (foo::bar::baz::Item)"]]);
+
+        check_edit(
+            "TEST_ASSOC",
+            fixture,
             r#"
 use foo::Item;
 
@@ -866,9 +870,7 @@ fn main() {
 
     #[test]
     fn unresolved_assoc_item_container_with_path() {
-        check_edit(
-            "TEST_ASSOC",
-            r#"
+        let fixture = r#"
 mod foo {
     pub mod bar {
         pub struct Item;
@@ -881,8 +883,13 @@ mod foo {
 
 fn main() {
     bar::Item::TEST_A$0
-}
-"#,
+}"#;
+
+        check(fixture, expect![["ct TEST_ASSOC (foo::bar::baz::Item)"]]);
+
+        check_edit(
+            "TEST_ASSOC",
+            fixture,
             r#"
 use foo::bar;
 
