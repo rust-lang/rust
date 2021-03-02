@@ -335,6 +335,10 @@ struct FutureIncompatReport {
     future_incompat_report: Vec<FutureBreakageItem>,
 }
 
+// NOTE: Keep this in sync with the equivalent structs in rustdoc's
+// doctest component (as well as cargo).
+// We could unify this struct the one in rustdoc but they have different
+// ownership semantics, so doing so would create wasteful allocations.
 #[derive(Encodable)]
 struct UnusedExterns<'a, 'b, 'c> {
     /// The severity level of the unused dependencies lint

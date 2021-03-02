@@ -278,6 +278,10 @@ impl DirState {
     }
 }
 
+// NOTE: Keep this in sync with the equivalent structs in rustc
+// and cargo.
+// We could unify this struct the one in rustc but they have different
+// ownership semantics, so doing so would create wasteful allocations.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct UnusedExterns {
     /// Lint level of the unused_crate_dependencies lint
