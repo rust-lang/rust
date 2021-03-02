@@ -8,6 +8,7 @@ mod get_unwrap;
 mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
+mod iter_cloned_collect;
 mod iter_count;
 mod manual_saturating_arithmetic;
 mod ok_expect;
@@ -1711,7 +1712,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
             ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
-            ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
+            ["collect", "cloned"] => iter_cloned_collect::check(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
@@ -2491,27 +2492,6 @@ fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>
     let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
     if is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
         lint_string_extend(cx, expr, args);
-    }
-}
-
-fn lint_iter_cloned_collect<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
-    if_chain! {
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::vec_type);
-        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0]));
-        if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
-
-        then {
-            span_lint_and_sugg(
-                cx,
-                ITER_CLONED_COLLECT,
-                to_replace,
-                "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                more readable",
-                "try",
-                ".to_vec()".to_string(),
-                Applicability::MachineApplicable,
-            );
-        }
     }
 }
 
