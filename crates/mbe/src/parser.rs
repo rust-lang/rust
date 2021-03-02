@@ -5,7 +5,75 @@ use smallvec::SmallVec;
 use syntax::SmolStr;
 use tt::Delimiter;
 
-use crate::{tt_iter::TtIter, MetaTemplate, ParseError};
+use crate::{tt_iter::TtIter, ParseError};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct MetaTemplate(pub(crate) Vec<Op>);
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum OpDelimited<'a> {
+    Op(&'a Op),
+    Open,
+    Close,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct OpDelimitedIter<'a> {
+    inner: &'a Vec<Op>,
+    delimited: Option<&'a Delimiter>,
+    idx: usize,
+}
+
+impl<'a> OpDelimitedIter<'a> {
+    pub(crate) fn is_eof(&self) -> bool {
+        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        self.idx >= len
+    }
+
+    pub(crate) fn peek(&self) -> Option<OpDelimited<'a>> {
+        match self.delimited {
+            None => self.inner.get(self.idx).map(OpDelimited::Op),
+            Some(_) => match self.idx {
+                0 => Some(OpDelimited::Open),
+                i if i == self.inner.len() + 1 => Some(OpDelimited::Close),
+                i => self.inner.get(i - 1).map(OpDelimited::Op),
+            },
+        }
+    }
+
+    pub(crate) fn reset(&self) -> Self {
+        Self { inner: &self.inner, idx: 0, delimited: self.delimited }
+    }
+}
+
+impl<'a> Iterator for OpDelimitedIter<'a> {
+    type Item = OpDelimited<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = self.peek();
+        self.idx += 1;
+        res
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.inner.len() + if self.delimited.is_some() { 2 } else { 0 };
+        let remain = len.checked_sub(self.idx).unwrap_or(0);
+        (remain, Some(remain))
+    }
+}
+
+impl<'a> MetaTemplate {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Op> {
+        self.0.iter()
+    }
+
+    pub(crate) fn iter_delimited(
+        &'a self,
+        delimited: Option<&'a Delimiter>,
+    ) -> OpDelimitedIter<'a> {
+        OpDelimitedIter { inner: &self.0, idx: 0, delimited }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
@@ -43,6 +111,16 @@ impl PartialEq for Separator {
                 a_iter.eq(b_iter)
             }
             _ => false,
+        }
+    }
+}
+
+impl Separator {
+    pub(crate) fn tt_count(&self) -> usize {
+        match self {
+            Separator::Literal(_) => 1,
+            Separator::Ident(_) => 1,
+            Separator::Puncts(it) => it.len(),
         }
     }
 }

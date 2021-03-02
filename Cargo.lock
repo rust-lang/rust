@@ -879,6 +879,7 @@ dependencies = [
  "profile",
  "rustc-hash",
  "smallvec",
+ "stdx",
  "syntax",
  "test_utils",
  "tt",

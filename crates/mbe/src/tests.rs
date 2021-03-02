@@ -457,6 +457,17 @@ fn test_match_group_with_multichar_sep() {
 }
 
 #[test]
+fn test_match_group_with_multichar_sep2() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+            (fn $name:ident {$($i:literal)&&*} ) => ( fn $name() -> bool { $($i)&&*} );
+        }"#,
+    )
+    .assert_expand_items("foo! (fn baz {true && true} );", "fn baz () -> bool {true &&true}");
+}
+
+#[test]
 fn test_match_group_zero_match() {
     parse_macro(
         r#"
@@ -1265,6 +1276,18 @@ macro_rules! m {
     .descendants()
     .find(|token| token.kind() == ERROR)
     .is_some());
+}
+
+#[test]
+fn test_match_is_not_greedy() {
+    parse_macro(
+        r#"
+macro_rules! foo {
+    ($($i:ident $(,)*),*) => {};
+}
+"#,
+    )
+    .assert_expand_items(r#"foo!(a,b);"#, r#""#);
 }
 
 // The following tests are based on real world situations

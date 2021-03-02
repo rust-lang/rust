@@ -21,7 +21,7 @@ use test_utils::mark;
 pub use tt::{Delimiter, DelimiterKind, Punct};
 
 use crate::{
-    parser::{parse_pattern, parse_template, Op},
+    parser::{parse_pattern, parse_template, MetaTemplate, Op},
     tt_iter::TtIter,
 };
 
@@ -92,15 +92,6 @@ pub struct MacroDef {
 struct Rule {
     lhs: MetaTemplate,
     rhs: MetaTemplate,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct MetaTemplate(Vec<Op>);
-
-impl<'a> MetaTemplate {
-    fn iter(&self) -> impl Iterator<Item = &Op> {
-        self.0.iter()
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
