@@ -37,21 +37,27 @@ struct CallSite<'tcx> {
     source_info: SourceInfo,
 }
 
+/// Returns true if MIR inlining is enabled in the current compilation session.
+crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
+    if tcx.sess.opts.debugging_opts.instrument_coverage {
+        // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
+        // counters can be invalidated, such as by merging coverage counter statements from
+        // a pre-inlined function into a different function. This kind of change is invalid,
+        // so inlining must be skipped. Note: This check is performed here so inlining can
+        // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
+        return false;
+    }
+
+    if let Some(enabled) = tcx.sess.opts.debugging_opts.inline_mir {
+        return enabled;
+    }
+
+    tcx.sess.opts.debugging_opts.mir_opt_level >= 2
+}
+
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // If you change this optimization level, also change the level in
-        // `mir_drops_elaborated_and_const_checked` for the call to `mir_inliner_callees`.
-        // Otherwise you will get an ICE about stolen MIR.
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
-            return;
-        }
-
-        if tcx.sess.opts.debugging_opts.instrument_coverage {
-            // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
-            // counters can be invalidated, such as by merging coverage counter statements from
-            // a pre-inlined function into a different function. This kind of change is invalid,
-            // so inlining must be skipped. Note: This check is performed here so inlining can
-            // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
+        if !is_enabled(tcx) {
             return;
         }
 
@@ -343,9 +349,9 @@ impl Inliner<'tcx> {
         let tcx = self.tcx;
 
         let mut threshold = if callee_attrs.requests_inline() {
-            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
-            self.tcx.sess.opts.debugging_opts.inline_mir_threshold
+            self.tcx.sess.opts.debugging_opts.inline_mir_threshold.unwrap_or(50)
         };
 
         // Give a bonus functions with a small number of blocks,
