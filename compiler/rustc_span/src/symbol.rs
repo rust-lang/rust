@@ -634,6 +634,7 @@ symbols! {
         index_mut,
         infer_outlives_requirements,
         infer_static_outlives_requirements,
+        inherent_associated_types,
         inlateout,
         inline,
         inline_const,
