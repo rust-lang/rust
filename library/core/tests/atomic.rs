@@ -61,7 +61,6 @@ fn uint_xor() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
-#[cfg_attr(miri, ignore)] // FIXME: Miri does not support atomic_min
 fn uint_min() {
     let x = AtomicUsize::new(0xf731);
     assert_eq!(x.fetch_min(0x137f, SeqCst), 0xf731);
@@ -72,7 +71,6 @@ fn uint_min() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
-#[cfg_attr(miri, ignore)] // FIXME: Miri does not support atomic_max
 fn uint_max() {
     let x = AtomicUsize::new(0x137f);
     assert_eq!(x.fetch_max(0xf731, SeqCst), 0x137f);
@@ -111,7 +109,6 @@ fn int_xor() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
-#[cfg_attr(miri, ignore)] // FIXME: Miri does not support atomic_min
 fn int_min() {
     let x = AtomicIsize::new(0xf731);
     assert_eq!(x.fetch_min(0x137f, SeqCst), 0xf731);
@@ -122,7 +119,6 @@ fn int_min() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
-#[cfg_attr(miri, ignore)] // FIXME: Miri does not support atomic_max
 fn int_max() {
     let x = AtomicIsize::new(0x137f);
     assert_eq!(x.fetch_max(0xf731, SeqCst), 0x137f);
