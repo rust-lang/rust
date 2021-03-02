@@ -11,7 +11,7 @@ pub fn apply_ssr_rules(rules: Vec<SsrRule>) -> Result<()> {
     let cargo_config = Default::default();
     let load_cargo_config =
         LoadCargoConfig { load_out_dirs_from_check: true, with_proc_macro: true };
-    let (host, vfs) =
+    let (host, vfs, _proc_macro) =
         load_workspace_at(&std::env::current_dir()?, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;
@@ -38,7 +38,7 @@ pub fn search_for_patterns(patterns: Vec<SsrPattern>, debug_snippet: Option<Stri
     let cargo_config = Default::default();
     let load_cargo_config =
         LoadCargoConfig { load_out_dirs_from_check: true, with_proc_macro: true };
-    let (host, _vfs) =
+    let (host, _vfs, _proc_macro) =
         load_workspace_at(&std::env::current_dir()?, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();
     let mut match_finder = MatchFinder::at_first_file(db)?;

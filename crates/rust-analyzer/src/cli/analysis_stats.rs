@@ -64,7 +64,7 @@ impl AnalysisStatsCmd {
             load_out_dirs_from_check: self.load_output_dirs,
             with_proc_macro: self.with_proc_macro,
         };
-        let (host, vfs) =
+        let (host, vfs, _proc_macro) =
             load_workspace_at(&self.path, &cargo_config, &load_cargo_config, &|_| {})?;
         let db = host.raw_database();
         eprintln!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());

@@ -23,7 +23,7 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> Result<(AnalysisHost, vfs::Vfs)> {
+) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
     let workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
@@ -35,7 +35,7 @@ pub fn load_workspace(
     ws: ProjectWorkspace,
     config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> Result<(AnalysisHost, vfs::Vfs)> {
+) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -80,7 +80,7 @@ pub fn load_workspace(
     log::debug!("crate graph: {:?}", crate_graph);
     let host =
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
-    Ok((host, vfs))
+    Ok((host, vfs, proc_macro_client))
 }
 
 fn load_crate_graph(
@@ -138,7 +138,8 @@ mod tests {
         let cargo_config = Default::default();
         let load_cargo_config =
             LoadCargoConfig { load_out_dirs_from_check: false, with_proc_macro: false };
-        let (host, _vfs) = load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
+        let (host, _vfs, _proc_macro) =
+            load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
 
         let n_crates = Crate::all(host.raw_database()).len();
         // RA has quite a few crates, but the exact count doesn't matter
