@@ -31,6 +31,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             return None;
         }
         mark::hit!(add_turbo_fish_after_call);
+        mark::hit!(add_type_ascription_after_call);
         arg_list.l_paren_token()?.prev_token().filter(|it| it.kind() == SyntaxKind::IDENT)
     })?;
     let next_token = ident.next_token()?;
@@ -52,6 +53,24 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         mark::hit!(add_turbo_fish_non_generic);
         return None;
     }
+
+    if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
+        if let_stmt.colon_token().is_none() {
+            let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
+            acc.add(
+                AssistId("add_type_ascription", AssistKind::RefactorRewrite),
+                "Add `: _` before assignment operator",
+                ident.text_range(),
+                |builder| match ctx.config.snippet_cap {
+                    Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
+                    None => builder.insert(type_pos, ": _"),
+                },
+            )?
+        } else {
+            mark::hit!(add_type_ascription_already_typed);
+        }
+    }
+
     acc.add(
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
         "Add `::<>`",
@@ -65,7 +84,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_by_label, check_assist_not_applicable};
 
     use super::*;
     use test_utils::mark;
@@ -157,6 +176,93 @@ fn main() {
 fn make() -> () {}
 fn main() {
     make$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_function() {
+        check_assist_by_label(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x = make$0();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x: ${0:_} = make();
+}
+"#,
+            "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_after_call() {
+        mark::check!(add_type_ascription_after_call);
+        check_assist_by_label(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x = make()$0;
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x: ${0:_} = make();
+}
+"#,
+            "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_method() {
+        check_assist_by_label(
+            add_turbo_fish,
+            r#"
+struct S;
+impl S {
+    fn make<T>(&self) -> T {}
+}
+fn main() {
+    let x = S.make$0();
+}
+"#,
+            r#"
+struct S;
+impl S {
+    fn make<T>(&self) -> T {}
+}
+fn main() {
+    let x: ${0:_} = S.make();
+}
+"#,
+            "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_already_typed() {
+        mark::check!(add_type_ascription_already_typed);
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x: () = make$0();
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x: () = make::<${0:_}>();
 }
 "#,
         );
