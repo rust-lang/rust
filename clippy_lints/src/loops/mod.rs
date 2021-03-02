@@ -18,13 +18,11 @@ mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
-use crate::utils::{higher, is_type_diagnostic_item, match_trait_method, match_type, paths};
-use rustc_hir::{Expr, ExprKind, LoopSource, Mutability, Pat};
+use crate::utils::higher;
+use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::sym;
 use utils::{get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor};
 
 declare_clippy_lint! {
@@ -603,67 +601,27 @@ fn check_for_loop<'tcx>(
 
 fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>, expr: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
+
     if let ExprKind::MethodCall(ref method, _, ref args, _) = arg.kind {
         // just the receiver, no arguments
         if args.len() == 1 {
             let method_name = &*method.ident.as_str();
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-            if method_name == "iter" || method_name == "iter_mut" {
-                if is_ref_iterable_type(cx, &args[0]) {
+            match method_name {
+                "iter" | "iter_mut" => explicit_iter_loop::check(cx, args, arg, method_name),
+                "into_iter" => {
                     explicit_iter_loop::check(cx, args, arg, method_name);
-                }
-            } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let receiver_ty = cx.typeck_results().expr_ty(&args[0]);
-                let receiver_ty_adjusted = cx.typeck_results().expr_ty_adjusted(&args[0]);
-                if TyS::same_type(receiver_ty, receiver_ty_adjusted) {
                     explicit_into_iter_loop::check(cx, args, arg);
-                } else {
-                    let ref_receiver_ty = cx.tcx.mk_ref(
-                        cx.tcx.lifetimes.re_erased,
-                        ty::TypeAndMut {
-                            ty: receiver_ty,
-                            mutbl: Mutability::Not,
-                        },
-                    );
-                    if TyS::same_type(receiver_ty_adjusted, ref_receiver_ty) {
-                        explicit_iter_loop::check(cx, args, arg, method_name)
-                    }
-                }
-            } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
-                iter_next_loop::check(cx, expr);
-                next_loop_linted = true;
+                },
+                "next" => {
+                    next_loop_linted = iter_next_loop::check(cx, arg, expr);
+                },
+                _ => {},
             }
         }
     }
+
     if !next_loop_linted {
         for_loops_over_fallibles::check(cx, pat, arg);
-    }
-}
-
-/// Returns `true` if the type of expr is one that provides `IntoIterator` impls
-/// for `&T` and `&mut T`, such as `Vec`.
-#[rustfmt::skip]
-fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    // no walk_ptrs_ty: calling iter() on a reference can make sense because it
-    // will allow further borrows afterwards
-    let ty = cx.typeck_results().expr_ty(e);
-    is_iterable_array(ty, cx) ||
-    is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-    match_type(cx, ty, &paths::LINKED_LIST) ||
-    is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) ||
-    is_type_diagnostic_item(cx, ty, sym!(hashset_type)) ||
-    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
-    match_type(cx, ty, &paths::BINARY_HEAP) ||
-    match_type(cx, ty, &paths::BTREEMAP) ||
-    match_type(cx, ty, &paths::BTREESET)
-}
-
-fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'tcx>) -> bool {
-    // IntoIterator is currently only implemented for array sizes <= 32 in rustc
-    match ty.kind() {
-        ty::Array(_, n) => n
-            .try_eval_usize(cx.tcx, cx.param_env)
-            .map_or(false, |val| (0..=32).contains(&val)),
-        _ => false,
     }
 }
