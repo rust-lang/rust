@@ -35,6 +35,7 @@ pub enum BenchWhat {
     GotoDef(Position),
 }
 
+#[derive(Debug, Clone)]
 pub struct Position {
     pub path: AbsPathBuf,
     pub line: u32,

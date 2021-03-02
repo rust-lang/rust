@@ -1,14 +1,20 @@
 //! Driver for rust-analyzer.
 //!
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
-mod args;
+mod flags;
 mod logger;
 
-use std::{convert::TryFrom, env, fs, path::PathBuf, process};
+use std::{convert::TryFrom, env, fs, path::Path, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
-use rust_analyzer::{cli, config::Config, from_json, lsp_ext::supports_utf8, Result};
+use rust_analyzer::{
+    cli::{self, AnalysisStatsCmd, BenchCmd},
+    config::Config,
+    from_json,
+    lsp_ext::supports_utf8,
+    Result,
+};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -28,10 +34,10 @@ fn main() {
 }
 
 fn try_main() -> Result<()> {
-    let args = args::Args::parse()?;
+    let flags = flags::RustAnalyzer::from_env()?;
 
     #[cfg(debug_assertions)]
-    if args.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
+    if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
         #[allow(unused_mut)]
         let mut d = 4;
         while d == 4 {
@@ -39,35 +45,62 @@ fn try_main() -> Result<()> {
         }
     }
 
-    setup_logging(args.log_file, args.no_buffering)?;
-    match args.command {
-        args::Command::RunServer => run_server()?,
-        args::Command::PrintConfigSchema => {
-            println!("{:#}", Config::json_schema());
-        }
-        args::Command::ProcMacro => proc_macro_srv::cli::run()?,
+    setup_logging(flags.log_file.as_deref(), flags.no_log_buffering)?;
+    let verbosity = flags.verbosity();
 
-        args::Command::Parse { no_dump } => cli::parse(no_dump)?,
-        args::Command::Symbols => cli::symbols()?,
-        args::Command::Highlight { rainbow } => cli::highlight(rainbow)?,
-        args::Command::AnalysisStats(cmd) => cmd.run(args.verbosity)?,
-        args::Command::Bench(cmd) => cmd.run(args.verbosity)?,
-        args::Command::Diagnostics { path, load_output_dirs, with_proc_macro } => {
-            cli::diagnostics(path.as_ref(), load_output_dirs, with_proc_macro)?
+    match flags.subcommand {
+        flags::RustAnalyzerCmd::LspServer(cmd) => {
+            if cmd.print_config_schema {
+                println!("{:#}", Config::json_schema());
+                return Ok(());
+            }
+            if cmd.version {
+                println!("rust-analyzer {}", env!("REV"));
+                return Ok(());
+            }
+            if cmd.help {
+                println!("{}", flags::RustAnalyzer::HELP);
+                return Ok(());
+            }
+            run_server()?
         }
-        args::Command::Ssr { rules } => {
-            cli::apply_ssr_rules(rules)?;
+        flags::RustAnalyzerCmd::ProcMacro(_) => proc_macro_srv::cli::run()?,
+        flags::RustAnalyzerCmd::Parse(cmd) => cli::parse(cmd.no_dump)?,
+        flags::RustAnalyzerCmd::Symbols(_) => cli::symbols()?,
+        flags::RustAnalyzerCmd::Highlight(cmd) => cli::highlight(cmd.rainbow)?,
+        flags::RustAnalyzerCmd::AnalysisStats(cmd) => AnalysisStatsCmd {
+            randomize: cmd.randomize,
+            parallel: cmd.parallel,
+            memory_usage: cmd.memory_usage,
+            only: cmd.only,
+            with_deps: cmd.with_deps,
+            path: cmd.path,
+            load_output_dirs: cmd.load_output_dirs,
+            with_proc_macro: cmd.with_proc_macro,
         }
-        args::Command::StructuredSearch { patterns, debug_snippet } => {
-            cli::search_for_patterns(patterns, debug_snippet)?;
+        .run(verbosity)?,
+        flags::RustAnalyzerCmd::AnalysisBench(cmd) => {
+            let what = cmd.what();
+            BenchCmd {
+                memory_usage: cmd.memory_usage,
+                path: cmd.path,
+                load_output_dirs: cmd.load_output_dirs,
+                with_proc_macro: cmd.with_proc_macro,
+                what,
+            }
+            .run(verbosity)?
         }
-        args::Command::Version => println!("rust-analyzer {}", env!("REV")),
-        args::Command::Help => {}
+
+        flags::RustAnalyzerCmd::Diagnostics(cmd) => {
+            cli::diagnostics(&cmd.path, cmd.load_output_dirs, cmd.with_proc_macro)?
+        }
+        flags::RustAnalyzerCmd::Ssr(cmd) => cli::apply_ssr_rules(cmd.rule)?,
+        flags::RustAnalyzerCmd::Search(cmd) => cli::search_for_patterns(cmd.pattern, cmd.debug)?,
     }
     Ok(())
 }
 
-fn setup_logging(log_file: Option<PathBuf>, no_buffering: bool) -> Result<()> {
+fn setup_logging(log_file: Option<&Path>, no_buffering: bool) -> Result<()> {
     env::set_var("RUST_BACKTRACE", "short");
 
     let log_file = match log_file {
