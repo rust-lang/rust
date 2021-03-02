@@ -3061,14 +3061,17 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_doc_attributes` lint detects when the `#[doc(...)]` is
+    /// The `invalid_doc_attribute` lint detects when the `#[doc(...)]` is
     /// misused.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
     /// #![deny(warnings)]
-    /// #[doc(test(no_crate_inject))]
+    ///
+    /// pub mod submodule {
+    ///     #![doc(test(no_crate_inject))]
+    /// }
     /// ```
     ///
     /// {{produces}}
@@ -3083,6 +3086,6 @@ declare_lint! {
     "detects invalid `#[doc(...)]` attributes",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
-        edition: Some(Edition::Edition2021),
+        edition: None,
     };
 }

@@ -17,7 +17,9 @@ use rustc_hir::{
     self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
 };
 use rustc_hir::{MethodKind, Target};
-use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use rustc_session::lint::builtin::{
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTE, UNUSED_ATTRIBUTES,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -542,6 +544,21 @@ impl CheckAttrVisitor<'tcx> {
                         if !self.check_attr_crate_level(meta, hir_id, "keyword")
                             || !self.check_doc_keyword(meta, hir_id)
                         {
+                            return false;
+                        }
+                    } else if meta.has_name(sym::test) {
+                        if CRATE_HIR_ID != hir_id {
+                            self.tcx.struct_span_lint_hir(
+                                INVALID_DOC_ATTRIBUTE,
+                                hir_id,
+                                meta.span(),
+                                |lint| {
+                                    lint.build(
+                                        "`#![doc(test(...)]` is only allowed as a crate level attribute"
+                                    )
+                                    .emit();
+                                },
+                            );
                             return false;
                         }
                     } else if let Some(i_meta) = meta.meta_item() {
