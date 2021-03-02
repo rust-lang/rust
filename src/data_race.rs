@@ -263,7 +263,7 @@ impl MemoryCellClocks {
             atomic_ops: None,
         }
     }
-    
+
     /// Load the internal atomic memory cells if they exist.
     #[inline]
     fn atomic(&self) -> Option<&AtomicMemoryCellClocks> {
@@ -323,7 +323,7 @@ impl MemoryCellClocks {
     /// store relaxed semantics.
     fn store_relaxed(&mut self, clocks: &ThreadClockSet, index: VectorIdx) -> Result<(), DataRace> {
         self.atomic_write_detect(clocks, index)?;
-        
+
         // The handling of release sequences was changed in C++20 and so
         // the code here is different to the paper since now all relaxed
         // stores block release sequences. The exception for same-thread
@@ -678,7 +678,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                     // Either Release | AcqRel | SeqCst
                     clocks.apply_release_fence();
                 }
-                
+
                 // Increment timestamp in case of release semantics.
                 Ok(atomic != AtomicFenceOp::Acquire)
             })
