@@ -498,12 +498,15 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
+    // FIXME(oli-obk): once const generics can have generic types, this assertion
+    // will likely get triggered. Move to `normalize_erasing_regions` at that point.
+    assert_eq!(
+        tcx.erase_regions(a.ty),
+        tcx.erase_regions(b.ty),
+        "cannot relate constants of different types"
+    );
 
-    // FIXME(eddyb) doesn't look like everything below checks that `a.ty == b.ty`.
-    // We could probably always assert it early, as const generic parameters
-    // are not allowed to depend on other generic parameters, i.e. are concrete.
-    // (although there could be normalization differences)
+    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env()).val;
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
@@ -524,7 +527,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         }
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
             let new_val = match (a_val, b_val) {
-                (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) if a.ty == b.ty => {
+                (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) => {
                     if a_val == b_val {
                         Ok(ConstValue::Scalar(a_val))
                     } else if let ty::FnPtr(_) = a.ty.kind() {
