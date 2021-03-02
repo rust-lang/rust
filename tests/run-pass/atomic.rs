@@ -74,6 +74,20 @@ fn atomic_u64() {
     assert_eq!(ATOMIC.compare_exchange(0, 0x100, AcqRel, Acquire), Err(1));
     compare_exchange_weak_loop!(ATOMIC, 1, 0x100, AcqRel, Acquire);
     assert_eq!(ATOMIC.load(Relaxed), 0x100);
+
+    assert_eq!(ATOMIC.fetch_max(0x10, SeqCst), 0x100);
+    assert_eq!(ATOMIC.fetch_max(0x100, SeqCst), 0x100);
+    assert_eq!(ATOMIC.fetch_max(0x1000, SeqCst), 0x100);
+    assert_eq!(ATOMIC.fetch_max(0x1000, SeqCst), 0x1000);
+    assert_eq!(ATOMIC.fetch_max(0x2000, SeqCst), 0x1000);
+    assert_eq!(ATOMIC.fetch_max(0x2000, SeqCst), 0x2000);
+
+    assert_eq!(ATOMIC.fetch_min(0x2000, SeqCst), 0x2000);
+    assert_eq!(ATOMIC.fetch_min(0x2000, SeqCst), 0x2000);
+    assert_eq!(ATOMIC.fetch_min(0x1000, SeqCst), 0x2000);
+    assert_eq!(ATOMIC.fetch_min(0x1000, SeqCst), 0x1000);
+    assert_eq!(ATOMIC.fetch_min(0x100, SeqCst), 0x1000);
+    assert_eq!(ATOMIC.fetch_min(0x10, SeqCst), 0x100);
 }
 
 fn atomic_fences() {

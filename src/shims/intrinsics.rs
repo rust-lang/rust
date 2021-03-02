@@ -10,6 +10,12 @@ use rustc_target::abi::{Align, Integer, LayoutOf};
 use crate::*;
 use helpers::check_arg_count;
 
+pub enum AtomicOp {
+    MirOp(mir::BinOp, bool),
+    Max,
+    Min,
+}
+
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn call_intrinsic(
@@ -388,60 +394,226 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 AtomicReadOp::Acquire,
             )?,
 
-            "atomic_or" => this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::SeqCst)?,
-            "atomic_or_acq" =>
-                this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Acquire)?,
-            "atomic_or_rel" =>
-                this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Release)?,
-            "atomic_or_acqrel" =>
-                this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::AcqRel)?,
-            "atomic_or_relaxed" =>
-                this.atomic_op(args, dest, BinOp::BitOr, false, AtomicRwOp::Relaxed)?,
-            "atomic_xor" => this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::SeqCst)?,
-            "atomic_xor_acq" =>
-                this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Acquire)?,
-            "atomic_xor_rel" =>
-                this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Release)?,
-            "atomic_xor_acqrel" =>
-                this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::AcqRel)?,
-            "atomic_xor_relaxed" =>
-                this.atomic_op(args, dest, BinOp::BitXor, false, AtomicRwOp::Relaxed)?,
-            "atomic_and" => this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::SeqCst)?,
-            "atomic_and_acq" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Acquire)?,
-            "atomic_and_rel" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Release)?,
-            "atomic_and_acqrel" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::AcqRel)?,
-            "atomic_and_relaxed" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, false, AtomicRwOp::Relaxed)?,
-            "atomic_nand" => this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::SeqCst)?,
-            "atomic_nand_acq" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Acquire)?,
-            "atomic_nand_rel" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Release)?,
-            "atomic_nand_acqrel" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::AcqRel)?,
-            "atomic_nand_relaxed" =>
-                this.atomic_op(args, dest, BinOp::BitAnd, true, AtomicRwOp::Relaxed)?,
-            "atomic_xadd" => this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::SeqCst)?,
-            "atomic_xadd_acq" =>
-                this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Acquire)?,
-            "atomic_xadd_rel" =>
-                this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Release)?,
-            "atomic_xadd_acqrel" =>
-                this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::AcqRel)?,
-            "atomic_xadd_relaxed" =>
-                this.atomic_op(args, dest, BinOp::Add, false, AtomicRwOp::Relaxed)?,
-            "atomic_xsub" => this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::SeqCst)?,
-            "atomic_xsub_acq" =>
-                this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Acquire)?,
-            "atomic_xsub_rel" =>
-                this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Release)?,
-            "atomic_xsub_acqrel" =>
-                this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::AcqRel)?,
-            "atomic_xsub_relaxed" =>
-                this.atomic_op(args, dest, BinOp::Sub, false, AtomicRwOp::Relaxed)?,
+            "atomic_or" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitOr, false),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_or_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitOr, false),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_or_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitOr, false),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_or_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitOr, false),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_or_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitOr, false),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_xor" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitXor, false),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_xor_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitXor, false),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_xor_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitXor, false),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_xor_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitXor, false),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_xor_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitXor, false),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_and" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, false),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_and_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, false),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_and_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, false),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_and_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, false),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_and_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, false),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_nand" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, true),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_nand_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, true),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_nand_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, true),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_nand_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, true),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_nand_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::BitAnd, true),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_xadd" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Add, false),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_xadd_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Add, false),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_xadd_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Add, false),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_xadd_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Add, false),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_xadd_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Add, false),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_xsub" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Sub, false),
+                AtomicRwOp::SeqCst,
+            )?,
+            "atomic_xsub_acq" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Sub, false),
+                AtomicRwOp::Acquire,
+            )?,
+            "atomic_xsub_rel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Sub, false),
+                AtomicRwOp::Release,
+            )?,
+            "atomic_xsub_acqrel" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Sub, false),
+                AtomicRwOp::AcqRel,
+            )?,
+            "atomic_xsub_relaxed" => this.atomic_op_min_max(
+                args,
+                dest,
+                AtomicOp::MirOp(BinOp::Sub, false),
+                AtomicRwOp::Relaxed,
+            )?,
+            "atomic_min" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::SeqCst)?,
+            "atomic_min_acq" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Acquire)?,
+            "atomic_min_rel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Release)?,
+            "atomic_min_acqrel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::AcqRel)?,
+            "atomic_min_relaxed" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Relaxed)?,
+            "atomic_max" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::SeqCst)?,
+            "atomic_max_acq" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Acquire)?,
+            "atomic_max_rel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Release)?,
+            "atomic_max_acqrel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::AcqRel)?,
+            "atomic_max_relaxed" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Relaxed)?,
+            "atomic_umin" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::SeqCst)?,
+            "atomic_umin_acq" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Acquire)?,
+            "atomic_umin_rel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Release)?,
+            "atomic_umin_acqrel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::AcqRel)?,
+            "atomic_umin_relaxed" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Min, AtomicRwOp::Relaxed)?,
+            "atomic_umax" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::SeqCst)?,
+            "atomic_umax_acq" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Acquire)?,
+            "atomic_umax_rel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Release)?,
+            "atomic_umax_acqrel" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::AcqRel)?,
+            "atomic_umax_relaxed" =>
+                this.atomic_op_min_max(args, dest, AtomicOp::Max, AtomicRwOp::Relaxed)?,
 
             // Query type information
             "assert_zero_valid" | "assert_uninit_valid" => {
@@ -557,18 +729,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(())
     }
 
-    fn atomic_op(
+    fn atomic_op_min_max(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
-        op: mir::BinOp,
-        neg: bool,
+        atomic_op: AtomicOp,
         atomic: AtomicRwOp,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         let &[ref place, ref rhs] = check_arg_count(args)?;
         let place = this.deref_operand(place)?;
+
         if !place.layout.ty.is_integral() {
             bug!("Atomic arithmetic operations only work on integer types");
         }
@@ -580,9 +752,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
         this.memory.check_ptr_access(place.ptr, place.layout.size, align)?;
 
-        let old = this.atomic_op_immediate(&place, &rhs, op, neg, atomic)?;
-        this.write_immediate(*old, dest)?; // old value is returned
-        Ok(())
+        match atomic_op {
+            AtomicOp::Min => {
+                let old = this.atomic_min_max_scalar(&place, rhs, true, atomic)?;
+                this.write_immediate(*old, &dest)?; // old value is returned
+                Ok(())
+            }
+            AtomicOp::Max => {
+                let old = this.atomic_min_max_scalar(&place, rhs, false, atomic)?;
+                this.write_immediate(*old, &dest)?; // old value is returned
+                Ok(())
+            }
+            AtomicOp::MirOp(op, neg) => {
+                let old = this.atomic_op_immediate(&place, &rhs, op, neg, atomic)?;
+                this.write_immediate(*old, dest)?; // old value is returned
+                Ok(())
+            }
+        }
     }
 
     fn atomic_exchange(
