@@ -567,16 +567,23 @@ impl CheckAttrVisitor<'tcx> {
                         .iter()
                         .any(|m| i_meta.has_name(*m))
                         {
-                            self.tcx
-                                .sess
-                                .struct_span_err(
-                                    meta.span(),
-                                    &format!(
+                            self.tcx.struct_span_lint_hir(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                i_meta.span,
+                                |lint| {
+                                    lint.build(&format!(
                                         "unknown `doc` attribute `{}`",
-                                        i_meta.name_or_empty(),
-                                    ),
-                                )
-                                .emit();
+                                        i_meta.name_or_empty()
+                                    ))
+                                    .warn(
+                                        "this was previously accepted by the compiler but is \
+                                        being phased out; it will become a hard error in \
+                                        a future release!",
+                                    )
+                                    .emit();
+                                },
+                            );
                             return false;
                         }
                     }
