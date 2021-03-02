@@ -294,7 +294,7 @@ fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangIt
     if let TyKind::Path(qpath) = &ty.kind {
         cx.qpath_res(qpath, ty.hir_id)
             .opt_def_id()
-            .and_then(|id| (cx.tcx.lang_items().items()[item as usize] == Some(id)).then(|| ty))
+            .and_then(|id| (cx.tcx.lang_items().require(item) == Ok(id)).then(|| ty))
     } else {
         None
     }
@@ -431,7 +431,7 @@ impl Types {
                             };
                             let inner_span = match get_qpath_generic_tys(qpath).next() {
                                 Some(ty) => ty.span,
-                                _ => return,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
@@ -467,7 +467,7 @@ impl Types {
                             };
                             let inner_span = match get_qpath_generic_tys(qpath).next() {
                                 Some(ty) => ty.span,
-                                _ => return,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
@@ -517,7 +517,7 @@ impl Types {
                             };
                             let inner_span = match get_qpath_generic_tys(qpath).next() {
                                 Some(ty) => ty.span,
-                                _ => return,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(

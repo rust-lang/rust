@@ -360,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         let trait_ref = &poly_tref.trait_ref;
         if CLOSURE_TRAIT_BOUNDS
             .iter()
-            .any(|&item| trait_ref.trait_def_id() == self.cx.tcx.lang_items().items()[item as usize])
+            .any(|&item| trait_ref.trait_def_id() == self.cx.tcx.lang_items().require(item).ok())
         {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
