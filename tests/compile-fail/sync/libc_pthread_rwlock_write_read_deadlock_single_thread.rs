@@ -1,4 +1,5 @@
 // ignore-windows: No libc on Windows
+// error-pattern: deadlock
 
 #![feature(rustc_private)]
 
@@ -8,6 +9,6 @@ fn main() {
     let rw = std::cell::UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
     unsafe {
         assert_eq!(libc::pthread_rwlock_wrlock(rw.get()), 0);
-        libc::pthread_rwlock_rdlock(rw.get()); //~ ERROR: deadlock
+        libc::pthread_rwlock_rdlock(rw.get());
     }
 }

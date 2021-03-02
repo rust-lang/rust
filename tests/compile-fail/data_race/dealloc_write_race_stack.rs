@@ -1,5 +1,6 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-isolation
+// compile-flags: -Zmiri-disable-isolation -Zmir-opt-level=0
+// With optimizations (in particular #78360), the span becomes much worse, so we disable them.
 
 use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
@@ -27,9 +28,6 @@ pub fn main() {
     //  3. stack-deallocate
     unsafe {
         let j1 = spawn(move || {
-            // Concurrent allocate the memory.
-            // Uses relaxed semantics to not generate
-            // a release sequence.
             let pointer = &*ptr.0;
             {
                 let mut stack_var = 0usize;
@@ -37,6 +35,8 @@ pub fn main() {
                 pointer.store(&mut stack_var as *mut _, Ordering::Release);
 
                 sleep(Duration::from_millis(200));
+
+                // Now `stack_var` gets deallocated.
 
             } //~ ERROR Data race detected between Deallocate on Thread(id = 1) and Write on Thread(id = 2)
         });
