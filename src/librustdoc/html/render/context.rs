@@ -53,10 +53,10 @@ crate struct Context<'tcx> {
     /// publicly reused items to redirect to the right location.
     pub(super) render_redirect_pages: bool,
     /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: RefCell<IdMap>,
+    pub(super) id_map: Box<RefCell<IdMap>>,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
+    pub(super) deref_id_map: Box<RefCell<FxHashMap<DefId, String>>>,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
@@ -77,7 +77,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Context<'_>, 152);
+rustc_data_structures::static_assert_size!(Context<'_>, 88);
 
 impl<'tcx> Context<'tcx> {
     pub(super) fn path(&self, filename: &str) -> PathBuf {
@@ -421,8 +421,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
+            id_map: Box::new(RefCell::new(id_map)),
+            deref_id_map: Box::new(RefCell::new(FxHashMap::default())),
             shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
