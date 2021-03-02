@@ -1,6 +1,6 @@
 //! Constants specific to the `f32` single-precision floating point type.
 //!
-//! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
+//! *[See also the `f32` primitive type][f32].*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 //!
@@ -35,7 +35,7 @@ use crate::num::FpCategory;
 pub const RADIX: u32 = f32::RADIX;
 
 /// Number of significant digits in base 2.
-/// Use [`f32::MANTISSA_DIGITS`](../../std/primitive.f32.html#associatedconstant.MANTISSA_DIGITS) instead.
+/// Use [`f32::MANTISSA_DIGITS`] instead.
 ///
 /// # Examples
 ///
@@ -55,7 +55,7 @@ pub const RADIX: u32 = f32::RADIX;
 pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 
 /// Approximate number of significant digits in base 10.
-/// Use [`f32::DIGITS`](../../std/primitive.f32.html#associatedconstant.DIGITS) instead.
+/// Use [`f32::DIGITS`] instead.
 ///
 /// # Examples
 ///
@@ -72,7 +72,7 @@ pub const MANTISSA_DIGITS: u32 = f32::MANTISSA_DIGITS;
 pub const DIGITS: u32 = f32::DIGITS;
 
 /// [Machine epsilon] value for `f32`.
-/// Use [`f32::EPSILON`](../../std/primitive.f32.html#associatedconstant.EPSILON) instead.
+/// Use [`f32::EPSILON`] instead.
 ///
 /// This is the difference between `1.0` and the next larger representable number.
 ///
@@ -96,7 +96,7 @@ pub const DIGITS: u32 = f32::DIGITS;
 pub const EPSILON: f32 = f32::EPSILON;
 
 /// Smallest finite `f32` value.
-/// Use [`f32::MIN`](../../std/primitive.f32.html#associatedconstant.MIN) instead.
+/// Use [`f32::MIN`] instead.
 ///
 /// # Examples
 ///
@@ -113,7 +113,7 @@ pub const EPSILON: f32 = f32::EPSILON;
 pub const MIN: f32 = f32::MIN;
 
 /// Smallest positive normal `f32` value.
-/// Use [`f32::MIN_POSITIVE`](../../std/primitive.f32.html#associatedconstant.MIN_POSITIVE) instead.
+/// Use [`f32::MIN_POSITIVE`] instead.
 ///
 /// # Examples
 ///
@@ -133,7 +133,7 @@ pub const MIN: f32 = f32::MIN;
 pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 
 /// Largest finite `f32` value.
-/// Use [`f32::MAX`](../../std/primitive.f32.html#associatedconstant.MAX) instead.
+/// Use [`f32::MAX`] instead.
 ///
 /// # Examples
 ///
@@ -150,7 +150,7 @@ pub const MIN_POSITIVE: f32 = f32::MIN_POSITIVE;
 pub const MAX: f32 = f32::MAX;
 
 /// One greater than the minimum possible normal power of 2 exponent.
-/// Use [`f32::MIN_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_EXP) instead.
+/// Use [`f32::MIN_EXP`] instead.
 ///
 /// # Examples
 ///
@@ -170,7 +170,7 @@ pub const MAX: f32 = f32::MAX;
 pub const MIN_EXP: i32 = f32::MIN_EXP;
 
 /// Maximum possible power of 2 exponent.
-/// Use [`f32::MAX_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_EXP) instead.
+/// Use [`f32::MAX_EXP`] instead.
 ///
 /// # Examples
 ///
@@ -190,7 +190,7 @@ pub const MIN_EXP: i32 = f32::MIN_EXP;
 pub const MAX_EXP: i32 = f32::MAX_EXP;
 
 /// Minimum possible normal power of 10 exponent.
-/// Use [`f32::MIN_10_EXP`](../../std/primitive.f32.html#associatedconstant.MIN_10_EXP) instead.
+/// Use [`f32::MIN_10_EXP`] instead.
 ///
 /// # Examples
 ///
@@ -210,7 +210,7 @@ pub const MAX_EXP: i32 = f32::MAX_EXP;
 pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 
 /// Maximum possible power of 10 exponent.
-/// Use [`f32::MAX_10_EXP`](../../std/primitive.f32.html#associatedconstant.MAX_10_EXP) instead.
+/// Use [`f32::MAX_10_EXP`] instead.
 ///
 /// # Examples
 ///
@@ -230,7 +230,7 @@ pub const MIN_10_EXP: i32 = f32::MIN_10_EXP;
 pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 
 /// Not a Number (NaN).
-/// Use [`f32::NAN`](../../std/primitive.f32.html#associatedconstant.NAN) instead.
+/// Use [`f32::NAN`] instead.
 ///
 /// # Examples
 ///
@@ -247,7 +247,7 @@ pub const MAX_10_EXP: i32 = f32::MAX_10_EXP;
 pub const NAN: f32 = f32::NAN;
 
 /// Infinity (∞).
-/// Use [`f32::INFINITY`](../../std/primitive.f32.html#associatedconstant.INFINITY) instead.
+/// Use [`f32::INFINITY`] instead.
 ///
 /// # Examples
 ///
@@ -267,7 +267,7 @@ pub const NAN: f32 = f32::NAN;
 pub const INFINITY: f32 = f32::INFINITY;
 
 /// Negative infinity (−∞).
-/// Use [`f32::NEG_INFINITY`](../../std/primitive.f32.html#associatedconstant.NEG_INFINITY) instead.
+/// Use [`f32::NEG_INFINITY`] instead.
 ///
 /// # Examples
 ///

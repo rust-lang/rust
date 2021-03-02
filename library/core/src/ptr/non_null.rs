@@ -425,7 +425,6 @@ impl<T> NonNull<[T]> {
     /// See also [`slice::from_raw_parts`].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice(&self) -> &[MaybeUninit<T>] {
@@ -470,7 +469,6 @@ impl<T> NonNull<[T]> {
     /// See also [`slice::from_raw_parts_mut`].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
     ///
     /// # Examples
     ///

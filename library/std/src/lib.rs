@@ -61,14 +61,14 @@
 //!    type, but not the all-important methods.
 //!
 //! So for example there is a [page for the primitive type
-//! `i32`](primitive.i32.html) that lists all the methods that can be called on
+//! `i32`](primitive::i32) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
 //! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
 //! useful).
 //!
-//! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
+//! Note the documentation for the primitives [`str`] and [`[T]`][prim@slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
-//! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
+//! calls to methods on [`str`] and [`[T]`][prim@slice] respectively, via [deref
 //! coercions][deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
@@ -111,8 +111,8 @@
 //! regions of memory:
 //!
 //! * [`Vec<T>`] - A heap-allocated *vector* that is resizable at runtime.
-//! * [`[T; n]`][array] - An inline *array* with a fixed size at compile time.
-//! * [`[T]`][slice] - A dynamically sized *slice* into any other kind of contiguous
+//! * [`[T; N]`][prim@array] - An inline *array* with a fixed size at compile time.
+//! * [`[T]`][prim@slice] - A dynamically sized *slice* into any other kind of contiguous
 //!   storage, whether heap-allocated or not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as such come
@@ -275,7 +275,7 @@
 #![feature(int_error_matching)]
 #![feature(integer_atomics)]
 #![feature(into_future)]
-#![cfg_attr(not(bootstrap), feature(intra_doc_pointers))]
+#![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(link_args)]
 #![feature(linkage)]

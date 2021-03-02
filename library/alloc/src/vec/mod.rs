@@ -216,7 +216,7 @@ mod spec_extend;
 /// # Slicing
 ///
 /// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
-/// To get a [slice], use [`&`]. Example:
+/// To get a [slice][prim@slice], use [`&`]. Example:
 ///
 /// ```
 /// fn read_slice(slice: &[usize]) {
@@ -369,8 +369,6 @@ mod spec_extend;
 /// [`reserve`]: Vec::reserve
 /// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
-/// [slice]: ../../std/primitive.slice.html
-/// [`&`]: ../../std/primitive.reference.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
@@ -2517,7 +2515,7 @@ impl<T, A: Allocator> Vec<T, A> {
 /// This implementation is specialized for slice iterators, where it uses [`copy_from_slice`] to
 /// append the entire slice at once.
 ///
-/// [`copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
+/// [`copy_from_slice`]: slice::copy_from_slice
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: Copy + 'a, A: Allocator + 'a> Extend<&'a T> for Vec<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {

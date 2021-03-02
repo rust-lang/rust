@@ -60,8 +60,8 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 /// }
 /// ```
 ///
-/// [`iter`]: ../../std/primitive.slice.html#method.iter
-/// [slices]: ../../std/primitive.slice.html
+/// [`iter`]: slice::iter
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
@@ -179,8 +179,8 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// println!("{:?}", slice);
 /// ```
 ///
-/// [`iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`iter_mut`]: slice::iter_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
@@ -328,8 +328,8 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 /// let mut iter = slice.split(|num| num % 3 == 0);
 /// ```
 ///
-/// [`split`]: ../../std/primitive.slice.html#method.split
-/// [slices]: ../../std/primitive.slice.html
+/// [`split`]: slice::split
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, T: 'a, P>
 where
@@ -450,8 +450,8 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
 /// ```
 ///
-/// [`split_inclusive`]: ../../std/primitive.slice.html#method.split_inclusive
-/// [slices]: ../../std/primitive.slice.html
+/// [`split_inclusive`]: slice::split_inclusive
+/// [slices]: slice
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusive<'a, T: 'a, P>
 where
@@ -562,8 +562,8 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 /// let iter = v.split_mut(|num| *num % 3 == 0);
 /// ```
 ///
-/// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`split_mut`]: slice::split_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitMut<'a, T: 'a, P>
 where
@@ -691,8 +691,8 @@ impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 /// let iter = v.split_inclusive_mut(|num| *num % 3 == 0);
 /// ```
 ///
-/// [`split_inclusive_mut`]: ../../std/primitive.slice.html#method.split_inclusive_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`split_inclusive_mut`]: slice::split_inclusive_mut
+/// [slices]: slice
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub struct SplitInclusiveMut<'a, T: 'a, P>
 where
@@ -812,8 +812,8 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 /// let iter = slice.rsplit(|num| *num == 0);
 /// ```
 ///
-/// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplit`]: slice::rsplit
+/// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 #[derive(Clone)] // Is this correct, or does it incorrectly require `T: Clone`?
 pub struct RSplit<'a, T: 'a, P>
@@ -898,8 +898,8 @@ impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
 /// let iter = slice.rsplit_mut(|num| *num == 0);
 /// ```
 ///
-/// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplit_mut`]: slice::rsplit_mut
+/// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub struct RSplitMut<'a, T: 'a, P>
 where
@@ -1017,8 +1017,8 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 /// let iter = slice.splitn(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`splitn`]: ../../std/primitive.slice.html#method.splitn
-/// [slices]: ../../std/primitive.slice.html
+/// [`splitn`]: slice::splitn
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, T: 'a, P>
 where
@@ -1057,8 +1057,8 @@ where
 /// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplitn`]: slice::rsplitn
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P>
 where
@@ -1096,8 +1096,8 @@ where
 /// let iter = slice.splitn_mut(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`splitn_mut`]: slice::splitn_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitNMut<'a, T: 'a, P>
 where
@@ -1136,8 +1136,8 @@ where
 /// let iter = slice.rsplitn_mut(2, |num| *num % 3 == 0);
 /// ```
 ///
-/// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rsplitn_mut`]: slice::rsplitn_mut
+/// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P>
 where
@@ -1179,8 +1179,8 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 /// let iter = slice.windows(2);
 /// ```
 ///
-/// [`windows`]: ../../std/primitive.slice.html#method.windows
-/// [slices]: ../../std/primitive.slice.html
+/// [`windows`]: slice::windows
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T: 'a> {
@@ -1325,8 +1325,8 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {
 /// let iter = slice.chunks(2);
 /// ```
 ///
-/// [`chunks`]: ../../std/primitive.slice.html#method.chunks
-/// [slices]: ../../std/primitive.slice.html
+/// [`chunks`]: slice::chunks
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T: 'a> {
@@ -1493,8 +1493,8 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {
 /// let iter = slice.chunks_mut(2);
 /// ```
 ///
-/// [`chunks_mut`]: ../../std/primitive.slice.html#method.chunks_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`chunks_mut`]: slice::chunks_mut
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ChunksMut<'a, T: 'a> {
@@ -1659,9 +1659,9 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {
 /// let iter = slice.chunks_exact(2);
 /// ```
 ///
-/// [`chunks_exact`]: ../../std/primitive.slice.html#method.chunks_exact
+/// [`chunks_exact`]: slice::chunks_exact
 /// [`remainder`]: ChunksExact::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub struct ChunksExact<'a, T: 'a> {
@@ -1815,9 +1815,9 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {
 /// let iter = slice.chunks_exact_mut(2);
 /// ```
 ///
-/// [`chunks_exact_mut`]: ../../std/primitive.slice.html#method.chunks_exact_mut
+/// [`chunks_exact_mut`]: slice::chunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 pub struct ChunksExactMut<'a, T: 'a> {
@@ -1966,8 +1966,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {
 /// let iter = slice.array_windows::<2>();
 /// ```
 ///
-/// [`array_windows`]: ../../std/primitive.slice.html#method.array_windows
-/// [slices]: ../../std/primitive.slice.html
+/// [`array_windows`]: slice::array_windows
+/// [slices]: slice
 #[derive(Debug, Clone, Copy)]
 #[unstable(feature = "array_windows", issue = "75027")]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
@@ -2087,9 +2087,9 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 /// let iter = slice.array_chunks::<2>();
 /// ```
 ///
-/// [`array_chunks`]: ../../std/primitive.slice.html#method.array_chunks
+/// [`array_chunks`]: slice::array_chunks
 /// [`remainder`]: ArrayChunks::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub struct ArrayChunks<'a, T: 'a, const N: usize> {
@@ -2209,9 +2209,9 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N>
 /// let iter = slice.array_chunks_mut::<2>();
 /// ```
 ///
-/// [`array_chunks_mut`]: ../../std/primitive.slice.html#method.array_chunks_mut
+/// [`array_chunks_mut`]: slice::array_chunks_mut
 /// [`into_remainder`]: ../../std/slice/struct.ArrayChunksMut.html#method.into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
@@ -2320,8 +2320,8 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T,
 /// let iter = slice.rchunks(2);
 /// ```
 ///
-/// [`rchunks`]: ../../std/primitive.slice.html#method.rchunks
-/// [slices]: ../../std/primitive.slice.html
+/// [`rchunks`]: slice::rchunks
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunks<'a, T: 'a> {
@@ -2484,8 +2484,8 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {
 /// let iter = slice.rchunks_mut(2);
 /// ```
 ///
-/// [`rchunks_mut`]: ../../std/primitive.slice.html#method.rchunks_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`rchunks_mut`]: slice::rchunks_mut
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksMut<'a, T: 'a> {
@@ -2648,9 +2648,9 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {
 /// let iter = slice.rchunks_exact(2);
 /// ```
 ///
-/// [`rchunks_exact`]: ../../std/primitive.slice.html#method.rchunks_exact
+/// [`rchunks_exact`]: slice::rchunks_exact
 /// [`remainder`]: ChunksExact::remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksExact<'a, T: 'a> {
@@ -2808,9 +2808,9 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {
 /// let iter = slice.rchunks_exact_mut(2);
 /// ```
 ///
-/// [`rchunks_exact_mut`]: ../../std/primitive.slice.html#method.rchunks_exact_mut
+/// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
 /// [`into_remainder`]: ChunksExactMut::into_remainder
-/// [slices]: ../../std/primitive.slice.html
+/// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
 pub struct RChunksExactMut<'a, T: 'a> {
@@ -2969,8 +2969,8 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {
 ///
 /// This struct is created by the [`group_by`] method on [slices].
 ///
-/// [`group_by`]: ../../std/primitive.slice.html#method.group_by
-/// [slices]: ../../std/primitive.slice.html
+/// [`group_by`]: slice::group_by
+/// [slices]: slice
 #[unstable(feature = "slice_group_by", issue = "80552")]
 pub struct GroupBy<'a, T: 'a, P> {
     slice: &'a [T],
@@ -3055,8 +3055,8 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
 ///
 /// This struct is created by the [`group_by_mut`] method on [slices].
 ///
-/// [`group_by_mut`]: ../../std/primitive.slice.html#method.group_by_mut
-/// [slices]: ../../std/primitive.slice.html
+/// [`group_by_mut`]: slice::group_by_mut
+/// [slices]: slice
 #[unstable(feature = "slice_group_by", issue = "80552")]
 pub struct GroupByMut<'a, T: 'a, P> {
     slice: &'a mut [T],

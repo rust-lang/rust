@@ -1285,11 +1285,10 @@ impl<T> Result<T, T> {
     /// `Err`.
     ///
     /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`][binary_search], but only in
+    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
     /// cases where you don't care if the result was `Ok` or not.
     ///
     /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    /// [binary_search]: ../../std/primitive.slice.html#method.binary_search
     ///
     /// # Examples
     ///

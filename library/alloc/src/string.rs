@@ -495,7 +495,7 @@ impl String {
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD], which looks like this: �
     ///
-    /// [byteslice]: ../../std/primitive.slice.html
+    /// [byteslice]: prim@slice
     /// [U+FFFD]: core::char::REPLACEMENT_CHARACTER
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want

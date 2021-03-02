@@ -468,8 +468,8 @@ mod prim_unit {}
 ///
 /// [`null`]: ptr::null
 /// [`null_mut`]: ptr::null_mut
-/// [`is_null`]: ../std/primitive.pointer.html#method.is_null
-/// [`offset`]: ../std/primitive.pointer.html#method.offset
+/// [`is_null`]: pointer::is_null
+/// [`offset`]: pointer::offset
 /// [`into_raw`]: Box::into_raw
 /// [`drop`]: mem::drop
 /// [`write`]: ptr::write
@@ -564,7 +564,7 @@ mod prim_pointer {}
 /// move_away(roa);
 /// ```
 ///
-/// [slice]: primitive.slice.html
+/// [slice]: prim@slice
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash
 /// [`Borrow`]: borrow::Borrow

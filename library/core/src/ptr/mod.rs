@@ -1,6 +1,6 @@
 //! Manually manage memory through raw pointers.
 //!
-//! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
+//! *[See also the pointer primitive types](pointer).*
 //!
 //! # Safety
 //!
@@ -60,7 +60,7 @@
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
-//! [`offset`]: ../../std/primitive.pointer.html#method.offset
+//! [`offset`]: pointer::offset
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
