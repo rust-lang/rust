@@ -1,6 +1,8 @@
 // edition:2018
+// compile-flags: --crate-version 1.0.0
 
-// @is nested.json "$.index[*][?(@.name=='nested')].kind" \"module\"
+// @is nested.json "$.crate_version" \"1.0.0\"
+// @is - "$.index[*][?(@.name=='nested')].kind" \"module\"
 // @is - "$.index[*][?(@.name=='nested')].inner.is_crate" true
 // @count - "$.index[*][?(@.name=='nested')].inner.items[*]" 1
 

@@ -4554,6 +4554,9 @@ dependencies = [
  "serde_json",
  "smallvec 1.6.1",
  "tempfile",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]

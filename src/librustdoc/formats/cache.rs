@@ -11,7 +11,6 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
-use crate::config::RenderInfo;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -131,44 +130,23 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    crate fn from_krate<'tcx>(
-        render_info: RenderInfo,
-        document_private: bool,
+    crate fn new(access_levels: AccessLevels<DefId>, document_private: bool) -> Self {
+        Cache { access_levels, document_private, ..Cache::default() }
+    }
+
+    /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
+    /// in `krate` due to the data being moved into the `Cache`.
+    crate fn populate(
+        &mut self,
+        mut krate: clean::Crate,
+        tcx: TyCtxt<'_>,
         extern_html_root_urls: &BTreeMap<String, String>,
         dst: &Path,
-        mut krate: clean::Crate,
-        tcx: TyCtxt<'tcx>,
-    ) -> (clean::Crate, Cache) {
+    ) -> clean::Crate {
         // Crawl the crate to build various caches used for the output
-        let RenderInfo {
-            inlined: _,
-            external_paths,
-            exact_paths,
-            access_levels,
-            deref_trait_did,
-            deref_mut_trait_did,
-            owned_box_did,
-            ..
-        } = render_info;
-
-        let external_paths =
-            external_paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from(t)))).collect();
-
-        let mut cache = Cache {
-            external_paths,
-            exact_paths,
-            parent_is_trait_impl: false,
-            stripped_mod: false,
-            access_levels,
-            crate_version: krate.version.take(),
-            document_private,
-            traits: krate.external_traits.replace(Default::default()),
-            deref_trait_did,
-            deref_mut_trait_did,
-            owned_box_did,
-            masked_crates: mem::take(&mut krate.masked_crates),
-            ..Cache::default()
-        };
+        debug!(?self.crate_version);
+        self.traits = krate.external_traits.take();
+        self.masked_crates = mem::take(&mut krate.masked_crates);
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
@@ -181,12 +159,11 @@ impl Cache {
                 _ => PathBuf::new(),
             };
             let extern_url = extern_html_root_urls.get(&*e.name.as_str()).map(|u| &**u);
-            cache
-                .extern_locations
+            self.extern_locations
                 .insert(n, (e.name, src_root, extern_location(e, extern_url, &dst)));
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
+            self.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
         }
 
         // Cache where all known primitives have their documentation located.
@@ -195,27 +172,26 @@ impl Cache {
         // reverse topological order.
         for &(_, ref e) in krate.externs.iter().rev() {
             for &(def_id, prim) in &e.primitives {
-                cache.primitive_locations.insert(prim, def_id);
+                self.primitive_locations.insert(prim, def_id);
             }
         }
         for &(def_id, prim) in &krate.primitives {
-            cache.primitive_locations.insert(prim, def_id);
+            self.primitive_locations.insert(prim, def_id);
         }
 
-        cache.stack.push(krate.name.to_string());
+        self.stack.push(krate.name.to_string());
 
-        krate = CacheBuilder { tcx, cache: &mut cache, empty_cache: Cache::default() }
-            .fold_crate(krate);
+        krate = CacheBuilder { tcx, cache: self, empty_cache: Cache::default() }.fold_crate(krate);
 
-        for (trait_did, dids, impl_) in cache.orphan_trait_impls.drain(..) {
-            if cache.traits.contains_key(&trait_did) {
+        for (trait_did, dids, impl_) in self.orphan_trait_impls.drain(..) {
+            if self.traits.contains_key(&trait_did) {
                 for did in dids {
-                    cache.impls.entry(did).or_default().push(impl_.clone());
+                    self.impls.entry(did).or_default().push(impl_.clone());
                 }
             }
         }
 
-        (krate, cache)
+        krate
     }
 }
 

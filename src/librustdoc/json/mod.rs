@@ -19,7 +19,7 @@ use rustc_span::edition::Edition;
 use rustdoc_json_types as types;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
@@ -133,7 +133,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        _render_info: RenderInfo,
         _edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
@@ -200,7 +199,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
     fn after_krate(
         &mut self,
-        krate: &clean::Crate,
+        _krate: &clean::Crate,
         _diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
         debug!("Done with crate");
@@ -211,7 +210,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
-            crate_version: krate.version.clone(),
+            crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
             paths: self

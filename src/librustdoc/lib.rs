@@ -49,6 +49,7 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
+extern crate rustc_passes;
 extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span as rustc_span;
@@ -94,12 +95,86 @@ mod visit_lib;
 pub fn main() {
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
+
+    // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
+    // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid
+    // this, compile our own version of `tracing` that logs all levels.
+    // NOTE: this compiles both versions of tracing unconditionally, because
+    // - The compile time hit is not that bad, especially compared to rustdoc's incremental times, and
+    // - Otherwise, there's no warning that logging is being ignored when `download_stage1 = true`.
+    // NOTE: The reason this doesn't show double logging when `download_stage1 = false` and
+    // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
+    // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
+    init_logging();
     rustc_driver::init_env_logger("RUSTDOC_LOG");
+
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
         _ => Err(ErrorReported),
     });
     process::exit(exit_code);
+}
+
+fn init_logging() {
+    use std::io;
+
+    // FIXME remove these and use winapi 0.3 instead
+    // Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs, rustc_driver/lib.rs
+    #[cfg(unix)]
+    fn stdout_isatty() -> bool {
+        extern crate libc;
+        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    }
+
+    #[cfg(windows)]
+    fn stdout_isatty() -> bool {
+        extern crate winapi;
+        use winapi::um::consoleapi::GetConsoleMode;
+        use winapi::um::processenv::GetStdHandle;
+        use winapi::um::winbase::STD_OUTPUT_HANDLE;
+
+        unsafe {
+            let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+            let mut out = 0;
+            GetConsoleMode(handle, &mut out) != 0
+        }
+    }
+
+    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR") {
+        Ok(value) => match value.as_ref() {
+            "always" => true,
+            "never" => false,
+            "auto" => stdout_isatty(),
+            _ => early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "invalid log color value '{}': expected one of always, never, or auto",
+                    value
+                ),
+            ),
+        },
+        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotUnicode(_value)) => early_error(
+            ErrorOutputType::default(),
+            "non-Unicode log color value: expected one of always, never, or auto",
+        ),
+    };
+    let filter = tracing_subscriber::EnvFilter::from_env("RUSTDOC_LOG");
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(io::stderr)
+        .with_indent_lines(true)
+        .with_ansi(color_logs)
+        .with_targets(true)
+        .with_wraparound(10)
+        .with_verbose_exit(true)
+        .with_verbose_entry(true)
+        .with_indent_amount(2);
+    #[cfg(parallel_compiler)]
+    let layer = layer.with_thread_ids(true).with_thread_names(true);
+
+    use tracing_subscriber::layer::SubscriberExt;
+    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
 fn get_args() -> Option<Vec<String>> {
@@ -479,12 +554,12 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
 fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
-    render_info: config::RenderInfo,
+    cache: formats::cache::Cache,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
+    match formats::run_format::<T>(krate, renderopts, cache, &diag, edition, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -553,7 +628,7 @@ fn main_options(options: config::Options) -> MainResult {
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
 
             global_ctxt.enter(|tcx| {
-                let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {
+                let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(
                         tcx,
                         resolver,
@@ -565,7 +640,7 @@ fn main_options(options: config::Options) -> MainResult {
                 });
                 info!("finished with rustc");
 
-                krate.version = crate_version;
+                cache.crate_version = crate_version;
 
                 if show_coverage {
                     // if we ran coverage, bail early, we don't need to also generate docs at this point
@@ -584,7 +659,7 @@ fn main_options(options: config::Options) -> MainResult {
                         run_renderer::<html::render::Context<'_>>(
                             krate,
                             render_opts,
-                            render_info,
+                            cache,
                             &diag,
                             edition,
                             tcx,
@@ -594,7 +669,7 @@ fn main_options(options: config::Options) -> MainResult {
                         run_renderer::<json::JsonRenderer<'_>>(
                             krate,
                             render_opts,
-                            render_info,
+                            cache,
                             &diag,
                             edition,
                             tcx,

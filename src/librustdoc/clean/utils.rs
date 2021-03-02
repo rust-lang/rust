@@ -17,21 +17,21 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
-crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
+crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
     let krate = cx.tcx.hir().krate();
-    let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
+    let module = crate::visit_ast::RustdocVisitor::new(cx).visit(krate);
 
-    cx.renderinfo.deref_trait_did = cx.tcx.lang_items().deref_trait();
-    cx.renderinfo.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-    cx.renderinfo.owned_box_did = cx.tcx.lang_items().owned_box();
+    cx.cache.deref_trait_did = cx.tcx.lang_items().deref_trait();
+    cx.cache.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+    cx.cache.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
         externs.push((cnum, cnum.clean(cx)));
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(&mut cx).visit_lib(cnum);
+        LibEmbargoVisitor::new(cx).visit_lib(cnum);
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
@@ -77,7 +77,6 @@ crate fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 
     Crate {
         name,
-        version: None,
         src,
         module: Some(module),
         externs,

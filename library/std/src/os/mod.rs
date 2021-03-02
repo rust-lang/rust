@@ -23,6 +23,7 @@ pub use crate::sys::windows_ext as windows;
 pub mod linux;
 
 #[cfg(doc)]
+#[stable(feature = "wasi_ext_doc", since = "1.35.0")]
 pub use crate::sys::wasi_ext as wasi;
 
 // If we're not documenting libstd then we just expose the main modules as we otherwise would.
