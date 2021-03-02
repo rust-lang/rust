@@ -194,7 +194,7 @@ impl FlycheckActor {
                     cargo_metadata::Message::BuildScriptExecuted(_)
                     | cargo_metadata::Message::BuildFinished(_)
                     | cargo_metadata::Message::TextLine(_)
-                    | cargo_metadata::Message::Unknown => {}
+                    | _ => {}
                 },
             }
         }
@@ -329,8 +329,7 @@ impl CargoActor {
             // Skip certain kinds of messages to only spend time on what's useful
             match &message {
                 cargo_metadata::Message::CompilerArtifact(artifact) if artifact.fresh => (),
-                cargo_metadata::Message::BuildScriptExecuted(_)
-                | cargo_metadata::Message::Unknown => (),
+                cargo_metadata::Message::BuildScriptExecuted(_) => (),
                 _ => self.sender.send(message).unwrap(),
             }
         }

@@ -29,7 +29,7 @@ fn diagnostic_severity(
         },
         DiagnosticLevel::Note => lsp_types::DiagnosticSeverity::Information,
         DiagnosticLevel::Help => lsp_types::DiagnosticSeverity::Hint,
-        DiagnosticLevel::Unknown => return None,
+        _ => return None,
     };
     Some(res)
 }

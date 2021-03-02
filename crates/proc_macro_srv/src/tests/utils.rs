@@ -8,6 +8,7 @@ use test_utils::assert_eq_text;
 
 mod fixtures {
     use cargo_metadata::Message;
+    use std::path::PathBuf;
     use std::process::Command;
 
     // Use current project metadata to get the proc-macro dylib path
@@ -24,7 +25,7 @@ mod fixtures {
                     if artifact.target.kind.contains(&"proc-macro".to_string()) {
                         let repr = format!("{} {}", crate_name, version);
                         if artifact.package_id.repr.starts_with(&repr) {
-                            return artifact.filenames[0].clone();
+                            return PathBuf::from(&artifact.filenames[0]);
                         }
                     }
                 }
