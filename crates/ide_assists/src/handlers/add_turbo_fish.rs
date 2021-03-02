@@ -37,7 +37,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let next_token = ident.next_token()?;
     if next_token.kind() == T![::] {
         mark::hit!(add_turbo_fish_one_fish_is_enough);
-        mark::hit!(add_type_ascription_turbofished);
         return None;
     }
     let name_ref = ast::NameRef::cast(ident.parent())?;
@@ -52,7 +51,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let generics = hir::GenericDef::Function(fun).params(ctx.sema.db);
     if generics.is_empty() {
         mark::hit!(add_turbo_fish_non_generic);
-        mark::hit!(add_type_ascription_non_generic);
         return None;
     }
 
@@ -251,20 +249,6 @@ fn main() {
     }
 
     #[test]
-    fn add_type_ascription_turbofished() {
-        mark::check!(add_type_ascription_turbofished);
-        check_assist_not_applicable(
-            add_turbo_fish,
-            r#"
-fn make<T>() -> T {}
-fn main() {
-    let x = make$0::<()>();
-}
-"#,
-        );
-    }
-
-    #[test]
     fn add_type_ascription_already_typed() {
         mark::check!(add_type_ascription_already_typed);
         check_assist(
@@ -279,20 +263,6 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     let x: () = make::<${0:_}>();
-}
-"#,
-        );
-    }
-
-    #[test]
-    fn add_type_ascription_non_generic() {
-        mark::check!(add_type_ascription_non_generic);
-        check_assist_not_applicable(
-            add_turbo_fish,
-            r#"
-fn make() -> () {}
-fn main() {
-    let x = make$0();
 }
 "#,
         );
