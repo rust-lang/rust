@@ -1,4 +1,4 @@
-#![deny(missing_doc_code_examples)] //~ ERROR missing code example in this documentation
+#![deny(rustdoc::missing_doc_code_examples)] //~ ERROR missing code example in this documentation
 
 /// Some docs.
 //~^ ERROR missing code example in this documentation

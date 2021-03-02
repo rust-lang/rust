@@ -24,9 +24,10 @@ use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::mem;
 use std::rc::Rc;
-use std::{cell::RefCell, collections::hash_map::Entry};
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
@@ -227,64 +228,6 @@ crate fn new_handler(
     )
 }
 
-/// This function is used to setup the lint initialization. By default, in rustdoc, everything
-/// is "allowed". Depending if we run in test mode or not, we want some of them to be at their
-/// default level. For example, the "INVALID_CODEBLOCK_ATTRIBUTES" lint is activated in both
-/// modes.
-///
-/// A little detail easy to forget is that there is a way to set the lint level for all lints
-/// through the "WARNINGS" lint. To prevent this to happen, we set it back to its "normal" level
-/// inside this function.
-///
-/// It returns a tuple containing:
-///  * Vector of tuples of lints' name and their associated "max" level
-///  * HashMap of lint id with their associated "max" level
-pub(crate) fn init_lints<F>(
-    mut allowed_lints: Vec<String>,
-    lint_opts: Vec<(String, lint::Level)>,
-    filter_call: F,
-) -> (Vec<(String, lint::Level)>, FxHashMap<lint::LintId, lint::Level>)
-where
-    F: Fn(&lint::Lint) -> Option<(String, lint::Level)>,
-{
-    let warnings_lint_name = lint::builtin::WARNINGS.name;
-
-    allowed_lints.push(warnings_lint_name.to_owned());
-    allowed_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
-
-    let lints = || {
-        lint::builtin::HardwiredLints::get_lints()
-            .into_iter()
-            .chain(rustc_lint::SoftLints::get_lints().into_iter())
-    };
-
-    let lint_opts = lints()
-        .filter_map(|lint| {
-            // Permit feature-gated lints to avoid feature errors when trying to
-            // allow all lints.
-            if lint.feature_gate.is_some() || allowed_lints.iter().any(|l| lint.name == l) {
-                None
-            } else {
-                filter_call(lint)
-            }
-        })
-        .chain(lint_opts.into_iter())
-        .collect::<Vec<_>>();
-
-    let lint_caps = lints()
-        .filter_map(|lint| {
-            // We don't want to allow *all* lints so let's ignore
-            // those ones.
-            if allowed_lints.iter().any(|l| lint.name == l) {
-                None
-            } else {
-                Some((lint::LintId::of(lint), lint::Allow))
-            }
-        })
-        .collect();
-    (lint_opts, lint_caps)
-}
-
 /// Parse, resolve, and typecheck the given crate.
 crate fn create_config(
     RustdocOptions {
@@ -313,37 +256,22 @@ crate fn create_config(
     let cpath = Some(input.clone());
     let input = Input::File(input);
 
-    let broken_intra_doc_links = lint::builtin::BROKEN_INTRA_DOC_LINKS.name;
-    let private_intra_doc_links = lint::builtin::PRIVATE_INTRA_DOC_LINKS.name;
-    let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
-    let missing_doc_example = rustc_lint::builtin::MISSING_DOC_CODE_EXAMPLES.name;
-    let private_doc_tests = rustc_lint::builtin::PRIVATE_DOC_TESTS.name;
-    let no_crate_level_docs = rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS.name;
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
-    let invalid_html_tags = rustc_lint::builtin::INVALID_HTML_TAGS.name;
-    let renamed_and_removed_lints = rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name;
-    let non_autolinks = rustc_lint::builtin::NON_AUTOLINKS.name;
-    let unknown_lints = rustc_lint::builtin::UNKNOWN_LINTS.name;
-
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let lints_to_show = vec![
-        broken_intra_doc_links.to_owned(),
-        private_intra_doc_links.to_owned(),
-        missing_docs.to_owned(),
-        missing_doc_example.to_owned(),
-        private_doc_tests.to_owned(),
-        no_crate_level_docs.to_owned(),
-        invalid_codeblock_attributes_name.to_owned(),
-        invalid_html_tags.to_owned(),
-        renamed_and_removed_lints.to_owned(),
-        unknown_lints.to_owned(),
-        non_autolinks.to_owned(),
+    // By default, rustdoc ignores all lints.
+    // Specifically unblock lints relevant to documentation or the lint machinery itself.
+    let mut lints_to_show = vec![
+        // it's unclear whether this should be part of rustdoc directly (#77364)
+        rustc_lint::builtin::MISSING_DOCS.name.to_string(),
+        // these are definitely not part of rustdoc, but we want to warn on them anyway.
+        rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
+        rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
     ];
+    lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
-    let (lint_opts, lint_caps) = init_lints(lints_to_show, lint_opts, |lint| {
+    let (lint_opts, lint_caps) = crate::lint::init_lints(lints_to_show, lint_opts, |lint| {
         // FIXME: why is this necessary?
-        if lint.name == broken_intra_doc_links || lint.name == invalid_codeblock_attributes_name {
+        if lint.name == crate::lint::BROKEN_INTRA_DOC_LINKS.name
+            || lint.name == crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name
+        {
             None
         } else {
             Some((lint.name_lower(), lint::Allow))
@@ -383,7 +311,7 @@ crate fn create_config(
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.
             providers.lint_mod = |_, _| {};
@@ -550,7 +478,7 @@ crate fn run_global_ctxt(
             let help = "The following guide may be of use:\n\
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
-                rustc_lint::builtin::MISSING_CRATE_LEVEL_DOCS,
+                crate::lint::MISSING_CRATE_LEVEL_DOCS,
                 ctxt.as_local_hir_id(m.def_id).unwrap(),
                 |lint| {
                     let mut diag =

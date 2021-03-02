@@ -68,8 +68,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
         return false;
     }
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
-    let (level, source) =
-        cx.tcx.lint_level_at_node(lint::builtin::MISSING_DOC_CODE_EXAMPLES, hir_id);
+    let (level, source) = cx.tcx.lint_level_at_node(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id);
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
@@ -91,7 +90,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
             cx.tcx.struct_span_lint_hir(
-                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
+                crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
                 |lint| lint.build("missing code example in this documentation").emit(),
@@ -99,7 +98,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         }
     } else if tests.found_tests > 0 && !cx.cache.access_levels.is_public(item.def_id) {
         cx.tcx.struct_span_lint_hir(
-            lint::builtin::PRIVATE_DOC_TESTS,
+            crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
             |lint| lint.build("documentation test in private item").emit(),

@@ -1021,6 +1021,7 @@ symbols! {
         rustc_then_this_would_need,
         rustc_unsafe_specialization_marker,
         rustc_variance,
+        rustdoc,
         rustfmt,
         rvalue_static_promotion,
         sanitize,
