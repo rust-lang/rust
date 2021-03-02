@@ -51,30 +51,42 @@ LL | #![feature(generic_associated_types)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
-error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
    |
 LL |     type Y;
    |     ^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
-error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:12:5
    |
 LL |     type Z: Ord;
    |     ^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
-error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:16:5
    |
 LL |     type W: Ord where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
-error[E0202]: associated types are not yet supported in inherent impls (see #8995)
+error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:20:5
    |
 LL |     type W where Self: Eq;
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error: aborting due to 10 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0202`.
+For more information about this error, try `rustc --explain E0658`.

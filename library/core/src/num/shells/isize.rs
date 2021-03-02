@@ -1,6 +1,6 @@
 //! Constants for the pointer-sized signed integer type.
 //!
-//! *[See also the `isize` primitive type](../../std/primitive.isize.html).*
+//! *[See also the `isize` primitive type][isize].*
 //!
 //! New code should use the associated constants directly on the primitive type.
 

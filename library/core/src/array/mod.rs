@@ -2,7 +2,7 @@
 //! up to a certain length. Eventually, we should be able to generalize
 //! to all lengths.
 //!
-//! *[See also the array primitive type](../../std/primitive.array.html).*
+//! *[See also the array primitive type](array).*
 
 #![stable(feature = "core_array", since = "1.36.0")]
 

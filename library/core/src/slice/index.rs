@@ -464,8 +464,8 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 ///
 /// [`Range`]: ops::Range
 /// [`RangeTo`]: ops::RangeTo
-/// [`slice::get_unchecked`]: ../../std/primitive.slice.html#method.get_unchecked
-/// [`slice::get_unchecked_mut`]: ../../std/primitive.slice.html#method.get_unchecked_mut
+/// [`slice::get_unchecked`]: slice::get_unchecked
+/// [`slice::get_unchecked_mut`]: slice::get_unchecked_mut
 ///
 /// # Panics
 ///

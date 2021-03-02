@@ -360,12 +360,20 @@ impl<'a> Parser<'a> {
             }
             Err(err) => return Err(err),
         };
+
         let ty = if self.eat(&token::Semi) {
-            TyKind::Array(elt_ty, self.parse_anon_const_expr()?)
+            let mut length = self.parse_anon_const_expr()?;
+            if let Err(e) = self.expect(&token::CloseDelim(token::Bracket)) {
+                // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
+                self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
+                self.expect(&token::CloseDelim(token::Bracket))?;
+            }
+            TyKind::Array(elt_ty, length)
         } else {
+            self.expect(&token::CloseDelim(token::Bracket))?;
             TyKind::Slice(elt_ty)
         };
-        self.expect(&token::CloseDelim(token::Bracket))?;
+
         Ok(ty)
     }
 

@@ -463,7 +463,6 @@ pub trait TryInto<T>: Sized {
 /// ```
 ///
 /// [`try_from`]: TryFrom::try_from
-/// [`!`]: ../../std/primitive.never.html
 #[rustc_diagnostic_item = "try_from_trait"]
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
@@ -673,8 +672,6 @@ impl AsMut<str> for str {
 /// However when `Infallible` becomes an alias for the never type,
 /// the two `impl`s will start to overlap
 /// and therefore will be disallowed by the language’s trait coherence rules.
-///
-/// [never]: ../../std/primitive.never.html
 #[stable(feature = "convert_infallible", since = "1.34.0")]
 #[derive(Copy)]
 pub enum Infallible {}

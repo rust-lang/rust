@@ -430,8 +430,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         let def = ty::WithOptConstParam::unknown(did);
 
         // Do not compute the mir call graph without said call graph actually being used.
-        // Keep this in sync with the mir inliner's optimization level.
-        if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if inline::is_enabled(tcx) {
             let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
         }
     }

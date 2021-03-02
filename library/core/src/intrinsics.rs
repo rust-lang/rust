@@ -1093,8 +1093,7 @@ extern "rust-intrinsic" {
     /// bounds or arithmetic overflow occurs then any further use of the
     /// returned value will result in undefined behavior.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::pointer::offset`](../../std/primitive.pointer.html#method.offset).
+    /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
@@ -1111,8 +1110,7 @@ extern "rust-intrinsic" {
     /// object, and it wraps with two's complement arithmetic. The resulting
     /// value is not necessarily valid to be used to actually access memory.
     ///
-    /// The stabilized version of this intrinsic is
-    /// [`std::pointer::wrapping_offset`](../../std/primitive.pointer.html#method.wrapping_offset).
+    /// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;

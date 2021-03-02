@@ -976,7 +976,6 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// [`write_slice_cloned`]: MaybeUninit::write_slice_cloned
-    /// [`slice::copy_from_slice`]: ../../std/primitive.slice.html#method.copy_from_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
     pub fn write_slice<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
     where
@@ -1037,7 +1036,6 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// [`write_slice`]: MaybeUninit::write_slice
-    /// [`slice::clone_from_slice`]: ../../std/primitive.slice.html#method.clone_from_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
     pub fn write_slice_cloned<'a>(this: &'a mut [MaybeUninit<T>], src: &[T]) -> &'a mut [T]
     where
