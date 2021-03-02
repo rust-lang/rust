@@ -524,52 +524,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
-            match (a_val, b_val) {
-                (
-                    ConstValue::Scalar(Scalar::Int(a_val)),
-                    ConstValue::Scalar(Scalar::Int(b_val)),
-                ) => a_val == b_val,
-                (
-                    ConstValue::Scalar(Scalar::Ptr(a_val)),
-                    ConstValue::Scalar(Scalar::Ptr(b_val)),
-                ) => {
-                    a_val == b_val
-                        || match (
-                            tcx.global_alloc(a_val.alloc_id),
-                            tcx.global_alloc(b_val.alloc_id),
-                        ) {
-                            (
-                                GlobalAlloc::Function(a_instance),
-                                GlobalAlloc::Function(b_instance),
-                            ) => a_instance == b_instance,
-                            _ => false,
-                        }
-                }
-
-                (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
-                    get_slice_bytes(&tcx, a_val) == get_slice_bytes(&tcx, b_val)
-                }
-
-                (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
-                    let a_destructured = tcx.destructure_const(relation.param_env().and(a));
-                    let b_destructured = tcx.destructure_const(relation.param_env().and(b));
-
-                    // Both the variant and each field have to be equal.
-                    if a_destructured.variant == b_destructured.variant {
-                        for (a_field, b_field) in
-                            a_destructured.fields.iter().zip(b_destructured.fields.iter())
-                        {
-                            relation.consts(a_field, b_field)?;
-                        }
-
-                        true
-                    } else {
-                        false
-                    }
-                }
-
-                _ => false,
-            }
+            check_const_value_eq(relation, a_val, b_val, a, b)?
         }
 
         (
@@ -596,6 +551,56 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         _ => false,
     };
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
+}
+
+fn check_const_value_eq<R: TypeRelation<'tcx>>(
+    relation: &mut R,
+    a_val: ConstValue<'tcx>,
+    b_val: ConstValue<'tcx>,
+    // FIXME(oli-obk): these arguments should go away with valtrees
+    a: &'tcx ty::Const<'tcx>,
+    b: &'tcx ty::Const<'tcx>,
+    // FIXME(oli-obk): this should just be `bool` with valtrees
+) -> RelateResult<'tcx, bool> {
+    let tcx = relation.tcx();
+    Ok(match (a_val, b_val) {
+        (ConstValue::Scalar(Scalar::Int(a_val)), ConstValue::Scalar(Scalar::Int(b_val))) => {
+            a_val == b_val
+        }
+        (ConstValue::Scalar(Scalar::Ptr(a_val)), ConstValue::Scalar(Scalar::Ptr(b_val))) => {
+            a_val == b_val
+                || match (tcx.global_alloc(a_val.alloc_id), tcx.global_alloc(b_val.alloc_id)) {
+                    (GlobalAlloc::Function(a_instance), GlobalAlloc::Function(b_instance)) => {
+                        a_instance == b_instance
+                    }
+                    _ => false,
+                }
+        }
+
+        (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
+            get_slice_bytes(&tcx, a_val) == get_slice_bytes(&tcx, b_val)
+        }
+
+        (ConstValue::ByRef { .. }, ConstValue::ByRef { .. }) => {
+            let a_destructured = tcx.destructure_const(relation.param_env().and(a));
+            let b_destructured = tcx.destructure_const(relation.param_env().and(b));
+
+            // Both the variant and each field have to be equal.
+            if a_destructured.variant == b_destructured.variant {
+                for (a_field, b_field) in
+                    a_destructured.fields.iter().zip(b_destructured.fields.iter())
+                {
+                    relation.consts(a_field, b_field)?;
+                }
+
+                true
+            } else {
+                false
+            }
+        }
+
+        _ => false,
+    })
 }
 
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>> {
