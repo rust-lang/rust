@@ -142,25 +142,6 @@ fn main() {
 }
 
 #[test]
-fn doctest_add_type_ascription() {
-    check_doc_test(
-        "add_type_ascription",
-        r#####"
-fn make<T>() -> T { todo!() }
-fn main() {
-    let x = make$0();
-}
-"#####,
-        r#####"
-fn make<T>() -> T { todo!() }
-fn main() {
-    let x: ${0:_} = make();
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_apply_demorgan() {
     check_doc_test(
         "apply_demorgan",
