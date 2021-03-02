@@ -1,6 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-isolation -Zmir-opt-level=0
-// With optimizations (in particular #78360), the span becomes much worse, so we disable them.
+// compile-flags: -Zmiri-disable-isolation
 
 use std::thread::{spawn, sleep};
 use std::ptr::null_mut;
