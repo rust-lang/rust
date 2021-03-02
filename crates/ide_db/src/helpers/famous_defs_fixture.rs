@@ -129,3 +129,11 @@ pub mod prelude {
 }
 #[prelude_import]
 pub use prelude::*;
+//- /libstd.rs crate:std deps:core
+//! Signatures of traits, types and functions from the std lib for use in tests.
+
+/// Docs for return_keyword
+mod return_keyword {}
+
+/// Docs for prim_str
+mod prim_str {}
