@@ -787,66 +787,66 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 
 /// Compares packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
-/// specified by `imm8`.
+/// specified by `IMM5`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_pd)
 #[inline]
 #[target_feature(enable = "avx,sse2")]
-#[cfg_attr(test, assert_instr(vcmpeqpd, IMM8 = 0))] // TODO Validate vcmppd
+#[cfg_attr(test, assert_instr(vcmpeqpd, IMM5 = 0))] // TODO Validate vcmppd
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_pd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm5!(IMM8);
-    vcmppd(a, b, IMM8 as i8)
+pub unsafe fn _mm_cmp_pd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
+    static_assert_imm5!(IMM5);
+    vcmppd(a, b, IMM5 as i8)
 }
 
 /// Compares packed double-precision (64-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
-/// specified by `imm8`.
+/// specified by `IMM5`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmp_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vcmpeqpd, IMM8 = 0))] // TODO Validate vcmppd
+#[cfg_attr(test, assert_instr(vcmpeqpd, IMM5 = 0))] // TODO Validate vcmppd
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_cmp_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
-    static_assert_imm5!(IMM8);
-    vcmppd256(a, b, IMM8 as u8)
+pub unsafe fn _mm256_cmp_pd<const IMM5: i32>(a: __m256d, b: __m256d) -> __m256d {
+    static_assert_imm5!(IMM5);
+    vcmppd256(a, b, IMM5 as u8)
 }
 
 /// Compares packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
-/// specified by `imm8`.
+/// specified by `IMM5`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ps)
 #[inline]
 #[target_feature(enable = "avx,sse")]
-#[cfg_attr(test, assert_instr(vcmpeqps, IMM8 = 0))] // TODO Validate vcmpps
+#[cfg_attr(test, assert_instr(vcmpeqps, IMM5 = 0))] // TODO Validate vcmpps
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm5!(IMM8);
-    vcmpps(a, b, IMM8 as i8)
+pub unsafe fn _mm_cmp_ps<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_imm5!(IMM5);
+    vcmpps(a, b, IMM5 as i8)
 }
 
 /// Compares packed single-precision (32-bit) floating-point
 /// elements in `a` and `b` based on the comparison operand
-/// specified by `imm8`.
+/// specified by `IMM5`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cmp_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vcmpeqps, IMM8 = 0))] // TODO Validate vcmpps
+#[cfg_attr(test, assert_instr(vcmpeqps, IMM5 = 0))] // TODO Validate vcmpps
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_cmp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
-    static_assert_imm5!(IMM8);
-    vcmpps256(a, b, IMM8 as u8)
+pub unsafe fn _mm256_cmp_ps<const IMM5: i32>(a: __m256, b: __m256) -> __m256 {
+    static_assert_imm5!(IMM5);
+    vcmpps256(a, b, IMM5 as u8)
 }
 
 /// Compares the lower double-precision (64-bit) floating-point element in
-/// `a` and `b` based on the comparison operand specified by `imm8`,
+/// `a` and `b` based on the comparison operand specified by `IMM5`,
 /// store the result in the lower element of returned vector,
 /// and copies the upper element from `a` to the upper element of returned
 /// vector.
@@ -854,16 +854,16 @@ pub unsafe fn _mm256_cmp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_sd)
 #[inline]
 #[target_feature(enable = "avx,sse2")]
-#[cfg_attr(test, assert_instr(vcmpeqsd, IMM8 = 0))] // TODO Validate vcmpsd
+#[cfg_attr(test, assert_instr(vcmpeqsd, IMM5 = 0))] // TODO Validate vcmpsd
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_sd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
-    static_assert_imm5!(IMM8);
-    vcmpsd(a, b, IMM8 as i8)
+pub unsafe fn _mm_cmp_sd<const IMM5: i32>(a: __m128d, b: __m128d) -> __m128d {
+    static_assert_imm5!(IMM5);
+    vcmpsd(a, b, IMM5 as i8)
 }
 
 /// Compares the lower single-precision (32-bit) floating-point element in
-/// `a` and `b` based on the comparison operand specified by `imm8`,
+/// `a` and `b` based on the comparison operand specified by `IMM5`,
 /// store the result in the lower element of returned vector,
 /// and copies the upper 3 packed elements from `a` to the upper elements of
 /// returned vector.
@@ -871,12 +871,12 @@ pub unsafe fn _mm_cmp_sd<const IMM8: i32>(a: __m128d, b: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmp_ss)
 #[inline]
 #[target_feature(enable = "avx,sse")]
-#[cfg_attr(test, assert_instr(vcmpeqss, IMM8 = 0))] // TODO Validate vcmpss
+#[cfg_attr(test, assert_instr(vcmpeqss, IMM5 = 0))] // TODO Validate vcmpss
 #[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_cmp_ss<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
-    static_assert_imm5!(IMM8);
-    vcmpss(a, b, IMM8 as i8)
+pub unsafe fn _mm_cmp_ss<const IMM5: i32>(a: __m128, b: __m128) -> __m128 {
+    static_assert_imm5!(IMM5);
+    vcmpss(a, b, IMM5 as i8)
 }
 
 /// Converts packed 32-bit integers in `a` to packed double-precision (64-bit)

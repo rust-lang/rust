@@ -3734,7 +3734,7 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
     transmute(simd_xor(a.as_i64x4(), b.as_i64x4()))
 }
 
-/// Extracts an 8-bit integer from `a`, selected with `imm8`. Returns a 32-bit
+/// Extracts an 8-bit integer from `a`, selected with `INDEX`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
 ///
 /// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
@@ -3745,12 +3745,12 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi8<const IMM8: i32>(a: __m256i) -> i32 {
-    static_assert_imm5!(IMM8);
-    simd_extract::<_, u8>(a.as_u8x32(), IMM8 as u32) as i32
+pub unsafe fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
+    static_assert_imm5!(INDEX);
+    simd_extract::<_, u8>(a.as_u8x32(), INDEX as u32) as i32
 }
 
-/// Extracts a 16-bit integer from `a`, selected with `imm8`. Returns a 32-bit
+/// Extracts a 16-bit integer from `a`, selected with `INDEX`. Returns a 32-bit
 /// integer containing the zero-extended integer data.
 ///
 /// See [LLVM commit D20468](https://reviews.llvm.org/D20468).
@@ -3761,12 +3761,12 @@ pub unsafe fn _mm256_extract_epi8<const IMM8: i32>(a: __m256i) -> i32 {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi16<const IMM8: i32>(a: __m256i) -> i32 {
-    static_assert_imm4!(IMM8);
-    simd_extract::<_, u16>(a.as_u16x16(), IMM8 as u32) as i32
+pub unsafe fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
+    static_assert_imm4!(INDEX);
+    simd_extract::<_, u16>(a.as_u16x16(), INDEX as u32) as i32
 }
 
-/// Extracts a 32-bit integer from `a`, selected with `imm8`.
+/// Extracts a 32-bit integer from `a`, selected with `INDEX`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi32)
 #[inline]
@@ -3774,9 +3774,9 @@ pub unsafe fn _mm256_extract_epi16<const IMM8: i32>(a: __m256i) -> i32 {
 // This intrinsic has no corresponding instruction.
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi32<const IMM8: i32>(a: __m256i) -> i32 {
-    static_assert_imm3!(IMM8);
-    simd_extract(a.as_i32x8(), IMM8 as u32)
+pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
+    static_assert_imm3!(INDEX);
+    simd_extract(a.as_i32x8(), INDEX as u32)
 }
 
 /// Returns the first element of the input vector of `[4 x double]`.
