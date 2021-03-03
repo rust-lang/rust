@@ -5,6 +5,7 @@ mod tests;
 
 use crate::borrow::Borrow;
 use crate::collections::BTreeMap;
+use crate::convert::{TryFrom, TryInto};
 use crate::env;
 use crate::env::split_paths;
 use crate::ffi::{OsStr, OsString};
@@ -12,10 +13,12 @@ use crate::fmt;
 use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
+use crate::num::NonZeroI32;
 use crate::os::windows::ffi::OsStrExt;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::c;
+use crate::sys::c::NonZeroDWORD;
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -376,8 +379,11 @@ impl Process {
 pub struct ExitStatus(c::DWORD);
 
 impl ExitStatus {
-    pub fn success(&self) -> bool {
-        self.0 == 0
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        match NonZeroDWORD::try_from(self.0) {
+            /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
+            /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
     }
     pub fn code(&self) -> Option<i32> {
         Some(self.0 as i32)
@@ -403,6 +409,21 @@ impl fmt::Display for ExitStatus {
         } else {
             write!(f, "exit code: {}", self.0)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(c::NonZeroDWORD);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        Some((u32::from(self.0) as i32).try_into().unwrap())
     }
 }
 
