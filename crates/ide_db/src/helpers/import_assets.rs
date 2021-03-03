@@ -132,11 +132,17 @@ pub struct LocatedImport {
     pub import_path: ModPath,
     pub item_to_import: ItemInNs,
     pub original_item: ItemInNs,
+    pub original_path: Option<ModPath>,
 }
 
 impl LocatedImport {
-    pub fn new(import_path: ModPath, item_to_import: ItemInNs, original_item: ItemInNs) -> Self {
-        Self { import_path, item_to_import, original_item }
+    pub fn new(
+        import_path: ModPath,
+        item_to_import: ItemInNs,
+        original_item: ItemInNs,
+        original_path: Option<ModPath>,
+    ) -> Self {
+        Self { import_path, item_to_import, original_item, original_path }
     }
 
     pub fn original_item_name(&self, db: &RootDatabase) -> Option<Name> {
@@ -238,7 +244,9 @@ impl<'a> ImportAssets<'a> {
         let _p = profile::span("import_assets::applicable_defs");
         let current_crate = self.module_with_candidate.krate();
 
-        let mod_path = |item| get_mod_path(db, item, &self.module_with_candidate, prefixed);
+        let mod_path = |item| {
+            get_mod_path(db, item_for_path_search(db, item)?, &self.module_with_candidate, prefixed)
+        };
 
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => {
@@ -276,7 +284,9 @@ fn path_applicable_imports(
         Qualifier::Absent => {
             return items_with_candidate_name
                 .into_iter()
-                .filter_map(|item| Some(LocatedImport::new(mod_path(item)?, item, item)))
+                .filter_map(|item| {
+                    Some(LocatedImport::new(mod_path(item)?, item, item, mod_path(item)))
+                })
                 .collect();
         }
         Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => {
@@ -300,46 +310,69 @@ fn import_for_item(
     original_item: ItemInNs,
 ) -> Option<LocatedImport> {
     let _p = profile::span("import_assets::import_for_item");
-    let (item_candidate, trait_to_import) = match original_item.as_module_def_id() {
-        Some(module_def_id) => {
-            match ModuleDef::from(module_def_id).as_assoc_item(db).map(|assoc| assoc.container(db))
-            {
-                Some(AssocItemContainer::Trait(trait_)) => {
-                    let trait_item = ItemInNs::from(ModuleDef::from(trait_));
-                    (trait_item, Some(trait_item))
-                }
-                Some(AssocItemContainer::Impl(impl_)) => {
-                    (ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?)), None)
-                }
-                None => (original_item, None),
-            }
-        }
-        None => (original_item, None),
-    };
-    let import_path_candidate = mod_path(item_candidate)?;
 
+    let original_item_candidate = item_for_path_search(db, original_item)?;
+    let import_path_candidate = mod_path(original_item_candidate)?;
     let import_path_string = import_path_candidate.to_string();
+
     if !import_path_string.contains(unresolved_first_segment)
         || !import_path_string.contains(unresolved_qualifier)
     {
         return None;
     }
 
-    let segment_import = find_import_for_segment(db, item_candidate, &unresolved_first_segment)?;
-    Some(match (segment_import == item_candidate, trait_to_import) {
+    let segment_import =
+        find_import_for_segment(db, original_item_candidate, &unresolved_first_segment)?;
+    let trait_item_to_import = original_item
+        .as_module_def_id()
+        .and_then(|module_def_id| {
+            ModuleDef::from(module_def_id).as_assoc_item(db)?.containing_trait(db)
+        })
+        .map(|trait_| ItemInNs::from(ModuleDef::from(trait_)));
+    Some(match (segment_import == original_item_candidate, trait_item_to_import) {
         (true, Some(_)) => {
             // FIXME we should be able to import both the trait and the segment,
             // but it's unclear what to do with overlapping edits (merge imports?)
             // especially in case of lazy completion edit resolutions.
             return None;
         }
-        (false, Some(trait_to_import)) => {
-            LocatedImport::new(mod_path(trait_to_import)?, trait_to_import, original_item)
+        (false, Some(trait_to_import)) => LocatedImport::new(
+            mod_path(trait_to_import)?,
+            trait_to_import,
+            original_item,
+            mod_path(original_item),
+        ),
+        (true, None) => LocatedImport::new(
+            import_path_candidate,
+            original_item_candidate,
+            original_item,
+            mod_path(original_item),
+        ),
+        (false, None) => LocatedImport::new(
+            mod_path(segment_import)?,
+            segment_import,
+            original_item,
+            mod_path(original_item),
+        ),
+    })
+}
+
+fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
+    Some(match item {
+        ItemInNs::Types(module_def_id) | ItemInNs::Values(module_def_id) => {
+            let module_def = ModuleDef::from(module_def_id);
+
+            match module_def.as_assoc_item(db) {
+                Some(assoc_item) => match assoc_item.container(db) {
+                    AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                    AssocItemContainer::Impl(impl_) => {
+                        ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?))
+                    }
+                },
+                None => item,
+            }
         }
-        (true, None) => LocatedImport::new(import_path_candidate, item_candidate, original_item),
-        (false, None) => {
-            LocatedImport::new(mod_path(segment_import)?, segment_import, original_item)
-        }
+        ItemInNs::Macros(_) => item,
     })
 }
 
@@ -420,10 +453,12 @@ fn trait_applicable_items(
                     }
 
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let original_item = assoc_to_item(assoc);
                     located_imports.insert(LocatedImport::new(
                         mod_path(item)?,
                         item,
-                        assoc_to_item(assoc),
+                        original_item,
+                        mod_path(original_item),
                     ));
                 }
                 None::<()>
@@ -439,10 +474,12 @@ fn trait_applicable_items(
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
                     let item = ItemInNs::from(ModuleDef::from(assoc.containing_trait(db)?));
+                    let original_item = assoc_to_item(assoc);
                     located_imports.insert(LocatedImport::new(
                         mod_path(item)?,
                         item,
-                        assoc_to_item(assoc),
+                        original_item,
+                        mod_path(original_item),
                     ));
                 }
                 None::<()>

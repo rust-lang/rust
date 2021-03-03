@@ -11,7 +11,7 @@ use ide_db::{
     },
     SymbolKind,
 };
-use stdx::{impl_from, never};
+use stdx::{format_to, impl_from, never};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -274,7 +274,7 @@ impl CompletionItem {
 #[derive(Debug, Clone)]
 pub struct ImportEdit {
     pub import: LocatedImport,
-    pub import_scope: ImportScope,
+    pub scope: ImportScope,
 }
 
 impl ImportEdit {
@@ -284,7 +284,7 @@ impl ImportEdit {
         let _p = profile::span("ImportEdit::to_text_edit");
 
         let rewriter = insert_use::insert_use(
-            &self.import_scope,
+            &self.scope,
             mod_path_to_ast(&self.import.import_path),
             cfg,
         );
@@ -302,7 +302,6 @@ impl ImportEdit {
 pub(crate) struct Builder {
     source_range: TextRange,
     completion_kind: CompletionKind,
-    // TODO kb also add a db here, to resolve the completion label?
     import_to_add: Option<ImportEdit>,
     label: String,
     insert_text: Option<String>,
@@ -322,22 +321,24 @@ impl Builder {
     pub(crate) fn build(self) -> CompletionItem {
         let _p = profile::span("item::Builder::build");
 
-        let label = self.label;
-        let lookup = self.lookup;
-        let insert_text = self.insert_text;
+        let mut label = self.label;
+        let mut lookup = self.lookup;
+        let mut insert_text = self.insert_text;
 
-        if let Some(_import_to_add) = self.import_to_add.as_ref() {
-            todo!("todo kb")
-            // let import = &import_to_add.import;
-            // let item_to_import = import.item_to_import();
-            // lookup = lookup.or_else(|| Some(label.clone()));
-            // insert_text = insert_text.or_else(|| Some(label.clone()));
-            // let display_path = import_to_add.import.display_path();
-            // if import_to_add.import {
-            //     label = format!("{} ({})", label, display_path);
-            // } else {
-            //     label = display_path.to_string();
-            // }
+        if let Some(original_path) = self
+            .import_to_add
+            .as_ref()
+            .and_then(|import_edit| import_edit.import.original_path.as_ref())
+        {
+            lookup = lookup.or_else(|| Some(label.clone()));
+            insert_text = insert_text.or_else(|| Some(label.clone()));
+
+            let original_path_label = original_path.to_string();
+            if original_path_label.ends_with(&label) {
+                label = original_path_label;
+            } else {
+                format_to!(label, " ({})", original_path)
+            }
         }
 
         let text_edit = match self.text_edit {

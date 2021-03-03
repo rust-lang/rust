@@ -144,7 +144,7 @@ pub fn resolve_completion_edits(
 ) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let position_for_import = position_for_import(&ctx, None)?;
-    let import_scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
 
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();
@@ -158,9 +158,10 @@ pub fn resolve_completion_edits(
                     .zip(Some(candidate))
             })
             .find(|(mod_path, _)| mod_path.to_string() == full_import_path)?;
-    let import = LocatedImport::new(import_path, item_to_import, item_to_import);
+    let import =
+        LocatedImport::new(import_path.clone(), item_to_import, item_to_import, Some(import_path));
 
-    ImportEdit { import, import_scope }.to_text_edit(config.insert_use).map(|edit| vec![edit])
+    ImportEdit { import, scope }.to_text_edit(config.insert_use).map(|edit| vec![edit])
 }
 
 #[cfg(test)]

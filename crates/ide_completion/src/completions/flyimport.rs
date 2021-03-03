@@ -144,7 +144,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             .filter_map(|import| {
                 render_resolution_with_import(
                     RenderContext::new(ctx),
-                    ImportEdit { import, import_scope: import_scope.clone() },
+                    ImportEdit { import, scope: import_scope.clone() },
                 )
             }),
     );
@@ -690,8 +690,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn weird_function() (dep::test_mod::TestTrait) -> () DEPRECATED
                 ct SPECIAL_CONST (dep::test_mod::TestTrait) DEPRECATED
+                fn weird_function() (dep::test_mod::TestTrait) -> () DEPRECATED
             "#]],
         );
     }
@@ -807,7 +807,12 @@ fn main() {
     bar::baz::Ite$0
 }"#;
 
-        check(fixture, expect![["st Item (foo::bar::baz::Item)"]]);
+        check(
+            fixture,
+            expect![[r#"
+        st foo::bar::baz::Item
+        "#]],
+        );
 
         check_edit(
             "Item",
@@ -825,8 +830,7 @@ fn main() {
 
         fn main() {
             bar::baz::Item
-        }
-        "#,
+        }"#,
         );
     }
 
@@ -845,7 +849,12 @@ fn main() {
     Item::TEST_A$0
 }"#;
 
-        check(fixture, expect![["ct TEST_ASSOC (foo::bar::baz::Item)"]]);
+        check(
+            fixture,
+            expect![[r#"
+        ct TEST_ASSOC (foo::Item)
+        "#]],
+        );
 
         check_edit(
             "TEST_ASSOC",
@@ -863,8 +872,7 @@ mod foo {
 
 fn main() {
     Item::TEST_ASSOC
-}
-"#,
+}"#,
         );
     }
 
@@ -885,7 +893,12 @@ fn main() {
     bar::Item::TEST_A$0
 }"#;
 
-        check(fixture, expect![["ct TEST_ASSOC (foo::bar::baz::Item)"]]);
+        check(
+            fixture,
+            expect![[r#"
+        ct TEST_ASSOC (foo::bar::Item)
+    "#]],
+        );
 
         check_edit(
             "TEST_ASSOC",
@@ -905,8 +918,7 @@ mod foo {
 
 fn main() {
     bar::Item::TEST_ASSOC
-}
-"#,
+}"#,
         );
     }
 }
