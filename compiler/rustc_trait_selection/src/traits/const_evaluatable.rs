@@ -162,10 +162,10 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     debug!(?concrete, "is_const_evaluatable");
     match concrete {
         Err(ErrorHandled::TooGeneric) => {
-            return Err(match substs.has_infer_types_or_consts() {
+            Err(match substs.has_infer_types_or_consts() {
                 true => NotConstEvaluatable::MentionsInfer,
                 false => NotConstEvaluatable::MentionsParam,
-            });
+            })
         }
         Err(ErrorHandled::Linted) => {
             infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
