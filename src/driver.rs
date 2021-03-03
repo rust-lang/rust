@@ -11,12 +11,16 @@
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_interface;
+extern crate rustc_session;
+extern crate rustc_span;
 
 use rustc_interface::interface;
+use rustc_session::Session;
+use rustc_span::symbol::Symbol;
 use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
-use std::env;
+use std::env::{self, VarError};
 use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
@@ -59,19 +63,50 @@ fn test_arg_value() {
     assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
+fn track_clippy_args(sess: &Session, args_env_var: &Option<String>) {
+    sess.parse_sess.env_depinfo.borrow_mut().insert((
+        Symbol::intern("CLIPPY_ARGS"),
+        args_env_var.as_deref().map(Symbol::intern),
+    ));
+}
+
 struct DefaultCallbacks;
 impl rustc_driver::Callbacks for DefaultCallbacks {}
 
-struct ClippyCallbacks;
+struct ClippyArgsCallbacks {
+    clippy_args_var: Option<String>,
+}
+
+impl rustc_driver::Callbacks for ClippyArgsCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        let previous = config.register_lints.take();
+        let clippy_args_var = self.clippy_args_var.take();
+        config.register_lints = Some(Box::new(move |sess, lint_store| {
+            if let Some(ref previous) = previous {
+                (previous)(sess, lint_store);
+            }
+
+            track_clippy_args(sess, &clippy_args_var);
+        }));
+    }
+}
+
+struct ClippyCallbacks {
+    clippy_args_var: Option<String>,
+}
+
 impl rustc_driver::Callbacks for ClippyCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
+        let clippy_args_var = self.clippy_args_var.take();
         config.register_lints = Some(Box::new(move |sess, mut lint_store| {
             // technically we're ~guaranteed that this is none but might as well call anything that
             // is there already. Certainly it can't hurt.
             if let Some(previous) = &previous {
                 (previous)(sess, lint_store);
             }
+
+            track_clippy_args(sess, &clippy_args_var);
 
             let conf = clippy_lints::read_conf(&[], &sess);
             clippy_lints::register_plugins(&mut lint_store, &sess, &conf);
@@ -277,7 +312,15 @@ pub fn main() {
         };
 
         let mut no_deps = false;
-        let clippy_args = env::var("CLIPPY_ARGS")
+        let clippy_args_var = env::var("CLIPPY_ARGS").map_or_else(
+            |e| match e {
+                VarError::NotPresent => None,
+                VarError::NotUnicode(s) => panic!("CLIPPY_ARGS is not valid Unicode: {:?}", s),
+            },
+            Some,
+        );
+        let clippy_args = clippy_args_var
+            .as_deref()
             .unwrap_or_default()
             .split("__CLIPPY_HACKERY__")
             .filter_map(|s| match s {
@@ -305,11 +348,10 @@ pub fn main() {
             args.extend(clippy_args);
         }
 
-        let mut clippy = ClippyCallbacks;
-        let mut default = DefaultCallbacks;
-        let callbacks: &mut (dyn rustc_driver::Callbacks + Send) =
-            if clippy_enabled { &mut clippy } else { &mut default };
-
-        rustc_driver::RunCompiler::new(&args, callbacks).run()
+        if clippy_enabled {
+            rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
+        } else {
+            rustc_driver::RunCompiler::new(&args, &mut ClippyArgsCallbacks { clippy_args_var }).run()
+        }
     }))
 }
