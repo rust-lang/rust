@@ -725,7 +725,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        if self.tcx.sess.mir_opt_level() >= 3 {
+        if self.tcx.sess.mir_opt_level() >= 4 {
             self.eval_rvalue_with_identities(rvalue, place)
         } else {
             self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
@@ -1253,7 +1253,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             TerminatorKind::SwitchInt { ref mut discr, .. } => {
                 // FIXME: This is currently redundant with `visit_operand`, but sadly
                 // always visiting operands currently causes a perf regression in LLVM codegen, so
-                // `visit_operand` currently only runs for propagates places for `mir_opt_level=3`.
+                // `visit_operand` currently only runs for propagates places for `mir_opt_level=4`.
                 self.propagate_operand(discr)
             }
             // None of these have Operands to const-propagate.
