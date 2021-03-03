@@ -1205,6 +1205,16 @@ impl<'a> Extend<&'a OsStr> for OsString {
 }
 
 #[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> Extend<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn extend<T: IntoIterator<Item = Cow<'a, OsStr>>>(&mut self, iter: T) {
+        for s in iter {
+            self.push(&s);
+        }
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
 impl FromIterator<OsString> for OsString {
     #[inline]
     fn from_iter<I: IntoIterator<Item = OsString>>(iter: I) -> Self {
@@ -1232,5 +1242,29 @@ impl<'a> FromIterator<&'a OsStr> for OsString {
             buf.push(s);
         }
         buf
+    }
+}
+
+#[stable(feature = "osstring_extend", since = "1.52.0")]
+impl<'a> FromIterator<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Cow<'a, OsStr>>>(iter: I) -> Self {
+        let mut iterator = iter.into_iter();
+
+        // Because we're iterating over `OsString`s, we can avoid at least
+        // one allocation by getting the first owned string from the iterator
+        // and appending to it all the subsequent strings.
+        match iterator.next() {
+            None => OsString::new(),
+            Some(Cow::Owned(mut buf)) => {
+                buf.extend(iterator);
+                buf
+            }
+            Some(Cow::Borrowed(buf)) => {
+                let mut buf = OsString::from(buf);
+                buf.extend(iterator);
+                buf
+            }
+        }
     }
 }
