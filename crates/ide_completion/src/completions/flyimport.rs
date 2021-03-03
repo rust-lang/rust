@@ -921,4 +921,26 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn fuzzy_unresolved_path() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    let zz = "sdsd";
+    bar::Ass$0
+}"#,
+            expect![[]],
+        )
+    }
 }
