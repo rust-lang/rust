@@ -77,9 +77,8 @@ impl<K, V> LeafNode<K, V> {
         }
     }
 
-    /// Creates a new boxed `LeafNode`. Unsafe because all nodes should really be hidden behind
-    /// `BoxedNode`, preventing accidental dropping of uninitialized keys and values.
-    unsafe fn new() -> Box<Self> {
+    /// Creates a new boxed `LeafNode`.
+    fn new() -> Box<Self> {
         unsafe {
             let mut leaf = Box::new_uninit();
             LeafNode::init(leaf.as_mut_ptr());
@@ -107,10 +106,9 @@ struct InternalNode<K, V> {
 impl<K, V> InternalNode<K, V> {
     /// Creates a new boxed `InternalNode`.
     ///
-    /// This is unsafe for two reasons. First, it returns an owned `InternalNode` in a box, risking
-    /// dropping of uninitialized fields. Second, an invariant of internal nodes is that `len + 1`
-    /// edges are initialized and valid, meaning that even when the node is empty (having a
-    /// `len` of 0), there must be one initialized and valid edge. This function does not set up
+    /// # Safety
+    /// An invariant of internal nodes is that they have at least one
+    /// initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new() -> Box<Self> {
         unsafe {
@@ -144,7 +142,7 @@ impl<K, V> Root<K, V> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     fn new_leaf() -> Self {
-        Self::from_new_leaf(unsafe { LeafNode::new() })
+        Self::from_new_leaf(LeafNode::new())
     }
 
     fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
@@ -156,10 +154,13 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     fn new_internal(child: Root<K, V>) -> Self {
         let mut new_node = unsafe { InternalNode::new() };
         new_node.edges[0].write(child.node);
-        NodeRef::from_new_internal(new_node, child.height + 1)
+        unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
     }
 
-    fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+    /// # Safety
+    /// `height` must not be zero.
+    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+        debug_assert!(height > 0);
         let node = NonNull::from(Box::leak(internal)).cast();
         let mut this = NodeRef { height, node, _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
@@ -1080,14 +1081,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - All the key-value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
-        unsafe {
-            let mut new_node = LeafNode::new();
+        let mut new_node = LeafNode::new();
 
-            let kv = self.split_leaf_data(&mut new_node);
+        let kv = self.split_leaf_data(&mut new_node);
 
-            let right = NodeRef::from_new_leaf(new_node);
-            SplitResult { left: self.node, kv, right }
-        }
+        let right = NodeRef::from_new_leaf(new_node);
+        SplitResult { left: self.node, kv, right }
     }
 
     /// Removes the key-value pair pointed to by this handle and returns it, along with the edge
