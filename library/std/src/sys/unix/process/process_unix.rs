@@ -526,20 +526,20 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit status: {}", code)
+            write!(f, "exit status: {}", code)?;
         } else if let Some(signal) = self.signal() {
+            write!(f, "signal: {}", signal)?;
             if self.core_dumped() {
-                write!(f, "signal: {} (core dumped)", signal)
-            } else {
-                write!(f, "signal: {}", signal)
+                write!(f, " (core dumped)")?;
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {}", signal)
+            write!(f, "stopped (not terminated) by signal: {}", signal)?;
         } else if self.continued() {
-            write!(f, "continued (WIFCONTINUED)")
+            write!(f, "continued (WIFCONTINUED)")?;
         } else {
-            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)?;
         }
+        Ok(())
     }
 }
 
