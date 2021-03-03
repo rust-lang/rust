@@ -505,10 +505,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         }
                     }
                     GenericParamDefKind::Const { has_default } => {
+                        let ty = tcx.at(self.span).type_of(param.def_id);
                         if !infer_args && has_default {
-                            ty::Const::from_anon_const(tcx, param.def_id.expect_local()).into()
+                            tcx.const_param_default(param.def_id).into()
                         } else {
-                            let ty = tcx.at(self.span).type_of(param.def_id);
                             if infer_args {
                                 self.astconv.ct_infer(ty, Some(param), self.span).into()
                             } else {

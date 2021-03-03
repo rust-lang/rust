@@ -5,7 +5,7 @@ use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ParamEnv, ParamEnvAnd};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
 
 mod int;
@@ -44,11 +44,7 @@ impl<'tcx> Const<'tcx> {
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
 
         let body_id = match tcx.hir().get(hir_id) {
-            hir::Node::AnonConst(ac)
-            | hir::Node::GenericParam(hir::GenericParam {
-                kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
-                ..
-            }) => ac.body,
+            hir::Node::AnonConst(ac) => ac.body,
             _ => span_bug!(
                 tcx.def_span(def.did.to_def_id()),
                 "from_anon_const can only process anonymous constants"
@@ -205,4 +201,20 @@ impl<'tcx> Const<'tcx> {
         self.try_eval_usize(tcx, param_env)
             .unwrap_or_else(|| bug!("expected usize, got {:#?}", self))
     }
+}
+
+pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Const<'tcx> {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let default_def_id = match tcx.hir().get(hir_id) {
+        hir::Node::AnonConst(ac)
+        | hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { ty: _, default: Some(ac) },
+            ..
+        }) => tcx.hir().local_def_id(ac.hir_id),
+        _ => span_bug!(
+            tcx.def_span(def_id),
+            "const_param_defaults expected a generic parameter with a constant"
+        ),
+    };
+    Const::from_anon_const(tcx, default_def_id)
 }

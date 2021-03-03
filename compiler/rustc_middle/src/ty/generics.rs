@@ -120,8 +120,8 @@ impl<'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => (),
-                GenericParamDefKind::Type { has_default, .. } |
-                GenericParamDefKind::Const { has_default } => {
+                GenericParamDefKind::Type { has_default, .. }
+                | GenericParamDefKind::Const { has_default } => {
                     own_defaults.types += has_default as usize;
                 }
             }
@@ -146,7 +146,9 @@ impl<'tcx> Generics {
     pub fn own_requires_monomorphization(&self) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => return true,
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                    return true;
+                }
                 GenericParamDefKind::Lifetime => {}
             }
         }

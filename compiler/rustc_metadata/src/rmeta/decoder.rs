@@ -953,6 +953,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
     }
 
+    fn get_const_param_default(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> rustc_middle::ty::Const<'tcx> {
+        self.root.tables.const_defaults.get(self, id).unwrap().decode((self, tcx))
+    }
+
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"

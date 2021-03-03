@@ -1445,7 +1445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default, .. } => {
                         if !infer_args && has_default {
-                            ty::Const::from_anon_const(tcx, param.def_id.expect_local()).into()
+                            tcx.const_param_default(param.def_id).into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
                         }

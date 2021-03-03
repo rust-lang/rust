@@ -205,10 +205,7 @@ pub trait Printer<'tcx>: Sized {
                 ty::GenericParamDefKind::Const { has_default } => {
                     has_default
                         && substs[param.index as usize]
-                            == GenericArg::from(crate::ty::Const::from_anon_const(
-                                self.tcx(),
-                                param.def_id.expect_local(),
-                            ))
+                            == GenericArg::from(self.tcx().const_param_default(param.def_id))
                 }
             })
             .count();

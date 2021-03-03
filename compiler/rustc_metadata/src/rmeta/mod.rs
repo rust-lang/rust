@@ -313,7 +313,8 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, Lazy<DefKey>>,
-    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>
+    def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>,
+    const_defaults: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
