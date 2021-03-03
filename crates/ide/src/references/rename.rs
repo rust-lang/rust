@@ -122,7 +122,7 @@ fn check_identifier(new_name: &str) -> RenameResult<IdentifierKind> {
                 Ok(IdentifierKind::Lifetime)
             }
             (SyntaxKind::LIFETIME_IDENT, _) => {
-                bail!("Invalid name `{0}`: Cannot rename lifetime to {0}", new_name)
+                bail!("Invalid name `{}`: not a lifetime identifier", new_name)
             }
             (_, Some(syntax_error)) => bail!("Invalid name `{}`: {}", new_name, syntax_error),
             (_, None) => bail!("Invalid name `{}`: not an identifier", new_name),
@@ -162,13 +162,239 @@ fn find_definition(
     .ok_or_else(|| format_err!("No references found at position"))
 }
 
+fn rename_mod(
+    sema: &Semantics<RootDatabase>,
+    module: Module,
+    new_name: &str,
+) -> RenameResult<SourceChange> {
+    if IdentifierKind::Ident != check_identifier(new_name)? {
+        bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
+    }
+
+    let mut source_change = SourceChange::default();
+
+    let InFile { file_id, value: def_source } = module.definition_source(sema.db);
+    let file_id = file_id.original_file(sema.db);
+    if let ModuleSource::SourceFile(..) = def_source {
+        // mod is defined in path/to/dir/mod.rs
+        let path = if module.is_mod_rs(sema.db) {
+            format!("../{}/mod.rs", new_name)
+        } else {
+            format!("{}.rs", new_name)
+        };
+        let dst = AnchoredPathBuf { anchor: file_id, path };
+        let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
+        source_change.push_file_system_edit(move_file);
+    }
+
+    if let Some(InFile { file_id, value: decl_source }) = module.declaration_source(sema.db) {
+        let file_id = file_id.original_file(sema.db);
+        match decl_source.name() {
+            Some(name) => source_change.insert_source_edit(
+                file_id,
+                TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
+            ),
+            _ => unreachable!(),
+        }
+    }
+    let def = Definition::ModuleDef(ModuleDef::Module(module));
+    let usages = def.usages(sema).all();
+    let ref_edits = usages.iter().map(|(&file_id, references)| {
+        (file_id, source_edit_from_references(references, def, new_name))
+    });
+    source_change.extend(ref_edits);
+
+    Ok(source_change)
+}
+
+fn rename_reference(
+    sema: &Semantics<RootDatabase>,
+    def: Definition,
+    new_name: &str,
+) -> RenameResult<SourceChange> {
+    let ident_kind = check_identifier(new_name)?;
+
+    let def_is_lbl_or_lt = matches!(
+        def,
+        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
+    );
+    match (ident_kind, def) {
+        (IdentifierKind::ToSelf, _)
+        | (IdentifierKind::Underscore, _)
+        | (IdentifierKind::Ident, _)
+            if def_is_lbl_or_lt =>
+        {
+            mark::hit!(rename_not_a_lifetime_ident_ref);
+            bail!("Invalid name `{}`: not a lifetime identifier", new_name)
+        }
+        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => mark::hit!(rename_lifetime),
+        (IdentifierKind::Lifetime, _) => {
+            mark::hit!(rename_not_an_ident_ref);
+            bail!("Invalid name `{}`: not an identifier", new_name)
+        }
+        (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
+            // no-op
+            mark::hit!(rename_self_to_self);
+            return Ok(SourceChange::default());
+        }
+        (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
+            mark::hit!(rename_self_to_param);
+            return rename_self_to_param(sema, local, new_name, ident_kind);
+        }
+        (IdentifierKind::ToSelf, Definition::Local(local)) => {
+            mark::hit!(rename_to_self);
+            return rename_to_self(sema, local);
+        }
+        (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
+        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
+    }
+
+    let usages = def.usages(sema).all();
+    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
+        mark::hit!(rename_underscore_multiple);
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
+    }
+    let mut source_change = SourceChange::default();
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
+        (file_id, source_edit_from_references(&references, def, new_name))
+    }));
+
+    let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
+    source_change.insert_source_edit(file_id, edit);
+    Ok(source_change)
+}
+
+fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
+    if never!(local.is_self(sema.db)) {
+        bail!("rename_to_self invoked on self");
+    }
+
+    let fn_def = match local.parent(sema.db) {
+        hir::DefWithBody::Function(func) => func,
+        _ => bail!("Cannot rename non-param local to self"),
+    };
+
+    // FIXME: reimplement this on the hir instead
+    // as of the time of this writing params in hir don't keep their names
+    let fn_ast = fn_def
+        .source(sema.db)
+        .ok_or_else(|| format_err!("Cannot rename non-param local to self"))?
+        .value;
+
+    let first_param_range = fn_ast
+        .param_list()
+        .and_then(|p| p.params().next())
+        .ok_or_else(|| format_err!("Method has no parameters"))?
+        .syntax()
+        .text_range();
+    let InFile { file_id, value: local_source } = local.source(sema.db);
+    match local_source {
+        either::Either::Left(pat)
+            if !first_param_range.contains_range(pat.syntax().text_range()) =>
+        {
+            bail!("Only the first parameter can be self");
+        }
+        _ => (),
+    }
+
+    let impl_block = fn_ast
+        .syntax()
+        .ancestors()
+        .find_map(|node| ast::Impl::cast(node))
+        .and_then(|def| sema.to_def(&def))
+        .ok_or_else(|| format_err!("No impl block found for function"))?;
+    if fn_def.self_param(sema.db).is_some() {
+        bail!("Method already has a self parameter");
+    }
+
+    let params = fn_def.assoc_fn_params(sema.db);
+    let first_param = params.first().ok_or_else(|| format_err!("Method has no parameters"))?;
+    let first_param_ty = first_param.ty();
+    let impl_ty = impl_block.target_ty(sema.db);
+    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
+        // if the impl is a ref to the type we can just match the `&T` with self directly
+        (first_param_ty.clone(), "self")
+    } else {
+        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
+            (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
+        })
+    };
+
+    if ty != impl_ty {
+        bail!("Parameter type differs from impl block type");
+    }
+
+    let def = Definition::Local(local);
+    let usages = def.usages(sema).all();
+    let mut source_change = SourceChange::default();
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
+        (file_id, source_edit_from_references(references, def, "self"))
+    }));
+    source_change.insert_source_edit(
+        file_id.original_file(sema.db),
+        TextEdit::replace(first_param_range, String::from(self_param)),
+    );
+
+    Ok(source_change)
+}
+
+fn rename_self_to_param(
+    sema: &Semantics<RootDatabase>,
+    local: hir::Local,
+    new_name: &str,
+    identifier_kind: IdentifierKind,
+) -> RenameResult<SourceChange> {
+    let (file_id, self_param) = match local.source(sema.db) {
+        InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
+        _ => {
+            never!(true, "rename_self_to_param invoked on a non-self local");
+            bail!("rename_self_to_param invoked on a non-self local");
+        }
+    };
+
+    let def = Definition::Local(local);
+    let usages = def.usages(sema).all();
+    let edit = text_edit_from_self_param(&self_param, new_name)
+        .ok_or_else(|| format_err!("No target type found"))?;
+    if usages.len() > 1 && identifier_kind == IdentifierKind::Underscore {
+        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
+    }
+    let mut source_change = SourceChange::default();
+    source_change.insert_source_edit(file_id.original_file(sema.db), edit);
+    source_change.extend(usages.iter().map(|(&file_id, references)| {
+        (file_id, source_edit_from_references(&references, def, new_name))
+    }));
+    Ok(source_change)
+}
+
+fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Option<TextEdit> {
+    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
+        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
+            return Some(p.path()?.segment()?.name_ref()?.text().to_string());
+        }
+        None
+    }
+
+    let impl_def = self_param.syntax().ancestors().find_map(|it| ast::Impl::cast(it))?;
+    let type_name = target_type_name(&impl_def)?;
+
+    let mut replacement_text = String::from(new_name);
+    replacement_text.push_str(": ");
+    match (self_param.amp_token(), self_param.mut_token()) {
+        (Some(_), None) => replacement_text.push('&'),
+        (Some(_), Some(_)) => replacement_text.push_str("&mut "),
+        (_, _) => (),
+    };
+    replacement_text.push_str(type_name.as_str());
+
+    Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
+}
+
 fn source_edit_from_references(
-    _sema: &Semantics<RootDatabase>,
-    file_id: FileId,
     references: &[FileReference],
     def: Definition,
     new_name: &str,
-) -> (FileId, TextEdit) {
+) -> TextEdit {
     let mut edit = TextEdit::builder();
     for reference in references {
         let (range, replacement) = match &reference.name {
@@ -188,7 +414,7 @@ fn source_edit_from_references(
         .unwrap_or_else(|| (reference.range, new_name.to_string()));
         edit.replace(range, replacement);
     }
-    (file_id, edit.finish())
+    edit.finish()
 }
 
 fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange, String)> {
@@ -196,7 +422,7 @@ fn source_edit_from_name(name: &ast::Name, new_name: &str) -> Option<(TextRange,
         if let Some(ident_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
             return Some((
                 TextRange::empty(ident_pat.syntax().text_range().start()),
-                format!("{}: ", new_name),
+                [new_name, ": "].concat(),
             ));
         }
     }
@@ -273,234 +499,6 @@ fn source_edit_from_name_ref(
     } else {
         None
     }
-}
-
-fn rename_mod(
-    sema: &Semantics<RootDatabase>,
-    module: Module,
-    new_name: &str,
-) -> RenameResult<SourceChange> {
-    if IdentifierKind::Ident != check_identifier(new_name)? {
-        bail!("Invalid name `{0}`: cannot rename module to {0}", new_name);
-    }
-
-    let mut source_change = SourceChange::default();
-
-    let InFile { file_id, value: def_source } = module.definition_source(sema.db);
-    let file_id = file_id.original_file(sema.db);
-    if let ModuleSource::SourceFile(..) = def_source {
-        // mod is defined in path/to/dir/mod.rs
-        let path = if module.is_mod_rs(sema.db) {
-            format!("../{}/mod.rs", new_name)
-        } else {
-            format!("{}.rs", new_name)
-        };
-        let dst = AnchoredPathBuf { anchor: file_id, path };
-        let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
-        source_change.push_file_system_edit(move_file);
-    }
-
-    if let Some(InFile { file_id, value: decl_source }) = module.declaration_source(sema.db) {
-        let file_id = file_id.original_file(sema.db);
-        match decl_source.name() {
-            Some(name) => source_change.insert_source_edit(
-                file_id,
-                TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
-            ),
-            _ => unreachable!(),
-        };
-    }
-    let def = Definition::ModuleDef(ModuleDef::Module(module));
-    let usages = def.usages(sema).all();
-    let ref_edits = usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, references, def, new_name)
-    });
-    source_change.extend(ref_edits);
-
-    Ok(source_change)
-}
-
-fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameResult<SourceChange> {
-    if never!(local.is_self(sema.db)) {
-        bail!("rename_to_self invoked on self");
-    }
-
-    let fn_def = match local.parent(sema.db) {
-        hir::DefWithBody::Function(func) => func,
-        _ => bail!("Cannot rename non-param local to self"),
-    };
-
-    // FIXME: reimplement this on the hir instead
-    // as of the time of this writing params in hir don't keep their names
-    let fn_ast = fn_def
-        .source(sema.db)
-        .ok_or_else(|| format_err!("Cannot rename non-param local to self"))?
-        .value;
-
-    let first_param_range = fn_ast
-        .param_list()
-        .and_then(|p| p.params().next())
-        .ok_or_else(|| format_err!("Method has no parameters"))?
-        .syntax()
-        .text_range();
-    let InFile { file_id, value: local_source } = local.source(sema.db);
-    match local_source {
-        either::Either::Left(pat)
-            if !first_param_range.contains_range(pat.syntax().text_range()) =>
-        {
-            bail!("Only the first parameter can be self");
-        }
-        _ => (),
-    }
-
-    let impl_block = fn_ast
-        .syntax()
-        .ancestors()
-        .find_map(|node| ast::Impl::cast(node))
-        .and_then(|def| sema.to_def(&def))
-        .ok_or_else(|| format_err!("No impl block found for function"))?;
-    if fn_def.self_param(sema.db).is_some() {
-        bail!("Method already has a self parameter");
-    }
-
-    let params = fn_def.assoc_fn_params(sema.db);
-    let first_param = params.first().ok_or_else(|| format_err!("Method has no parameters"))?;
-    let first_param_ty = first_param.ty();
-    let impl_ty = impl_block.target_ty(sema.db);
-    let (ty, self_param) = if impl_ty.remove_ref().is_some() {
-        // if the impl is a ref to the type we can just match the `&T` with self directly
-        (first_param_ty.clone(), "self")
-    } else {
-        first_param_ty.remove_ref().map_or((first_param_ty.clone(), "self"), |ty| {
-            (ty, if first_param_ty.is_mutable_reference() { "&mut self" } else { "&self" })
-        })
-    };
-
-    if ty != impl_ty {
-        bail!("Parameter type differs from impl block type");
-    }
-
-    let def = Definition::Local(local);
-    let usages = def.usages(sema).all();
-    let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, references, def, "self")
-    }));
-    source_change.insert_source_edit(
-        file_id.original_file(sema.db),
-        TextEdit::replace(first_param_range, String::from(self_param)),
-    );
-
-    Ok(source_change)
-}
-
-fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Option<TextEdit> {
-    fn target_type_name(impl_def: &ast::Impl) -> Option<String> {
-        if let Some(ast::Type::PathType(p)) = impl_def.self_ty() {
-            return Some(p.path()?.segment()?.name_ref()?.text().to_string());
-        }
-        None
-    }
-
-    let impl_def = self_param.syntax().ancestors().find_map(|it| ast::Impl::cast(it))?;
-    let type_name = target_type_name(&impl_def)?;
-
-    let mut replacement_text = String::from(new_name);
-    replacement_text.push_str(": ");
-    match (self_param.amp_token(), self_param.mut_token()) {
-        (None, None) => (),
-        (Some(_), None) => replacement_text.push('&'),
-        (_, Some(_)) => replacement_text.push_str("&mut "),
-    };
-    replacement_text.push_str(type_name.as_str());
-
-    Some(TextEdit::replace(self_param.syntax().text_range(), replacement_text))
-}
-
-fn rename_self_to_param(
-    sema: &Semantics<RootDatabase>,
-    local: hir::Local,
-    new_name: &str,
-    identifier_kind: IdentifierKind,
-) -> RenameResult<SourceChange> {
-    let (file_id, self_param) = match local.source(sema.db) {
-        InFile { file_id, value: Either::Right(self_param) } => (file_id, self_param),
-        _ => {
-            never!(true, "rename_self_to_param invoked on a non-self local");
-            bail!("rename_self_to_param invoked on a non-self local");
-        }
-    };
-
-    let def = Definition::Local(local);
-    let usages = def.usages(sema).all();
-    let edit = text_edit_from_self_param(&self_param, new_name)
-        .ok_or_else(|| format_err!("No target type found"))?;
-    if usages.len() > 1 && identifier_kind == IdentifierKind::Underscore {
-        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
-    }
-    let mut source_change = SourceChange::default();
-    source_change.insert_source_edit(file_id.original_file(sema.db), edit);
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, &references, def, new_name)
-    }));
-    Ok(source_change)
-}
-
-fn rename_reference(
-    sema: &Semantics<RootDatabase>,
-    def: Definition,
-    new_name: &str,
-) -> RenameResult<SourceChange> {
-    let ident_kind = check_identifier(new_name)?;
-
-    let def_is_lbl_or_lt = matches!(
-        def,
-        Definition::GenericParam(hir::GenericParam::LifetimeParam(_)) | Definition::Label(_)
-    );
-    match (ident_kind, def) {
-        (IdentifierKind::ToSelf, _)
-        | (IdentifierKind::Underscore, _)
-        | (IdentifierKind::Ident, _)
-            if def_is_lbl_or_lt =>
-        {
-            mark::hit!(rename_not_a_lifetime_ident_ref);
-            bail!("Invalid name `{}`: not a lifetime identifier", new_name)
-        }
-        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => mark::hit!(rename_lifetime),
-        (IdentifierKind::Lifetime, _) => {
-            mark::hit!(rename_not_an_ident_ref);
-            bail!("Invalid name `{}`: not an identifier", new_name)
-        }
-        (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
-            // no-op
-            mark::hit!(rename_self_to_self);
-            return Ok(SourceChange::default());
-        }
-        (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
-            mark::hit!(rename_self_to_param);
-            return rename_self_to_param(sema, local, new_name, ident_kind);
-        }
-        (IdentifierKind::ToSelf, Definition::Local(local)) => {
-            mark::hit!(rename_to_self);
-            return rename_to_self(sema, local);
-        }
-        (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
-        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
-    }
-
-    let usages = def.usages(sema).all();
-    if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
-        mark::hit!(rename_underscore_multiple);
-        bail!("Cannot rename reference to `_` as it is being referenced multiple times");
-    }
-    let mut source_change = SourceChange::default();
-    source_change.extend(usages.iter().map(|(&file_id, references)| {
-        source_edit_from_references(sema, file_id, &references, def, new_name)
-    }));
-
-    let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
-    source_change.insert_source_edit(file_id, edit);
-    Ok(source_change)
 }
 
 fn source_edit_from_def(
