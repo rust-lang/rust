@@ -1950,7 +1950,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `len` elements
-        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with `initialized` slice
+        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with `initialized`
         unsafe {
             let initialized = slice::from_raw_parts_mut(ptr, self.len);
             let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
