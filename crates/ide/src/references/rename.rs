@@ -88,6 +88,8 @@ pub(crate) fn rename_with_semantics(
     let def = find_definition(sema, syntax, position)?;
     match def {
         Definition::ModuleDef(ModuleDef::Module(module)) => rename_mod(&sema, module, new_name),
+        Definition::SelfType(_) => bail!("Cannot rename `Self`"),
+        Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
         def => rename_reference(sema, def, new_name),
     }
 }
