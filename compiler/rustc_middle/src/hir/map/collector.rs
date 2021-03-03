@@ -1,5 +1,5 @@
 use crate::arena::Arena;
-use crate::hir::map::{Entry, HirOwnerData, Map};
+use crate::hir::map::{HirOwnerData, Map};
 use crate::hir::{Owner, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -59,6 +59,13 @@ fn hash_body(
         item_like.hash_stable(hcx, &mut stable_hasher);
     });
     stable_hasher.finish()
+}
+
+/// Represents an entry and its parent `HirId`.
+#[derive(Copy, Clone, Debug)]
+pub struct Entry<'hir> {
+    parent: HirId,
+    node: Node<'hir>,
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {

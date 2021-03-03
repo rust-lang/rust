@@ -38,10 +38,10 @@ pub struct Owner<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { parent, node } = self;
+        let Owner { node, parent } = self;
         hcx.while_hashing_hir_bodies(false, |hcx| {
             parent.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher);
+            node.hash_stable(hcx, hasher)
         });
     }
 }
