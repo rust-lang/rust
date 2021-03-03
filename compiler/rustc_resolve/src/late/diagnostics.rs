@@ -1674,10 +1674,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         );
                     } else if suggest_note {
                         suggest_note = false; // Avoid displaying the same help multiple times.
-                        err.help(&format!(
-                            "consider introducing lifetime `{}` to the item's generics",
-                            lifetime_ref,
-                        ));
+                        err.span_label(
+                            span,
+                            &format!(
+                                "lifetime `{}` is missing in item created through this procedural \
+                                 macro",
+                                lifetime_ref,
+                            ),
+                        );
                     }
                 }
                 MissingLifetimeSpot::HigherRanked { span, span_type } => {
