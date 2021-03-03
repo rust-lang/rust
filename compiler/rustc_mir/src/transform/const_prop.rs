@@ -725,7 +725,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+        if self.tcx.sess.mir_opt_level() >= 3 {
             self.eval_rvalue_with_identities(rvalue, place)
         } else {
             self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
@@ -903,7 +903,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns `true` if and only if this `op` should be const-propagated into.
     fn should_const_prop(&mut self, op: &OpTy<'tcx>) -> bool {
-        let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
+        let mir_opt_level = self.tcx.sess.mir_opt_level();
 
         if mir_opt_level == 0 {
             return false;
@@ -1073,7 +1073,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
 
         // Only const prop copies and moves on `mir_opt_level=2` as doing so
         // currently slightly increases compile time in some cases.
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if self.tcx.sess.mir_opt_level() >= 2 {
             self.propagate_operand(operand)
         }
     }
