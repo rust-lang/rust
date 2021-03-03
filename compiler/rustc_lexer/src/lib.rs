@@ -31,8 +31,8 @@ mod tests;
 use self::TokenKind::*;
 use crate::cursor::Cursor;
 use crate::literals::{
-    double_quoted_string, lifetime_or_char, number, raw_double_quoted_string, single_quoted_string,
-    LiteralKind,
+    double_quoted_string, eat_literal_suffix, lifetime_or_char, number, raw_double_quoted_string,
+    single_quoted_string, LiteralKind,
 };
 
 /// Parsed token.
@@ -272,7 +272,7 @@ impl Cursor<'_> {
                     let (n_hashes, err) = raw_double_quoted_string(self, 1);
                     let suffix_start = self.len_consumed();
                     if err.is_none() {
-                        self.eat_literal_suffix();
+                        eat_literal_suffix(self);
                     }
                     let kind = LiteralKind::RawStr { n_hashes, err };
                     Literal { kind, suffix_start }
@@ -287,7 +287,7 @@ impl Cursor<'_> {
                     let terminated = single_quoted_string(self);
                     let suffix_start = self.len_consumed();
                     if terminated {
-                        self.eat_literal_suffix();
+                        eat_literal_suffix(self);
                     }
                     let kind = LiteralKind::Byte { terminated };
                     Literal { kind, suffix_start }
@@ -297,7 +297,7 @@ impl Cursor<'_> {
                     let terminated = double_quoted_string(self);
                     let suffix_start = self.len_consumed();
                     if terminated {
-                        self.eat_literal_suffix();
+                        eat_literal_suffix(self);
                     }
                     let kind = LiteralKind::ByteStr { terminated };
                     Literal { kind, suffix_start }
@@ -307,7 +307,7 @@ impl Cursor<'_> {
                     let (n_hashes, err) = raw_double_quoted_string(self, 2);
                     let suffix_start = self.len_consumed();
                     if err.is_none() {
-                        self.eat_literal_suffix();
+                        eat_literal_suffix(self);
                     }
                     let kind = LiteralKind::RawByteStr { n_hashes, err };
                     Literal { kind, suffix_start }
@@ -323,7 +323,7 @@ impl Cursor<'_> {
             c @ '0'..='9' => {
                 let literal_kind = number(self, c);
                 let suffix_start = self.len_consumed();
-                self.eat_literal_suffix();
+                eat_literal_suffix(self);
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
 
@@ -363,7 +363,7 @@ impl Cursor<'_> {
                 let terminated = double_quoted_string(self);
                 let suffix_start = self.len_consumed();
                 if terminated {
-                    self.eat_literal_suffix();
+                    eat_literal_suffix(self);
                 }
                 let kind = LiteralKind::Str { terminated };
                 Literal { kind, suffix_start }
@@ -448,56 +448,7 @@ impl Cursor<'_> {
         Ident
     }
 
-    fn eat_decimal_digits(&mut self) -> bool {
-        let mut has_digits = false;
-        loop {
-            match self.first() {
-                '_' => {
-                    self.bump();
-                }
-                '0'..='9' => {
-                    has_digits = true;
-                    self.bump();
-                }
-                _ => break,
-            }
-        }
-        has_digits
-    }
-
-    fn eat_hexadecimal_digits(&mut self) -> bool {
-        let mut has_digits = false;
-        loop {
-            match self.first() {
-                '_' => {
-                    self.bump();
-                }
-                '0'..='9' | 'a'..='f' | 'A'..='F' => {
-                    has_digits = true;
-                    self.bump();
-                }
-                _ => break,
-            }
-        }
-        has_digits
-    }
-
-    /// Eats the float exponent. Returns true if at least one digit was met,
-    /// and returns false otherwise.
-    fn eat_float_exponent(&mut self) -> bool {
-        debug_assert!(self.prev() == 'e' || self.prev() == 'E');
-        if self.first() == '-' || self.first() == '+' {
-            self.bump();
-        }
-        self.eat_decimal_digits()
-    }
-
-    // Eats the suffix of the literal, e.g. "_u8".
-    fn eat_literal_suffix(&mut self) {
-        self.eat_identifier();
-    }
-
-    // Eats the identifier.
+    /// Eats one identifier.
     fn eat_identifier(&mut self) {
         if !is_id_start(self.first()) {
             return;
@@ -505,12 +456,5 @@ impl Cursor<'_> {
         self.bump();
 
         self.eat_while(is_id_continue);
-    }
-
-    /// Eats symbols while predicate returns true or until the end of file is reached.
-    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
-        while predicate(self.first()) && !self.is_eof() {
-            self.bump();
-        }
     }
 }

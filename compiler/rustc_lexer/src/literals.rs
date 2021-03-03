@@ -60,21 +60,21 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
             'b' => {
                 base = Base::Binary;
                 cursor.bump();
-                cursor.eat_decimal_digits()
+                eat_decimal_digits(cursor)
             }
             'o' => {
                 base = Base::Octal;
                 cursor.bump();
-                cursor.eat_decimal_digits()
+                eat_decimal_digits(cursor)
             }
             'x' => {
                 base = Base::Hexadecimal;
                 cursor.bump();
-                cursor.eat_hexadecimal_digits()
+                eat_hexadecimal_digits(cursor)
             }
             // Not a base prefix.
             '0'..='9' | '_' | '.' | 'e' | 'E' => {
-                cursor.eat_decimal_digits();
+                eat_decimal_digits(cursor);
                 true
             }
             // Just a 0.
@@ -87,7 +87,7 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
         }
     } else {
         // No base prefix, parse number in the usual way.
-        cursor.eat_decimal_digits();
+        eat_decimal_digits(cursor);
     };
 
     match cursor.first() {
@@ -100,11 +100,11 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
             cursor.bump();
             let mut empty_exponent = false;
             if cursor.first().is_digit(10) {
-                cursor.eat_decimal_digits();
+                eat_decimal_digits(cursor);
                 match cursor.first() {
                     'e' | 'E' => {
                         cursor.bump();
-                        empty_exponent = !cursor.eat_float_exponent();
+                        empty_exponent = !eat_float_exponent(cursor);
                     }
                     _ => (),
                 }
@@ -113,11 +113,55 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
         }
         'e' | 'E' => {
             cursor.bump();
-            let empty_exponent = !cursor.eat_float_exponent();
+            let empty_exponent = !eat_float_exponent(cursor);
             LiteralKind::Float { base, empty_exponent }
         }
         _ => LiteralKind::Int { base, empty_int: false },
     }
+}
+
+pub(crate) fn eat_decimal_digits(cursor: &mut Cursor) -> bool {
+    let mut has_digits = false;
+    loop {
+        match cursor.first() {
+            '_' => {
+                cursor.bump();
+            }
+            '0'..='9' => {
+                has_digits = true;
+                cursor.bump();
+            }
+            _ => break,
+        }
+    }
+    has_digits
+}
+
+pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor) -> bool {
+    let mut has_digits = false;
+    loop {
+        match cursor.first() {
+            '_' => {
+                cursor.bump();
+            }
+            '0'..='9' | 'a'..='f' | 'A'..='F' => {
+                has_digits = true;
+                cursor.bump();
+            }
+            _ => break,
+        }
+    }
+    has_digits
+}
+
+/// Eats the float exponent. Returns true if at least one digit was met,
+/// and returns false otherwise.
+fn eat_float_exponent(cursor: &mut Cursor) -> bool {
+    debug_assert!(cursor.prev() == 'e' || cursor.prev() == 'E');
+    if cursor.first() == '-' || cursor.first() == '+' {
+        cursor.bump();
+    }
+    eat_decimal_digits(cursor)
 }
 
 pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
@@ -137,7 +181,7 @@ pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
         let terminated = single_quoted_string(cursor);
         let suffix_start = cursor.len_consumed();
         if terminated {
-            cursor.eat_literal_suffix();
+            eat_literal_suffix(cursor);
         }
         let kind = LiteralKind::Char { terminated };
         return TokenKind::Literal { kind, suffix_start };
@@ -306,4 +350,9 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
             max_hashes = n_end_hashes;
         }
     }
+}
+
+/// Eats the suffix of a literal, e.g. "_u8".
+pub(crate) fn eat_literal_suffix(cursor: &mut Cursor) {
+    cursor.eat_identifier();
 }
