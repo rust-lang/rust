@@ -21,7 +21,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(expr.span);
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
-        let expr2 = expr.clone();
         match &expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((*region_scope, source_info), *lint_level, |this| {
@@ -35,7 +34,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // is better for borrowck interaction with overloaded
                 // operators like x[j] = x[i].
 
-                debug!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr2);
+                debug!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // Generate better code for things that don't need to be
@@ -64,7 +63,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let lhs_ty = lhs.ty;
 
-                debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr2);
+                debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
@@ -102,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.break_scope(block, value.as_deref(), BreakableTarget::Return, source_info)
             }
             ExprKind::LlvmInlineAsm { asm, outputs, inputs } => {
-                debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr2);
+                debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr);
                 this.block_context.push(BlockFrame::SubExpr);
                 let outputs = outputs
                     .into_iter()

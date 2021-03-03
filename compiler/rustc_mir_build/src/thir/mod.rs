@@ -32,7 +32,7 @@ crate enum LintLevel {
     Explicit(hir::HirId),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct Block<'tcx> {
     crate targeted_by_break: bool,
     crate region_scope: region::Scope,
@@ -51,13 +51,13 @@ crate enum BlockSafety {
     PopUnsafe,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct Stmt<'tcx> {
     crate kind: StmtKind<'tcx>,
     crate opt_destruction_scope: Option<region::Scope>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate enum StmtKind<'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
@@ -107,7 +107,7 @@ rustc_data_structures::static_assert_size!(Expr<'_>, 160);
 /// MIR simplifications are already done in the impl of `Thir`. For
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct Expr<'tcx> {
     /// type of this expression
     crate ty: Ty<'tcx>,
@@ -123,7 +123,7 @@ crate struct Expr<'tcx> {
     crate kind: ExprKind<'tcx>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate enum ExprKind<'tcx> {
     Scope {
         region_scope: region::Scope,
@@ -312,19 +312,19 @@ crate enum ExprKind<'tcx> {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct FieldExpr<'tcx> {
     crate name: Field,
     crate expr: Expr<'tcx>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct FruInfo<'tcx> {
     crate base: Box<Expr<'tcx>>,
     crate field_types: Vec<Ty<'tcx>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate struct Arm<'tcx> {
     crate pattern: Pat<'tcx>,
     crate guard: Option<Guard<'tcx>>,
@@ -334,7 +334,7 @@ crate struct Arm<'tcx> {
     crate span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate enum Guard<'tcx> {
     If(Box<Expr<'tcx>>),
     IfLet(Pat<'tcx>, Box<Expr<'tcx>>),
@@ -346,7 +346,7 @@ crate enum LogicalOp {
     Or,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 crate enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
