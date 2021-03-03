@@ -475,7 +475,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+    let mir_opt_level = tcx.sess.mir_opt_level();
 
     // Lowering generator control-flow and variables has to happen before we do anything else
     // to them. We run some optimizations before that, because they may be harder to do on the state
