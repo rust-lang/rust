@@ -1,4 +1,5 @@
 pub use self::freshen::TypeFreshener;
+pub use self::lexical_region_resolve::RegionResolutionError;
 pub use self::LateBoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
