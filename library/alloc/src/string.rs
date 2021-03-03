@@ -2429,6 +2429,11 @@ impl fmt::Write for String {
         self.push(c);
         Ok(())
     }
+
+    #[inline(never)]
+    fn write_fmt(mut self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
+        fmt::write(&mut self, args)
+    }
 }
 
 /// A draining iterator for `String`.
