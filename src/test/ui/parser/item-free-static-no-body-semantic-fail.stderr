@@ -15,7 +15,7 @@ LL | static B;
    |         help: provide a definition for the static: `= <expr>;`
 
 error: free static item without body
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:9:1
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:8:1
    |
 LL | static mut C: u8;
    | ^^^^^^^^^^^^^^^^-
@@ -23,7 +23,7 @@ LL | static mut C: u8;
    |                 help: provide a definition for the static: `= <expr>;`
 
 error: free static item without body
-  --> $DIR/item-free-static-no-body-semantic-fail.rs:10:1
+  --> $DIR/item-free-static-no-body-semantic-fail.rs:9:1
    |
 LL | static mut D;
    | ^^^^^^^^^^^^-

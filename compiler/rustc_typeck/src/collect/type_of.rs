@@ -659,11 +659,12 @@ fn infer_placeholder_type(
                 format!("{}: {}", item_ident, ty),
                 Applicability::MachineApplicable,
             )
-            .emit_unless(matches!(ty.kind(), ty::Error(_)));
+            .emit_unless(ty.references_error());
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
-            if !matches!(ty.kind(), ty::Error(_)) {
+
+            if !ty.references_error() {
                 diag.span_suggestion(
                     span,
                     "replace `_` with the correct type",
@@ -671,6 +672,7 @@ fn infer_placeholder_type(
                     Applicability::MaybeIncorrect,
                 );
             }
+
             diag.emit();
         }
     }
