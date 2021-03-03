@@ -47,20 +47,46 @@ pub fn image_base() -> u64 {
 
 /// Returns `true` if the specified memory range is in the enclave.
 ///
-/// `p + len` must not overflow.
+/// For safety, this function also checks whether the range given overflows,
+/// returning `false` if so.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn is_enclave_range(p: *const u8, len: usize) -> bool {
-    let start = p as u64;
-    let end = start + (len as u64);
-    start >= image_base() && end <= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
+    let start = p as usize;
+
+    // Subtract one from `len` when calculating `end` in case `p + len` is
+    // exactly at the end of addressable memory (`p + len` would overflow, but
+    // the range is still valid).
+    let end = if len == 0 {
+        start
+    } else if let Some(end) = start.checked_add(len - 1) {
+        end
+    } else {
+        return false;
+    };
+
+    let base = image_base() as usize;
+    start >= base && end <= base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
 }
 
 /// Returns `true` if the specified memory range is in userspace.
 ///
-/// `p + len` must not overflow.
+/// For safety, this function also checks whether the range given overflows,
+/// returning `false` if so.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn is_user_range(p: *const u8, len: usize) -> bool {
-    let start = p as u64;
-    let end = start + (len as u64);
-    end <= image_base() || start >= image_base() + (unsafe { ENCLAVE_SIZE } as u64) // unsafe ok: link-time constant
+    let start = p as usize;
+
+    // Subtract one from `len` when calculating `end` in case `p + len` is
+    // exactly at the end of addressable memory (`p + len` would overflow, but
+    // the range is still valid).
+    let end = if len == 0 {
+        start
+    } else if let Some(end) = start.checked_add(len - 1) {
+        end
+    } else {
+        return false;
+    };
+
+    let base = image_base() as usize;
+    end < base || start > base + (unsafe { ENCLAVE_SIZE } - 1) // unsafe ok: link-time constant
 }
