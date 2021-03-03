@@ -862,30 +862,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn inner_items_from_parent_module() {
-        // FIXME: ItemTree currently associates all inner items with `main`. Luckily, this sort of
-        // code is very rare, so this isn't terrible.
-        // To fix it, we should probably build dedicated `ItemTree`s for inner items, and not store
-        // them in the file's main ItemTree. This would also allow us to stop parsing function
-        // bodies when we only want to compute the crate's main DefMap.
-        check_found_path(
-            r#"
-            fn main() {
-                struct Struct {}
-                mod module {
-                    $0
-                }
-            }
-        "#,
-            "super::Struct",
-            "super::Struct",
-            "super::Struct",
-            "super::Struct",
-        );
-    }
-
-    #[test]
     fn outer_items_with_inner_items_present() {
         check_found_path(
             r#"
