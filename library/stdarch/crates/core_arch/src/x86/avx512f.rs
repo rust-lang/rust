@@ -7015,17 +7015,13 @@ pub unsafe fn _mm512_maskz_add_round_pd<const ROUNDING: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sub_round_ps&expand=5739)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_sub_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vsubps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_sub_round_ps<const ROUNDING: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vsubps(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7041,24 +7037,19 @@ pub unsafe fn _mm512_sub_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sub_round_ps&expand=5737)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubps, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_sub_round_ps(
+#[cfg_attr(test, assert_instr(vsubps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_sub_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubps(a, b, $imm4)
-        };
-    }
-    let subround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, subround, src.as_f32x16()))
+    let r = vsubps(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Subtract packed single-precision (32-bit) floating-point elements in b from packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7073,24 +7064,19 @@ pub unsafe fn _mm512_mask_sub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sub_round_ps&expand=5738)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_sub_round_ps(
+#[cfg_attr(test, assert_instr(vsubps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_sub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubps(a, b, $imm4)
-        };
-    }
-    let subround = constify_imm4_round!(rounding, call);
+    let r = vsubps(a, b, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, subround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Subtract packed double-precision (64-bit) floating-point elements in b from packed double-precision (64-bit) floating-point elements in a, and store the results in dst.\
@@ -7105,17 +7091,13 @@ pub unsafe fn _mm512_maskz_sub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sub_round_pd&expand=5736)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_sub_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vsubpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_sub_round_pd<const ROUNDING: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vsubpd(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7131,24 +7113,19 @@ pub unsafe fn _mm512_sub_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sub_round_pd&expand=5734)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubpd, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_sub_round_pd(
+#[cfg_attr(test, assert_instr(vsubpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_sub_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubpd(a, b, $imm4)
-        };
-    }
-    let subround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, subround, src.as_f64x8()))
+    let r = vsubpd(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Subtract packed double-precision (64-bit) floating-point elements in b from packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7163,24 +7140,19 @@ pub unsafe fn _mm512_mask_sub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sub_round_pd&expand=5735)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsubpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_sub_round_pd(
+#[cfg_attr(test, assert_instr(vsubpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_sub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsubpd(a, b, $imm4)
-        };
-    }
-    let subround = constify_imm4_round!(rounding, call);
+    let r = vsubpd(a, b, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, subround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst.\
@@ -7195,17 +7167,13 @@ pub unsafe fn _mm512_maskz_sub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mul_round_ps&expand=3940)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_mul_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vmulps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_mul_round_ps<const ROUNDING: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vmulps(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7221,24 +7189,19 @@ pub unsafe fn _mm512_mul_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_mul_round_ps&expand=3938)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulps, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_mul_round_ps(
+#[cfg_attr(test, assert_instr(vmulps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_mul_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulps(a, b, $imm4)
-        };
-    }
-    let mulround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, mulround, src.as_f32x16()))
+    let r = vmulps(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7253,24 +7216,19 @@ pub unsafe fn _mm512_mask_mul_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_mul_round_ps&expand=3939)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_mul_round_ps(
+#[cfg_attr(test, assert_instr(vmulps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_mul_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulps(a, b, $imm4)
-        };
-    }
-    let mulround = constify_imm4_round!(rounding, call);
+    let r = vmulps(a, b, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, mulround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, and store the results in dst.\
@@ -7285,17 +7243,13 @@ pub unsafe fn _mm512_maskz_mul_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mul_round_pd&expand=3937)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_mul_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vmulpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_mul_round_pd<const ROUNDING: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vmulpd(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7311,24 +7265,19 @@ pub unsafe fn _mm512_mul_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_mul_round_pd&expand=3935)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulpd, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_mul_round_pd(
+#[cfg_attr(test, assert_instr(vmulpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_mul_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulpd(a, b, $imm4)
-        };
-    }
-    let mulround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, mulround, src.as_f64x8()))
+    let r = vmulpd(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7343,24 +7292,19 @@ pub unsafe fn _mm512_mask_mul_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_mul_round_ps&expand=3939)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmulpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_mul_round_pd(
+#[cfg_attr(test, assert_instr(vmulpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_mul_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmulpd(a, b, $imm4)
-        };
-    }
-    let mulround = constify_imm4_round!(rounding, call);
+    let r = vmulpd(a, b, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, mulround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Divide packed single-precision (32-bit) floating-point elements in a by packed elements in b, and store the results in dst.\
@@ -7375,17 +7319,13 @@ pub unsafe fn _mm512_maskz_mul_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_div_round_ps&expand=2168)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_div_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vdivps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_div_round_ps<const ROUNDING: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vdivps(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7401,24 +7341,19 @@ pub unsafe fn _mm512_div_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_div_round_ps&expand=2169)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivps, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_div_round_ps(
+#[cfg_attr(test, assert_instr(vdivps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_div_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivps(a, b, $imm4)
-        };
-    }
-    let divround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, divround, src.as_f32x16()))
+    let r = vdivps(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Divide packed single-precision (32-bit) floating-point elements in a by packed elements in b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7433,24 +7368,19 @@ pub unsafe fn _mm512_mask_div_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_div_round_ps&expand=2170)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_div_round_ps(
+#[cfg_attr(test, assert_instr(vdivps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_div_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivps(a, b, $imm4)
-        };
-    }
-    let divround = constify_imm4_round!(rounding, call);
+    let r = vdivps(a, b, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, divround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, =and store the results in dst.\
@@ -7465,17 +7395,13 @@ pub unsafe fn _mm512_maskz_div_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_div_round_pd&expand=2165)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_div_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vdivpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_div_round_pd<const ROUNDING: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vdivpd(a, b, ROUNDING);
     transmute(r)
 }
 
@@ -7491,24 +7417,19 @@ pub unsafe fn _mm512_div_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m5
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_div_round_pd&expand=2166)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivpd, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_div_round_pd(
+#[cfg_attr(test, assert_instr(vdivpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_div_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivpd(a, b, $imm4)
-        };
-    }
-    let divround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, divround, src.as_f64x8()))
+    let r = vdivpd(a, b, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Divide packed double-precision (64-bit) floating-point elements in a by packed elements in b, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7523,24 +7444,19 @@ pub unsafe fn _mm512_mask_div_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_div_round_pd&expand=2167)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vdivpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_div_round_pd(
+#[cfg_attr(test, assert_instr(vdivpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_div_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vdivpd(a, b, $imm4)
-        };
-    }
-    let divround = constify_imm4_round!(rounding, call);
+    let r = vdivpd(a, b, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, divround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Compute the square root of packed single-precision (32-bit) floating-point elements in a, and store the results in dst.\
@@ -7555,16 +7471,12 @@ pub unsafe fn _mm512_maskz_div_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sqrt_round_ps&expand=5377)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtps, rounding = 8))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_sqrt_round_ps(a: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vsqrtps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_sqrt_round_ps<const ROUNDING: i32>(a: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtps(a, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vsqrtps(a, ROUNDING);
     transmute(r)
 }
 
@@ -7580,22 +7492,17 @@ pub unsafe fn _mm512_sqrt_round_ps(a: __m512, rounding: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sqrt_round_ps&expand=5375)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_sqrt_round_ps(
+#[cfg_attr(test, assert_instr(vsqrtps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_sqrt_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtps(a, $imm4)
-        };
-    }
-    let sqrtround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, sqrtround, src.as_f32x16()))
+    let r = vsqrtps(a, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Compute the square root of packed single-precision (32-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7610,18 +7517,14 @@ pub unsafe fn _mm512_mask_sqrt_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sqrt_round_ps&expand=5376)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_sqrt_round_ps(k: __mmask16, a: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vsqrtps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_sqrt_round_ps<const ROUNDING: i32>(k: __mmask16, a: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtps(a, $imm4)
-        };
-    }
-    let sqrtround = constify_imm4_round!(rounding, call);
+    let r = vsqrtps(a, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, sqrtround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Compute the square root of packed double-precision (64-bit) floating-point elements in a, and store the results in dst.\
@@ -7636,16 +7539,12 @@ pub unsafe fn _mm512_maskz_sqrt_round_ps(k: __mmask16, a: __m512, rounding: i32)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_sqrt_round_pd&expand=5374)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtpd, rounding = 8))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_sqrt_round_pd(a: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vsqrtpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_sqrt_round_pd<const ROUNDING: i32>(a: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtpd(a, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vsqrtpd(a, ROUNDING);
     transmute(r)
 }
 
@@ -7661,22 +7560,17 @@ pub unsafe fn _mm512_sqrt_round_pd(a: __m512d, rounding: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_sqrt_round_pd&expand=5372)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_sqrt_round_pd(
+#[cfg_attr(test, assert_instr(vsqrtpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_sqrt_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtpd(a, $imm4)
-        };
-    }
-    let sqrtround = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, sqrtround, src.as_f64x8()))
+    let r = vsqrtpd(a, ROUNDING);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Compute the square root of packed double-precision (64-bit) floating-point elements in a, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7691,18 +7585,14 @@ pub unsafe fn _mm512_mask_sqrt_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_sqrt_round_pd&expand=5373)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vsqrtpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_sqrt_round_pd(k: __mmask8, a: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vsqrtpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_sqrt_round_pd<const ROUNDING: i32>(k: __mmask8, a: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vsqrtpd(a, $imm4)
-        };
-    }
-    let sqrtround = constify_imm4_round!(rounding, call);
+    let r = vsqrtpd(a, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, sqrtround, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst.\
@@ -7717,18 +7607,18 @@ pub unsafe fn _mm512_maskz_sqrt_round_pd(k: __mmask8, a: __m512d, rounding: i32)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmadd_round_ps&expand=2565)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmadd_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132psround(a, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -7744,25 +7634,20 @@ pub unsafe fn _mm512_fmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmadd_round_ps&expand=2566)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmadd, a))
+    let r = vfmadd132psround(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in a using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7777,26 +7662,21 @@ pub unsafe fn _mm512_mask_fmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmadd_round_ps&expand=2568)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
+    let r = vfmadd132psround(a, b, c, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, fmadd, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -7811,25 +7691,20 @@ pub unsafe fn _mm512_maskz_fmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmadd_round_ps&expand=2567)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132ps or vfmadd213ps or vfmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmadd, c))
+    let r = vfmadd132psround(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst.\
@@ -7844,18 +7719,18 @@ pub unsafe fn _mm512_mask3_fmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmadd_round_pd&expand=2561)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmadd_round_pd<const ROUNDING: i32>(
+    a: __m512d,
+    b: __m512d,
+    c: __m512d,
+) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132pdround(a, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -7871,25 +7746,20 @@ pub unsafe fn _mm512_fmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmadd_round_pd&expand=2562)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmadd, a))
+    let r = vfmadd132pdround(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -7904,26 +7774,21 @@ pub unsafe fn _mm512_mask_fmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmadd_round_pd&expand=2564)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
+    let r = vfmadd132pdround(a, b, c, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, fmadd, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -7938,25 +7803,20 @@ pub unsafe fn _mm512_maskz_fmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmadd_round_pd&expand=2563)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmadd132pd or vfmadd213pd or vfmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, c, $imm4)
-        };
-    }
-    let fmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmadd, c))
+    let r = vfmadd132pdround(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.\
@@ -7971,19 +7831,19 @@ pub unsafe fn _mm512_mask3_fmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmsub_round_ps&expand=2651)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmsub_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, sub, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132psround(a, b, sub, ROUNDING);
     transmute(r)
 }
 
@@ -7999,26 +7859,21 @@ pub unsafe fn _mm512_fmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmsub_round_ps&expand=2652)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, a))
+    let r = vfmadd132psround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8033,26 +7888,21 @@ pub unsafe fn _mm512_mask_fmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmsub_round_ps&expand=2654)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, zero))
+    let r = vfmadd132psround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8067,27 +7917,22 @@ pub unsafe fn _mm512_maskz_fmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmsub_round_ps&expand=2653)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132ps or vfmsub213ps or vfmsub231ps, clang generates vfmadd, gcc generates vfmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let c = c.as_f32x16();
     let sub = simd_sub(zero, c);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, c))
+    let r = vfmadd132psround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst.\
@@ -8102,19 +7947,19 @@ pub unsafe fn _mm512_mask3_fmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmsub_round_pd&expand=2647)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmsub_round_pd<const ROUNDING: i32>(
+    a: __m512d,
+    b: __m512d,
+    c: __m512d,
+) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, sub, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132pdround(a, b, sub, ROUNDING);
     transmute(r)
 }
 
@@ -8130,26 +7975,21 @@ pub unsafe fn _mm512_fmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmsub_round_pd&expand=2648)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, a))
+    let r = vfmadd132pdround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8164,26 +8004,21 @@ pub unsafe fn _mm512_mask_fmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmsub_round_pd&expand=2650)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, zero))
+    let r = vfmadd132pdround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8198,27 +8033,22 @@ pub unsafe fn _mm512_maskz_fmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmsub_round_pd&expand=2649)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfmsub132pd or vfmsub213pd or vfmsub231pd. clang generates fmadd, gcc generates fmsub
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let c = c.as_f64x8();
     let sub = simd_sub(zero, c);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(a, b, sub, $imm4)
-        };
-    }
-    let fmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsub, c))
+    let r = vfmadd132pdround(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.\
@@ -8233,18 +8063,18 @@ pub unsafe fn _mm512_mask3_fmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmaddsub_round_ps&expand=2619)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmaddsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmaddsub_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213ps(a, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -8260,25 +8090,20 @@ pub unsafe fn _mm512_fmaddsub_round_ps(a: __m512, b: __m512, c: __m512, rounding
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmaddsub_round_ps&expand=2620)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmaddsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmaddsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmaddsub, a))
+    let r = vfmaddsub213ps(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8293,26 +8118,21 @@ pub unsafe fn _mm512_mask_fmaddsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmaddsub_round_ps&expand=2622)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmaddsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmaddsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213ps(a, b, c, ROUNDING);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, fmaddsub, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8327,25 +8147,20 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmaddsub_round_ps&expand=2621)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmaddsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132ps or vfmaddsub213ps or vfmaddsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmaddsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmaddsub, c))
+    let r = vfmaddsub213ps(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst.\
@@ -8360,23 +8175,18 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmaddsub_round_pd&expand=2615)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmaddsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmaddsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213pd(a, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -8392,25 +8202,20 @@ pub unsafe fn _mm512_fmaddsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmaddsub_round_pd&expand=2616)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmaddsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmaddsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmaddsub, a))
+    let r = vfmaddsub213pd(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8425,26 +8230,21 @@ pub unsafe fn _mm512_mask_fmaddsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmaddsub_round_pd&expand=2618)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmaddsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmaddsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213pd(a, b, c, ROUNDING);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, fmaddsub, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8459,25 +8259,20 @@ pub unsafe fn _mm512_maskz_fmaddsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmaddsub_round_pd&expand=2617)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmaddsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmaddsub132pd or vfmaddsub213pd or vfmaddsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmaddsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, c, $imm4)
-        };
-    }
-    let fmaddsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmaddsub, c))
+    let r = vfmaddsub213pd(a, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.\
@@ -8492,19 +8287,19 @@ pub unsafe fn _mm512_mask3_fmaddsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmsubadd_round_ps&expand=2699)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmsubadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmsubadd_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, sub, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
     transmute(r)
 }
 
@@ -8520,26 +8315,21 @@ pub unsafe fn _mm512_fmsubadd_round_ps(a: __m512, b: __m512, c: __m512, rounding
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmsubadd_round_ps&expand=2700)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmsubadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmsubadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, a))
+    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8554,26 +8344,21 @@ pub unsafe fn _mm512_mask_fmsubadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmsubadd_round_ps&expand=2702)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmsubadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmsubadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f32x16());
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, zero))
+    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8588,27 +8373,22 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmsubadd_round_ps&expand=2701)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmsubadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132ps or vfmsubadd213ps or vfmsubadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmsubadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let c = c.as_f32x16();
     let sub = simd_sub(zero, c);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213ps(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, c))
+    let r = vfmaddsub213ps(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst.\
@@ -8623,24 +8403,19 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fmsubadd_round_pd&expand=2695)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fmsubadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, sub, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
     transmute(r)
 }
 
@@ -8656,26 +8431,21 @@ pub unsafe fn _mm512_fmsubadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fmsubadd_round_pd&expand=2696)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fmsubadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, a))
+    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively add and subtract packed elements in c to/from the intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8690,26 +8460,21 @@ pub unsafe fn _mm512_mask_fmsubadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fmsubadd_round_pd&expand=2698)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fmsubadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fmsubadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, c.as_f64x8());
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, zero))
+    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, alternatively subtract and add packed elements in c from/to the intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8724,27 +8489,22 @@ pub unsafe fn _mm512_maskz_fmsubadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fmsubadd_round_pd&expand=2697)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmaddsub, rounding = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fmsubadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmaddsub, ROUNDING = 8))] //vfmsubadd132pd or vfmsubadd213pd or vfmsubadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fmsubadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let c = c.as_f64x8();
     let sub = simd_sub(zero, c);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmaddsub213pd(a, b, sub, $imm4)
-        };
-    }
-    let fmsubadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fmsubadd, c))
+    let r = vfmaddsub213pd(a, b, sub, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.\
@@ -8759,19 +8519,19 @@ pub unsafe fn _mm512_mask3_fmsubadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fnmadd_round_ps&expand=2731)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fnmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fnmadd_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f32x16());
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(sub, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132psround(sub, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -8787,26 +8547,21 @@ pub unsafe fn _mm512_fnmadd_round_ps(a: __m512, b: __m512, c: __m512, rounding: 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fnmadd_round_ps&expand=2732)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fnmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fnmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f32x16());
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, a.as_f32x16()))
+    let r = vfmadd132psround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a.as_f32x16()))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8821,26 +8576,21 @@ pub unsafe fn _mm512_mask_fnmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fnmadd_round_ps&expand=2734)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fnmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fnmadd_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f32x16());
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, zero))
+    let r = vfmadd132psround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8855,26 +8605,21 @@ pub unsafe fn _mm512_maskz_fnmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fnmadd_round_ps&expand=2733)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fnmadd_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132ps or vfnmadd213ps or vfnmadd231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fnmadd_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f32x16());
     let b = b.as_f32x16();
     let c = c.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, c))
+    let r = vfmadd132psround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst.\
@@ -8889,19 +8634,19 @@ pub unsafe fn _mm512_mask3_fnmadd_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fnmadd_pd&expand=2711)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fnmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fnmadd_round_pd<const ROUNDING: i32>(
+    a: __m512d,
+    b: __m512d,
+    c: __m512d,
+) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f64x8());
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(sub, b, c, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132pdround(sub, b, c, ROUNDING);
     transmute(r)
 }
 
@@ -8917,27 +8662,22 @@ pub unsafe fn _mm512_fnmadd_round_pd(a: __m512d, b: __m512d, c: __m512d, roundin
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fnmadd_round_pd&expand=2728)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fnmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fnmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let a = a.as_f64x8();
     let sub = simd_sub(zero, a);
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, a))
+    let r = vfmadd132pdround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -8952,26 +8692,21 @@ pub unsafe fn _mm512_mask_fnmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fnmadd_round_pd&expand=2730)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fnmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fnmadd_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f64x8());
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, zero))
+    let r = vfmadd132pdround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, add the negated intermediate result to packed elements in c, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -8986,26 +8721,21 @@ pub unsafe fn _mm512_maskz_fnmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fnmadd_round_pd&expand=2729)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fnmadd_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmadd132pd or vfnmadd213pd or vfnmadd231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fnmadd_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let sub = simd_sub(zero, a.as_f64x8());
     let b = b.as_f64x8();
     let c = c.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(sub, b, c, $imm4)
-        };
-    }
-    let fnmadd = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmadd, c))
+    let r = vfmadd132pdround(sub, b, c, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.\
@@ -9020,19 +8750,19 @@ pub unsafe fn _mm512_mask3_fnmadd_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fnmsub_round_ps&expand=2779)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fnmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fnmsub_round_ps<const ROUNDING: i32>(
+    a: __m512,
+    b: __m512,
+    c: __m512,
+) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f32x16());
     let subc = simd_sub(zero, c.as_f32x16());
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(suba, b, subc, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132psround(suba, b, subc, ROUNDING);
     transmute(r)
 }
 
@@ -9048,27 +8778,22 @@ pub unsafe fn _mm512_fnmsub_round_ps(a: __m512, b: __m512, c: __m512, rounding: 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fnmsub_round_ps&expand=2780)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fnmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fnmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     k: __mmask16,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let a = a.as_f32x16();
     let suba = simd_sub(zero, a);
     let subc = simd_sub(zero, c.as_f32x16());
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, a))
+    let r = vfmadd132psround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9083,26 +8808,21 @@ pub unsafe fn _mm512_mask_fnmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fnmsub_round_ps&expand=2782)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fnmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fnmsub_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
     c: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f32x16());
     let subc = simd_sub(zero, c.as_f32x16());
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, zero))
+    let r = vfmadd132psround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed single-precision (32-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9117,27 +8837,22 @@ pub unsafe fn _mm512_maskz_fnmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fnmsub_round_ps&expand=2781)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fnmsub_round_ps(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132ps or vfnmsub213ps or vfnmsub231ps
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fnmsub_round_ps<const ROUNDING: i32>(
     a: __m512,
     b: __m512,
     c: __m512,
     k: __mmask16,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let zero: f32x16 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f32x16());
     let c = c.as_f32x16();
     let subc = simd_sub(zero, c);
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132psround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, c))
+    let r = vfmadd132psround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst.\
@@ -9152,19 +8867,19 @@ pub unsafe fn _mm512_mask3_fnmsub_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_fnmsub_round_pd&expand=2775)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_fnmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_fnmsub_round_pd<const ROUNDING: i32>(
+    a: __m512d,
+    b: __m512d,
+    c: __m512d,
+) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f64x8());
     let subc = simd_sub(zero, c.as_f64x8());
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(suba, b, subc, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
     transmute(r)
 }
 
@@ -9180,27 +8895,22 @@ pub unsafe fn _mm512_fnmsub_round_pd(a: __m512d, b: __m512d, c: __m512d, roundin
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_fnmsub_round_pd&expand=2776)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_fnmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_fnmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     k: __mmask8,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let a = a.as_f64x8();
     let suba = simd_sub(zero, a);
     let subc = simd_sub(zero, c.as_f64x8());
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, a))
+    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, a))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9215,26 +8925,21 @@ pub unsafe fn _mm512_mask_fnmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_fnmsub_round_pd&expand=2778)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_maskz_fnmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_maskz_fnmsub_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
     c: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f64x8());
     let subc = simd_sub(zero, c.as_f64x8());
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, zero))
+    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in a and b, subtract packed elements in c from the negated intermediate result, and store the results in dst using writemask k (elements are copied from c when the corresponding mask bit is not set).\
@@ -9249,27 +8954,22 @@ pub unsafe fn _mm512_maskz_fnmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask3_fnmsub_round_pd&expand=2777)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vfmadd, rounding = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask3_fnmsub_round_pd(
+#[cfg_attr(test, assert_instr(vfmadd, ROUNDING = 8))] //vfnmsub132pd or vfnmsub213pd or vfnmsub231pd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask3_fnmsub_round_pd<const ROUNDING: i32>(
     a: __m512d,
     b: __m512d,
     c: __m512d,
     k: __mmask8,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let zero: f64x8 = mem::zeroed();
     let suba = simd_sub(zero, a.as_f64x8());
     let c = c.as_f64x8();
     let subc = simd_sub(zero, c);
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vfmadd132pdround(suba, b, subc, $imm4)
-        };
-    }
-    let fnmsub = constify_imm4_round!(rounding, call);
-    transmute(simd_select_bitmask(k, fnmsub, c))
+    let r = vfmadd132pdround(suba, b, subc, ROUNDING);
+    transmute(simd_select_bitmask(k, r, c))
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b, and store packed maximum values in dst.\
@@ -9278,17 +8978,13 @@ pub unsafe fn _mm512_mask3_fnmsub_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_max_round_ps&expand=3662)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxps, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_max_round_ps(a: __m512, b: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vmaxps, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_max_round_ps<const SAE: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vmaxps(a, b, SAE);
     transmute(r)
 }
 
@@ -9298,24 +8994,19 @@ pub unsafe fn _mm512_max_round_ps(a: __m512, b: __m512, sae: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_max_round_ps&expand=3660)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxps, sae = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_max_round_ps(
+#[cfg_attr(test, assert_instr(vmaxps, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_max_round_ps<const SAE: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    sae: i32,
 ) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxps(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
-    transmute(simd_select_bitmask(k, max, src.as_f32x16()))
+    let r = vmaxps(a, b, SAE);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b, and store packed maximum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9324,19 +9015,19 @@ pub unsafe fn _mm512_mask_max_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_max_round_ps&expand=3661)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxps, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_max_round_ps(k: __mmask16, a: __m512, b: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vmaxps, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_max_round_ps<const SAE: i32>(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxps(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
+    let r = vmaxps(a, b, SAE);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, max, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed maximum values in dst.\
@@ -9345,17 +9036,13 @@ pub unsafe fn _mm512_maskz_max_round_ps(k: __mmask16, a: __m512, b: __m512, sae:
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_max_round_pd&expand=3659)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxpd, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_max_round_pd(a: __m512d, b: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vmaxpd, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_max_round_pd<const SAE: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vmaxpd(a, b, SAE);
     transmute(r)
 }
 
@@ -9365,24 +9052,19 @@ pub unsafe fn _mm512_max_round_pd(a: __m512d, b: __m512d, sae: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_max_round_pd&expand=3657)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxpd, sae = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_max_round_pd(
+#[cfg_attr(test, assert_instr(vmaxpd, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_max_round_pd<const SAE: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    sae: i32,
 ) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxpd(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
-    transmute(simd_select_bitmask(k, max, src.as_f64x8()))
+    let r = vmaxpd(a, b, SAE);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed maximum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9391,19 +9073,19 @@ pub unsafe fn _mm512_mask_max_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_max_round_pd&expand=3658)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vmaxpd, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_max_round_pd(k: __mmask8, a: __m512d, b: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vmaxpd, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_max_round_pd<const SAE: i32>(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vmaxpd(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
+    let r = vmaxpd(a, b, SAE);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, max, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b, and store packed minimum values in dst.\
@@ -9412,17 +9094,13 @@ pub unsafe fn _mm512_maskz_max_round_pd(k: __mmask8, a: __m512d, b: __m512d, sae
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_min_round_ps&expand=3776)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminps, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_min_round_ps(a: __m512, b: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vminps, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_min_round_ps<const SAE: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminps(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vminps(a, b, SAE);
     transmute(r)
 }
 
@@ -9432,24 +9110,19 @@ pub unsafe fn _mm512_min_round_ps(a: __m512, b: __m512, sae: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_min_round_ps&expand=3774)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminps, sae = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_min_round_ps(
+#[cfg_attr(test, assert_instr(vminps, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_min_round_ps<const SAE: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    sae: i32,
 ) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminps(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
-    transmute(simd_select_bitmask(k, max, src.as_f32x16()))
+    let r = vminps(a, b, SAE);
+    transmute(simd_select_bitmask(k, r, src.as_f32x16()))
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in a and b, and store packed minimum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9458,19 +9131,19 @@ pub unsafe fn _mm512_mask_min_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_min_round_ps&expand=3775)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminps, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_min_round_ps(k: __mmask16, a: __m512, b: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vminps, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_min_round_ps<const SAE: i32>(
+    k: __mmask16,
+    a: __m512,
+    b: __m512,
+) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminps(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
+    let r = vminps(a, b, SAE);
     let zero = _mm512_setzero_ps().as_f32x16();
-    transmute(simd_select_bitmask(k, max, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst.\
@@ -9479,17 +9152,13 @@ pub unsafe fn _mm512_maskz_min_round_ps(k: __mmask16, a: __m512, b: __m512, sae:
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_min_round_pd&expand=3773)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminpd, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_min_round_pd(a: __m512d, b: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vminpd, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_min_round_pd<const SAE: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminpd(a, b, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vminpd(a, b, SAE);
     transmute(r)
 }
 
@@ -9499,24 +9168,19 @@ pub unsafe fn _mm512_min_round_pd(a: __m512d, b: __m512d, sae: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_min_round_pd&expand=3771)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminpd, sae = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_min_round_pd(
+#[cfg_attr(test, assert_instr(vminpd, SAE = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_min_round_pd<const SAE: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    sae: i32,
 ) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminpd(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
-    transmute(simd_select_bitmask(k, max, src.as_f64x8()))
+    let r = vminpd(a, b, SAE);
+    transmute(simd_select_bitmask(k, r, src.as_f64x8()))
 }
 
 /// Compare packed double-precision (64-bit) floating-point elements in a and b, and store packed minimum values in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).\
@@ -9525,19 +9189,19 @@ pub unsafe fn _mm512_mask_min_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_min_round_pd&expand=3772)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vminpd, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_min_round_pd(k: __mmask8, a: __m512d, b: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vminpd, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_min_round_pd<const SAE: i32>(
+    k: __mmask8,
+    a: __m512d,
+    b: __m512d,
+) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vminpd(a, b, $imm4)
-        };
-    }
-    let max = constify_imm4_sae!(sae, call);
+    let r = vminpd(a, b, SAE);
     let zero = _mm512_setzero_pd().as_f64x8();
-    transmute(simd_select_bitmask(k, max, zero))
+    transmute(simd_select_bitmask(k, r, zero))
 }
 
 /// Convert the exponent of each packed single-precision (32-bit) floating-point element in a to a single-precision (32-bit) floating-point number representing the integer exponent, and store the results in dst. This intrinsic essentially calculates floor(log2(x)) for each element.\
@@ -9546,17 +9210,13 @@ pub unsafe fn _mm512_maskz_min_round_pd(k: __mmask8, a: __m512d, b: __m512d, sae
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_getexp_round_ps&expand=2850)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexpps, sae = 8))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_getexp_round_ps(a: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vgetexpps, SAE = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_getexp_round_ps<const SAE: i32>(a: __m512) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexpps(a, zero, 0b11111111_11111111, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexpps(a, zero, 0b11111111_11111111, SAE);
     transmute(r)
 }
 
@@ -9566,22 +9226,17 @@ pub unsafe fn _mm512_getexp_round_ps(a: __m512, sae: i32) -> __m512 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_getexp_round_ps&expand=2851)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexpps, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_getexp_round_ps(
+#[cfg_attr(test, assert_instr(vgetexpps, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_getexp_round_ps<const SAE: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
-    sae: i32,
 ) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let src = src.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexpps(a, src, k, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexpps(a, src, k, SAE);
     transmute(r)
 }
 
@@ -9591,17 +9246,13 @@ pub unsafe fn _mm512_mask_getexp_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_getexp_round_ps&expand=2852)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexpps, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_getexp_round_ps(k: __mmask16, a: __m512, sae: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vgetexpps, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_getexp_round_ps<const SAE: i32>(k: __mmask16, a: __m512) -> __m512 {
+    static_assert_sae!(SAE);
     let a = a.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexpps(a, zero, k, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexpps(a, zero, k, SAE);
     transmute(r)
 }
 
@@ -9611,17 +9262,13 @@ pub unsafe fn _mm512_maskz_getexp_round_ps(k: __mmask16, a: __m512, sae: i32) ->
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_getexp_round_pd&expand=2847)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexppd, sae = 8))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_getexp_round_pd(a: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vgetexppd, SAE = 8))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_getexp_round_pd<const SAE: i32>(a: __m512d) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexppd(a, zero, 0b11111111, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexppd(a, zero, 0b11111111, SAE);
     transmute(r)
 }
 
@@ -9631,22 +9278,17 @@ pub unsafe fn _mm512_getexp_round_pd(a: __m512d, sae: i32) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_getexp_round_pd&expand=2848)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexppd, sae = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_mask_getexp_round_pd(
+#[cfg_attr(test, assert_instr(vgetexppd, SAE = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_mask_getexp_round_pd<const SAE: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
-    sae: i32,
 ) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let src = src.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexppd(a, src, k, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexppd(a, src, k, SAE);
     transmute(r)
 }
 
@@ -9656,17 +9298,13 @@ pub unsafe fn _mm512_mask_getexp_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_getexp_round_pd&expand=2849)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vgetexppd, sae = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_getexp_round_pd(k: __mmask8, a: __m512d, sae: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vgetexppd, SAE = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_getexp_round_pd<const SAE: i32>(k: __mmask8, a: __m512d) -> __m512d {
+    static_assert_sae!(SAE);
     let a = a.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vgetexppd(a, zero, k, $imm4)
-        };
-    }
-    let r = constify_imm4_sae!(sae, call);
+    let r = vgetexppd(a, zero, k, SAE);
     transmute(r)
 }
 
@@ -9860,18 +9498,14 @@ pub unsafe fn _mm512_maskz_roundscale_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_scalef_round_ps&expand=4889)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_scalef_round_ps(a: __m512, b: __m512, rounding: i32) -> __m512 {
+#[cfg_attr(test, assert_instr(vscalefps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_scalef_round_ps<const ROUNDING: i32>(a: __m512, b: __m512) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefps(a, b, zero, 0b11111111_11111111, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefps(a, b, zero, 0b11111111_11111111, ROUNDING);
     transmute(r)
 }
 
@@ -9887,24 +9521,19 @@ pub unsafe fn _mm512_scalef_round_ps(a: __m512, b: __m512, rounding: i32) -> __m
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_scalef_round_ps&expand=4887)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_scalef_round_ps(
+#[cfg_attr(test, assert_instr(vscalefps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_scalef_round_ps<const ROUNDING: i32>(
     src: __m512,
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let src = src.as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefps(a, b, src, k, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefps(a, b, src, k, ROUNDING);
     transmute(r)
 }
 
@@ -9920,23 +9549,18 @@ pub unsafe fn _mm512_mask_scalef_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_scalef_round_ps&expand=4888)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefps, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_scalef_round_ps(
+#[cfg_attr(test, assert_instr(vscalefps, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_scalef_round_ps<const ROUNDING: i32>(
     k: __mmask16,
     a: __m512,
     b: __m512,
-    rounding: i32,
 ) -> __m512 {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
     let zero = _mm512_setzero_ps().as_f32x16();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefps(a, b, zero, k, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefps(a, b, zero, k, ROUNDING);
     transmute(r)
 }
 
@@ -9952,18 +9576,14 @@ pub unsafe fn _mm512_maskz_scalef_round_ps(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_scalef_round_pd&expand=4886)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_scalef_round_pd(a: __m512d, b: __m512d, rounding: i32) -> __m512d {
+#[cfg_attr(test, assert_instr(vscalefpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_scalef_round_pd<const ROUNDING: i32>(a: __m512d, b: __m512d) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefpd(a, b, zero, 0b11111111, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefpd(a, b, zero, 0b11111111, ROUNDING);
     transmute(r)
 }
 
@@ -9979,24 +9599,19 @@ pub unsafe fn _mm512_scalef_round_pd(a: __m512d, b: __m512d, rounding: i32) -> _
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_scalef_round_pd&expand=4884)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_scalef_round_pd(
+#[cfg_attr(test, assert_instr(vscalefpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_scalef_round_pd<const ROUNDING: i32>(
     src: __m512d,
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let src = src.as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefpd(a, b, src, k, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefpd(a, b, src, k, ROUNDING);
     transmute(r)
 }
 
@@ -10012,23 +9627,18 @@ pub unsafe fn _mm512_mask_scalef_round_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_scalef_round_pd&expand=4885)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vscalefpd, rounding = 8))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_scalef_round_pd(
+#[cfg_attr(test, assert_instr(vscalefpd, ROUNDING = 8))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_scalef_round_pd<const ROUNDING: i32>(
     k: __mmask8,
     a: __m512d,
     b: __m512d,
-    rounding: i32,
 ) -> __m512d {
+    static_assert_rounding!(ROUNDING);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
     let zero = _mm512_setzero_pd().as_f64x8();
-    macro_rules! call {
-        ($imm4:expr) => {
-            vscalefpd(a, b, zero, k, $imm4)
-        };
-    }
-    let r = constify_imm4_round!(rounding, call);
+    let r = vscalefpd(a, b, zero, k, ROUNDING);
     transmute(r)
 }
 
@@ -42377,7 +41987,7 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(1.);
-        let r = _mm512_sub_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_sub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             -1., 0.5, 1., 2.5,
@@ -42386,7 +41996,7 @@ mod tests {
             11., 12.5, 13., -0.99999994,
         );
         assert_eq_m512(r, e);
-        let r = _mm512_sub_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_sub_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b);
         let e = _mm512_setr_ps(
             -1., 0.5, 1., 2.5, 3., 4.5, 5., 6.5, 7., 8.5, 9., 10.5, 11., 12.5, 13., -0.9999999,
         );
@@ -42399,14 +42009,15 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(1.);
-        let r = _mm512_mask_sub_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_sub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, a, b,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_sub_round_ps(
+        let r = _mm512_mask_sub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42424,13 +42035,13 @@ mod tests {
             0., 1.5, 2., 3.5, 4., 5.5, 6., 7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 0.00000007,
         );
         let b = _mm512_set1_ps(1.);
-        let r = _mm512_maskz_sub_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_maskz_sub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_sub_round_ps(
+        let r = _mm512_maskz_sub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42452,7 +42063,7 @@ mod tests {
             12., 13.5, 14., 0.00000000000000000000007,
         );
         let b = _mm512_set1_ps(0.1);
-        let r = _mm512_mul_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mul_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             0., 0.15, 0.2, 0.35,
@@ -42461,7 +42072,7 @@ mod tests {
             1.2, 1.35, 1.4, 0.000000000000000000000007000001,
         );
         assert_eq_m512(r, e);
-        let r = _mm512_mul_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_mul_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             0., 0.14999999, 0.2, 0.35,
@@ -42482,14 +42093,15 @@ mod tests {
             12., 13.5, 14., 0.00000000000000000000007,
         );
         let b = _mm512_set1_ps(0.1);
-        let r = _mm512_mask_mul_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_mul_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, a, b,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_mul_round_ps(
+        let r = _mm512_mask_mul_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42511,13 +42123,13 @@ mod tests {
             12., 13.5, 14., 0.00000000000000000000007,
         );
         let b = _mm512_set1_ps(0.1);
-        let r = _mm512_maskz_mul_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_maskz_mul_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_mul_round_ps(
+        let r = _mm512_maskz_mul_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42533,10 +42145,10 @@ mod tests {
     unsafe fn test_mm512_div_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r = _mm512_div_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_div_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
         let e = _mm512_set1_ps(0.33333334);
         assert_eq_m512(r, e);
-        let r = _mm512_div_round_ps(a, b, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_div_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b);
         let e = _mm512_set1_ps(0.3333333);
         assert_eq_m512(r, e);
     }
@@ -42545,14 +42157,15 @@ mod tests {
     unsafe fn test_mm512_mask_div_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r = _mm512_mask_div_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_div_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, a, b,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_div_round_ps(
+        let r = _mm512_mask_div_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             1., 1., 1., 1., 1., 1., 1., 1., 0.33333334, 0.33333334, 0.33333334, 0.33333334,
@@ -42565,13 +42178,13 @@ mod tests {
     unsafe fn test_mm512_maskz_div_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r = _mm512_maskz_div_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_maskz_div_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_div_round_ps(
+        let r = _mm512_maskz_div_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 0.33333334, 0.33333334, 0.33333334, 0.33333334,
@@ -42583,10 +42196,10 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_sqrt_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_sqrt_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a);
         let e = _mm512_set1_ps(1.7320508);
         assert_eq_m512(r, e);
-        let r = _mm512_sqrt_round_ps(a, _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC);
+        let r = _mm512_sqrt_round_ps::<{ _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC }>(a);
         let e = _mm512_set1_ps(1.7320509);
         assert_eq_m512(r, e);
     }
@@ -42594,13 +42207,13 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_sqrt_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_mask_sqrt_round_ps(a, 0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_mask_sqrt_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, 0, a);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_sqrt_round_ps(
+        let r = _mm512_mask_sqrt_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             3., 3., 3., 3., 3., 3., 3., 3., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508,
@@ -42612,12 +42225,12 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_sqrt_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_maskz_sqrt_round_ps(0, a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_maskz_sqrt_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(0, a);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_sqrt_round_ps(
+        let r = _mm512_maskz_sqrt_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 1.7320508, 1.7320508, 1.7320508, 1.7320508, 1.7320508,
@@ -42631,10 +42244,10 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_fmadd_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(-0.99999994);
         assert_eq_m512(r, e);
-        let r = _mm512_fmadd_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmadd_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(-0.9999999);
         assert_eq_m512(r, e);
     }
@@ -42644,15 +42257,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_mask_fmadd_round_ps(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fmadd_round_ps(
+        let r = _mm512_mask_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42669,16 +42282,16 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_maskz_fmadd_round_ps(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
+        );
         assert_eq_m512(r, _mm512_setzero_ps());
         #[rustfmt::skip]
-        let r = _mm512_maskz_fmadd_round_ps(
+        let r = _mm512_maskz_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42695,15 +42308,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_mask3_fmadd_round_ps(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask3_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
+        );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fmadd_round_ps(
+        let r = _mm512_mask3_fmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42720,10 +42333,10 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r = _mm512_fmsub_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(-0.99999994);
         assert_eq_m512(r, e);
-        let r = _mm512_fmsub_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmsub_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(-0.9999999);
         assert_eq_m512(r, e);
     }
@@ -42733,15 +42346,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_mask_fmsub_round_ps(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fmsub_round_ps(
+        let r = _mm512_mask_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42758,15 +42371,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_maskz_fmsub_round_ps(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
+        );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_fmsub_round_ps(
+        let r = _mm512_maskz_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42783,15 +42396,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_mask3_fmsub_round_ps(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask3_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
+        );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fmsub_round_ps(
+        let r = _mm512_mask3_fmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42808,7 +42421,8 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_fmaddsub_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             1.0000001, -0.99999994, 1.0000001, -0.99999994,
@@ -42817,7 +42431,7 @@ mod tests {
             1.0000001, -0.99999994, 1.0000001, -0.99999994,
         );
         assert_eq_m512(r, e);
-        let r = _mm512_fmaddsub_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmaddsub_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_setr_ps(
             1., -0.9999999, 1., -0.9999999, 1., -0.9999999, 1., -0.9999999, 1., -0.9999999, 1.,
             -0.9999999, 1., -0.9999999, 1., -0.9999999,
@@ -42830,20 +42444,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_mask_fmaddsub_round_ps(
-            a,
-            0,
-            b,
-            c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_mask_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
         );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fmaddsub_round_ps(
+        let r = _mm512_mask_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42860,20 +42469,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_maskz_fmaddsub_round_ps(
-            0,
-            a,
-            b,
-            c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_maskz_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
         );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_fmaddsub_round_ps(
+        let r = _mm512_maskz_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42890,20 +42494,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_mask3_fmaddsub_round_ps(
-            a,
-            b,
-            c,
-            0,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_mask3_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
         );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fmaddsub_round_ps(
+        let r = _mm512_mask3_fmaddsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42920,7 +42519,8 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_fmsubadd_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
             -0.99999994, 1.0000001, -0.99999994, 1.0000001,
@@ -42929,7 +42529,7 @@ mod tests {
             -0.99999994, 1.0000001, -0.99999994, 1.0000001,
         );
         assert_eq_m512(r, e);
-        let r = _mm512_fmsubadd_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fmsubadd_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_setr_ps(
             -0.9999999, 1., -0.9999999, 1., -0.9999999, 1., -0.9999999, 1., -0.9999999, 1.,
             -0.9999999, 1., -0.9999999, 1., -0.9999999, 1.,
@@ -42942,20 +42542,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_mask_fmsubadd_round_ps(
-            a,
-            0,
-            b,
-            c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_mask_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
         );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fmsubadd_round_ps(
+        let r = _mm512_mask_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -42972,20 +42567,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_maskz_fmsubadd_round_ps(
-            0,
-            a,
-            b,
-            c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_maskz_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
         );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_fmsubadd_round_ps(
+        let r = _mm512_maskz_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -43002,20 +42592,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_mask3_fmsubadd_round_ps(
-            a,
-            b,
-            c,
-            0,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
+        let r = _mm512_mask3_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
         );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fmsubadd_round_ps(
+        let r = _mm512_mask3_fmsubadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         #[rustfmt::skip]
         let e = _mm512_setr_ps(
@@ -43032,10 +42617,11 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r = _mm512_fnmadd_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(0.99999994);
         assert_eq_m512(r, e);
-        let r = _mm512_fnmadd_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fnmadd_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(0.9999999);
         assert_eq_m512(r, e);
     }
@@ -43045,15 +42631,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_mask_fnmadd_round_ps(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fnmadd_round_ps(
+        let r = _mm512_mask_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43068,15 +42654,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_maskz_fnmadd_round_ps(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
+        );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_fnmadd_round_ps(
+        let r = _mm512_maskz_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43090,15 +42676,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(1.);
-        let r =
-            _mm512_mask3_fnmadd_round_ps(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask3_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
+        );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fnmadd_round_ps(
+        let r = _mm512_mask3_fnmadd_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43112,10 +42698,11 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r = _mm512_fnmsub_round_ps(a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r =
+            _mm512_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(0.99999994);
         assert_eq_m512(r, e);
-        let r = _mm512_fnmsub_round_ps(a, b, c, _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC);
+        let r = _mm512_fnmsub_round_ps::<{ _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC }>(a, b, c);
         let e = _mm512_set1_ps(0.9999999);
         assert_eq_m512(r, e);
     }
@@ -43125,15 +42712,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_mask_fnmsub_round_ps(a, 0, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, b, c,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_fnmsub_round_ps(
+        let r = _mm512_mask_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b00000000_11111111,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43148,15 +42735,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_maskz_fnmsub_round_ps(0, a, b, c, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b, c,
+        );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_fnmsub_round_ps(
+        let r = _mm512_maskz_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b00000000_11111111,
             a,
             b,
             c,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43170,15 +42757,15 @@ mod tests {
         let a = _mm512_set1_ps(0.00000007);
         let b = _mm512_set1_ps(1.);
         let c = _mm512_set1_ps(-1.);
-        let r =
-            _mm512_mask3_fnmsub_round_ps(a, b, c, 0, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask3_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, b, c, 0,
+        );
         assert_eq_m512(r, c);
-        let r = _mm512_mask3_fnmsub_round_ps(
+        let r = _mm512_mask3_fnmsub_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             b,
             c,
             0b00000000_11111111,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_setr_ps(
             0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994, 0.99999994,
@@ -43195,7 +42782,7 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_max_round_ps(a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_max_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, b);
         let e = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
@@ -43210,9 +42797,9 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_mask_max_round_ps(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_max_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0, a, b);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_max_round_ps(a, 0b00000000_11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_max_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0b00000000_11111111, a, b);
         let e = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
@@ -43227,9 +42814,9 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_maskz_max_round_ps(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_max_round_ps::<_MM_FROUND_CUR_DIRECTION>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_max_round_ps(0b00000000_11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_max_round_ps::<_MM_FROUND_CUR_DIRECTION>(0b00000000_11111111, a, b);
         let e = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
@@ -43244,7 +42831,7 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_min_round_ps(a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_min_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, b);
         let e = _mm512_setr_ps(
             0., 1., 2., 3., 4., 5., 6., 7., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
@@ -43259,9 +42846,9 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_mask_min_round_ps(a, 0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_min_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0, a, b);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_min_round_ps(a, 0b00000000_11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_min_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0b00000000_11111111, a, b);
         let e = _mm512_setr_ps(
             0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
@@ -43276,9 +42863,9 @@ mod tests {
         let b = _mm512_setr_ps(
             15., 14., 13., 12., 11., 10., 9., 8., 7., 6., 5., 4., 3., 2., 1., 0.,
         );
-        let r = _mm512_maskz_min_round_ps(0, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_min_round_ps::<_MM_FROUND_CUR_DIRECTION>(0, a, b);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_min_round_ps(0b00000000_11111111, a, b, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_min_round_ps::<_MM_FROUND_CUR_DIRECTION>(0b00000000_11111111, a, b);
         let e = _mm512_setr_ps(
             0., 1., 2., 3., 4., 5., 6., 7., 0., 0., 0., 0., 0., 0., 0., 0.,
         );
@@ -43288,10 +42875,7 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_getexp_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_getexp_round_ps(a, _MM_FROUND_CUR_DIRECTION);
-        let e = _mm512_set1_ps(1.);
-        assert_eq_m512(r, e);
-        let r = _mm512_getexp_round_ps(a, _MM_FROUND_NO_EXC);
+        let r = _mm512_getexp_round_ps::<_MM_FROUND_CUR_DIRECTION>(a);
         let e = _mm512_set1_ps(1.);
         assert_eq_m512(r, e);
     }
@@ -43299,9 +42883,9 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_getexp_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_mask_getexp_round_ps(a, 0, a, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_getexp_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0, a);
         assert_eq_m512(r, a);
-        let r = _mm512_mask_getexp_round_ps(a, 0b11111111_00000000, a, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_mask_getexp_round_ps::<_MM_FROUND_CUR_DIRECTION>(a, 0b11111111_00000000, a);
         let e = _mm512_setr_ps(
             3., 3., 3., 3., 3., 3., 3., 3., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
@@ -43311,9 +42895,9 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_getexp_round_ps() {
         let a = _mm512_set1_ps(3.);
-        let r = _mm512_maskz_getexp_round_ps(0, a, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_getexp_round_ps::<_MM_FROUND_CUR_DIRECTION>(0, a);
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_getexp_round_ps(0b11111111_00000000, a, _MM_FROUND_CUR_DIRECTION);
+        let r = _mm512_maskz_getexp_round_ps::<_MM_FROUND_CUR_DIRECTION>(0b11111111_00000000, a);
         let e = _mm512_setr_ps(
             0., 0., 0., 0., 0., 0., 0., 0., 1., 1., 1., 1., 1., 1., 1., 1.,
         );
@@ -43355,7 +42939,7 @@ mod tests {
     unsafe fn test_mm512_scalef_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r = _mm512_scalef_round_ps(a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_scalef_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(a, b);
         let e = _mm512_set1_ps(8.);
         assert_eq_m512(r, e);
     }
@@ -43364,15 +42948,15 @@ mod tests {
     unsafe fn test_mm512_mask_scalef_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r =
-            _mm512_mask_scalef_round_ps(a, 0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_mask_scalef_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            a, 0, a, b,
+        );
         assert_eq_m512(r, a);
-        let r = _mm512_mask_scalef_round_ps(
+        let r = _mm512_mask_scalef_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             a,
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_set_ps(
             8., 8., 8., 8., 8., 8., 8., 8., 1., 1., 1., 1., 1., 1., 1., 1.,
@@ -43384,14 +42968,14 @@ mod tests {
     unsafe fn test_mm512_maskz_scalef_round_ps() {
         let a = _mm512_set1_ps(1.);
         let b = _mm512_set1_ps(3.);
-        let r =
-            _mm512_maskz_scalef_round_ps(0, a, b, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+        let r = _mm512_maskz_scalef_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
+            0, a, b,
+        );
         assert_eq_m512(r, _mm512_setzero_ps());
-        let r = _mm512_maskz_scalef_round_ps(
+        let r = _mm512_maskz_scalef_round_ps::<{ _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC }>(
             0b11111111_00000000,
             a,
             b,
-            _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC,
         );
         let e = _mm512_set_ps(
             8., 8., 8., 8., 8., 8., 8., 8., 0., 0., 0., 0., 0., 0., 0., 0.,

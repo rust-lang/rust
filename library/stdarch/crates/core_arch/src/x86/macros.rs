@@ -16,6 +16,22 @@ macro_rules! static_assert_rounding {
     };
 }
 
+// Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
+// not a sae number.
+pub(crate) struct ValidateConstSae<const IMM: i32>;
+impl<const IMM: i32> ValidateConstSae<IMM> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((IMM == 4 || IMM == 8) as usize);
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_sae {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::x86::macros::ValidateConstSae::<$imm>::VALID;
+    };
+}
+
 macro_rules! constify_imm6 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
