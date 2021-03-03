@@ -1,4 +1,5 @@
 use syntax::ast::{self, AstNode};
+use test_utils::mark;
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
 
@@ -43,9 +44,36 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         "Apply De Morgan's law",
         op_range,
         |edit| {
+            let paren_expr = expr.syntax().parent().and_then(|parent| ast::ParenExpr::cast(parent));
+
+            let neg_expr = paren_expr
+                .clone()
+                .and_then(|paren_expr| paren_expr.syntax().parent())
+                .and_then(|parent| ast::PrefixExpr::cast(parent))
+                .and_then(|prefix_expr| {
+                    if prefix_expr.op_kind().unwrap() == ast::PrefixOp::Not {
+                        Some(prefix_expr)
+                    } else {
+                        None
+                    }
+                });
+
             edit.replace(op_range, opposite_op);
-            edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
-            edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
+
+            if let Some(paren_expr) = paren_expr {
+                edit.replace(lhs_range, not_lhs.syntax().text());
+                edit.replace(rhs_range, not_rhs.syntax().text());
+                if let Some(neg_expr) = neg_expr {
+                    mark::hit!(demorgan_double_negation);
+                    edit.replace(neg_expr.op_token().unwrap().text_range(), "");
+                } else {
+                    mark::hit!(demorgan_double_parens);
+                    edit.replace(paren_expr.l_paren_token().unwrap().text_range(), "!(");
+                }
+            } else {
+                edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
+                edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
+            }
         },
     )
 }
@@ -62,6 +90,7 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use ide_db::helpers::FamousDefs;
+    use test_utils::mark;
 
     use super::*;
 
@@ -155,5 +184,17 @@ fn f() {
     #[test]
     fn demorgan_doesnt_apply_with_cursor_not_on_op() {
         check_assist_not_applicable(apply_demorgan, "fn f() { $0 !x || !x }")
+    }
+
+    #[test]
+    fn demorgan_doesnt_double_negation() {
+        mark::check!(demorgan_double_negation);
+        check_assist(apply_demorgan, "fn f() { !(x ||$0 x) }", "fn f() { (!x && !x) }")
+    }
+
+    #[test]
+    fn demorgan_doesnt_double_parens() {
+        mark::check!(demorgan_double_parens);
+        check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 }
