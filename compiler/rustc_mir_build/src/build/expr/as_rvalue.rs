@@ -61,8 +61,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(block = this.as_operand(block, scope, &arg));
                 // Check for -MIN on signed integers
-                if this.hir.check_overflow() && *op == UnOp::Neg && expr.ty.is_signed() {
-                    let bool_ty = this.hir.bool_ty();
+                if this.check_overflow && *op == UnOp::Neg && expr.ty.is_signed() {
+                    let bool_ty = this.tcx.types.bool;
 
                     let minval = this.minval_literal(expr_span, expr.ty);
                     let is_min = this.temp(bool_ty, expr_span);
@@ -105,7 +105,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // initialize the box contents:
                 unpack!(
                     block = this.expr_into_dest(
-                        this.hir.tcx().mk_place_deref(Place::from(result)),
+                        this.tcx.mk_place_deref(Place::from(result)),
                         block,
                         &value
                     )
@@ -148,7 +148,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
-                let el_ty = expr.ty.sequence_element_type(this.hir.tcx());
+                let el_ty = expr.ty.sequence_element_type(this.tcx);
                 let fields: Vec<_> = fields
                     .into_iter()
                     .map(|f| unpack!(block = this.as_operand(block, scope, &f)))
@@ -221,7 +221,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(box Constant {
                     span: expr_span,
                     user_ty: None,
-                    literal: ty::Const::zero_sized(this.hir.tcx(), this.hir.tcx().types.unit),
+                    literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit),
                 })))
             }
             ExprKind::Yield { .. }
@@ -273,9 +273,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         rhs: Operand<'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
-        let bool_ty = self.hir.bool_ty();
-        if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty]);
+        let bool_ty = self.tcx.types.bool;
+        if self.check_overflow && op.is_checkable() && ty.is_integral() {
+            let result_tup = self.tcx.intern_tup(&[ty, bool_ty]);
             let result_value = self.temp(result_tup, span);
 
             self.cfg.push_assign(
@@ -287,7 +287,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
-            let tcx = self.hir.tcx();
+            let tcx = self.tcx;
             let val = tcx.mk_place_field(result_value, val_fld, ty);
             let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
@@ -389,7 +389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
                 let enclosing_upvars_resolved =
-                    arg_place_builder.clone().into_place(this.hir.tcx(), this.hir.typeck_results());
+                    arg_place_builder.clone().into_place(this.tcx, this.typeck_results);
 
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
@@ -426,13 +426,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
         };
 
-        let arg_place = arg_place_builder.into_place(this.hir.tcx(), this.hir.typeck_results());
+        let arg_place = arg_place_builder.into_place(this.tcx, this.typeck_results);
 
         this.cfg.push_assign(
             block,
             source_info,
             Place::from(temp),
-            Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
+            Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place),
         );
 
         // See the comment in `expr_as_temp` and on the `rvalue_scopes` field for why
@@ -447,9 +447,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
+        let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
         let n = (!0u128) >> (128 - bits);
-        let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
+        let literal = ty::Const::from_bits(self.tcx, n, param_ty);
 
         self.literal_operand(span, literal)
     }
@@ -458,9 +458,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
         let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
+        let bits = self.tcx.layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
-        let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
+        let literal = ty::Const::from_bits(self.tcx, n, param_ty);
 
         self.literal_operand(span, literal)
     }

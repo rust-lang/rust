@@ -353,7 +353,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx(), self.hir.typeck_results()))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -377,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx(), self.hir.typeck_results()))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -462,8 +462,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place =
-                        place_builder.clone().into_place(this.hir.tcx(), this.hir.typeck_results());
+                    let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
                     this.cfg.push(
                         block,
                         Statement {
@@ -557,12 +556,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         upvar_id: ty::UpvarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let closure_ty = self
-            .hir
-            .typeck_results()
-            .node_type(self.hir.tcx().hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
+            .typeck_results
+            .node_type(self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
 
         let closure_kind = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
-            self.hir.infcx().closure_kind(closure_substs).unwrap()
+            self.infcx.closure_kind(closure_substs).unwrap()
         } else {
             // Generators are considered FnOnce.
             ty::ClosureKind::FnOnce
@@ -608,7 +606,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = self.bounds_check(
             block,
-            base_place.clone().into_place(self.hir.tcx(), self.hir.typeck_results()),
+            base_place.clone().into_place(self.tcx, self.typeck_results),
             idx,
             expr_span,
             source_info,
@@ -617,8 +615,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place =
-                base_place.expect_upvars_resolved(self.hir.tcx(), self.hir.typeck_results());
+            base_place = base_place.expect_upvars_resolved(self.tcx, self.typeck_results);
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -639,8 +636,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BasicBlock {
-        let usize_ty = self.hir.usize_ty();
-        let bool_ty = self.hir.bool_ty();
+        let usize_ty = self.tcx.types.usize;
+        let bool_ty = self.tcx.types.bool;
         // bounds check:
         let len = self.temp(usize_ty, expr_span);
         let lt = self.temp(bool_ty, expr_span);
@@ -670,7 +667,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         let local = match base_place.base {
             PlaceBase::Local(local) => local,
             PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar"),

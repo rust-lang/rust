@@ -7,8 +7,9 @@ use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -58,7 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let mut then_block = this.cfg.start_new_block();
                 let mut else_block = this.cfg.start_new_block();
-                let term = TerminatorKind::if_(this.hir.tcx(), operand, then_block, else_block);
+                let term = TerminatorKind::if_(this.tcx, operand, then_block, else_block);
                 this.cfg.terminate(block, source_info, term);
 
                 unpack!(then_block = this.expr_into_dest(destination, then_block, &then));
@@ -68,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Body of the `if` expression without an `else` clause must return `()`, thus
                     // we implicitly generate a `else {}` if it is not specified.
                     let correct_si = this.source_info(expr_span.shrink_to_hi());
-                    this.cfg.push_assign_unit(else_block, correct_si, destination, this.hir.tcx());
+                    this.cfg.push_assign_unit(else_block, correct_si, destination, this.tcx);
                     else_block
                 };
 
@@ -132,25 +133,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     LogicalOp::And => (else_block, false_block),
                     LogicalOp::Or => (true_block, else_block),
                 };
-                let term = TerminatorKind::if_(this.hir.tcx(), lhs, blocks.0, blocks.1);
+                let term = TerminatorKind::if_(this.tcx, lhs, blocks.0, blocks.1);
                 this.cfg.terminate(block, source_info, term);
 
                 let rhs = unpack!(else_block = this.as_local_operand(else_block, &rhs));
-                let term = TerminatorKind::if_(this.hir.tcx(), rhs, true_block, false_block);
+                let term = TerminatorKind::if_(this.tcx, rhs, true_block, false_block);
                 this.cfg.terminate(else_block, source_info, term);
 
                 this.cfg.push_assign_constant(
                     true_block,
                     source_info,
                     destination,
-                    Constant { span: expr_span, user_ty: None, literal: this.hir.true_literal() },
+                    Constant {
+                        span: expr_span,
+                        user_ty: None,
+                        literal: ty::Const::from_bool(this.tcx, true),
+                    },
                 );
 
                 this.cfg.push_assign_constant(
                     false_block,
                     source_info,
                     destination,
-                    Constant { span: expr_span, user_ty: None, literal: this.hir.false_literal() },
+                    Constant {
+                        span: expr_span,
+                        user_ty: None,
+                        literal: ty::Const::from_bool(this.tcx, false),
+                    },
                 );
 
                 // Link up both branches:
@@ -241,8 +250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, &arg)),
                     _ => unpack!(block = this.as_place(block, &arg)),
                 };
-                let borrow =
-                    Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, *borrow_kind, arg_place);
+                let borrow = Rvalue::Ref(this.tcx.lifetimes.re_erased, *borrow_kind, arg_place);
                 this.cfg.push_assign(block, source_info, destination, borrow);
                 block.unit()
             }
@@ -272,7 +280,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let field_names = this.hir.all_fields(adt_def, *variant_index);
+                let field_names: Vec<_> =
+                    (0..adt_def.variants[*variant_index].fields.len()).map(Field::new).collect();
 
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder = unpack!(block = this.as_place_builder(block, &base));
@@ -290,7 +299,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 this.consume_by_copy_or_move(
                                     place_builder
                                         .field(n, ty)
-                                        .into_place(this.hir.tcx(), this.hir.typeck_results()),
+                                        .into_place(this.tcx, this.typeck_results),
                                 )
                             }
                         })
@@ -398,7 +407,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::AssignOp { .. }
             | ExprKind::LlvmInlineAsm { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
-                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
+                this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 block.unit()
             }
 

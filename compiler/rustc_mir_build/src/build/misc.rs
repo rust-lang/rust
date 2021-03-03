@@ -3,10 +3,10 @@
 
 use crate::build::Builder;
 
-use rustc_middle::ty::{self, Ty};
-
 use rustc_middle::mir::*;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
@@ -37,7 +37,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Returns a zero literal operand for the appropriate type, works for
     // bool, char and integers.
     crate fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let literal = ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty));
+        let literal = ty::Const::from_bits(self.tcx, 0, ty::ParamEnv::empty().and(ty));
 
         self.literal_operand(span, literal)
     }
@@ -48,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
         value: u64,
     ) -> Place<'tcx> {
-        let usize_ty = self.hir.usize_ty();
+        let usize_ty = self.tcx.types.usize;
         let temp = self.temp(usize_ty, source_info.span);
         self.cfg.push_assign_constant(
             block,
@@ -57,16 +57,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Constant {
                 span: source_info.span,
                 user_ty: None,
-                literal: self.hir.usize_literal(value),
+                literal: ty::Const::from_usize(self.tcx, value),
             },
         );
         temp
     }
 
     crate fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         let ty = place.ty(&self.local_decls, tcx).ty;
-        if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SP) {
+        if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, DUMMY_SP) {
             Operand::Move(place)
         } else {
             Operand::Copy(place)

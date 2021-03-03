@@ -7,7 +7,7 @@ use rustc_middle::ty;
 
 use rustc_index::vec::Idx;
 
-impl<'a, 'tcx> Cx<'a, 'tcx> {
+impl<'tcx> Cx<'tcx> {
     crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block<'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.

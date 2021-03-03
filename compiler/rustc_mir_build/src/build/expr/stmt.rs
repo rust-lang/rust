@@ -40,7 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Generate better code for things that don't need to be
                 // dropped.
-                if this.hir.needs_drop(lhs.ty) {
+                if lhs.ty.needs_drop(this.tcx, this.param_env) {
                     let rhs = unpack!(block = this.as_local_operand(block, &rhs));
                     let lhs = unpack!(block = this.as_place(block, &lhs));
                     unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs));

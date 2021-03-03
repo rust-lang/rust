@@ -136,12 +136,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             });
         }
 
-        let tcx = this.hir.tcx();
+        let tcx = this.tcx;
 
         if tcx.features().unsized_fn_params {
             let ty = expr.ty;
             let span = expr.span;
-            let param_env = this.hir.param_env;
+            let param_env = this.param_env;
 
             if !ty.is_sized(tcx.at(span), param_env) {
                 // !sized means !copy, so this is an unsized move

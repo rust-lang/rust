@@ -110,8 +110,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span =
-                        remainder_scope.span(this.hir.tcx(), &this.hir.region_scope_tree);
+                    let remainder_span = remainder_scope.span(this.tcx, &this.region_scope_tree);
 
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
@@ -175,7 +174,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Then, the block may have an optional trailing expression which is a “return” value
         // of the block, which is stored into `destination`.
-        let tcx = this.hir.tcx();
+        let tcx = this.tcx;
         let destination_ty = destination.ty(&this.local_decls, tcx).ty;
         if let Some(expr) = expr {
             let tail_result_is_ignored =
@@ -195,7 +194,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
+                this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
@@ -221,7 +220,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Safety::Safe => {}
                     // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
                     Safety::FnUnsafe
-                        if self.hir.tcx().lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
+                        if self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
                             != Level::Allow => {}
                     _ => return,
                 }

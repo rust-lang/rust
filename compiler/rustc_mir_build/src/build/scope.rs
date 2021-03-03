@@ -516,7 +516,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     {
         debug!("in_scope(region_scope={:?})", region_scope);
         let source_scope = self.source_scope;
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
             // Use `maybe_lint_level_root_bounded` with `root_lint_level` as a bound
             // to avoid adding Hir dependences on our parents.
@@ -524,10 +524,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let parent_root = tcx.maybe_lint_level_root_bounded(
                 self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root,
-                self.hir.root_lint_level,
+                self.hir_id,
             );
-            let current_root =
-                tcx.maybe_lint_level_root_bounded(current_hir_id, self.hir.root_lint_level);
+            let current_root = tcx.maybe_lint_level_root_bounded(current_hir_id, self.hir_id);
 
             if parent_root != current_root {
                 self.source_scope = self.new_source_scope(
@@ -615,7 +614,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unpack!(block = self.expr_into_dest(destination, block, value));
                 self.block_context.pop();
             } else {
-                self.cfg.push_assign_unit(block, source_info, destination, self.hir.tcx())
+                self.cfg.push_assign_unit(block, source_info, destination, self.tcx)
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
@@ -763,7 +762,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let needs_drop = match drop_kind {
             DropKind::Value => {
-                if !self.hir.needs_drop(self.local_decls[local].ty) {
+                if !self.local_decls[local].ty.needs_drop(self.tcx, self.param_env) {
                     return;
                 }
                 true
@@ -834,10 +833,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             if scope.region_scope == region_scope {
-                let region_scope_span =
-                    region_scope.span(self.hir.tcx(), &self.hir.region_scope_tree);
+                let region_scope_span = region_scope.span(self.tcx, &self.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace.
-                let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
+                let scope_end = self.tcx.sess.source_map().end_point(region_scope_span);
 
                 scope.drops.push(DropData {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
@@ -926,7 +924,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let cond = unpack!(block = self.as_local_operand(block, condition));
         let true_block = self.cfg.start_new_block();
         let false_block = self.cfg.start_new_block();
-        let term = TerminatorKind::if_(self.hir.tcx(), cond.clone(), true_block, false_block);
+        let term = TerminatorKind::if_(self.tcx, cond.clone(), true_block, false_block);
         self.cfg.terminate(block, source_info, term);
 
         match cond {

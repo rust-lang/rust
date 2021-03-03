@@ -15,7 +15,7 @@ use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
-impl<'a, 'tcx> Cx<'a, 'tcx> {
+impl<'tcx> Cx<'tcx> {
     crate fn mirror_expr(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(hir_expr.hir_id.local_id);
         let expr_scope =
@@ -26,7 +26,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
         // Now apply adjustments, if any.
-        for adjustment in self.typeck_results().expr_adjustments(hir_expr) {
+        for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
             debug!("make_mirror: expr={:?} applying adjustment={:?}", expr, adjustment);
             expr = self.apply_adjustment(hir_expr, expr, adjustment);
         }
@@ -287,13 +287,13 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                     self.overloaded_operator(expr, vec![lhs, rhs])
                 } else {
                     // FIXME overflow
-                    match (op.node, self.constness) {
-                        (hir::BinOpKind::And, _) => ExprKind::LogicalOp {
+                    match op.node {
+                        hir::BinOpKind::And => ExprKind::LogicalOp {
                             op: LogicalOp::And,
                             lhs: self.mirror_expr_boxed(lhs),
                             rhs: self.mirror_expr_boxed(rhs),
                         },
-                        (hir::BinOpKind::Or, _) => ExprKind::LogicalOp {
+                        hir::BinOpKind::Or => ExprKind::LogicalOp {
                             op: LogicalOp::Or,
                             lhs: self.mirror_expr_boxed(lhs),
                             rhs: self.mirror_expr_boxed(rhs),
@@ -420,7 +420,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                 };
 
                 let upvars = self
-                    .typeck_results()
+                    .typeck_results
                     .closure_min_captures_flattened(def_id)
                     .zip(substs.upvar_tys())
                     .map(|(captured_place, ty)| self.capture_upvar(expr, captured_place, ty))
@@ -981,7 +981,7 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
     fn capture_upvar(
         &mut self,
         closure_expr: &'tcx hir::Expr<'tcx>,
-        captured_place: &'a ty::CapturedPlace<'tcx>,
+        captured_place: &'tcx ty::CapturedPlace<'tcx>,
         upvar_ty: Ty<'tcx>,
     ) -> Expr<'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
