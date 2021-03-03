@@ -146,7 +146,7 @@ fn check_always_applicable(
 ///
 /// Example
 /// 
-/// ```rust
+/// ```ignore
 /// impl<A, B> Foo<A> for B { /* impl2 */ }
 /// impl<C> Foo<Vec<C>> for C { /* impl1 */ }
 /// ```
@@ -181,7 +181,7 @@ fn get_impl_substs<'tcx>(
 ///
 /// For example given the impl:
 ///
-/// ```rust
+/// ```text
 /// impl<'a, T, I> ... where &'a I: IntoIterator<Item=&'a T>
 /// ```
 ///
