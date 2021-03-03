@@ -616,6 +616,22 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             );
             ret.write_cvalue(fx, res);
         };
+        _ if intrinsic.starts_with("wrapping_"), (c x, c y) {
+            assert_eq!(x.layout().ty, y.layout().ty);
+            let bin_op = match intrinsic {
+                "wrapping_add" => BinOp::Add,
+                "wrapping_sub" => BinOp::Sub,
+                "wrapping_mul" => BinOp::Mul,
+                _ => unreachable!("intrinsic {}", intrinsic),
+            };
+            let res = crate::num::codegen_int_binop(
+                fx,
+                bin_op,
+                x,
+                y,
+            );
+            ret.write_cvalue(fx, res);
+        };
         _ if intrinsic.starts_with("saturating_"), <T> (c lhs, c rhs) {
             assert_eq!(lhs.layout().ty, rhs.layout().ty);
             let bin_op = match intrinsic {

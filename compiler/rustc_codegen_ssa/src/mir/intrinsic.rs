@@ -210,6 +210,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::add_with_overflow
             | sym::sub_with_overflow
             | sym::mul_with_overflow
+            | sym::wrapping_add
+            | sym::wrapping_sub
+            | sym::wrapping_mul
             | sym::unchecked_div
             | sym::unchecked_rem
             | sym::unchecked_shl
@@ -243,6 +246,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                             return;
                         }
+                        sym::wrapping_add => bx.add(args[0].immediate(), args[1].immediate()),
+                        sym::wrapping_sub => bx.sub(args[0].immediate(), args[1].immediate()),
+                        sym::wrapping_mul => bx.mul(args[0].immediate(), args[1].immediate()),
                         sym::exact_div => {
                             if signed {
                                 bx.exactsdiv(args[0].immediate(), args[1].immediate())

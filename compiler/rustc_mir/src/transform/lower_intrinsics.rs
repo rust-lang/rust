@@ -41,29 +41,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         }
                     }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
-                        if let Some((destination, target)) = *destination {
-                            let lhs;
-                            let rhs;
-                            {
-                                let mut args = args.drain(..);
-                                lhs = args.next().unwrap();
-                                rhs = args.next().unwrap();
-                            }
-                            let bin_op = match intrinsic_name {
-                                sym::wrapping_add => BinOp::Add,
-                                sym::wrapping_sub => BinOp::Sub,
-                                sym::wrapping_mul => BinOp::Mul,
-                                _ => bug!("unexpected intrinsic"),
-                            };
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(box (
-                                    destination,
-                                    Rvalue::BinaryOp(bin_op, lhs, rhs),
-                                )),
-                            });
-                            terminator.kind = TerminatorKind::Goto { target };
-                        }
+                        // While binary operations would have a suitable semantics, the const
+                        // propagation needs to distinguish them for linting purposes.
                     }
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                         // The checked binary operations are not suitable target for lowering here,

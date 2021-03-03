@@ -207,16 +207,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let out_val = numeric_intrinsic(intrinsic_name, bits, kind);
                 self.write_scalar(out_val, dest)?;
             }
-            sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
+            sym::wrapping_add
+            | sym::wrapping_sub
+            | sym::wrapping_mul
+            | sym::add_with_overflow
+            | sym::sub_with_overflow
+            | sym::mul_with_overflow => {
                 let lhs = self.read_immediate(&args[0])?;
                 let rhs = self.read_immediate(&args[1])?;
-                let bin_op = match intrinsic_name {
-                    sym::add_with_overflow => BinOp::Add,
-                    sym::sub_with_overflow => BinOp::Sub,
-                    sym::mul_with_overflow => BinOp::Mul,
+                let (bin_op, ignore_overflow) = match intrinsic_name {
+                    sym::wrapping_add => (BinOp::Add, true),
+                    sym::wrapping_sub => (BinOp::Sub, true),
+                    sym::wrapping_mul => (BinOp::Mul, true),
+                    sym::add_with_overflow => (BinOp::Add, false),
+                    sym::sub_with_overflow => (BinOp::Sub, false),
+                    sym::mul_with_overflow => (BinOp::Mul, false),
                     _ => bug!("Already checked for int ops"),
                 };
-                self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
+                if ignore_overflow {
+                    self.binop_ignore_overflow(bin_op, &lhs, &rhs, dest)?;
+                } else {
+                    self.binop_with_overflow(bin_op, &lhs, &rhs, dest)?;
+                }
             }
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(&args[0])?;

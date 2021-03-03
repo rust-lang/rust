@@ -2,7 +2,7 @@
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 
-// EMIT_MIR lower_intrinsics.wrapping.LowerIntrinsics.diff
+// Not lowered.
 pub fn wrapping<T: Copy>(a: T, b: T) {
     let _x = core::intrinsics::wrapping_add(a, b);
     let _y = core::intrinsics::wrapping_sub(a, b);
