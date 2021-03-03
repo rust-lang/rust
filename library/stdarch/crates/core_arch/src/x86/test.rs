@@ -104,14 +104,16 @@ mod x86_polyfill {
     }
 
     #[target_feature(enable = "avx2")]
-    pub unsafe fn _mm256_insert_epi64(a: __m256i, val: i64, idx: i32) -> __m256i {
+    #[rustc_legacy_const_generics(2)]
+    pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, val: i64) -> __m256i {
+        static_assert_imm2!(INDEX);
         #[repr(C)]
         union A {
             a: __m256i,
             b: [i64; 4],
         }
         let mut a = A { a };
-        a.b[idx as usize] = val;
+        a.b[INDEX as usize] = val;
         a.a
     }
 }

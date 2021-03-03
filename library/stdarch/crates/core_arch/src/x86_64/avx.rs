@@ -23,18 +23,13 @@ use crate::{
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi64)
 #[inline]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {
-    let a = a.as_i64x4();
-    match index & 3 {
-        0 => transmute(simd_insert(a, 0, i)),
-        1 => transmute(simd_insert(a, 1, i)),
-        2 => transmute(simd_insert(a, 2, i)),
-        _ => transmute(simd_insert(a, 3, i)),
-    }
+pub unsafe fn _mm256_insert_epi64<const INDEX: i32>(a: __m256i, i: i64) -> __m256i {
+    static_assert_imm2!(INDEX);
+    transmute(simd_insert(a.as_i64x4(), INDEX as u32, i))
 }
 
 #[cfg(test)]
@@ -46,7 +41,7 @@ mod tests {
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi64() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
-        let r = _mm256_insert_epi64(a, 0, 3);
+        let r = _mm256_insert_epi64::<3>(a, 0);
         let e = _mm256_setr_epi64x(1, 2, 3, 0);
         assert_eq_m256i(r, e);
     }
