@@ -1,5 +1,7 @@
 //! Completes keywords.
 
+use std::iter;
+
 use syntax::SyntaxKind;
 use test_utils::mark;
 
@@ -19,10 +21,14 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
         CompletionItem::new(CompletionKind::Keyword, source_range, "self")
             .kind(CompletionItemKind::Keyword)
             .add_to(acc);
-        CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
-            .kind(CompletionItemKind::Keyword)
-            .insert_text("super::")
-            .add_to(acc);
+        if iter::successors(ctx.path_qual.clone(), |p| p.qualifier())
+            .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
+        {
+            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
+                .kind(CompletionItemKind::Keyword)
+                .insert_text("super::")
+                .add_to(acc);
+        }
     }
 
     // Suggest .await syntax for types that implement Future trait
@@ -85,6 +91,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if ctx.is_expr {
         add_keyword(ctx, acc, "match", "match $0 {}");
         add_keyword(ctx, acc, "while", "while $0 {}");
+        add_keyword(ctx, acc, "while let", "while let $1 = $0 {}");
         add_keyword(ctx, acc, "loop", "loop {$0}");
         add_keyword(ctx, acc, "if", "if $0 {}");
         add_keyword(ctx, acc, "if let", "if let $1 = $0 {}");
@@ -204,8 +211,16 @@ mod tests {
             "#]],
         );
 
+        // FIXME: `self` shouldn't be shown here and the check below
         check(
             r"use a::$0",
+            expect![[r#"
+            kw self
+        "#]],
+        );
+
+        check(
+            r"use super::$0",
             expect![[r#"
                 kw self
                 kw super::
@@ -215,9 +230,8 @@ mod tests {
         check(
             r"use a::{b, $0}",
             expect![[r#"
-                kw self
-                kw super::
-            "#]],
+            kw self
+        "#]],
         );
     }
 
@@ -256,6 +270,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -283,6 +298,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -310,6 +326,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -344,6 +361,7 @@ fn quux() -> i32 {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -393,6 +411,7 @@ fn quux() -> i32 {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -552,6 +571,7 @@ pub mod future {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -611,6 +631,7 @@ fn foo() {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let

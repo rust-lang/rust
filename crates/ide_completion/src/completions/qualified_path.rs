@@ -81,9 +81,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         return None;
                     }
                     match item {
-                        hir::AssocItem::Function(func) => {
-                            acc.add_function(ctx, func, None);
-                        }
+                        hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
                         hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
                         hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                     }
@@ -110,9 +108,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     continue;
                 }
                 match item {
-                    hir::AssocItem::Function(func) => {
-                        acc.add_function(ctx, func, None);
-                    }
+                    hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
                     hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
                     hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                 }
@@ -143,9 +139,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     // them.
                     if seen.insert(item) {
                         match item {
-                            hir::AssocItem::Function(func) => {
-                                acc.add_function(ctx, func, None);
-                            }
+                            hir::AssocItem::Function(func) => acc.add_function(ctx, func, None),
                             hir::AssocItem::Const(ct) => acc.add_const(ctx, ct),
                             hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                         }

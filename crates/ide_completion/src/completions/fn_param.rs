@@ -25,9 +25,12 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             return;
         }
         func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
-            let text = param.syntax().text().to_string();
-            params.entry(text).or_insert(param);
-        })
+            if let Some(pat) = param.pat() {
+                let text = param.syntax().text().to_string();
+                let lookup = pat.syntax().text().to_string();
+                params.entry(text).or_insert(lookup);
+            }
+        });
     };
 
     for node in ctx.token.parent().ancestors() {
@@ -50,18 +53,12 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         };
     }
 
-    params
-        .into_iter()
-        .filter_map(|(label, param)| {
-            let lookup = param.pat()?.syntax().text().to_string();
-            Some((label, lookup))
-        })
-        .for_each(|(label, lookup)| {
-            CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
-                .kind(CompletionItemKind::Binding)
-                .lookup_by(lookup)
-                .add_to(acc)
-        });
+    params.into_iter().for_each(|(label, lookup)| {
+        CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
+            .kind(CompletionItemKind::Binding)
+            .lookup_by(lookup)
+            .add_to(acc)
+    });
 }
 
 #[cfg(test)]
