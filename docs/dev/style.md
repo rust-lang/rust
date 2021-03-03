@@ -769,14 +769,20 @@ fn foo() -> Option<Bar> {
 
 ## Comparisons
 
-Use `<`/`<=`, avoid `>`/`>=`.
+When doing multiple comparisons use `<`/`<=`, avoid `>`/`>=`.
 
 ```rust
 // GOOD
 assert!(lo <= x && x <= hi);
+assert!(r1 < l2 || r2 < l1);
+assert!(x < y);
+assert!(x > 0);
 
 // BAD
 assert!(x >= lo && x <= hi>);
+assert!(r1 < l2 || l1 > r2);
+assert!(y > x);
+assert!(0 > x);
 ```
 
 **Rationale:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
