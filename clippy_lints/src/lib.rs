@@ -1343,6 +1343,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&await_holding_invalid::AWAIT_HOLDING_LOCK),
         LintId::of(&await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
         LintId::of(&bit_mask::VERBOSE_BIT_MASK),
+        LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
@@ -1458,7 +1459,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&blocks_in_if_conditions::BLOCKS_IN_IF_CONDITIONS),
         LintId::of(&booleans::LOGIC_BUG),
         LintId::of(&booleans::NONMINIMAL_BOOL),
-        LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&collapsible_if::COLLAPSIBLE_ELSE_IF),
         LintId::of(&collapsible_if::COLLAPSIBLE_IF),
         LintId::of(&collapsible_match::COLLAPSIBLE_MATCH),
@@ -2015,7 +2015,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
 
     store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
-        LintId::of(&bytecount::NAIVE_BYTECOUNT),
         LintId::of(&entry::MAP_ENTRY),
         LintId::of(&escape::BOXED_LOCAL),
         LintId::of(&large_const_arrays::LARGE_CONST_ARRAYS),
