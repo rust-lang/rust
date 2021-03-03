@@ -506,16 +506,12 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             );
                             ProcessResult::Unchanged
                         }
-                        Err(NotConstEvaluatable::MentionsParam) => ProcessResult::Error(
-                            CodeSelectionError(SelectionError::NotConstEvaluatable(
-                                NotConstEvaluatable::MentionsParam,
-                            )),
-                        ),
-                        Err(NotConstEvaluatable::Error(e)) => {
-                            ProcessResult::Error(CodeSelectionError(
-                                SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(e)),
-                            ))
-                        }
+                        Err(
+                            e @ NotConstEvaluatable::MentionsParam
+                            | e @ NotConstEvaluatable::Error(_),
+                        ) => ProcessResult::Error(CodeSelectionError(
+                            SelectionError::NotConstEvaluatable(e),
+                        )),
                     }
                 }
 
