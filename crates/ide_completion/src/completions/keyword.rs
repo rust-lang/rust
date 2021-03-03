@@ -91,6 +91,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if ctx.is_expr {
         add_keyword(ctx, acc, "match", "match $0 {}");
         add_keyword(ctx, acc, "while", "while $0 {}");
+        add_keyword(ctx, acc, "while let", "while let $1 = $0 {}");
         add_keyword(ctx, acc, "loop", "loop {$0}");
         add_keyword(ctx, acc, "if", "if $0 {}");
         add_keyword(ctx, acc, "if let", "if let $1 = $0 {}");
@@ -269,6 +270,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -296,6 +298,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -323,6 +326,7 @@ mod tests {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -357,6 +361,7 @@ fn quux() -> i32 {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -406,6 +411,7 @@ fn quux() -> i32 {
                 kw trait
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -565,6 +571,7 @@ pub mod future {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
@@ -624,6 +631,7 @@ fn foo() {
             expect![[r#"
                 kw match
                 kw while
+                kw while let
                 kw loop
                 kw if
                 kw if let
