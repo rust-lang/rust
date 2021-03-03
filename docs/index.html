@@ -72,8 +72,8 @@
                   <input type="checkbox" id="stable" v-model="shouldStable">
               </div>
               <div>
-                  <label for="version">version: </label>
-                  <select name="version" id="version" v-model="version">
+                  <label for="viewVersion">version: </label>
+                  <select name="viewVersion" id="viewVersion" v-model="viewVersion">
                     <option v-for="option in versionOptions" v-bind:value="option">
                       {{ option }}
                     </option>
@@ -107,8 +107,8 @@
                 configurationDescriptions: [],
                 searchCondition: searchTerm,
                 shouldStable: false,
-                version: versionNumber,
-                oldVersion: undefined,
+                viewVersion: versionNumber,
+                oldViewVersion: undefined,
                 versionOptions: ['master'],
                 scrolledOnce: false,
               },
@@ -122,13 +122,13 @@
                     return;
                   }
                   if (versionParam == null) {
-                    this.version = latest.name;
+                    this.viewVersion = latest.name;
                   }
                 },
                 async outputHtml() {
-                  if (this.version !== this.oldVersion) {
+                  if (this.viewVersion !== this.oldViewVersion) {
                     const ConfigurationMdUrl =
-                      `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.version}/Configurations.md`;
+                      `https://raw.githubusercontent.com/rust-lang/rustfmt/${this.viewVersion}/Configurations.md`;
                     let res;
                     try {
                       res = await axios.get(ConfigurationMdUrl).catch(e => { throw e });
@@ -144,7 +144,7 @@
                     this.aboutHtml = marked.parser(about);
                     this.configurationAboutHtml = marked.parser(configurationAbout);
                     this.configurationDescriptions = configurationDescriptions;
-                    this.oldVersion = this.version;
+                    this.oldViewVersion = this.viewVersion;
                   }
 
                   const ast = this.configurationDescriptions
@@ -162,7 +162,7 @@
                       }, []);
                   ast.links = {};
 
-                  queryParams.set('version', this.version);
+                  queryParams.set('version', this.viewVersion);
                   queryParams.set('search', this.searchCondition);
                   const curUrl = window.location.pathname +
                     '?' + queryParams.toString() + window.location.hash;
