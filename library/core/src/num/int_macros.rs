@@ -2001,9 +2001,11 @@ macro_rules! int_impl {
             Self::MAX
         }
 
-        /// Adds to the current value, returning the previous value.
+        /// [Adds](crate::ops::Add) to the current value, returning the previous value.
         ///
         /// This operation wraps around on overflow.
+        ///
+        /// **Note:** This operation is not atomic. If atomicity is desired, use the types in [`sync::atomic`](crate::sync::atomic).
         ///
         /// # Examples
         ///
@@ -2021,7 +2023,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Subtracts from the current value, returning the previous value.
+        /// [Subtracts](crate::ops::Sub) from the current value, returning the previous value.
         ///
         /// This operation wraps around on overflow.
         ///
@@ -2041,7 +2043,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Bitwise "and" with the current value, returning the previous value.
+        /// Bitwise ["and"](crate::ops::BitAnd) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -2077,7 +2079,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Bitwise "or" with the current value, returning the previous value.
+        /// Bitwise ["or"](crate::ops::BitOr) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -2095,7 +2097,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Bitwise "xor" with the current value, returning the previous value.
+        /// Bitwise ["xor"](crate::ops::BitXor) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -2134,7 +2136,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Maximum with the current value, returning the previous value.
+        /// [Maximum](crate::cmp::max) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -2152,7 +2154,7 @@ macro_rules! int_impl {
             old
         }
 
-        /// Minimum with the current value, returning the previous value.
+        /// [Minimum](crate::cmp::min) with the current value, returning the previous value.
         ///
         /// # Examples
         ///

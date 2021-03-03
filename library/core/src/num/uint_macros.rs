@@ -1827,7 +1827,7 @@ macro_rules! uint_impl {
         #[rustc_deprecated(since = "TBD", reason = "replaced by the `MAX` associated constant on this type")]
         pub const fn max_value() -> Self { Self::MAX }
 
-        /// Adds to the current value, returning the previous value.
+        /// [Adds](crate::ops::Add) to the current value, returning the previous value.
         ///
         /// This operation wraps around on overflow.
         ///
@@ -1847,7 +1847,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Subtracts from the current value, returning the previous value.
+        /// [Subtracts](crate::ops::Sub) from the current value, returning the previous value.
         ///
         /// This operation wraps around on overflow.
         ///
@@ -1867,7 +1867,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Bitwise "and" with the current value, returning the previous value.
+        /// Bitwise ["and"](crate::ops::BitAnd) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -1903,7 +1903,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Bitwise "or" with the current value, returning the previous value.
+        /// Bitwise ["or"](crate::ops::BitOr) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -1921,7 +1921,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Bitwise "xor" with the current value, returning the previous value.
+        /// Bitwise ["xor"](crate::ops::BitXor) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -1960,7 +1960,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Maximum with the current value, returning the previous value.
+        /// [Maximum](crate::cmp::max) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
@@ -1978,7 +1978,7 @@ macro_rules! uint_impl {
             old
         }
 
-        /// Minimum with the current value, returning the previous value.
+        /// [Minimum](crate::cmp::min) with the current value, returning the previous value.
         ///
         /// # Examples
         ///
