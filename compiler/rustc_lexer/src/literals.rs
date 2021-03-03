@@ -56,7 +56,7 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
     let mut base = Base::Decimal;
     if first_digit == '0' {
         // Attempt to parse encoding base.
-        let has_digits = match cursor.first() {
+        let has_digits = match cursor.peek() {
             'b' => {
                 base = Base::Binary;
                 cursor.bump();
@@ -90,18 +90,18 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
         eat_decimal_digits(cursor);
     };
 
-    match cursor.first() {
+    match cursor.peek() {
         // Don't be greedy if this is actually an
         // integer literal followed by field/method access or a range pattern
         // (`0..2` and `12.foo()`)
-        '.' if cursor.second() != '.' && !is_id_start(cursor.second()) => {
+        '.' if cursor.peek_second() != '.' && !is_id_start(cursor.peek_second()) => {
             // might have stuff after the ., and if it does, it needs to start
             // with a number
             cursor.bump();
             let mut empty_exponent = false;
-            if cursor.first().is_digit(10) {
+            if cursor.peek().is_digit(10) {
                 eat_decimal_digits(cursor);
-                match cursor.first() {
+                match cursor.peek() {
                     'e' | 'E' => {
                         cursor.bump();
                         empty_exponent = !eat_float_exponent(cursor);
@@ -123,7 +123,7 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
 pub(crate) fn eat_decimal_digits(cursor: &mut Cursor) -> bool {
     let mut has_digits = false;
     loop {
-        match cursor.first() {
+        match cursor.peek() {
             '_' => {
                 cursor.bump();
             }
@@ -140,7 +140,7 @@ pub(crate) fn eat_decimal_digits(cursor: &mut Cursor) -> bool {
 pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor) -> bool {
     let mut has_digits = false;
     loop {
-        match cursor.first() {
+        match cursor.peek() {
             '_' => {
                 cursor.bump();
             }
@@ -158,7 +158,7 @@ pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor) -> bool {
 /// and returns false otherwise.
 fn eat_float_exponent(cursor: &mut Cursor) -> bool {
     debug_assert!(cursor.prev() == 'e' || cursor.prev() == 'E');
-    if cursor.first() == '-' || cursor.first() == '+' {
+    if cursor.peek() == '-' || cursor.peek() == '+' {
         cursor.bump();
     }
     eat_decimal_digits(cursor)
@@ -167,14 +167,14 @@ fn eat_float_exponent(cursor: &mut Cursor) -> bool {
 pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
     debug_assert!(cursor.prev() == '\'');
 
-    let can_be_a_lifetime = if cursor.second() == '\'' {
+    let can_be_a_lifetime = if cursor.peek_second() == '\'' {
         // It's surely not a lifetime.
         false
     } else {
         // If the first symbol is valid for identifier, it can be a lifetime.
         // Also check if it's a number for a better error reporting (so '0 will
         // be reported as invalid lifetime and not as unterminated char literal).
-        is_id_start(cursor.first()) || cursor.first().is_digit(10)
+        is_id_start(cursor.peek()) || cursor.peek().is_digit(10)
     };
 
     if !can_be_a_lifetime {
@@ -190,18 +190,18 @@ pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
     // Either a lifetime or a character literal with
     // length greater than 1.
 
-    let starts_with_number = cursor.first().is_digit(10);
+    let starts_with_number = cursor.peek().is_digit(10);
 
     // Skip the literal contents.
     // First symbol can be a number (which isn't a valid identifier start),
     // so skip it without any checks.
     cursor.bump();
-    cursor.eat_while(is_id_continue);
+    cursor.bump_while(is_id_continue);
 
     // Check if after skipping literal contents we've met a closing
     // single quote (which means that user attempted to create a
     // string with single quotes).
-    if cursor.first() == '\'' {
+    if cursor.peek() == '\'' {
         cursor.bump();
         let kind = LiteralKind::Char { terminated: true };
         TokenKind::Literal { kind, suffix_start: cursor.len_consumed() }
@@ -213,7 +213,7 @@ pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
 pub(crate) fn single_quoted_string(cursor: &mut Cursor) -> bool {
     debug_assert!(cursor.prev() == '\'');
     // Check if it's a one-symbol literal.
-    if cursor.second() == '\'' && cursor.first() != '\\' {
+    if cursor.peek_second() == '\'' && cursor.peek() != '\\' {
         cursor.bump();
         cursor.bump();
         return true;
@@ -223,7 +223,7 @@ pub(crate) fn single_quoted_string(cursor: &mut Cursor) -> bool {
 
     // Parse until either quotes are terminated or error is detected.
     loop {
-        match cursor.first() {
+        match cursor.peek() {
             // Quotes are terminated, finish parsing.
             '\'' => {
                 cursor.bump();
@@ -233,7 +233,7 @@ pub(crate) fn single_quoted_string(cursor: &mut Cursor) -> bool {
             // to the error report.
             '/' => break,
             // Newline without following '\'' means unclosed quote, stop parsing.
-            '\n' if cursor.second() != '\'' => break,
+            '\n' if cursor.peek_second() != '\'' => break,
             // End of file, stop parsing.
             EOF_CHAR if cursor.is_eof() => break,
             // Escaped slash is considered one character, so bump twice.
@@ -260,7 +260,7 @@ pub(crate) fn double_quoted_string(cursor: &mut Cursor) -> bool {
             '"' => {
                 return true;
             }
-            '\\' if cursor.first() == '\\' || cursor.first() == '"' => {
+            '\\' if cursor.peek() == '\\' || cursor.peek() == '"' => {
                 // Bump again to skip escaped character.
                 cursor.bump();
             }
@@ -295,7 +295,7 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
 
     // Count opening '#' symbols.
     let mut eaten = 0;
-    while cursor.first() == '#' {
+    while cursor.peek() == '#' {
         eaten += 1;
         cursor.bump();
     }
@@ -313,7 +313,7 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
     // Skip the string contents and on each '#' character met, check if this is
     // a raw string termination.
     loop {
-        cursor.eat_while(|c| c != '"');
+        cursor.bump_while(|c| c != '"');
 
         if cursor.is_eof() {
             return (
@@ -335,7 +335,7 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
         // `r###"abcde"####` is lexed as a `RawStr { n_hashes: 3 }`
         // followed by a `#` token.
         let mut n_end_hashes = 0;
-        while cursor.first() == '#' && n_end_hashes < n_start_hashes {
+        while cursor.peek() == '#' && n_end_hashes < n_start_hashes {
             n_end_hashes += 1;
             cursor.bump();
         }

@@ -255,7 +255,7 @@ fn advance_token(cursor: &mut Cursor) -> Token {
     let first_char = cursor.bump().unwrap();
     let token_kind = match first_char {
         // Slash, comment or block comment.
-        '/' => match cursor.first() {
+        '/' => match cursor.peek() {
             '/' => line_comment(cursor),
             '*' => block_comment(cursor),
             _ => Slash,
@@ -265,7 +265,7 @@ fn advance_token(cursor: &mut Cursor) -> Token {
         c if is_whitespace(c) => whitespace(cursor),
 
         // Raw identifier, raw string literal or identifier.
-        'r' => match (cursor.first(), cursor.second()) {
+        'r' => match (cursor.peek(), cursor.peek_second()) {
             ('#', c1) if is_id_start(c1) => raw_ident(cursor),
             ('#', _) | ('"', _) => {
                 let (n_hashes, err) = raw_double_quoted_string(cursor, 1);
@@ -280,7 +280,7 @@ fn advance_token(cursor: &mut Cursor) -> Token {
         },
 
         // Byte literal, byte string literal, raw byte string literal or identifier.
-        'b' => match (cursor.first(), cursor.second()) {
+        'b' => match (cursor.peek(), cursor.peek_second()) {
             ('\'', _) => {
                 cursor.bump();
                 let terminated = single_quoted_string(cursor);
@@ -373,42 +373,42 @@ fn advance_token(cursor: &mut Cursor) -> Token {
 }
 
 fn line_comment(cursor: &mut Cursor) -> TokenKind {
-    debug_assert!(cursor.prev() == '/' && cursor.first() == '/');
+    debug_assert!(cursor.prev() == '/' && cursor.peek() == '/');
     cursor.bump();
 
-    let doc_style = match cursor.first() {
+    let doc_style = match cursor.peek() {
         // `//!` is an inner line doc comment.
         '!' => Some(DocStyle::Inner),
         // `////` (more than 3 slashes) is not considered a doc comment.
-        '/' if cursor.second() != '/' => Some(DocStyle::Outer),
+        '/' if cursor.peek_second() != '/' => Some(DocStyle::Outer),
         _ => None,
     };
 
-    cursor.eat_while(|c| c != '\n');
+    cursor.bump_while(|c| c != '\n');
     LineComment { doc_style }
 }
 
 fn block_comment(cursor: &mut Cursor) -> TokenKind {
-    debug_assert!(cursor.prev() == '/' && cursor.first() == '*');
+    debug_assert!(cursor.prev() == '/' && cursor.peek() == '*');
     cursor.bump();
 
-    let doc_style = match cursor.first() {
+    let doc_style = match cursor.peek() {
         // `/*!` is an inner block doc comment.
         '!' => Some(DocStyle::Inner),
         // `/***` (more than 2 stars) is not considered a doc comment.
         // `/**/` is not considered a doc comment.
-        '*' if !matches!(cursor.second(), '*' | '/') => Some(DocStyle::Outer),
+        '*' if !matches!(cursor.peek_second(), '*' | '/') => Some(DocStyle::Outer),
         _ => None,
     };
 
     let mut depth = 1usize;
     while let Some(c) = cursor.bump() {
         match c {
-            '/' if cursor.first() == '*' => {
+            '/' if cursor.peek() == '*' => {
                 cursor.bump();
                 depth += 1;
             }
-            '*' if cursor.first() == '/' => {
+            '*' if cursor.peek() == '/' => {
                 cursor.bump();
                 depth -= 1;
                 if depth == 0 {
@@ -427,12 +427,12 @@ fn block_comment(cursor: &mut Cursor) -> TokenKind {
 
 fn whitespace(cursor: &mut Cursor) -> TokenKind {
     debug_assert!(is_whitespace(cursor.prev()));
-    cursor.eat_while(is_whitespace);
+    cursor.bump_while(is_whitespace);
     Whitespace
 }
 
 fn raw_ident(cursor: &mut Cursor) -> TokenKind {
-    debug_assert!(cursor.prev() == 'r' && cursor.first() == '#' && is_id_start(cursor.second()));
+    debug_assert!(cursor.prev() == 'r' && cursor.peek() == '#' && is_id_start(cursor.peek_second()));
     // Eat "#" symbol.
     cursor.bump();
     // Eat the identifier part of RawIdent.
@@ -443,16 +443,16 @@ fn raw_ident(cursor: &mut Cursor) -> TokenKind {
 fn ident(cursor: &mut Cursor) -> TokenKind {
     debug_assert!(is_id_start(cursor.prev()));
     // Start is already eaten, eat the rest of identifier.
-    cursor.eat_while(is_id_continue);
+    cursor.bump_while(is_id_continue);
     Ident
 }
 
 /// Eats one identifier.
 pub(crate) fn eat_identifier(cursor: &mut Cursor) {
-    if !is_id_start(cursor.first()) {
+    if !is_id_start(cursor.peek()) {
         return;
     }
     cursor.bump();
 
-    cursor.eat_while(is_id_continue);
+    cursor.bump_while(is_id_continue);
 }

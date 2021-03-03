@@ -2,7 +2,7 @@ use std::str::Chars;
 
 /// Peekable iterator over a char sequence.
 ///
-/// Next characters can be peeked via `nth_char` method,
+/// Next characters can be peeked via `peek` method,
 /// and position can be shifted forward via `bump` method.
 pub(crate) struct Cursor<'a> {
     initial_len: usize,
@@ -37,22 +37,17 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    /// Returns nth character relative to the current cursor position.
-    /// If requested position doesn't exist, `EOF_CHAR` is returned.
+    /// Peeks the next symbol from the input stream without consuming it.
+    /// If it doesn't exist, `EOF_CHAR` is returned.
     /// However, getting `EOF_CHAR` doesn't always mean actual end of file,
     /// it should be checked with `is_eof` method.
-    fn nth_char(&self, n: usize) -> char {
-        self.chars().nth(n).unwrap_or(EOF_CHAR)
-    }
-
-    /// Peeks the next symbol from the input stream without consuming it.
-    pub(crate) fn first(&self) -> char {
-        self.nth_char(0)
+    pub(crate) fn peek(&self) -> char {
+        self.chars.clone().nth(0).unwrap_or(EOF_CHAR)
     }
 
     /// Peeks the second symbol from the input stream without consuming it.
-    pub(crate) fn second(&self) -> char {
-        self.nth_char(1)
+    pub(crate) fn peek_second(&self) -> char {
+        self.chars.clone().nth(1).unwrap_or(EOF_CHAR)
     }
 
     /// Checks if there is nothing more to consume.
@@ -63,11 +58,6 @@ impl<'a> Cursor<'a> {
     /// Returns amount of already consumed symbols.
     pub(crate) fn len_consumed(&self) -> usize {
         self.initial_len - self.chars.as_str().len()
-    }
-
-    /// Returns a `Chars` iterator over the remaining characters.
-    fn chars(&self) -> Chars<'a> {
-        self.chars.clone()
     }
 
     /// Moves to the next character.
@@ -83,8 +73,8 @@ impl<'a> Cursor<'a> {
     }
 
     /// Eats symbols while predicate returns true or until the end of file is reached.
-    pub(crate) fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
-        while predicate(self.first()) && !self.is_eof() {
+    pub(crate) fn bump_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
+        while predicate(self.peek()) && !self.is_eof() {
             self.bump();
         }
     }
