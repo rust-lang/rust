@@ -30,15 +30,6 @@ pub struct Entry<'hir> {
     node: Node<'hir>,
 }
 
-impl<'hir> Entry<'hir> {
-    fn parent_node(self) -> Option<HirId> {
-        match self.node {
-            Node::Crate(_) => None,
-            _ => Some(self.parent),
-        }
-    }
-}
-
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
         Node::Item(Item { kind: ItemKind::Fn(sig, _, _), .. })
@@ -529,7 +520,7 @@ impl<'hir> Map<'hir> {
     /// from a node to the root of the HIR (unless you get back the same ID here,
     /// which can happen if the ID is not in the map itself or is just weird).
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        self.get_entry(hir_id).parent_node().unwrap_or(hir_id)
+        self.get_entry(hir_id).parent
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
