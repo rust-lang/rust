@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -40,9 +41,13 @@ crate fn render<T: Print, S: Print>(
     sidebar: S,
     t: T,
     style_files: &[StylePath],
-) -> String {
+) -> Result<String, std::fmt::Error> {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
-    format!(
+    let content = Buffer::html().to_display(t);
+    let sidebar = Buffer::html().to_display(sidebar);
+    let mut result = String::with_capacity(4096 + content.len() + sidebar.len());
+    write!(
+        &mut result,
         "<!DOCTYPE html>\
 <html lang=\"en\">\
 <head>\
@@ -55,13 +60,74 @@ crate fn render<T: Print, S: Print>(
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}normalize{suffix}.css\">\
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}rustdoc{suffix}.css\" \
           id=\"mainThemeStyle\">\
-    {style_files}\
-    <script id=\"default-settings\"{default_settings}></script>\
+    ",
+        description = page.description,
+        keywords = page.keywords,
+        title = page.title,
+        static_root_path = static_root_path,
+        suffix = page.resource_suffix,
+    )?;
+
+    for (theme, disabled) in style_files
+        .iter()
+        .filter_map(|t| {
+            if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
+        })
+        .filter_map(|t| if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None })
+    {
+        write!(&mut result, r#"<link rel="stylesheet" type="text/css" href=""#)?;
+        write!(&mut result, "{}", Escape(static_root_path))?;
+        write!(&mut result, "{}", Escape(theme))?;
+        write!(&mut result, "{}", Escape(page.resource_suffix))?;
+        write!(
+            &mut result,
+            ".css\" {} {}>",
+            if disabled { "disabled" } else { "" },
+            if theme == "light" { "id=\"themeStyle\"" } else { "" }
+        )?;
+    }
+    write!(&mut result, "<script id=\"default-settings\"")?;
+
+    for (k, v) in layout.default_settings.iter() {
+        write!(&mut result, r#" data-{}="{}""#, k.replace('-', "_"), Escape(v))?;
+    }
+
+    write!(
+        &mut result,
+        "></script>\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
-    <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
-    {css_extension}\
-    {favicon}\
-    {in_header}\
+    <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>",
+        static_root_path = static_root_path,
+        suffix = page.resource_suffix,
+    )?;
+
+    if layout.css_file_extension.is_some() {
+        write!(
+            &mut result,
+            "<link rel=\"stylesheet\" \
+                       type=\"text/css\" \
+                       href=\"{static_root_path}theme{suffix}.css\">",
+            static_root_path = static_root_path,
+            suffix = page.resource_suffix
+        )?;
+    }
+
+    if layout.favicon.is_empty() {
+        write!(
+            &mut result,
+            r##"<link rel="icon" type="image/svg+xml" href="{static_root_path}favicon{suffix}.svg">
+<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-16x16{suffix}.png">
+<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-32x32{suffix}.png">"##,
+            static_root_path = static_root_path,
+            suffix = page.resource_suffix
+        )?;
+    } else {
+        write!(&mut result, r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)?;
+    }
+
+    write!(
+        &mut result,
+        "{in_header}\
     <style type=\"text/css\">\
     #crate-search{{background-image:url(\"{static_root_path}down-arrow{suffix}.svg\");}}\
     </style>\
@@ -75,9 +141,40 @@ crate fn render<T: Print, S: Print>(
     <![endif]-->\
     {before_content}\
     <nav class=\"sidebar\">\
-        <div class=\"sidebar-menu\" role=\"button\">&#9776;</div>\
-        {logo}\
-        {sidebar}\
+        <div class=\"sidebar-menu\">&#9776;</div>\
+    ",
+        static_root_path = static_root_path,
+        suffix = page.resource_suffix,
+        css_class = page.css_class,
+        in_header = layout.external_html.in_header,
+        before_content = layout.external_html.before_content,
+    )?;
+
+    if layout.logo.is_empty() {
+        write!(
+            &mut result,
+            "<a href='{root}{path}index.html'>\
+                     <div class='logo-container rust-logo'>\
+                     <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
+            root = page.root_path,
+            path = ensure_trailing_slash(&layout.krate),
+            static_root_path = static_root_path,
+            suffix = page.resource_suffix
+        )?;
+    } else {
+        write!(
+            &mut result,
+            "<a href='{root}{path}index.html'>\
+                     <div class='logo-container'><img src='{logo}' alt='logo'></div></a>",
+            root = page.root_path,
+            path = ensure_trailing_slash(&layout.krate),
+            logo = layout.logo
+        )?;
+    }
+
+    write!(
+        &mut result,
+        "{sidebar}\
     </nav>\
     <div class=\"theme-picker\">\
         <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\">\
@@ -91,8 +188,25 @@ crate fn render<T: Print, S: Print>(
     <nav class=\"sub\">\
         <form class=\"search-form\">\
             <div class=\"search-container\">\
-                <div>{filter_crates}\
-                    <input class=\"search-input\" name=\"search\" \
+                <div>",
+        static_root_path = static_root_path,
+        suffix = page.resource_suffix,
+        sidebar = sidebar
+    )?;
+
+    if layout.generate_search_filter {
+        write!(
+            &mut result,
+            "<select id=\"crate-search\">\
+                 <option value=\"All crates\">All crates</option>\
+             </select>\
+             "
+        )?;
+    }
+
+    write!(
+        &mut result,
+        "<input class=\"search-input\" name=\"search\" \
                            disabled \
                            autocomplete=\"off\" \
                            spellcheck=\"false\" \
@@ -114,112 +228,43 @@ crate fn render<T: Print, S: Print>(
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
-    {extra_scripts}\
+    ",
+        static_root_path = static_root_path,
+        suffix = page.resource_suffix,
+        root_path = page.root_path,
+        after_content = layout.external_html.after_content,
+        content = content,
+        krate = layout.krate,
+    )?;
+
+    for e in page.static_extra_scripts.iter() {
+        write!(
+            &mut result,
+            "<script src=\"{static_root_path}{extra_script}.js\"></script>",
+            static_root_path = static_root_path,
+            extra_script = e
+        )?;
+    }
+    for e in page.extra_scripts.iter() {
+        write!(
+            &mut result,
+            "<script src=\"{root_path}{extra_script}.js\"></script>",
+            root_path = page.root_path,
+            extra_script = e
+        )?;
+    }
+
+    write!(
+        &mut result,
+        "\
     <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
-        css_extension = if layout.css_file_extension.is_some() {
-            format!(
-                "<link rel=\"stylesheet\" \
-                       type=\"text/css\" \
-                       href=\"{static_root_path}theme{suffix}.css\">",
-                static_root_path = static_root_path,
-                suffix = page.resource_suffix
-            )
-        } else {
-            String::new()
-        },
-        content = Buffer::html().to_display(t),
-        static_root_path = static_root_path,
-        root_path = page.root_path,
-        css_class = page.css_class,
-        logo = {
-            if layout.logo.is_empty() {
-                format!(
-                    "<a href='{root}{path}index.html'>\
-                     <div class='logo-container rust-logo'>\
-                     <img src='{static_root_path}rust-logo{suffix}.png' alt='logo'></div></a>",
-                    root = page.root_path,
-                    path = ensure_trailing_slash(&layout.krate),
-                    static_root_path = static_root_path,
-                    suffix = page.resource_suffix
-                )
-            } else {
-                format!(
-                    "<a href='{root}{path}index.html'>\
-                     <div class='logo-container'><img src='{logo}' alt='logo'></div></a>",
-                    root = page.root_path,
-                    path = ensure_trailing_slash(&layout.krate),
-                    logo = layout.logo
-                )
-            }
-        },
-        title = page.title,
-        description = page.description,
-        keywords = page.keywords,
-        favicon = if layout.favicon.is_empty() {
-            format!(
-                r##"<link rel="icon" type="image/svg+xml" href="{static_root_path}favicon{suffix}.svg">
-<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-16x16{suffix}.png">
-<link rel="alternate icon" type="image/png" href="{static_root_path}favicon-32x32{suffix}.png">"##,
-                static_root_path = static_root_path,
-                suffix = page.resource_suffix
-            )
-        } else {
-            format!(r#"<link rel="shortcut icon" href="{}">"#, layout.favicon)
-        },
-        in_header = layout.external_html.in_header,
-        before_content = layout.external_html.before_content,
-        after_content = layout.external_html.after_content,
-        sidebar = Buffer::html().to_display(sidebar),
-        krate = layout.krate,
-        default_settings = layout
-            .default_settings
-            .iter()
-            .map(|(k, v)| format!(r#" data-{}="{}""#, k.replace('-', "_"), Escape(v)))
-            .collect::<String>(),
-        style_files = style_files
-            .iter()
-            .filter_map(|t| {
-                if let Some(stem) = t.path.file_stem() { Some((stem, t.disabled)) } else { None }
-            })
-            .filter_map(|t| {
-                if let Some(path) = t.0.to_str() { Some((path, t.1)) } else { None }
-            })
-            .map(|t| format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
-                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
-                if t.1 { "disabled" } else { "" },
-                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
-            ))
-            .collect::<String>(),
         suffix = page.resource_suffix,
-        extra_scripts = page
-            .static_extra_scripts
-            .iter()
-            .map(|e| {
-                format!(
-                    "<script src=\"{static_root_path}{extra_script}.js\"></script>",
-                    static_root_path = static_root_path,
-                    extra_script = e
-                )
-            })
-            .chain(page.extra_scripts.iter().map(|e| {
-                format!(
-                    "<script src=\"{root_path}{extra_script}.js\"></script>",
-                    root_path = page.root_path,
-                    extra_script = e
-                )
-            }))
-            .collect::<String>(),
-        filter_crates = if layout.generate_search_filter {
-            "<select id=\"crate-search\">\
-                 <option value=\"All crates\">All crates</option>\
-             </select>"
-        } else {
-            ""
-        },
-    )
+        root_path = page.root_path
+    )?;
+
+    Ok(result)
 }
 
 crate fn redirect(url: &str) -> String {

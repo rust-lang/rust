@@ -20,7 +20,8 @@ crate fn render(
     krate: clean::Crate,
 ) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = dst.join("src").join(&*krate.name.as_str());
+    let mut dst = dst.join("src");
+    dst.push(&*krate.name.as_str());
     scx.ensure_dir(&dst)?;
     let mut folder = SourceCollector { dst, scx };
     Ok(folder.fold_crate(krate))
@@ -133,7 +134,8 @@ impl SourceCollector<'_, 'tcx> {
             "",
             |buf: &mut _| print_src(buf, contents, self.scx.edition),
             &self.scx.style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p, href);
         Ok(())

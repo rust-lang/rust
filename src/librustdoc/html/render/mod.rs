@@ -531,14 +531,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         krate: &clean::Crate,
         diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
-        let final_file = self.dst.join(&*krate.name.as_str()).join("all.html");
+        let mut final_file = self.dst.join(&*krate.name.as_str());
+        final_file.push("all.html");
         let settings_file = self.dst.join("settings.html");
         let crate_name = krate.name;
 
-        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
@@ -570,7 +567,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             sidebar,
             |buf: &mut Buffer| all.print(buf),
             &self.shared.style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
         // Generating settings page.
@@ -591,7 +589,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &self.shared.style_files,
             )?,
             &style_files,
-        );
+        )
+        .expect("Failed to render layout");
         self.shared.fs.write(&settings_file, v.as_bytes())?;
         if let Some(redirections) = self.redirections.take() {
             if !redirections.borrow().is_empty() {
@@ -1117,7 +1116,8 @@ themePicker.onblur = handleThemeButtonsBlur;
                     })
                     .collect::<String>()
             );
-            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
+            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files)
+                .expect("Failed to render layout");
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
     }
@@ -1408,17 +1408,27 @@ enum Setting {
 }
 
 impl Setting {
-    fn display(&self, root_path: &str, suffix: &str) -> String {
+    fn display(&self, buffer: &mut String, root_path: &str, suffix: &str) {
         match *self {
-            Setting::Section { description, ref sub_settings } => format!(
-                "<div class=\"setting-line\">\
+            Setting::Section { description, ref sub_settings } => {
+                write!(
+                    buffer,
+                    "<div class=\"setting-line\">\
                      <div class=\"title\">{}</div>\
-                     <div class=\"sub-settings\">{}</div>
-                 </div>",
-                description,
-                sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
-            ),
-            Setting::Toggle { js_data_name, description, default_value } => format!(
+                     <div class=\"sub-settings\">",
+                    description
+                )
+                .unwrap();
+                sub_settings.iter().for_each(|s| s.display(buffer, root_path, suffix));
+                write!(
+                    buffer,
+                    "</div>
+                 </div>"
+                )
+                .unwrap();
+            }
+            Setting::Toggle { js_data_name, description, default_value } => write!(
+                buffer,
                 "<div class=\"setting-line\">\
                      <label class=\"toggle\">\
                      <input type=\"checkbox\" id=\"{}\" {}>\
@@ -1429,29 +1439,40 @@ impl Setting {
                 js_data_name,
                 if default_value { " checked" } else { "" },
                 description,
-            ),
-            Setting::Select { js_data_name, description, default_value, ref options } => format!(
-                "<div class=\"setting-line\">\
-                     <div>{}</div>\
-                     <label class=\"select-wrapper\">\
-                         <select id=\"{}\" autocomplete=\"off\">{}</select>\
-                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
-                     </label>\
-                 </div>",
-                description,
-                js_data_name,
-                options
-                    .iter()
-                    .map(|opt| format!(
+            )
+            .unwrap(),
+            Setting::Select { js_data_name, description, default_value, ref options } => {
+                write!(
+                    buffer,
+                    "<div class=\"setting-line\">\
+                 <div>{}</div>\
+                 <label class=\"select-wrapper\">\
+                     <select id=\"{}\" autocomplete=\"off\">",
+                    description, js_data_name,
+                )
+                .unwrap();
+
+                options.iter().for_each(|opt| {
+                    write!(
+                        buffer,
                         "<option value=\"{}\" {}>{}</option>",
                         opt.0,
                         if opt.0 == default_value { "selected" } else { "" },
                         opt.1,
-                    ))
-                    .collect::<String>(),
-                root_path,
-                suffix,
-            ),
+                    )
+                    .unwrap()
+                });
+
+                write!(
+                    buffer,
+                    "</select>\
+                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
+                     </label>\
+                 </div>",
+                    root_path, suffix,
+                )
+                .unwrap()
+            }
         }
     }
 }
@@ -1525,17 +1546,30 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
         ("line-numbers", "Show line numbers on code examples", false).into(),
         ("disable-shortcuts", "Disable keyboard shortcuts", false).into(),
     ];
+    let mut result = String::with_capacity(4096);
 
-    Ok(format!(
+    write!(
+        &mut result,
         "<h1 class=\"fqn\">\
             <span class=\"in-band\">Rustdoc settings</span>\
         </h1>\
-        <div class=\"settings\">{}</div>\
+        <div class=\"settings\">"
+    )
+    .unwrap();
+
+    for setting in settings.iter() {
+        setting.display(&mut result, root_path, suffix);
+    }
+
+    write!(
+        &mut result,
+        "</div>\
         <script src=\"{}settings{}.js\"></script>",
-        settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
-        root_path,
-        suffix
-    ))
+        root_path, suffix
+    )
+    .unwrap();
+
+    Ok(result)
 }
 
 impl Context<'_> {
@@ -1610,6 +1644,7 @@ impl Context<'_> {
                 |buf: &mut _| print_item(self, it, buf),
                 &self.shared.style_files,
             )
+            .expect("Failed to render layout")
         } else {
             if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {
                 let mut path = String::new();
@@ -4263,15 +4298,30 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     buffer.write_str("</div>");
 }
 
-fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
-    if used_links.insert(url.clone()) {
-        return url;
+fn get_next_url(buffer: &mut String, used_links: &mut FxHashSet<String>, mut url: String) {
+    if !used_links.contains(&url) {
+        buffer.push_str(&url);
+        used_links.insert(url);
+        return;
     }
     let mut add = 1;
-    while !used_links.insert(format!("{}-{}", url, add)) {
+    url.push_str("-0");
+    while {
+        let mut number = (add - 1) / 10;
+        let mut num_digits = 1;
+        while number != 0 {
+            number = number / 10;
+            num_digits += 1;
+        }
+        url.truncate(url.len() - num_digits);
+        write!(&mut url, "{}", add).unwrap();
+        used_links.contains(&url)
+    } {
         add += 1;
     }
-    format!("{}-{}", url, add)
+    buffer.push_str(&url);
+    let was_not_present = used_links.insert(url);
+    debug_assert!(was_not_present);
 }
 
 fn get_methods(
@@ -4286,11 +4336,12 @@ fn get_methods(
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || should_render_item(item, deref_mut, cache) {
-                    Some(format!(
-                        "<a href=\"#{}\">{}</a>",
-                        get_next_url(used_links, format!("method.{}", name)),
-                        name
-                    ))
+                    let mut result = String::with_capacity(64);
+                    write!(&mut result, "<a href=\"#").unwrap();
+                    get_next_url(&mut result, used_links, format!("method.{}", name));
+                    write!(&mut result, "\">{}</a>", name).unwrap();
+
+                    Some(result)
                 } else {
                     None
                 }
