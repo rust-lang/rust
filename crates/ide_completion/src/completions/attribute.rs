@@ -39,7 +39,8 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
 }
 
 fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
-    for attr_completion in ATTRIBUTES {
+    let is_inner = attribute.kind() == ast::AttrKind::Inner;
+    for attr_completion in ATTRIBUTES.iter().filter(|compl| is_inner || !compl.prefer_inner) {
         let mut item = CompletionItem::new(
             CompletionKind::Attribute,
             ctx.source_range(),
