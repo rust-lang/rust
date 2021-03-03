@@ -106,10 +106,16 @@ Misc
 Compatibility Notes
 -------------------
 
-- [Bumped the minimum `g++` for `linux-gnu` targets to `g++-8` from `g++-7`.][81521]
 - [WASI platforms no longer use the `wasm-bindgen` ABI, and instead use the wasm32 ABI.][79998]
 - [`rustc` no longer promotes division, modulo and indexing operations to `const` that
   could fail.][80579]
+- [The minimum version of `glibc` required when building with the Ubuntu 20.04 toolchain
+  for the following platforms has been bumped to version 2.31.][81521]
+    - `armv5te-unknown-linux-gnueabi`
+    - `sparc64-unknown-linux-gnu`
+    - `thumbv7neon-unknown-linux-gnueabihf`
+    - `armv7-unknown-linux-gnueabi`
+    - `x86_64-unknown-linux-gnux32`
 
 Internal Only
 -------------
