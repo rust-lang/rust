@@ -168,7 +168,7 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
 /// Parses the first token from the provided input string.
 pub fn first_token(input: &str) -> Token {
     debug_assert!(!input.is_empty());
-    Cursor::new(input).advance_token()
+    advance_token(&mut Cursor::new(input))
 }
 
 /// Creates an iterator that produces tokens from the input string.
@@ -250,211 +250,209 @@ pub fn is_ident(string: &str) -> bool {
     }
 }
 
-impl Cursor<'_> {
-    /// Parses a token from the input string.
-    fn advance_token(&mut self) -> Token {
-        let first_char = self.bump().unwrap();
-        let token_kind = match first_char {
-            // Slash, comment or block comment.
-            '/' => match self.first() {
-                '/' => self.line_comment(),
-                '*' => self.block_comment(),
-                _ => Slash,
-            },
+/// Parses a token from the input string.
+fn advance_token(cursor: &mut Cursor) -> Token {
+    let first_char = cursor.bump().unwrap();
+    let token_kind = match first_char {
+        // Slash, comment or block comment.
+        '/' => match cursor.first() {
+            '/' => line_comment(cursor),
+            '*' => block_comment(cursor),
+            _ => Slash,
+        },
 
-            // Whitespace sequence.
-            c if is_whitespace(c) => self.whitespace(),
+        // Whitespace sequence.
+        c if is_whitespace(c) => whitespace(cursor),
 
-            // Raw identifier, raw string literal or identifier.
-            'r' => match (self.first(), self.second()) {
-                ('#', c1) if is_id_start(c1) => self.raw_ident(),
-                ('#', _) | ('"', _) => {
-                    let (n_hashes, err) = raw_double_quoted_string(self, 1);
-                    let suffix_start = self.len_consumed();
-                    if err.is_none() {
-                        eat_literal_suffix(self);
-                    }
-                    let kind = LiteralKind::RawStr { n_hashes, err };
-                    Literal { kind, suffix_start }
+        // Raw identifier, raw string literal or identifier.
+        'r' => match (cursor.first(), cursor.second()) {
+            ('#', c1) if is_id_start(c1) => raw_ident(cursor),
+            ('#', _) | ('"', _) => {
+                let (n_hashes, err) = raw_double_quoted_string(cursor, 1);
+                let suffix_start = cursor.len_consumed();
+                if err.is_none() {
+                    eat_literal_suffix(cursor);
                 }
-                _ => self.ident(),
-            },
-
-            // Byte literal, byte string literal, raw byte string literal or identifier.
-            'b' => match (self.first(), self.second()) {
-                ('\'', _) => {
-                    self.bump();
-                    let terminated = single_quoted_string(self);
-                    let suffix_start = self.len_consumed();
-                    if terminated {
-                        eat_literal_suffix(self);
-                    }
-                    let kind = LiteralKind::Byte { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('"', _) => {
-                    self.bump();
-                    let terminated = double_quoted_string(self);
-                    let suffix_start = self.len_consumed();
-                    if terminated {
-                        eat_literal_suffix(self);
-                    }
-                    let kind = LiteralKind::ByteStr { terminated };
-                    Literal { kind, suffix_start }
-                }
-                ('r', '"') | ('r', '#') => {
-                    self.bump();
-                    let (n_hashes, err) = raw_double_quoted_string(self, 2);
-                    let suffix_start = self.len_consumed();
-                    if err.is_none() {
-                        eat_literal_suffix(self);
-                    }
-                    let kind = LiteralKind::RawByteStr { n_hashes, err };
-                    Literal { kind, suffix_start }
-                }
-                _ => self.ident(),
-            },
-
-            // Identifier (this should be checked after other variant that can
-            // start as identifier).
-            c if is_id_start(c) => self.ident(),
-
-            // Numeric literal.
-            c @ '0'..='9' => {
-                let literal_kind = number(self, c);
-                let suffix_start = self.len_consumed();
-                eat_literal_suffix(self);
-                TokenKind::Literal { kind: literal_kind, suffix_start }
-            }
-
-            // One-symbol tokens.
-            ';' => Semi,
-            ',' => Comma,
-            '.' => Dot,
-            '(' => OpenParen,
-            ')' => CloseParen,
-            '{' => OpenBrace,
-            '}' => CloseBrace,
-            '[' => OpenBracket,
-            ']' => CloseBracket,
-            '@' => At,
-            '#' => Pound,
-            '~' => Tilde,
-            '?' => Question,
-            ':' => Colon,
-            '$' => Dollar,
-            '=' => Eq,
-            '!' => Bang,
-            '<' => Lt,
-            '>' => Gt,
-            '-' => Minus,
-            '&' => And,
-            '|' => Or,
-            '+' => Plus,
-            '*' => Star,
-            '^' => Caret,
-            '%' => Percent,
-
-            // Lifetime or character literal.
-            '\'' => lifetime_or_char(self),
-
-            // String literal.
-            '"' => {
-                let terminated = double_quoted_string(self);
-                let suffix_start = self.len_consumed();
-                if terminated {
-                    eat_literal_suffix(self);
-                }
-                let kind = LiteralKind::Str { terminated };
+                let kind = LiteralKind::RawStr { n_hashes, err };
                 Literal { kind, suffix_start }
             }
-            _ => Unknown,
-        };
-        Token::new(token_kind, self.len_consumed())
-    }
+            _ => ident(cursor),
+        },
 
-    fn line_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.first() == '/');
-        self.bump();
-
-        let doc_style = match self.first() {
-            // `//!` is an inner line doc comment.
-            '!' => Some(DocStyle::Inner),
-            // `////` (more than 3 slashes) is not considered a doc comment.
-            '/' if self.second() != '/' => Some(DocStyle::Outer),
-            _ => None,
-        };
-
-        self.eat_while(|c| c != '\n');
-        LineComment { doc_style }
-    }
-
-    fn block_comment(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == '/' && self.first() == '*');
-        self.bump();
-
-        let doc_style = match self.first() {
-            // `/*!` is an inner block doc comment.
-            '!' => Some(DocStyle::Inner),
-            // `/***` (more than 2 stars) is not considered a doc comment.
-            // `/**/` is not considered a doc comment.
-            '*' if !matches!(self.second(), '*' | '/') => Some(DocStyle::Outer),
-            _ => None,
-        };
-
-        let mut depth = 1usize;
-        while let Some(c) = self.bump() {
-            match c {
-                '/' if self.first() == '*' => {
-                    self.bump();
-                    depth += 1;
+        // Byte literal, byte string literal, raw byte string literal or identifier.
+        'b' => match (cursor.first(), cursor.second()) {
+            ('\'', _) => {
+                cursor.bump();
+                let terminated = single_quoted_string(cursor);
+                let suffix_start = cursor.len_consumed();
+                if terminated {
+                    eat_literal_suffix(cursor);
                 }
-                '*' if self.first() == '/' => {
-                    self.bump();
-                    depth -= 1;
-                    if depth == 0 {
-                        // This block comment is closed, so for a construction like "/* */ */"
-                        // there will be a successfully parsed block comment "/* */"
-                        // and " */" will be processed separately.
-                        break;
-                    }
-                }
-                _ => (),
+                let kind = LiteralKind::Byte { terminated };
+                Literal { kind, suffix_start }
             }
+            ('"', _) => {
+                cursor.bump();
+                let terminated = double_quoted_string(cursor);
+                let suffix_start = cursor.len_consumed();
+                if terminated {
+                    eat_literal_suffix(cursor);
+                }
+                let kind = LiteralKind::ByteStr { terminated };
+                Literal { kind, suffix_start }
+            }
+            ('r', '"') | ('r', '#') => {
+                cursor.bump();
+                let (n_hashes, err) = raw_double_quoted_string(cursor, 2);
+                let suffix_start = cursor.len_consumed();
+                if err.is_none() {
+                    eat_literal_suffix(cursor);
+                }
+                let kind = LiteralKind::RawByteStr { n_hashes, err };
+                Literal { kind, suffix_start }
+            }
+            _ => ident(cursor),
+        },
+
+        // Identifier (this should be checked after other variant that can
+        // start as identifier).
+        c if is_id_start(c) => ident(cursor),
+
+        // Numeric literal.
+        c @ '0'..='9' => {
+            let literal_kind = number(cursor, c);
+            let suffix_start = cursor.len_consumed();
+            eat_literal_suffix(cursor);
+            TokenKind::Literal { kind: literal_kind, suffix_start }
         }
 
-        BlockComment { doc_style, terminated: depth == 0 }
-    }
+        // One-symbol tokens.
+        ';' => Semi,
+        ',' => Comma,
+        '.' => Dot,
+        '(' => OpenParen,
+        ')' => CloseParen,
+        '{' => OpenBrace,
+        '}' => CloseBrace,
+        '[' => OpenBracket,
+        ']' => CloseBracket,
+        '@' => At,
+        '#' => Pound,
+        '~' => Tilde,
+        '?' => Question,
+        ':' => Colon,
+        '$' => Dollar,
+        '=' => Eq,
+        '!' => Bang,
+        '<' => Lt,
+        '>' => Gt,
+        '-' => Minus,
+        '&' => And,
+        '|' => Or,
+        '+' => Plus,
+        '*' => Star,
+        '^' => Caret,
+        '%' => Percent,
 
-    fn whitespace(&mut self) -> TokenKind {
-        debug_assert!(is_whitespace(self.prev()));
-        self.eat_while(is_whitespace);
-        Whitespace
-    }
+        // Lifetime or character literal.
+        '\'' => lifetime_or_char(cursor),
 
-    fn raw_ident(&mut self) -> TokenKind {
-        debug_assert!(self.prev() == 'r' && self.first() == '#' && is_id_start(self.second()));
-        // Eat "#" symbol.
-        self.bump();
-        // Eat the identifier part of RawIdent.
-        self.eat_identifier();
-        RawIdent
-    }
-
-    fn ident(&mut self) -> TokenKind {
-        debug_assert!(is_id_start(self.prev()));
-        // Start is already eaten, eat the rest of identifier.
-        self.eat_while(is_id_continue);
-        Ident
-    }
-
-    /// Eats one identifier.
-    fn eat_identifier(&mut self) {
-        if !is_id_start(self.first()) {
-            return;
+        // String literal.
+        '"' => {
+            let terminated = double_quoted_string(cursor);
+            let suffix_start = cursor.len_consumed();
+            if terminated {
+                eat_literal_suffix(cursor);
+            }
+            let kind = LiteralKind::Str { terminated };
+            Literal { kind, suffix_start }
         }
-        self.bump();
+        _ => Unknown,
+    };
+    Token::new(token_kind, cursor.len_consumed())
+}
 
-        self.eat_while(is_id_continue);
+fn line_comment(cursor: &mut Cursor) -> TokenKind {
+    debug_assert!(cursor.prev() == '/' && cursor.first() == '/');
+    cursor.bump();
+
+    let doc_style = match cursor.first() {
+        // `//!` is an inner line doc comment.
+        '!' => Some(DocStyle::Inner),
+        // `////` (more than 3 slashes) is not considered a doc comment.
+        '/' if cursor.second() != '/' => Some(DocStyle::Outer),
+        _ => None,
+    };
+
+    cursor.eat_while(|c| c != '\n');
+    LineComment { doc_style }
+}
+
+fn block_comment(cursor: &mut Cursor) -> TokenKind {
+    debug_assert!(cursor.prev() == '/' && cursor.first() == '*');
+    cursor.bump();
+
+    let doc_style = match cursor.first() {
+        // `/*!` is an inner block doc comment.
+        '!' => Some(DocStyle::Inner),
+        // `/***` (more than 2 stars) is not considered a doc comment.
+        // `/**/` is not considered a doc comment.
+        '*' if !matches!(cursor.second(), '*' | '/') => Some(DocStyle::Outer),
+        _ => None,
+    };
+
+    let mut depth = 1usize;
+    while let Some(c) = cursor.bump() {
+        match c {
+            '/' if cursor.first() == '*' => {
+                cursor.bump();
+                depth += 1;
+            }
+            '*' if cursor.first() == '/' => {
+                cursor.bump();
+                depth -= 1;
+                if depth == 0 {
+                    // This block comment is closed, so for a construction like "/* */ */"
+                    // there will be a successfully parsed block comment "/* */"
+                    // and " */" will be processed separately.
+                    break;
+                }
+            }
+            _ => (),
+        }
     }
+
+    BlockComment { doc_style, terminated: depth == 0 }
+}
+
+fn whitespace(cursor: &mut Cursor) -> TokenKind {
+    debug_assert!(is_whitespace(cursor.prev()));
+    cursor.eat_while(is_whitespace);
+    Whitespace
+}
+
+fn raw_ident(cursor: &mut Cursor) -> TokenKind {
+    debug_assert!(cursor.prev() == 'r' && cursor.first() == '#' && is_id_start(cursor.second()));
+    // Eat "#" symbol.
+    cursor.bump();
+    // Eat the identifier part of RawIdent.
+    eat_identifier(cursor);
+    RawIdent
+}
+
+fn ident(cursor: &mut Cursor) -> TokenKind {
+    debug_assert!(is_id_start(cursor.prev()));
+    // Start is already eaten, eat the rest of identifier.
+    cursor.eat_while(is_id_continue);
+    Ident
+}
+
+/// Eats one identifier.
+pub(crate) fn eat_identifier(cursor: &mut Cursor) {
+    if !is_id_start(cursor.first()) {
+        return;
+    }
+    cursor.bump();
+
+    cursor.eat_while(is_id_continue);
 }

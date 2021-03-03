@@ -1,5 +1,5 @@
 use crate::cursor::{Cursor, EOF_CHAR};
-use crate::{is_id_continue, is_id_start, TokenKind};
+use crate::{is_id_continue, is_id_start, TokenKind, eat_identifier};
 use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -354,5 +354,5 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
 
 /// Eats the suffix of a literal, e.g. "_u8".
 pub(crate) fn eat_literal_suffix(cursor: &mut Cursor) {
-    cursor.eat_identifier();
+    eat_identifier(cursor);
 }
