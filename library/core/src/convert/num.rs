@@ -9,7 +9,7 @@ mod private {
     pub trait Sealed {}
 }
 
-/// Supporting trait for inherent methods of `f32` and `f64` such as `round_unchecked_to`.
+/// Supporting trait for inherent methods of `f32` and `f64` such as `to_int_unchecked`.
 /// Typically doesn’t need to be used directly.
 #[unstable(feature = "convert_float_to_int", issue = "67057")]
 pub trait FloatToInt<Int>: private::Sealed + Sized {

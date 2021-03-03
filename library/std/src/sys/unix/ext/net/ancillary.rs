@@ -1,6 +1,6 @@
 use super::{sockaddr_un, SocketAddr};
 use crate::convert::TryFrom;
-use crate::io::{self, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};
 use crate::os::unix::io::RawFd;
@@ -68,7 +68,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
 pub(super) fn send_vectored_with_ancillary_to(
     socket: &Socket,
     path: Option<&Path>,
-    bufs: &mut [IoSliceMut<'_>],
+    bufs: &[IoSlice<'_>],
     ancillary: &mut SocketAncillary<'_>,
 ) -> io::Result<usize> {
     unsafe {
@@ -78,7 +78,7 @@ pub(super) fn send_vectored_with_ancillary_to(
         let mut msg: libc::msghdr = zeroed();
         msg.msg_name = &mut msg_name as *mut _ as *mut _;
         msg.msg_namelen = msg_namelen;
-        msg.msg_iov = bufs.as_mut_ptr().cast();
+        msg.msg_iov = bufs.as_ptr() as *mut _;
         msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "android", all(target_os = "linux", target_env = "gnu")))] {
@@ -567,7 +567,7 @@ impl<'a> SocketAncillary<'a> {
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::os::unix::io::AsRawFd;
-    /// use std::io::IoSliceMut;
+    /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixStream::connect("/tmp/sock")?;
@@ -577,7 +577,7 @@ impl<'a> SocketAncillary<'a> {
     ///     ancillary.add_fds(&[sock.as_raw_fd()][..]);
     ///
     ///     let mut buf = [1; 8];
-    ///     let mut bufs = &mut [IoSliceMut::new(&mut buf[..])][..];
+    ///     let mut bufs = &mut [IoSlice::new(&mut buf[..])][..];
     ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)?;
     ///     Ok(())
     /// }

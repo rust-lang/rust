@@ -1161,15 +1161,6 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
                 if len == 0 {
                     struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
                     return;
-                } else if !len.is_power_of_two() {
-                    struct_span_err!(
-                        tcx.sess,
-                        sp,
-                        E0075,
-                        "SIMD vector length must be a power of two"
-                    )
-                    .emit();
-                    return;
                 } else if len > MAX_SIMD_LANES {
                     struct_span_err!(
                         tcx.sess,

@@ -29,7 +29,7 @@ pub use crate::sys::wasi_ext as wasi;
 // If we're not documenting libstd then we just expose the main modules as we otherwise would.
 
 #[cfg(not(doc))]
-#[cfg(any(target_os = "redox", unix, target_os = "vxworks", target_os = "hermit"))]
+#[cfg(any(unix, target_os = "hermit"))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::sys::ext as unix;
 

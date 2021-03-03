@@ -732,11 +732,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
-                } else if !e_len.is_power_of_two() {
-                    tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` of non-power-of-two length",
-                        ty
-                    ));
                 } else if e_len > MAX_SIMD_LANES {
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` of length greater than {}",

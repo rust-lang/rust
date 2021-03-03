@@ -497,6 +497,13 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
         unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
+        unstable("generate-redirect-map", |o| {
+            o.optflag(
+                "",
+                "generate-redirect-map",
+                "Generate JSON file at the top level instead of generating HTML redirection files",
+            )
+        }),
     ]
 }
 

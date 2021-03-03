@@ -1,4 +1,0 @@
-error: monomorphising SIMD type `Simd<3_usize>` of non-power-of-two length
-
-error: aborting due to previous error
-

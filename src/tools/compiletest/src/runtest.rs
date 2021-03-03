@@ -13,6 +13,7 @@ use crate::header::TestProps;
 use crate::json;
 use crate::util::get_pointer_width;
 use crate::util::{logv, PathBufExt};
+use crate::ColorConfig;
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
@@ -2440,12 +2441,43 @@ impl<'test> TestCx<'test> {
                 }
             })
         };
-        let mut diff = Command::new("diff");
-        // diff recursively, showing context, and excluding .css files
-        diff.args(&["-u", "-r", "-x", "*.css"]).args(&[&compare_dir, out_dir]);
 
-        let output = if let Some(pager) = pager {
-            let diff_pid = diff.stdout(Stdio::piped()).spawn().expect("failed to run `diff`");
+        let diff_filename = format!("build/tmp/rustdoc-compare-{}.diff", std::process::id());
+
+        {
+            let mut diff_output = File::create(&diff_filename).unwrap();
+            for entry in walkdir::WalkDir::new(out_dir) {
+                let entry = entry.expect("failed to read file");
+                let extension = entry.path().extension().and_then(|p| p.to_str());
+                if entry.file_type().is_file()
+                    && (extension == Some("html".into()) || extension == Some("js".into()))
+                {
+                    let expected_path =
+                        compare_dir.join(entry.path().strip_prefix(&out_dir).unwrap());
+                    let expected =
+                        if let Ok(s) = std::fs::read(&expected_path) { s } else { continue };
+                    let actual_path = entry.path();
+                    let actual = std::fs::read(&actual_path).unwrap();
+                    diff_output
+                        .write_all(&unified_diff::diff(
+                            &expected,
+                            &expected_path.to_string_lossy(),
+                            &actual,
+                            &actual_path.to_string_lossy(),
+                            3,
+                        ))
+                        .unwrap();
+                }
+            }
+        }
+
+        match self.config.color {
+            ColorConfig::AlwaysColor => colored::control::set_override(true),
+            ColorConfig::NeverColor => colored::control::set_override(false),
+            _ => {}
+        }
+
+        if let Some(pager) = pager {
             let pager = pager.trim();
             if self.config.verbose {
                 eprintln!("using pager {}", pager);
@@ -2453,24 +2485,48 @@ impl<'test> TestCx<'test> {
             let output = Command::new(pager)
                 // disable paging; we want this to be non-interactive
                 .env("PAGER", "")
-                .stdin(diff_pid.stdout.unwrap())
+                .stdin(File::open(&diff_filename).unwrap())
                 // Capture output and print it explicitly so it will in turn be
                 // captured by libtest.
                 .output()
                 .unwrap();
             assert!(output.status.success());
-            output
+            println!("{}", String::from_utf8_lossy(&output.stdout));
+            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
-            eprintln!("warning: no pager configured, falling back to `diff --color`");
+            use colored::Colorize;
+            eprintln!("warning: no pager configured, falling back to unified diff");
             eprintln!(
                 "help: try configuring a git pager (e.g. `delta`) with `git config --global core.pager delta`"
             );
-            let output = diff.arg("--color").output().unwrap();
-            assert!(output.status.success() || output.status.code() == Some(1));
-            output
+            let mut out = io::stdout();
+            let mut diff = BufReader::new(File::open(&diff_filename).unwrap());
+            let mut line = Vec::new();
+            loop {
+                line.truncate(0);
+                match diff.read_until(b'\n', &mut line) {
+                    Ok(0) => break,
+                    Ok(_) => {}
+                    Err(e) => eprintln!("ERROR: {:?}", e),
+                }
+                match String::from_utf8(line.clone()) {
+                    Ok(line) => {
+                        if line.starts_with("+") {
+                            write!(&mut out, "{}", line.green()).unwrap();
+                        } else if line.starts_with("-") {
+                            write!(&mut out, "{}", line.red()).unwrap();
+                        } else if line.starts_with("@") {
+                            write!(&mut out, "{}", line.blue()).unwrap();
+                        } else {
+                            out.write_all(line.as_bytes()).unwrap();
+                        }
+                    }
+                    Err(_) => {
+                        write!(&mut out, "{}", String::from_utf8_lossy(&line).reversed()).unwrap();
+                    }
+                }
+            }
         };
-        println!("{}", String::from_utf8_lossy(&output.stdout));
-        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     }
 
     fn run_rustdoc_json_test(&self) {

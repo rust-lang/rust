@@ -19,7 +19,7 @@ use super::{sockaddr_un, SocketAddr};
     target_os = "netbsd",
     target_os = "openbsd",
 ))]
-use crate::io::IoSliceMut;
+use crate::io::{IoSlice, IoSliceMut};
 use crate::net::Shutdown;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::Path;
@@ -506,23 +506,24 @@ impl UnixDatagram {
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixDatagram, SocketAncillary};
-    /// use std::io::IoSliceMut;
+    /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     let mut buf1 = [1; 8];
-    ///     let mut buf2 = [2; 16];
-    ///     let mut buf3 = [3; 8];
-    ///     let mut bufs = &mut [
-    ///         IoSliceMut::new(&mut buf1),
-    ///         IoSliceMut::new(&mut buf2),
-    ///         IoSliceMut::new(&mut buf3),
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
     ///     ][..];
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
-    ///     sock.send_vectored_with_ancillary_to(bufs, &mut ancillary, "/some/sock").expect("send_vectored_with_ancillary_to function failed");
+    ///     sock.send_vectored_with_ancillary_to(bufs, &mut ancillary, "/some/sock")
+    ///         .expect("send_vectored_with_ancillary_to function failed");
     ///     Ok(())
     /// }
     /// ```
@@ -538,7 +539,7 @@ impl UnixDatagram {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary_to<P: AsRef<Path>>(
         &self,
-        bufs: &mut [IoSliceMut<'_>],
+        bufs: &[IoSlice<'_>],
         ancillary: &mut SocketAncillary<'_>,
         path: P,
     ) -> io::Result<usize> {
@@ -554,23 +555,24 @@ impl UnixDatagram {
     /// ```no_run
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixDatagram, SocketAncillary};
-    /// use std::io::IoSliceMut;
+    /// use std::io::IoSlice;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
-    ///     let mut buf1 = [1; 8];
-    ///     let mut buf2 = [2; 16];
-    ///     let mut buf3 = [3; 8];
-    ///     let mut bufs = &mut [
-    ///         IoSliceMut::new(&mut buf1),
-    ///         IoSliceMut::new(&mut buf2),
-    ///         IoSliceMut::new(&mut buf3),
+    ///     let buf1 = [1; 8];
+    ///     let buf2 = [2; 16];
+    ///     let buf3 = [3; 8];
+    ///     let bufs = &[
+    ///         IoSlice::new(&buf1),
+    ///         IoSlice::new(&buf2),
+    ///         IoSlice::new(&buf3),
     ///     ][..];
     ///     let fds = [0, 1, 2];
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     ancillary.add_fds(&fds[..]);
-    ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary).expect("send_vectored_with_ancillary function failed");
+    ///     sock.send_vectored_with_ancillary(bufs, &mut ancillary)
+    ///         .expect("send_vectored_with_ancillary function failed");
     ///     Ok(())
     /// }
     /// ```
@@ -586,7 +588,7 @@ impl UnixDatagram {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn send_vectored_with_ancillary(
         &self,
-        bufs: &mut [IoSliceMut<'_>],
+        bufs: &[IoSlice<'_>],
         ancillary: &mut SocketAncillary<'_>,
     ) -> io::Result<usize> {
         send_vectored_with_ancillary_to(&self.0, None, bufs, ancillary)

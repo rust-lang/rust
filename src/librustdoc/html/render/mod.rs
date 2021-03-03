@@ -111,6 +111,10 @@ crate struct Context<'tcx> {
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     crate render_redirect_pages: bool,
+    /// `None` by default, depends on the `generate-redirect-map` option flag. If this field is set
+    /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
+    /// the crate.
+    crate redirections: Option<Rc<RefCell<FxHashMap<String, String>>>>,
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     /// Tracks section IDs for `Deref` targets so they match in both the main
@@ -404,6 +408,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             static_root_path,
             generate_search_filter,
             unstable_features,
+            generate_redirect_map,
             ..
         } = options;
 
@@ -509,6 +514,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             all: Rc::new(RefCell::new(AllTypes::new())),
             errors: Rc::new(receiver),
             cache: Rc::new(cache),
+            redirections: if generate_redirect_map { Some(Default::default()) } else { None },
         };
 
         CURRENT_DEPTH.with(|s| s.set(0));
@@ -587,6 +593,15 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &style_files,
         );
         self.shared.fs.write(&settings_file, v.as_bytes())?;
+        if let Some(redirections) = self.redirections.take() {
+            if !redirections.borrow().is_empty() {
+                let redirect_map_path =
+                    self.dst.join(&*krate.name.as_str()).join("redirect-map.json");
+                let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
+                self.shared.ensure_dir(&self.dst.join(&*krate.name.as_str()))?;
+                self.shared.fs.write(&redirect_map_path, paths.as_bytes())?;
+            }
+        }
 
         // Flush pending errors.
         Arc::get_mut(&mut self.shared).unwrap().fs.close();
@@ -675,9 +690,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             // to the new one (without).
             if item_type == ItemType::Macro {
                 let redir_name = format!("{}.{}!.html", item_type, name);
-                let redir_dst = self.dst.join(redir_name);
-                let v = layout::redirect(file_name);
-                self.shared.fs.write(&redir_dst, v.as_bytes())?;
+                if let Some(ref redirections) = self.redirections {
+                    let crate_name = &self.shared.layout.krate;
+                    redirections.borrow_mut().insert(
+                        format!("{}/{}", crate_name, redir_name),
+                        format!("{}/{}", crate_name, file_name),
+                    );
+                } else {
+                    let v = layout::redirect(file_name);
+                    let redir_dst = self.dst.join(redir_name);
+                    self.shared.fs.write(&redir_dst, v.as_bytes())?;
+                }
             }
         }
         Ok(())
@@ -1588,17 +1611,27 @@ impl Context<'_> {
                 &self.shared.style_files,
             )
         } else {
-            let mut url = self.root_path();
             if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {
+                let mut path = String::new();
                 for name in &names[..names.len() - 1] {
-                    url.push_str(name);
-                    url.push('/');
+                    path.push_str(name);
+                    path.push('/');
                 }
-                url.push_str(&item_path(ty, names.last().unwrap()));
-                layout::redirect(&url)
-            } else {
-                String::new()
+                path.push_str(&item_path(ty, names.last().unwrap()));
+                match self.redirections {
+                    Some(ref redirections) => {
+                        let mut current_path = String::new();
+                        for name in &self.current {
+                            current_path.push_str(name);
+                            current_path.push('/');
+                        }
+                        current_path.push_str(&item_path(ty, names.last().unwrap()));
+                        redirections.borrow_mut().insert(current_path, path);
+                    }
+                    None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                }
             }
+            String::new()
         }
     }
 
