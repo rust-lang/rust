@@ -676,6 +676,7 @@ dependencies = [
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
+ "colored",
  "diff",
  "getopts",
  "glob",
@@ -688,6 +689,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
+ "unified-diff",
  "walkdir",
  "winapi 0.3.9",
 ]
@@ -5525,6 +5527,15 @@ name = "unicode_categories"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e"
+
+[[package]]
+name = "unified-diff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "496a3d395ed0c30f411ceace4a91f7d93b148fb5a9b383d5d4cff7850f048d5f"
+dependencies = [
+ "diff",
+]
 
 [[package]]
 name = "unstable-book-gen"
