@@ -3,6 +3,7 @@ use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
     ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -164,16 +165,13 @@ impl<'a> ImportAssets<'a> {
         &self,
         sema: &Semantics<RootDatabase>,
         prefix_kind: PrefixKind,
-    ) -> FxHashSet<LocatedImport> {
+    ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
         self.search_for(sema, Some(prefix_kind))
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
-    pub fn search_for_relative_paths(
-        &self,
-        sema: &Semantics<RootDatabase>,
-    ) -> FxHashSet<LocatedImport> {
+    pub fn search_for_relative_paths(&self, sema: &Semantics<RootDatabase>) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
     }
@@ -182,7 +180,7 @@ impl<'a> ImportAssets<'a> {
         &self,
         sema: &Semantics<RootDatabase>,
         prefixed: Option<PrefixKind>,
-    ) -> FxHashSet<LocatedImport> {
+    ) -> Vec<LocatedImport> {
         let items_with_candidate_name = match self.name_to_import() {
             NameToImport::Exact(exact_name) => items_locator::with_for_exact_name(
                 sema,
@@ -216,6 +214,7 @@ impl<'a> ImportAssets<'a> {
             .into_iter()
             .filter(|import| import.import_path.len() > 1)
             .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import)))
+            .sorted_by_key(|import| import.import_path.clone())
             .collect()
     }
 

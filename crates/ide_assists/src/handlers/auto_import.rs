@@ -245,7 +245,7 @@ mod tests {
             }
             ",
             r"
-            use PubMod1::PubStruct;
+            use PubMod3::PubStruct;
 
             PubStruct
 
