@@ -659,7 +659,7 @@ fn infer_placeholder_type(
                 format!("{}: {}", item_ident, ty),
                 Applicability::MachineApplicable,
             )
-            .emit();
+            .emit_unless(matches!(ty.kind(), ty::Error(_)));
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
