@@ -216,8 +216,8 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 if let Some(ref tr) = impl_.trait_ {
                     debug!(
                         "impl {:#} for {:#} in {}",
-                        tr.print(&self.ctx.cache),
-                        impl_.for_.print(&self.ctx.cache),
+                        tr.print(&self.ctx.cache, 0),
+                        impl_.for_.print(&self.ctx.cache, 0),
                         filename,
                     );
 
@@ -228,7 +228,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     // inherent impls *can* be documented, and those docs show up, but in most
                     // cases it doesn't make sense, as all methods on a type are in one single
                     // impl block
-                    debug!("impl {:#} in {}", impl_.for_.print(&self.ctx.cache), filename);
+                    debug!("impl {:#} in {}", impl_.for_.print(&self.ctx.cache, 0), filename);
                 }
             }
             _ => {

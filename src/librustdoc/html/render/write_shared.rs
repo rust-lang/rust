@@ -471,7 +471,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                     None
                 } else {
                     Some(Implementor {
-                        text: imp.inner_impl().print(cx.cache(), false).to_string(),
+                        text: imp.inner_impl().print(cx.cache(), false, cx.depth()).to_string(),
                         synthetic: imp.inner_impl().synthetic,
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cx.cache()),
                     })

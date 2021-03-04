@@ -414,7 +414,10 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
+            // FIXME(camelid): I hope passing 0 as the depth doesn't break anything....
+            //                 Then again, I think used to be 0 anyway through CURRENT_DEPTH
+            //                 because (I think) rendering hadn't started yet.
+            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache, 0))));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
