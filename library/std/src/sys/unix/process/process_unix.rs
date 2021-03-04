@@ -527,9 +527,22 @@ impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit code: {}", code)
+        } else if let Some(signal) = self.signal() {
+            if self.core_dumped() {
+                write!(f, "signal: {} (core dumped)", signal)
+            } else {
+                write!(f, "signal: {}", signal)
+            }
+        } else if let Some(signal) = self.stopped_signal() {
+            write!(f, "stopped (not terminated) by signal: {}", signal)
+        } else if self.continued() {
+            write!(f, "continued (WIFCONTINUED)")
         } else {
-            let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
         }
     }
 }
+
+#[cfg(test)]
+#[path = "process_unix/tests.rs"]
+mod tests;
