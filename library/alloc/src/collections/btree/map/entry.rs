@@ -86,8 +86,9 @@ pub struct OccupiedError<'a, K: 'a, V: 'a> {
 impl<K: Debug + Ord, V: Debug> Debug for OccupiedError<'_, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OccupiedError")
-            .field("entry", &self.entry)
-            .field("value", &self.value)
+            .field("key", self.entry.key())
+            .field("old_value", self.entry.get())
+            .field("new_value", &self.value)
             .finish()
     }
 }

@@ -1889,12 +1889,22 @@ impl<K: Debug, V> Debug for VacantEntry<'_, K, V> {
 ///
 /// Contains the occupied entry, and the value that was not inserted.
 #[unstable(feature = "map_try_insert", issue = "none")]
-#[derive(Debug)]
 pub struct OccupiedError<'a, K: 'a, V: 'a> {
     /// The entry in the map that was already occupied.
     pub entry: OccupiedEntry<'a, K, V>,
     /// The value which was not inserted, because the entry was already occupied.
     pub value: V,
+}
+
+#[unstable(feature = "map_try_insert", issue = "none")]
+impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedError")
+            .field("key", self.entry.key())
+            .field("old_value", self.entry.get())
+            .field("new_value", &self.value)
+            .finish()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
