@@ -408,8 +408,8 @@
                         "type": "string"
                     }
                 },
-                "rust-analyzer.cargo.loadOutDirsFromCheck": {
-                    "markdownDescription": "Run `cargo check` on startup to get the correct value for package OUT_DIRs.",
+                "rust-analyzer.cargo.runBuildScripts": {
+                    "markdownDescription": "Run build scripts (`build.rs`) for more precise code analysis.",
                     "default": false,
                     "type": "boolean"
                 },
@@ -678,7 +678,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.procMacro.enable": {
-                    "markdownDescription": "Enable Proc macro support, `#rust-analyzer.cargo.loadOutDirsFromCheck#` must be enabled.",
+                    "markdownDescription": "Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.",
                     "default": false,
                     "type": "boolean"
                 },

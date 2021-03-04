@@ -312,7 +312,7 @@ impl GlobalState {
                                 } else {
                                     assert_eq!(n_done, n_total);
                                     new_status = Status::Ready {
-                                        partial: self.config.load_out_dirs_from_check()
+                                        partial: self.config.run_build_scripts()
                                             && self.workspace_build_data.is_none()
                                             || config_version < self.vfs_config_version,
                                     };
