@@ -71,6 +71,10 @@ crate struct Context<'tcx> {
 }
 
 impl<'tcx> Context<'tcx> {
+    pub(super) fn depth(&self) -> usize {
+        self.current.len()
+    }
+
     pub(super) fn path(&self, filename: &str) -> PathBuf {
         // We use splitn vs Path::extension here because we might get a filename
         // like `style.min.css` and we want to process that into

@@ -297,7 +297,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                      </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
-                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(&cx.cache)).into_string(),
+                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(&cx.cache, cx.depth()))
+                        .into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_else(String::new),

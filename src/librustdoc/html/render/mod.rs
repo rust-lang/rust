@@ -670,7 +670,8 @@ fn document_short(
         return;
     }
     if let Some(s) = item.doc_value() {
-        let mut summary_html = MarkdownSummaryLine(&s, &item.links(&cx.cache)).into_string();
+        let mut summary_html =
+            MarkdownSummaryLine(&s, &item.links(&cx.cache, cx.depth())).into_string();
 
         if s.contains('\n') {
             let link =
@@ -709,7 +710,7 @@ fn document_full(
 ) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, cx, &*s, item.links(&cx.cache), prefix, is_hidden);
+        render_markdown(w, cx, &*s, item.links(&cx.cache, cx.depth()), prefix, is_hidden);
     } else if !prefix.is_empty() {
         if is_hidden {
             w.write_str("<div class=\"docblock hidden\">");
@@ -1487,7 +1488,7 @@ fn render_impl(
                 "<div class=\"docblock\">{}</div>",
                 Markdown(
                     &*dox,
-                    &i.impl_item.links(&cx.cache),
+                    &i.impl_item.links(&cx.cache, cx.depth()),
                     &mut ids,
                     cx.shared.codes,
                     cx.shared.edition,

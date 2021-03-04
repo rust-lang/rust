@@ -190,8 +190,8 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
-        self.attrs.links(self.def_id.krate, cache)
+    crate fn links(&self, cache: &Cache, depth: usize) -> Vec<RenderedLink> {
+        self.attrs.links(self.def_id.krate, cache, depth)
     }
 
     crate fn is_crate(&self) -> bool {
@@ -847,9 +847,8 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    crate fn links(&self, krate: CrateNum, cache: &Cache) -> Vec<RenderedLink> {
+    crate fn links(&self, krate: CrateNum, cache: &Cache, depth: usize) -> Vec<RenderedLink> {
         use crate::html::format::href;
-        use crate::html::render::CURRENT_DEPTH;
 
         self.links
             .iter()
@@ -873,10 +872,7 @@ impl Attributes {
                     None => {
                         if let Some(ref fragment) = *fragment {
                             let url = match cache.extern_locations.get(&krate) {
-                                Some(&(_, _, ExternalLocation::Local)) => {
-                                    let depth = CURRENT_DEPTH.with(|l| l.get());
-                                    "../".repeat(depth)
-                                }
+                                Some(&(_, _, ExternalLocation::Local)) => "../".repeat(depth),
                                 Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
                                 Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
                                     // NOTE: intentionally doesn't pass crate name to avoid having
