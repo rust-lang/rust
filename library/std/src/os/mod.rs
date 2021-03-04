@@ -48,7 +48,12 @@ cfg_if::cfg_if! {
         #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
         pub mod fortanix_sgx;
 
-        #[cfg(any(unix, target_os = "hermit"))]
+        #[cfg(target_os = "hermit")]
+        mod hermit;
+        #[cfg(target_os = "hermit")]
+        pub use hermit as unix;
+
+        #[cfg(unix)]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as unix;
         #[cfg(target_os = "android")]
