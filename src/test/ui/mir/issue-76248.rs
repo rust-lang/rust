@@ -3,7 +3,7 @@
 // Regression test for #76248.
 //
 // build-pass
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 
 const N: usize = 1;
 
