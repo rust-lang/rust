@@ -1272,7 +1272,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             // Every argument in our function calls have already been propagated in `visit_operand`.
             //
             // NOTE: because LLVM codegen gives slight performance regressions with it, so this is
-            // gated on `mir_opt_level=2`.
+            // gated on `mir_opt_level=3`.
             TerminatorKind::Call { .. } => {}
         }
 
