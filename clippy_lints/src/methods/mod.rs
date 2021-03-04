@@ -10,6 +10,7 @@ mod inefficient_to_string;
 mod inspect_for_each;
 mod iter_cloned_collect;
 mod iter_count;
+mod iter_next_slice;
 mod manual_saturating_arithmetic;
 mod map_collect_result_unit;
 mod ok_expect;
@@ -46,9 +47,9 @@ use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, higher, implements_trait,
-    in_macro, is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
-    match_qpath, match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
+    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro,
+    is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
+    match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
     remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
     span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth,
     SpanlessEq,
@@ -1688,7 +1689,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             },
             ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
-            ["next", "iter"] => lint_iter_next(cx, expr, arg_lists[1]),
+            ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, false),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
@@ -2595,63 +2596,6 @@ fn lint_step_by<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'tcx 
                 "`Iterator::step_by(0)` will panic at runtime",
             );
         }
-    }
-}
-
-fn lint_iter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
-    let caller_expr = &iter_args[0];
-
-    // Skip lint if the `iter().next()` expression is a for loop argument,
-    // since it is already covered by `&loops::ITER_NEXT_LOOP`
-    let mut parent_expr_opt = get_parent_expr(cx, expr);
-    while let Some(parent_expr) = parent_expr_opt {
-        if higher::for_loop(parent_expr).is_some() {
-            return;
-        }
-        parent_expr_opt = get_parent_expr(cx, parent_expr);
-    }
-
-    if derefs_to_slice(cx, caller_expr, cx.typeck_results().expr_ty(caller_expr)).is_some() {
-        // caller is a Slice
-        if_chain! {
-            if let hir::ExprKind::Index(ref caller_var, ref index_expr) = &caller_expr.kind;
-            if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
-                = higher::range(index_expr);
-            if let hir::ExprKind::Lit(ref start_lit) = &start_expr.kind;
-            if let ast::LitKind::Int(start_idx, _) = start_lit.node;
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                span_lint_and_sugg(
-                    cx,
-                    ITER_NEXT_SLICE,
-                    expr.span,
-                    "using `.iter().next()` on a Slice without end index",
-                    "try calling",
-                    format!("{}.get({})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability), start_idx),
-                    applicability,
-                );
-            }
-        }
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(caller_expr), sym::vec_type)
-        || matches!(
-            &cx.typeck_results().expr_ty(caller_expr).peel_refs().kind(),
-            ty::Array(_, _)
-        )
-    {
-        // caller is a Vec or an Array
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            ITER_NEXT_SLICE,
-            expr.span,
-            "using `.iter().next()` on an array",
-            "try calling",
-            format!(
-                "{}.get(0)",
-                snippet_with_applicability(cx, caller_expr.span, "..", &mut applicability)
-            ),
-            applicability,
-        );
     }
 }
 
