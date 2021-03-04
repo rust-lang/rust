@@ -2,7 +2,9 @@
 
 #![allow(non_camel_case_types)]
 
+#[rustfmt::skip]
 mod generated;
+#[rustfmt::skip]
 pub use self::generated::*;
 
 // FIXME: replace neon with asimd
