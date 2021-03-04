@@ -1350,11 +1350,16 @@ pub fn build_session(
 
     let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
     parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
+    let dep_info = parse_sess.env_depinfo.get_mut();
+    for log_var in &["RUSTC_LOG", "RUSTC_LOG_COLOR"] {
+        let val = std::env::var(log_var).as_deref().ok().map(Symbol::intern);
+        dep_info.insert((Symbol::intern(log_var), val));
+    }
+
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
     };
-
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
     let host_tlib_path = SearchPath::from_sysroot_and_triple(&sysroot, host_triple);
