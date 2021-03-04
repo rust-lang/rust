@@ -20,7 +20,7 @@ pub use path::PathStyle;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TreeAndSpacing};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
@@ -116,7 +116,6 @@ pub struct Parser<'a> {
     // Important: This must only be advanced from `next_tok`
     // to ensure that `token_cursor.num_next_calls` is updated properly
     token_cursor: TokenCursor,
-    desugar_doc_comments: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -144,12 +143,9 @@ impl<'a> Drop for Parser<'a> {
 
 #[derive(Clone)]
 struct TokenCursor {
-    frame: TokenCursorFrame,
-    stack: Vec<TokenCursorFrame>,
-    desugar_doc_comments: bool,
-    // Counts the number of calls to `next` or `next_desugared`,
-    // depending on whether `desugar_doc_comments` is set.
-    num_next_calls: usize,
+    tokens: Lrc<Vec<(Token, Spacing)>>,
+    index: usize,
+    include_no_delim: IncludeNoDelim,
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
     // (e.g. '>>' into '>' and '>), so that the parser
@@ -171,10 +167,9 @@ struct TokenCursor {
     // field is used to track this token - it gets
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
-    append_unglued_token: Option<TreeAndSpacing>,
+    append_unglued_token: Option<(Token, Spacing)>,
 }
 
-#[derive(Clone)]
 struct TokenCursorFrame {
     delim: token::DelimToken,
     span: DelimSpan,
@@ -188,98 +183,130 @@ impl TokenCursorFrame {
         TokenCursorFrame {
             delim,
             span,
-            open_delim: delim == token::NoDelim,
+            open_delim: false,
             tree_cursor: tts.into_trees(),
-            close_delim: delim == token::NoDelim,
+            close_delim: false,
         }
     }
+}
+
+fn flatten(tokens: TokenStream, desugar_doc_comments: bool) -> Vec<(Token, Spacing)> {
+    let mut output = vec![];
+    let mut stack = vec![];
+    let mut frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
+    frame.open_delim = true;
+    frame.close_delim = true;
+    loop {
+        let (tree, spacing) = if !frame.open_delim {
+            frame.open_delim = true;
+            TokenTree::open_tt(frame.span, frame.delim).into()
+        } else if let Some(tree) = frame.tree_cursor.next_with_spacing() {
+            tree
+        } else if !frame.close_delim {
+            frame.close_delim = true;
+            TokenTree::close_tt(frame.span, frame.delim).into()
+        } else if let Some(new_frame) = stack.pop() {
+            frame = new_frame;
+            continue;
+        } else {
+            break;
+        };
+
+        match tree {
+            TokenTree::Token(token) => {
+                if !desugar_doc_comments {
+                    output.push((token, spacing));
+                } else {
+                    let (data, attr_style, sp) = match token {
+                        Token { kind: token::DocComment(_, attr_style, data), span } => {
+                            (data, attr_style, span)
+                        }
+                        tok => {
+                            output.push((tok, spacing));
+                            continue;
+                        }
+                    };
+
+                    // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
+                    // required to wrap the text.
+                    let mut num_of_hashes = 0;
+                    let mut count = 0;
+                    for ch in data.as_str().chars() {
+                        count = match ch {
+                            '"' => 1,
+                            '#' if count > 0 => count + 1,
+                            _ => 0,
+                        };
+                        num_of_hashes = cmp::max(num_of_hashes, count);
+                    }
+
+                    let delim_span = DelimSpan::from_single(sp);
+                    let body = TokenTree::Delimited(
+                        delim_span,
+                        token::Bracket,
+                        [
+                            TokenTree::token(token::Ident(sym::doc, false), sp),
+                            TokenTree::token(token::Eq, sp),
+                            TokenTree::token(
+                                TokenKind::lit(token::StrRaw(num_of_hashes), data, None),
+                                sp,
+                            ),
+                        ]
+                        .iter()
+                        .cloned()
+                        .collect::<TokenStream>(),
+                    );
+
+                    stack.push(mem::replace(
+                        &mut frame,
+                        TokenCursorFrame::new(
+                            delim_span,
+                            token::NoDelim,
+                            if attr_style == AttrStyle::Inner {
+                                [
+                                    TokenTree::token(token::Pound, sp),
+                                    TokenTree::token(token::Not, sp),
+                                    body,
+                                ]
+                                .iter()
+                                .cloned()
+                                .collect::<TokenStream>()
+                            } else {
+                                [TokenTree::token(token::Pound, sp), body]
+                                    .iter()
+                                    .cloned()
+                                    .collect::<TokenStream>()
+                            },
+                        ),
+                    ));
+                }
+            }
+            TokenTree::Delimited(sp, delim, tts) => {
+                let new_frame = TokenCursorFrame::new(sp, delim, tts);
+                stack.push(mem::replace(&mut frame, new_frame));
+            }
+        }
+    }
+    output
 }
 
 impl TokenCursor {
     fn next(&mut self) -> (Token, Spacing) {
         loop {
-            let (tree, spacing) = if !self.frame.open_delim {
-                self.frame.open_delim = true;
-                TokenTree::open_tt(self.frame.span, self.frame.delim).into()
-            } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
-                tree
-            } else if !self.frame.close_delim {
-                self.frame.close_delim = true;
-                TokenTree::close_tt(self.frame.span, self.frame.delim).into()
-            } else if let Some(frame) = self.stack.pop() {
-                self.frame = frame;
-                continue;
+            let ret = if let Some(res) = self.tokens.get(self.index) {
+                res.clone()
             } else {
-                (TokenTree::Token(Token::new(token::Eof, DUMMY_SP)), Spacing::Alone)
+                (Token::new(token::Eof, DUMMY_SP), Spacing::Alone)
             };
-
-            match tree {
-                TokenTree::Token(token) => {
-                    return (token, spacing);
-                }
-                TokenTree::Delimited(sp, delim, tts) => {
-                    let frame = TokenCursorFrame::new(sp, delim, tts);
-                    self.stack.push(mem::replace(&mut self.frame, frame));
-                }
+            self.index += 1;
+            if matches!(self.include_no_delim, IncludeNoDelim::No)
+                && (matches!(ret.0.kind, token::OpenDelim(DelimToken::NoDelim))
+                    || matches!(ret.0.kind, token::CloseDelim(DelimToken::NoDelim)))
+            {
+                continue;
             }
+            return ret;
         }
-    }
-
-    fn next_desugared(&mut self) -> (Token, Spacing) {
-        let (data, attr_style, sp) = match self.next() {
-            (Token { kind: token::DocComment(_, attr_style, data), span }, _) => {
-                (data, attr_style, span)
-            }
-            tok => return tok,
-        };
-
-        // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
-        // required to wrap the text.
-        let mut num_of_hashes = 0;
-        let mut count = 0;
-        for ch in data.as_str().chars() {
-            count = match ch {
-                '"' => 1,
-                '#' if count > 0 => count + 1,
-                _ => 0,
-            };
-            num_of_hashes = cmp::max(num_of_hashes, count);
-        }
-
-        let delim_span = DelimSpan::from_single(sp);
-        let body = TokenTree::Delimited(
-            delim_span,
-            token::Bracket,
-            [
-                TokenTree::token(token::Ident(sym::doc, false), sp),
-                TokenTree::token(token::Eq, sp),
-                TokenTree::token(TokenKind::lit(token::StrRaw(num_of_hashes), data, None), sp),
-            ]
-            .iter()
-            .cloned()
-            .collect::<TokenStream>(),
-        );
-
-        self.stack.push(mem::replace(
-            &mut self.frame,
-            TokenCursorFrame::new(
-                delim_span,
-                token::NoDelim,
-                if attr_style == AttrStyle::Inner {
-                    [TokenTree::token(token::Pound, sp), TokenTree::token(token::Not, sp), body]
-                        .iter()
-                        .cloned()
-                        .collect::<TokenStream>()
-                } else {
-                    [TokenTree::token(token::Pound, sp), body]
-                        .iter()
-                        .cloned()
-                        .collect::<TokenStream>()
-                },
-            ),
-        ));
-
-        self.next()
     }
 }
 
@@ -372,13 +399,11 @@ impl<'a> Parser<'a> {
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens),
-                stack: Vec::new(),
-                num_next_calls: 0,
-                desugar_doc_comments,
+                tokens: Lrc::new(flatten(tokens, desugar_doc_comments)),
+                include_no_delim: IncludeNoDelim::No,
+                index: 0,
                 append_unglued_token: None,
             },
-            desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
@@ -394,12 +419,7 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
-        let (mut next, spacing) = if self.desugar_doc_comments {
-            self.token_cursor.next_desugared()
-        } else {
-            self.token_cursor.next()
-        };
-        self.token_cursor.num_next_calls += 1;
+        let (mut next, spacing) = self.token_cursor.next();
         // We've retrieved an token from the underlying
         // cursor, so we no longer need to worry about
         // an unglued token. See `break_and_eat` for more details
@@ -606,8 +626,7 @@ impl<'a> Parser<'a> {
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `next_tok` will set this field to `None`
-                self.token_cursor.append_unglued_token =
-                    Some((TokenTree::Token(self.token.clone()), Spacing::Alone));
+                self.token_cursor.append_unglued_token = Some((self.token.clone(), Spacing::Alone));
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -866,15 +885,10 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        let frame = &self.token_cursor.frame;
-        match frame.tree_cursor.look_ahead(dist - 1) {
-            Some(tree) => match tree {
-                TokenTree::Token(token) => looker(token),
-                TokenTree::Delimited(dspan, delim, _) => {
-                    looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                }
-            },
-            None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
+        if let Some(token) = &self.token_cursor.tokens.get(self.token_cursor.index + (dist - 1)) {
+            looker(&token.0)
+        } else {
+            looker(&Token::new(token::Eof, DUMMY_SP))
         }
     }
 
@@ -1022,28 +1036,37 @@ impl<'a> Parser<'a> {
     /// Parses a single token tree from the input.
     pub(crate) fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
-            token::OpenDelim(..) => {
-                let depth = self.token_cursor.stack.len();
+            token::OpenDelim(delim) => {
+                let start_span = self.token.span;
+                let start = self.token_cursor.index;
+                self.token_cursor.include_no_delim = IncludeNoDelim::Yes;
+                let mut depth = 1;
 
-                // We keep advancing the token cursor until we hit
-                // the matching `CloseDelim` token.
-                while !(depth == self.token_cursor.stack.len()
-                    && matches!(self.token.kind, token::CloseDelim(_)))
-                {
-                    // Advance one token at a time, so `TokenCursor::next()`
-                    // can capture these tokens if necessary.
+                while depth != 0 {
                     self.bump();
+                    match self.token.kind {
+                        token::CloseDelim(_) => depth -= 1,
+                        token::OpenDelim(_) => depth += 1,
+                        _ => {}
+                    }
                 }
-                // We are still inside the frame corresponding
-                // to the delimited stream we captured, so grab
-                // the tokens from this frame.
-                let frame = &self.token_cursor.frame;
-                let stream = frame.tree_cursor.stream.clone();
-                let span = frame.span;
-                let delim = frame.delim;
-                // Consume close delimiter
+                self.token_cursor.include_no_delim = IncludeNoDelim::No;
+                let end_span = self.token.span;
+                let end = self.token_cursor.index - 1;
+
+                let inner_tokens = make_token_stream(
+                    &self.token_cursor.tokens[start..end],
+                    IncludeNoDelim::Yes,
+                    None,
+                );
+                // Eat closing delim
                 self.bump();
-                TokenTree::Delimited(span, delim, stream)
+
+                TokenTree::Delimited(
+                    DelimSpan::from_pair(start_span, end_span),
+                    delim,
+                    inner_tokens,
+                )
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
@@ -1286,4 +1309,71 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
             e.emit();
         }
     }
+}
+
+#[derive(Copy, Clone)]
+pub enum IncludeNoDelim {
+    Yes,
+    No,
+}
+
+/// Converts a flattened iterator of tokens (including open and close delimiter tokens)
+/// into a `TokenStream`, creating a `TokenTree::Delimited` for each matching pair
+/// of open and close delims.
+fn make_token_stream(
+    tokens: &[(Token, Spacing)],
+    include_no_delim: IncludeNoDelim,
+    unglued_token: Option<(Token, Spacing)>,
+) -> TokenStream {
+    #[derive(Debug)]
+    struct FrameData {
+        open: Span,
+        inner: Vec<(TokenTree, Spacing)>,
+    }
+    let mut stack = vec![FrameData { open: DUMMY_SP, inner: vec![] }];
+    for (token, spacing) in tokens.iter().cloned() {
+        match token {
+            Token { kind: TokenKind::OpenDelim(delim), span } => {
+                if matches!((include_no_delim, delim), (IncludeNoDelim::No, DelimToken::NoDelim)) {
+                    continue;
+                }
+                stack.push(FrameData { open: span, inner: vec![] });
+            }
+            Token { kind: TokenKind::CloseDelim(delim), span } => {
+                if matches!((include_no_delim, delim), (IncludeNoDelim::No, DelimToken::NoDelim)) {
+                    continue;
+                }
+                let frame_data = stack.pop().expect("Token stack was empty!");
+                let dspan = DelimSpan::from_pair(frame_data.open, span);
+                let stream = TokenStream::new(frame_data.inner);
+                let delimited = TokenTree::Delimited(dspan, delim, stream);
+                stack
+                    .last_mut()
+                    .unwrap_or_else(|| {
+                        panic!("Bottom token frame is missing for tokens: {:?}", tokens)
+                    })
+                    .inner
+                    .push((delimited, Spacing::Alone));
+            }
+            token => {
+                stack
+                    .last_mut()
+                    .expect("Bottom token frame is missing!")
+                    .inner
+                    .push((TokenTree::Token(token), spacing));
+            }
+        }
+    }
+    let mut final_buf = stack.pop().expect("Missing final buf!");
+    if let Some((token, spacing)) = unglued_token {
+        final_buf.inner.push((TokenTree::Token(token), spacing));
+    }
+    assert!(
+        stack.is_empty(),
+        "Stack should be empty: final_buf={:?} stack={:?}\ntokens={:?}",
+        final_buf,
+        stack,
+        tokens
+    );
+    TokenStream::new(final_buf.inner)
 }
