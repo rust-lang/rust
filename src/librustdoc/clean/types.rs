@@ -191,7 +191,7 @@ impl Item {
     }
 
     crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
-        self.attrs.links(&self.def_id.krate, cache)
+        self.attrs.links(self.def_id.krate, cache)
     }
 
     crate fn is_crate(&self) -> bool {
@@ -844,7 +844,7 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    crate fn links(&self, krate: &CrateNum, cache: &Cache) -> Vec<RenderedLink> {
+    crate fn links(&self, krate: CrateNum, cache: &Cache) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
@@ -869,7 +869,7 @@ impl Attributes {
                     }
                     None => {
                         if let Some(ref fragment) = *fragment {
-                            let url = match cache.extern_locations.get(krate) {
+                            let url = match cache.extern_locations.get(&krate) {
                                 Some(&(_, _, ExternalLocation::Local)) => {
                                     let depth = CURRENT_DEPTH.with(|l| l.get());
                                     "../".repeat(depth)
