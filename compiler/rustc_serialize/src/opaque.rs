@@ -718,3 +718,51 @@ impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
         Ok(v)
     }
 }
+
+// An integer that will always encode to 8 bytes.
+pub struct IntEncodedWithFixedSize(pub u64);
+
+impl IntEncodedWithFixedSize {
+    pub const ENCODED_SIZE: usize = 8;
+}
+
+impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
+    fn encode(&self, e: &mut Encoder) -> EncodeResult {
+        let start_pos = e.position();
+        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
+            ((self.0 >> (i * 8)) as u8).encode(e)?;
+        }
+        let end_pos = e.position();
+        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        Ok(())
+    }
+}
+
+impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
+    fn encode(&self, e: &mut FileEncoder) -> FileEncodeResult {
+        let start_pos = e.position();
+        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
+            ((self.0 >> (i * 8)) as u8).encode(e)?;
+        }
+        let end_pos = e.position();
+        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        Ok(())
+    }
+}
+
+impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
+    fn decode(decoder: &mut Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
+        let mut value: u64 = 0;
+        let start_pos = decoder.position();
+
+        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
+            let byte: u8 = serialize::Decodable::decode(decoder)?;
+            value |= (byte as u64) << (i * 8);
+        }
+
+        let end_pos = decoder.position();
+        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+
+        Ok(IntEncodedWithFixedSize(value))
+    }
+}
