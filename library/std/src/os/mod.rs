@@ -15,8 +15,7 @@ cfg_if::cfg_if! {
         // This should help show platform-specific functionality in a hopefully cross-platform
         // way in the documentation.
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use crate::sys::unix_ext as unix;
+        pub mod unix;
 
         pub mod linux;
 
@@ -53,8 +52,7 @@ cfg_if::cfg_if! {
         pub use hermit as unix;
 
         #[cfg(unix)]
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use crate::sys::ext as unix;
+        pub mod unix;
         #[cfg(target_os = "android")]
         pub mod android;
         #[cfg(target_os = "dragonfly")]

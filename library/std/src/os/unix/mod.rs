@@ -27,7 +27,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(unix))]
-#![allow(missing_docs)]
 
 cfg_if::cfg_if! {
     if #[cfg(doc)] {
