@@ -87,21 +87,17 @@ pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
 ///
 /// Assist in expanding the AES cipher key by computing steps towards
 /// generating a round key for encryption cipher using data from `a` and an
-/// 8-bit round constant `imm8`.
+/// 8-bit round constant `IMM8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aeskeygenassist_si128)
 #[inline]
 #[target_feature(enable = "aes")]
-#[cfg_attr(test, assert_instr(aeskeygenassist, imm8 = 0))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(aeskeygenassist, IMM8 = 0))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_aeskeygenassist_si128(a: __m128i, imm8: i32) -> __m128i {
-    macro_rules! call {
-        ($imm8:expr) => {
-            aeskeygenassist(a, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_aeskeygenassist_si128<const IMM8: i32>(a: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    aeskeygenassist(a, IMM8 as u8)
 }
 
 #[cfg(test)]
@@ -169,7 +165,7 @@ mod tests {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714138.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
         let e = _mm_set_epi64x(0x857c266b7c266e85, 0xeac4eea9c4eeacea);
-        let r = _mm_aeskeygenassist_si128(a, 5);
+        let r = _mm_aeskeygenassist_si128::<5>(a);
         assert_eq_m128i(r, e);
     }
 }
