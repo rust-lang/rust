@@ -8,12 +8,12 @@
 pub mod msg;
 mod process;
 mod rpc;
+mod version;
 
 use base_db::{Env, ProcMacro};
 use std::{
     ffi::OsStr,
-    fs::File,
-    io::{self, Read},
+    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -23,10 +23,6 @@ use tt::{SmolStr, Subtree};
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 
 pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
-
-use memmap::Mmap;
-use object::read::{File as BinaryFile, Object, ObjectSection};
-use snap::read::FrameDecoder as SnapDecoder;
 
 #[derive(Debug, Clone)]
 struct ProcMacroProcessExpander {
@@ -80,6 +76,21 @@ impl ProcMacroClient {
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
+        match version::read_info(dylib_path) {
+            Ok(info) => {
+                if info.version.0 < 1 || info.version.1 < 47 {
+                    eprintln!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", dylib_path.to_string_lossy(), info);
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "proc-macro {} failed to find the given version. Reason: {}",
+                    dylib_path.to_string_lossy(),
+                    err
+                );
+            }
+        }
+
         let macros = match self.process.find_proc_macros(dylib_path) {
             Err(err) => {
                 eprintln!("Failed to find proc macros. Error: {:#?}", err);
@@ -106,72 +117,5 @@ impl ProcMacroClient {
                 ProcMacro { name, kind, expander }
             })
             .collect()
-    }
-
-    // This is used inside self.read_version() to locate the ".rustc" section
-    // from a proc macro crate's binary file.
-    fn read_section<'a>(&self, dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'a [u8]> {
-        BinaryFile::parse(dylib_binary)
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
-            .section_by_name(section_name)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "section read error"))?
-            .data()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-    }
-
-    // Check the version of rustc that was used to compile a proc macro crate's
-    // binary file.
-    // A proc macro crate binary's ".rustc" section has following byte layout:
-    // * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
-    // * ff060000 734e6150 is followed, it's the snappy format magic bytes,
-    //   means bytes from here(including this sequence) are compressed in
-    //   snappy compression format. Version info is inside here, so decompress
-    //   this.
-    // The bytes you get after decompressing the snappy format portion has
-    // following layout:
-    // * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
-    // * [crate root bytes] next 4 bytes is to store crate root position,
-    //   according to rustc's source code comment
-    // * [length byte] next 1 byte tells us how many bytes we should read next
-    //   for the version string's utf8 bytes
-    // * [version string bytes encoded in utf8] <- GET THIS BOI
-    // * [some more bytes that we don really care but still there] :-)
-    // Check this issue for more about the bytes layout:
-    // https://github.com/rust-analyzer/rust-analyzer/issues/6174
-    #[allow(unused)]
-    fn read_version(&self, dylib_path: &Path) -> io::Result<String> {
-        let dylib_file = File::open(dylib_path)?;
-        let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
-
-        let dot_rustc = self.read_section(&dylib_mmaped, ".rustc")?;
-
-        let header = &dot_rustc[..8];
-        const EXPECTED_HEADER: [u8; 8] = [b'r', b'u', b's', b't', 0, 0, 0, 5];
-        // check if header is valid
-        if header != EXPECTED_HEADER {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("only metadata version 5 is supported, section header was: {:?}", header),
-            ));
-        }
-
-        let snappy_portion = &dot_rustc[8..];
-
-        let mut snappy_decoder = SnapDecoder::new(snappy_portion);
-
-        // the bytes before version string bytes, so this basically is:
-        // 8 bytes for [b'r',b'u',b's',b't',0,0,0,5]
-        // 4 bytes for [crate root bytes]
-        // 1 byte for length of version string
-        // so 13 bytes in total, and we should check the 13th byte
-        // to know the length
-        let mut bytes_before_version = [0u8; 13];
-        snappy_decoder.read_exact(&mut bytes_before_version)?;
-        let length = bytes_before_version[12]; // what? can't use -1 indexing?
-
-        let mut version_string_utf8 = vec![0u8; length as usize];
-        snappy_decoder.read_exact(&mut version_string_utf8)?;
-        let version_string = String::from_utf8(version_string_utf8);
-        version_string.map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
     }
 }
