@@ -260,6 +260,40 @@ macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
 
+/// Asserts that an expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// On panic, this macro will print the value of the expression with its
+/// debug representation.
+///
+/// Unlike [`assert_matches!`], `debug_assert_matches!` statements are only
+/// enabled in non optimized builds by default. An optimized build will not
+/// execute `debug_assert_matches!` statements unless `-C debug-assertions` is
+/// passed to the compiler. This makes `debug_assert_matches!` useful for
+/// checks that are too expensive to be present in a release build but may be
+/// helpful during development. The result of expanding `debug_assert_matches!`
+/// is always type checked.
+///
+/// # Examples
+///
+/// ```
+/// let a = 1u32.checked_add(2);
+/// let b = 1u32.checked_sub(2);
+/// debug_assert_matches!(a, Some(_));
+/// debug_assert_matches!(b, None);
+///
+/// let c = Ok("abc".to_string());
+/// debug_assert_matches!(a, Ok(x) | Err(x) if x.len() < 100);
+/// ```
+#[macro_export]
+#[unstable(feature = "assert_matches", issue = "none")]
+#[allow_internal_unstable(assert_matches)]
+macro_rules! debug_assert_matches {
+    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_matches!($($arg)*); })
+}
+
 /// Returns whether the given expression matches any of the given patterns.
 ///
 /// Like in a `match` expression, the pattern can be optionally followed by `if`
