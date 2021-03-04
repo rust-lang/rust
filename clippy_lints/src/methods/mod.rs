@@ -20,6 +20,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_lazy_eval;
 mod unwrap_used;
+mod zst_offset;
 
 use std::borrow::Cow;
 use std::fmt;
@@ -1726,7 +1727,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 manual_saturating_arithmetic::check(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
             ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
-                check_pointer_offset(cx, expr, arg_lists[0])
+                zst_offset::check(cx, expr, arg_lists[0])
             },
             ["is_file", ..] => filetype_is_file::check(cx, expr, arg_lists[0]),
             ["map", "as_ref"] => {
@@ -3798,18 +3799,6 @@ fn is_bool(ty: &hir::Ty<'_>) -> bool {
         match_qpath(p, &["bool"])
     } else {
         false
-    }
-}
-
-fn check_pointer_offset(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    if_chain! {
-        if args.len() == 2;
-        if let ty::RawPtr(ty::TypeAndMut { ref ty, .. }) = cx.typeck_results().expr_ty(&args[0]).kind();
-        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
-        if layout.is_zst();
-        then {
-            span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
-        }
     }
 }
 
