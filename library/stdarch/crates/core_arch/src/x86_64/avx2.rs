@@ -20,22 +20,17 @@
 
 use crate::core_arch::{simd_llvm::*, x86::*};
 
-/// Extracts a 64-bit integer from `a`, selected with `imm8`.
+/// Extracts a 64-bit integer from `a`, selected with `INDEX`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extract_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extract_epi64(a: __m256i, imm8: i32) -> i64 {
-    let a = a.as_i64x4();
-    match imm8 & 3 {
-        0 => simd_extract(a, 0),
-        1 => simd_extract(a, 1),
-        2 => simd_extract(a, 2),
-        _ => simd_extract(a, 3),
-    }
+pub unsafe fn _mm256_extract_epi64<const INDEX: i32>(a: __m256i) -> i64 {
+    static_assert_imm2!(INDEX);
+    simd_extract(a.as_i64x4(), INDEX as u32)
 }
 
 #[cfg(test)]
@@ -46,7 +41,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi64() {
         let a = _mm256_setr_epi64x(0, 1, 2, 3);
-        let r = _mm256_extract_epi64(a, 3);
+        let r = _mm256_extract_epi64::<3>(a);
         assert_eq!(r, 3);
     }
 }
