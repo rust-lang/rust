@@ -132,6 +132,7 @@ pub enum Attribute {
     ReadNone = 26,
     InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
+    WillReturn = 29,
 }
 
 /// LLVMIntPredicate
@@ -239,6 +240,7 @@ pub enum TypeKind {
     Token = 16,
     ScalableVector = 17,
     BFloat = 18,
+    X86_AMX = 19,
 }
 
 impl TypeKind {
@@ -263,6 +265,7 @@ impl TypeKind {
             TypeKind::Token => rustc_codegen_ssa::common::TypeKind::Token,
             TypeKind::ScalableVector => rustc_codegen_ssa::common::TypeKind::ScalableVector,
             TypeKind::BFloat => rustc_codegen_ssa::common::TypeKind::BFloat,
+            TypeKind::X86_AMX => rustc_codegen_ssa::common::TypeKind::X86_AMX,
         }
     }
 }
@@ -674,9 +677,7 @@ pub mod coverageinfo {
     /// array", encoded separately), and source location (start and end positions of the represented
     /// code region).
     ///
-    /// Aligns with [llvm::coverage::CounterMappingRegion](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L224-L227)
-    /// Important: The Rust struct layout (order and types of fields) must match its C++
-    /// counterpart.
+    /// Matches LLVMRustCounterMappingRegion.
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub struct CounterMappingRegion {
@@ -1073,6 +1074,7 @@ extern "C" {
     pub fn LLVMRustAddDereferenceableAttr(Fn: &Value, index: c_uint, bytes: u64);
     pub fn LLVMRustAddDereferenceableOrNullAttr(Fn: &Value, index: c_uint, bytes: u64);
     pub fn LLVMRustAddByValAttr(Fn: &Value, index: c_uint, ty: &Type);
+    pub fn LLVMRustAddStructRetAttr(Fn: &Value, index: c_uint, ty: &Type);
     pub fn LLVMRustAddFunctionAttribute(Fn: &Value, index: c_uint, attr: Attribute);
     pub fn LLVMRustAddFunctionAttrStringValue(
         Fn: &Value,
@@ -1108,6 +1110,7 @@ extern "C" {
     pub fn LLVMRustAddDereferenceableCallSiteAttr(Instr: &Value, index: c_uint, bytes: u64);
     pub fn LLVMRustAddDereferenceableOrNullCallSiteAttr(Instr: &Value, index: c_uint, bytes: u64);
     pub fn LLVMRustAddByValCallSiteAttr(Instr: &Value, index: c_uint, ty: &Type);
+    pub fn LLVMRustAddStructRetCallSiteAttr(Instr: &Value, index: c_uint, ty: &Type);
 
     // Operations on load/store instructions (only)
     pub fn LLVMSetVolatile(MemoryAccessInst: &Value, volatile: Bool);
@@ -1792,7 +1795,7 @@ extern "C" {
         NumVirtualFileMappingIDs: c_uint,
         Expressions: *const coverage_map::CounterExpression,
         NumExpressions: c_uint,
-        MappingRegions: *mut coverageinfo::CounterMappingRegion,
+        MappingRegions: *const coverageinfo::CounterMappingRegion,
         NumMappingRegions: c_uint,
         BufferOut: &RustString,
     );

@@ -104,6 +104,10 @@ fn strip_x86_address_spaces(data_layout: String) -> String {
     data_layout.replace("-p270:32:32-p271:32:32-p272:64:64-", "-")
 }
 
+fn strip_powerpc64_vectors(data_layout: String) -> String {
+    data_layout.replace("-v256:256:256-v512:512:512", "")
+}
+
 pub unsafe fn create_module(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
@@ -118,6 +122,9 @@ pub unsafe fn create_module(
         && (sess.target.arch == "x86" || sess.target.arch == "x86_64")
     {
         target_data_layout = strip_x86_address_spaces(target_data_layout);
+    }
+    if llvm_util::get_version() < (12, 0, 0) && sess.target.arch == "powerpc64" {
+        target_data_layout = strip_powerpc64_vectors(target_data_layout);
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.

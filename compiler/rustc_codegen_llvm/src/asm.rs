@@ -304,6 +304,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             } else if options.contains(InlineAsmOptions::READONLY) {
                 llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
             }
+            llvm::Attribute::WillReturn.apply_callsite(llvm::AttributePlace::Function, result);
         } else if options.contains(InlineAsmOptions::NOMEM) {
             llvm::Attribute::InaccessibleMemOnly
                 .apply_callsite(llvm::AttributePlace::Function, result);

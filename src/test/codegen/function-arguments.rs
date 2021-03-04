@@ -1,5 +1,6 @@
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
+// min-system-llvm-version: 12.0
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
@@ -73,7 +74,7 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
   x
 }
 
-// CHECK: @struct_return(%S* noalias nocapture sret dereferenceable(32){{( %0)?}})
+// CHECK: @struct_return(%S* noalias nocapture sret(%S) dereferenceable(32){{( %0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
   S {
