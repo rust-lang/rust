@@ -110,7 +110,10 @@ macro_rules! assert_ne {
     });
 }
 
-/// Asserts that an expression matches a pattern.
+/// Asserts that an expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
 ///
 /// On panic, this macro will print the value of the expression with its
 /// debug representation.
@@ -125,38 +128,35 @@ macro_rules! assert_ne {
 /// let b = 1u32.checked_sub(2);
 /// assert_matches!(a, Some(_));
 /// assert_matches!(b, None);
+///
+/// let c = Ok("abc".to_string());
+/// assert_matches!(a, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
 #[unstable(feature = "assert_matches", issue = "none")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_matches {
-    ($left:expr, $right:pat $(,)?) => ({
-        match &$left {
+    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
+        match $left {
+            $( $pattern )|+ $( if $guard )? => {}
             left_val => {
-                if let $right = left_val {
-                    // OK
-                } else {
-                    $crate::panicking::assert_matches_failed(
-                        &*left_val,
-                        $crate::stringify!($right),
-                        $crate::option::Option::None
-                    );
-                }
+                $crate::panicking::assert_matches_failed(
+                    &left_val,
+                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::option::Option::None
+                );
             }
         }
     });
-    ($left:expr, $right:expr, $($arg:tt)+) => ({
-        match &$left {
+    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+        match $left {
+            $( $pattern )|+ $( if $guard )? => {}
             left_val => {
-                if let $right = left_val {
-                    // OK
-                } else {
-                    $crate::panicking::assert_matches_failed(
-                        &*left_val,
-                        $crate::stringify!($right),
-                        $crate::option::Option::Some($crate::format_args!($($arg)+))
-                    );
-                }
+                $crate::panicking::assert_matches_failed(
+                    &left_val,
+                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::option::Option::Some($crate::format_args!($($arg)+))
+                );
             }
         }
     });
