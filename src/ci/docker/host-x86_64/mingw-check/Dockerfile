@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | tar -xJ
 ENV PATH="/node-v14.4.0-linux-x64/bin:${PATH}"
 # Install es-check
-RUN npm install es-check -g
+# Pin its version to prevent unrelated CI failures due to future es-check versions.
+RUN npm install es-check@5.2.3 -g
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
