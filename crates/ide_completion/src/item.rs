@@ -441,9 +441,3 @@ impl Builder {
         self
     }
 }
-
-// impl<'a> Into<CompletionItem> for Builder {
-//     fn into(self) -> CompletionItem {
-//         self.build()
-//     }
-// }
