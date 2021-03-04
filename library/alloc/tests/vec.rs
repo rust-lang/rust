@@ -1691,6 +1691,10 @@ fn test_stable_pointers() {
     next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
     assert_eq!(*v0, 13);
 
+    // spare_capacity_mut
+    v.spare_capacity_mut();
+    assert_eq!(*v0, 13);
+
     // Smoke test that would fire even outside Miri if an actual relocation happened.
     *v0 -= 13;
     assert_eq!(v[0], 0);
