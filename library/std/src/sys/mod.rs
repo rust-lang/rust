@@ -78,23 +78,16 @@ cfg_if::cfg_if! {
     all(target_vendor = "fortanix", target_env = "sgx")
 )))]
 cfg_if::cfg_if! {
-    if #[cfg(windows)] {
-        #[allow(missing_docs)]
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::ext as windows_ext;
-    } else {
+    if #[cfg(not(windows))] {
         // On non-Windows platforms (aka linux/osx/etc) pull in a "minimal"
         // amount of windows goop which ends up compiling
 
         #[macro_use]
         #[path = "windows/compat.rs"]
-        mod compat;
+        pub mod compat;
 
         #[path = "windows/c.rs"]
-        mod c;
-
-        #[path = "windows/ext/mod.rs"]
-        pub mod windows_ext;
+        pub mod c;
     }
 }
 
