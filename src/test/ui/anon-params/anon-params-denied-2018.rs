@@ -5,6 +5,10 @@
 trait T {
     fn foo(i32); //~ expected one of `:`, `@`, or `|`, found `)`
 
+    // Also checks with `&`
+    fn foo_with_ref(&mut i32);
+    //~^ ERROR expected one of `:`, `@`, or `|`, found `)`
+
     fn bar_with_default_impl(String, String) {}
     //~^ ERROR expected one of `:`
     //~| ERROR expected one of `:`

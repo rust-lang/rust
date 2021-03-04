@@ -1613,42 +1613,65 @@ impl<'a> Parser<'a> {
                 Applicability::HasPlaceholders,
             );
             return Some(ident);
-        } else if let PatKind::Ident(_, ident, _) = pat.kind {
-            if require_name
-                && (self.token == token::Comma
-                    || self.token == token::Lt
-                    || self.token == token::CloseDelim(token::Paren))
-            {
-                // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
-                if first_param {
-                    err.span_suggestion(
-                        pat.span,
-                        "if this is a `self` type, give it a parameter name",
-                        format!("self: {}", ident),
-                        Applicability::MaybeIncorrect,
-                    );
+        } else if require_name
+            && (self.token == token::Comma
+                || self.token == token::Lt
+                || self.token == token::CloseDelim(token::Paren))
+        {
+            let (ident, self_sugg, param_sugg, type_sugg) = match pat.kind {
+                PatKind::Ident(_, ident, _) => (
+                    ident,
+                    format!("self: {}", ident),
+                    format!("{}: TypeName", ident),
+                    format!("_: {}", ident),
+                ),
+                // Also catches `fn foo(&a)`.
+                PatKind::Ref(ref pat, mutab) => {
+                    if let PatKind::Ident(_, ident, _) = pat.clone().into_inner().kind {
+                        let mutab = mutab.prefix_str();
+                        (
+                            ident,
+                            format!("self: &{}{}", mutab, ident),
+                            format!("{}: &{}TypeName", ident, mutab),
+                            format!("_: &{}{}", mutab, ident),
+                        )
+                    } else {
+                        return None;
+                    }
                 }
-                // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
-                // `fn foo(HashMap: TypeName<u32>)`.
-                if self.token != token::Lt {
-                    err.span_suggestion(
-                        pat.span,
-                        "if this is a parameter name, give it a type",
-                        format!("{}: TypeName", ident),
-                        Applicability::HasPlaceholders,
-                    );
-                }
+                // Ignore other `PatKind`.
+                _ => return None,
+            };
+
+            // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
+            if first_param {
                 err.span_suggestion(
                     pat.span,
-                    "if this is a type, explicitly ignore the parameter name",
-                    format!("_: {}", ident),
-                    Applicability::MachineApplicable,
+                    "if this is a `self` type, give it a parameter name",
+                    self_sugg,
+                    Applicability::MaybeIncorrect,
                 );
-                err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
-
-                // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
-                return if self.token == token::Lt { None } else { Some(ident) };
             }
+            // Avoid suggesting that `fn foo(HashMap<u32>)` is fixed with a change to
+            // `fn foo(HashMap: TypeName<u32>)`.
+            if self.token != token::Lt {
+                err.span_suggestion(
+                    pat.span,
+                    "if this is a parameter name, give it a type",
+                    param_sugg,
+                    Applicability::HasPlaceholders,
+                );
+            }
+            err.span_suggestion(
+                pat.span,
+                "if this is a type, explicitly ignore the parameter name",
+                type_sugg,
+                Applicability::MachineApplicable,
+            );
+            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+
+            // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
+            return if self.token == token::Lt { None } else { Some(ident) };
         }
         None
     }
