@@ -107,16 +107,46 @@ fn mark_used_by_default_parameters<'tcx>(
     generics: &'tcx ty::Generics,
     unused_parameters: &mut FiniteBitSet<u32>,
 ) {
-    if !tcx.is_trait(def_id) && (tcx.is_closure(def_id) || tcx.type_of(def_id).is_generator()) {
-        for param in &generics.params {
-            debug!(?param, "(closure/gen)");
-            unused_parameters.clear(param.index);
-        }
-    } else {
-        for param in &generics.params {
-            debug!(?param, "(other)");
-            if let ty::GenericParamDefKind::Lifetime = param.kind {
+    match tcx.def_kind(def_id) {
+        DefKind::Closure | DefKind::Generator => {
+            for param in &generics.params {
+                debug!(?param, "(closure/gen)");
                 unused_parameters.clear(param.index);
+            }
+        }
+        DefKind::Mod
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Enum
+        | DefKind::Variant
+        | DefKind::Trait
+        | DefKind::TyAlias
+        | DefKind::ForeignTy
+        | DefKind::TraitAlias
+        | DefKind::AssocTy
+        | DefKind::TyParam
+        | DefKind::Fn
+        | DefKind::Const
+        | DefKind::ConstParam
+        | DefKind::Static
+        | DefKind::Ctor(_, _)
+        | DefKind::AssocFn
+        | DefKind::AssocConst
+        | DefKind::Macro(_)
+        | DefKind::ExternCrate
+        | DefKind::Use
+        | DefKind::ForeignMod
+        | DefKind::AnonConst
+        | DefKind::OpaqueTy
+        | DefKind::Field
+        | DefKind::LifetimeParam
+        | DefKind::GlobalAsm
+        | DefKind::Impl => {
+            for param in &generics.params {
+                debug!(?param, "(other)");
+                if let ty::GenericParamDefKind::Lifetime = param.kind {
+                    unused_parameters.clear(param.index);
+                }
             }
         }
     }
