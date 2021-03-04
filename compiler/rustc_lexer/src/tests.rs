@@ -1,12 +1,13 @@
-use super::*;
-
+use crate::cursor::Cursor;
+use crate::literals::{raw_double_quoted_string, RawStrError};
+use crate::{strip_shebang, tokenize};
 use expect_test::{expect, Expect};
 
 fn check_raw_str(s: &str, expected_hashes: u16, expected_err: Option<RawStrError>) {
     let s = &format!("r{}", s);
-    let mut cursor = Cursor::new(s);
+    let cursor = &mut Cursor::new(s);
     cursor.bump();
-    let (n_hashes, err) = cursor.raw_double_quoted_string(0);
+    let (n_hashes, err) = raw_double_quoted_string(cursor, 0);
     assert_eq!(n_hashes, expected_hashes);
     assert_eq!(err, expected_err);
 }

@@ -1,5 +1,5 @@
 use crate::cursor::{Cursor, EOF_CHAR};
-use crate::{is_id_continue, is_id_start, TokenKind, eat_identifier};
+use crate::{ident, is_id_continue, is_id_start, TokenKind};
 use std::convert::TryFrom;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -279,7 +279,8 @@ pub(crate) fn raw_double_quoted_string(
     // Wrap the actual function to handle the error with too many hashes.
     // This way, it eats the whole raw string.
     let (n_hashes, err) = raw_string_unvalidated(cursor, prefix_len);
-    // Only up to 65535 `#`s are allowed in raw strings
+
+    // Only up to 65535 `#`s are allowed in raw strings.
     match u16::try_from(n_hashes) {
         Ok(num) => (num, err),
         // We lie about the number of hashes here :P
@@ -354,5 +355,9 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
 
 /// Eats the suffix of a literal, e.g. "_u8".
 pub(crate) fn eat_literal_suffix(cursor: &mut Cursor) {
-    eat_identifier(cursor);
+    // Eats one identifier.
+    if is_id_start(cursor.peek()) {
+        cursor.bump();
+        ident(cursor);
+    }
 }

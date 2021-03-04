@@ -28,11 +28,13 @@ pub mod unescape;
 #[cfg(test)]
 mod tests;
 
+pub use crate::literals::{Base, LiteralKind, RawStrError};
+
 use self::TokenKind::*;
 use crate::cursor::Cursor;
 use crate::literals::{
     double_quoted_string, eat_literal_suffix, lifetime_or_char, number, raw_double_quoted_string,
-    single_quoted_string, LiteralKind,
+    single_quoted_string,
 };
 
 /// Parsed token.
@@ -165,12 +167,6 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     None
 }
 
-/// Parses the first token from the provided input string.
-pub fn first_token(input: &str) -> Token {
-    debug_assert!(!input.is_empty());
-    advance_token(&mut Cursor::new(input))
-}
-
 /// Creates an iterator that produces tokens from the input string.
 pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
     std::iter::from_fn(move || {
@@ -250,8 +246,11 @@ pub fn is_ident(string: &str) -> bool {
     }
 }
 
-/// Parses a token from the input string.
-fn advance_token(cursor: &mut Cursor) -> Token {
+/// Parses the first token from the provided input string.
+pub fn first_token(input: &str) -> Token {
+    debug_assert!(!input.is_empty());
+    let cursor = &mut Cursor::new(input);
+
     let first_char = cursor.bump().unwrap();
     let token_kind = match first_char {
         // Slash, comment or block comment.
@@ -262,11 +261,21 @@ fn advance_token(cursor: &mut Cursor) -> Token {
         },
 
         // Whitespace sequence.
-        c if is_whitespace(c) => whitespace(cursor),
+        c if is_whitespace(c) => {
+            cursor.bump_while(is_whitespace);
+            Whitespace
+        }
 
         // Raw identifier, raw string literal or identifier.
         'r' => match (cursor.peek(), cursor.peek_second()) {
-            ('#', c1) if is_id_start(c1) => raw_ident(cursor),
+            ('#', c1) if is_id_start(c1) => {
+                // Eat "#" symbol.
+                cursor.bump();
+                // Eat the identifier part of RawIdent.
+                cursor.bump();
+                ident(cursor);
+                RawIdent
+            }
             ('#', _) | ('"', _) => {
                 let (n_hashes, err) = raw_double_quoted_string(cursor, 1);
                 let suffix_start = cursor.len_consumed();
@@ -425,34 +434,9 @@ fn block_comment(cursor: &mut Cursor) -> TokenKind {
     BlockComment { doc_style, terminated: depth == 0 }
 }
 
-fn whitespace(cursor: &mut Cursor) -> TokenKind {
-    debug_assert!(is_whitespace(cursor.prev()));
-    cursor.bump_while(is_whitespace);
-    Whitespace
-}
-
-fn raw_ident(cursor: &mut Cursor) -> TokenKind {
-    debug_assert!(cursor.prev() == 'r' && cursor.peek() == '#' && is_id_start(cursor.peek_second()));
-    // Eat "#" symbol.
-    cursor.bump();
-    // Eat the identifier part of RawIdent.
-    eat_identifier(cursor);
-    RawIdent
-}
-
-fn ident(cursor: &mut Cursor) -> TokenKind {
+/// Start is already eaten, eat the rest of identifier.
+pub(crate) fn ident(cursor: &mut Cursor) -> TokenKind {
     debug_assert!(is_id_start(cursor.prev()));
-    // Start is already eaten, eat the rest of identifier.
     cursor.bump_while(is_id_continue);
     Ident
-}
-
-/// Eats one identifier.
-pub(crate) fn eat_identifier(cursor: &mut Cursor) {
-    if !is_id_start(cursor.peek()) {
-        return;
-    }
-    cursor.bump();
-
-    cursor.bump_while(is_id_continue);
 }
