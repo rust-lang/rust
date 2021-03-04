@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 // run-pass
 
 struct X {
