@@ -9,7 +9,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-use rustc_session::config::{Input, PpHirMode, PpMode, PpSourceMode};
+use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
@@ -391,24 +391,29 @@ pub fn print_after_parsing(
 ) {
     let (src, src_name) = get_source(input, sess);
 
-    let out = if let Source(s) = ppm {
-        // Silently ignores an identified node.
-        call_with_pp_support(&s, sess, None, move |annotation| {
-            debug!("pretty printing source code {:?}", s);
-            let sess = annotation.sess();
-            let parse = &sess.parse_sess;
-            pprust::print_crate(
-                sess.source_map(),
-                krate,
-                src_name,
-                src,
-                annotation.pp_ann(),
-                false,
-                parse.edition,
-            )
-        })
-    } else {
-        unreachable!()
+    let out = match ppm {
+        Source(s) => {
+            // Silently ignores an identified node.
+            call_with_pp_support(&s, sess, None, move |annotation| {
+                debug!("pretty printing source code {:?}", s);
+                let sess = annotation.sess();
+                let parse = &sess.parse_sess;
+                pprust::print_crate(
+                    sess.source_map(),
+                    krate,
+                    src_name,
+                    src,
+                    annotation.pp_ann(),
+                    false,
+                    parse.edition,
+                )
+            })
+        }
+        AstTree(PpAstTreeMode::Normal) => {
+            debug!("pretty printing AST tree");
+            format!("{:#?}", krate)
+        }
+        _ => unreachable!(),
     };
 
     write_or_print(&out, ofile);
@@ -445,6 +450,11 @@ pub fn print_after_hir_lowering<'tcx>(
                     parse.edition,
                 )
             })
+        }
+
+        AstTree(PpAstTreeMode::Expanded) => {
+            debug!("pretty-printing expanded AST");
+            format!("{:#?}", krate)
         }
 
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
