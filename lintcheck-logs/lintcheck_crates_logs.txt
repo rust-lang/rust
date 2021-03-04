@@ -1,4 +1,4 @@
-clippy 0.1.52 (70d952e75 2021-02-28)
+clippy 0.1.52 (37c4b11a8 2021-03-04)
 
 target/lintcheck/sources/anyhow-1.0.38/build.rs:1:null clippy::cargo_common_metadata "package `anyhow` is missing `package.keywords` metadata"
 target/lintcheck/sources/anyhow-1.0.38/src/error.rs:350:5 clippy::missing_panics_doc "docs for function which may panic missing `# Panics` section"
@@ -99,6 +99,7 @@ target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:1:null clippy::multi
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:1:null clippy::multiple_crate_versions "multiple versions for dependency `hex`: 0.3.2, 0.4.0"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:1:null clippy::multiple_crate_versions "multiple versions for dependency `humantime`: 1.3.0, 2.0.0"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:72:22 clippy::redundant_closure_for_method_calls "redundant closure found"
+target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:79:40 clippy::manual_map "manual implementation of `Option::map`"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:94:13 clippy::match_wildcard_for_single_variants "wildcard match will miss any future added variants"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:96:41 clippy::redundant_closure_for_method_calls "redundant closure found"
 target/lintcheck/sources/cargo-0.49.0/src/bin/cargo/main.rs:98:60 clippy::redundant_closure_for_method_calls "redundant closure found"
@@ -1208,6 +1209,7 @@ target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:689:20 clippy
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:699:5 clippy::fn_params_excessive_bools "more than 3 bools in function parameters"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:699:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:719:58 clippy::redundant_closure_for_method_calls "redundant closure found"
+target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:748:30 clippy::manual_map "manual implementation of `Option::map`"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/mod.rs:816:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/path.rs:10:1 clippy::module_name_repetitions "item name ends with its containing module's name"
 target/lintcheck/sources/cargo-0.49.0/src/cargo/util/config/path.rs:14:5 clippy::must_use_candidate "this method could have a `#[must_use]` attribute"
@@ -1463,6 +1465,7 @@ target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:464:5 clippy::missing_pa
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:57:13 clippy::enum_glob_use "usage of wildcard import for enum variants"
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:586:33 clippy::match_same_arms "this `match` has identical arm bodies"
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:599:32 clippy::match_same_arms "this `match` has identical arm bodies"
+target/lintcheck/sources/cfg-expr-0.7.1/src/expr/mod.rs:609:9 clippy::manual_map "manual implementation of `Option::map`"
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:116:31 clippy::similar_names "binding's name is too similar to existing binding"
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:124:36 clippy::similar_names "binding's name is too similar to existing binding"
 target/lintcheck/sources/cfg-expr-0.7.1/src/expr/parser.rs:17:5 clippy::missing_errors_doc "docs for function returning `Result` missing `# Errors` section"
@@ -3509,6 +3512,7 @@ clippy::filter_map_next 3
 clippy::fn_params_excessive_bools 3
 clippy::if_same_then_else 3
 clippy::inconsistent_struct_constructor 3
+clippy::manual_map 3
 clippy::mut_mut 3
 clippy::ptr_arg 3
 clippy::zero_ptr 3
