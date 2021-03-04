@@ -7923,17 +7923,13 @@ pub unsafe fn _mm512_maskz_dbsad_epu8<const IMM8: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_dbsad_epu8&expand=2111)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[rustc_args_required_const(2)]
-#[cfg_attr(test, assert_instr(vdbpsadbw, imm8 = 0))]
-pub unsafe fn _mm256_dbsad_epu8(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
+pub unsafe fn _mm256_dbsad_epu8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vdbpsadbw256(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vdbpsadbw256(a, b, IMM8);
     transmute(r)
 }
 
@@ -16893,7 +16889,7 @@ mod tests {
     unsafe fn test_mm256_dbsad_epu8() {
         let a = _mm256_set1_epi8(2);
         let b = _mm256_set1_epi8(4);
-        let r = _mm256_dbsad_epu8(a, b, 0);
+        let r = _mm256_dbsad_epu8::<0>(a, b);
         let e = _mm256_set1_epi16(8);
         assert_eq_m256i(r, e);
     }
