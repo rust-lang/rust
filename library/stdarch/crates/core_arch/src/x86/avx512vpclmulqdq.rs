@@ -221,19 +221,19 @@ mod tests {
         );
 
         verify_512_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x00),
+            |a, b| _mm_clmulepi64_si128::<0x00>(a, b),
             |a, b| _mm512_clmulepi64_epi128(a, b, 0x00),
         );
         verify_512_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x01),
+            |a, b| _mm_clmulepi64_si128::<0x01>(a, b),
             |a, b| _mm512_clmulepi64_epi128(a, b, 0x01),
         );
         verify_512_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x10),
+            |a, b| _mm_clmulepi64_si128::<0x10>(a, b),
             |a, b| _mm512_clmulepi64_epi128(a, b, 0x10),
         );
         verify_512_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x11),
+            |a, b| _mm_clmulepi64_si128::<0x11>(a, b),
             |a, b| _mm512_clmulepi64_epi128(a, b, 0x11),
         );
     }
@@ -247,19 +247,19 @@ mod tests {
         );
 
         verify_256_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x00),
+            |a, b| _mm_clmulepi64_si128::<0x00>(a, b),
             |a, b| _mm256_clmulepi64_epi128(a, b, 0x00),
         );
         verify_256_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x01),
+            |a, b| _mm_clmulepi64_si128::<0x01>(a, b),
             |a, b| _mm256_clmulepi64_epi128(a, b, 0x01),
         );
         verify_256_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x10),
+            |a, b| _mm_clmulepi64_si128::<0x10>(a, b),
             |a, b| _mm256_clmulepi64_epi128(a, b, 0x10),
         );
         verify_256_helper(
-            |a, b| _mm_clmulepi64_si128(a, b, 0x11),
+            |a, b| _mm_clmulepi64_si128::<0x11>(a, b),
             |a, b| _mm256_clmulepi64_epi128(a, b, 0x11),
         );
     }

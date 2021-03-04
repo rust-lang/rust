@@ -25,20 +25,16 @@ extern "C" {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clmulepi64_si128)
 #[inline]
 #[target_feature(enable = "pclmulqdq")]
-#[cfg_attr(all(test, not(target_os = "linux")), assert_instr(pclmulqdq, imm8 = 0))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqlqdq, imm8 = 0))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqlqdq, imm8 = 1))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqhqdq, imm8 = 16))]
-#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqhqdq, imm8 = 17))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(all(test, not(target_os = "linux")), assert_instr(pclmulqdq, IMM8 = 0))]
+#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqlqdq, IMM8 = 0))]
+#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqlqdq, IMM8 = 1))]
+#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmullqhqdq, IMM8 = 16))]
+#[cfg_attr(all(test, target_os = "linux"), assert_instr(pclmulhqhqdq, IMM8 = 17))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_clmulepi64_si128(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    macro_rules! call {
-        ($imm8:expr) => {
-            pclmulqdq(a, b, $imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+pub unsafe fn _mm_clmulepi64_si128<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    pclmulqdq(a, b, IMM8 as u8)
 }
 
 #[cfg(test)]
@@ -62,13 +58,13 @@ mod tests {
         let r10 = _mm_set_epi64x(0x1a2bf6db3a30862f, 0xbabf262df4b7d5c9);
         let r11 = _mm_set_epi64x(0x1d1e1f2c592e7c45, 0xd66ee03e410fd4ed);
 
-        assert_eq_m128i(_mm_clmulepi64_si128(a, b, 0x00), r00);
-        assert_eq_m128i(_mm_clmulepi64_si128(a, b, 0x10), r01);
-        assert_eq_m128i(_mm_clmulepi64_si128(a, b, 0x01), r10);
-        assert_eq_m128i(_mm_clmulepi64_si128(a, b, 0x11), r11);
+        assert_eq_m128i(_mm_clmulepi64_si128::<0x00>(a, b), r00);
+        assert_eq_m128i(_mm_clmulepi64_si128::<0x10>(a, b), r01);
+        assert_eq_m128i(_mm_clmulepi64_si128::<0x01>(a, b), r10);
+        assert_eq_m128i(_mm_clmulepi64_si128::<0x11>(a, b), r11);
 
         let a0 = _mm_set_epi64x(0x0000000000000000, 0x8000000000000000);
         let r = _mm_set_epi64x(0x4000000000000000, 0x0000000000000000);
-        assert_eq_m128i(_mm_clmulepi64_si128(a0, a0, 0x00), r);
+        assert_eq_m128i(_mm_clmulepi64_si128::<0x00>(a0, a0), r);
     }
 }
