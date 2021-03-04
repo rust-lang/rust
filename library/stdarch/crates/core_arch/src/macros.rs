@@ -426,13 +426,13 @@ macro_rules! constify_imm3 {
 macro_rules! types {
     ($(
         $(#[$doc:meta])*
-        pub struct $name:ident($($fields:tt)*);
+        pub struct $name:ident($field:ty$(, $fields:ty)*$(,)?);
     )*) => ($(
         $(#[$doc])*
         #[derive(Copy, Clone, Debug)]
         #[allow(non_camel_case_types)]
         #[repr(simd)]
         #[allow(clippy::missing_inline_in_public_items)]
-        pub struct $name($($fields)*);
+        pub struct $name(pub $field$(, pub $fields)*);
     )*)
 }

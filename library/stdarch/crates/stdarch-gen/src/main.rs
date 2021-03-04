@@ -282,8 +282,8 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
     match v {
         "FALSE" => false_val(t),
         "TRUE" => true_val(t),
-        "MAX" => min_val(t),
-        "MIN" => max_val(t),
+        "MAX" => max_val(t),
+        "MIN" => min_val(t),
         "FF" => ff_val(t),
         o => o,
     }
@@ -299,6 +299,8 @@ fn gen_aarch64(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
+    has_b: bool,
+    fixed: &Option<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
@@ -333,20 +335,40 @@ fn gen_aarch64(
     } else {
         String::new()
     };
+    let call = if has_b {
+        format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}(a, b)
+}}"#,
+            name, in_t, in_t, out_t, ext_c, current_fn,
+        )
+    } else if let Some(fixed_val) = fixed {
+        let mut fixed_vals = fixed_val.clone();
+        for _i in 1..type_len(in_t) {
+            fixed_vals.push_str(", ");
+            fixed_vals.push_str(fixed_val);
+        }
+        format!(
+            r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a, {}({}))
+}}"#,
+            name, in_t, out_t, ext_c, current_fn, in_t, fixed_vals,
+        )
+    } else {
+        String::new()
+    };
     let function = format!(
         r#"
 {}
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr({}))]
-pub unsafe fn {}(a: {}, b: {}) -> {} {{
-    {}{}(a, b)
-}}
+{}
 "#,
-        current_comment, current_aarch64, name, in_t, in_t, out_t, ext_c, current_fn,
+        current_comment, current_aarch64, call
     );
 
-    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t));
+    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), has_b);
     (function, test)
 }
 
@@ -356,6 +378,7 @@ fn gen_test(
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     len: usize,
+    has_b: bool,
 ) -> String {
     let mut test = format!(
         r#"
@@ -367,20 +390,35 @@ fn gen_test(
         let a: Vec<String> = a.iter().take(len).cloned().collect();
         let b: Vec<String> = b.iter().take(len).cloned().collect();
         let e: Vec<String> = e.iter().take(len).cloned().collect();
-        let t = format!(
-            r#"
+        let t = if has_b {
+            format!(
+                r#"
         let a{};
         let b{};
         let e{};
         let r: {} = transmute({}(transmute(a), transmute(b)));
         assert_eq!(r, e);
 "#,
-            values(in_t, &a),
-            values(in_t, &b),
-            values(out_t, &e),
-            type_to_global_type(out_t),
-            name
-        );
+                values(in_t, &a),
+                values(in_t, &b),
+                values(out_t, &e),
+                type_to_global_type(out_t),
+                name
+            )
+        } else {
+            format!(
+                r#"
+        let a{};
+        let e{};
+        let r: {} = transmute({}(transmute(a)));
+        assert_eq!(r, e);
+"#,
+                values(in_t, &a),
+                values(out_t, &e),
+                type_to_global_type(out_t),
+                name
+            )
+        };
         test.push_str(&t);
     }
     test.push_str("    }\n");
@@ -399,6 +437,8 @@ fn gen_arm(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
+    has_b: bool,
+    fixed: &Option<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
@@ -446,7 +486,28 @@ fn gen_arm(
         } else {
             String::new()
         };
-
+    let call = if has_b {
+        format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}(a, b)
+}}"#,
+            name, in_t, in_t, out_t, ext_c, current_fn,
+        )
+    } else if let Some(fixed_val) = fixed {
+        let mut fixed_vals = fixed_val.clone();
+        for _i in 1..type_len(in_t) {
+            fixed_vals.push_str(", ");
+            fixed_vals.push_str(fixed_val);
+        }
+        format!(
+            r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a, {}({}))
+}}"#,
+            name, in_t, out_t, ext_c, current_fn, in_t, fixed_vals,
+        )
+    } else {
+        String::new()
+    };
     let function = format!(
         r#"
 {}
@@ -455,21 +516,14 @@ fn gen_arm(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({}))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}))]
-pub unsafe fn {}(a: {}, b: {}) -> {} {{
-    {}{}(a, b)
-}}
+{}
 "#,
         current_comment,
         expand_intrinsic(&current_arm, in_t),
         expand_intrinsic(&current_aarch64, in_t),
-        name,
-        in_t,
-        in_t,
-        out_t,
-        ext_c,
-        current_fn,
+        call,
     );
-    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t));
+    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), has_b);
 
     (function, test)
 }
@@ -558,6 +612,7 @@ fn main() -> io::Result<()> {
     let mut link_aarch64: Option<String> = None;
     let mut a: Vec<String> = Vec::new();
     let mut b: Vec<String> = Vec::new();
+    let mut fixed: Option<String> = None;
     let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
 
     //
@@ -628,6 +683,9 @@ mod test {
             link_aarch64 = None;
             link_arm = None;
             current_tests = Vec::new();
+            a = Vec::new();
+            b = Vec::new();
+            fixed = None;
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
             current_name = Some(String::from(&line[7..]));
@@ -641,6 +699,8 @@ mod test {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
             b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
+        } else if line.starts_with("fixed = ") {
+            fixed = Some(String::from(&line[8..]));
         } else if line.starts_with("validate ") {
             let e = line[9..].split(',').map(|v| v.trim().to_string()).collect();
             current_tests.push((a.clone(), b.clone(), e));
@@ -692,6 +752,8 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
+                        b.len() > 0,
+                        &fixed,
                     );
                     out_arm.push_str(&function);
                     tests_arm.push_str(&test);
@@ -705,6 +767,8 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
+                        b.len() > 0,
+                        &fixed,
                     );
                     out_aarch64.push_str(&function);
                     tests_aarch64.push_str(&test);
