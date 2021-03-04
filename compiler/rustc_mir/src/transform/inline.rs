@@ -220,7 +220,7 @@ impl Inliner<'tcx> {
             // since their `optimized_mir` is used for layout computation, which can
             // create a cycle, even when no attempt is made to inline the function
             // in the other direction.
-            if caller_body.generator_kind.is_some() {
+            if caller_body.generator.is_some() {
                 return Err("local generator (query cycle avoidance)");
             }
 
