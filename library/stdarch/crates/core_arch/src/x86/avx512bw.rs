@@ -7424,15 +7424,11 @@ pub unsafe fn _mm_mask_shufflehi_epi16<const IMM8: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shufflehi_epi16&expand=5205)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshufhw, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_maskz_shufflehi_epi16(k: __mmask8, a: __m128i, imm8: i32) -> __m128i {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_shufflehi_epi16::<$imm8>(a)
-        };
-    }
-    let shuffle = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vpshufhw, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let shuffle = _mm_shufflehi_epi16::<IMM8>(a);
     let zero = _mm_setzero_si128().as_i16x8();
     transmute(simd_select_bitmask(k, shuffle.as_i16x8(), zero))
 }
@@ -16446,9 +16442,9 @@ mod tests {
     #[simd_test(enable = "avx512bw,avx512vl")]
     unsafe fn test_mm_maskz_shufflehi_epi16() {
         let a = _mm_set_epi16(0, 1, 2, 3, 4, 5, 6, 7);
-        let r = _mm_maskz_shufflehi_epi16(0, a, 0b00_01_01_11);
+        let r = _mm_maskz_shufflehi_epi16::<0b00_01_01_11>(0, a);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shufflehi_epi16(0b11111111, a, 0b00_01_01_11);
+        let r = _mm_maskz_shufflehi_epi16::<0b00_01_01_11>(0b11111111, a);
         let e = _mm_set_epi16(3, 2, 2, 0, 4, 5, 6, 7);
         assert_eq_m128i(r, e);
     }
