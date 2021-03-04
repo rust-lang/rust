@@ -868,10 +868,7 @@ where
     /// assert_eq!(err.value, "b");
     /// ```
     #[unstable(feature = "map_try_insert", issue = "none")]
-    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
-    where
-        K: Ord,
-    {
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>> {
         match self.entry(key) {
             Occupied(entry) => Err(OccupiedError { entry, value }),
             Vacant(entry) => Ok(entry.insert(value)),
