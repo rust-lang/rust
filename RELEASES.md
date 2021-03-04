@@ -94,9 +94,9 @@ Rustdoc
 
 Various improvements to intra-doc links:
 
-  - [You can link to non-path primitives such as `slice`.][80181]
-  - [You can link to associated items.][74489]
-  - [You can now include generic parameters when linking to items, like `Vec<T>`.][76934]
+- [You can link to non-path primitives such as `slice`.][80181]
+- [You can link to associated items.][74489]
+- [You can now include generic parameters when linking to items, like `Vec<T>`.][76934]
 
 Misc
 ----
