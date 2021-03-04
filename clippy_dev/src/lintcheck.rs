@@ -503,6 +503,10 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
 /// check if the latest modification of the logfile is older than the modification date of the
 /// clippy binary, if this is true, we should clean the lintchec shared target directory and recheck
 fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
+    if !lintcheck_logs_path.exists() {
+        return true;
+    }
+
     let clippy_modified: std::time::SystemTime = {
         let mut times = [CLIPPY_DRIVER_PATH, CARGO_CLIPPY_PATH].iter().map(|p| {
             std::fs::metadata(p)
@@ -665,7 +669,6 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
     let file_content: String = match std::fs::read_to_string(file_path).ok() {
         Some(content) => content,
         None => {
-            eprintln!("RETURND");
             return HashMap::new();
         },
     };
@@ -733,4 +736,31 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .for_each(|(old_key, old_value)| {
             println!("{} {} => 0", old_key, old_value);
         });
+}
+
+#[test]
+fn lintcheck_test() {
+    let args = [
+        "run",
+        "--target-dir",
+        "clippy_dev/target",
+        "--package",
+        "clippy_dev",
+        "--bin",
+        "clippy_dev",
+        "--manifest-path",
+        "clippy_dev/Cargo.toml",
+        "--features",
+        "lintcheck",
+        "--",
+        "lintcheck",
+        "--crates-toml",
+        "clippy_dev/test_sources.toml",
+    ];
+    let status = std::process::Command::new("cargo")
+        .args(&args)
+        .current_dir("../" /* repo root */)
+        .status();
+
+    assert!(status.unwrap().success());
 }
