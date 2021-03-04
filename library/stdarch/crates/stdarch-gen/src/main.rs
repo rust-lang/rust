@@ -299,7 +299,7 @@ fn gen_aarch64(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    has_b: bool,
+    single_para: bool,
     fixed: &Option<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
@@ -335,7 +335,7 @@ fn gen_aarch64(
     } else {
         String::new()
     };
-    let call = if has_b {
+    let call = if !single_para {
         format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
@@ -350,9 +350,15 @@ fn gen_aarch64(
         }
         format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a, {}({}))
+    {}{}(a, transmute({}::new({})))
 }}"#,
-            name, in_t, out_t, ext_c, current_fn, in_t, fixed_vals,
+            name,
+            in_t,
+            out_t,
+            ext_c,
+            current_fn,
+            type_to_global_type(in_t),
+            fixed_vals,
         )
     } else {
         String::new()
@@ -368,7 +374,14 @@ fn gen_aarch64(
         current_comment, current_aarch64, call
     );
 
-    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), has_b);
+    let test = gen_test(
+        name,
+        &in_t,
+        &out_t,
+        current_tests,
+        type_len(in_t),
+        single_para,
+    );
     (function, test)
 }
 
@@ -378,7 +391,7 @@ fn gen_test(
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     len: usize,
-    has_b: bool,
+    single_para: bool,
 ) -> String {
     let mut test = format!(
         r#"
@@ -390,7 +403,7 @@ fn gen_test(
         let a: Vec<String> = a.iter().take(len).cloned().collect();
         let b: Vec<String> = b.iter().take(len).cloned().collect();
         let e: Vec<String> = e.iter().take(len).cloned().collect();
-        let t = if has_b {
+        let t = if !single_para {
             format!(
                 r#"
         let a{};
@@ -437,7 +450,7 @@ fn gen_arm(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    has_b: bool,
+    single_para: bool,
     fixed: &Option<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
@@ -486,7 +499,7 @@ fn gen_arm(
         } else {
             String::new()
         };
-    let call = if has_b {
+    let call = if !single_para {
         format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
@@ -501,9 +514,15 @@ fn gen_arm(
         }
         format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a, {}({}))
+    {}{}(a, transmute({}::new({})))
 }}"#,
-            name, in_t, out_t, ext_c, current_fn, in_t, fixed_vals,
+            name,
+            in_t,
+            out_t,
+            ext_c,
+            current_fn,
+            type_to_global_type(in_t),
+            fixed_vals,
         )
     } else {
         String::new()
@@ -523,7 +542,14 @@ fn gen_arm(
         expand_intrinsic(&current_aarch64, in_t),
         call,
     );
-    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), has_b);
+    let test = gen_test(
+        name,
+        &in_t,
+        &out_t,
+        current_tests,
+        type_len(in_t),
+        single_para,
+    );
 
     (function, test)
 }
@@ -752,7 +778,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        b.len() > 0,
+                        b.len() == 0,
                         &fixed,
                     );
                     out_arm.push_str(&function);
@@ -767,7 +793,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        b.len() > 0,
+                        b.len() == 0,
                         &fixed,
                     );
                     out_aarch64.push_str(&function);
