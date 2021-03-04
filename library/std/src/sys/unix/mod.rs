@@ -15,7 +15,6 @@ pub mod args;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fd;
 pub mod fs;
 pub mod futex;

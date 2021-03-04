@@ -62,22 +62,6 @@ cfg_if::cfg_if! {
     all(target_vendor = "fortanix", target_env = "sgx")
 )))]
 cfg_if::cfg_if! {
-    if #[cfg(unix)] {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::ext as unix_ext;
-    } else {
-        #[path = "unix/ext/mod.rs"]
-        pub mod unix_ext;
-    }
-}
-
-#[cfg(doc)]
-#[cfg(not(any(
-    target_os = "hermit",
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
-)))]
-cfg_if::cfg_if! {
     if #[cfg(not(windows))] {
         // On non-Windows platforms (aka linux/osx/etc) pull in a "minimal"
         // amount of windows goop which ends up compiling
