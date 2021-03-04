@@ -8,6 +8,7 @@ use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::process;
 use crate::sealed::Sealed;
 use crate::sys;
+use crate::sys::os::{self, SignalLookupMethod};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
@@ -318,4 +319,71 @@ impl IntoRawFd for process::ChildStderr {
 #[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     crate::sys::os::getppid()
+}
+
+/// Converts a signal number to a string representation suitable for a human reader.
+///
+/// This does not necessarily produce the same output as the C `strsignal` function.
+/// Currently there are two deviations from the return value of `strsignal`:
+///
+///  * `signal_describe` does not translate the string according to the locale; C `strsignal`
+///    usually does.  Unfortunately a translated version is not currently available.
+///
+///  * `signal_describe` will include the signal abbrevation (eg, `SIGINT`) if
+///    the platform C library can provide that.
+///
+/// The precise form of the output should not be relied on.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(unix_signal_strings)]
+/// use std::os::unix::process::signal_describe;
+/// assert!(signal_describe(9).contains("Killed"));
+/// ```
+#[unstable(feature = "unix_signal_strings", issue = "none")]
+pub fn signal_describe(sig: i32) -> String {
+    let mut buf = String::new();
+    os::signal_display(&mut buf, sig).unwrap();
+    buf
+}
+
+/// Looks up a signal number to get a basic string representation.
+///
+/// For known signals, this will typically give the same output as the C `strisignal`
+/// function does in the `C` locale.
+///
+/// Will return `None` for unknown or invalid signal numbers.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(unix_signal_strings)]
+/// use std::os::unix::process::signal_string_raw;
+/// assert_eq!(signal_string_raw(15), Some("Terminated"));
+/// ```
+#[unstable(feature = "unix_signal_strings", issue = "none")]
+pub fn signal_string_raw(sig: i32) -> Option<&'static str> {
+    os::signal_lookup::descrs.lookup(sig)
+}
+
+/// Looks up a signal number to get its abbreviation.
+///
+/// When this succeeds, it will return the part of the signal name after `SIG`.
+///
+/// On some systems, `signal_abbrev` is not supported and will always return `None`.  Whether it is
+/// supported is not known at compile time; it can depend on the libc version found at runtime.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(unix_signal_strings)]
+/// use std::os::unix::process::signal_abbrev;
+/// if let Some(got) = signal_abbrev(1) {
+///   assert_eq!(got, "HUP");
+/// }
+/// ```
+#[unstable(feature = "unix_signal_strings", issue = "none")]
+pub fn signal_abbrev(sig: i32) -> Option<&'static str> {
+    os::signal_lookup::abbrevs.lookup(sig)
 }

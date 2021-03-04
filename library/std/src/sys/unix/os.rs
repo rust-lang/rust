@@ -10,6 +10,7 @@ use crate::os::unix::prelude::*;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
+use crate::fmt::Write as _;
 use crate::io;
 use crate::iter;
 use crate::marker::PhantomData;
@@ -129,6 +130,122 @@ pub fn error_string(errno: i32) -> String {
         let p = p as *const _;
         str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
     }
+}
+
+// Signal strings
+//
+// This is not so easy.  Docs references:
+//
+// glibc
+//  https://www.sourceware.org/glibc/wiki/Release/2.32
+//  https://www.gnu.org/software/libc/manual/html_node/Signal-Messages.html
+//
+// FreeBSD
+//  https://www.freebsd.org/cgi/man.cgi?query=strsignal&apropos=0&sektion=0&manpath=FreeBSD+12.2-RELEASE+and+Ports&arch=default&format=html
+
+pub trait SignalLookupMethod {
+    fn lookup(&self, sig: i32) -> Option<&'static str>;
+}
+
+unsafe fn ptr_to_maybe_str(p: *const c_char) -> Option<&'static str> {
+    if p.is_null() {
+        None
+    } else {
+        let cstr = CStr::from_ptr::<'static>(p);
+        Some(cstr.to_str().unwrap())
+    }
+}
+
+// This is pretty universal - the nix crate makes the same assumption.  We need it to be no larger
+// than the platform's actual value - but, only on platforms where there is sys_siglist or
+// sys_signame.  This value is a pretty safe bet, and we have a test caee for it.
+const NSIG: usize = 32;
+
+#[cfg(not(target_env = "musl"))]
+pub mod signal_lookup {
+    use super::*;
+    use crate::sys::weak::Weak;
+
+    type SigFooNp = unsafe extern "C" fn(c_int) -> *const c_char;
+
+    #[repr(transparent)]
+    struct SysSigFoos(*const *const c_char);
+    unsafe impl Sync for SysSigFoos {}
+
+    pub struct Lookups {
+        sigfoo_np: Weak<SigFooNp>,
+        sys_sigfoos: Weak<SysSigFoos>,
+    }
+
+    pub static descrs: Lookups = Lookups {
+        sigfoo_np: Weak::new("sigdescr_pn\0"),   // glibc >=2.32
+        sys_sigfoos: Weak::new("sys_siglist\0"), // FeeBSD/NetBSD/OpenBSD
+    };
+
+    pub static abbrevs: Lookups = Lookups {
+        sigfoo_np: Weak::new("sigabbrev_pn\0"),  // glibc >=2.32
+        sys_sigfoos: Weak::new("sys_signame\0"), // glibc < 2.23, BSDs, and other trad unix
+    };
+
+    impl SignalLookupMethod for Lookups {
+        fn lookup(&self, sig: i32) -> Option<&'static str> {
+            unsafe {
+                let got = if let Some(sigfoo_np) = self.sigfoo_np.get() {
+                    sigfoo_np(sig)
+                } else if let Some(use_sys_foolist) =
+                    // if let chaining would be nice here!
+                    if (sig as usize) < NSIG { self.sys_sigfoos.get() } else { None }
+                {
+                    use_sys_foolist.0.add(sig as usize).read()
+                } else {
+                    ptr::null()
+                };
+                ptr_to_maybe_str(got)
+            }
+        }
+    }
+}
+
+#[cfg(arget_env = "musl")]
+pub mod signal_lookup {
+    pub struct ViaStrsignal;
+    pub static descrs: ViaStrSignal = ViaStrSignal;
+    impl Lookup for ViaStrSignal {
+        // musl's strsignal is threadsafe: it just looks up in a static array (that we don't have
+        // access to in any other way).  I have spoken to Rich Felker (musl upstream author) on IRC
+        // and confirmed that musl's strsignal is very unlikely to ever become non-thread-safe.
+        #[cfg(arget_env = "musl")]
+        fn lookup(&self, sig: i32) -> Option<&'static str> {
+            unsafe {
+                extern "C" fn strsignal(sig: c_int) -> *const *const c_char;
+                ptr_to_maybe_str(strsignal(sig))
+            }
+        }
+    }
+
+    pub struct Unsupported;
+    pub static abbrevs: Unsupported = Unsupported;
+    impl Lookup for Unspported {
+        fn lookup(&self, sig: i32) -> Option<&'static str> {
+            extern "C" fn strsignal(sig: c_int) -> *const *const c_char;
+            ptr_to_maybe_str(strsignal(sig))
+        }
+    }
+}
+
+/// Gets a detailed string description for the given signal number.
+pub fn signal_display(f: &mut dyn fmt::Write, sig: i32) -> fmt::Result {
+    // shame there is no strsignal_r anywhere!
+
+    if let Some(text) = signal_lookup::descrs.lookup(sig) {
+        f.write_str(text)?;
+        if let Some(name) = signal_lookup::abbrevs.lookup(sig) {
+            write!(f, " (SIG{})", name)?;
+        }
+    } else {
+        write!(f, "signal {}", sig)?;
+    }
+    Ok(())
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
