@@ -25,10 +25,10 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_lazy_eval;
 mod unwrap_used;
+mod wrong_self_convention;
 mod zst_offset;
 
 use std::borrow::Cow;
-use std::fmt;
 use std::iter;
 
 use bind_instead_of_map::BindInsteadOfMap;
@@ -1868,7 +1868,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                lint_wrong_self_convention(
+                wrong_self_convention::check(
                     cx,
                     &name,
                     item.vis.node.is_pub(),
@@ -1924,7 +1924,14 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty();
 
             then {
-                lint_wrong_self_convention(cx, &item.ident.name.as_str(), false, self_ty, first_arg_ty, first_arg_span);
+                wrong_self_convention::check(
+                    cx,
+                    &item.ident.name.as_str(),
+                    false,
+                    self_ty,
+                    first_arg_ty,
+                    first_arg_span
+                );
             }
         }
 
@@ -1947,39 +1954,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn lint_wrong_self_convention<'tcx>(
-    cx: &LateContext<'tcx>,
-    item_name: &str,
-    is_pub: bool,
-    self_ty: &'tcx TyS<'tcx>,
-    first_arg_ty: &'tcx TyS<'tcx>,
-    first_arg_span: Span,
-) {
-    let lint = if is_pub {
-        WRONG_PUB_SELF_CONVENTION
-    } else {
-        WRONG_SELF_CONVENTION
-    };
-    if let Some((ref conv, self_kinds)) = &CONVENTIONS.iter().find(|(ref conv, _)| conv.check(item_name)) {
-        if !self_kinds.iter().any(|k| k.matches(cx, self_ty, first_arg_ty)) {
-            span_lint(
-                cx,
-                lint,
-                first_arg_span,
-                &format!(
-                    "methods called `{}` usually take {}; consider choosing a less ambiguous name",
-                    conv,
-                    &self_kinds
-                        .iter()
-                        .map(|k| k.description())
-                        .collect::<Vec<_>>()
-                        .join(" or ")
-                ),
-            );
-        }
-    }
 }
 
 /// Checks for the `OR_FUN_CALL` lint.
@@ -3415,22 +3389,6 @@ fn lint_into_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_
     }
 }
 
-enum Convention {
-    Eq(&'static str),
-    StartsWith(&'static str),
-}
-
-#[rustfmt::skip]
-const CONVENTIONS: [(Convention, &[SelfKind]); 7] = [
-    (Convention::Eq("new"), &[SelfKind::No]),
-    (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
-    (Convention::StartsWith("from_"), &[SelfKind::No]),
-    (Convention::StartsWith("into_"), &[SelfKind::Value]),
-    (Convention::StartsWith("is_"), &[SelfKind::Ref, SelfKind::No]),
-    (Convention::Eq("to_mut"), &[SelfKind::RefMut]),
-    (Convention::StartsWith("to_"), &[SelfKind::Ref]),
-];
-
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
     unsafety: hir::Unsafety::Normal,
     constness: hir::Constness::NotConst,
@@ -3598,25 +3556,6 @@ impl SelfKind {
             Self::Ref => "self by reference",
             Self::RefMut => "self by mutable reference",
             Self::No => "no self",
-        }
-    }
-}
-
-impl Convention {
-    #[must_use]
-    fn check(&self, other: &str) -> bool {
-        match *self {
-            Self::Eq(this) => this == other,
-            Self::StartsWith(this) => other.starts_with(this) && this != other,
-        }
-    }
-}
-
-impl fmt::Display for Convention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match *self {
-            Self::Eq(this) => this.fmt(f),
-            Self::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
         }
     }
 }
