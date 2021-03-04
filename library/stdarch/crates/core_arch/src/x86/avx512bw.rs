@@ -3709,22 +3709,17 @@ pub unsafe fn _mm512_cmp_epu16_mask<const IMM8: i32>(a: __m512i, b: __m512i) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cmp_epu16_mask&expand=716)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[rustc_args_required_const(3)]
-#[cfg_attr(test, assert_instr(vpcmp, imm8 = 0))]
-pub unsafe fn _mm512_mask_cmp_epu16_mask(
+#[rustc_legacy_const_generics(3)]
+#[cfg_attr(test, assert_instr(vpcmp, IMM8 = 0))]
+pub unsafe fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
     k1: __mmask32,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __mmask32 {
+    static_assert_imm3!(IMM8);
     let a = a.as_u16x32();
     let b = b.as_u16x32();
-    macro_rules! call {
-        ($imm3:expr) => {
-            vpcmpuw(a, b, $imm3, k1)
-        };
-    }
-    let r = constify_imm3!(imm8, call);
+    let r = vpcmpuw(a, b, IMM8, k1);
     transmute(r)
 }
 
@@ -13461,7 +13456,7 @@ mod tests {
         let a = _mm512_set1_epi16(0);
         let b = _mm512_set1_epi16(1);
         let mask = 0b01010101_01010101_01010101_01010101;
-        let r = _mm512_mask_cmp_epu16_mask(mask, a, b, _MM_CMPINT_LT);
+        let r = _mm512_mask_cmp_epu16_mask::<_MM_CMPINT_LT>(mask, a, b);
         assert_eq!(r, 0b01010101_01010101_01010101_01010101);
     }
 
