@@ -294,6 +294,13 @@ fn opts() -> Vec<RustcOptGroup> {
                 "NAME=URL",
             )
         }),
+        unstable("extern-html-root-takes-precedence", |o| {
+            o.optflagmulti(
+                "",
+                "extern-html-root-takes-precedence",
+                "give precedence to `--extern-html-root-url`, not `html_root_url`",
+            )
+        }),
         stable("plugin-path", |o| o.optmulti("", "plugin-path", "removed", "DIR")),
         stable("C", |o| {
             o.optmulti("C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]")

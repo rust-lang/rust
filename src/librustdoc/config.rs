@@ -233,6 +233,8 @@ crate struct RenderOptions {
     crate extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
     crate extern_html_root_urls: BTreeMap<String, String>,
+    /// Whether to give precedence to `html_root_url` or `--exten-html-root-url`.
+    crate extern_html_root_takes_precedence: bool,
     /// A map of the default settings (values are as for DOM storage API). Keys should lack the
     /// `rustdoc-` prefix.
     crate default_settings: FxHashMap<String, String>,
@@ -658,6 +660,8 @@ impl Options {
         let show_type_layout = matches.opt_present("show-type-layout");
         let nocapture = matches.opt_present("nocapture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
+        let extern_html_root_takes_precedence =
+            matches.opt_present("extern-html-root-takes-precedence");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             diag.struct_err(
@@ -714,6 +718,7 @@ impl Options {
                 themes,
                 extension_css,
                 extern_html_root_urls,
+                extern_html_root_takes_precedence,
                 default_settings,
                 resource_suffix,
                 enable_minification,
