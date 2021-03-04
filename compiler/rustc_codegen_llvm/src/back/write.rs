@@ -329,7 +329,8 @@ unsafe extern "C" fn inline_asm_handler(diag: &SMDiagnostic, user: *const c_void
     .expect("non-UTF8 SMDiagnostic");
 
     let source = have_source.then(|| {
-        let mut spans = vec![InnerSpan::new(loc as usize, loc as usize)];
+        let mut spans = Vec::with_capacity(num_ranges + 1);
+        spans.push(InnerSpan::new(loc as usize, loc as usize));
         for i in 0..num_ranges {
             spans.push(InnerSpan::new(ranges[i * 2] as usize, ranges[i * 2 + 1] as usize));
         }

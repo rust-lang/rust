@@ -53,7 +53,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let mut mapgen = CoverageMapGenerator::new();
 
     // Encode coverage mappings and generate function records
-    let mut function_data = Vec::new();
+    let mut function_data = Vec::with_capacity(function_coverage_map.len());
     for (instance, function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
         let mangled_function_name = tcx.symbol_name(instance).to_string();
@@ -123,7 +123,7 @@ impl CoverageMapGenerator {
         }
 
         let mut virtual_file_mapping = Vec::new();
-        let mut mapping_regions = Vec::new();
+        let mut mapping_regions = Vec::with_capacity(counter_regions.len());
         let mut current_file_name = None;
         let mut current_file_id = 0;
 

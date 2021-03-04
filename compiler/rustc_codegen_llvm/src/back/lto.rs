@@ -278,7 +278,7 @@ fn fat_lto(
             }
         }
     };
-    let mut serialized_bitcode = Vec::new();
+    let mut serialized_bitcode = Vec::with_capacity(serialized_modules.len() + in_memory.len());
     {
         let (llcx, llmod) = {
             let llvm = &module.module_llvm;
@@ -296,6 +296,7 @@ fn fat_lto(
         // and we want to move everything to the same LLVM context. Currently the
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
+        serialized_modules.reserve(in_memory.len());
         for module in in_memory {
             let buffer = ModuleBuffer::new(module.module_llvm.llmod());
             let llmod_id = CString::new(&module.name[..]).unwrap();
