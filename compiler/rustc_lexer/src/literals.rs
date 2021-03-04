@@ -51,7 +51,7 @@ pub enum RawStrError {
     TooManyDelimiters { found: usize },
 }
 
-pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
+pub(crate) fn number(cursor: &mut Cursor<'_>, first_digit: char) -> LiteralKind {
     debug_assert!('0' <= cursor.prev() && cursor.prev() <= '9');
     let mut base = Base::Decimal;
     if first_digit == '0' {
@@ -120,7 +120,7 @@ pub(crate) fn number(cursor: &mut Cursor, first_digit: char) -> LiteralKind {
     }
 }
 
-pub(crate) fn eat_decimal_digits(cursor: &mut Cursor) -> bool {
+pub(crate) fn eat_decimal_digits(cursor: &mut Cursor<'_>) -> bool {
     let mut has_digits = false;
     loop {
         match cursor.peek() {
@@ -137,7 +137,7 @@ pub(crate) fn eat_decimal_digits(cursor: &mut Cursor) -> bool {
     has_digits
 }
 
-pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor) -> bool {
+pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor<'_>) -> bool {
     let mut has_digits = false;
     loop {
         match cursor.peek() {
@@ -156,7 +156,7 @@ pub(crate) fn eat_hexadecimal_digits(cursor: &mut Cursor) -> bool {
 
 /// Eats the float exponent. Returns true if at least one digit was met,
 /// and returns false otherwise.
-fn eat_float_exponent(cursor: &mut Cursor) -> bool {
+fn eat_float_exponent(cursor: &mut Cursor<'_>) -> bool {
     debug_assert!(cursor.prev() == 'e' || cursor.prev() == 'E');
     if cursor.peek() == '-' || cursor.peek() == '+' {
         cursor.bump();
@@ -164,7 +164,7 @@ fn eat_float_exponent(cursor: &mut Cursor) -> bool {
     eat_decimal_digits(cursor)
 }
 
-pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
+pub(crate) fn lifetime_or_char(cursor: &mut Cursor<'_>) -> TokenKind {
     debug_assert!(cursor.prev() == '\'');
 
     let can_be_a_lifetime = if cursor.peek_second() == '\'' {
@@ -210,7 +210,7 @@ pub(crate) fn lifetime_or_char(cursor: &mut Cursor) -> TokenKind {
     }
 }
 
-pub(crate) fn single_quoted_string(cursor: &mut Cursor) -> bool {
+pub(crate) fn single_quoted_string(cursor: &mut Cursor<'_>) -> bool {
     debug_assert!(cursor.prev() == '\'');
     // Check if it's a one-symbol literal.
     if cursor.peek_second() == '\'' && cursor.peek() != '\\' {
@@ -253,7 +253,7 @@ pub(crate) fn single_quoted_string(cursor: &mut Cursor) -> bool {
 
 /// Eats double-quoted string and returns true
 /// if string is terminated.
-pub(crate) fn double_quoted_string(cursor: &mut Cursor) -> bool {
+pub(crate) fn double_quoted_string(cursor: &mut Cursor<'_>) -> bool {
     debug_assert!(cursor.prev() == '"');
     while let Some(c) = cursor.bump() {
         match c {
@@ -273,7 +273,7 @@ pub(crate) fn double_quoted_string(cursor: &mut Cursor) -> bool {
 
 /// Eats the double-quoted string and returns `n_hashes` and an error if encountered.
 pub(crate) fn raw_double_quoted_string(
-    cursor: &mut Cursor,
+    cursor: &mut Cursor<'_>,
     prefix_len: usize,
 ) -> (u16, Option<RawStrError>) {
     // Wrap the actual function to handle the error with too many hashes.
@@ -288,7 +288,10 @@ pub(crate) fn raw_double_quoted_string(
     }
 }
 
-fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Option<RawStrError>) {
+fn raw_string_unvalidated(
+    cursor: &mut Cursor<'_>,
+    prefix_len: usize,
+) -> (usize, Option<RawStrError>) {
     debug_assert!(cursor.prev() == 'r');
     let start_pos = cursor.len_consumed();
     let mut possible_terminator_offset = None;
@@ -354,7 +357,7 @@ fn raw_string_unvalidated(cursor: &mut Cursor, prefix_len: usize) -> (usize, Opt
 }
 
 /// Eats the suffix of a literal, e.g. "_u8".
-pub(crate) fn eat_literal_suffix(cursor: &mut Cursor) {
+pub(crate) fn eat_literal_suffix(cursor: &mut Cursor<'_>) {
     // Eats one identifier.
     if is_id_start(cursor.peek()) {
         cursor.bump();

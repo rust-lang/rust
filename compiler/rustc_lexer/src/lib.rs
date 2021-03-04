@@ -381,7 +381,7 @@ pub fn first_token(input: &str) -> Token {
     Token::new(token_kind, cursor.len_consumed())
 }
 
-fn line_comment(cursor: &mut Cursor) -> TokenKind {
+fn line_comment(cursor: &mut Cursor<'_>) -> TokenKind {
     debug_assert!(cursor.prev() == '/' && cursor.peek() == '/');
     cursor.bump();
 
@@ -397,7 +397,7 @@ fn line_comment(cursor: &mut Cursor) -> TokenKind {
     LineComment { doc_style }
 }
 
-fn block_comment(cursor: &mut Cursor) -> TokenKind {
+fn block_comment(cursor: &mut Cursor<'_>) -> TokenKind {
     debug_assert!(cursor.prev() == '/' && cursor.peek() == '*');
     cursor.bump();
 
@@ -435,7 +435,7 @@ fn block_comment(cursor: &mut Cursor) -> TokenKind {
 }
 
 /// Start is already eaten, eat the rest of identifier.
-pub(crate) fn ident(cursor: &mut Cursor) -> TokenKind {
+pub(crate) fn ident(cursor: &mut Cursor<'_>) -> TokenKind {
     debug_assert!(is_id_start(cursor.prev()));
     cursor.bump_while(is_id_continue);
     Ident
