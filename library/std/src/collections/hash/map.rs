@@ -1907,6 +1907,19 @@ impl<K: Debug, V: Debug> Debug for OccupiedError<'_, K, V> {
     }
 }
 
+#[unstable(feature = "map_try_insert", issue = "none")]
+impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "failed to insert {:?}, key {:?} already exists with value {:?}",
+            self.value,
+            self.entry.key(),
+            self.entry.get(),
+        )
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {
     type Item = (&'a K, &'a V);
