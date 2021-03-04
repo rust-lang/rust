@@ -8,8 +8,8 @@ LL | | }
 note: the lint level is defined here
   --> $DIR/lint-missing-doc-code-example.rs:2:9
    |
-LL | #![deny(missing_doc_code_examples)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rustdoc::missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
   --> $DIR/lint-missing-doc-code-example.rs:37:3
