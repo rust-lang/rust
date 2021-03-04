@@ -188,12 +188,20 @@ impl CommandExt for process::Command {
 
 /// Unix-specific extensions to [`process::ExitStatus`].
 ///
+/// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as passed to the
+/// `exit` system call or returned by [`ExitStatus::code()`](crate::process::ExitStatus::code).
+/// It represents **any wait status**, as returned by one of the `wait` family of system calls.
+///
+/// This is because a Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but
+/// can also represent other kinds of process event.
+///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt: Sealed {
-    /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
-    /// a process.
+    /// Creates a new `ExitStatus` from the raw underlying integer status value from `wait`
+    ///
+    /// The value should be a **wait status, not an exit status**.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 
@@ -222,6 +230,8 @@ pub trait ExitStatusExt: Sealed {
     fn continued(&self) -> bool;
 
     /// Returns the underlying raw `wait` status.
+    ///
+    /// The returned integer is a **wait status, not an exit status**.
     #[unstable(feature = "unix_process_wait_more", issue = "80695")]
     fn into_raw(self) -> i32;
 }
