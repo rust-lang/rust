@@ -855,7 +855,7 @@ impl Attributes {
             .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
                 match *did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did, cache) {
+                        if let Some((mut href, ..)) = href(did, cache, depth) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);

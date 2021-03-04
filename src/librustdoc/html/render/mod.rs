@@ -674,8 +674,10 @@ fn document_short(
             MarkdownSummaryLine(&s, &item.links(&cx.cache, cx.depth())).into_string();
 
         if s.contains('\n') {
-            let link =
-                format!(r#" <a href="{}">Read more</a>"#, naive_assoc_href(item, link, cx.cache()));
+            let link = format!(
+                r#" <a href="{}">Read more</a>"#,
+                naive_assoc_href(item, link, cx.cache(), cx.depth())
+            );
 
             if let Some(idx) = summary_html.rfind("</p>") {
                 summary_html.insert_str(idx, &link);
@@ -894,7 +896,12 @@ fn render_impls(
     w.write_str(&impls.join(""));
 }
 
-fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>, cache: &Cache) -> String {
+fn naive_assoc_href(
+    it: &clean::Item,
+    link: AssocItemLink<'_>,
+    cache: &Cache,
+    depth: usize,
+) -> String {
     use crate::formats::item_type::ItemType::*;
 
     let name = it.name.as_ref().unwrap();
@@ -908,7 +915,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>, cache: &Cache) ->
         AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
         AssocItemLink::Anchor(None) => anchor,
         AssocItemLink::GotoSource(did, _) => {
-            href(did, cache).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
+            href(did, cache, depth).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
         }
     }
 }
@@ -926,8 +933,8 @@ fn assoc_const(
         w,
         "{}{}const <a href=\"{}\" class=\"constant\"><b>{}</b></a>: {}",
         extra,
-        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
-        naive_assoc_href(it, link, cx.cache()),
+        it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache(), cx.depth()),
+        naive_assoc_href(it, link, cx.cache(), cx.depth()),
         it.name.as_ref().unwrap(),
         ty.print(cx.cache(), cx.depth())
     );
@@ -947,7 +954,7 @@ fn assoc_type(
         w,
         "{}type <a href=\"{}\" class=\"type\">{}</a>",
         extra,
-        naive_assoc_href(it, link, cache),
+        naive_assoc_href(it, link, cache, depth),
         it.name.as_ref().unwrap()
     );
     if !bounds.is_empty() {
@@ -1018,12 +1025,14 @@ fn render_assoc_item(
                     ItemType::TyMethod
                 };
 
-                href(did, cx.cache()).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
+                href(did, cx.cache(), cx.depth())
+                    .map(|p| format!("{}#{}.{}", p.0, ty, name))
+                    .unwrap_or(anchor)
             }
         };
         let mut header_len = format!(
             "{}{}{}{}{}{:#}fn {}{:#}",
-            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache()),
+            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache(), cx.depth()),
             header.constness.print_with_space(),
             header.asyncness.print_with_space(),
             header.unsafety.print_with_space(),
@@ -1045,7 +1054,7 @@ fn render_assoc_item(
             "{}{}{}{}{}{}{}fn <a href=\"{href}\" class=\"fnname\">{name}</a>\
              {generics}{decl}{spotlight}{where_clause}",
             if parent == ItemType::Trait { "    " } else { "" },
-            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache()),
+            meth.visibility.print_with_space(cx.tcx(), meth.def_id, cx.cache(), cx.depth()),
             header.constness.print_with_space(),
             header.asyncness.print_with_space(),
             header.unsafety.print_with_space(),

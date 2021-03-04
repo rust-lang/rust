@@ -20,7 +20,6 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
-use crate::html::render::CURRENT_DEPTH;
 
 crate trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -489,12 +488,11 @@ impl clean::Path {
     }
 }
 
-crate fn href(did: DefId, cache: &Cache) -> Option<(String, ItemType, Vec<String>)> {
+crate fn href(did: DefId, cache: &Cache, depth: usize) -> Option<(String, ItemType, Vec<String>)> {
     if !did.is_local() && !cache.access_levels.is_public(did) && !cache.document_private {
         return None;
     }
 
-    let depth = CURRENT_DEPTH.with(|l| l.get());
     let (fqp, shortty, mut url) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, "../".repeat(depth)),
         None => {
@@ -551,17 +549,17 @@ fn resolved_path(
         write!(w, "{}{:#}", &last.name, last.args.print(cache, depth))?;
     } else {
         let path = if use_absolute {
-            if let Some((_, _, fqp)) = href(did, cache) {
+            if let Some((_, _, fqp)) = href(did, cache, depth) {
                 format!(
                     "{}::{}",
                     fqp[..fqp.len() - 1].join("::"),
-                    anchor(did, fqp.last().unwrap(), cache)
+                    anchor(did, fqp.last().unwrap(), cache, depth)
                 )
             } else {
                 last.name.to_string()
             }
         } else {
-            anchor(did, &*last.name.as_str(), cache).to_string()
+            anchor(did, &*last.name.as_str(), cache, depth).to_string()
         };
         write!(w, "{}{}", path, last.args.print(cache, depth))?;
     }
@@ -633,9 +631,14 @@ fn tybounds<'a>(
     })
 }
 
-crate fn anchor<'a>(did: DefId, text: &'a str, cache: &'a Cache) -> impl fmt::Display + 'a {
+crate fn anchor<'a>(
+    did: DefId,
+    text: &'a str,
+    cache: &'a Cache,
+    depth: usize,
+) -> impl fmt::Display + 'a {
     display_fn(move |f| {
-        if let Some((url, short_ty, fqp)) = href(did, cache) {
+        if let Some((url, short_ty, fqp)) = href(did, cache, depth) {
             write!(
                 f,
                 r#"<a class="{}" href="{}" title="{} {}">{}</a>"#,
@@ -884,7 +887,7 @@ fn fmt_type(
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
                 box clean::ResolvedPath { did, ref param_names, .. } => {
-                    match href(did, cache) {
+                    match href(did, cache, depth) {
                         Some((ref url, _, ref path)) if !f.alternate() => {
                             write!(
                                 f,
@@ -1143,6 +1146,7 @@ impl clean::Visibility {
         tcx: TyCtxt<'tcx>,
         item_did: DefId,
         cache: &Cache,
+        depth: usize,
     ) -> impl fmt::Display + 'tcx {
         use rustc_span::symbol::kw;
 
@@ -1174,7 +1178,7 @@ impl clean::Visibility {
                         path.data[0].data.get_opt_name().expect("modules are always named");
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = anchor(vis_did, &last_name.as_str(), cache).to_string();
+                    let anchor = anchor(vis_did, &last_name.as_str(), cache, depth).to_string();
 
                     let mut s = "pub(".to_owned();
                     if path.data.len() != 1
