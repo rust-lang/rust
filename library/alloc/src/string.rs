@@ -2254,14 +2254,18 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 impl ToString for i8 {
     #[inline]
     fn to_string(&self) -> String {
-        let mut vec: Vec<u8> = if *self < 0 {
+        let mut n = *self;
+        let mut vec: Vec<u8> = if n < 0 {
+            // convert the negative num to positive by summing 1 to it's 2 complement
+            // ( -128u8.abs() would panic )
+            n = (!n).wrapping_add(1);
             let mut v = Vec::with_capacity(4);
             v.push(b'-');
             v
         } else {
             Vec::with_capacity(3)
         };
-        let mut n = self.abs();
+        let mut n = n as u8;
         if n >= 10 {
             if n >= 100 {
                 n -= 100;
