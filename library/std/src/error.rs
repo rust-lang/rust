@@ -470,7 +470,7 @@ impl Error for char::DecodeUtf16Error {
     }
 }
 
-#[unstable(feature = "map_try_insert", issue = "none")]
+#[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug + Ord, V: Debug> Error
     for crate::collections::btree_map::OccupiedError<'a, K, V>
 {
@@ -480,7 +480,7 @@ impl<'a, K: Debug + Ord, V: Debug> Error
     }
 }
 
-#[unstable(feature = "map_try_insert", issue = "none")]
+#[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug, V: Debug> Error for crate::collections::hash_map::OccupiedError<'a, K, V> {
     #[allow(deprecated)]
     fn description(&self) -> &str {

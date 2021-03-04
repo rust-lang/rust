@@ -859,7 +859,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(err.entry.get(), &"a");
     /// assert_eq!(err.value, "b");
     /// ```
-    #[unstable(feature = "map_try_insert", issue = "none")]
+    #[unstable(feature = "map_try_insert", issue = "82766")]
     pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
     where
         K: Ord,
