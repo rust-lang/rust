@@ -16,8 +16,10 @@ fn exitstatus_display_tests() {
     //   https://github.com/rust-lang/rust/pull/82749#issuecomment-790525956
     // The purpose of this test is to test our string formatting, not our understanding of the wait
     // status magic numbers.  So restrict these to Linux.
-    #[cfg(target_os = "linux")] t(0x0137f, "stopped (not terminated) by signal: 19");
-    #[cfg(target_os = "linux")] t(0x0ffff, "continued (WIFCONTINUED)");
+    #[cfg(target_os = "linux")]
+    t(0x0137f, "stopped (not terminated) by signal: 19");
+    #[cfg(target_os = "linux")]
+    t(0x0ffff, "continued (WIFCONTINUED)");
 
     // Testing "unrecognised wait status" is hard because the wait.h macros typically
     // assume that the value came from wait and isn't mad.  With the glibc I have here
