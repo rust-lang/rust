@@ -2224,7 +2224,7 @@ impl ToString for char {
     }
 }
 
-#[stable(feature = "u8_to_string_specialization", since="1.999.0")]
+#[stable(feature = "u8_to_string_specialization", since = "1.999.0")]
 impl ToString for u8 {
     #[inline]
     fn to_string(&self) -> String {
@@ -2240,6 +2240,39 @@ impl ToString for u8 {
         };
         result.push((b'0' + n) as char);
         result
+    }
+}
+
+// 2 digit decimal look up table
+static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
+      2021222324252627282930313233343536373839\
+      4041424344454647484950515253545556575859\
+      6061626364656667686970717273747576777879\
+      8081828384858687888990919293949596979899";
+
+#[stable(feature = "i8_to_string_specialization", since = "1.999.0")]
+impl ToString for i8 {
+    #[inline]
+    fn to_string(&self) -> String {
+        let mut vec: Vec<u8> = if *self < 0 {
+            let mut v = Vec::with_capacity(4);
+            v.push(b'-');
+            v
+        } else {
+            Vec::with_capacity(3)
+        };
+        let mut n = self.abs();
+        if n >= 10 {
+            if n >= 100 {
+                n -= 100;
+                vec.push(b'1');
+            }
+            let nn = n * 2;
+            vec.extend_from_slice(&DEC_DIGITS_LUT[nn as usize..=nn as usize + 1]);
+        } else {
+            vec.push(b'0' + (n as u8));
+        }
+        unsafe { String::from_utf8_unchecked(vec) }
     }
 }
 
