@@ -76,15 +76,11 @@ pub unsafe fn _xend() {
 /// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xabort).
 #[inline]
 #[target_feature(enable = "rtm")]
-#[cfg_attr(test, assert_instr(xabort, imm8 = 0x0))]
-#[rustc_args_required_const(0)]
-pub unsafe fn _xabort(imm8: u32) {
-    macro_rules! call {
-        ($imm8:expr) => {
-            x86_xabort($imm8)
-        };
-    }
-    constify_imm8!(imm8, call)
+#[cfg_attr(test, assert_instr(xabort, IMM8 = 0x0))]
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn _xabort<const IMM8: u32>() {
+    static_assert_imm_u8!(IMM8);
+    x86_xabort(IMM8 as i8)
 }
 
 /// Queries whether the processor is executing in a transactional region identified by restricted
@@ -130,14 +126,14 @@ mod tests {
     unsafe fn test_xabort() {
         const ABORT_CODE: u32 = 42;
         // aborting outside a transactional region does nothing
-        _xabort(ABORT_CODE);
+        _xabort::<ABORT_CODE>();
 
         for _ in 0..10 {
             let mut x = 0;
             let code = rtm::_xbegin();
             if code == _XBEGIN_STARTED {
                 x += 1;
-                rtm::_xabort(ABORT_CODE);
+                rtm::_xabort::<ABORT_CODE>();
             } else if code & _XABORT_EXPLICIT != 0 {
                 let test_abort_code = rtm::_xabort_code(code);
                 assert_eq!(test_abort_code, ABORT_CODE);
