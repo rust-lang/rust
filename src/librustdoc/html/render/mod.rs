@@ -170,6 +170,10 @@ crate struct SharedContext<'tcx> {
 }
 
 impl<'tcx> Context<'tcx> {
+    fn depth(&self) -> usize {
+        self.current.len()
+    }
+
     fn path(&self, filename: &str) -> PathBuf {
         // We use splitn vs Path::extension here because we might get a filename
         // like `style.min.css` and we want to process that into
@@ -1912,7 +1916,7 @@ fn document_short(
         return;
     }
     if let Some(s) = item.doc_value() {
-        let mut summary_html = MarkdownSummaryLine(&s, &item.links(&cx.cache)).into_string();
+        let mut summary_html = MarkdownSummaryLine(&s, &item.links(&cx.cache, cx.depth())).into_string();
 
         if s.contains('\n') {
             let link =
@@ -1951,7 +1955,7 @@ fn document_full(
 ) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, cx, &*s, item.links(&cx.cache), prefix, is_hidden);
+        render_markdown(w, cx, &*s, item.links(&cx.cache, cx.depth()), prefix, is_hidden);
     } else if !prefix.is_empty() {
         if is_hidden {
             w.write_str("<div class=\"docblock hidden\">");
@@ -2241,7 +2245,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                      </tr>",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
-                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(&cx.cache)).into_string(),
+                    docs = MarkdownSummaryLine(&doc_value, &myitem.links(&cx.cache, cx.depth())).into_string(),
                     class = myitem.type_(),
                     add = add,
                     stab = stab.unwrap_or_else(String::new),
@@ -3862,7 +3866,7 @@ fn render_impl(
                 "<div class=\"docblock\">{}</div>",
                 Markdown(
                     &*dox,
-                    &i.impl_item.links(&cx.cache),
+                    &i.impl_item.links(&cx.cache, cx.depth()),
                     &mut ids,
                     cx.shared.codes,
                     cx.shared.edition,
