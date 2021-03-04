@@ -1061,10 +1061,12 @@ themePicker.onblur = handleThemeButtonsBlur;
         cx.shared.fs.write(&dst, v.as_bytes())?;
     }
 
-    // Update the search index
+    // Update the search index and crate list.
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
     let (mut all_indexes, mut krates) = try_err!(collect_json(&dst, &krate.name.as_str()), &dst);
     all_indexes.push(search_index);
+    krates.push(krate.name.to_string());
+    krates.sort();
 
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
@@ -1072,11 +1074,15 @@ themePicker.onblur = handleThemeButtonsBlur;
     {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
-        // "addSearchOptions" has to be called first so the crate filtering can be set before the
-        // search might start (if it's set into the URL for example).
-        v.push_str("\\\n}');\naddSearchOptions(searchIndex);initSearch(searchIndex);");
+        v.push_str("\\\n}');\ninitSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
+
+    let crate_list_dst = cx.dst.join(&format!("crates{}.js", cx.shared.resource_suffix));
+    let crate_list =
+        format!("window.ALL_CRATES = [{}];", krates.iter().map(|k| format!("\"{}\"", k)).join(","));
+    cx.shared.fs.write(&crate_list_dst, &crate_list)?;
+
     if options.enable_index_page {
         if let Some(index_page) = options.index_page.clone() {
             let mut md_opts = options.clone();
@@ -1098,9 +1104,6 @@ themePicker.onblur = handleThemeButtonsBlur;
                 extra_scripts: &[],
                 static_extra_scripts: &[],
             };
-            krates.push(krate.name.to_string());
-            krates.sort();
-            krates.dedup();
 
             let content = format!(
                 "<h1 class=\"fqn\">\

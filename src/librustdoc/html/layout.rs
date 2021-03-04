@@ -58,6 +58,7 @@ crate fn render<T: Print, S: Print>(
     {style_files}\
     <script id=\"default-settings\"{default_settings}></script>\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
+    <script src=\"{static_root_path}crates{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
     {favicon}\
@@ -112,10 +113,10 @@ crate fn render<T: Print, S: Print>(
     <section id=\"search\" class=\"content hidden\"></section>\
     <section class=\"footer\"></section>\
     {after_content}\
-    <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\"></div>
+    <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
+       data-search-js=\"{root_path}search-index{suffix}.js\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
     {extra_scripts}\
-    <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
         css_extension = if layout.css_file_extension.is_some() {
