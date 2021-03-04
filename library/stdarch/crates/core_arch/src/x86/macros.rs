@@ -32,6 +32,23 @@ macro_rules! static_assert_sae {
     };
 }
 
+// Helper struct used to trigger const eval errors when the unsigned const generic immediate value
+// `IMM` is out of `[MIN-MAX]` range.
+pub(crate) struct ValidateConstImmU32<const IMM: u32, const MIN: u32, const MAX: u32>;
+impl<const IMM: u32, const MIN: u32, const MAX: u32> ValidateConstImmU32<IMM, MIN, MAX> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! static_assert_imm_u8 {
+    ($imm:ident) => {
+        let _ =
+            $crate::core_arch::x86::macros::ValidateConstImmU32::<$imm, 0, { (1 << 8) - 1 }>::VALID;
+    };
+}
+
 macro_rules! constify_imm3 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
