@@ -5360,17 +5360,13 @@ pub unsafe fn _mm512_mask_srli_epi16<const IMM8: u32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_srli_epi16&expand=5512)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(vpsrlw, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_maskz_srli_epi16(k: __mmask32, a: __m512i, imm8: i32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpsrlw, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_maskz_srli_epi16<const IMM8: i32>(k: __mmask32, a: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
     //imm8 should be u32, it seems the document to verify is incorrect
     let a = a.as_i16x32();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpsrliw(a, $imm8)
-        };
-    }
-    let shf = constify_imm8_sae!(imm8, call);
+    let shf = vpsrliw(a, IMM8 as u32);
     let zero = _mm512_setzero_si512().as_i16x32();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -14718,9 +14714,9 @@ mod tests {
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_mm512_maskz_srli_epi16() {
         let a = _mm512_set1_epi16(1 << 1);
-        let r = _mm512_maskz_srli_epi16(0, a, 2);
+        let r = _mm512_maskz_srli_epi16::<2>(0, a);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_srli_epi16(0b11111111_11111111_11111111_11111111, a, 2);
+        let r = _mm512_maskz_srli_epi16::<2>(0b11111111_11111111_11111111_11111111, a);
         let e = _mm512_set1_epi16(0);
         assert_eq_m512i(r, e);
     }
