@@ -23,8 +23,7 @@ cfg_if::cfg_if! {
         #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
         pub use crate::sys::wasi_ext as wasi;
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use crate::sys::windows_ext as windows;
+        pub mod windows;
     } else if #[cfg(doc)] {
         // On certain platforms right now the "main modules" modules that are
         // documented don't compile (missing things in `libc` which is empty),
@@ -94,7 +93,6 @@ cfg_if::cfg_if! {
         pub mod wasi;
 
         #[cfg(windows)]
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use crate::sys::ext as windows;
+        pub mod windows;
     }
 }
