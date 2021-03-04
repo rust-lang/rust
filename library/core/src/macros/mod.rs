@@ -124,13 +124,15 @@ macro_rules! assert_ne {
 /// # Examples
 ///
 /// ```
+/// #![feature(assert_matches)]
+///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
 /// assert_matches!(a, Some(_));
 /// assert_matches!(b, None);
 ///
 /// let c = Ok("abc".to_string());
-/// assert_matches!(a, Ok(x) | Err(x) if x.len() < 100);
+/// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
 #[unstable(feature = "assert_matches", issue = "none")]
@@ -279,13 +281,15 @@ macro_rules! debug_assert_ne {
 /// # Examples
 ///
 /// ```
+/// #![feature(assert_matches)]
+///
 /// let a = 1u32.checked_add(2);
 /// let b = 1u32.checked_sub(2);
 /// debug_assert_matches!(a, Some(_));
 /// debug_assert_matches!(b, None);
 ///
 /// let c = Ok("abc".to_string());
-/// debug_assert_matches!(a, Ok(x) | Err(x) if x.len() < 100);
+/// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
 #[unstable(feature = "assert_matches", issue = "none")]
