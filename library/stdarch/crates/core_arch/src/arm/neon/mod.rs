@@ -125,6 +125,9 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v2i32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v2i32")]
     fn vabs_s32_(a: int32x2_t) -> int32x2_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v2f32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v2f32")]
+    fn vabs_f32_(a: float32x2_t) -> float32x2_t;
     // absolute value (128-bit)
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v16i8")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v16i8")]
@@ -135,9 +138,6 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v2f32")]
-    fn vabs_f32_(a: float32x2_t) -> float32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v4f32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v4f32")]
     fn vabsq_f32_(a: float32x4_t) -> float32x4_t;
