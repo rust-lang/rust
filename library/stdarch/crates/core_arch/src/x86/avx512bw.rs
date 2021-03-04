@@ -5641,16 +5641,12 @@ pub unsafe fn _mm_maskz_sra_epi16(k: __mmask8, a: __m128i, count: __m128i) -> __
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_srai_epi16&expand=5427)
 #[inline]
 #[target_feature(enable = "avx512bw")]
-#[cfg_attr(test, assert_instr(vpsraw, imm8 = 1))]
-#[rustc_args_required_const(1)]
-pub unsafe fn _mm512_srai_epi16(a: __m512i, imm8: u32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpsraw, IMM8 = 1))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm512_srai_epi16<const IMM8: u32>(a: __m512i) -> __m512i {
+    static_assert_imm_u8!(IMM8);
     let a = a.as_i16x32();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpsraiw(a, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vpsraiw(a, IMM8);
     transmute(r)
 }
 
@@ -14924,7 +14920,7 @@ mod tests {
     #[simd_test(enable = "avx512bw")]
     unsafe fn test_mm512_srai_epi16() {
         let a = _mm512_set1_epi16(8);
-        let r = _mm512_srai_epi16(a, 2);
+        let r = _mm512_srai_epi16::<2>(a);
         let e = _mm512_set1_epi16(2);
         assert_eq_m512i(r, e);
     }
