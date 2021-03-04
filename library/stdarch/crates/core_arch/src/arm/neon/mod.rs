@@ -1157,7 +1157,7 @@ pub unsafe fn vabsq_s32(a: int32x4_t) -> int32x4_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(fabs))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
 pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
     vabs_f32_(a)
@@ -1166,7 +1166,7 @@ pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(fabs))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
 pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
     vabsq_f32_(a)
