@@ -74,20 +74,3 @@ cfg_if::cfg_if! {
         pub mod c;
     }
 }
-
-#[cfg(doc)]
-#[cfg(not(any(
-    target_os = "hermit",
-    all(target_arch = "wasm32", not(target_os = "wasi")),
-    all(target_vendor = "fortanix", target_env = "sgx")
-)))]
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "wasi")] {
-        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
-        pub use self::ext as wasi_ext;
-    }  else {
-        #[path = "wasi/ext/mod.rs"]
-        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
-        pub mod wasi_ext;
-    }
-}

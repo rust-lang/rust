@@ -19,8 +19,7 @@ cfg_if::cfg_if! {
 
         pub mod linux;
 
-        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
-        pub use crate::sys::wasi_ext as wasi;
+        pub mod wasi;
 
         pub mod windows;
     } else if #[cfg(doc)] {
