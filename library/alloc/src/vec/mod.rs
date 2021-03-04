@@ -1877,7 +1877,15 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_spare_capacity", issue = "75017")]
     #[inline]
     pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
-        self.split_at_spare_mut().1
+        // Note:
+        // This method is not implemented in terms of `split_at_spare_mut`,
+        // to prevent invalidation of pointers to the buffer.
+        unsafe {
+            slice::from_raw_parts_mut(
+                self.as_mut_ptr().add(self.len) as *mut MaybeUninit<T>,
+                self.buf.capacity() - self.len,
+            )
+        }
     }
 
     /// Returns vector content as a slice of `T`, along with the remaining spare
@@ -1934,20 +1942,16 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
     pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
-        let ptr = self.as_mut_ptr();
-
-        // SAFETY:
-        // - `ptr` is guaranteed to be in bounds for `capacity` elements
-        // - `len` is guaranteed to less or equal to `capacity`
-        // - `MaybeUninit<T>` has the same layout as `T`
-        let spare_ptr = unsafe { ptr.cast::<MaybeUninit<T>>().add(self.len) };
+        let Range { start: ptr, end: spare_ptr } = self.as_mut_ptr_range();
+        let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
+        let spare_len = self.buf.capacity() - self.len;
 
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `len` elements
-        // - `spare_ptr` is offseted from `ptr` by `len`, so it doesn't overlap `initialized` slice
+        // - `spare_ptr` is pointing one element past the buffer, so it doesn't overlap with `initialized`
         unsafe {
             let initialized = slice::from_raw_parts_mut(ptr, self.len);
-            let spare = slice::from_raw_parts_mut(spare_ptr, self.buf.capacity() - self.len);
+            let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
 
             (initialized, spare)
         }
