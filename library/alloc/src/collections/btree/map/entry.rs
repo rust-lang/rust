@@ -71,6 +71,27 @@ impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     }
 }
 
+/// The error returned by [`try_insert`](BTreeMap::try_insert) when the key already exists.
+///
+/// Contains the occupied entry, and the value that was not inserted.
+#[unstable(feature = "map_try_insert", issue = "none")]
+pub struct OccupiedError<'a, K: 'a, V: 'a> {
+    /// The entry in the map that was already occupied.
+    pub entry: OccupiedEntry<'a, K, V>,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
+}
+
+#[unstable(feature = "map_try_insert", issue = "none")]
+impl<K: Debug + Ord, V: Debug> Debug for OccupiedError<'_, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedError")
+            .field("entry", &self.entry)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
 impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
