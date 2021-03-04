@@ -47,7 +47,7 @@ impl SimplifyCfg {
 }
 
 pub fn simplify_cfg(body: &mut Body<'_>) {
-    CfgSimplifier::new(body).simplify();
+    CfgSimplifier::simplify(body);
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -65,33 +65,34 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     }
 }
 
-pub struct CfgSimplifier<'a, 'tcx> {
+crate struct CfgSimplifier<'a, 'tcx> {
     basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    pred_count: IndexVec<BasicBlock, u32>,
+    pred_count: &'a mut [u32],
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    pub fn new(body: &'a mut Body<'tcx>) -> Self {
-        let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
+    crate fn simplify(body: &'a mut Body<'tcx>) {
+        let mut pred_count: SmallVec<[u32; 8]> =
+            SmallVec::from_elem(0u32, body.basic_blocks().len());
+        let pred_count: &mut [u32] = &mut pred_count;
 
         // we can't use mir.predecessors() here because that counts
         // dead blocks, which we don't want to.
-        pred_count[START_BLOCK] = 1;
+        pred_count[START_BLOCK.index()] = 1;
 
         for (_, data) in traversal::preorder(body) {
             if let Some(ref term) = data.terminator {
                 for &tgt in term.successors() {
-                    pred_count[tgt] += 1;
+                    pred_count[tgt.index()] += 1;
                 }
             }
         }
 
-        let basic_blocks = body.basic_blocks_mut();
-
-        CfgSimplifier { basic_blocks, pred_count }
+        let simplifier = CfgSimplifier { basic_blocks: body.basic_blocks_mut(), pred_count };
+        simplifier.run();
     }
 
-    pub fn simplify(mut self) {
+    fn run(mut self) {
         self.strip_nops();
 
         let mut start = START_BLOCK;
@@ -100,14 +101,14 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // statements itself to avoid moving the (relatively) large statements twice.
         // We do not push the statements directly into the target block (`bb`) as that is slower
         // due to additional reallocations
-        let mut merged_blocks = Vec::new();
+        let mut merged_blocks = SmallVec::<[BasicBlock; 4]>::new();
         loop {
             let mut changed = false;
 
             self.collapse_goto_chain(&mut start, &mut changed);
 
             for bb in self.basic_blocks.indices() {
-                if self.pred_count[bb] == 0 {
+                if self.pred_count[bb.index()] == 0 {
                     continue;
                 }
 
@@ -150,14 +151,14 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         }
 
         if start != START_BLOCK {
-            debug_assert!(self.pred_count[START_BLOCK] == 0);
+            debug_assert!(self.pred_count[START_BLOCK.index()] == 0);
             self.basic_blocks.swap(START_BLOCK, start);
-            self.pred_count.swap(START_BLOCK, start);
+            self.pred_count.swap(START_BLOCK.index(), start.index());
 
             // pred_count == 1 if the start block has no predecessor _blocks_.
-            if self.pred_count[START_BLOCK] > 1 {
+            if self.pred_count[START_BLOCK.index()] > 1 {
                 for (bb, data) in self.basic_blocks.iter_enumerated_mut() {
-                    if self.pred_count[bb] == 0 {
+                    if self.pred_count[bb.index()] == 0 {
                         continue;
                     }
 
@@ -193,7 +194,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
         // Using `SmallVec` here, because in some logs on libcore oli-obk saw many single-element
         // goto chains. We should probably benchmark different sizes.
-        let mut terminators: SmallVec<[_; 1]> = Default::default();
+        let mut terminators: SmallVec<[_; 2]> = Default::default();
         let mut current = *start;
         while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
             let target = match terminator {
@@ -214,13 +215,13 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
 
-            if self.pred_count[current] == 1 {
+            if self.pred_count[current.index()] == 1 {
                 // This is the last reference to current, so the pred-count to
                 // to target is moved into the current block.
-                self.pred_count[current] = 0;
+                self.pred_count[current.index()] = 0;
             } else {
-                self.pred_count[*target] += 1;
-                self.pred_count[current] -= 1;
+                self.pred_count[target.index()] += 1;
+                self.pred_count[current.index()] -= 1;
             }
             self.basic_blocks[current].terminator = Some(terminator);
         }
@@ -229,11 +230,11 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     // merge a block with 1 `goto` predecessor to its parent
     fn merge_successor(
         &mut self,
-        merged_blocks: &mut Vec<BasicBlock>,
+        merged_blocks: &mut SmallVec<[BasicBlock; 4]>,
         terminator: &mut Terminator<'tcx>,
     ) -> bool {
         let target = match terminator.kind {
-            TerminatorKind::Goto { target } if self.pred_count[target] == 1 => target,
+            TerminatorKind::Goto { target } if self.pred_count[target.index()] == 1 => target,
             _ => return false,
         };
 
@@ -248,7 +249,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         };
 
         merged_blocks.push(target);
-        self.pred_count[target] = 0;
+        self.pred_count[target.index()] = 0;
 
         true
     }
@@ -264,7 +265,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
             if let Some(&first_succ) = terminator.successors().next() {
                 if terminator.successors().all(|s| *s == first_succ) {
                     let count = terminator.successors().count();
-                    self.pred_count[first_succ] -= (count - 1) as u32;
+                    self.pred_count[first_succ.index()] -= (count - 1) as u32;
                     first_succ
                 } else {
                     return false;
@@ -294,7 +295,7 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 
     let basic_blocks = body.basic_blocks_mut();
-    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut replacements: SmallVec<[_; 8]> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut used_blocks = 0;
     for alive_index in reachable.iter() {
         let alive_index = alive_index.index();

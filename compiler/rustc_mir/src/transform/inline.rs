@@ -65,7 +65,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
         let _guard = span.enter();
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
-            CfgSimplifier::new(body).simplify();
+            CfgSimplifier::simplify(body);
             remove_dead_blocks(body);
         }
     }
