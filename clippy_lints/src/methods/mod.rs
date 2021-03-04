@@ -11,6 +11,7 @@ mod inspect_for_each;
 mod iter_cloned_collect;
 mod iter_count;
 mod manual_saturating_arithmetic;
+mod map_collect_result_unit;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_unwrap_or;
@@ -1739,7 +1740,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["unwrap_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or"),
             ["get_or_insert_with", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "get_or_insert"),
             ["ok_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "ok_or"),
-            ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
+            ["collect", "map"] => map_collect_result_unit::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["for_each", "inspect"] => inspect_for_each::check(cx, expr, method_spans[1]),
             ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
             ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
@@ -3527,42 +3528,6 @@ fn lint_into_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_
             method_name.to_string(),
             Applicability::MachineApplicable,
         );
-    }
-}
-
-fn lint_map_collect(
-    cx: &LateContext<'_>,
-    expr: &hir::Expr<'_>,
-    map_args: &[hir::Expr<'_>],
-    collect_args: &[hir::Expr<'_>],
-) {
-    if_chain! {
-        // called on Iterator
-        if let [map_expr] = collect_args;
-        if match_trait_method(cx, map_expr, &paths::ITERATOR);
-        // return of collect `Result<(),_>`
-        let collect_ret_ty = cx.typeck_results().expr_ty(expr);
-        if is_type_diagnostic_item(cx, collect_ret_ty, sym::result_type);
-        if let ty::Adt(_, substs) = collect_ret_ty.kind();
-        if let Some(result_t) = substs.types().next();
-        if result_t.is_unit();
-        // get parts for snippet
-        if let [iter, map_fn] = map_args;
-        then {
-            span_lint_and_sugg(
-                cx,
-                MAP_COLLECT_RESULT_UNIT,
-                expr.span,
-                "`.map().collect()` can be replaced with `.try_for_each()`",
-                "try this",
-                format!(
-                    "{}.try_for_each({})",
-                    snippet(cx, iter.span, ".."),
-                    snippet(cx, map_fn.span, "..")
-                ),
-                Applicability::MachineApplicable,
-            );
-        }
     }
 }
 
