@@ -11,6 +11,9 @@ mod inspect_for_each;
 mod iter_cloned_collect;
 mod iter_count;
 mod iter_next_slice;
+mod iter_nth;
+mod iter_nth_zero;
+mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
 mod map_collect_result_unit;
 mod ok_expect;
@@ -43,7 +46,6 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::consts::{constant, Constant};
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
@@ -1709,11 +1711,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
             ["count", "iter"] => iter_count::check(cx, expr, &arg_lists[1], "iter"),
             ["count", "iter_mut"] => iter_count::check(cx, expr, &arg_lists[1], "iter_mut"),
-            ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
-            ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
+            ["nth", "iter"] => iter_nth::check(cx, expr, &arg_lists, false),
+            ["nth", "iter_mut"] => iter_nth::check(cx, expr, &arg_lists, true),
             ["nth", "bytes"] => bytes_nth::check(cx, expr, &arg_lists[1]),
-            ["nth", ..] => lint_iter_nth_zero(cx, expr, arg_lists[0]),
-            ["step_by", ..] => lint_step_by(cx, expr, arg_lists[0]),
+            ["nth", ..] => iter_nth_zero::check(cx, expr, arg_lists[0]),
+            ["step_by", ..] => iterator_step_by_zero::check(cx, expr, arg_lists[0]),
             ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
             ["collect", "cloned"] => iter_cloned_collect::check(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
@@ -2582,68 +2584,6 @@ fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: 
                 check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
             },
             _ => (),
-        }
-    }
-}
-
-fn lint_step_by<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'tcx [hir::Expr<'_>]) {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        if let Some((Constant::Int(0), _)) = constant(cx, cx.typeck_results(), &args[1]) {
-            span_lint(
-                cx,
-                ITERATOR_STEP_BY_ZERO,
-                expr.span,
-                "`Iterator::step_by(0)` will panic at runtime",
-            );
-        }
-    }
-}
-
-fn lint_iter_nth<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &hir::Expr<'_>,
-    nth_and_iter_args: &[&'tcx [hir::Expr<'tcx>]],
-    is_mut: bool,
-) {
-    let iter_args = nth_and_iter_args[1];
-    let mut_str = if is_mut { "_mut" } else { "" };
-    let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.typeck_results().expr_ty(&iter_args[0])).is_some() {
-        "slice"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
-        "Vec"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vecdeque_type) {
-        "VecDeque"
-    } else {
-        let nth_args = nth_and_iter_args[0];
-        lint_iter_nth_zero(cx, expr, &nth_args);
-        return; // caller is not a type that we want to lint
-    };
-
-    span_lint_and_help(
-        cx,
-        ITER_NTH,
-        expr.span,
-        &format!("called `.iter{0}().nth()` on a {1}", mut_str, caller_type),
-        None,
-        &format!("calling `.get{}()` is both faster and more readable", mut_str),
-    );
-}
-
-fn lint_iter_nth_zero<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, nth_args: &'tcx [hir::Expr<'_>]) {
-    if_chain! {
-        if match_trait_method(cx, expr, &paths::ITERATOR);
-        if let Some((Constant::Int(0), _)) = constant(cx, cx.typeck_results(), &nth_args[1]);
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                ITER_NTH_ZERO,
-                expr.span,
-                "called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent",
-                "try calling `.next()` instead of `.nth(0)`",
-                format!("{}.next()", snippet_with_applicability(cx, nth_args[0].span, "..", &mut applicability)),
-                applicability,
-            );
         }
     }
 }
