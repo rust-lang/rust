@@ -6,6 +6,7 @@
 	src: local('Fira Sans'),
 		url("FiraSans-Regular.woff2") format("woff2"),
 		url("FiraSans-Regular.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Fira Sans';
@@ -14,6 +15,7 @@
 	src: local('Fira Sans Medium'),
 		url("FiraSans-Medium.woff2") format("woff2"),
 		url("FiraSans-Medium.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
@@ -22,18 +24,21 @@
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Serif Pro';
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	font-display: swap;
 }
 
 /* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
@@ -44,12 +49,14 @@
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
 	src: url("SourceCodePro-Regular.woff") format('woff');
+	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
 	src: url("SourceCodePro-Semibold.woff") format('woff');
+	font-display: swap;
 }
 
 * {
@@ -129,7 +136,7 @@ h1, h2, h3, h4,
 #source-sidebar, #sidebar-toggle,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
-	font-family: "Fira Sans", sans-serif;
+	font-family: "Fira Sans", Arial;
 }
 
 .content ul.crate a.crate {
@@ -475,7 +482,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", sans-serif;
+	font-family: "Fira Sans", Arial;
 }
 
 .content table:not(.table-display) {
@@ -684,6 +691,7 @@ a {
 	width: calc(100% - 63px);
 }
 #crate-search {
+	min-width: 115px;
 	margin-top: 5px;
 	padding: 6px;
 	padding-right: 19px;
@@ -1293,7 +1301,7 @@ h4 > .notable-traits {
 
 .help-button {
 	right: 30px;
-	font-family: "Fira Sans",sans-serif;
+	font-family: "Fira Sans", Arial;
 	text-align: center;
 	font-size: 17px;
 }

@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![deny(missing_doc_code_examples)]
+#![deny(rustdoc::missing_doc_code_examples)]
 
 //! crate level doc
 //! ```
@@ -19,7 +19,7 @@ fn test() {
 mod module1 { //~ ERROR
 }
 
-#[allow(missing_doc_code_examples)]
+#[allow(rustdoc::missing_doc_code_examples)]
 /// doc
 mod module2 {
 

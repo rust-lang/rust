@@ -647,9 +647,8 @@ class RustBuild(object):
         compiler = "{}/compiler/".format(top_level)
 
         # Look for a version to compare to based on the current commit.
-        # Ideally this would just use `merge-base`, but on beta and stable branches that wouldn't
-        # come up with any commits, so hack it and use `author=bors` instead.
-        merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1", "--", compiler]
+        # Only commits merged by bors will have CI artifacts.
+        merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1"]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
 
         # Warn if there were changes to the compiler since the ancestor commit.

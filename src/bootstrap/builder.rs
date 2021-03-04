@@ -735,8 +735,15 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler))
-            .env("RUSTC_BOOTSTRAP", "1")
-            .arg("-Winvalid_codeblock_attributes");
+            .env("RUSTC_BOOTSTRAP", "1");
+
+        // cfg(bootstrap), can be removed on the next beta bump
+        if compiler.stage == 0 {
+            cmd.arg("-Winvalid_codeblock_attributes");
+        } else {
+            cmd.arg("-Wrustdoc::invalid_codeblock_attributes");
+        }
+
         if self.config.deny_warnings {
             cmd.arg("-Dwarnings");
         }
@@ -1292,7 +1299,12 @@ impl<'a> Builder<'a> {
             // fixed via better support from Cargo.
             cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
 
-            rustdocflags.arg("-Winvalid_codeblock_attributes");
+            // cfg(bootstrap), can be removed on the next beta bump
+            if compiler.stage == 0 {
+                rustdocflags.arg("-Winvalid_codeblock_attributes");
+            } else {
+                rustdocflags.arg("-Wrustdoc::invalid_codeblock_attributes");
+            }
         }
 
         if mode == Mode::Rustc {

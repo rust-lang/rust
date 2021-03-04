@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 

@@ -45,6 +45,7 @@ extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
+extern crate rustc_lint_defs;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_mir;
@@ -86,6 +87,7 @@ mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
+crate mod lint;
 mod markdown;
 mod passes;
 mod theme;
