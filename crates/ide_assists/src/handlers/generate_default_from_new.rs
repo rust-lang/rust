@@ -2,6 +2,7 @@ use crate::{
     assist_context::{AssistContext, Assists},
     AssistId,
 };
+use hir::TypeRef;
 use syntax::{
     ast::{self, Impl, NameOwner},
     AstNode,
@@ -52,6 +53,9 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
+    if is_default_implemented(ctx, &impl_).is_some() {
+        return None;
+    }
 
     let insert_location = impl_.syntax().text_range();
 
@@ -77,6 +81,21 @@ impl Default for {} {{
 }}",
         impl_.self_ty().unwrap().syntax().text()
     )
+}
+
+fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> Option<bool> {
+    let db = ctx.sema.db;
+    let module = impl_.syntax().parent()?;
+    let sema_scope = ctx.sema.scope(&module);
+    let impls = sema_scope.module()?.impl_defs(db);
+    let mut name = None;
+    for i in impls {
+        if let Some(TypeRef::Path(p)) = i.target_trait(db) {
+            name = p.segments().iter().map(|s| s.name.to_string()).find(|n| n == "Default");
+        }
+    }
+
+    name.map(|n| !n.is_empty())
 }
 
 #[cfg(test)]
@@ -186,26 +205,27 @@ impl Exmaple {
         );
     }
 
-    //     #[test]
-    //     fn default_block_is_already_present() {
-    //         check_assist_not_applicable(generate_default_from_new,
-    //         r#"
-    // struct Example { _inner: () }
+    #[test]
+    fn default_block_is_already_present() {
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
+struct Example { _inner: () }
 
-    // impl Exmaple {
-    //     pub fn n$0ew() -> Self {
-    //         Self { _inner: () }
-    //     }
-    // }
+impl Exmaple {
+    pub fn n$0ew() -> Self {
+        Self { _inner: () }
+    }
+}
 
-    // impl Default for Example {
-    //     fn default() -> Self {
-    //         Self::new()
-    //     }
-    // }
-    // "#,
-    //         );
-    //     }
+impl Default for Example {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
 
     #[test]
     fn standalone_new_function() {
@@ -279,6 +299,65 @@ impl Default for Example {
 }
 
 struct Example { _inner: () }
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_in_module() {
+        check_assist(
+            generate_default_from_new,
+            r#"
+mod test {
+    struct Example { _inner: () }
+
+    impl Example {
+        pub fn n$0ew() -> Self {
+            Self { _inner: () }
+        }
+    }
+}
+"#,
+            r#"
+mod test {
+    struct Example { _inner: () }
+
+    impl Example {
+        pub fn new() -> Self {
+            Self { _inner: () }
+        }
+    }
+
+impl Default for Example {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn struct_in_module_with_default() {
+        check_assist_not_applicable(
+            generate_default_from_new,
+            r#"
+mod test {
+    struct Example { _inner: () }
+
+    impl Example {
+        pub fn n$0ew() -> Self {
+            Self { _inner: () }
+        }
+    }
+
+    impl Default for Example {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+}
 "#,
         );
     }
