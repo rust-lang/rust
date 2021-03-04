@@ -1645,6 +1645,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         err.span_label(lifetime_ref.span, "undeclared lifetime");
         let mut suggests_in_band = false;
+        let mut suggest_note = true;
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
@@ -1664,12 +1665,24 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
                     };
-                    err.span_suggestion(
-                        span,
-                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
+                    if !span.from_expansion() {
+                        err.span_suggestion(
+                            span,
+                            &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else if suggest_note {
+                        suggest_note = false; // Avoid displaying the same help multiple times.
+                        err.span_label(
+                            span,
+                            &format!(
+                                "lifetime `{}` is missing in item created through this procedural \
+                                 macro",
+                                lifetime_ref,
+                            ),
+                        );
+                    }
                 }
                 MissingLifetimeSpot::HigherRanked { span, span_type } => {
                     err.span_suggestion(
@@ -1684,7 +1697,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                     err.note(
                         "for more information on higher-ranked polymorphism, visit \
-                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                         https://doc.rust-lang.org/nomicon/hrtb.html",
                     );
                 }
                 _ => {}
@@ -1696,7 +1709,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         {
             err.help(
                 "if you want to experiment with in-band lifetime bindings, \
-                    add `#![feature(in_band_lifetimes)]` to the crate attributes",
+                 add `#![feature(in_band_lifetimes)]` to the crate attributes",
             );
         }
         err.emit();
