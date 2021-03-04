@@ -1094,27 +1094,4 @@ mod tests {
             expect![[r#""#]],
         );
     }
-
-    #[test]
-    fn search_with_path() {
-        check_search(
-            r#"
-//- /main.rs crate:main deps:dep
-//- /dep.rs crate:dep
-pub mod foo {
-    pub mod bar {
-        pub mod baz {
-            pub trait Display {
-                fn fmt();
-            }
-        }
-    }
-}"#,
-            "main",
-            Query::new("baz::fmt".to_string()).search_mode(SearchMode::Fuzzy),
-            expect![[r#"
-                dep::foo::bar::baz::Display::fmt (a)
-            "#]],
-        );
-    }
 }

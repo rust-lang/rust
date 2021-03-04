@@ -21,8 +21,9 @@
 //! ```
 //!
 //! Also completes associated items, that require trait imports.
-//! If any unresolved and/or partially-qualified path predeces the input, it will be taken into account: only the items with import string
-//! containing this whole path will be considered and the corresponding path import will be added:
+//! If any unresolved and/or partially-qualified path predeces the input, it will be taken into account.
+//! Currently, only the imports with their import path ending with the whole qialifier will be proposed
+//! (no fuzzy matching for qualifier).
 //!
 //! ```
 //! mod foo {
@@ -187,7 +188,6 @@ fn import_assets<'a>(ctx: &'a CompletionContext, fuzzy_name: String) -> Option<I
             ctx.scope.clone(),
         )?;
 
-        // TODO kb bad: with the path prefix, the "min 3 symbols" limit applies. Fix in a separate PR on the symbol_index level
         if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
             && fuzzy_name_length < 2
         {
@@ -937,7 +937,6 @@ mod foo {
 }
 
 fn main() {
-    let zz = "sdsd";
     bar::Ass$0
 }"#,
             expect![[]],

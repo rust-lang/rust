@@ -314,19 +314,21 @@ fn import_for_item(
     let import_path_candidate = mod_path(original_item_candidate)?;
     let import_path_string = import_path_candidate.to_string();
 
+    let expected_import_end = if item_as_assoc(db, original_item).is_some() {
+        unresolved_qualifier.to_string()
+    } else {
+        format!("{}::{}", unresolved_qualifier, item_name(db, original_item)?)
+    };
     if !import_path_string.contains(unresolved_first_segment)
-        || !import_path_string.contains(unresolved_qualifier)
+        || !import_path_string.ends_with(&expected_import_end)
     {
         return None;
     }
 
     let segment_import =
         find_import_for_segment(db, original_item_candidate, &unresolved_first_segment)?;
-    let trait_item_to_import = original_item
-        .as_module_def_id()
-        .and_then(|module_def_id| {
-            ModuleDef::from(module_def_id).as_assoc_item(db)?.containing_trait(db)
-        })
+    let trait_item_to_import = item_as_assoc(db, original_item)
+        .and_then(|assoc| assoc.containing_trait(db))
         .map(|trait_| ItemInNs::from(ModuleDef::from(trait_)));
     Some(match (segment_import == original_item_candidate, trait_item_to_import) {
         (true, Some(_)) => {
@@ -358,19 +360,15 @@ fn import_for_item(
 
 fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {
     Some(match item {
-        ItemInNs::Types(module_def_id) | ItemInNs::Values(module_def_id) => {
-            let module_def = ModuleDef::from(module_def_id);
-
-            match module_def.as_assoc_item(db) {
-                Some(assoc_item) => match assoc_item.container(db) {
-                    AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
-                    AssocItemContainer::Impl(impl_) => {
-                        ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?))
-                    }
-                },
-                None => item,
-            }
-        }
+        ItemInNs::Types(_) | ItemInNs::Values(_) => match item_as_assoc(db, item) {
+            Some(assoc_item) => match assoc_item.container(db) {
+                AssocItemContainer::Trait(trait_) => ItemInNs::from(ModuleDef::from(trait_)),
+                AssocItemContainer::Impl(impl_) => {
+                    ItemInNs::from(ModuleDef::from(impl_.target_ty(db).as_adt()?))
+                }
+            },
+            None => item,
+        },
         ItemInNs::Macros(_) => item,
     })
 }
@@ -427,7 +425,7 @@ fn trait_applicable_items(
 
     let trait_candidates = items_with_candidate_name
         .into_iter()
-        .filter_map(|input| ModuleDef::from(input.as_module_def_id()?).as_assoc_item(db))
+        .filter_map(|input| item_as_assoc(db, input))
         .filter_map(|assoc| {
             let assoc_item_trait = assoc.containing_trait(db)?;
             required_assoc_items.insert(assoc);
@@ -582,4 +580,9 @@ fn path_import_candidate(
         },
         None => ImportCandidate::Path(PathImportCandidate { qualifier: Qualifier::Absent, name }),
     })
+}
+
+fn item_as_assoc(db: &RootDatabase, item: ItemInNs) -> Option<AssocItem> {
+    item.as_module_def_id()
+        .and_then(|module_def_id| ModuleDef::from(module_def_id).as_assoc_item(db))
 }
