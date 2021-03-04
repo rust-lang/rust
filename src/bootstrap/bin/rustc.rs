@@ -156,9 +156,11 @@ fn main() {
     }
 
     let start = Instant::now();
-    let status = {
+    let (child, status) = {
         let errmsg = format!("\nFailed to run:\n{:?}\n-------------", cmd);
-        cmd.status().expect(&errmsg)
+        let mut child = cmd.spawn().expect(&errmsg);
+        let status = child.wait().expect(&errmsg);
+        (child, status)
     };
 
     if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
@@ -169,8 +171,19 @@ fn main() {
             let is_test = args.iter().any(|a| a == "--test");
             // If the user requested resource usage data, then
             // include that in addition to the timing output.
-            let rusage_data =
-                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data());
+            let rusage_data = env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| {
+                #[cfg(windows)]
+                {
+                    use std::os::windows::io::AsRawHandle;
+                    let handle = child.as_raw_handle();
+                    format_rusage_data(handle)
+                }
+                #[cfg(not(windows))]
+                {
+                    let _child = child;
+                    format_rusage_data()
+                }
+            });
             eprintln!(
                 "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
                 crate_name,
@@ -207,11 +220,60 @@ fn main() {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(all(not(unix), not(windows)))]
 /// getrusage is not available on non-unix platforms. So for now, we do not
 /// bother trying to make a shim for it.
 fn format_rusage_data() -> Option<String> {
     None
+}
+
+#[cfg(windows)]
+fn format_rusage_data(handle: std::os::windows::raw::HANDLE) -> Option<String> {
+    macro_rules! try_bool {
+        ($e:expr) => {
+            if $e != 1 {
+                return None;
+            }
+        };
+    }
+    unsafe {
+        let mut _filetime = winapi::shared::minwindef::FILETIME::default();
+        let mut user_filetime = winapi::shared::minwindef::FILETIME::default();
+        let mut kernel_filetime = winapi::shared::minwindef::FILETIME::default();
+        try_bool!(winapi::um::processthreadsapi::GetProcessTimes(
+            handle,
+            &mut _filetime,
+            &mut _filetime,
+            &mut kernel_filetime,
+            &mut user_filetime,
+        ));
+        let mut memory_counters = winapi::um::psapi::PROCESS_MEMORY_COUNTERS_EX::default();
+        try_bool!(winapi::um::psapi::GetProcessMemoryInfo(
+            handle as _,
+            &mut memory_counters as *mut _ as _,
+            std::mem::size_of::<winapi::um::psapi::PROCESS_MEMORY_COUNTERS_EX>() as u32,
+        ));
+        let mut user_time = winapi::um::minwinbase::SYSTEMTIME::default();
+        try_bool!(winapi::um::timezoneapi::FileTimeToSystemTime(&user_filetime, &mut user_time));
+        let mut kernel_time = winapi::um::minwinbase::SYSTEMTIME::default();
+        try_bool!(winapi::um::timezoneapi::FileTimeToSystemTime(
+            &kernel_filetime,
+            &mut kernel_time
+        ));
+        let maxrss = memory_counters.PeakWorkingSetSize / 1024;
+        Some(format!(
+            "user: {USER_SEC}.{USER_USEC:03} \
+         sys: {SYS_SEC}.{SYS_USEC:03} \
+         max rss (kb): {MAXRSS} \
+         page faults: {PAGE_FAULTS}",
+            USER_SEC = user_time.wSecond + (user_time.wMinute * 60),
+            USER_USEC = user_time.wMilliseconds,
+            SYS_SEC = kernel_time.wSecond + (kernel_time.wMinute * 60),
+            SYS_USEC = kernel_time.wMilliseconds,
+            MAXRSS = maxrss,
+            PAGE_FAULTS = memory_counters.PageFaultCount,
+        ))
+    }
 }
 
 #[cfg(unix)]
