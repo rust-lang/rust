@@ -12,16 +12,16 @@
 /// ```
 /// println!("hello");
 /// ```
-fn test() {
+pub fn test() {
 }
 
 #[allow(missing_docs)]
-mod module1 { //~ ERROR
+pub mod module1 { //~ ERROR
 }
 
 #[allow(rustdoc::missing_doc_code_examples)]
 /// doc
-mod module2 {
+pub mod module2 {
 
   /// doc
   pub fn test() {}
@@ -63,9 +63,22 @@ pub enum Enum {
 /// Doc
 //~^ ERROR
 #[repr(C)]
-union Union {
+pub union Union {
     /// Doc, but no code example and it's fine!
     a: i32,
     /// Doc, but no code example and it's fine!
     b: f32,
+}
+
+
+#[doc(hidden)]
+pub mod foo {
+    pub fn bar() {}
+}
+
+fn babar() {}
+
+
+mod fofoo {
+    pub fn tadam() {}
 }
