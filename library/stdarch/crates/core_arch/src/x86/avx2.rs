@@ -5184,7 +5184,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_sll_epi64() {
         let a = _mm256_set1_epi64x(0xFFFFFFFF);
-        let b = _mm_insert_epi64(_mm_set1_epi64x(0), 4, 0);
+        let b = _mm_insert_epi64::<0>(_mm_set1_epi64x(0), 4);
         let r = _mm256_sll_epi64(a, b);
         assert_eq_m256i(r, _mm256_set1_epi64x(0xFFFFFFFF0));
     }

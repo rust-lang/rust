@@ -92,14 +92,16 @@ pub unsafe fn get_m512i(a: __m512i, idx: usize) -> i64 {
 mod x86_polyfill {
     use crate::core_arch::x86::*;
 
-    pub unsafe fn _mm_insert_epi64(a: __m128i, val: i64, idx: i32) -> __m128i {
+    #[rustc_legacy_const_generics(2)]
+    pub unsafe fn _mm_insert_epi64<const INDEX: i32>(a: __m128i, val: i64) -> __m128i {
+        static_assert_imm1!(INDEX);
         #[repr(C)]
         union A {
             a: __m128i,
             b: [i64; 2],
         }
         let mut a = A { a };
-        a.b[idx as usize] = val;
+        a.b[INDEX as usize] = val;
         a.a
     }
 
