@@ -48,18 +48,6 @@ macro_rules! constify_imm3 {
     };
 }
 
-macro_rules! constify_imm2 {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b11 {
-            0 => $expand!(0),
-            1 => $expand!(1),
-            2 => $expand!(2),
-            _ => $expand!(3),
-        }
-    };
-}
-
 // Constifies 5 bits along with an sae option without rounding control.
 // See: https://github.com/llvm/llvm-project/blob/bd50cf905fa7c0c7caa134301c6ca0658c81eeb1/clang/lib/Sema/SemaChecking.cpp#L3497
 #[allow(unused)]
