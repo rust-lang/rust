@@ -135,6 +135,12 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v2f32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v2f32")]
+    fn vabs_f32_(a: float32x2_t) -> float32x2_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v4f32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v4f32")]
+    fn vabsq_f32_(a: float32x4_t) -> float32x4_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
@@ -1146,6 +1152,24 @@ pub unsafe fn vabsq_s16(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(abs))]
 pub unsafe fn vabsq_s32(a: int32x4_t) -> int32x4_t {
     vabsq_s32_(a)
+}
+/// Floating-point absolute value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(fabs))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
+pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
+    vabs_f32_(a)
+}
+/// Floating-point absolute value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(fabs))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
+pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
+    vabsq_f32_(a)
 }
 
 /// Add pairwise.
@@ -8562,6 +8586,20 @@ mod tests {
         let a = i32x4::new(i32::MIN, i32::MIN + 1, 0, -1);
         let r: i32x4 = transmute(vabsq_s32(transmute(a)));
         let e = i32x4::new(i32::MIN, i32::MAX, 0, 1);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabs_f32() {
+        let a = f32x2::new(f32::MIN, -1.0);
+        let r: f32x2 = transmute(vabs_f32(transmute(a)));
+        let e = f32x2::new(f32::MAX, 1.0);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsq_f32() {
+        let a = f32x4::new(f32::MIN, -1.32, -4.3, -6.8);
+        let r: f32x4 = transmute(vabsq_f32(transmute(a)));
+        let e = f32x4::new(f32::MAX, 1.32, 4.3, 6.8);
         assert_eq!(r, e);
     }
     #[simd_test(enable = "neon")]

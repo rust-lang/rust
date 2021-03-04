@@ -72,6 +72,10 @@ extern "C" {
     fn vabs_s64_(a: int64x1_t) -> int64x1_t;
     #[link_name = "llvm.aarch64.neon.abs.v2i64"]
     fn vabsq_s64_(a: int64x2_t) -> int64x2_t;
+    #[link_name = "llvm.fabs.v1f64"]
+    fn vabs_f64_(a: float64x1_t) -> float64x1_t;
+    #[link_name = "llvm.fabs.v2f64"]
+    fn vabsq_f64_(a: float64x2_t) -> float64x2_t;
 
     #[link_name = "llvm.aarch64.neon.suqadd.v8i8"]
     fn vuqadd_s8_(a: int8x8_t, b: uint8x8_t) -> int8x8_t;
@@ -688,6 +692,7 @@ pub unsafe fn vld1q_f64(ptr: *const f64) -> float64x2_t {
 pub unsafe fn vabsd_s64(a: i64) -> i64 {
     vabsd_s64_(a)
 }
+
 /// Absolute Value (wrapping).
 #[inline]
 #[target_feature(enable = "neon")]
@@ -701,6 +706,21 @@ pub unsafe fn vabs_s64(a: int64x1_t) -> int64x1_t {
 #[cfg_attr(test, assert_instr(abs))]
 pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
     vabsq_s64_(a)
+}
+
+/// Floating-point absolute value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabs))]
+pub unsafe fn vabs_f64(a: float64x1_t) -> float64x1_t {
+    vabs_f64_(a)
+}
+/// Floating-point absolute value.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabs))]
+pub unsafe fn vabsq_f64(a: float64x2_t) -> float64x2_t {
+    vabsq_f64_(a)
 }
 
 /// Signed saturating Accumulate of Unsigned value.
@@ -3910,6 +3930,20 @@ mod tests {
         let a = i64x2::new(i64::MIN, i64::MIN + 1);
         let r: i64x2 = transmute(vabsq_s64(transmute(a)));
         let e = i64x2::new(i64::MIN, i64::MAX);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabs_f64() {
+        let a = f64x1::new(f64::MIN);
+        let r: f64x1 = transmute(vabs_f64(transmute(a)));
+        let e = f64x1::new(f64::MAX);
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsq_f64() {
+        let a = f64x2::new(f64::MIN, -4.2);
+        let r: f64x2 = transmute(vabsq_f64(transmute(a)));
+        let e = f64x2::new(f64::MAX, 4.2);
         assert_eq!(r, e);
     }
 
