@@ -585,7 +585,7 @@ impl CheckAttrVisitor<'tcx> {
                         .any(|m| i_meta.has_name(*m))
                         {
                             self.tcx.struct_span_lint_hir(
-                                UNUSED_ATTRIBUTES,
+                                INVALID_DOC_ATTRIBUTE,
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
@@ -593,11 +593,6 @@ impl CheckAttrVisitor<'tcx> {
                                         "unknown `doc` attribute `{}`",
                                         i_meta.name_or_empty()
                                     ))
-                                    .warn(
-                                        "this was previously accepted by the compiler but is \
-                                        being phased out; it will become a hard error in \
-                                        a future release!",
-                                    )
                                     .emit();
                                 },
                             );
