@@ -300,7 +300,7 @@ fn gen_aarch64(
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     single_para: bool,
-    fixed: &Option<String>,
+    fixed: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
@@ -342,23 +342,19 @@ fn gen_aarch64(
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
         )
-    } else if let Some(fixed_val) = fixed {
-        let mut fixed_vals = fixed_val.clone();
-        for _i in 1..type_len(in_t) {
-            fixed_vals.push_str(", ");
-            fixed_vals.push_str(fixed_val);
-        }
+    } else if fixed.len() != 0 {
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
         format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a, transmute({}::new({})))
+    let b{};
+    {}{}(a, transmute(b))
 }}"#,
             name,
             in_t,
             out_t,
+            values(in_t, &fixed),
             ext_c,
             current_fn,
-            type_to_global_type(in_t),
-            fixed_vals,
         )
     } else {
         String::new()
@@ -451,7 +447,7 @@ fn gen_arm(
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     single_para: bool,
-    fixed: &Option<String>,
+    fixed: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
@@ -506,23 +502,19 @@ fn gen_arm(
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
         )
-    } else if let Some(fixed_val) = fixed {
-        let mut fixed_vals = fixed_val.clone();
-        for _i in 1..type_len(in_t) {
-            fixed_vals.push_str(", ");
-            fixed_vals.push_str(fixed_val);
-        }
+    } else if fixed.len() != 0 {
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
         format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a, transmute({}::new({})))
+    let b{};
+    {}{}(a, transmute(b))
 }}"#,
             name,
             in_t,
             out_t,
+            values(in_t, &fixed),
             ext_c,
             current_fn,
-            type_to_global_type(in_t),
-            fixed_vals,
         )
     } else {
         String::new()
@@ -638,7 +630,8 @@ fn main() -> io::Result<()> {
     let mut link_aarch64: Option<String> = None;
     let mut a: Vec<String> = Vec::new();
     let mut b: Vec<String> = Vec::new();
-    let mut fixed: Option<String> = None;
+    let mut fixed: Vec<String> = Vec::new();
+    let mut single_para: bool = true;
     let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
 
     //
@@ -709,9 +702,7 @@ mod test {
             link_aarch64 = None;
             link_arm = None;
             current_tests = Vec::new();
-            a = Vec::new();
-            b = Vec::new();
-            fixed = None;
+            single_para = true;
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
             current_name = Some(String::from(&line[7..]));
@@ -725,8 +716,9 @@ mod test {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
             b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
+            single_para = false;
         } else if line.starts_with("fixed = ") {
-            fixed = Some(String::from(&line[8..]));
+            fixed = line[8..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("validate ") {
             let e = line[9..].split(',').map(|v| v.trim().to_string()).collect();
             current_tests.push((a.clone(), b.clone(), e));
@@ -778,7 +770,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        b.len() == 0,
+                        single_para,
                         &fixed,
                     );
                     out_arm.push_str(&function);
@@ -793,7 +785,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        b.len() == 0,
+                        single_para,
                         &fixed,
                     );
                     out_aarch64.push_str(&function);

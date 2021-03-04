@@ -136,25 +136,35 @@ arm = vceq.
 // we are missing float16x4_t:uint16x4_t, float16x8_t:uint16x8_t
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
 
-/// Signed Compare bitwise equal to zero
+/// Signed compare bitwise equal to zero
 name = vceqz
 fn = simd_eq
 a =  MIN, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, MAX
-fixed = 0
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
 
-aarch64 = vceqz
+aarch64 = cmeq
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t, poly64x1_t:uint64x1_t, poly64x2_t:uint64x2_t
 
-/// Unsigned Compare bitwise equal to zero
+/// Unsigned compare bitwise equal to zero
 name = vceqz
 fn = simd_eq
 a =  MIN, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, MAX
-fixed = 0
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
 
-aarch64 = vceqz
+aarch64 = cmeq
 generate uint*_t, uint64x*_t
+
+/// Floating-point compare bitwise equal to zero
+name = vceqz
+fn = simd_eq
+a =  0.0, 1.2, 3.4, 5.6
+fixed = 0.0, 0.0, 0.0, 0.0
+validate TRUE, FALSE, FALSE, FALSE
+
+aarch64 = fcmeq
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 
 ////////////////////
 // greater then
