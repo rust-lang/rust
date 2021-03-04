@@ -29,9 +29,15 @@ pub use crate::cmp::{Eq, Ord, PartialEq, PartialOrd};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::convert::{AsMut, AsRef, From, Into};
+#[stable(feature = "edition_2021_prelude", since = "1.50.0")]
+#[doc(no_inline)]
+pub use crate::convert::{TryFrom, TryInto};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::default::Default;
+#[stable(feature = "edition_2021_prelude", since = "1.50.0")]
+#[doc(no_inline)]
+pub use crate::iter::FromIterator;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};

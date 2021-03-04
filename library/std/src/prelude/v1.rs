@@ -21,6 +21,12 @@ pub use crate::mem::drop;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::convert::{AsMut, AsRef, From, Into};
+#[stable(feature = "edition_2021_prelude", since = "1.50.0")]
+#[doc(no_inline)]
+pub use crate::convert::{TryFrom, TryInto};
+#[stable(feature = "edition_2021_prelude", since = "1.50.0")]
+#[doc(no_inline)]
+pub use crate::iter::FromIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};
