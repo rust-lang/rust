@@ -1,5 +1,6 @@
 mod bind_instead_of_map;
 mod bytes_nth;
+mod clone_on_ref_ptr;
 mod expect_used;
 mod filetype_is_file;
 mod filter_map_identity;
@@ -20,6 +21,7 @@ mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_unwrap_or;
 mod skip_while_next;
+mod string_extend_chars;
 mod suspicious_map;
 mod uninit_assumed_init;
 mod unnecessary_filter_map;
@@ -1707,7 +1709,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["is_some", "rposition"] => {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
-            ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
+            ["extend", ..] => string_extend_chars::check(cx, expr, arg_lists[0]),
             ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
             ["count", "iter"] => iter_count::check(cx, expr, &arg_lists[1], "iter"),
             ["count", "iter_mut"] => iter_count::check(cx, expr, &arg_lists[1], "iter_mut"),
@@ -1767,7 +1769,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.ident.name == sym::clone {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
-                    lint_clone_on_ref_ptr(cx, expr, &args[0]);
+                    clone_on_ref_ptr::check(cx, expr, &args[0]);
                 }
                 if args.len() == 1 && method_call.ident.name == sym!(to_string) {
                     inefficient_to_string::check(cx, expr, &args[0], self_ty);
@@ -2405,72 +2407,6 @@ fn lint_clone_on_copy(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Exp
                 }
             },
         );
-    }
-}
-
-fn lint_clone_on_ref_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
-    let obj_ty = cx.typeck_results().expr_ty(arg).peel_refs();
-
-    if let ty::Adt(_, subst) = obj_ty.kind() {
-        let caller_type = if is_type_diagnostic_item(cx, obj_ty, sym::Rc) {
-            "Rc"
-        } else if is_type_diagnostic_item(cx, obj_ty, sym::Arc) {
-            "Arc"
-        } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
-            "Weak"
-        } else {
-            return;
-        };
-
-        let snippet = snippet_with_macro_callsite(cx, arg.span, "..");
-
-        span_lint_and_sugg(
-            cx,
-            CLONE_ON_REF_PTR,
-            expr.span,
-            "using `.clone()` on a ref-counted pointer",
-            "try this",
-            format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet),
-            Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
-        );
-    }
-}
-
-fn lint_string_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let arg = &args[1];
-    if let Some(arglists) = method_chain_args(arg, &["chars"]) {
-        let target = &arglists[0][0];
-        let self_ty = cx.typeck_results().expr_ty(target).peel_refs();
-        let ref_str = if *self_ty.kind() == ty::Str {
-            ""
-        } else if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
-            "&"
-        } else {
-            return;
-        };
-
-        let mut applicability = Applicability::MachineApplicable;
-        span_lint_and_sugg(
-            cx,
-            STRING_EXTEND_CHARS,
-            expr.span,
-            "calling `.extend(_.chars())`",
-            "try this",
-            format!(
-                "{}.push_str({}{})",
-                snippet_with_applicability(cx, args[0].span, "..", &mut applicability),
-                ref_str,
-                snippet_with_applicability(cx, target.span, "..", &mut applicability)
-            ),
-            applicability,
-        );
-    }
-}
-
-fn lint_extend(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let obj_ty = cx.typeck_results().expr_ty(&args[0]).peel_refs();
-    if is_type_diagnostic_item(cx, obj_ty, sym::string_type) {
-        lint_string_extend(cx, expr, args);
     }
 }
 
