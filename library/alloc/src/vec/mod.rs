@@ -1944,14 +1944,16 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
         // SAFETY:
         // - len is ignored and so never changed
-        let (init, spare, _) = unsafe{ self.split_at_spare_mut_with_len() };
+        let (init, spare, _) = unsafe { self.split_at_spare_mut_with_len() };
         (init, spare)
     }
 
     /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
     ///
     /// This method is used to have unique access to all vec parts at once in `extend_from_within`.
-    unsafe fn split_at_spare_mut_with_len(&mut self) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
+    unsafe fn split_at_spare_mut_with_len(
+        &mut self,
+    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
         let Range { start: ptr, end: spare_ptr } = self.as_mut_ptr_range();
         let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
         let spare_len = self.buf.capacity() - self.len;
@@ -1965,7 +1967,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
             (initialized, spare, &mut self.len)
         }
-    } 
+    }
 }
 
 impl<T: Clone, A: Allocator> Vec<T, A> {
