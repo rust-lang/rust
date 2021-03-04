@@ -8,11 +8,18 @@ fn exitstatus_display_tests() {
 
     let t = |v, exp: &[&str]| {
         let got = format!("{}", <ExitStatus as ExitStatusExt>::from_raw(v));
-        assert!(exp.contains(&got.as_str()), "exp={:?} got={:?}", exp, &got);
+        assert!(exp.contains(&got.as_str()), "got={:?} exp={:?}", &got, exp);
     };
 
-    t(0x0000f, &["signal: 15"]);
-    t(0x0008b, &["signal: 11 (core dumped)"]);
+    // We cope with a variety of conventional signal strings, both with and without the signal
+    // abbrevation too.  It would be better to compare this with the result of strsignal but that
+    // is not threadsafe which is big reason we want a set of test cases...
+    //
+    // The signal formatting is done by signal_display in library/std/src/sys/unix/os.rs.
+    t(0x0000f, &["signal: Terminated",
+                 "signal: Terminated (SIGTERM)"]);
+    t(0x0008b, &["signal: Segmentation fault (core dumped)",
+                 "signal: Segmentation fault (SIGSEGV) (core dumped)"]);
     t(0x00000, &["exit status: 0"]);
     t(0x0ff00, &["exit status: 255"]);
 
@@ -21,7 +28,8 @@ fn exitstatus_display_tests() {
     // The purpose of this test is to test our string formatting, not our understanding of the wait
     // status magic numbers.  So restrict these to Linux.
     if cfg!(target_os = "linux") {
-        t(0x0137f, &["stopped (not terminated) by signal: 19"]);
+        t(0x0137f, &["stopped (not terminated) by signal: Stopped (signal)",
+                     "stopped (not terminated) by signal: Stopped (signal) (SIGSTOP)"]);
         t(0x0ffff, &["continued (WIFCONTINUED)"]);
     }
 

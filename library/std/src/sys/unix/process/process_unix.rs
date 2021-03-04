@@ -4,6 +4,7 @@ use crate::io::{self, Error, ErrorKind};
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
+use crate::sys::os::signal_display;
 use crate::sys::process::process_common::*;
 
 #[cfg(target_os = "vxworks")]
@@ -528,12 +529,14 @@ impl fmt::Display for ExitStatus {
         if let Some(code) = self.code() {
             write!(f, "exit status: {}", code)?;
         } else if let Some(signal) = self.signal() {
-            write!(f, "signal: {}", signal)?;
+            write!(f, "signal: ")?;
+            signal_display(f, signal)?;
             if self.core_dumped() {
                 write!(f, " (core dumped)")?;
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {}", signal)?;
+            write!(f, "stopped (not terminated) by signal: ")?;
+            signal_display(f, signal)?;
         } else if self.continued() {
             write!(f, "continued (WIFCONTINUED)")?;
         } else {
