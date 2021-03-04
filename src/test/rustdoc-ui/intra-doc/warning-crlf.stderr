@@ -4,7 +4,7 @@ warning: unresolved link to `error`
 LL | /// [error]
    |      ^^^^^ no item named `error` in scope
    |
-   = note: `#[warn(broken_intra_doc_links)]` on by default
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`

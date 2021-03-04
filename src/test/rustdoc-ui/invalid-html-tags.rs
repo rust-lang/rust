@@ -1,4 +1,4 @@
-#![deny(invalid_html_tags)]
+#![deny(rustdoc::invalid_html_tags)]
 
 //! <p>💩<p>
 //~^ ERROR unclosed HTML tag `p`

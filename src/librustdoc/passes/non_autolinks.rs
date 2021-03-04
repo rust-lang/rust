@@ -7,7 +7,6 @@ use core::ops::Range;
 use pulldown_cmark::{Event, LinkType, Parser, Tag};
 use regex::Regex;
 use rustc_errors::Applicability;
-use rustc_session::lint;
 
 crate const CHECK_NON_AUTOLINKS: Pass = Pass {
     name: "check-non-autolinks",
@@ -74,7 +73,7 @@ impl<'a, 'tcx> DocFolder for NonAutolinksLinter<'a, 'tcx> {
                 let sp = super::source_span_for_markdown_range(cx, &dox, &range, &item.attrs)
                     .or_else(|| span_of_attrs(&item.attrs))
                     .unwrap_or(item.source.span());
-                cx.tcx.struct_span_lint_hir(lint::builtin::NON_AUTOLINKS, hir_id, sp, |lint| {
+                cx.tcx.struct_span_lint_hir(crate::lint::NON_AUTOLINKS, hir_id, sp, |lint| {
                     lint.build(msg)
                         .span_suggestion(
                             sp,
