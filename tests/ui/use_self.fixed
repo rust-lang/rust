@@ -454,3 +454,10 @@ mod nested_paths {
         }
     }
 }
+
+mod issue6818 {
+    #[derive(serde::Deserialize)]
+    struct A {
+        a: i32,
+    }
+}
