@@ -1,5 +1,4 @@
 #![stable(feature = "rust1", since = "1.0.0")]
-#![allow(missing_docs)]
 
 pub mod ffi;
 
