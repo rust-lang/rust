@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 #[cfg(test)]
 mod tests;
 
