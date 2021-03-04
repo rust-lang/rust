@@ -141,18 +141,23 @@ fn main() {
     if verbose > 1 {
         let rust_env_vars =
             env::vars().filter(|(k, _)| k.starts_with("RUST") || k.starts_with("CARGO"));
+        let prefix = match crate_name {
+            Some(crate_name) => format!("rustc {}", crate_name),
+            None => "rustc".to_string(),
+        };
         for (i, (k, v)) in rust_env_vars.enumerate() {
-            eprintln!("rustc env[{}]: {:?}={:?}", i, k, v);
+            eprintln!("{} env[{}]: {:?}={:?}", prefix, i, k, v);
         }
-        eprintln!("rustc working directory: {}", env::current_dir().unwrap().display());
+        eprintln!("{} working directory: {}", prefix, env::current_dir().unwrap().display());
         eprintln!(
-            "rustc command: {:?}={:?} {:?}",
+            "{} command: {:?}={:?} {:?}",
+            prefix,
             bootstrap::util::dylib_path_var(),
             env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
-        eprintln!("sysroot: {:?}", sysroot);
-        eprintln!("libdir: {:?}", libdir);
+        eprintln!("{} sysroot: {:?}", prefix, sysroot);
+        eprintln!("{} libdir: {:?}", prefix, libdir);
     }
 
     let start = Instant::now();
