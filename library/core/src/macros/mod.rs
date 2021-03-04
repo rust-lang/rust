@@ -141,9 +141,9 @@ macro_rules! assert_matches {
     ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
-            left_val => {
+            ref left_val => {
                 $crate::panicking::assert_matches_failed(
-                    &left_val,
+                    left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::None
                 );
@@ -153,9 +153,9 @@ macro_rules! assert_matches {
     ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
-            left_val => {
+            ref left_val => {
                 $crate::panicking::assert_matches_failed(
-                    &left_val,
+                    left_val,
                     $crate::stringify!($($pattern)|+ $(if $guard)?),
                     $crate::option::Option::Some($crate::format_args!($($arg)+))
                 );
