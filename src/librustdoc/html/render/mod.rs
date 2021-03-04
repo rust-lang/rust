@@ -34,7 +34,7 @@ mod write_shared;
 
 crate use context::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
@@ -290,8 +290,6 @@ crate struct StylePath {
     /// What the `disabled` attribute should be set to in the HTML tag
     crate disabled: bool,
 }
-
-thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
 crate const INITIAL_IDS: [&'static str; 15] = [
     "main",

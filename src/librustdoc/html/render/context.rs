@@ -19,7 +19,7 @@ use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{
     print_sidebar, settings, AllTypes, NameDoc, SharedContext, StylePath, BASIC_KEYWORDS,
-    CURRENT_DEPTH, INITIAL_IDS,
+    INITIAL_IDS,
 };
 
 use crate::clean::{self, AttributesExt};
@@ -106,12 +106,6 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
-        // A little unfortunate that this is done like this, but it sure
-        // does make formatting *a lot* nicer.
-        CURRENT_DEPTH.with(|slot| {
-            slot.set(self.current.len());
-        });
-
         let mut title = if it.is_primitive() || it.is_keyword() {
             // No need to include the namespace for primitive types and keywords
             String::new()
@@ -421,8 +415,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache: Rc::new(cache),
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
         };
-
-        CURRENT_DEPTH.with(|s| s.set(0));
 
         // Write shared runs within a flock; disable thread dispatching of IO temporarily.
         Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
