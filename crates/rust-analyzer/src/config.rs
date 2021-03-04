@@ -46,8 +46,8 @@ config_data! {
         cargo_allFeatures: bool          = "false",
         /// List of features to activate.
         cargo_features: Vec<String>      = "[]",
-        /// Run `cargo check` on startup to get the correct value for package
-        /// OUT_DIRs.
+        /// Run build scripts (`build.rs`) for more precise code analysis.
+        cargo_runBuildScripts |
         cargo_loadOutDirsFromCheck: bool = "false",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
@@ -167,8 +167,7 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
-        /// Enable Proc macro support, `#rust-analyzer.cargo.loadOutDirsFromCheck#` must be
-        /// enabled.
+        /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
         procMacro_enable: bool                     = "false",
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
@@ -480,8 +479,8 @@ impl Config {
     pub fn cargo_autoreload(&self) -> bool {
         self.data.cargo_autoreload
     }
-    pub fn load_out_dirs_from_check(&self) -> bool {
-        self.data.cargo_loadOutDirsFromCheck
+    pub fn run_build_scripts(&self) -> bool {
+        self.data.cargo_runBuildScripts || self.data.procMacro_enable
     }
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {

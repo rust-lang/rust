@@ -337,7 +337,7 @@ impl GlobalState {
         };
         change.set_crate_graph(crate_graph);
 
-        if self.config.load_out_dirs_from_check() && workspace_build_data.is_none() {
+        if self.config.run_build_scripts() && workspace_build_data.is_none() {
             let mut collector = BuildDataCollector::default();
             for ws in &workspaces {
                 ws.collect_build_data_configs(&mut collector);
