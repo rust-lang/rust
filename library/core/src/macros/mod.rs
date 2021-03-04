@@ -135,7 +135,7 @@ macro_rules! assert_ne {
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
-#[unstable(feature = "assert_matches", issue = "none")]
+#[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_matches {
     ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
@@ -292,7 +292,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
-#[unstable(feature = "assert_matches", issue = "none")]
+#[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(assert_matches)]
 macro_rules! debug_assert_matches {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_matches!($($arg)*); })
