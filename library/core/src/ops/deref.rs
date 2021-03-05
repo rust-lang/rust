@@ -60,6 +60,7 @@
 #[doc(alias = "*")]
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Deref"]
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -78,6 +79,7 @@ pub trait Deref {
 impl<T: ?Sized> Deref for &T {
     type Target = T;
 
+    #[rustc_diagnostic_item = "noop_method_deref"]
     fn deref(&self) -> &T {
         *self
     }
