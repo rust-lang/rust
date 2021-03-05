@@ -3,7 +3,7 @@
 set -e
 
 unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' ]]; then
+if [[ "$unamestr" == 'Linux' || "$unamestr" == 'FreeBSD' ]]; then
    dylib_ext='so'
 elif [[ "$unamestr" == 'Darwin' ]]; then
    dylib_ext='dylib'
@@ -26,7 +26,7 @@ export RUSTC=$dir"/bin/cg_clif"
 export RUSTDOCFLAGS=$linker' -Cpanic=abort -Zpanic-abort-tests '\
 '-Zcodegen-backend='$dir'/lib/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$dir
 
-# FIXME remove once the atomic shim is gone
+# FIXME fix `#[linkage = "extern_weak"]` without this
 if [[ "$unamestr" == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
