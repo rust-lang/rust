@@ -313,6 +313,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
 
     flags_builder.set("enable_simd", "true").unwrap();
 
+    flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
+
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
