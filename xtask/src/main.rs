@@ -63,7 +63,7 @@ fn main() -> Result<()> {
             let client_bin = flags.code_bin.map(|it| it.parse()).transpose()?;
 
             InstallCmd {
-                client: if flags.server { None } else { client_bin },
+                client: if flags.server { None } else { Some(client_bin).unwrap_or_default() },
                 server: if flags.client { None } else { Some(ServerOpt { malloc }) },
             }
             .run()
