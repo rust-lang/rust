@@ -32,7 +32,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
-    AsMacroCall, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
+    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
 };
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
@@ -226,6 +226,8 @@ pub struct Body {
     pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
+    /// Block expressions in this body that may contain inner items.
+    pub block_scopes: Vec<BlockId>,
     pub item_scope: ItemScope,
     _c: Count<Self>,
 }

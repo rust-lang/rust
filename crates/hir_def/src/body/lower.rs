@@ -76,6 +76,7 @@ pub(super) fn lower(
             labels: Arena::default(),
             params: Vec::new(),
             body_expr: dummy_expr_id(),
+            block_scopes: Vec::new(),
             item_scope: Default::default(),
             _c: Count::new(),
         },
@@ -700,6 +701,8 @@ impl ExprCollector<'_> {
         let block_loc =
             BlockLoc { ast_id, module: self.expander.def_map.module_id(self.expander.module) };
         let block_id = self.db.intern_block(block_loc);
+        self.body.block_scopes.push(block_id);
+
         let opt_def_map = self.db.block_def_map(block_id);
         let has_def_map = opt_def_map.is_some();
         let def_map = opt_def_map.unwrap_or_else(|| self.expander.def_map.clone());
