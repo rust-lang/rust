@@ -31,11 +31,7 @@ pub(crate) fn maybe_codegen<'tcx>(
         }
         BinOp::Add | BinOp::Sub if !checked => None,
         BinOp::Mul if !checked => {
-            let val_ty = if is_signed {
-                fx.tcx.types.i128
-            } else {
-                fx.tcx.types.u128
-            };
+            let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
             Some(fx.easy_call("__multi3", &[lhs, rhs], val_ty))
         }
         BinOp::Add | BinOp::Sub | BinOp::Mul => {
@@ -47,11 +43,7 @@ pub(crate) fn maybe_codegen<'tcx>(
                 AbiParam::new(types::I128),
                 AbiParam::new(types::I128),
             ];
-            let args = [
-                out_place.to_ptr().get_addr(fx),
-                lhs.load_scalar(fx),
-                rhs.load_scalar(fx),
-            ];
+            let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
             let name = match (bin_op, is_signed) {
                 (BinOp::Add, false) => "__rust_u128_addo",
                 (BinOp::Add, true) => "__rust_i128_addo",

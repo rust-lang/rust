@@ -54,11 +54,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
             FloatTy::F64 => types::F64,
         },
         ty::FnPtr(_) => pointer_ty(tcx),
-        ty::RawPtr(TypeAndMut {
-            ty: pointee_ty,
-            mutbl: _,
-        })
-        | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 return None;
             } else {
@@ -97,11 +93,7 @@ fn clif_pair_type_from_ty<'tcx>(
             }
             (a, b)
         }
-        ty::RawPtr(TypeAndMut {
-            ty: pointee_ty,
-            mutbl: _,
-        })
-        | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
@@ -114,15 +106,8 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = tcx.mk_ptr(TypeAndMut {
-        ty,
-        mutbl: rustc_hir::Mutability::Not,
-    });
-    match &tcx
-        .layout_of(ParamEnv::reveal_all().and(ptr_ty))
-        .unwrap()
-        .abi
-    {
+    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
+    match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,
         abi => unreachable!("Abi of ptr to {:?} is {:?}???", ty, abi),
@@ -369,12 +354,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let msg_id = self
             .cx
             .module
-            .declare_data(
-                &format!("__{}_{:08x}", prefix, msg_hash),
-                Linkage::Local,
-                false,
-                false,
-            )
+            .declare_data(&format!("__{}_{:08x}", prefix, msg_hash), Linkage::Local, false, false)
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
@@ -397,15 +377,13 @@ impl<'tcx> LayoutOf for RevealAllLayoutCx<'tcx> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.still_further_specializable());
-        self.0
-            .layout_of(ParamEnv::reveal_all().and(&ty))
-            .unwrap_or_else(|e| {
-                if let layout::LayoutError::SizeOverflow(_) = e {
-                    self.0.sess.fatal(&e.to_string())
-                } else {
-                    bug!("failed to get layout for `{}`: {}", ty, e)
-                }
-            })
+        self.0.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap_or_else(|e| {
+            if let layout::LayoutError::SizeOverflow(_) = e {
+                self.0.sess.fatal(&e.to_string())
+            } else {
+                bug!("failed to get layout for `{}`: {}", ty, e)
+            }
+        })
     }
 }
 

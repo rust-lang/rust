@@ -165,11 +165,8 @@ fn build_vtable<'tcx>(
 }
 
 fn write_usize(tcx: TyCtxt<'_>, buf: &mut [u8], idx: usize, num: u64) {
-    let pointer_size = tcx
-        .layout_of(ParamEnv::reveal_all().and(tcx.types.usize))
-        .unwrap()
-        .size
-        .bytes() as usize;
+    let pointer_size =
+        tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.usize)).unwrap().size.bytes() as usize;
     let target = &mut buf[idx * pointer_size..(idx + 1) * pointer_size];
 
     match tcx.data_layout.endian {

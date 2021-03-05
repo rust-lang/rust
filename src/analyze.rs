@@ -40,12 +40,7 @@ pub(crate) fn analyze(fx: &FunctionCx<'_, '_, '_>) -> IndexVec<Local, SsaKind> {
         }
 
         match &bb.terminator().kind {
-            TerminatorKind::Call {
-                destination,
-                func,
-                args,
-                ..
-            } => {
+            TerminatorKind::Call { destination, func, args, .. } => {
                 if let Some((dest_place, _dest_bb)) = destination {
                     if !crate::abi::can_return_to_ssa_var(fx, func, args) {
                         not_ssa(&mut flag_map, dest_place.local)

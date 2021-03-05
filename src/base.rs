@@ -38,9 +38,8 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Predefine blocks
     let start_block = bcx.create_block();
-    let block_map: IndexVec<BasicBlock, Block> = (0..mir.basic_blocks().len())
-        .map(|_| bcx.create_block())
-        .collect();
+    let block_map: IndexVec<BasicBlock, Block> =
+        (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
@@ -68,27 +67,23 @@ pub(crate) fn codegen_fn<'tcx>(
         inline_asm_index: 0,
     };
 
-    let arg_uninhabited = fx.mir.args_iter().any(|arg| {
-        fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty))
-            .abi
-            .is_uninhabited()
-    });
+    let arg_uninhabited = fx
+        .mir
+        .args_iter()
+        .any(|arg| fx.layout_of(fx.monomorphize(&fx.mir.local_decls[arg].ty)).abi.is_uninhabited());
 
     if !crate::constant::check_constants(&mut fx) {
-        fx.bcx
-            .append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
         crate::trap::trap_unreachable(&mut fx, "compilation should have been aborted");
     } else if arg_uninhabited {
-        fx.bcx
-            .append_block_params_for_function_params(fx.block_map[START_BLOCK]);
+        fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
         crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
     } else {
         tcx.sess.time("codegen clif ir", || {
-            tcx.sess.time("codegen prelude", || {
-                crate::abi::codegen_fn_prelude(&mut fx, start_block)
-            });
+            tcx.sess
+                .time("codegen prelude", || crate::abi::codegen_fn_prelude(&mut fx, start_block));
             codegen_fn_content(&mut fx);
         });
     }
@@ -136,11 +131,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let module = &mut cx.module;
     tcx.sess.time("define function", || {
         module
-            .define_function(
-                func_id,
-                context,
-                &mut cranelift_codegen::binemit::NullTrapSink {},
-            )
+            .define_function(func_id, context, &mut cranelift_codegen::binemit::NullTrapSink {})
             .unwrap()
     });
 
@@ -202,8 +193,7 @@ pub(crate) fn verify_func(
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.sess
-                    .fatal(&format!("cranelift verify error:\n{}", pretty_error));
+                tcx.sess.fatal(&format!("cranelift verify error:\n{}", pretty_error));
             }
         }
     });
@@ -232,11 +222,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
         #[cfg(debug_assertions)]
         {
             let mut terminator_head = "\n".to_string();
-            bb_data
-                .terminator()
-                .kind
-                .fmt_head(&mut terminator_head)
-                .unwrap();
+            bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
             fx.add_comment(inst, terminator_head);
         }
@@ -268,13 +254,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             TerminatorKind::Return => {
                 crate::abi::codegen_return(fx);
             }
-            TerminatorKind::Assert {
-                cond,
-                expected,
-                msg,
-                target,
-                cleanup: _,
-            } => {
+            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
                 if !fx.tcx.sess.overflow_checks() {
                     if let mir::AssertKind::OverflowNeg(_) = *msg {
                         let target = fx.get_block(*target);
@@ -320,11 +300,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 }
             }
 
-            TerminatorKind::SwitchInt {
-                discr,
-                switch_ty,
-                targets,
-            } => {
+            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
                 let discr = codegen_operand(fx, discr).load_scalar(fx);
 
                 let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
@@ -434,11 +410,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             | TerminatorKind::GeneratorDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop {
-                place,
-                target,
-                unwind: _,
-            } => {
+            TerminatorKind::Drop { place, target, unwind: _ } => {
                 let drop_place = codegen_place(fx, *place);
                 crate::abi::codegen_drop(fx, bb_data.terminator().source_info.span, drop_place);
 
@@ -471,10 +443,7 @@ fn codegen_stmt<'tcx>(
     }
 
     match &stmt.kind {
-        StatementKind::SetDiscriminant {
-            place,
-            variant_index,
-        } => {
+        StatementKind::SetDiscriminant { place, variant_index } => {
             let place = codegen_place(fx, **place);
             crate::discriminant::codegen_set_discriminant(fx, place, *variant_index);
         }
@@ -597,14 +566,9 @@ fn codegen_stmt<'tcx>(
 
                     fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
                         ty.builtin_deref(true)
-                            .map(
-                                |ty::TypeAndMut {
-                                     ty: pointee_ty,
-                                     mutbl: _,
-                                 }| {
-                                    has_ptr_meta(fx.tcx, pointee_ty)
-                                },
-                            )
+                            .map(|ty::TypeAndMut { ty: pointee_ty, mutbl: _ }| {
+                                has_ptr_meta(fx.tcx, pointee_ty)
+                            })
                             .unwrap_or(false)
                     }
 
@@ -700,8 +664,7 @@ fn codegen_stmt<'tcx>(
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
                         let val = operand.load_scalar(fx);
-                        fx.bcx
-                            .call_memset(fx.cx.module.target_config(), addr, val, times);
+                        fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
                         let loop_block2 = fx.bcx.create_block();
@@ -736,25 +699,19 @@ fn codegen_stmt<'tcx>(
                     let content_ty = fx.monomorphize(content_ty);
                     let layout = fx.layout_of(content_ty);
                     let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
-                    let llalign = fx
-                        .bcx
-                        .ins()
-                        .iconst(usize_type, layout.align.abi.bytes() as i64);
+                    let llalign = fx.bcx.ins().iconst(usize_type, layout.align.abi.bytes() as i64);
                     let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
 
                     // Allocate space:
-                    let def_id = match fx
-                        .tcx
-                        .lang_items()
-                        .require(rustc_hir::LangItem::ExchangeMalloc)
-                    {
-                        Ok(id) => id,
-                        Err(s) => {
-                            fx.tcx
-                                .sess
-                                .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
-                        }
-                    };
+                    let def_id =
+                        match fx.tcx.lang_items().require(rustc_hir::LangItem::ExchangeMalloc) {
+                            Ok(id) => id,
+                            Err(s) => {
+                                fx.tcx
+                                    .sess
+                                    .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
+                            }
+                        };
                     let instance = ty::Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
                     let func_ref = fx.get_function_ref(instance);
                     let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
@@ -762,10 +719,11 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(ptr, box_layout));
                 }
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                    assert!(lval
-                        .layout()
-                        .ty
-                        .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all()));
+                    assert!(
+                        lval.layout()
+                            .ty
+                            .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all())
+                    );
                     let ty_size = fx.layout_of(fx.monomorphize(ty)).size.bytes();
                     let val =
                         CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), ty_size.into());
@@ -793,11 +751,7 @@ fn codegen_stmt<'tcx>(
 
         StatementKind::LlvmInlineAsm(asm) => {
             use rustc_span::symbol::Symbol;
-            let LlvmInlineAsm {
-                asm,
-                outputs,
-                inputs,
-            } = &**asm;
+            let LlvmInlineAsm { asm, outputs, inputs } = &**asm;
             let rustc_hir::LlvmInlineAsmInner {
                 asm: asm_code,         // Name
                 outputs: output_names, // Vec<LlvmInlineAsmOutput>
@@ -813,15 +767,9 @@ fn codegen_stmt<'tcx>(
                     // Black box
                 }
                 "mov %rbx, %rsi\n                  cpuid\n                  xchg %rbx, %rsi" => {
-                    assert_eq!(
-                        input_names,
-                        &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]
-                    );
+                    assert_eq!(input_names, &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]);
                     assert_eq!(output_names.len(), 4);
-                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"])
-                        .iter()
-                        .enumerate()
-                    {
+                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"]).iter().enumerate() {
                         assert_eq!(&output_names[i].constraint.as_str(), c);
                         assert!(!output_names[i].is_rw);
                         assert!(!output_names[i].is_indirect);
@@ -867,12 +815,7 @@ fn codegen_stmt<'tcx>(
                     crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
                 }
                 // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx
-                    .tcx
-                    .symbol_name(fx.instance)
-                    .name
-                    .starts_with("___chkstk") =>
-                {
+                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
                     crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
                 }
                 _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
@@ -895,15 +838,12 @@ fn codegen_stmt<'tcx>(
 fn codegen_array_len<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, place: CPlace<'tcx>) -> Value {
     match *place.layout().ty.kind() {
         ty::Array(_elem_ty, len) => {
-            let len = fx
-                .monomorphize(len)
-                .eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
+            let len = fx.monomorphize(len).eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
-        ty::Slice(_elem_ty) => place
-            .to_ptr_maybe_unsized()
-            .1
-            .expect("Length metadata for slice place"),
+        ty::Slice(_elem_ty) => {
+            place.to_ptr_maybe_unsized().1.expect("Length metadata for slice place")
+        }
         _ => bug!("Rvalue::Len({:?})", place),
     }
 }
@@ -926,11 +866,7 @@ pub(crate) fn codegen_place<'tcx>(
                 let index = fx.get_local_place(local).to_cvalue(fx).load_scalar(fx);
                 cplace = cplace.place_index(fx, index);
             }
-            PlaceElem::ConstantIndex {
-                offset,
-                min_length: _,
-                from_end,
-            } => {
+            PlaceElem::ConstantIndex { offset, min_length: _, from_end } => {
                 let offset: u64 = offset;
                 let index = if !from_end {
                     fx.bcx.ins().iconst(fx.pointer_type, offset as i64)
@@ -997,10 +933,7 @@ pub(crate) fn codegen_panic<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, msg_str: &s
     let location = fx.get_caller_location(span).load_scalar(fx);
 
     let msg_ptr = fx.anonymous_str("assert", msg_str);
-    let msg_len = fx
-        .bcx
-        .ins()
-        .iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
+    let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len, location];
 
     codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, span);
@@ -1012,11 +945,8 @@ pub(crate) fn codegen_panic_inner<'tcx>(
     args: &[Value],
     span: Span,
 ) {
-    let def_id = fx
-        .tcx
-        .lang_items()
-        .require(lang_item)
-        .unwrap_or_else(|s| fx.tcx.sess.span_fatal(span, &s));
+    let def_id =
+        fx.tcx.lang_items().require(lang_item).unwrap_or_else(|s| fx.tcx.sess.span_fatal(span, &s));
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
     let symbol_name = fx.tcx.symbol_name(instance).name;

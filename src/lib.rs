@@ -149,11 +149,8 @@ impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
             module.isa(),
             matches!(backend_config.codegen_mode, CodegenMode::Aot),
         );
-        let debug_context = if debug_info {
-            Some(DebugContext::new(tcx, module.isa()))
-        } else {
-            None
-        };
+        let debug_context =
+            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
         CodegenCx {
             tcx,
             module,
@@ -303,14 +300,7 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     flags_builder
-        .set(
-            "enable_verifier",
-            if cfg!(debug_assertions) {
-                "true"
-            } else {
-                "false"
-            },
-        )
+        .set("enable_verifier", if cfg!(debug_assertions) { "true" } else { "false" })
         .unwrap();
 
     let tls_model = match target_triple.binary_format {

@@ -23,32 +23,20 @@ pub(crate) enum PointerBase {
 
 impl Pointer {
     pub(crate) fn new(addr: Value) -> Self {
-        Pointer {
-            base: PointerBase::Addr(addr),
-            offset: Offset32::new(0),
-        }
+        Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
     }
 
     pub(crate) fn stack_slot(stack_slot: StackSlot) -> Self {
-        Pointer {
-            base: PointerBase::Stack(stack_slot),
-            offset: Offset32::new(0),
-        }
+        Pointer { base: PointerBase::Stack(stack_slot), offset: Offset32::new(0) }
     }
 
     pub(crate) fn const_addr(fx: &mut FunctionCx<'_, '_, '_>, addr: i64) -> Self {
         let addr = fx.bcx.ins().iconst(fx.pointer_type, addr);
-        Pointer {
-            base: PointerBase::Addr(addr),
-            offset: Offset32::new(0),
-        }
+        Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
     }
 
     pub(crate) fn dangling(align: Align) -> Self {
-        Pointer {
-            base: PointerBase::Dangling(align),
-            offset: Offset32::new(0),
-        }
+        Pointer { base: PointerBase::Dangling(align), offset: Offset32::new(0) }
     }
 
     #[cfg(debug_assertions)]
@@ -60,21 +48,14 @@ impl Pointer {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
-                if offset == 0 {
-                    base_addr
-                } else {
-                    fx.bcx.ins().iadd_imm(base_addr, offset)
-                }
+                if offset == 0 { base_addr } else { fx.bcx.ins().iadd_imm(base_addr, offset) }
             }
             PointerBase::Stack(stack_slot) => {
-                fx.bcx
-                    .ins()
-                    .stack_addr(fx.pointer_type, stack_slot, self.offset)
+                fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, self.offset)
             }
-            PointerBase::Dangling(align) => fx
-                .bcx
-                .ins()
-                .iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap()),
+            PointerBase::Dangling(align) => {
+                fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap())
+            }
         }
     }
 
@@ -84,10 +65,7 @@ impl Pointer {
 
     pub(crate) fn offset_i64(self, fx: &mut FunctionCx<'_, '_, '_>, extra_offset: i64) -> Self {
         if let Some(new_offset) = self.offset.try_add_i64(extra_offset) {
-            Pointer {
-                base: self.base,
-                offset: new_offset,
-            }
+            Pointer { base: self.base, offset: new_offset }
         } else {
             let base_offset: i64 = self.offset.into();
             if let Some(new_offset) = base_offset.checked_add(extra_offset) {
@@ -96,16 +74,12 @@ impl Pointer {
                     PointerBase::Stack(stack_slot) => {
                         fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0)
                     }
-                    PointerBase::Dangling(align) => fx
-                        .bcx
-                        .ins()
-                        .iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap()),
+                    PointerBase::Dangling(align) => {
+                        fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap())
+                    }
                 };
                 let addr = fx.bcx.ins().iadd_imm(base_addr, new_offset);
-                Pointer {
-                    base: PointerBase::Addr(addr),
-                    offset: Offset32::new(0),
-                }
+                Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
             } else {
                 panic!(
                     "self.offset ({}) + extra_offset ({}) not representable in i64",
@@ -122,20 +96,15 @@ impl Pointer {
                 offset: self.offset,
             },
             PointerBase::Stack(stack_slot) => {
-                let base_addr = fx
-                    .bcx
-                    .ins()
-                    .stack_addr(fx.pointer_type, stack_slot, self.offset);
+                let base_addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, self.offset);
                 Pointer {
                     base: PointerBase::Addr(fx.bcx.ins().iadd(base_addr, extra_offset)),
                     offset: Offset32::new(0),
                 }
             }
             PointerBase::Dangling(align) => {
-                let addr = fx
-                    .bcx
-                    .ins()
-                    .iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap());
+                let addr =
+                    fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap());
                 Pointer {
                     base: PointerBase::Addr(fx.bcx.ins().iadd(addr, extra_offset)),
                     offset: self.offset,

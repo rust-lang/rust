@@ -22,9 +22,7 @@ pub(crate) trait WriteMetadata {
 
 impl WriteMetadata for object::write::Object {
     fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
-        let segment = self
-            .segment_name(object::write::StandardSegment::Data)
-            .to_vec();
+        let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);
         // For MachO and probably PE this is necessary to prevent the linker from throwing away the
@@ -74,11 +72,7 @@ impl WriteDebugInfo for ObjectProduct {
         let section_id = self.object.add_section(
             segment,
             name,
-            if id == SectionId::EhFrame {
-                SectionKind::ReadOnlyData
-            } else {
-                SectionKind::Debug
-            },
+            if id == SectionId::EhFrame { SectionKind::ReadOnlyData } else { SectionKind::Debug },
         );
         self.object
             .section_mut(section_id)
@@ -132,10 +126,9 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
         target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
         target_lexicon::Architecture::Arm(_) => object::Architecture::Arm,
         target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
-        architecture => sess.fatal(&format!(
-            "target architecture {:?} is unsupported",
-            architecture,
-        )),
+        architecture => {
+            sess.fatal(&format!("target architecture {:?} is unsupported", architecture,))
+        }
     };
     let endian = match triple.endianness().unwrap() {
         target_lexicon::Endianness::Little => object::Endianness::Little,

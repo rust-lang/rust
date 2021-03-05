@@ -90,20 +90,11 @@ impl<'tcx> DebugContext<'tcx> {
 
             let root = dwarf.unit.root();
             let root = dwarf.unit.get_mut(root);
-            root.set(
-                gimli::DW_AT_producer,
-                AttributeValue::StringRef(dwarf.strings.add(producer)),
-            );
-            root.set(
-                gimli::DW_AT_language,
-                AttributeValue::Language(gimli::DW_LANG_Rust),
-            );
+            root.set(gimli::DW_AT_producer, AttributeValue::StringRef(dwarf.strings.add(producer)));
+            root.set(gimli::DW_AT_language, AttributeValue::Language(gimli::DW_LANG_Rust));
             root.set(gimli::DW_AT_name, AttributeValue::StringRef(name));
             root.set(gimli::DW_AT_comp_dir, AttributeValue::StringRef(comp_dir));
-            root.set(
-                gimli::DW_AT_low_pc,
-                AttributeValue::Address(Address::Constant(0)),
-            );
+            root.set(gimli::DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
         }
 
         DebugContext {
@@ -142,10 +133,7 @@ impl<'tcx> DebugContext<'tcx> {
             ty::Int(_) => primitive(&mut self.dwarf, gimli::DW_ATE_signed),
             ty::Float(_) => primitive(&mut self.dwarf, gimli::DW_ATE_float),
             ty::Ref(_, pointee_ty, _mutbl)
-            | ty::RawPtr(ty::TypeAndMut {
-                ty: pointee_ty,
-                mutbl: _mutbl,
-            }) => {
+            | ty::RawPtr(ty::TypeAndMut { ty: pointee_ty, mutbl: _mutbl }) => {
                 let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_pointer_type);
 
                 // Ensure that type is inserted before recursing to avoid duplicates
@@ -172,10 +160,7 @@ impl<'tcx> DebugContext<'tcx> {
                     let field_offset = layout.fields.offset(field_idx);
                     let field_layout = layout
                         .field(
-                            &layout::LayoutCx {
-                                tcx: self.tcx,
-                                param_env: ParamEnv::reveal_all(),
-                            },
+                            &layout::LayoutCx { tcx: self.tcx, param_env: ParamEnv::reveal_all() },
                             field_idx,
                         )
                         .unwrap();
@@ -204,10 +189,7 @@ impl<'tcx> DebugContext<'tcx> {
         let type_entry = self.dwarf.unit.get_mut(type_id);
 
         type_entry.set(gimli::DW_AT_name, AttributeValue::String(name.into_bytes()));
-        type_entry.set(
-            gimli::DW_AT_byte_size,
-            AttributeValue::Udata(layout.size.bytes()),
-        );
+        type_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
 
         self.types.insert(ty, type_id);
 
@@ -247,10 +229,7 @@ impl<'tcx> DebugContext<'tcx> {
         let name_id = self.dwarf.strings.add(name);
         // Gdb requires DW_AT_name. Otherwise the DW_TAG_subprogram is skipped.
         entry.set(gimli::DW_AT_name, AttributeValue::StringRef(name_id));
-        entry.set(
-            gimli::DW_AT_linkage_name,
-            AttributeValue::StringRef(name_id),
-        );
+        entry.set(gimli::DW_AT_linkage_name, AttributeValue::StringRef(name_id));
 
         let end = self.create_debug_lines(symbol, entry_id, context, mir.span, source_info_set);
 
@@ -287,10 +266,7 @@ impl<'tcx> DebugContext<'tcx> {
                     context,
                     &local_map,
                     &value_labels_ranges,
-                    Place {
-                        local,
-                        projection: ty::List::empty(),
-                    },
+                    Place { local, projection: ty::List::empty() },
                 );
 
                 let var_entry = self.dwarf.unit.get_mut(var_id);
@@ -328,10 +304,7 @@ fn place_location<'tcx>(
                                 symbol,
                                 addend: i64::from(value_loc_range.start),
                             },
-                            end: Address::Symbol {
-                                symbol,
-                                addend: i64::from(value_loc_range.end),
-                            },
+                            end: Address::Symbol { symbol, addend: i64::from(value_loc_range.end) },
                             data: translate_loc(
                                 isa,
                                 value_loc_range.loc,

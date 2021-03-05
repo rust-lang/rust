@@ -53,11 +53,7 @@ pub(crate) fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
     if hash.kind == SourceFileHashAlgorithm::Md5 {
         let mut buf = [0u8; MD5_LEN];
         buf.copy_from_slice(hash.hash_bytes());
-        Some(FileInfo {
-            timestamp: 0,
-            size: 0,
-            md5: buf,
-        })
+        Some(FileInfo { timestamp: 0, size: 0, md5: buf })
     } else {
         None
     }
@@ -112,19 +108,10 @@ impl<'tcx> DebugContext<'tcx> {
 
         let entry = self.dwarf.unit.get_mut(entry_id);
 
-        entry.set(
-            gimli::DW_AT_decl_file,
-            AttributeValue::FileIndex(Some(file_id)),
-        );
-        entry.set(
-            gimli::DW_AT_decl_line,
-            AttributeValue::Udata(loc.line as u64),
-        );
+        entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
+        entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(loc.line as u64));
         // FIXME: probably omit this
-        entry.set(
-            gimli::DW_AT_decl_column,
-            AttributeValue::Udata(loc.col.to_usize() as u64),
-        );
+        entry.set(gimli::DW_AT_decl_column, AttributeValue::Udata(loc.col.to_usize() as u64));
     }
 
     pub(super) fn create_debug_lines(
@@ -223,10 +210,7 @@ impl<'tcx> DebugContext<'tcx> {
             gimli::DW_AT_low_pc,
             AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
-        entry.set(
-            gimli::DW_AT_high_pc,
-            AttributeValue::Udata(u64::from(func_end)),
-        );
+        entry.set(gimli::DW_AT_high_pc, AttributeValue::Udata(u64::from(func_end)));
 
         self.emit_location(entry_id, function_span);
 

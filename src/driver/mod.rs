@@ -24,10 +24,8 @@ pub(crate) fn codegen_crate(
     match backend_config.codegen_mode {
         CodegenMode::Aot => aot::run_aot(tcx, backend_config, metadata, need_metadata_module),
         CodegenMode::Jit | CodegenMode::JitLazy => {
-            let is_executable = tcx
-                .sess
-                .crate_types()
-                .contains(&rustc_session::config::CrateType::Executable);
+            let is_executable =
+                tcx.sess.crate_types().contains(&rustc_session::config::CrateType::Executable);
             if !is_executable {
                 tcx.sess.fatal("can't jit non-executable crate");
             }
@@ -36,8 +34,7 @@ pub(crate) fn codegen_crate(
             let _: ! = jit::run_jit(tcx, backend_config);
 
             #[cfg(not(feature = "jit"))]
-            tcx.sess
-                .fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+            tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
         }
     }
 }
@@ -63,21 +60,12 @@ fn predefine_mono_items<'tcx>(
 }
 
 fn time<R>(tcx: TyCtxt<'_>, name: &'static str, f: impl FnOnce() -> R) -> R {
-    if std::env::var("CG_CLIF_DISPLAY_CG_TIME")
-        .as_ref()
-        .map(|val| &**val)
-        == Ok("1")
-    {
+    if std::env::var("CG_CLIF_DISPLAY_CG_TIME").as_ref().map(|val| &**val) == Ok("1") {
         println!("[{:<30}: {}] start", tcx.crate_name(LOCAL_CRATE), name);
         let before = std::time::Instant::now();
         let res = tcx.sess.time(name, f);
         let after = std::time::Instant::now();
-        println!(
-            "[{:<30}: {}] end time: {:?}",
-            tcx.crate_name(LOCAL_CRATE),
-            name,
-            after - before
-        );
+        println!("[{:<30}: {}] end time: {:?}", tcx.crate_name(LOCAL_CRATE), name, after - before);
         res
     } else {
         tcx.sess.time(name, f)

@@ -44,15 +44,12 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(def, ref substs, promoted) => {
                 if let Err(err) =
-                    fx.tcx
-                        .const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None)
+                    fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None)
                 {
                     all_constants_ok = false;
                     match err {
                         ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
-                            fx.tcx
-                                .sess
-                                .span_err(constant.span, "erroneous constant encountered");
+                            fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                         }
                         ErrorHandled::TooGeneric => {
                             span_bug!(
@@ -131,16 +128,10 @@ pub(crate) fn codegen_constant<'tcx>(
             .to_cvalue(fx);
         }
         ConstKind::Unevaluated(def, ref substs, promoted) => {
-            match fx
-                .tcx
-                .const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None)
-            {
+            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
                 Ok(const_val) => const_val,
                 Err(_) => {
-                    span_bug!(
-                        constant.span,
-                        "erroneous constant not captured by required_consts"
-                    );
+                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
                 }
             }
         }
@@ -171,9 +162,7 @@ pub(crate) fn codegen_const_value<'tcx>(
             if fx.clif_type(layout.ty).is_none() {
                 let (size, align) = (layout.size, layout.align.pref);
                 let mut alloc = Allocation::from_bytes(
-                    std::iter::repeat(0)
-                        .take(size.bytes_usize())
-                        .collect::<Vec<u8>>(),
+                    std::iter::repeat(0).take(size.bytes_usize()).collect::<Vec<u8>>(),
                     align,
                 );
                 let ptr = Pointer::new(AllocId(!0), Size::ZERO); // The alloc id is never used
@@ -216,9 +205,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                         None => bug!("missing allocation {:?}", ptr.alloc_id),
                     };
                     let val = if ptr.offset.bytes() != 0 {
-                        fx.bcx
-                            .ins()
-                            .iadd_imm(base_addr, i64::try_from(ptr.offset.bytes()).unwrap())
+                        fx.bcx.ins().iadd_imm(base_addr, i64::try_from(ptr.offset.bytes()).unwrap())
                     } else {
                         base_addr
                     };
@@ -235,10 +222,10 @@ pub(crate) fn codegen_const_value<'tcx>(
             let ptr = pointer_for_allocation(fx, data)
                 .offset_i64(fx, i64::try_from(start).unwrap())
                 .get_addr(fx);
-            let len = fx.bcx.ins().iconst(
-                fx.pointer_type,
-                i64::try_from(end.checked_sub(start).unwrap()).unwrap(),
-            );
+            let len = fx
+                .bcx
+                .ins()
+                .iconst(fx.pointer_type, i64::try_from(end.checked_sub(start).unwrap()).unwrap());
             CValue::by_val_pair(ptr, len, layout)
         }
     }
@@ -299,12 +286,7 @@ fn data_id_for_static(
     } else {
         !ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all())
     };
-    let align = tcx
-        .layout_of(ParamEnv::reveal_all().and(ty))
-        .unwrap()
-        .align
-        .pref
-        .bytes();
+    let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
     let attrs = tcx.codegen_fn_attrs(def_id);
 
@@ -327,17 +309,11 @@ fn data_id_for_static(
         // zero.
 
         let ref_name = format!("_rust_extern_with_linkage_{}", symbol_name);
-        let ref_data_id = module
-            .declare_data(&ref_name, Linkage::Local, false, false)
-            .unwrap();
+        let ref_data_id = module.declare_data(&ref_name, Linkage::Local, false, false).unwrap();
         let mut data_ctx = DataContext::new();
         data_ctx.set_align(align);
         let data = module.declare_data_in_data(data_id, &mut data_ctx);
-        data_ctx.define(
-            std::iter::repeat(0)
-                .take(pointer_ty(tcx).bytes() as usize)
-                .collect(),
-        );
+        data_ctx.define(std::iter::repeat(0).take(pointer_ty(tcx).bytes() as usize).collect());
         data_ctx.write_data_addr(0, data, 0);
         match module.define_data(ref_data_id, &data_ctx) {
             // Every time the static is referenced there will be another definition of this global,
@@ -366,10 +342,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             TodoItem::Static(def_id) => {
                 //println!("static {:?}", def_id);
 
-                let section_name = tcx
-                    .codegen_fn_attrs(def_id)
-                    .link_section
-                    .map(|s| s.as_str());
+                let section_name = tcx.codegen_fn_attrs(def_id).link_section.map(|s| s.as_str());
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
 
@@ -391,9 +364,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             data_ctx.set_segment_section("", &*section_name);
         }
 
-        let bytes = alloc
-            .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
-            .to_vec();
+        let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
         for &(offset, (_tag, reloc)) in alloc.relocations().iter() {
@@ -421,10 +392,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     data_id_for_alloc_id(module, reloc, target_alloc.mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
-                    if tcx
-                        .codegen_fn_attrs(def_id)
-                        .flags
-                        .contains(CodegenFnAttrFlags::THREAD_LOCAL)
+                    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {
                         tcx.sess.fatal(&format!(
                             "Allocation {:?} contains reference to TLS value {:?}",
@@ -457,9 +425,8 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
 ) -> Option<&'tcx Const<'tcx>> {
     match operand {
         Operand::Copy(_) | Operand::Move(_) => None,
-        Operand::Constant(const_) => Some(
-            fx.monomorphize(const_.literal)
-                .eval(fx.tcx, ParamEnv::reveal_all()),
-        ),
+        Operand::Constant(const_) => {
+            Some(fx.monomorphize(const_.literal).eval(fx.tcx, ParamEnv::reveal_all()))
+        }
     }
 }

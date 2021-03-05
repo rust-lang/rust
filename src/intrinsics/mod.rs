@@ -227,9 +227,8 @@ fn simd_reduce<'tcx>(
 
     let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     for lane_idx in 1..lane_count {
-        let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
-            .load_scalar(fx);
+        let lane =
+            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }
     let res = CValue::by_val(res_val, lane_layout);
@@ -248,9 +247,8 @@ fn simd_reduce_bool<'tcx>(
     let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
-        let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
-            .load_scalar(fx);
+        let lane =
+            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
