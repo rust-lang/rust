@@ -41,7 +41,7 @@ pub(crate) fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
 }
 
 fn codegen_compare_bin_op<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     signed: bool,
     lhs: Value,
@@ -54,7 +54,7 @@ fn codegen_compare_bin_op<'tcx>(
 }
 
 pub(crate) fn codegen_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -93,17 +93,12 @@ pub(crate) fn codegen_binop<'tcx>(
         ty::Uint(_) | ty::Int(_) => crate::num::codegen_int_binop(fx, bin_op, in_lhs, in_rhs),
         ty::Float(_) => crate::num::codegen_float_binop(fx, bin_op, in_lhs, in_rhs),
         ty::RawPtr(..) | ty::FnPtr(..) => crate::num::codegen_ptr_binop(fx, bin_op, in_lhs, in_rhs),
-        _ => unreachable!(
-            "{:?}({:?}, {:?})",
-            bin_op,
-            in_lhs.layout().ty,
-            in_rhs.layout().ty
-        ),
+        _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty),
     }
 }
 
 pub(crate) fn codegen_bool_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -124,7 +119,7 @@ pub(crate) fn codegen_bool_binop<'tcx>(
 }
 
 pub(crate) fn codegen_int_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -185,19 +180,14 @@ pub(crate) fn codegen_int_binop<'tcx>(
             }
         }
         // Compare binops handles by `codegen_binop`.
-        _ => unreachable!(
-            "{:?}({:?}, {:?})",
-            bin_op,
-            in_lhs.layout().ty,
-            in_rhs.layout().ty
-        ),
+        _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty),
     };
 
     CValue::by_val(val, in_lhs.layout())
 }
 
 pub(crate) fn codegen_checked_int_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -268,9 +258,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                     let rhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), rhs);
                     let val = fx.bcx.ins().imul(lhs, rhs);
                     let has_underflow =
-                        fx.bcx
-                            .ins()
-                            .icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
+                        fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
                     let has_overflow = fx.bcx.ins().icmp_imm(
                         IntCC::SignedGreaterThan,
                         val,
@@ -309,10 +297,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             let val = fx.bcx.ins().ishl(lhs, actual_shift);
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow = fx
-                .bcx
-                .ins()
-                .icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
+            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
         BinOp::Shr => {
@@ -326,38 +311,20 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             };
             let ty = fx.bcx.func.dfg.value_type(val);
             let max_shift = i64::from(ty.bits()) - 1;
-            let has_overflow = fx
-                .bcx
-                .ins()
-                .icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
+            let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, rhs, max_shift);
             (val, has_overflow)
         }
-        _ => bug!(
-            "binop {:?} on checked int/uint lhs: {:?} rhs: {:?}",
-            bin_op,
-            in_lhs,
-            in_rhs
-        ),
+        _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, in_lhs, in_rhs),
     };
 
     let has_overflow = fx.bcx.ins().bint(types::I8, has_overflow);
 
-    // FIXME directly write to result place instead
-    let out_place = CPlace::new_stack_slot(
-        fx,
-        fx.layout_of(
-            fx.tcx
-                .mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()),
-        ),
-    );
-    let out_layout = out_place.layout();
-    out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));
-
-    out_place.to_cvalue(fx)
+    let out_layout = fx.layout_of(fx.tcx.mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()));
+    CValue::by_val_pair(res, has_overflow, out_layout)
 }
 
 pub(crate) fn codegen_float_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -402,7 +369,7 @@ pub(crate) fn codegen_float_binop<'tcx>(
 }
 
 pub(crate) fn codegen_ptr_binop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     bin_op: BinOp,
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
@@ -452,9 +419,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
                 let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
 
                 let ptr_cmp =
-                    fx.bcx
-                        .ins()
-                        .icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_ptr, rhs_ptr);
+                    fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_ptr, rhs_ptr);
                 let extra_cmp = fx.bcx.ins().icmp(
                     bin_op_to_intcc(bin_op, false).unwrap(),
                     lhs_extra,
@@ -466,9 +431,6 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
             _ => panic!("bin_op {:?} on ptr", bin_op),
         };
 
-        CValue::by_val(
-            fx.bcx.ins().bint(types::I8, res),
-            fx.layout_of(fx.tcx.types.bool),
-        )
+        CValue::by_val(fx.bcx.ins().bint(types::I8, res), fx.layout_of(fx.tcx.types.bool))
     }
 }
