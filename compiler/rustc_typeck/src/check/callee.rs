@@ -465,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_arg_tys = self.expected_inputs_for_expected_output(
             call_expr.span,
             expected,
-            fn_sig.output().clone(),
+            fn_sig.output(),
             fn_sig.inputs(),
         );
 
