@@ -1627,17 +1627,27 @@ impl<'a> Parser<'a> {
                 ),
                 // Also catches `fn foo(&a)`.
                 PatKind::Ref(ref pat, mutab) => {
-                    if let PatKind::Ident(_, ident, _) = pat.clone().into_inner().kind {
-                        let mutab = mutab.prefix_str();
-                        (
-                            ident,
-                            format!("self: &{}{}", mutab, ident),
-                            format!("{}: &{}TypeName", ident, mutab),
-                            format!("_: &{}{}", mutab, ident),
-                        )
-                    } else {
-                        return None;
+                    match pat.clone().into_inner().kind {
+                        PatKind::Ident(_, ident, _) => {
+                            let mutab = mutab.prefix_str();
+                            (
+                                ident,
+                                format!("self: &{}{}", mutab, ident),
+                                format!("{}: &{}TypeName", ident, mutab),
+                                format!("_: &{}{}", mutab, ident),
+                            )
+                        }
+                        PatKind::Path(..) => {
+                            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                            return None;
+                        }
+                        _ => return None,
                     }
+                }
+                // Also catches `fn foo(<Bar as T>::Baz)`
+                PatKind::Path(..) => {
+                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                    return None;
                 }
                 // Ignore other `PatKind`.
                 _ => return None,

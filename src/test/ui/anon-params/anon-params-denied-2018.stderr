@@ -38,8 +38,24 @@ help: if this is a type, explicitly ignore the parameter name
 LL |     fn foo_with_ref(_: &mut i32);
    |                     ^^^^^^^^^^^
 
+error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/anon-params-denied-2018.rs:12:47
+   |
+LL |     fn foo_with_qualified_path(<Bar as T>::Baz);
+   |                                               ^ expected one of 8 possible tokens
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+
+error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/anon-params-denied-2018.rs:15:56
+   |
+LL |     fn foo_with_qualified_path_and_ref(&<Bar as T>::Baz);
+   |                                                        ^ expected one of 8 possible tokens
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+
 error: expected one of `:`, `@`, or `|`, found `,`
-  --> $DIR/anon-params-denied-2018.rs:12:36
+  --> $DIR/anon-params-denied-2018.rs:18:36
    |
 LL |     fn bar_with_default_impl(String, String) {}
    |                                    ^ expected one of `:`, `@`, or `|`
@@ -59,7 +75,7 @@ LL |     fn bar_with_default_impl(_: String, String) {}
    |                              ^^^^^^^^^
 
 error: expected one of `:`, `@`, or `|`, found `)`
-  --> $DIR/anon-params-denied-2018.rs:12:44
+  --> $DIR/anon-params-denied-2018.rs:18:44
    |
 LL |     fn bar_with_default_impl(String, String) {}
    |                                            ^ expected one of `:`, `@`, or `|`
@@ -75,7 +91,7 @@ LL |     fn bar_with_default_impl(String, _: String) {}
    |                                      ^^^^^^^^^
 
 error: expected one of `:`, `@`, or `|`, found `,`
-  --> $DIR/anon-params-denied-2018.rs:17:22
+  --> $DIR/anon-params-denied-2018.rs:23:22
    |
 LL |     fn baz(a:usize, b, c: usize) -> usize {
    |                      ^ expected one of `:`, `@`, or `|`
@@ -90,5 +106,5 @@ help: if this is a type, explicitly ignore the parameter name
 LL |     fn baz(a:usize, _: b, c: usize) -> usize {
    |                     ^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 
