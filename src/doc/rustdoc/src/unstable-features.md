@@ -340,6 +340,30 @@ Some methodology notes about what rustdoc counts in this metric:
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
 
+## `-w`/`--output-format`: output format
+
+When using
+[`--show-coverage`](https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#--show-coverage-get-statistics-about-code-documentation-coverage),
+passing `--output-format json` will display the coverage information in JSON format. For example,
+here is the JSON for a file with one documented item and one undocumented item:
+
+```rust
+/// This item has documentation
+pub fn foo() {}
+
+pub fn no_documentation() {}
+```
+
+```json
+{"no_std.rs":{"total":3,"with_docs":1,"total_examples":3,"with_examples":0}}
+```
+
+Note that the third item is the crate root, which in this case is undocumented.
+
+When not using `--show-coverage`, `--output-format json` emits documentation in the experimental
+[JSON format](https://github.com/rust-lang/rfcs/pull/2963). `--output-format html` has no effect,
+and is also accepted on stable toolchains.
+
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 
 Using this flag looks like this:
