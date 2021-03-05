@@ -688,7 +688,6 @@ pub unsafe fn vld1q_f64(ptr: *const f64) -> float64x2_t {
 pub unsafe fn vabsd_s64(a: i64) -> i64 {
     vabsd_s64_(a)
 }
-
 /// Absolute Value (wrapping).
 #[inline]
 #[target_feature(enable = "neon")]

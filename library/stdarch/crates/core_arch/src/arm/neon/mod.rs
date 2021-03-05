@@ -135,9 +135,6 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabs.v4i32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.fabs.v4f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fabs.v4f32")]
-    fn vabsq_f32_(a: float32x4_t) -> float32x4_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
@@ -8567,7 +8564,6 @@ mod tests {
         let e = i32x4::new(i32::MIN, i32::MAX, 0, 1);
         assert_eq!(r, e);
     }
-
     #[simd_test(enable = "neon")]
     unsafe fn test_vpadd_s16() {
         let a = i16x4::new(1, 2, 3, 4);
