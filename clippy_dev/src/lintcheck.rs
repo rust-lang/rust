@@ -115,21 +115,7 @@ impl CrateSource {
                 // url to download the crate from crates.io
                 let url = format!("https://crates.io/api/v1/crates/{}/{}/download", name, version);
                 println!("Downloading and extracting {} {} from {}", name, version, url);
-                std::fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
-                    if err.kind() != ErrorKind::AlreadyExists {
-                        panic!("cannot create lintcheck target dir");
-                    }
-                });
-                std::fs::create_dir(&krate_download_dir).unwrap_or_else(|err| {
-                    if err.kind() != ErrorKind::AlreadyExists {
-                        panic!("cannot create crate download dir");
-                    }
-                });
-                std::fs::create_dir(&extract_dir).unwrap_or_else(|err| {
-                    if err.kind() != ErrorKind::AlreadyExists {
-                        panic!("cannot create crate extraction dir");
-                    }
-                });
+                create_dirs(&krate_download_dir, &extract_dir);
 
                 let krate_file_path = krate_download_dir.join(format!("{}-{}.crate.tar.gz", name, version));
                 // don't download/extract if we already have done so
@@ -748,6 +734,29 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .for_each(|(old_key, old_value)| {
             println!("{} {} => 0", old_key, old_value);
         });
+}
+
+/// Create necessary directories to run the lintcheck tool.
+///
+/// # Panics
+///
+/// This function panics if creating one of the dirs fails.
+fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
+    std::fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create lintcheck target dir");
+        }
+    });
+    std::fs::create_dir(&krate_download_dir).unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create crate download dir");
+        }
+    });
+    std::fs::create_dir(&extract_dir).unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create crate extraction dir");
+        }
+    });
 }
 
 #[test]
