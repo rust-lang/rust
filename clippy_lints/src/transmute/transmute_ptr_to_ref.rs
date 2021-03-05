@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(
     qpath: &'tcx QPath<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::RawPtr(from_pty), ty::Ref(_, to_ref_ty, mutbl)) => {
+        (ty::RawPtr(from_ptr_ty), ty::Ref(_, to_ref_ty, mutbl)) => {
             span_lint_and_then(
                 cx,
                 TRANSMUTE_PTR_TO_REF,
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
                         ("&*", "*const")
                     };
 
-                    let arg = if from_pty.ty == *to_ref_ty {
+                    let arg = if from_ptr_ty.ty == *to_ref_ty {
                         arg
                     } else {
                         arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))

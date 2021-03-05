@@ -6,13 +6,12 @@
 
 #![cfg(feature = "lintcheck")]
 #![allow(clippy::filter_map, clippy::collapsible_else_if)]
-#![allow(clippy::blocks_in_if_conditions)] // FP on `if x.iter().any(|x| ...)`
 
 use crate::clippy_project_root;
 
-use std::collections::HashMap;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{collections::HashMap, io::ErrorKind};
 use std::{
     env, fmt,
     fs::write,
@@ -116,9 +115,7 @@ impl CrateSource {
                 // url to download the crate from crates.io
                 let url = format!("https://crates.io/api/v1/crates/{}/{}/download", name, version);
                 println!("Downloading and extracting {} {} from {}", name, version, url);
-                let _ = std::fs::create_dir("target/lintcheck/");
-                let _ = std::fs::create_dir(&krate_download_dir);
-                let _ = std::fs::create_dir(&extract_dir);
+                create_dirs(&krate_download_dir, &extract_dir);
 
                 let krate_file_path = krate_download_dir.join(format!("{}-{}.crate.tar.gz", name, version));
                 // don't download/extract if we already have done so
@@ -198,18 +195,18 @@ impl CrateSource {
                 // the source path of the crate we copied,  ${copy_dest}/crate_name
                 let crate_root = copy_dest.join(name); // .../crates/local_crate
 
-                if !crate_root.exists() {
-                    println!("Copying {} to {}", path.display(), copy_dest.display());
-
-                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).unwrap_or_else(|_| {
-                        panic!("Failed to copy from {}, to  {}", path.display(), crate_root.display())
-                    });
-                } else {
+                if crate_root.exists() {
                     println!(
                         "Not copying {} to {}, destination already exists",
                         path.display(),
                         crate_root.display()
                     );
+                } else {
+                    println!("Copying {} to {}", path.display(), copy_dest.display());
+
+                    dir::copy(path, &copy_dest, &dir::CopyOptions::new()).unwrap_or_else(|_| {
+                        panic!("Failed to copy from {}, to  {}", path.display(), crate_root.display())
+                    });
                 }
 
                 Crate {
@@ -236,8 +233,8 @@ impl Crate {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
         // "loop" the index within 0..thread_limit
-        let target_dir_index = index % thread_limit;
-        let perc = ((index * 100) as f32 / total_crates_to_lint as f32) as u8;
+        let thread_index = index % thread_limit;
+        let perc = (index * 100) / total_crates_to_lint;
 
         if thread_limit == 1 {
             println!(
@@ -247,7 +244,7 @@ impl Crate {
         } else {
             println!(
                 "{}/{} {}% Linting {} {} in target dir {:?}",
-                index, total_crates_to_lint, perc, &self.name, &self.version, target_dir_index
+                index, total_crates_to_lint, perc, &self.name, &self.version, thread_index
             );
         }
 
@@ -269,7 +266,7 @@ impl Crate {
             // use the looping index to create individual target dirs
             .env(
                 "CARGO_TARGET_DIR",
-                shared_target_dir.join(format!("_{:?}", target_dir_index)),
+                shared_target_dir.join(format!("_{:?}", thread_index)),
             )
             // lint warnings will look like this:
             // src/cargo/ops/cargo_compile.rs:127:35: warning: usage of `FromIterator::from_iter`
@@ -529,6 +526,10 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
 }
 
 /// lintchecks `main()` function
+///
+/// # Panics
+///
+/// This function panics if the clippy binaries don't exist.
 pub fn run(clap_config: &ArgMatches) {
     let config = LintcheckConfig::from_clap(clap_config);
 
@@ -579,9 +580,9 @@ pub fn run(clap_config: &ArgMatches) {
         // if we don't have the specified crate in the .toml, throw an error
         if !crates.iter().any(|krate| {
             let name = match krate {
-                CrateSource::CratesIo { name, .. } => name,
-                CrateSource::Git { name, .. } => name,
-                CrateSource::Path { name, .. } => name,
+                CrateSource::CratesIo { name, .. } | CrateSource::Git { name, .. } | CrateSource::Path { name, .. } => {
+                    name
+                },
             };
             name == only_one_crate
         }) {
@@ -597,8 +598,7 @@ pub fn run(clap_config: &ArgMatches) {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1))
-            .flatten()
+            .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1))
             .collect()
     } else {
         if config.max_jobs > 1 {
@@ -621,8 +621,7 @@ pub fn run(clap_config: &ArgMatches) {
             crates
                 .into_par_iter()
                 .map(|krate| krate.download_and_extract())
-                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
-                .flatten()
+                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
                 .collect()
         } else {
             // run sequential
@@ -630,8 +629,7 @@ pub fn run(clap_config: &ArgMatches) {
             crates
                 .into_iter()
                 .map(|krate| krate.download_and_extract())
-                .map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates))
-                .flatten()
+                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates))
                 .collect()
         }
     };
@@ -646,7 +644,7 @@ pub fn run(clap_config: &ArgMatches) {
         .map(|w| (&w.crate_name, &w.message))
         .collect();
 
-    let mut all_msgs: Vec<String> = clippy_warnings.iter().map(|warning| warning.to_string()).collect();
+    let mut all_msgs: Vec<String> = clippy_warnings.iter().map(ToString::to_string).collect();
     all_msgs.sort();
     all_msgs.push("\n\n\n\nStats:\n".into());
     all_msgs.push(stats_formatted);
@@ -673,13 +671,13 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
         },
     };
 
-    let lines: Vec<String> = file_content.lines().map(|l| l.to_string()).collect();
+    let lines: Vec<String> = file_content.lines().map(ToString::to_string).collect();
 
     // search for the beginning "Stats:" and the end "ICEs:" of the section we want
     let start = lines.iter().position(|line| line == "Stats:").unwrap();
     let end = lines.iter().position(|line| line == "ICEs:").unwrap();
 
-    let stats_lines = &lines[start + 1..=end - 1];
+    let stats_lines = &lines[start + 1..end];
 
     stats_lines
         .iter()
@@ -736,6 +734,29 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
         .for_each(|(old_key, old_value)| {
             println!("{} {} => 0", old_key, old_value);
         });
+}
+
+/// Create necessary directories to run the lintcheck tool.
+///
+/// # Panics
+///
+/// This function panics if creating one of the dirs fails.
+fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
+    std::fs::create_dir("target/lintcheck/").unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create lintcheck target dir");
+        }
+    });
+    std::fs::create_dir(&krate_download_dir).unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create crate download dir");
+        }
+    });
+    std::fs::create_dir(&extract_dir).unwrap_or_else(|err| {
+        if err.kind() != ErrorKind::AlreadyExists {
+            panic!("cannot create crate extraction dir");
+        }
+    });
 }
 
 #[test]
