@@ -240,7 +240,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         }
 
         match *myitem.kind {
-            clean::ExternCrateItem(ref name, ref src) => {
+            clean::ExternCrateItem { ref src } => {
                 use crate::html::format::anchor;
 
                 match *src {
@@ -249,13 +249,13 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         "<tr><td><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(cx.tcx(), myitem.def_id, cx.cache()),
                         anchor(myitem.def_id, &*src.as_str(), cx.cache()),
-                        name
+                        myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
                         "<tr><td><code>{}extern crate {};",
                         myitem.visibility.print_with_space(cx.tcx(), myitem.def_id, cx.cache()),
-                        anchor(myitem.def_id, &*name.as_str(), cx.cache())
+                        anchor(myitem.def_id, &*myitem.name.as_ref().unwrap().as_str(), cx.cache()),
                     ),
                 }
                 w.write_str("</code></td></tr>");

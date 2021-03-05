@@ -10,6 +10,7 @@ use rustc_ast::ast;
 use rustc_hir::def::CtorKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::symbol::Symbol;
 use rustc_span::Pos;
 
 use rustdoc_json_types::*;
@@ -25,32 +26,33 @@ impl JsonRenderer<'_> {
         let item_type = ItemType::from(&item);
         let deprecation = item.deprecation(self.tcx);
         let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
-        match *kind {
-            clean::StrippedItem(_) => None,
-            kind => Some(Item {
-                id: from_def_id(def_id),
-                crate_id: def_id.krate.as_u32(),
-                name: name.map(|sym| sym.to_string()),
-                source: self.convert_span(source),
-                visibility: self.convert_visibility(visibility),
-                docs: attrs.collapsed_doc_value(),
-                links: attrs
-                    .links
-                    .into_iter()
-                    .filter_map(|clean::ItemLink { link, did, .. }| {
-                        did.map(|did| (link, from_def_id(did)))
-                    })
-                    .collect(),
-                attrs: attrs
-                    .other_attrs
-                    .iter()
-                    .map(rustc_ast_pretty::pprust::attribute_to_string)
-                    .collect(),
-                deprecation: deprecation.map(from_deprecation),
-                kind: item_type.into(),
-                inner: from_clean_item_kind(kind, self.tcx),
-            }),
-        }
+        let inner = match *kind {
+            clean::StrippedItem(_) => return None,
+            x => from_clean_item_kind(x, self.tcx, &name),
+        };
+        Some(Item {
+            id: from_def_id(def_id),
+            crate_id: def_id.krate.as_u32(),
+            name: name.map(|sym| sym.to_string()),
+            source: self.convert_span(source),
+            visibility: self.convert_visibility(visibility),
+            docs: attrs.collapsed_doc_value(),
+            links: attrs
+                .links
+                .into_iter()
+                .filter_map(|clean::ItemLink { link, did, .. }| {
+                    did.map(|did| (link, from_def_id(did)))
+                })
+                .collect(),
+            attrs: attrs
+                .other_attrs
+                .iter()
+                .map(rustc_ast_pretty::pprust::attribute_to_string)
+                .collect(),
+            deprecation: deprecation.map(from_deprecation),
+            kind: item_type.into(),
+            inner,
+        })
     }
 
     fn convert_span(&self, span: clean::Span) -> Option<Span> {
@@ -149,13 +151,10 @@ crate fn from_def_id(did: DefId) -> Id {
     Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
 }
 
-fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
+fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Symbol>) -> ItemEnum {
     use clean::ItemKind::*;
     match item {
         ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
-        ExternCrateItem(c, a) => {
-            ItemEnum::ExternCrateItem { name: c.to_string(), rename: a.map(|x| x.to_string()) }
-        }
         ImportItem(i) => ItemEnum::ImportItem(i.into()),
         StructItem(s) => ItemEnum::StructItem(s.into()),
         UnionItem(u) => ItemEnum::UnionItem(u.into()),
@@ -182,10 +181,14 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
             bounds: g.into_iter().map(Into::into).collect(),
             default: t.map(Into::into),
         },
-        StrippedItem(inner) => from_clean_item_kind(*inner, tcx),
+        StrippedItem(inner) => from_clean_item_kind(*inner, tcx, name),
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
+        ExternCrateItem { ref src } => ItemEnum::ExternCrateItem {
+            name: name.as_ref().unwrap().to_string(),
+            rename: src.map(|x| x.to_string()),
+        },
     }
 }
 

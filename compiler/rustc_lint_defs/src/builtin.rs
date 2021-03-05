@@ -3059,3 +3059,33 @@ declare_lint! {
     Allow,
     "No declared ABI for extern declaration"
 }
+
+declare_lint! {
+    /// The `invalid_doc_attributes` lint detects when the `#[doc(...)]` is
+    /// misused.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(warnings)]
+    ///
+    /// pub mod submodule {
+    ///     #![doc(test(no_crate_inject))]
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previously, there were very like checks being performed on `#[doc(..)]`
+    /// unlike the other attributes. It'll now catch all the issues that it
+    /// silently ignored previously.
+    pub INVALID_DOC_ATTRIBUTES,
+    Warn,
+    "detects invalid `#[doc(...)]` attributes",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
+        edition: None,
+    };
+}

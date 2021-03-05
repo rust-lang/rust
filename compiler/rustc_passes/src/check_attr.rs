@@ -17,7 +17,9 @@ use rustc_hir::{
     self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
 };
 use rustc_hir::{MethodKind, Target};
-use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use rustc_session::lint::builtin::{
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -544,6 +546,21 @@ impl CheckAttrVisitor<'tcx> {
                         {
                             return false;
                         }
+                    } else if meta.has_name(sym::test) {
+                        if CRATE_HIR_ID != hir_id {
+                            self.tcx.struct_span_lint_hir(
+                                INVALID_DOC_ATTRIBUTES,
+                                hir_id,
+                                meta.span(),
+                                |lint| {
+                                    lint.build(
+                                        "`#![doc(test(...)]` is only allowed as a crate level attribute"
+                                    )
+                                    .emit();
+                                },
+                            );
+                            return false;
+                        }
                     } else if let Some(i_meta) = meta.meta_item() {
                         if ![
                             sym::cfg,
@@ -568,7 +585,7 @@ impl CheckAttrVisitor<'tcx> {
                         .any(|m| i_meta.has_name(*m))
                         {
                             self.tcx.struct_span_lint_hir(
-                                UNUSED_ATTRIBUTES,
+                                INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
@@ -576,11 +593,6 @@ impl CheckAttrVisitor<'tcx> {
                                         "unknown `doc` attribute `{}`",
                                         i_meta.name_or_empty()
                                     ))
-                                    .warn(
-                                        "this was previously accepted by the compiler but is \
-                                        being phased out; it will become a hard error in \
-                                        a future release!",
-                                    )
                                     .emit();
                                 },
                             );

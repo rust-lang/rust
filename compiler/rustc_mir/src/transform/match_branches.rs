@@ -40,7 +40,7 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+        if tcx.sess.mir_opt_level() < 3 {
             return;
         }
 
