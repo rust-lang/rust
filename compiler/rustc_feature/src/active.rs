@@ -644,9 +644,6 @@ declare_features! (
     /// Allows associated types in inherent impls.
     (active, inherent_associated_types, "1.52.0", Some(8995), None),
 
-    /// Adds the `bool::not` method so that you don't need `core::ops::Not` imported.
-    (active, bool_not_method, "1.52.0", None, None),
-
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
