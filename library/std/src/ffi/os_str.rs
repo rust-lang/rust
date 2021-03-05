@@ -715,7 +715,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("GRÜßE, JÜRGEN ❤");
@@ -724,7 +723,7 @@ impl OsStr {
     ///
     /// assert_eq!("grÜße, jÜrgen ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
         self.inner.make_ascii_lowercase()
@@ -741,7 +740,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let mut s = OsString::from("Grüße, Jürgen ❤");
@@ -750,7 +748,7 @@ impl OsStr {
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s);
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
         self.inner.make_ascii_uppercase()
@@ -767,13 +765,12 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     /// let s = OsString::from("Grüße, Jürgen ❤");
     ///
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     pub fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_lowercase())
     }
@@ -789,13 +786,12 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     /// let s = OsString::from("Grüße, Jürgen ❤");
     ///
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     pub fn to_ascii_uppercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_uppercase())
     }
@@ -805,7 +801,6 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// let ascii = OsString::from("hello!\n");
@@ -814,7 +809,7 @@ impl OsStr {
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     #[inline]
     pub fn is_ascii(&self) -> bool {
         self.inner.is_ascii()
@@ -828,14 +823,13 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(osstring_ascii)]
     /// use std::ffi::OsString;
     ///
     /// assert!(OsString::from("Ferris").eq_ignore_ascii_case("FERRIS"));
     /// assert!(OsString::from("Ferrös").eq_ignore_ascii_case("FERRöS"));
     /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
     /// ```
-    #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[stable(feature = "osstring_ascii", since = "1.52.0")]
     pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
