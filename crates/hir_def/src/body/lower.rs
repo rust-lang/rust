@@ -1,13 +1,13 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{any::type_name, mem, sync::Arc};
+use std::{mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    ExpandError, HirFileId, MacroDefId, MacroDefKind,
+    ExpandError, HirFileId,
 };
 use la_arena::Arena;
 use profile::Count;
@@ -32,11 +32,10 @@ use crate::{
         Statement,
     },
     item_scope::BuiltinShadowMode,
-    item_tree::{ItemTree, ItemTreeId, ItemTreeNode},
+    item_tree::ItemTree,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockLoc, ConstLoc, ContainerId, DefWithBodyId, EnumLoc, FunctionLoc, Intern,
-    ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    AdtId, BlockLoc, ModuleDefId,
 };
 
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
@@ -60,7 +59,6 @@ impl LowerCtx {
 
 pub(super) fn lower(
     db: &dyn DefDatabase,
-    def: DefWithBodyId,
     expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
@@ -68,7 +66,6 @@ pub(super) fn lower(
     let item_tree = db.item_tree(expander.current_file_id);
     ExprCollector {
         db,
-        def,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -77,7 +74,6 @@ pub(super) fn lower(
             params: Vec::new(),
             body_expr: dummy_expr_id(),
             block_scopes: Vec::new(),
-            item_scope: Default::default(),
             _c: Count::new(),
         },
         item_trees: {
@@ -92,7 +88,6 @@ pub(super) fn lower(
 
 struct ExprCollector<'a> {
     db: &'a dyn DefDatabase,
-    def: DefWithBodyId,
     expander: Expander,
     body: Body,
     source_map: BodySourceMap,
@@ -606,32 +601,6 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn find_inner_item<N: ItemTreeNode>(&self, ast: &N::Source) -> Option<ItemTreeId<N>> {
-        let id = self.expander.ast_id(ast);
-        let tree = &self.item_trees[&id.file_id];
-
-        // FIXME: This probably breaks with `use` items, since they produce multiple item tree nodes
-
-        // Root file (non-macro).
-        let item_tree_id = tree
-            .all_inner_items()
-            .chain(tree.top_level_items().iter().copied())
-            .filter_map(|mod_item| mod_item.downcast::<N>())
-            .find(|tree_id| tree[*tree_id].ast_id().upcast() == id.value.upcast())
-            .or_else(|| {
-                log::debug!(
-                    "couldn't find inner {} item for {:?} (AST: `{}` - {:?})",
-                    type_name::<N>(),
-                    id,
-                    ast.syntax(),
-                    ast.syntax(),
-                );
-                None
-            })?;
-
-        Some(ItemTreeId::new(id.file_id, item_tree_id))
-    }
-
     fn collect_expr_opt(&mut self, expr: Option<ast::Expr>) -> ExprId {
         if let Some(expr) = expr {
             self.collect_expr(expr)
@@ -663,7 +632,6 @@ impl ExprCollector<'_> {
                             match expansion {
                                 Some(expansion) => {
                                     let statements: ast::MacroStmts = expansion;
-                                    this.collect_stmts_items(statements.statements());
 
                                     statements.statements().for_each(|stmt| {
                                         if let Some(mut r) = this.collect_stmt(stmt) {
@@ -710,7 +678,6 @@ impl ExprCollector<'_> {
         let prev_def_map = mem::replace(&mut self.expander.def_map, def_map);
         let prev_local_module = mem::replace(&mut self.expander.module, module);
 
-        self.collect_stmts_items(block.statements());
         let statements =
             block.statements().filter_map(|s| self.collect_stmt(s)).flatten().collect();
         let tail = block.tail_expr().map(|e| self.collect_expr(e));
@@ -723,108 +690,6 @@ impl ExprCollector<'_> {
         self.expander.def_map = prev_def_map;
         self.expander.module = prev_local_module;
         expr_id
-    }
-
-    fn collect_stmts_items(&mut self, stmts: ast::AstChildren<ast::Stmt>) {
-        let container = ContainerId::DefWithBodyId(self.def);
-
-        let items = stmts
-            .filter_map(|stmt| match stmt {
-                ast::Stmt::Item(it) => Some(it),
-                ast::Stmt::LetStmt(_) | ast::Stmt::ExprStmt(_) => None,
-            })
-            .filter_map(|item| {
-                let (def, name): (ModuleDefId, Option<ast::Name>) = match item {
-                    ast::Item::Fn(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (
-                            FunctionLoc { container: container.into(), id }.intern(self.db).into(),
-                            def.name(),
-                        )
-                    }
-                    ast::Item::TypeAlias(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (
-                            TypeAliasLoc { container: container.into(), id }.intern(self.db).into(),
-                            def.name(),
-                        )
-                    }
-                    ast::Item::Const(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (
-                            ConstLoc { container: container.into(), id }.intern(self.db).into(),
-                            def.name(),
-                        )
-                    }
-                    ast::Item::Static(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (StaticLoc { container, id }.intern(self.db).into(), def.name())
-                    }
-                    ast::Item::Struct(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (StructLoc { container, id }.intern(self.db).into(), def.name())
-                    }
-                    ast::Item::Enum(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (EnumLoc { container, id }.intern(self.db).into(), def.name())
-                    }
-                    ast::Item::Union(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (UnionLoc { container, id }.intern(self.db).into(), def.name())
-                    }
-                    ast::Item::Trait(def) => {
-                        let id = self.find_inner_item(&def)?;
-                        (TraitLoc { container, id }.intern(self.db).into(), def.name())
-                    }
-                    ast::Item::ExternBlock(_) => return None, // FIXME: collect from extern blocks
-                    ast::Item::Impl(_)
-                    | ast::Item::Use(_)
-                    | ast::Item::ExternCrate(_)
-                    | ast::Item::Module(_)
-                    | ast::Item::MacroCall(_) => return None,
-                    ast::Item::MacroRules(def) => {
-                        return Some(Either::Right(ast::Macro::from(def)));
-                    }
-                    ast::Item::MacroDef(def) => {
-                        return Some(Either::Right(ast::Macro::from(def)));
-                    }
-                };
-
-                Some(Either::Left((def, name)))
-            })
-            .collect::<Vec<_>>();
-
-        for either in items {
-            match either {
-                Either::Left((def, name)) => {
-                    self.body.item_scope.define_def(def);
-                    if let Some(name) = name {
-                        let vis = crate::visibility::Visibility::Public; // FIXME determine correctly
-                        let has_constructor = match def {
-                            ModuleDefId::AdtId(AdtId::StructId(s)) => {
-                                self.db.struct_data(s).variant_data.kind() != StructKind::Record
-                            }
-                            _ => true,
-                        };
-                        self.body.item_scope.push_res(
-                            name.as_name(),
-                            crate::per_ns::PerNs::from_def(def, vis, has_constructor),
-                        );
-                    }
-                }
-                Either::Right(e) => {
-                    let mac = MacroDefId {
-                        krate: self.expander.def_map.krate(),
-                        ast_id: Some(self.expander.ast_id(&e)),
-                        kind: MacroDefKind::Declarative,
-                        local_inner: false,
-                    };
-                    if let Some(name) = e.name() {
-                        self.body.item_scope.define_legacy_macro(name.as_name(), mac);
-                    }
-                }
-            }
-        }
     }
 
     fn collect_block_opt(&mut self, expr: Option<ast::BlockExpr>) -> ExprId {
