@@ -101,7 +101,7 @@ SUBTREE $
     PUNCH   : [alone] 4294967295
     IDENT   Serialize 4294967295
     IDENT   for 4294967295
-    IDENT   Foo 1
+    IDENT   Foo 4294967295
     SUBTREE {} 4294967295
       IDENT   fn 4294967295
       IDENT   serialize 4294967295
