@@ -1588,7 +1588,7 @@ pub trait Iterator {
     /// This will print:
     ///
     /// ```text
-    /// Parsing error: invalid digit found in string
+    /// Parsing error: invalid digit found at index 0
     /// Sum: 3
     /// ```
     #[inline]

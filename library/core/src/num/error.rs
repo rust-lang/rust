@@ -146,6 +146,11 @@ impl ParseIntError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseIntError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.__description().fmt(f)
+        match self.kind {
+            IntErrorKind::InvalidDigit(i) => {
+                write!(f, "invalid digit found at index {}", i)
+            }
+            _ => self.__description().fmt(f),
+        }
     }
 }

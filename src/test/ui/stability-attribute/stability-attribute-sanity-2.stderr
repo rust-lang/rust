@@ -16,7 +16,7 @@ error[E0545]: `issue` must be a non-zero numeric string or "none"
 LL | #[unstable(feature = "a", issue = "no")]
    |                           ^^^^^^^^----
    |                                   |
-   |                                   invalid digit found in string
+   |                                   invalid digit found at index 0
 
 error: aborting due to 3 previous errors
 
