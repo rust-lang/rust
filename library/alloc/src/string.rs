@@ -1202,6 +1202,62 @@ impl String {
         ch
     }
 
+    /// Remove all matches of pattern `pat` in the `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_remove_matches)]
+    /// let mut s = String::from("Trees are not green, the sky is not blue.");
+    /// s.remove_matches("not ");
+    /// assert_eq!("Trees are green, the sky is blue.", s);
+    /// ```
+    ///
+    /// Matches will be detected and removed iteratively, so in cases where
+    /// patterns overlap, only the first pattern will be removed:
+    ///
+    /// ```
+    /// #![feature(string_remove_matches)]
+    /// let mut s = String::from("banana");
+    /// s.remove_matches("ana");
+    /// assert_eq!("bna", s);
+    /// ```
+    #[unstable(feature = "string_remove_matches", reason = "new API", issue = "72826")]
+    pub fn remove_matches<'a, P>(&'a mut self, pat: P)
+    where
+        P: for<'x> Pattern<'x>,
+    {
+        use core::str::pattern::Searcher;
+
+        let matches = {
+            let mut searcher = pat.into_searcher(self);
+            let mut matches = Vec::new();
+
+            while let Some(m) = searcher.next_match() {
+                matches.push(m);
+            }
+
+            matches
+        };
+
+        let len = self.len();
+        let mut shrunk_by = 0;
+
+        // SAFETY: start and end will be on utf8 byte boundaries per
+        // the Searcher docs
+        unsafe {
+            for (start, end) in matches {
+                ptr::copy(
+                    self.vec.as_mut_ptr().add(end - shrunk_by),
+                    self.vec.as_mut_ptr().add(start - shrunk_by),
+                    len - end,
+                );
+                shrunk_by += end - start;
+            }
+            self.vec.set_len(len - shrunk_by);
+        }
+    }
+
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
