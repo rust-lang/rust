@@ -9,8 +9,10 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
+use crate::visit_ast::inherits_doc_hidden;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
+use rustc_span::symbol::sym;
 
 crate const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
     name: "check-private-items-doc-tests",
@@ -51,23 +53,30 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if matches!(
-        *item.kind,
-        clean::StructFieldItem(_)
-            | clean::VariantItem(_)
-            | clean::AssocConstItem(_, _)
-            | clean::AssocTypeItem(_, _)
-            | clean::TypedefItem(_, _)
-            | clean::StaticItem(_)
-            | clean::ConstantItem(_)
-            | clean::ExternCrateItem(_, _)
-            | clean::ImportItem(_)
-            | clean::PrimitiveItem(_)
-            | clean::KeywordItem(_)
-    ) {
+    if !cx.cache.access_levels.is_public(item.def_id)
+        || matches!(
+            *item.kind,
+            clean::StructFieldItem(_)
+                | clean::VariantItem(_)
+                | clean::AssocConstItem(_, _)
+                | clean::AssocTypeItem(_, _)
+                | clean::TypedefItem(_, _)
+                | clean::StaticItem(_)
+                | clean::ConstantItem(_)
+                | clean::ExternCrateItem(_, _)
+                | clean::ImportItem(_)
+                | clean::PrimitiveItem(_)
+                | clean::KeywordItem(_)
+        )
+    {
         return false;
     }
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
+    if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
+        || inherits_doc_hidden(cx.tcx, hir_id)
+    {
+        return false;
+    }
     let (level, source) = cx.tcx.lint_level_at_node(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id);
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
