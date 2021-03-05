@@ -49,6 +49,22 @@ macro_rules! static_assert_imm_u8 {
     };
 }
 
+// Helper struct used to trigger const eval errors when the const generic immediate value `SCALE` is
+// not valid for gather instructions: the only valid scale values are 1, 2, 4 and 8.
+pub(crate) struct ValidateConstGatherScale<const SCALE: i32>;
+impl<const SCALE: i32> ValidateConstGatherScale<SCALE> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((SCALE == 1 || SCALE == 2 || SCALE == 4 || SCALE == 8) as usize);
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_imm8_scale {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::x86::macros::ValidateConstGatherScale::<$imm>::VALID;
+    };
+}
+
 macro_rules! constify_imm3 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
