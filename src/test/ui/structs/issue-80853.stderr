@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `S`
-  --> $DIR/80853.rs:4:5
+  --> $DIR/issue-80853.rs:4:5
    |
 LL | fn repro_ref(thing: S) {
    |              ----- `thing` has type `S`
