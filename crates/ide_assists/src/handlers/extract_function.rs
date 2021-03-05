@@ -112,7 +112,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let fn_def = format_function(ctx, module, &fun, old_indent, new_indent);
             let insert_offset = insert_after.text_range().end();
-            builder.insert(insert_offset, fn_def);
+            match ctx.config.snippet_cap {
+                Some(cap) => builder.insert_snippet(cap, insert_offset, fn_def),
+                None => builder.insert(insert_offset, fn_def),
+            }
         },
     )
 }
@@ -1079,7 +1082,10 @@ fn format_function(
     let params = make_param_list(ctx, module, fun);
     let ret_ty = make_ret_ty(ctx, module, fun);
     let body = make_body(ctx, old_indent, new_indent, fun);
-    format_to!(fn_def, "\n\n{}fn $0{}{}", new_indent, fun.name, params);
+    match ctx.config.snippet_cap {
+        Some(_) => format_to!(fn_def, "\n\n{}fn $0{}{}", new_indent, fun.name, params),
+        None => format_to!(fn_def, "\n\n{}fn {}{}", new_indent, fun.name, params),
+    }
     if let Some(ret_ty) = ret_ty {
         format_to!(fn_def, " {}", ret_ty);
     }
