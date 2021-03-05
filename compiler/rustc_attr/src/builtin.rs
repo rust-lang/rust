@@ -176,7 +176,7 @@ pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> (Option<Stability>, Option<ConstStability>) {
+) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>) {
     find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
@@ -184,15 +184,16 @@ fn find_stability_generic<'a, I>(
     sess: &Session,
     attrs_iter: I,
     item_sp: Span,
-) -> (Option<Stability>, Option<ConstStability>)
+) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>)
 where
     I: Iterator<Item = &'a Attribute>,
 {
     use StabilityLevel::*;
 
-    let mut stab: Option<Stability> = None;
-    let mut const_stab: Option<ConstStability> = None;
+    let mut stab: Option<(Stability, Span)> = None;
+    let mut const_stab: Option<(ConstStability, Span)> = None;
     let mut promotable = false;
+
     let diagnostic = &sess.parse_sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
@@ -356,10 +357,12 @@ where
                             }
                             let level = Unstable { reason, issue: issue_num, is_soft };
                             if sym::unstable == meta_name {
-                                stab = Some(Stability { level, feature });
+                                stab = Some((Stability { level, feature }, attr.span));
                             } else {
-                                const_stab =
-                                    Some(ConstStability { level, feature, promotable: false });
+                                const_stab = Some((
+                                    ConstStability { level, feature, promotable: false },
+                                    attr.span,
+                                ));
                             }
                         }
                         (None, _, _) => {
@@ -432,10 +435,12 @@ where
                         (Some(feature), Some(since)) => {
                             let level = Stable { since };
                             if sym::stable == meta_name {
-                                stab = Some(Stability { level, feature });
+                                stab = Some((Stability { level, feature }, attr.span));
                             } else {
-                                const_stab =
-                                    Some(ConstStability { level, feature, promotable: false });
+                                const_stab = Some((
+                                    ConstStability { level, feature, promotable: false },
+                                    attr.span,
+                                ));
                             }
                         }
                         (None, _) => {
@@ -455,7 +460,7 @@ where
 
     // Merge the const-unstable info into the stability info
     if promotable {
-        if let Some(ref mut stab) = const_stab {
+        if let Some((ref mut stab, _)) = const_stab {
             stab.promotable = promotable;
         } else {
             struct_span_err!(
