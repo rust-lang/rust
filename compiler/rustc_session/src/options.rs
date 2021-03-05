@@ -1000,7 +1000,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
     mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
-        "MIR optimization level (0-3; default: Some(1) in non optimized builds and Some(2) in optimized builds)"),
+        "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     mutable_noalias: bool = (false, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: no)"),
     new_llvm_pass_manager: bool = (false, parse_bool, [TRACKED],
