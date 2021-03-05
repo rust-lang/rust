@@ -23,10 +23,9 @@ fn dogfood_clippy() {
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
-        .arg("clippy-preview")
+        .arg("clippy")
         .arg("--all-targets")
         .arg("--all-features")
-        .args(&["-p", "clippy_lints", "-p", "clippy_utils", "-p", "rustc_tools_util"])
         .arg("--")
         .args(&["-D", "clippy::all"])
         .args(&["-D", "clippy::pedantic"])
@@ -125,19 +124,30 @@ fn dogfood_subprojects() {
         "clippy_workspace_tests/subcrate",
         "clippy_workspace_tests/subcrate/src",
         "clippy_dev",
+        "clippy_lints",
+        "clippy_utils",
         "rustc_tools_util",
     ] {
-        let output = Command::new(&*CLIPPY_PATH)
+        let mut command = Command::new(&*CLIPPY_PATH);
+        command
             .current_dir(root_dir.join(d))
             .env("CLIPPY_DOGFOOD", "1")
             .env("CARGO_INCREMENTAL", "0")
             .arg("clippy")
+            .arg("--all-targets")
+            .arg("--all-features")
             .arg("--")
             .args(&["-D", "clippy::all"])
             .args(&["-D", "clippy::pedantic"])
-            .arg("-Cdebuginfo=0") // disable debuginfo to generate less data in the target dir
-            .output()
-            .unwrap();
+            .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
+
+        // internal lints only exist if we build with the internal-lints feature
+        if cfg!(feature = "internal-lints") {
+            command.args(&["-D", "clippy::internal"]);
+        }
+
+        let output = command.output().unwrap();
+
         println!("status: {}", output.status);
         println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
         println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
