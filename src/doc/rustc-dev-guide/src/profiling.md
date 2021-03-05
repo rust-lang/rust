@@ -28,6 +28,12 @@ number of lines of LLVM IR across all instantiations of a generic function.
 Since most of the time compiling rustc is spent in LLVM, the idea is that by
 reducing the amount of code passed to LLVM, compiling rustc gets faster.
 
+To use `cargo-llvm-lines` together with somewhat custom rustc build process, you can use
+`-C save-temps` to obtain required LLVM IR. The option preserves temporary work products
+created during compilation. Among those is LLVM IR that represents an input to the
+optimization pipeline; ideal for our purposes. It is stored in files with `*.no-opt.bc`
+extension in LLVM bitcode format.
+
 Example usage:
 ```
 cargo install cargo-llvm-lines
@@ -35,36 +41,44 @@ cargo install cargo-llvm-lines
 
 # Do a clean before every run, to not mix in the results from previous runs.
 ./x.py clean
-RUSTFLAGS="--emit=llvm-ir" ./x.py build --stage 0 compiler/rustc
+env RUSTFLAGS=-Csave-temps ./x.py build --stage 0 compiler/rustc
 
-# Single crate, eg. rustc_middle
-cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/debug/deps/rustc_middle-a539a639bdab6513.ll > llvm-lines-middle.txt
-# Specify all crates of the compiler. (Relies on the glob support of your shell.)
-cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/debug/deps/*.ll > llvm-lines.txt
+# Single crate, e.g., rustc_middle. (Relies on the glob support of your shell.)
+# Convert unoptimized LLVM bitcode into a human readable LLVM assembly accepted by cargo-llvm-lines.
+for f in build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/rustc_middle-*.no-opt.bc; do
+  ./build/x86_64-unknown-linux-gnu/llvm/bin/llvm-dis "$f"
+done
+cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/rustc_middle-*.ll > llvm-lines-middle.txt
+
+# Specify all crates of the compiler.
+for f in build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/*.no-opt.bc; do
+  ./build/x86_64-unknown-linux-gnu/llvm/bin/llvm-dis "$f"
+done
+cargo llvm-lines --files ./build/x86_64-unknown-linux-gnu/stage0-rustc/x86_64-unknown-linux-gnu/release/deps/*.ll > llvm-lines.txt
 ```
 
-Example output:
+Example output for the compiler:
 ```
-  Lines            Copies        Function name
-  -----            ------        -------------
-  11802479 (100%)  52848 (100%)  (TOTAL)
-   1663902 (14.1%)   400 (0.8%)  rustc_query_system::query::plumbing::get_query_impl::{{closure}}
-    683526 (5.8%)  10579 (20.0%) core::ptr::drop_in_place
-    568523 (4.8%)    528 (1.0%)  rustc_query_system::query::plumbing::get_query_impl
-    472715 (4.0%)   1134 (2.1%)  hashbrown::raw::RawTable<T>::reserve_rehash
-    306782 (2.6%)   1320 (2.5%)  rustc_middle::ty::query::plumbing::<impl rustc_query_system::query::QueryContext for rustc_middle::ty::context::TyCtxt>::start_query::{{closure}}::{{closure}}::{{closure}}
-    212800 (1.8%)    514 (1.0%)  rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
-    194813 (1.7%)    124 (0.2%)  rustc_query_system::query::plumbing::force_query_impl
-    158488 (1.3%)      1 (0.0%)  rustc_middle::ty::query::<impl rustc_middle::ty::context::TyCtxt>::alloc_self_profile_query_strings
-    119768 (1.0%)    418 (0.8%)  core::ops::function::FnOnce::call_once
-    119644 (1.0%)      1 (0.0%)  rustc_target::spec::load_specific
-    104153 (0.9%)      7 (0.0%)  rustc_middle::ty::context::_DERIVE_rustc_serialize_Decodable_D_FOR_TypeckResults::<impl rustc_serialize::serialize::Decodable<__D> for rustc_middle::ty::context::TypeckResults>::decode::{{closure}}
-     81173 (0.7%)      1 (0.0%)  rustc_middle::ty::query::stats::query_stats
-     80306 (0.7%)   2029 (3.8%)  core::ops::function::FnOnce::call_once{{vtable.shim}}
-     78019 (0.7%)   1611 (3.0%)  stacker::grow::{{closure}}
-     69720 (0.6%)   3286 (6.2%)  <&T as core::fmt::Debug>::fmt
-     56327 (0.5%)    186 (0.4%)  rustc_query_system::query::plumbing::incremental_verify_ich
-     49714 (0.4%)     14 (0.0%)  rustc_mir::dataflow::framework::graphviz::BlockFormatter<A>::write_node_label
+  Lines            Copies          Function name
+  -----            ------          -------------
+  45207720 (100%)  1583774 (100%)  (TOTAL)
+   2102350 (4.7%)   146650 (9.3%)  core::ptr::drop_in_place
+    615080 (1.4%)     8392 (0.5%)  std::thread::local::LocalKey<T>::try_with
+    594296 (1.3%)     1780 (0.1%)  hashbrown::raw::RawTable<T>::rehash_in_place
+    592071 (1.3%)     9691 (0.6%)  core::option::Option<T>::map
+    528172 (1.2%)     5741 (0.4%)  core::alloc::layout::Layout::array
+    466854 (1.0%)     8863 (0.6%)  core::ptr::swap_nonoverlapping_one
+    412736 (0.9%)     1780 (0.1%)  hashbrown::raw::RawTable<T>::resize
+    367776 (0.8%)     2554 (0.2%)  alloc::raw_vec::RawVec<T,A>::grow_amortized
+    367507 (0.8%)      643 (0.0%)  rustc_query_system::dep_graph::graph::DepGraph<K>::with_task_impl
+    355882 (0.8%)     6332 (0.4%)  alloc::alloc::box_free
+    354556 (0.8%)    14213 (0.9%)  core::ptr::write
+    354361 (0.8%)     3590 (0.2%)  core::iter::traits::iterator::Iterator::fold
+    347761 (0.8%)     3873 (0.2%)  rustc_middle::ty::context::tls::set_tlv
+    337534 (0.7%)     2377 (0.2%)  alloc::raw_vec::RawVec<T,A>::allocate_in
+    331690 (0.7%)     3192 (0.2%)  hashbrown::raw::RawTable<T>::find
+    328756 (0.7%)     3978 (0.3%)  rustc_middle::ty::context::tls::with_context_opt
+    326903 (0.7%)      642 (0.0%)  rustc_query_system::query::plumbing::try_execute_query
 ```
 
 Since this doesn't seem to work with incremental compilation or `x.py check`,
