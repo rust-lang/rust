@@ -354,19 +354,19 @@ impl<'tcx> CPlace<'tcx> {
         match self.inner {
             CPlaceInner::Var(_local, var) => {
                 let val = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                //fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 CValue::by_val(val, layout)
             }
             CPlaceInner::VarPair(_local, var1, var2) => {
                 let val1 = fx.bcx.use_var(var1);
-                fx.bcx.set_val_label(val1, cranelift_codegen::ir::ValueLabel::new(var1.index()));
+                //fx.bcx.set_val_label(val1, cranelift_codegen::ir::ValueLabel::new(var1.index()));
                 let val2 = fx.bcx.use_var(var2);
-                fx.bcx.set_val_label(val2, cranelift_codegen::ir::ValueLabel::new(var2.index()));
+                //fx.bcx.set_val_label(val2, cranelift_codegen::ir::ValueLabel::new(var2.index()));
                 CValue::by_val_pair(val1, val2, layout)
             }
             CPlaceInner::VarLane(_local, var, lane) => {
                 let val = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                //fx.bcx.set_val_label(val, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 let val = fx.bcx.ins().extractlane(val, lane);
                 CValue::by_val(val, layout)
             }
@@ -456,7 +456,7 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 _ => unreachable!("write_cvalue_transmute: {:?} -> {:?}", src_ty, dst_ty),
             };
-            fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
+            //fx.bcx.set_val_label(data, cranelift_codegen::ir::ValueLabel::new(var.index()));
             fx.bcx.def_var(var, data);
         }
 
@@ -502,13 +502,13 @@ impl<'tcx> CPlace<'tcx> {
 
                 // First get the old vector
                 let vector = fx.bcx.use_var(var);
-                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                //fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
 
                 // Next insert the written lane into the vector
                 let vector = fx.bcx.ins().insertlane(vector, data, lane);
 
                 // Finally write the new vector
-                fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
+                //fx.bcx.set_val_label(vector, cranelift_codegen::ir::ValueLabel::new(var.index()));
                 fx.bcx.def_var(var, vector);
 
                 return;
