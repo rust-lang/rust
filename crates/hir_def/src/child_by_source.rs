@@ -160,6 +160,10 @@ impl ChildBySource for EnumId {
 impl ChildBySource for DefWithBodyId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let body = db.body(*self);
-        body.item_scope.child_by_source_to(db, res);
+        for def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+            // All block expressions are merged into the same map, because they logically all add
+            // inner items to the containing `DefWithBodyId`.
+            def_map[def_map.root()].scope.child_by_source_to(db, res);
+        }
     }
 }
