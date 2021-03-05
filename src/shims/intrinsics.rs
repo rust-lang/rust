@@ -654,6 +654,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             "try" => return this.handle_try(args, dest, ret),
 
+            "breakpoint" => {
+                let &[] = check_arg_count(args)?;
+                // normally this would raise a SIGTRAP, which aborts if no debugger is connected
+                throw_machine_stop!(TerminationInfo::Abort("Trace/breakpoint trap".to_string()))
+            }
+
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
         }
 
