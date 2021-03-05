@@ -148,6 +148,7 @@ p {
 }
 
 summary {
+	display: list-item;
 	outline: none;
 }
 
@@ -832,10 +833,6 @@ body.blur > :not(#help) {
 }
 .stab p {
 	display: inline;
-}
-
-.stab summary {
-	display: list-item;
 }
 
 .stab .emoji {
