@@ -85,20 +85,15 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
-function getThemesElementId() {
-    return "theme-choices";
-}
+var THEME_PICKER_ELEMENT_ID = "theme-picker";
+var THEMES_ELEMENT_ID = "theme-choices";
 
 function getThemesElement() {
-    return document.getElementById(getThemesElementId());
-}
-
-function getThemePickerElementId() {
-    return "theme-picker";
+    return document.getElementById(THEMES_ELEMENT_ID);
 }
 
 function getThemePickerElement() {
-    return document.getElementById(getThemePickerElementId());
+    return document.getElementById(THEME_PICKER_ELEMENT_ID);
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -152,11 +147,11 @@ function hideThemeButtonState() {
         var active = document.activeElement;
         var related = e.relatedTarget;
 
-        if (active.id !== getThemePickerElementId() &&
-            (!active.parentNode || active.parentNode.id !== getThemesElementId()) &&
+        if (active.id !== THEME_PICKER_ELEMENT_ID &&
+            (!active.parentNode || active.parentNode.id !== THEMES_ELEMENT_ID) &&
             (!related ||
-             (related.id !== getThemePickerElementId() &&
-              (!related.parentNode || related.parentNode.id !== getThemesElementId())))) {
+             (related.id !== THEME_PICKER_ELEMENT_ID &&
+              (!related.parentNode || related.parentNode.id !== THEMES_ELEMENT_ID)))) {
             hideThemeButtonState();
         }
     }
@@ -534,7 +529,7 @@ function hideThemeButtonState() {
         switch (getVirtualKey(ev)) {
         case "ArrowUp":
             ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== getThemePickerElementId()) {
+            if (active.previousElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.previousElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -543,7 +538,7 @@ function hideThemeButtonState() {
             break;
         case "ArrowDown":
             ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== getThemePickerElementId()) {
+            if (active.nextElementSibling && ev.target.id !== THEME_PICKER_ELEMENT_ID) {
                 active.nextElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -553,7 +548,7 @@ function hideThemeButtonState() {
         case "Enter":
         case "Return":
         case "Space":
-            if (ev.target.id === getThemePickerElementId() && themes.style.display === "none") {
+            if (ev.target.id === THEME_PICKER_ELEMENT_ID && themes.style.display === "none") {
                 ev.preventDefault();
                 showThemeButtonState();
                 themes.firstElementChild.focus();
