@@ -1291,26 +1291,21 @@ pub unsafe fn _mm_i32gather_epi64<const SCALE: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_i32gather_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpgatherdq, scale = 1))]
-#[rustc_args_required_const(4)]
+#[cfg_attr(test, assert_instr(vpgatherdq, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_mask_i32gather_epi64(
+pub unsafe fn _mm_mask_i32gather_epi64<const SCALE: i32>(
     src: __m128i,
     slice: *const i64,
     offsets: __m128i,
     mask: __m128i,
-    scale: i32,
 ) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
     let src = src.as_i64x2();
     let mask = mask.as_i64x2();
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
-    macro_rules! call {
-        ($imm8:expr) => {
-            pgatherdq(src, slice, offsets, mask, $imm8)
-        };
-    }
-    let r = constify_imm8_gather!(scale, call);
+    let r = pgatherdq(src, slice, offsets, mask, SCALE as i8);
     transmute(r)
 }
 
@@ -5674,12 +5669,11 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 8 is word-addressing for i64s
-        let r = _mm_mask_i32gather_epi64(
+        let r = _mm_mask_i32gather_epi64::<8>(
             _mm_set1_epi64x(256),
             arr.as_ptr(),
             _mm_setr_epi32(16, 16, 16, 16),
             _mm_setr_epi64x(-1, 0),
-            8,
         );
         assert_eq_m128i(r, _mm_setr_epi64x(16, 256));
     }
