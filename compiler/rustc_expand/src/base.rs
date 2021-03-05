@@ -774,10 +774,16 @@ impl SyntaxExtension {
             .find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
-        if const_stability.is_some() {
+        if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
-                .span_err(span, "macros cannot have const stability attributes");
+                .struct_span_err(sp, "macros cannot have const stability attributes")
+                .span_label(sp, "invalid const stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "const stability attribute affects this macro",
+                )
+                .emit();
         }
 
         SyntaxExtension {
@@ -786,7 +792,7 @@ impl SyntaxExtension {
             allow_internal_unstable,
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability,
+            stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
