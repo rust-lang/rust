@@ -367,7 +367,7 @@ fn inner_attributes(
             // Excerpt from the reference:
             // Block expressions accept outer and inner attributes, but only when they are the outer
             // expression of an expression statement or the final expression of another block expression.
-            ast::BlockExpr(it) => return None,
+            ast::BlockExpr(_it) => return None,
             _ => return None,
         }
     };
