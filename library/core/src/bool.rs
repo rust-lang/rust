@@ -31,4 +31,9 @@ impl bool {
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
         if self { Some(f()) } else { None }
     }
+
+    #[unstable(feature = "bool_not_method", issue = "none")]
+    pub fn not(self) -> Self {
+        !self
+    }
 }
