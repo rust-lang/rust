@@ -3,8 +3,8 @@ use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::path::{Component, Path, PathBuf};
 use std::lazy::SyncLazy as Lazy;
+use std::path::{Component, Path, PathBuf};
 
 use itertools::Itertools;
 use rustc_data_structures::flock;
@@ -18,6 +18,26 @@ use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
 use crate::html::{layout, static_files};
+
+crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
+    map! {
+        "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR2,
+        "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM2,
+        "FiraSans-Regular.woff" => static_files::fira_sans::REGULAR,
+        "FiraSans-Medium.woff" => static_files::fira_sans::MEDIUM,
+        "FiraSans-LICENSE.txt" => static_files::fira_sans::LICENSE,
+        "SourceSerifPro-Regular.ttf.woff" => static_files::source_serif_pro::REGULAR,
+        "SourceSerifPro-Bold.ttf.woff" => static_files::source_serif_pro::BOLD,
+        "SourceSerifPro-It.ttf.woff" => static_files::source_serif_pro::ITALIC,
+        "SourceSerifPro-LICENSE.md" => static_files::source_serif_pro::LICENSE,
+        "SourceCodePro-Regular.woff" => static_files::source_code_pro::REGULAR,
+        "SourceCodePro-Semibold.woff" => static_files::source_code_pro::SEMIBOLD,
+        "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
+        "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
+        "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
+        "COPYRIGHT.txt" => static_files::COPYRIGHT,
+    }
+});
 
 pub(super) fn write_shared(
     cx: &Context<'_>,
@@ -213,23 +233,6 @@ themePicker.onblur = handleThemeButtonsBlur;
         static_files::NORMALIZE_CSS,
         options.enable_minification,
     )?;
-    static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| map! {
-        "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR2,
-        "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM2,
-        "FiraSans-Regular.woff" => static_files::fira_sans::REGULAR,
-        "FiraSans-Medium.woff" => static_files::fira_sans::MEDIUM,
-        "FiraSans-LICENSE.txt" => static_files::fira_sans::LICENSE,
-        "SourceSerifPro-Regular.ttf.woff" => static_files::source_serif_pro::REGULAR,
-        "SourceSerifPro-Bold.ttf.woff" => static_files::source_serif_pro::BOLD,
-        "SourceSerifPro-It.ttf.woff" => static_files::source_serif_pro::ITALIC,
-        "SourceSerifPro-LICENSE.md" => static_files::source_serif_pro::LICENSE,
-        "SourceCodePro-Regular.woff" => static_files::source_code_pro::REGULAR,
-        "SourceCodePro-Semibold.woff" => static_files::source_code_pro::SEMIBOLD,
-        "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
-        "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
-        "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
-        "COPYRIGHT.txt" => static_files::COPYRIGHT,
-    });
     for (file, contents) in &*FILES_UNVERSIONED {
         write(cx.dst.join(file), contents)?;
     }
