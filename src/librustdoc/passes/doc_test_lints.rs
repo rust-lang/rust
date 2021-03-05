@@ -63,7 +63,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
                 | clean::TypedefItem(_, _)
                 | clean::StaticItem(_)
                 | clean::ConstantItem(_)
-                | clean::ExternCrateItem(_, _)
+                | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
                 | clean::KeywordItem(_)
