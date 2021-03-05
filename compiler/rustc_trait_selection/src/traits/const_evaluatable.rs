@@ -411,7 +411,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                         self.locals[local] = self.operand_to_node(span, operand)?;
                         Ok(())
                     }
-                    Rvalue::BinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
+                    Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) if Self::check_binop(op) => {
                         let lhs = self.operand_to_node(span, lhs)?;
                         let rhs = self.operand_to_node(span, rhs)?;
                         self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs), span);
@@ -421,7 +421,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                             Ok(())
                         }
                     }
-                    Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) if Self::check_binop(op) => {
+                    Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs))
+                        if Self::check_binop(op) =>
+                    {
                         let lhs = self.operand_to_node(span, lhs)?;
                         let rhs = self.operand_to_node(span, rhs)?;
                         self.locals[local] = self.add_node(Node::Binop(op, lhs, rhs), span);

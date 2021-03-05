@@ -81,7 +81,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval),
+                        Rvalue::BinaryOp(BinOp::Eq, box (arg.to_copy(), minval)),
                     );
 
                     block = this.assert(
@@ -291,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 source_info,
                 result_value,
-                Rvalue::CheckedBinaryOp(op, lhs.to_copy(), rhs.to_copy()),
+                Rvalue::CheckedBinaryOp(op, box (lhs.to_copy(), rhs.to_copy())),
             );
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
@@ -324,7 +324,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     is_zero,
-                    Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero),
+                    Rvalue::BinaryOp(BinOp::Eq, box (rhs.to_copy(), zero)),
                 );
 
                 block = self.assert(block, Operand::Move(is_zero), false, zero_err, span);
@@ -345,13 +345,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         is_neg_1,
-                        Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), neg_1),
+                        Rvalue::BinaryOp(BinOp::Eq, box (rhs.to_copy(), neg_1)),
                     );
                     self.cfg.push_assign(
                         block,
                         source_info,
                         is_min,
-                        Rvalue::BinaryOp(BinOp::Eq, lhs.to_copy(), min),
+                        Rvalue::BinaryOp(BinOp::Eq, box (lhs.to_copy(), min)),
                     );
 
                     let is_neg_1 = Operand::Move(is_neg_1);
@@ -360,14 +360,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         of,
-                        Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min),
+                        Rvalue::BinaryOp(BinOp::BitAnd, box (is_neg_1, is_min)),
                     );
 
                     block = self.assert(block, Operand::Move(of), false, overflow_err, span);
                 }
             }
 
-            block.and(Rvalue::BinaryOp(op, lhs, rhs))
+            block.and(Rvalue::BinaryOp(op, box (lhs, rhs)))
         }
     }
 

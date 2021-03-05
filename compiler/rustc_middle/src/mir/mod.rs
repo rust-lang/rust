@@ -2076,8 +2076,8 @@ pub enum Rvalue<'tcx> {
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
-    BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
-    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
+    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     NullaryOp(NullOp, Ty<'tcx>),
     UnaryOp(UnOp, Operand<'tcx>),
@@ -2097,7 +2097,7 @@ pub enum Rvalue<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Rvalue<'_>, 56);
+static_assert_size!(Rvalue<'_>, 40);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
@@ -2201,8 +2201,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
             }
-            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
-            CheckedBinaryOp(ref op, ref a, ref b) => {
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),

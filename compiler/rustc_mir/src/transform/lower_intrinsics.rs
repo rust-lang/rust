@@ -59,7 +59,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(box (
                                     destination,
-                                    Rvalue::BinaryOp(bin_op, lhs, rhs),
+                                    Rvalue::BinaryOp(bin_op, box (lhs, rhs)),
                                 )),
                             });
                             terminator.kind = TerminatorKind::Goto { target };

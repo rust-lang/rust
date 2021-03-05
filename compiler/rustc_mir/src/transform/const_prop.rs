@@ -676,11 +676,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, source_info)?;
             }
-            Rvalue::BinaryOp(op, left, right) => {
+            Rvalue::BinaryOp(op, box (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
                 self.check_binary_op(*op, left, right, source_info)?;
             }
-            Rvalue::CheckedBinaryOp(op, left, right) => {
+            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                 trace!(
                     "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
                     op,
@@ -740,7 +740,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         self.use_ecx(|this| {
             match rvalue {
-                Rvalue::BinaryOp(op, left, right) | Rvalue::CheckedBinaryOp(op, left, right) => {
+                Rvalue::BinaryOp(op, box (left, right))
+                | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                     let l = this.ecx.eval_operand(left, None);
                     let r = this.ecx.eval_operand(right, None);
 
@@ -772,7 +773,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         }
                         BinOp::Mul => {
                             if const_arg.layout.ty.is_integral() && arg_value == 0 {
-                                if let Rvalue::CheckedBinaryOp(_, _, _) = rvalue {
+                                if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
                                     let val = Immediate::ScalarPair(
                                         const_arg.to_scalar()?.into(),
                                         Scalar::from_bool(false).into(),

@@ -182,12 +182,12 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
-            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 op.ty(tcx, lhs_ty, rhs_ty)
             }
-            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);

@@ -2299,8 +2299,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             Rvalue::BinaryOp(
                 BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge,
-                left,
-                right,
+                box (left, right),
             ) => {
                 let ty_left = left.ty(body, tcx);
                 match ty_left.kind() {

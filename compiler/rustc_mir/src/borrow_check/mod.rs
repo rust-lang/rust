@@ -1316,8 +1316,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }

@@ -335,7 +335,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let result = self.temp(bool_ty, source_info.span);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, left, right));
+        self.cfg.push_assign(block, source_info, result, Rvalue::BinaryOp(op, box (left, right)));
 
         // branch based on result
         self.cfg.terminate(
