@@ -89,8 +89,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         span: Span,
         mut block: BasicBlock,
-        scrutinee: &Expr<'tcx>,
-        arms: &[Arm<'tcx>],
+        scrutinee: &Expr<'_, 'tcx>,
+        arms: &[Arm<'_, 'tcx>],
     ) -> BlockAnd<()> {
         let scrutinee_span = scrutinee.span;
         let scrutinee_place =
@@ -119,7 +119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
-        scrutinee: &Expr<'tcx>,
+        scrutinee: &Expr<'_, 'tcx>,
         scrutinee_span: Span,
     ) -> BlockAnd<Place<'tcx>> {
         let scrutinee_place = unpack!(block = self.as_place(block, scrutinee));
@@ -149,8 +149,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_match_candidates<'pat>(
         &mut self,
         scrutinee: Place<'tcx>,
-        arms: &'pat [Arm<'tcx>],
-    ) -> Vec<(&'pat Arm<'tcx>, Candidate<'pat, 'tcx>)> {
+        arms: &'pat [Arm<'pat, 'tcx>],
+    ) -> Vec<(&'pat Arm<'pat, 'tcx>, Candidate<'pat, 'tcx>)> {
         // Assemble a list of candidates: there is one candidate per pattern,
         // which means there may be more than one candidate *per arm*.
         arms.iter()
@@ -224,7 +224,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         scrutinee_place: Place<'tcx>,
         scrutinee_span: Span,
-        arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
+        arm_candidates: Vec<(&'_ Arm<'_, 'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
     ) -> BlockAnd<()> {
@@ -285,7 +285,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<&Guard<'tcx>>,
+        guard: Option<&Guard<'_, 'tcx>>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_span: Option<Span>,
@@ -361,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         irrefutable_pat: Pat<'tcx>,
-        initializer: &Expr<'tcx>,
+        initializer: &Expr<'_, 'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
@@ -1612,7 +1612,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<&Guard<'tcx>>,
+        guard: Option<&Guard<'_, 'tcx>>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_span: Option<Span>,

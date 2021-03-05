@@ -7,8 +7,8 @@ use rustc_middle::ty;
 
 use rustc_index::vec::Idx;
 
-impl<'tcx> Cx<'tcx> {
-    crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block<'tcx> {
+impl<'thir, 'tcx> Cx<'thir, 'tcx> {
+    crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block<'thir, 'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = self.mirror_stmts(block.hir_id.local_id, &*block.stmts);
@@ -23,7 +23,7 @@ impl<'tcx> Cx<'tcx> {
             opt_destruction_scope,
             span: block.span,
             stmts,
-            expr: block.expr.as_ref().map(|expr| self.mirror_expr_boxed(expr)),
+            expr: block.expr.as_ref().map(|expr| self.mirror_expr(expr)),
             safety_mode: match block.rules {
                 hir::BlockCheckMode::DefaultBlock => BlockSafety::Safe,
                 hir::BlockCheckMode::UnsafeBlock(..) => BlockSafety::ExplicitUnsafe(block.hir_id),
@@ -37,26 +37,21 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         block_id: hir::ItemLocalId,
         stmts: &'tcx [hir::Stmt<'tcx>],
-    ) -> Vec<Stmt<'tcx>> {
-        let mut result = vec![];
-        for (index, stmt) in stmts.iter().enumerate() {
+    ) -> &'thir [Stmt<'thir, 'tcx>] {
+        self.arena.alloc_from_iter(stmts.iter().enumerate().filter_map(|(index, stmt)| {
             let hir_id = stmt.hir_id;
             let opt_dxn_ext = self.region_scope_tree.opt_destruction_scope(hir_id.local_id);
             match stmt.kind {
-                hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
-                    result.push(Stmt {
-                        kind: StmtKind::Expr {
-                            scope: region::Scope {
-                                id: hir_id.local_id,
-                                data: region::ScopeData::Node,
-                            },
-                            expr: self.mirror_expr_boxed(expr),
-                        },
-                        opt_destruction_scope: opt_dxn_ext,
-                    })
-                }
+                hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => Some(Stmt {
+                    kind: StmtKind::Expr {
+                        scope: region::Scope { id: hir_id.local_id, data: region::ScopeData::Node },
+                        expr: self.mirror_expr(expr),
+                    },
+                    opt_destruction_scope: opt_dxn_ext,
+                }),
                 hir::StmtKind::Item(..) => {
                     // ignore for purposes of the MIR
+                    None
                 }
                 hir::StmtKind::Local(ref local) => {
                     let remainder_scope = region::Scope {
@@ -86,7 +81,7 @@ impl<'tcx> Cx<'tcx> {
                         }
                     }
 
-                    result.push(Stmt {
+                    Some(Stmt {
                         kind: StmtKind::Let {
                             remainder_scope,
                             init_scope: region::Scope {
@@ -94,14 +89,13 @@ impl<'tcx> Cx<'tcx> {
                                 data: region::ScopeData::Node,
                             },
                             pattern,
-                            initializer: local.init.map(|init| self.mirror_expr_boxed(init)),
+                            initializer: local.init.map(|init| self.mirror_expr(init)),
                             lint_level: LintLevel::Explicit(local.hir_id),
                         },
                         opt_destruction_scope: opt_dxn_ext,
-                    });
+                    })
                 }
             }
-        }
-        result
+        }))
     }
 }

@@ -12,7 +12,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         block: BasicBlock,
-        ast_block: &Block<'tcx>,
+        ast_block: &Block<'_, 'tcx>,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let Block {
@@ -56,8 +56,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         mut block: BasicBlock,
         span: Span,
-        stmts: &[Stmt<'tcx>],
-        expr: Option<&Expr<'tcx>>,
+        stmts: &[Stmt<'_, 'tcx>],
+        expr: Option<&Expr<'_, 'tcx>>,
         safety_mode: BlockSafety,
     ) -> BlockAnd<()> {
         let this = self;

@@ -13,7 +13,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn stmt_expr(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         statement_scope: Option<region::Scope>,
     ) -> BlockAnd<()> {
         let this = self;

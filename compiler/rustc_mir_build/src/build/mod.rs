@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
-use crate::thir::cx::Cx;
-use crate::thir::{BindingMode, Expr, LintLevel, Pat, PatKind};
+use crate::thir::cx::build_thir;
+use crate::thir::{Arena, BindingMode, Expr, LintLevel, Pat, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -43,6 +43,7 @@ crate fn mir_built<'tcx>(
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
@@ -87,15 +88,15 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     // If we don't have a specialized span for the body, just use the
     // normal def span.
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
+    let arena = Arena::default();
 
     tcx.infer_ctxt().enter(|infcx| {
-        let mut cx = Cx::new(tcx, def);
-        let body = if let Some(ErrorReported) = cx.typeck_results.tainted_by_errors {
+        let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
             build::construct_error(&infcx, def, id, body_id, body_owner_kind)
         } else if body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_sig = cx.typeck_results.liberated_fn_sigs()[id];
+            let fn_sig = typeck_results.liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
             let safety = match fn_sig.unsafety {
@@ -104,7 +105,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let expr = cx.mirror_expr(&body.value);
+            let thir = build_thir(tcx, def, &arena, &body.value);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind() {
@@ -189,7 +190,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
-                expr,
+                thir,
                 span_with_body,
             );
             if yield_ty.is_some() {
@@ -209,12 +210,12 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // place to be the type of the constant because NLL typeck will
             // equate them.
 
-            let return_ty = cx.typeck_results.node_type(id);
+            let return_ty = typeck_results.node_type(id);
 
             let ast_expr = &tcx.hir().body(body_id).value;
-            let expr = cx.mirror_expr(ast_expr);
+            let thir = build_thir(tcx, def, &arena, ast_expr);
 
-            build::construct_const(&infcx, expr, def, id, return_ty, return_ty_span)
+            build::construct_const(&infcx, thir, def, id, return_ty, return_ty_span)
         };
 
         lints::check(tcx, &body);
@@ -601,7 +602,7 @@ fn construct_fn<'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
-    expr: Expr<'tcx>,
+    expr: &Expr<'_, 'tcx>,
     span_with_body: Span,
 ) -> Body<'tcx>
 where
@@ -668,7 +669,7 @@ where
 
 fn construct_const<'a, 'tcx>(
     infcx: &'a InferCtxt<'a, 'tcx>,
-    expr: Expr<'tcx>,
+    expr: &Expr<'_, 'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
     hir_id: hir::HirId,
     const_ty: Ty<'tcx>,
@@ -825,7 +826,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fn_def_id: DefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {

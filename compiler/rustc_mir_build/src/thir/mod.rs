@@ -24,6 +24,9 @@ crate mod pattern;
 crate use self::pattern::PatTyProj;
 crate use self::pattern::{BindingMode, FieldPat, Pat, PatKind, PatRange};
 
+mod arena;
+crate use arena::Arena;
+
 mod util;
 
 #[derive(Copy, Clone, Debug)]
@@ -33,13 +36,13 @@ crate enum LintLevel {
 }
 
 #[derive(Debug)]
-crate struct Block<'tcx> {
+crate struct Block<'thir, 'tcx> {
     crate targeted_by_break: bool,
     crate region_scope: region::Scope,
     crate opt_destruction_scope: Option<region::Scope>,
     crate span: Span,
-    crate stmts: Vec<Stmt<'tcx>>,
-    crate expr: Option<Box<Expr<'tcx>>>,
+    crate stmts: &'thir [Stmt<'thir, 'tcx>],
+    crate expr: Option<&'thir Expr<'thir, 'tcx>>,
     crate safety_mode: BlockSafety,
 }
 
@@ -52,19 +55,19 @@ crate enum BlockSafety {
 }
 
 #[derive(Debug)]
-crate struct Stmt<'tcx> {
-    crate kind: StmtKind<'tcx>,
+crate struct Stmt<'thir, 'tcx> {
+    crate kind: StmtKind<'thir, 'tcx>,
     crate opt_destruction_scope: Option<region::Scope>,
 }
 
 #[derive(Debug)]
-crate enum StmtKind<'tcx> {
+crate enum StmtKind<'thir, 'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
         scope: region::Scope,
 
         /// expression being evaluated in this statement
-        expr: Box<Expr<'tcx>>,
+        expr: &'thir Expr<'thir, 'tcx>,
     },
 
     Let {
@@ -82,7 +85,7 @@ crate enum StmtKind<'tcx> {
         pattern: Pat<'tcx>,
 
         /// let pat: ty = <INIT> ...
-        initializer: Option<Box<Expr<'tcx>>>,
+        initializer: Option<&'thir Expr<'thir, 'tcx>>,
 
         /// the lint level for this let-statement
         lint_level: LintLevel,
@@ -91,12 +94,12 @@ crate enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 160);
+rustc_data_structures::static_assert_size!(Expr<'_, '_>, 144);
 
 /// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
-/// reference to an expression in this enum is an `Box<Expr<'tcx>>`, which
+/// reference to an expression in this enum is an `&'thir Expr<'thir, 'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
 /// short-lived. They are created by `Thir::to_expr`, analyzed and
@@ -108,7 +111,7 @@ rustc_data_structures::static_assert_size!(Expr<'_>, 160);
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
 #[derive(Debug)]
-crate struct Expr<'tcx> {
+crate struct Expr<'thir, 'tcx> {
     /// type of this expression
     crate ty: Ty<'tcx>,
 
@@ -120,28 +123,28 @@ crate struct Expr<'tcx> {
     crate span: Span,
 
     /// kind of expression
-    crate kind: ExprKind<'tcx>,
+    crate kind: ExprKind<'thir, 'tcx>,
 }
 
 #[derive(Debug)]
-crate enum ExprKind<'tcx> {
+crate enum ExprKind<'thir, 'tcx> {
     Scope {
         region_scope: region::Scope,
         lint_level: LintLevel,
-        value: Box<Expr<'tcx>>,
+        value: &'thir Expr<'thir, 'tcx>,
     },
     Box {
-        value: Box<Expr<'tcx>>,
+        value: &'thir Expr<'thir, 'tcx>,
     },
     If {
-        cond: Box<Expr<'tcx>>,
-        then: Box<Expr<'tcx>>,
-        else_opt: Option<Box<Expr<'tcx>>>,
+        cond: &'thir Expr<'thir, 'tcx>,
+        then: &'thir Expr<'thir, 'tcx>,
+        else_opt: Option<&'thir Expr<'thir, 'tcx>>,
     },
     Call {
         ty: Ty<'tcx>,
-        fun: Box<Expr<'tcx>>,
-        args: Vec<Expr<'tcx>>,
+        fun: &'thir Expr<'thir, 'tcx>,
+        args: &'thir [Expr<'thir, 'tcx>],
         /// Whether this is from a call in HIR, rather than from an overloaded
         /// operator. `true` for overloaded function call.
         from_hir_call: bool,
@@ -150,62 +153,62 @@ crate enum ExprKind<'tcx> {
         fn_span: Span,
     },
     Deref {
-        arg: Box<Expr<'tcx>>,
+        arg: &'thir Expr<'thir, 'tcx>,
     }, // NOT overloaded!
     Binary {
         op: BinOp,
-        lhs: Box<Expr<'tcx>>,
-        rhs: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
+        rhs: &'thir Expr<'thir, 'tcx>,
     }, // NOT overloaded!
     LogicalOp {
         op: LogicalOp,
-        lhs: Box<Expr<'tcx>>,
-        rhs: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
+        rhs: &'thir Expr<'thir, 'tcx>,
     }, // NOT overloaded!
     // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
-        arg: Box<Expr<'tcx>>,
+        arg: &'thir Expr<'thir, 'tcx>,
     }, // NOT overloaded!
     Cast {
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
     },
     Use {
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
     }, // Use a lexpr to get a vexpr.
     NeverToAny {
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
     },
     Pointer {
         cast: PointerCast,
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
     },
     Loop {
-        body: Box<Expr<'tcx>>,
+        body: &'thir Expr<'thir, 'tcx>,
     },
     Match {
-        scrutinee: Box<Expr<'tcx>>,
-        arms: Vec<Arm<'tcx>>,
+        scrutinee: &'thir Expr<'thir, 'tcx>,
+        arms: &'thir [Arm<'thir, 'tcx>],
     },
     Block {
-        body: Block<'tcx>,
+        body: Block<'thir, 'tcx>,
     },
     Assign {
-        lhs: Box<Expr<'tcx>>,
-        rhs: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
+        rhs: &'thir Expr<'thir, 'tcx>,
     },
     AssignOp {
         op: BinOp,
-        lhs: Box<Expr<'tcx>>,
-        rhs: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
+        rhs: &'thir Expr<'thir, 'tcx>,
     },
     Field {
-        lhs: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
         name: Field,
     },
     Index {
-        lhs: Box<Expr<'tcx>>,
-        index: Box<Expr<'tcx>>,
+        lhs: &'thir Expr<'thir, 'tcx>,
+        index: &'thir Expr<'thir, 'tcx>,
     },
     VarRef {
         id: hir::HirId,
@@ -220,35 +223,35 @@ crate enum ExprKind<'tcx> {
     },
     Borrow {
         borrow_kind: BorrowKind,
-        arg: Box<Expr<'tcx>>,
+        arg: &'thir Expr<'thir, 'tcx>,
     },
     /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
     AddressOf {
         mutability: hir::Mutability,
-        arg: Box<Expr<'tcx>>,
+        arg: &'thir Expr<'thir, 'tcx>,
     },
     Break {
         label: region::Scope,
-        value: Option<Box<Expr<'tcx>>>,
+        value: Option<&'thir Expr<'thir, 'tcx>>,
     },
     Continue {
         label: region::Scope,
     },
     Return {
-        value: Option<Box<Expr<'tcx>>>,
+        value: Option<&'thir Expr<'thir, 'tcx>>,
     },
     ConstBlock {
         value: &'tcx Const<'tcx>,
     },
     Repeat {
-        value: Box<Expr<'tcx>>,
+        value: &'thir Expr<'thir, 'tcx>,
         count: &'tcx Const<'tcx>,
     },
     Array {
-        fields: Vec<Expr<'tcx>>,
+        fields: &'thir [Expr<'thir, 'tcx>],
     },
     Tuple {
-        fields: Vec<Expr<'tcx>>,
+        fields: &'thir [Expr<'thir, 'tcx>],
     },
     Adt {
         adt_def: &'tcx AdtDef,
@@ -259,23 +262,23 @@ crate enum ExprKind<'tcx> {
         /// Bar::<T> { ... }`.
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
 
-        fields: Vec<FieldExpr<'tcx>>,
-        base: Option<FruInfo<'tcx>>,
+        fields: &'thir [FieldExpr<'thir, 'tcx>],
+        base: Option<FruInfo<'thir, 'tcx>>,
     },
     PlaceTypeAscription {
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     ValueTypeAscription {
-        source: Box<Expr<'tcx>>,
+        source: &'thir Expr<'thir, 'tcx>,
         /// Type that the user gave to this expression
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     Closure {
         closure_id: DefId,
         substs: UpvarSubsts<'tcx>,
-        upvars: Vec<Expr<'tcx>>,
+        upvars: &'thir [Expr<'thir, 'tcx>],
         movability: Option<hir::Movability>,
     },
     Literal {
@@ -296,7 +299,7 @@ crate enum ExprKind<'tcx> {
     },
     InlineAsm {
         template: &'tcx [InlineAsmTemplatePiece],
-        operands: Vec<InlineAsmOperand<'tcx>>,
+        operands: &'thir [InlineAsmOperand<'thir, 'tcx>],
         options: InlineAsmOptions,
         line_spans: &'tcx [Span],
     },
@@ -304,40 +307,40 @@ crate enum ExprKind<'tcx> {
     ThreadLocalRef(DefId),
     LlvmInlineAsm {
         asm: &'tcx hir::LlvmInlineAsmInner,
-        outputs: Vec<Expr<'tcx>>,
-        inputs: Vec<Expr<'tcx>>,
+        outputs: &'thir [Expr<'thir, 'tcx>],
+        inputs: &'thir [Expr<'thir, 'tcx>],
     },
     Yield {
-        value: Box<Expr<'tcx>>,
+        value: &'thir Expr<'thir, 'tcx>,
     },
 }
 
 #[derive(Debug)]
-crate struct FieldExpr<'tcx> {
+crate struct FieldExpr<'thir, 'tcx> {
     crate name: Field,
-    crate expr: Expr<'tcx>,
+    crate expr: &'thir Expr<'thir, 'tcx>,
 }
 
 #[derive(Debug)]
-crate struct FruInfo<'tcx> {
-    crate base: Box<Expr<'tcx>>,
-    crate field_types: Vec<Ty<'tcx>>,
+crate struct FruInfo<'thir, 'tcx> {
+    crate base: &'thir Expr<'thir, 'tcx>,
+    crate field_types: &'thir [Ty<'tcx>],
 }
 
 #[derive(Debug)]
-crate struct Arm<'tcx> {
+crate struct Arm<'thir, 'tcx> {
     crate pattern: Pat<'tcx>,
-    crate guard: Option<Guard<'tcx>>,
-    crate body: Expr<'tcx>,
+    crate guard: Option<Guard<'thir, 'tcx>>,
+    crate body: &'thir Expr<'thir, 'tcx>,
     crate lint_level: LintLevel,
     crate scope: region::Scope,
     crate span: Span,
 }
 
 #[derive(Debug)]
-crate enum Guard<'tcx> {
-    If(Box<Expr<'tcx>>),
-    IfLet(Pat<'tcx>, Box<Expr<'tcx>>),
+crate enum Guard<'thir, 'tcx> {
+    If(&'thir Expr<'thir, 'tcx>),
+    IfLet(Pat<'tcx>, &'thir Expr<'thir, 'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -347,32 +350,32 @@ crate enum LogicalOp {
 }
 
 #[derive(Debug)]
-crate enum InlineAsmOperand<'tcx> {
+crate enum InlineAsmOperand<'thir, 'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
-        expr: Expr<'tcx>,
+        expr: &'thir Expr<'thir, 'tcx>,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Option<Expr<'tcx>>,
+        expr: Option<&'thir Expr<'thir, 'tcx>>,
     },
     InOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        expr: Expr<'tcx>,
+        expr: &'thir Expr<'thir, 'tcx>,
     },
     SplitInOut {
         reg: InlineAsmRegOrRegClass,
         late: bool,
-        in_expr: Expr<'tcx>,
-        out_expr: Option<Expr<'tcx>>,
+        in_expr: &'thir Expr<'thir, 'tcx>,
+        out_expr: Option<&'thir Expr<'thir, 'tcx>>,
     },
     Const {
-        expr: Expr<'tcx>,
+        expr: &'thir Expr<'thir, 'tcx>,
     },
     SymFn {
-        expr: Expr<'tcx>,
+        expr: &'thir Expr<'thir, 'tcx>,
     },
     SymStatic {
         def_id: DefId,

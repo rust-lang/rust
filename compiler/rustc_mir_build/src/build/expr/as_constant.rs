@@ -8,7 +8,7 @@ use rustc_middle::ty::CanonicalUserTypeAnnotation;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
-    crate fn as_constant(&mut self, expr: &Expr<'tcx>) -> Constant<'tcx> {
+    crate fn as_constant(&mut self, expr: &Expr<'_, 'tcx>) -> Constant<'tcx> {
         let this = self;
         let Expr { ty, temp_lifetime: _, span, kind } = expr;
         match kind {

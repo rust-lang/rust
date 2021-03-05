@@ -2,6 +2,7 @@
 //! structures into the THIR. The `builder` is generally ignorant of the tcx,
 //! etc., and instead goes through the `Cx` for most of its work.
 
+use crate::thir::arena::Arena;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use crate::thir::*;
 
@@ -13,9 +14,18 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-#[derive(Clone)]
-crate struct Cx<'tcx> {
+crate fn build_thir<'thir, 'tcx>(
     tcx: TyCtxt<'tcx>,
+    owner_def: ty::WithOptConstParam<LocalDefId>,
+    arena: &'thir Arena<'thir, 'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> &'thir Expr<'thir, 'tcx> {
+    Cx::new(tcx, owner_def, &arena).mirror_expr(expr)
+}
+
+struct Cx<'thir, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    arena: &'thir Arena<'thir, 'tcx>,
 
     crate param_env: ty::ParamEnv<'tcx>,
 
@@ -26,20 +36,23 @@ crate struct Cx<'tcx> {
     body_owner: DefId,
 }
 
-impl<'tcx> Cx<'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) -> Cx<'tcx> {
+impl<'thir, 'tcx> Cx<'thir, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        def: ty::WithOptConstParam<LocalDefId>,
+        arena: &'thir Arena<'thir, 'tcx>,
+    ) -> Cx<'thir, 'tcx> {
         let typeck_results = tcx.typeck_opt_const_arg(def);
         Cx {
             tcx,
+            arena,
             param_env: tcx.param_env(def.did),
             region_scope_tree: tcx.region_scope_tree(def.did),
             typeck_results,
             body_owner: def.did.to_def_id(),
         }
     }
-}
 
-impl<'tcx> Cx<'tcx> {
     crate fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
@@ -74,7 +87,7 @@ impl<'tcx> Cx<'tcx> {
     }
 }
 
-impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'tcx> {
+impl<'tcx> UserAnnotatedTyHelpers<'tcx> for Cx<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

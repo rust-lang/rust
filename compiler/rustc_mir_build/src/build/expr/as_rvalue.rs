@@ -22,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_local_rvalue(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
         let local_scope = self.local_scope();
         self.as_rvalue(block, Some(local_scope), expr)
@@ -33,7 +33,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         upvar_ty: Ty<'tcx>,
         temp_lifetime: Option<region::Scope>,
         mut block: BasicBlock,
-        arg: &Expr<'tcx>,
+        arg: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
 

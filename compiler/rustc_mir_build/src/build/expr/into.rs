@@ -18,7 +18,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<()> {
         debug!("expr_into_dest(destination={:?}, block={:?}, expr={:?})", destination, block, expr);
 

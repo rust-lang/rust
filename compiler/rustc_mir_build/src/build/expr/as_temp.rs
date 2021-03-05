@@ -14,7 +14,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
         // this is the only place in mir building that we need to truly need to worry about
@@ -27,7 +27,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
         debug!(

@@ -350,7 +350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
@@ -361,7 +361,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Mut, None)
     }
@@ -374,7 +374,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_read_only_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
@@ -389,7 +389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn as_read_only_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Not, None)
     }
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
@@ -584,8 +584,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_index_expression(
         &mut self,
         mut block: BasicBlock,
-        base: &Expr<'tcx>,
-        index: &Expr<'tcx>,
+        base: &Expr<'_, 'tcx>,
+        index: &Expr<'_, 'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
         temp_lifetime: Option<region::Scope>,

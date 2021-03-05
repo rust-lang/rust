@@ -15,8 +15,33 @@ use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{self, AdtKind, Ty};
 use rustc_span::Span;
 
-impl<'tcx> Cx<'tcx> {
-    crate fn mirror_expr(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
+use std::iter;
+
+impl<'thir, 'tcx> Cx<'thir, 'tcx> {
+    /// Mirrors and allocates a single [`hir::Expr`]. If you need to mirror a whole slice
+    /// of expressions, prefer using [`mirror_exprs`].
+    ///
+    /// [`mirror_exprs`]: Self::mirror_exprs
+    crate fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> &'thir Expr<'thir, 'tcx> {
+        self.arena.alloc(self.mirror_expr_inner(expr))
+    }
+
+    /// Mirrors and allocates a slice of [`hir::Expr`]s. They will be allocated as a
+    /// contiguous sequence in memory.
+    crate fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> &'thir [Expr<'thir, 'tcx>] {
+        self.arena.alloc_from_iter(exprs.iter().map(|expr| self.mirror_expr_inner(expr)))
+    }
+
+    /// Mirrors a [`hir::Expr`] without allocating it into the arena.
+    /// This is a separate, private function so that [`mirror_expr`] and [`mirror_exprs`] can
+    /// decide how to allocate this expression (alone or within a slice).
+    ///
+    /// [`mirror_expr`]: Self::mirror_expr
+    /// [`mirror_exprs`]: Self::mirror_exprs
+    pub(super) fn mirror_expr_inner(
+        &mut self,
+        hir_expr: &'tcx hir::Expr<'tcx>,
+    ) -> Expr<'thir, 'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
@@ -38,7 +63,7 @@ impl<'tcx> Cx<'tcx> {
             span: hir_expr.span,
             kind: ExprKind::Scope {
                 region_scope: expr_scope,
-                value: Box::new(expr),
+                value: self.arena.alloc(expr),
                 lint_level: LintLevel::Explicit(hir_expr.hir_id),
             },
         };
@@ -53,7 +78,7 @@ impl<'tcx> Cx<'tcx> {
                 span: hir_expr.span,
                 kind: ExprKind::Scope {
                     region_scope,
-                    value: Box::new(expr),
+                    value: self.arena.alloc(expr),
                     lint_level: LintLevel::Inherited,
                 },
             };
@@ -63,20 +88,12 @@ impl<'tcx> Cx<'tcx> {
         expr
     }
 
-    crate fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Vec<Expr<'tcx>> {
-        exprs.iter().map(|expr| self.mirror_expr(expr)).collect()
-    }
-
-    crate fn mirror_expr_boxed(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Box<Expr<'tcx>> {
-        Box::new(self.mirror_expr(expr))
-    }
-
     fn apply_adjustment(
         &mut self,
         hir_expr: &'tcx hir::Expr<'tcx>,
-        mut expr: Expr<'tcx>,
+        mut expr: Expr<'thir, 'tcx>,
         adjustment: &Adjustment<'tcx>,
-    ) -> Expr<'tcx> {
+    ) -> Expr<'thir, 'tcx> {
         let Expr { temp_lifetime, mut span, .. } = expr;
 
         // Adjust the span from the block, to the last expression of the
@@ -89,7 +106,7 @@ impl<'tcx> Cx<'tcx> {
         //      x
         //   // ^ error message points at this expression.
         // }
-        let mut adjust_span = |expr: &mut Expr<'tcx>| {
+        let mut adjust_span = |expr: &mut Expr<'thir, 'tcx>| {
             if let ExprKind::Block { body } = &expr.kind {
                 if let Some(ref last_expr) = body.expr {
                     span = last_expr.span;
@@ -101,13 +118,13 @@ impl<'tcx> Cx<'tcx> {
         let kind = match adjustment.kind {
             Adjust::Pointer(PointerCast::Unsize) => {
                 adjust_span(&mut expr);
-                ExprKind::Pointer { cast: PointerCast::Unsize, source: Box::new(expr) }
+                ExprKind::Pointer { cast: PointerCast::Unsize, source: self.arena.alloc(expr) }
             }
-            Adjust::Pointer(cast) => ExprKind::Pointer { cast, source: Box::new(expr) },
-            Adjust::NeverToAny => ExprKind::NeverToAny { source: Box::new(expr) },
+            Adjust::Pointer(cast) => ExprKind::Pointer { cast, source: self.arena.alloc(expr) },
+            Adjust::NeverToAny => ExprKind::NeverToAny { source: self.arena.alloc(expr) },
             Adjust::Deref(None) => {
                 adjust_span(&mut expr);
-                ExprKind::Deref { arg: Box::new(expr) }
+                ExprKind::Deref { arg: self.arena.alloc(expr) }
             }
             Adjust::Deref(Some(deref)) => {
                 // We don't need to do call adjust_span here since
@@ -122,7 +139,7 @@ impl<'tcx> Cx<'tcx> {
                     span,
                     kind: ExprKind::Borrow {
                         borrow_kind: deref.mutbl.to_borrow_kind(),
-                        arg: Box::new(expr),
+                        arg: self.arena.alloc(expr),
                     },
                 };
 
@@ -130,22 +147,22 @@ impl<'tcx> Cx<'tcx> {
                     hir_expr,
                     adjustment.target,
                     Some(call),
-                    vec![expr],
+                    self.arena.alloc_from_iter(iter::once(expr)),
                     deref.span,
                 )
             }
             Adjust::Borrow(AutoBorrow::Ref(_, m)) => {
-                ExprKind::Borrow { borrow_kind: m.to_borrow_kind(), arg: Box::new(expr) }
+                ExprKind::Borrow { borrow_kind: m.to_borrow_kind(), arg: self.arena.alloc(expr) }
             }
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
-                ExprKind::AddressOf { mutability, arg: Box::new(expr) }
+                ExprKind::AddressOf { mutability, arg: self.arena.alloc(expr) }
             }
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
     }
 
-    fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
+    fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'thir, 'tcx> {
         let expr_ty = self.typeck_results().expr_ty(expr);
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
@@ -157,7 +174,7 @@ impl<'tcx> Cx<'tcx> {
                 let args = self.mirror_exprs(args);
                 ExprKind::Call {
                     ty: expr.ty,
-                    fun: Box::new(expr),
+                    fun: self.arena.alloc(expr),
                     args,
                     from_hir_call: true,
                     fn_span,
@@ -185,8 +202,10 @@ impl<'tcx> Cx<'tcx> {
 
                     ExprKind::Call {
                         ty: method.ty,
-                        fun: Box::new(method),
-                        args: vec![self.mirror_expr(fun), tupled_args],
+                        fun: self.arena.alloc(method),
+                        args: &*self
+                            .arena
+                            .alloc_from_iter(vec![self.mirror_expr_inner(fun), tupled_args]),
                         from_hir_call: true,
                         fn_span: expr.span,
                     }
@@ -216,26 +235,22 @@ impl<'tcx> Cx<'tcx> {
                             });
                         debug!("make_mirror_unadjusted: (call) user_ty={:?}", user_ty);
 
-                        let field_refs = args
-                            .iter()
-                            .enumerate()
-                            .map(|(idx, e)| FieldExpr {
-                                name: Field::new(idx),
-                                expr: self.mirror_expr(e),
-                            })
-                            .collect();
+                        let field_refs =
+                            self.arena.alloc_from_iter(args.iter().enumerate().map(|(idx, e)| {
+                                FieldExpr { name: Field::new(idx), expr: self.mirror_expr(e) }
+                            }));
                         ExprKind::Adt {
                             adt_def,
                             substs,
                             variant_index: index,
-                            fields: field_refs,
+                            fields: &*field_refs,
                             user_ty,
                             base: None,
                         }
                     } else {
                         ExprKind::Call {
                             ty: self.typeck_results().node_type(fun.hir_id),
-                            fun: self.mirror_expr_boxed(fun),
+                            fun: self.mirror_expr(fun),
                             args: self.mirror_exprs(args),
                             from_hir_call: true,
                             fn_span: expr.span,
@@ -244,32 +259,30 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
 
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, ref arg) => ExprKind::Borrow {
-                borrow_kind: mutbl.to_borrow_kind(),
-                arg: self.mirror_expr_boxed(arg),
-            },
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, ref arg) => {
+                ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg: self.mirror_expr(arg) }
+            }
 
             hir::ExprKind::AddrOf(hir::BorrowKind::Raw, mutability, ref arg) => {
-                ExprKind::AddressOf { mutability, arg: self.mirror_expr_boxed(arg) }
+                ExprKind::AddressOf { mutability, arg: self.mirror_expr(arg) }
             }
 
             hir::ExprKind::Block(ref blk, _) => ExprKind::Block { body: self.mirror_block(blk) },
 
-            hir::ExprKind::Assign(ref lhs, ref rhs, _) => ExprKind::Assign {
-                lhs: self.mirror_expr_boxed(lhs),
-                rhs: self.mirror_expr_boxed(rhs),
-            },
+            hir::ExprKind::Assign(ref lhs, ref rhs, _) => {
+                ExprKind::Assign { lhs: self.mirror_expr(lhs), rhs: self.mirror_expr(rhs) }
+            }
 
             hir::ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let lhs = self.mirror_expr(lhs);
-                    let rhs = self.mirror_expr(rhs);
-                    self.overloaded_operator(expr, vec![lhs, rhs])
+                    let lhs = self.mirror_expr_inner(lhs);
+                    let rhs = self.mirror_expr_inner(rhs);
+                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(vec![lhs, rhs]))
                 } else {
                     ExprKind::AssignOp {
                         op: bin_op(op.node),
-                        lhs: self.mirror_expr_boxed(lhs),
-                        rhs: self.mirror_expr_boxed(rhs),
+                        lhs: self.mirror_expr(lhs),
+                        rhs: self.mirror_expr(rhs),
                     }
                 }
             }
@@ -282,29 +295,29 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let lhs = self.mirror_expr(lhs);
-                    let rhs = self.mirror_expr(rhs);
-                    self.overloaded_operator(expr, vec![lhs, rhs])
+                    let lhs = self.mirror_expr_inner(lhs);
+                    let rhs = self.mirror_expr_inner(rhs);
+                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(vec![lhs, rhs]))
                 } else {
                     // FIXME overflow
                     match op.node {
                         hir::BinOpKind::And => ExprKind::LogicalOp {
                             op: LogicalOp::And,
-                            lhs: self.mirror_expr_boxed(lhs),
-                            rhs: self.mirror_expr_boxed(rhs),
+                            lhs: self.mirror_expr(lhs),
+                            rhs: self.mirror_expr(rhs),
                         },
                         hir::BinOpKind::Or => ExprKind::LogicalOp {
                             op: LogicalOp::Or,
-                            lhs: self.mirror_expr_boxed(lhs),
-                            rhs: self.mirror_expr_boxed(rhs),
+                            lhs: self.mirror_expr(lhs),
+                            rhs: self.mirror_expr(rhs),
                         },
 
                         _ => {
                             let op = bin_op(op.node);
                             ExprKind::Binary {
                                 op,
-                                lhs: self.mirror_expr_boxed(lhs),
-                                rhs: self.mirror_expr_boxed(rhs),
+                                lhs: self.mirror_expr(lhs),
+                                rhs: self.mirror_expr(rhs),
                             }
                         }
                     }
@@ -313,39 +326,48 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::Index(ref lhs, ref index) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let lhs = self.mirror_expr(lhs);
-                    let index = self.mirror_expr(index);
-                    self.overloaded_place(expr, expr_ty, None, vec![lhs, index], expr.span)
+                    let lhs = self.mirror_expr_inner(lhs);
+                    let index = self.mirror_expr_inner(index);
+                    self.overloaded_place(
+                        expr,
+                        expr_ty,
+                        None,
+                        &*self.arena.alloc_from_iter(vec![lhs, index]),
+                        expr.span,
+                    )
                 } else {
-                    ExprKind::Index {
-                        lhs: self.mirror_expr_boxed(lhs),
-                        index: self.mirror_expr_boxed(index),
-                    }
+                    ExprKind::Index { lhs: self.mirror_expr(lhs), index: self.mirror_expr(index) }
                 }
             }
 
             hir::ExprKind::Unary(hir::UnOp::Deref, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let arg = self.mirror_expr(arg);
-                    self.overloaded_place(expr, expr_ty, None, vec![arg], expr.span)
+                    let arg = self.mirror_expr_inner(arg);
+                    self.overloaded_place(
+                        expr,
+                        expr_ty,
+                        None,
+                        &*self.arena.alloc_from_iter(iter::once(arg)),
+                        expr.span,
+                    )
                 } else {
-                    ExprKind::Deref { arg: self.mirror_expr_boxed(arg) }
+                    ExprKind::Deref { arg: self.mirror_expr(arg) }
                 }
             }
 
             hir::ExprKind::Unary(hir::UnOp::Not, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let arg = self.mirror_expr(arg);
-                    self.overloaded_operator(expr, vec![arg])
+                    let arg = self.mirror_expr_inner(arg);
+                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(iter::once(arg)))
                 } else {
-                    ExprKind::Unary { op: UnOp::Not, arg: self.mirror_expr_boxed(arg) }
+                    ExprKind::Unary { op: UnOp::Not, arg: self.mirror_expr(arg) }
                 }
             }
 
             hir::ExprKind::Unary(hir::UnOp::Neg, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
-                    let arg = self.mirror_expr(arg);
-                    self.overloaded_operator(expr, vec![arg])
+                    let arg = self.mirror_expr_inner(arg);
+                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(iter::once(arg)))
                 } else if let hir::ExprKind::Lit(ref lit) = arg.kind {
                     ExprKind::Literal {
                         literal: self.const_eval_literal(&lit.node, expr_ty, lit.span, true),
@@ -353,7 +375,7 @@ impl<'tcx> Cx<'tcx> {
                         const_id: None,
                     }
                 } else {
-                    ExprKind::Unary { op: UnOp::Neg, arg: self.mirror_expr_boxed(arg) }
+                    ExprKind::Unary { op: UnOp::Neg, arg: self.mirror_expr(arg) }
                 }
             }
 
@@ -370,9 +392,12 @@ impl<'tcx> Cx<'tcx> {
                             user_ty,
                             fields: self.field_refs(fields),
                             base: base.as_ref().map(|base| FruInfo {
-                                base: self.mirror_expr_boxed(base),
-                                field_types: self.typeck_results().fru_field_types()[expr.hir_id]
-                                    .clone(),
+                                base: self.mirror_expr(base),
+                                field_types: self.arena.alloc_from_iter(
+                                    self.typeck_results().fru_field_types()[expr.hir_id]
+                                        .iter()
+                                        .cloned(),
+                                ),
                             }),
                         }
                     }
@@ -419,12 +444,12 @@ impl<'tcx> Cx<'tcx> {
                     }
                 };
 
-                let upvars = self
-                    .typeck_results
-                    .closure_min_captures_flattened(def_id)
-                    .zip(substs.upvar_tys())
-                    .map(|(captured_place, ty)| self.capture_upvar(expr, captured_place, ty))
-                    .collect();
+                let upvars = self.arena.alloc_from_iter(
+                    self.typeck_results
+                        .closure_min_captures_flattened(def_id)
+                        .zip(substs.upvar_tys())
+                        .map(|(captured_place, ty)| self.capture_upvar(expr, captured_place, ty)),
+                );
                 ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
             }
 
@@ -435,100 +460,95 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::InlineAsm(ref asm) => ExprKind::InlineAsm {
                 template: asm.template,
-                operands: asm
-                    .operands
-                    .iter()
-                    .map(|(op, _op_sp)| {
-                        match *op {
-                            hir::InlineAsmOperand::In { reg, ref expr } => {
-                                InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
+                operands: self.arena.alloc_from_iter(asm.operands.iter().map(|(op, _op_sp)| {
+                    match *op {
+                        hir::InlineAsmOperand::In { reg, ref expr } => {
+                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                            InlineAsmOperand::Out {
+                                reg,
+                                late,
+                                expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
                             }
-                            hir::InlineAsmOperand::Out { reg, late, ref expr } => {
-                                InlineAsmOperand::Out {
-                                    reg,
-                                    late,
-                                    expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                        }
+                        hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
+                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            ref in_expr,
+                            ref out_expr,
+                        } => InlineAsmOperand::SplitInOut {
+                            reg,
+                            late,
+                            in_expr: self.mirror_expr(in_expr),
+                            out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                        },
+                        hir::InlineAsmOperand::Const { ref expr } => {
+                            InlineAsmOperand::Const { expr: self.mirror_expr(expr) }
+                        }
+                        hir::InlineAsmOperand::Sym { ref expr } => {
+                            let qpath = match expr.kind {
+                                hir::ExprKind::Path(ref qpath) => qpath,
+                                _ => span_bug!(
+                                    expr.span,
+                                    "asm `sym` operand should be a path, found {:?}",
+                                    expr.kind
+                                ),
+                            };
+                            let temp_lifetime =
+                                self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+                            let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
+                            let ty;
+                            match res {
+                                Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
+                                    ty = self.typeck_results().node_type(expr.hir_id);
+                                    let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
+                                    InlineAsmOperand::SymFn {
+                                        expr: self.arena.alloc(Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(self.tcx, ty),
+                                                user_ty,
+                                                const_id: None,
+                                            },
+                                        }),
+                                    }
                                 }
-                            }
-                            hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
-                                InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::SplitInOut {
-                                reg,
-                                late,
-                                ref in_expr,
-                                ref out_expr,
-                            } => InlineAsmOperand::SplitInOut {
-                                reg,
-                                late,
-                                in_expr: self.mirror_expr(in_expr),
-                                out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
-                            },
-                            hir::InlineAsmOperand::Const { ref expr } => {
-                                InlineAsmOperand::Const { expr: self.mirror_expr(expr) }
-                            }
-                            hir::InlineAsmOperand::Sym { ref expr } => {
-                                let qpath = match expr.kind {
-                                    hir::ExprKind::Path(ref qpath) => qpath,
-                                    _ => span_bug!(
+
+                                Res::Def(DefKind::Static, def_id) => {
+                                    InlineAsmOperand::SymStatic { def_id }
+                                }
+
+                                _ => {
+                                    self.tcx.sess.span_err(
                                         expr.span,
-                                        "asm `sym` operand should be a path, found {:?}",
-                                        expr.kind
-                                    ),
-                                };
-                                let temp_lifetime =
-                                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-                                let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
-                                let ty;
-                                match res {
-                                    Res::Def(DefKind::Fn, _) | Res::Def(DefKind::AssocFn, _) => {
-                                        ty = self.typeck_results().node_type(expr.hir_id);
-                                        let user_ty =
-                                            self.user_substs_applied_to_res(expr.hir_id, res);
-                                        InlineAsmOperand::SymFn {
-                                            expr: Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::Literal {
-                                                    literal: ty::Const::zero_sized(self.tcx, ty),
-                                                    user_ty,
-                                                    const_id: None,
-                                                },
+                                        "asm `sym` operand must point to a fn or static",
+                                    );
+
+                                    // Not a real fn, but we're not reaching codegen anyways...
+                                    ty = self.tcx.ty_error();
+                                    InlineAsmOperand::SymFn {
+                                        expr: self.arena.alloc(Expr {
+                                            ty,
+                                            temp_lifetime,
+                                            span: expr.span,
+                                            kind: ExprKind::Literal {
+                                                literal: ty::Const::zero_sized(self.tcx, ty),
+                                                user_ty: None,
+                                                const_id: None,
                                             },
-                                        }
-                                    }
-
-                                    Res::Def(DefKind::Static, def_id) => {
-                                        InlineAsmOperand::SymStatic { def_id }
-                                    }
-
-                                    _ => {
-                                        self.tcx.sess.span_err(
-                                            expr.span,
-                                            "asm `sym` operand must point to a fn or static",
-                                        );
-
-                                        // Not a real fn, but we're not reaching codegen anyways...
-                                        ty = self.tcx.ty_error();
-                                        InlineAsmOperand::SymFn {
-                                            expr: Expr {
-                                                ty,
-                                                temp_lifetime,
-                                                span: expr.span,
-                                                kind: ExprKind::Literal {
-                                                    literal: ty::Const::zero_sized(self.tcx, ty),
-                                                    user_ty: None,
-                                                    const_id: None,
-                                                },
-                                            },
-                                        }
+                                        }),
                                     }
                                 }
                             }
                         }
-                    })
-                    .collect(),
+                    }
+                })),
                 options: asm.options,
                 line_spans: asm.line_spans,
             },
@@ -550,15 +570,15 @@ impl<'tcx> Cx<'tcx> {
                 let count_def_id = self.tcx.hir().local_def_id(count.hir_id);
                 let count = ty::Const::from_anon_const(self.tcx, count_def_id);
 
-                ExprKind::Repeat { value: self.mirror_expr_boxed(v), count }
+                ExprKind::Repeat { value: self.mirror_expr(v), count }
             }
             hir::ExprKind::Ret(ref v) => {
-                ExprKind::Return { value: v.as_ref().map(|v| self.mirror_expr_boxed(v)) }
+                ExprKind::Return { value: v.as_ref().map(|v| self.mirror_expr(v)) }
             }
             hir::ExprKind::Break(dest, ref value) => match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope { id: target_id.local_id, data: region::ScopeData::Node },
-                    value: value.as_ref().map(|value| self.mirror_expr_boxed(value)),
+                    value: value.as_ref().map(|value| self.mirror_expr(value)),
                 },
                 Err(err) => bug!("invalid loop id for break: {}", err),
             },
@@ -569,19 +589,19 @@ impl<'tcx> Cx<'tcx> {
                 Err(err) => bug!("invalid loop id for continue: {}", err),
             },
             hir::ExprKind::If(cond, then, else_opt) => ExprKind::If {
-                cond: self.mirror_expr_boxed(cond),
-                then: self.mirror_expr_boxed(then),
-                else_opt: else_opt.map(|el| self.mirror_expr_boxed(el)),
+                cond: self.mirror_expr(cond),
+                then: self.mirror_expr(then),
+                else_opt: else_opt.map(|el| self.mirror_expr(el)),
             },
             hir::ExprKind::Match(ref discr, ref arms, _) => ExprKind::Match {
-                scrutinee: self.mirror_expr_boxed(discr),
-                arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
+                scrutinee: self.mirror_expr(discr),
+                arms: self.arena.alloc_from_iter(arms.iter().map(|a| self.convert_arm(a))),
             },
             hir::ExprKind::Loop(ref body, ..) => {
                 let block_ty = self.typeck_results().node_type(body.hir_id);
                 let temp_lifetime = self.region_scope_tree.temporary_scope(body.hir_id.local_id);
                 let block = self.mirror_block(body);
-                let body = Box::new(Expr {
+                let body = self.arena.alloc(Expr {
                     ty: block_ty,
                     temp_lifetime,
                     span: block.span,
@@ -590,7 +610,7 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::Loop { body }
             }
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
-                lhs: self.mirror_expr_boxed(source),
+                lhs: self.mirror_expr(source),
                 name: Field::new(self.tcx.field_index(expr.hir_id, self.typeck_results)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
@@ -607,13 +627,13 @@ impl<'tcx> Cx<'tcx> {
                 // using a coercion (or is a no-op).
                 let cast = if self.typeck_results().is_coercion_cast(source.hir_id) {
                     // Convert the lexpr to a vexpr.
-                    ExprKind::Use { source: self.mirror_expr_boxed(source) }
+                    ExprKind::Use { source: self.mirror_expr(source) }
                 } else if self.typeck_results().expr_ty(source).is_region_ptr() {
                     // Special cased so that we can type check that the element
                     // type of the source matches the pointed to type of the
                     // destination.
                     ExprKind::Pointer {
-                        source: self.mirror_expr_boxed(source),
+                        source: self.mirror_expr(source),
                         cast: PointerCast::ArrayToPointer,
                     }
                 } else {
@@ -651,11 +671,13 @@ impl<'tcx> Cx<'tcx> {
                     };
 
                     let source = if let Some((did, offset, var_ty)) = var {
-                        let mk_const = |literal| Expr {
-                            temp_lifetime,
-                            ty: var_ty,
-                            span: expr.span,
-                            kind: ExprKind::Literal { literal, user_ty: None, const_id: None },
+                        let mk_const = |literal| {
+                            self.arena.alloc(Expr {
+                                temp_lifetime,
+                                ty: var_ty,
+                                span: expr.span,
+                                kind: ExprKind::Literal { literal, user_ty: None, const_id: None },
+                            })
                         };
                         let offset = mk_const(ty::Const::from_bits(
                             self.tcx,
@@ -675,12 +697,14 @@ impl<'tcx> Cx<'tcx> {
                                     ),
                                     ty: var_ty,
                                 }));
-                                let bin = ExprKind::Binary {
-                                    op: BinOp::Add,
-                                    lhs: Box::new(lhs),
-                                    rhs: Box::new(offset),
-                                };
-                                Expr { temp_lifetime, ty: var_ty, span: expr.span, kind: bin }
+                                let bin =
+                                    ExprKind::Binary { op: BinOp::Add, lhs: lhs, rhs: offset };
+                                self.arena.alloc(Expr {
+                                    temp_lifetime,
+                                    ty: var_ty,
+                                    span: expr.span,
+                                    kind: bin,
+                                })
                             }
                             None => offset,
                         }
@@ -688,14 +712,18 @@ impl<'tcx> Cx<'tcx> {
                         self.mirror_expr(source)
                     };
 
-                    ExprKind::Cast { source: Box::new(source) }
+                    ExprKind::Cast { source: source }
                 };
 
                 if let Some(user_ty) = user_ty {
                     // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
                     //       inefficient, revisit this when performance becomes an issue.
-                    let cast_expr =
-                        Box::new(Expr { temp_lifetime, ty: expr_ty, span: expr.span, kind: cast });
+                    let cast_expr = self.arena.alloc(Expr {
+                        temp_lifetime,
+                        ty: expr_ty,
+                        span: expr.span,
+                        kind: cast,
+                    });
                     debug!("make_mirror_unadjusted: (cast) user_ty={:?}", user_ty);
 
                     ExprKind::ValueTypeAscription { source: cast_expr, user_ty: Some(*user_ty) }
@@ -707,7 +735,7 @@ impl<'tcx> Cx<'tcx> {
                 let user_provided_types = self.typeck_results.user_provided_types();
                 let user_ty = user_provided_types.get(ty.hir_id).copied();
                 debug!("make_mirror_unadjusted: (type) user_ty={:?}", user_ty);
-                let mirrored = self.mirror_expr_boxed(source);
+                let mirrored = self.mirror_expr(source);
                 if source.is_syntactic_place_expr() {
                     ExprKind::PlaceTypeAscription { source: mirrored, user_ty }
                 } else {
@@ -715,17 +743,15 @@ impl<'tcx> Cx<'tcx> {
                 }
             }
             hir::ExprKind::DropTemps(ref source) => {
-                ExprKind::Use { source: self.mirror_expr_boxed(source) }
+                ExprKind::Use { source: self.mirror_expr(source) }
             }
-            hir::ExprKind::Box(ref value) => ExprKind::Box { value: self.mirror_expr_boxed(value) },
-            hir::ExprKind::Array(ref fields) => ExprKind::Array {
-                fields: fields.iter().map(|field| self.mirror_expr(field)).collect(),
-            },
-            hir::ExprKind::Tup(ref fields) => ExprKind::Tuple {
-                fields: fields.iter().map(|field| self.mirror_expr(field)).collect(),
-            },
+            hir::ExprKind::Box(ref value) => ExprKind::Box { value: self.mirror_expr(value) },
+            hir::ExprKind::Array(ref fields) => {
+                ExprKind::Array { fields: self.mirror_exprs(fields) }
+            }
+            hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
 
-            hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: self.mirror_expr_boxed(v) },
+            hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
             hir::ExprKind::Err => unreachable!(),
         };
 
@@ -772,7 +798,7 @@ impl<'tcx> Cx<'tcx> {
         expr: &hir::Expr<'_>,
         span: Span,
         overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
-    ) -> Expr<'tcx> {
+    ) -> Expr<'thir, 'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let (def_id, substs, user_ty) = match overloaded_callee {
             Some((def_id, substs)) => (def_id, substs, None),
@@ -799,13 +825,13 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
-    fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> Arm<'tcx> {
+    fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> Arm<'thir, 'tcx> {
         Arm {
             pattern: self.pattern_from_hir(&arm.pat),
             guard: arm.guard.as_ref().map(|g| match g {
-                hir::Guard::If(ref e) => Guard::If(self.mirror_expr_boxed(e)),
+                hir::Guard::If(ref e) => Guard::If(self.mirror_expr(e)),
                 hir::Guard::IfLet(ref pat, ref e) => {
-                    Guard::IfLet(self.pattern_from_hir(pat), self.mirror_expr_boxed(e))
+                    Guard::IfLet(self.pattern_from_hir(pat), self.mirror_expr(e))
                 }
             }),
             body: self.mirror_expr(arm.body),
@@ -815,7 +841,11 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
-    fn convert_path_expr(&mut self, expr: &'tcx hir::Expr<'tcx>, res: Res) -> ExprKind<'tcx> {
+    fn convert_path_expr(
+        &mut self,
+        expr: &'tcx hir::Expr<'tcx>,
+        res: Res,
+    ) -> ExprKind<'thir, 'tcx> {
         let substs = self.typeck_results().node_substs(expr.hir_id);
         match res {
             // A regular function, constructor function or a constant.
@@ -883,7 +913,7 @@ impl<'tcx> Cx<'tcx> {
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
                         user_ty: user_provided_type,
-                        fields: vec![],
+                        fields: self.arena.alloc_from_iter(iter::empty()),
                         base: None,
                     },
                     _ => bug!("unexpected ty: {:?}", ty),
@@ -904,7 +934,9 @@ impl<'tcx> Cx<'tcx> {
                         def_id: id,
                     }
                 };
-                ExprKind::Deref { arg: Box::new(Expr { ty, temp_lifetime, span: expr.span, kind }) }
+                ExprKind::Deref {
+                    arg: self.arena.alloc(Expr { ty, temp_lifetime, span: expr.span, kind }),
+                }
             }
 
             Res::Local(var_hir_id) => self.convert_var(var_hir_id),
@@ -913,7 +945,7 @@ impl<'tcx> Cx<'tcx> {
         }
     }
 
-    fn convert_var(&mut self, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
+    fn convert_var(&mut self, var_hir_id: hir::HirId) -> ExprKind<'thir, 'tcx> {
         // We want upvars here not captures.
         // Captures will be handled in MIR.
         let is_upvar = self
@@ -936,9 +968,9 @@ impl<'tcx> Cx<'tcx> {
     fn overloaded_operator(
         &mut self,
         expr: &'tcx hir::Expr<'tcx>,
-        args: Vec<Expr<'tcx>>,
-    ) -> ExprKind<'tcx> {
-        let fun = Box::new(self.method_callee(expr, expr.span, None));
+        args: &'thir [Expr<'thir, 'tcx>],
+    ) -> ExprKind<'thir, 'tcx> {
+        let fun = self.arena.alloc(self.method_callee(expr, expr.span, None));
         ExprKind::Call { ty: fun.ty, fun, args, from_hir_call: false, fn_span: expr.span }
     }
 
@@ -947,9 +979,9 @@ impl<'tcx> Cx<'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         place_ty: Ty<'tcx>,
         overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
-        args: Vec<Expr<'tcx>>,
+        args: &'thir [Expr<'thir, 'tcx>],
         span: Span,
-    ) -> ExprKind<'tcx> {
+    ) -> ExprKind<'thir, 'tcx> {
         // For an overloaded *x or x[y] expression of type T, the method
         // call returns an &T and we must add the deref so that the types
         // line up (this is because `*x` and `x[y]` represent places):
@@ -966,8 +998,8 @@ impl<'tcx> Cx<'tcx> {
         // construct the complete expression `foo()` for the overloaded call,
         // which will yield the &T type
         let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
-        let fun = Box::new(self.method_callee(expr, span, overloaded_callee));
-        let ref_expr = Box::new(Expr {
+        let fun = self.arena.alloc(self.method_callee(expr, span, overloaded_callee));
+        let ref_expr = self.arena.alloc(Expr {
             temp_lifetime,
             ty: ref_ty,
             span,
@@ -983,7 +1015,7 @@ impl<'tcx> Cx<'tcx> {
         closure_expr: &'tcx hir::Expr<'tcx>,
         captured_place: &'tcx ty::CapturedPlace<'tcx>,
         upvar_ty: Ty<'tcx>,
-    ) -> Expr<'tcx> {
+    ) -> Expr<'thir, 'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
         let var_ty = captured_place.place.base_ty;
@@ -1007,12 +1039,14 @@ impl<'tcx> Cx<'tcx> {
 
         for proj in captured_place.place.projections.iter() {
             let kind = match proj.kind {
-                HirProjectionKind::Deref => ExprKind::Deref { arg: Box::new(captured_place_expr) },
+                HirProjectionKind::Deref => {
+                    ExprKind::Deref { arg: self.arena.alloc(captured_place_expr) }
+                }
                 HirProjectionKind::Field(field, ..) => {
                     // Variant index will always be 0, because for multi-variant
                     // enums, we capture the enum entirely.
                     ExprKind::Field {
-                        lhs: Box::new(captured_place_expr),
+                        lhs: self.arena.alloc(captured_place_expr),
                         name: Field::new(field as usize),
                     }
                 }
@@ -1038,21 +1072,21 @@ impl<'tcx> Cx<'tcx> {
                     temp_lifetime,
                     ty: upvar_ty,
                     span: closure_expr.span,
-                    kind: ExprKind::Borrow { borrow_kind, arg: Box::new(captured_place_expr) },
+                    kind: ExprKind::Borrow {
+                        borrow_kind,
+                        arg: self.arena.alloc(captured_place_expr),
+                    },
                 }
             }
         }
     }
 
     /// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExpr.
-    fn field_refs(&mut self, fields: &'tcx [hir::Field<'tcx>]) -> Vec<FieldExpr<'tcx>> {
-        fields
-            .iter()
-            .map(|field| FieldExpr {
-                name: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
-                expr: self.mirror_expr(field.expr),
-            })
-            .collect()
+    fn field_refs(&mut self, fields: &'tcx [hir::Field<'tcx>]) -> &'thir [FieldExpr<'thir, 'tcx>] {
+        self.arena.alloc_from_iter(fields.iter().map(|field| FieldExpr {
+            name: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+            expr: self.mirror_expr(field.expr),
+        }))
     }
 }
 

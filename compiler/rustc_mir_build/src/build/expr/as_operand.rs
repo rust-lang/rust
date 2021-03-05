@@ -17,7 +17,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_local_operand(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
         self.as_operand(block, Some(local_scope), expr)
@@ -74,7 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
         self.as_call_operand(block, Some(local_scope), expr)
@@ -93,7 +93,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         debug!("as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
@@ -123,7 +123,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
