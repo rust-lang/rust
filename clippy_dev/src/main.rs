@@ -77,7 +77,8 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .short("j")
                 .long("jobs")
                 .help("number of threads to use, 0 automatic choice"),
-        );
+        )
+        .arg(Arg::with_name("fix").help("runs cargo clippy --fix and checks if all suggestions apply"));
 
     let app = App::new("Clippy developer tooling")
         .subcommand(
