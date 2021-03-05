@@ -347,6 +347,10 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
         return false;
       if (II->getIntrinsicID() == Intrinsic::stackrestore)
         return false;
+#if LLVM_VERSION_MAJOR >= 13
+      if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)
+        return false;
+#endif
     }
   }
   if (auto call = dyn_cast<CallInst>(maybeReader)) {
@@ -374,6 +378,10 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
         return false;
       if (II->getIntrinsicID() == Intrinsic::stackrestore)
         return false;
+#if LLVM_VERSION_MAJOR >= 13
+      if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)
+        return false;
+#endif
     }
   }
   if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {

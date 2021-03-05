@@ -895,6 +895,11 @@ public:
     return internal_isConstantInstruction.find(inst)->second;
   }
 
+  bool getContext(llvm::BasicBlock *BB, LoopContext &lc) {
+    return CacheUtility::getContext(BB, lc,
+                                    /*ReverseLimit*/ reverseBlocks.size() > 0);
+  }
+
   void forceAugmentedReturns(
       TypeResults &TR,
       const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
@@ -976,14 +981,15 @@ public:
       return;
     if (shouldFree)
       assert(reverseBlocks.size());
-    AllocaInst *cache = createCacheForScope(inst->getParent(), inst->getType(),
-                                            inst->getName(), shouldFree);
+    LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                      inst->getParent());
+    AllocaInst *cache =
+        createCacheForScope(lctx, inst->getType(), inst->getName(), shouldFree);
     assert(cache);
     Value *Val = inst;
     insert_or_assign(scopeMap, Val,
-                     std::pair<AllocaInst *, LimitContext>(
-                         cache, LimitContext(inst->getParent())));
-    storeInstructionInCache(inst->getParent(), inst, cache);
+                     std::pair<AllocaInst *, LimitContext>(cache, lctx));
+    storeInstructionInCache(lctx, inst, cache);
   }
 
   std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;
@@ -1542,7 +1548,10 @@ if (Atomic) {
       Value *Idxs[] = {ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
                        ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
       auto vptr = BuilderM.CreateGEP(ptr, Idxs);
-#if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 13
+      BuilderM.CreateAtomicRMW(op, vptr, vdif, align, AtomicOrdering::Monotonic,
+                               SyncScope::System);
+#elif LLVM_VERSION_MAJOR >= 11
       AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
           op, vptr, vdif, AtomicOrdering::Monotonic, SyncScope::System);
       if (align)
@@ -1553,7 +1562,10 @@ if (Atomic) {
 #endif
     }
   } else {
-#if LLVM_VERSION_MAJOR >= 11
+#if LLVM_VERSION_MAJOR >= 13
+    BuilderM.CreateAtomicRMW(op, ptr, dif, align, AtomicOrdering::Monotonic,
+                             SyncScope::System);
+#elif LLVM_VERSION_MAJOR >= 11
     AtomicRMWInst *rmw = BuilderM.CreateAtomicRMW(
         op, ptr, dif, AtomicOrdering::Monotonic, SyncScope::System);
     if (align)

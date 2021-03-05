@@ -424,7 +424,8 @@ void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
   }
 }
 
-bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
+bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
+                              bool ReverseLimit) {
   Loop *L = LI.getLoopFor(BB);
 
   // Not inside a loop
@@ -593,9 +594,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
                 L->getHeader()->getParent()->getName(), "lim: ", *Limit,
                 " maxlim: ", *MaxIterations);
 
-    LimitVar = createCacheForScope(LimitContext(loopContexts[L].preheader),
-                                   CanonicalIV->getType(), "loopLimit",
-                                   /*shouldfree*/ false);
+    LimitContext lctx(ReverseLimit, ReverseLimit ? loopContexts[L].preheader
+                                                 : &newFunc->getEntryBlock());
+    LimitVar = createCacheForScope(lctx, CanonicalIV->getType(), "loopLimit",
+                                   /*shouldfree*/ true);
 
     for (auto ExitBlock : loopContexts[L].exitBlocks) {
       IRBuilder<> B(&ExitBlock->front());
@@ -609,8 +611,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext) {
         }
       }
 
-      storeInstructionInCache(loopContexts[L].preheader, Limit,
-                              cast<AllocaInst>(LimitVar));
+      storeInstructionInCache(lctx, Limit, cast<AllocaInst>(LimitVar));
     }
     loopContexts[L].dynamic = true;
     loopContexts[L].maxLimit = nullptr;
@@ -967,7 +968,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
   std::vector<LoopContext> contexts;
   for (BasicBlock *blk = ctx.Block; blk != nullptr;) {
     LoopContext idx;
-    if (!getContext(blk, idx)) {
+    if (!getContext(blk, idx, ctx.ReverseLimit)) {
       break;
     }
     contexts.emplace_back(idx);

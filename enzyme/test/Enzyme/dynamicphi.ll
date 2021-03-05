@@ -91,10 +91,10 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %6 = bitcast double* %5 to i8*
 ; CHECK-NEXT:   %7 = mul nuw nsw i64 8, %iv.next2
-; CHECK-NEXT:   %phi_realloccache4 = call i8* @realloc(i8* %6, i64 %7)
-; CHECK-NEXT:   %phi_realloccast5 = bitcast i8* %phi_realloccache4 to double*
-; CHECK-NEXT:   store double* %phi_realloccast5, double** %4, align 8
-; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %phi_realloccast5, i64 %iv1
+; CHECK-NEXT:   %[[phi_realloccache4:.+]] = call i8* @realloc(i8* %6, i64 %7)
+; CHECK-NEXT:   %[[phi_realloccast5:.+]] = bitcast i8* %[[phi_realloccache4]] to double*
+; CHECK-NEXT:   store double* %[[phi_realloccast5]], double** %4, align 8
+; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %[[phi_realloccast5]], i64 %iv1
 ; CHECK-NEXT:   store double %phi, double* %8, align 8
 ; CHECK-NEXT:   %phiadd = fadd fast double %phi, 1.000000e+00
 ; CHECK-NEXT:   %jand = and i64 %iv1, 1234
@@ -106,6 +106,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.outerbody
+; CHECK-NEXT:   tail call void @free(i8* nonnull %loopLimit_realloccache)
 ; CHECK-NEXT:   %9 = insertvalue { double } undef, double %"x'de.0", 0
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %phi_realloccache)
 ; CHECK-NEXT:   ret { double } %9

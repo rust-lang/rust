@@ -866,9 +866,11 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       return UndefValue::get(retType);
     }
 
-    LimitContext ctx(BuilderQ.GetInsertBlock());
+    LimitContext ctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                     BuilderQ.GetInsertBlock());
     if (auto inst = dyn_cast<Instruction>(malloc))
-      ctx = LimitContext(inst->getParent());
+      ctx = LimitContext(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                         inst->getParent());
     if (auto found = findInMap(scopeMap, malloc)) {
       ctx = found->second;
     }
@@ -895,9 +897,13 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                             tape, {(unsigned)idx}));
 
       Type *innerType = ret->getType();
-      for (size_t i = 0, limit = getSubLimits(/*inForwardPass*/ true, nullptr,
-                                              BuilderQ.GetInsertBlock())
-                                     .size();
+      for (size_t i = 0,
+                  limit = getSubLimits(
+                              /*inForwardPass*/ true, nullptr,
+                              LimitContext(
+                                  /*ReverseLimit*/ reverseBlocks.size() > 0,
+                                  BuilderQ.GetInsertBlock()))
+                              .size();
            i < limit; ++i) {
         if (!isa<PointerType>(innerType)) {
           llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
@@ -930,16 +936,17 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         }
       }
 
-      AllocaInst *cache =
-          createCacheForScope(BuilderQ.GetInsertBlock(), innerType,
-                              "mdyncache_fromtape", true, false);
+      LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                        BuilderQ.GetInsertBlock());
+      AllocaInst *cache = createCacheForScope(
+          lctx, innerType, "mdyncache_fromtape", true, false);
       assert(malloc);
       bool isi1 = malloc->getType()->isIntegerTy() &&
                   cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
       entryBuilder.CreateStore(ret, cache);
 
-      auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ,
-                                    BuilderQ.GetInsertBlock(), cache, isi1);
+      auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ, lctx, cache,
+                                    isi1);
       if (malloc) {
         assert(v->getType() == malloc->getType());
       }
@@ -1130,9 +1137,11 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       return malloc;
     }
 
-    LimitContext ctx(BuilderQ.GetInsertBlock());
+    LimitContext ctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                     BuilderQ.GetInsertBlock());
     if (auto inst = dyn_cast<Instruction>(malloc))
-      ctx = LimitContext(inst->getParent());
+      ctx = LimitContext(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                         inst->getParent());
     if (auto found = findInMap(scopeMap, malloc)) {
       ctx = found->second;
     }
@@ -1173,10 +1182,13 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     // llvm::errs() << " malloc: " << *malloc << "\n";
     // llvm::errs() << " toadd: " << *toadd << "\n";
     Type *innerType = toadd->getType();
-    for (size_t i = 0,
-                limit = getSubLimits(/*inForwardPass*/ true, nullptr,
-                                     LimitContext(BuilderQ.GetInsertBlock()))
-                            .size();
+    for (size_t
+             i = 0,
+             limit = getSubLimits(
+                         /*inForwardPass*/ true, nullptr,
+                         LimitContext(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                                      BuilderQ.GetInsertBlock()))
+                         .size();
          i < limit; ++i) {
       innerType = cast<PointerType>(innerType)->getElementType();
     }
@@ -1263,7 +1275,12 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
 
       Value *lim = nullptr;
       if (lc.dynamic) {
-        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lc.preheader,
+        // Must be in a reverse pass fashion for a lookup to index bound to be
+        // legal
+        assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
+        LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                          lc.preheader);
+        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lctx,
                                    cast<AllocaInst>(lc.trueLimit),
                                    /*isi1*/ false);
       } else {
@@ -2464,8 +2481,13 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     if (getContext(inst->getParent(), lc) && lc.var == inst) {
       Value *lim = nullptr;
       if (lc.dynamic) {
-        lim = lookupValueFromCache(/*forwardPass*/ false, BuilderM,
-                                   lc.preheader, cast<AllocaInst>(lc.trueLimit),
+        // Must be in a reverse pass fashion for a lookup to index bound to be
+        // legal
+        assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
+        LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                          lc.preheader);
+        lim = lookupValueFromCache(/*forwardPass*/ false, BuilderM, lctx,
+                                   cast<AllocaInst>(lc.trueLimit),
                                    /*isi1*/ false);
       } else {
         lim = lookupM(lc.trueLimit, BuilderM);
@@ -2737,9 +2759,12 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               AllocaInst *cache = nullptr;
 
               LoopContext tmp;
+              bool forceSingleIter = false;
               if (!getContext(ctx, tmp)) {
-                ctx = (BasicBlock *)((size_t)ctx | 1);
+                forceSingleIter = true;
               }
+              LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, ctx,
+                                forceSingleIter);
 
               if (auto found = findInMap(scopeMap, (Value *)inst)) {
                 cache = found->first;
@@ -2747,18 +2772,18 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 // if freeing reverseblocks must exist
                 assert(reverseBlocks.size());
                 cache = createCacheForScope(
-                    ctx, li->getType(), li->getName(), /*shouldFree*/ true,
+                    lctx, li->getType(), li->getName(), /*shouldFree*/ true,
                     /*allocate*/ true, /*extraSize*/ lim);
                 assert(cache);
                 scopeMap.insert(
-                    std::make_pair(inst, std::make_pair(cache, ctx)));
+                    std::make_pair(inst, std::make_pair(cache, lctx)));
 
                 v.setFastMathFlags(getFast());
                 assert(isOriginalBlock(*v.GetInsertBlock()));
-                Value *outer =
-                    getCachePointer(/*inForwardPass*/ true, v, ctx, cache, isi1,
-                                    /*storeinstorecache*/ true,
-                                    /*extraSize*/ lim);
+                Value *outer = getCachePointer(/*inForwardPass*/ true, v, lctx,
+                                               cache, isi1,
+                                               /*storeinstorecache*/ true,
+                                               /*extraSize*/ lim);
 
                 auto dst_arg = v.CreateBitCast(
                     outer, Type::getInt8PtrTy(inst->getContext()));
@@ -2824,7 +2849,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
               assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
               Value *result = lookupValueFromCache(
-                  /*isForwardPass*/ false, BuilderM, ctx, cache, isi1,
+                  /*isForwardPass*/ false, BuilderM, lctx, cache, isi1,
                   /*extraSize*/ lim, available[l1.var]);
               assert(result->getType() == inst->getType());
               lookup_cache[idx] = result;
@@ -3227,7 +3252,8 @@ nofast:;
 
   // if freeing reverseblocks must exist
   assert(reverseBlocks.size());
-  AllocaInst *cache = createCacheForScope(ctx, T, "", /*shouldFree*/ true);
+  LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, ctx);
+  AllocaInst *cache = createCacheForScope(lctx, T, "", /*shouldFree*/ true);
   std::vector<BasicBlock *> targets;
   {
     size_t idx = 0;
@@ -3263,14 +3289,14 @@ nofast:;
         //     tostore = pbuilder.CreateOr(tostore, pred);
         //}
       }
-      storeInstructionInCache(ctx, pbuilder, tostore, cache);
+      storeInstructionInCache(lctx, pbuilder, tostore, cache);
     }
   }
 
   bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
   Value *which = lookupValueFromCache(
       /*forwardPass*/ isOriginalBlock(*BuilderM.GetInsertBlock()), BuilderM,
-      ctx, cache, isi1);
+      LimitContext(/*reversePass*/ reverseBlocks.size() > 0, ctx), cache, isi1);
   assert(which);
   assert(which->getType() == T);
 

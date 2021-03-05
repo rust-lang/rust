@@ -151,7 +151,8 @@ private:
 public:
   /// Given a BasicBlock BB in newFunc, set loopContext to the relevant
   /// contained loop and return true. If BB is not in a loop, return false
-  bool getContext(llvm::BasicBlock *BB, LoopContext &loopContext);
+  bool getContext(llvm::BasicBlock *BB, LoopContext &loopContext,
+                  bool ReverseLimit);
   /// Return whether the given instruction is used as necessary as part of a
   /// loop context This includes as the canonical induction variable or
   /// increment
@@ -185,13 +186,18 @@ public:
 
   // Context information to request calculation of loop limit information
   struct LimitContext {
+    // Whether the limit needs to be accessible for a reverse pass
+    bool ReverseLimit;
+
     // A block inside of the loop, defining the location
     llvm::BasicBlock *Block;
     // Instead of getting the actual limits, return a limit of one
     bool ForceSingleIteration;
 
-    LimitContext(llvm::BasicBlock *Block, bool ForceSingleIteration = false)
-        : Block(Block), ForceSingleIteration(ForceSingleIteration) {}
+    LimitContext(bool ReverseLimit, llvm::BasicBlock *Block,
+                 bool ForceSingleIteration = false)
+        : ReverseLimit(ReverseLimit), Block(Block),
+          ForceSingleIteration(ForceSingleIteration) {}
   };
 
   llvm::Value *ompOffset;
