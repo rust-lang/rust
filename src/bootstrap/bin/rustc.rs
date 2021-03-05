@@ -229,6 +229,7 @@ fn format_rusage_data() -> Option<String> {
 
 #[cfg(windows)]
 fn format_rusage_data(handle: std::os::windows::raw::HANDLE) -> Option<String> {
+    use winapi::um::{processthreadsapi, psapi, timezoneapi};
     macro_rules! try_bool {
         ($e:expr) => {
             if $e != 1 {
@@ -236,44 +237,57 @@ fn format_rusage_data(handle: std::os::windows::raw::HANDLE) -> Option<String> {
             }
         };
     }
+
+    let mut user_filetime = Default::default();
+    let mut user_time = Default::default();
+    let mut kernel_filetime = Default::default();
+    let mut kernel_time = Default::default();
+    let mut memory_counters = psapi::PROCESS_MEMORY_COUNTERS::default();
+
     unsafe {
-        let mut _filetime = winapi::shared::minwindef::FILETIME::default();
-        let mut user_filetime = winapi::shared::minwindef::FILETIME::default();
-        let mut kernel_filetime = winapi::shared::minwindef::FILETIME::default();
-        try_bool!(winapi::um::processthreadsapi::GetProcessTimes(
+        try_bool!(processthreadsapi::GetProcessTimes(
             handle,
-            &mut _filetime,
-            &mut _filetime,
+            &mut Default::default(),
+            &mut Default::default(),
             &mut kernel_filetime,
             &mut user_filetime,
         ));
-        let mut memory_counters = winapi::um::psapi::PROCESS_MEMORY_COUNTERS_EX::default();
-        try_bool!(winapi::um::psapi::GetProcessMemoryInfo(
+        try_bool!(timezoneapi::FileTimeToSystemTime(&user_filetime, &mut user_time));
+        try_bool!(timezoneapi::FileTimeToSystemTime(&kernel_filetime, &mut kernel_time));
+
+        // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
+        // with the given handle and none of that process's children.
+        try_bool!(psapi::GetProcessMemoryInfo(
             handle as _,
             &mut memory_counters as *mut _ as _,
-            std::mem::size_of::<winapi::um::psapi::PROCESS_MEMORY_COUNTERS_EX>() as u32,
+            std::mem::size_of::<psapi::PROCESS_MEMORY_COUNTERS_EX>() as u32,
         ));
-        let mut user_time = winapi::um::minwinbase::SYSTEMTIME::default();
-        try_bool!(winapi::um::timezoneapi::FileTimeToSystemTime(&user_filetime, &mut user_time));
-        let mut kernel_time = winapi::um::minwinbase::SYSTEMTIME::default();
-        try_bool!(winapi::um::timezoneapi::FileTimeToSystemTime(
-            &kernel_filetime,
-            &mut kernel_time
-        ));
-        let maxrss = memory_counters.PeakWorkingSetSize / 1024;
-        Some(format!(
-            "user: {USER_SEC}.{USER_USEC:03} \
-         sys: {SYS_SEC}.{SYS_USEC:03} \
-         max rss (kb): {MAXRSS} \
-         page faults: {PAGE_FAULTS}",
-            USER_SEC = user_time.wSecond + (user_time.wMinute * 60),
-            USER_USEC = user_time.wMilliseconds,
-            SYS_SEC = kernel_time.wSecond + (kernel_time.wMinute * 60),
-            SYS_USEC = kernel_time.wMilliseconds,
-            MAXRSS = maxrss,
-            PAGE_FAULTS = memory_counters.PageFaultCount,
-        ))
     }
+
+    // Guide on interpreting these numbers:
+    // https://docs.microsoft.com/en-us/windows/win32/psapi/process-memory-usage-information
+    let peak_working_set = memory_counters.PeakWorkingSetSize / 1024;
+    let peak_page_file = memory_counters.PeakPagefileUsage / 1024;
+    let peak_paged_pool = memory_counters.QuotaPeakPagedPoolUsage / 1024;
+    let peak_nonpaged_pool = memory_counters.QuotaPeakNonPagedPoolUsage / 1024;
+    Some(format!(
+        "user: {USER_SEC}.{USER_USEC:03} \
+         sys: {SYS_SEC}.{SYS_USEC:03} \
+         peak working set (kb): {PEAK_WORKING_SET} \
+         peak page file usage (kb): {PEAK_PAGE_FILE} \
+         peak paged pool usage (kb): {PEAK_PAGED_POOL} \
+         peak non-paged pool usage (kb): {PEAK_NONPAGED_POOL} \
+         page faults: {PAGE_FAULTS}",
+        USER_SEC = user_time.wSecond + (user_time.wMinute * 60),
+        USER_USEC = user_time.wMilliseconds,
+        SYS_SEC = kernel_time.wSecond + (kernel_time.wMinute * 60),
+        SYS_USEC = kernel_time.wMilliseconds,
+        PEAK_WORKING_SET = peak_working_set,
+        PEAK_PAGE_FILE = peak_page_file,
+        PEAK_PAGED_POOL = peak_paged_pool,
+        PEAK_NONPAGED_POOL = peak_nonpaged_pool,
+        PAGE_FAULTS = memory_counters.PageFaultCount,
+    ))
 }
 
 #[cfg(unix)]
