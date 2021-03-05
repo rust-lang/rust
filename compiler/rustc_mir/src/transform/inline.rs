@@ -52,7 +52,7 @@ crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
         return enabled;
     }
 
-    tcx.sess.opts.debugging_opts.mir_opt_level >= 2
+    tcx.sess.mir_opt_level() >= 3
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {

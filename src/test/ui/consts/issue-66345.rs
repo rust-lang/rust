@@ -1,8 +1,8 @@
 // run-pass
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 
 // Checks that the compiler does not ICE when passing references to field of by-value struct
-// with -Z mir-opt-level=3
+// with -Z mir-opt-level=4
 
 fn do_nothing(_: &()) {}
 

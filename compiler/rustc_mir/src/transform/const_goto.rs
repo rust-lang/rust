@@ -28,7 +28,7 @@ pub struct ConstGoto;
 
 impl<'tcx> MirPass<'tcx> for ConstGoto {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 3 {
+        if tcx.sess.mir_opt_level() < 4 {
             return;
         }
         trace!("Running ConstGoto on {:?}", body.source);

@@ -640,6 +640,12 @@ impl Session {
     pub fn binary_dep_depinfo(&self) -> bool {
         self.opts.debugging_opts.binary_dep_depinfo
     }
+    pub fn mir_opt_level(&self) -> usize {
+        self.opts
+            .debugging_opts
+            .mir_opt_level
+            .unwrap_or_else(|| if self.opts.optimize != config::OptLevel::No { 2 } else { 1 })
+    }
 
     /// Gets the features enabled for the current compilation session.
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
