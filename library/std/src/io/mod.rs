@@ -2238,6 +2238,19 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 }
 
+impl<T, U> SizeHint for Chain<T, U> {
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
+    }
+
+    fn upper_bound(&self) -> Option<usize> {
+        match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
+            (Some(first), Some(second)) => Some(first + second),
+            _ => None,
+        }
+    }
+}
+
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
 /// This struct is generally created by calling [`take`] on a reader.
@@ -2463,6 +2476,30 @@ impl<R: Read> Iterator for Bytes<R> {
                 Err(e) => Some(Err(e)),
             };
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        SizeHint::size_hint(&self.inner)
+    }
+}
+
+trait SizeHint {
+    fn lower_bound(&self) -> usize;
+
+    fn upper_bound(&self) -> Option<usize>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.lower_bound(), self.upper_bound())
+    }
+}
+
+impl<T> SizeHint for T {
+    default fn lower_bound(&self) -> usize {
+        0
+    }
+
+    default fn upper_bound(&self) -> Option<usize> {
+        None
     }
 }
 
