@@ -95,7 +95,7 @@ pub(crate) mod fragments {
                 // https://doc.rust-lang.org/reference/paths.html#simple-paths
                 // The start of an meta must be a simple path
                 match p.current() {
-                    IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump_any(),
+                    IDENT | T![super] | T![self] | T![crate] => p.bump_any(),
                     T![=] => {
                         p.bump_any();
                         match p.current() {
@@ -105,6 +105,7 @@ pub(crate) mod fragments {
                         }
                         break;
                     }
+                    _ if p.at(T![::]) => p.bump(T![::]),
                     _ => break,
                 }
             }

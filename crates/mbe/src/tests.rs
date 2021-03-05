@@ -954,7 +954,8 @@ fn test_meta() {
     .assert_expand_items(
         r#"foo! { cfg(target_os = "windows") }"#,
         r#"# [cfg (target_os = "windows")] fn bar () {}"#,
-    );
+    )
+    .assert_expand_items(r#"foo! { hello::world }"#, r#"# [hello :: world] fn bar () {}"#);
 }
 
 #[test]
