@@ -1245,24 +1245,19 @@ pub unsafe fn _mm256_i32gather_ps<const SCALE: i32>(slice: *const f32, offsets: 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_i32gather_ps)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vgatherdps, scale = 1))]
-#[rustc_args_required_const(4)]
+#[cfg_attr(test, assert_instr(vgatherdps, SCALE = 1))]
+#[rustc_legacy_const_generics(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_mask_i32gather_ps(
+pub unsafe fn _mm256_mask_i32gather_ps<const SCALE: i32>(
     src: __m256,
     slice: *const f32,
     offsets: __m256i,
     mask: __m256,
-    scale: i32,
 ) -> __m256 {
+    static_assert_imm8_scale!(SCALE);
     let offsets = offsets.as_i32x8();
     let slice = slice as *const i8;
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpgatherdps(src, slice, offsets, mask, $imm8)
-        };
-    }
-    constify_imm8_gather!(scale, call)
+    vpgatherdps(src, slice, offsets, mask, SCALE as i8)
 }
 
 /// Returns values from `slice` at offsets determined by `offsets * scale`,
@@ -5650,12 +5645,11 @@ mod tests {
             j += 1.0;
         }
         // A multiplier of 4 is word-addressing for f32s
-        let r = _mm256_mask_i32gather_ps(
+        let r = _mm256_mask_i32gather_ps::<4>(
             _mm256_set1_ps(256.0),
             arr.as_ptr(),
             _mm256_setr_epi32(0, 16, 64, 96, 0, 0, 0, 0),
             _mm256_setr_ps(-1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
-            4,
         );
         assert_eq_m256(
             r,
