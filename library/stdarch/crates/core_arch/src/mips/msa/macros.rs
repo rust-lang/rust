@@ -1,8 +1,32 @@
 //! Utility macros.
 
+macro_rules! static_assert_imm_s5 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -16, 15>::VALID;
+    };
+}
+
 macro_rules! static_assert_imm_s10 {
     ($imm:ident) => {
         let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -512, 511>::VALID;
+    };
+}
+
+macro_rules! static_assert_imm_s11 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -1024, 1023>::VALID;
+    };
+}
+
+macro_rules! static_assert_imm_s12 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -2048, 2047>::VALID;
+    };
+}
+
+macro_rules! static_assert_imm_s13 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, -4096, 4095>::VALID;
     };
 }
 
@@ -4247,47 +4271,6 @@ macro_rules! constify_imm5 {
             29 => $expand!(29),
             30 => $expand!(30),
             _ => $expand!(31),
-        }
-    };
-}
-
-//immediate value: -16:15
-macro_rules! constify_imm_s5 {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b1_1111 {
-            0 => $expand!(0),
-            1 => $expand!(1),
-            2 => $expand!(2),
-            3 => $expand!(3),
-            4 => $expand!(4),
-            5 => $expand!(5),
-            6 => $expand!(6),
-            7 => $expand!(7),
-            8 => $expand!(8),
-            9 => $expand!(9),
-            10 => $expand!(10),
-            11 => $expand!(11),
-            12 => $expand!(12),
-            13 => $expand!(13),
-            14 => $expand!(14),
-            16 => $expand!(-16),
-            17 => $expand!(-15),
-            18 => $expand!(-14),
-            19 => $expand!(-13),
-            20 => $expand!(-12),
-            21 => $expand!(-11),
-            22 => $expand!(-10),
-            23 => $expand!(-9),
-            24 => $expand!(-8),
-            25 => $expand!(-7),
-            26 => $expand!(-6),
-            27 => $expand!(-5),
-            28 => $expand!(-4),
-            29 => $expand!(-3),
-            30 => $expand!(-2),
-            31 => $expand!(-1),
-            _ => $expand!(15),
         }
     };
 }
