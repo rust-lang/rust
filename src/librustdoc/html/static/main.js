@@ -843,7 +843,6 @@ function defocusSearchBar() {
             function checkGenerics(obj, val) {
                 // The names match, but we need to be sure that all generics kinda
                 // match as well.
-                var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (val.generics.length > 0) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
@@ -866,7 +865,6 @@ function defocusSearchBar() {
                             }
                             if (lev.pos !== -1) {
                                 elems.splice(lev.pos, 1);
-                                lev_distance = Math.min(lev.lev, lev_distance);
                                 total += lev.lev;
                                 done += 1;
                             } else {
@@ -2053,24 +2051,6 @@ function defocusSearchBar() {
             }
         }
     }
-
-    /**
-     * Convert HTML to plaintext:
-     *
-     *   * Replace "<code>foo</code>" with "`foo`"
-     *   * Strip all other HTML tags
-     *
-     * Used by the dynamic sidebar crate list renderer.
-     *
-     * @param  {[string]} html [The HTML to convert]
-     * @return {[string]}      [The resulting plaintext]
-     */
-    function convertHTMLToPlaintext(html) {
-        var x = document.createElement("div");
-        x.innerHTML = html.replace('<code>', '`').replace('</code>', '`');
-        return x.innerText;
-    }
-
 
     // delayed sidebar rendering.
     window.initSidebarItems = function(items) {
