@@ -130,7 +130,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     ) -> chalk_ir::ProgramClauses<chalk::Interner>;
 }
 
-fn infer_wait(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
+fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile::span("infer:wait").detail(|| match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.to_string(),
         DefWithBodyId::StaticId(it) => {

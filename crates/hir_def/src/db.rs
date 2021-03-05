@@ -133,7 +133,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
 }
 
-fn crate_def_map_wait(db: &impl DefDatabase, krate: CrateId) -> Arc<DefMap> {
+fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
     let _p = profile::span("crate_def_map:wait");
     db.crate_def_map_query(krate)
 }
