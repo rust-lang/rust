@@ -189,7 +189,7 @@ pub(crate) fn doc_owner_to_def(
 ) -> Option<Definition> {
     let res: hir::ModuleDef = match_ast! {
         match item {
-            ast::SourceFile(it) => sema.scope(&item).module()?.into(),
+            ast::SourceFile(_it) => sema.scope(&item).module()?.into(),
             ast::Fn(it) => sema.to_def(&it)?.into(),
             ast::Struct(it) => sema.to_def(&it)?.into(),
             ast::Enum(it) => sema.to_def(&it)?.into(),
