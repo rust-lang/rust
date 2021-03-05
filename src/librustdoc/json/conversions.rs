@@ -27,12 +27,8 @@ impl JsonRenderer<'_> {
         let deprecation = item.deprecation(self.tcx);
         let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
         let inner = match *kind {
-            clean::ItemKind::ExternCrateItem { ref src } => ItemEnum::ExternCrateItem {
-                name: name.as_ref().unwrap().to_string(),
-                rename: src.map(|x| x.to_string()),
-            },
             clean::StrippedItem(_) => return None,
-            x => from_clean_item_kind(x, self.tcx),
+            x => from_clean_item_kind(x, self.tcx, &name),
         };
         Some(Item {
             id: from_def_id(def_id),
@@ -155,7 +151,7 @@ crate fn from_def_id(did: DefId) -> Id {
     Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
 }
 
-fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
+fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Symbol>) -> ItemEnum {
     use clean::ItemKind::*;
     match item {
         ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
@@ -185,11 +181,14 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
             bounds: g.into_iter().map(Into::into).collect(),
             default: t.map(Into::into),
         },
-        StrippedItem(inner) => from_clean_item_kind(*inner, tcx),
+        StrippedItem(inner) => from_clean_item_kind(*inner, tcx, name),
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
-        ExternCrateItem { .. } => unreachable!(),
+        ExternCrateItem { ref src } => ItemEnum::ExternCrateItem {
+            name: name.as_ref().unwrap().to_string(),
+            rename: src.map(|x| x.to_string()),
+        },
     }
 }
 
