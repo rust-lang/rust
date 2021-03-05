@@ -184,6 +184,7 @@ pub mod token_stream {
             let (subtree, _token_map) =
                 mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
 
+            let subtree = subtree_replace_token_ids_with_unspecified(subtree);
             Ok(TokenStream { subtree })
         }
     }
@@ -223,6 +224,44 @@ pub mod token_stream {
                     Some(tt::DelimiterKind::Bracket) => ("[", "]"),
                 };
                 format!("{}{}{}", open, content, close)
+            }
+        }
+    }
+
+    fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
+        tt::Subtree {
+            delimiter: subtree
+                .delimiter
+                .map(|d| tt::Delimiter { id: tt::TokenId::unspecified(), ..d }),
+            token_trees: subtree
+                .token_trees
+                .into_iter()
+                .map(|t| token_tree_replace_token_ids_with_unspecified(t))
+                .collect(),
+        }
+    }
+
+    fn token_tree_replace_token_ids_with_unspecified(tt: tt::TokenTree) -> tt::TokenTree {
+        match tt {
+            tt::TokenTree::Leaf(leaf) => {
+                tt::TokenTree::Leaf(leaf_replace_token_ids_with_unspecified(leaf))
+            }
+            tt::TokenTree::Subtree(subtree) => {
+                tt::TokenTree::Subtree(subtree_replace_token_ids_with_unspecified(subtree))
+            }
+        }
+    }
+
+    fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
+        match leaf {
+            tt::Leaf::Literal(lit) => {
+                tt::Leaf::Literal(tt::Literal { id: tt::TokenId::unspecified(), ..lit })
+            }
+            tt::Leaf::Punct(punct) => {
+                tt::Leaf::Punct(tt::Punct { id: tt::TokenId::unspecified(), ..punct })
+            }
+            tt::Leaf::Ident(ident) => {
+                tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), ..ident })
             }
         }
     }
@@ -277,42 +316,6 @@ impl server::FreeFunctions for Rustc {
     }
 }
 
-fn subtree_replace_token_ids_with_unspecified(subtree: tt::Subtree) -> tt::Subtree {
-    tt::Subtree {
-        delimiter: subtree.delimiter.map(|d| tt::Delimiter { id: tt::TokenId::unspecified(), ..d }),
-        token_trees: subtree
-            .token_trees
-            .into_iter()
-            .map(|t| token_tree_replace_token_ids_with_unspecified(t))
-            .collect(),
-    }
-}
-
-fn token_tree_replace_token_ids_with_unspecified(tt: tt::TokenTree) -> tt::TokenTree {
-    match tt {
-        tt::TokenTree::Leaf(leaf) => {
-            tt::TokenTree::Leaf(leaf_replace_token_ids_with_unspecified(leaf))
-        }
-        tt::TokenTree::Subtree(subtree) => {
-            tt::TokenTree::Subtree(subtree_replace_token_ids_with_unspecified(subtree))
-        }
-    }
-}
-
-fn leaf_replace_token_ids_with_unspecified(leaf: tt::Leaf) -> tt::Leaf {
-    match leaf {
-        tt::Leaf::Literal(lit) => {
-            tt::Leaf::Literal(tt::Literal { id: tt::TokenId::unspecified(), ..lit })
-        }
-        tt::Leaf::Punct(punct) => {
-            tt::Leaf::Punct(tt::Punct { id: tt::TokenId::unspecified(), ..punct })
-        }
-        tt::Leaf::Ident(ident) => {
-            tt::Leaf::Ident(tt::Ident { id: tt::TokenId::unspecified(), ..ident })
-        }
-    }
-}
-
 impl server::TokenStream for Rustc {
     fn new(&mut self) -> Self::TokenStream {
         Self::TokenStream::new()
@@ -322,8 +325,9 @@ impl server::TokenStream for Rustc {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        let (subtree, _) = mbe::parse_to_token_tree(src).expect("cannot parse string");
-        TokenStream::with_subtree(subtree_replace_token_ids_with_unspecified(subtree))
+        use std::str::FromStr;
+
+        Self::TokenStream::from_str(src).expect("cannot parse string")
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
