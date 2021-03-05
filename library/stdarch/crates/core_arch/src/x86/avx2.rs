@@ -1085,20 +1085,19 @@ pub unsafe fn _mm256_hsubs_epi16(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_i32gather_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpgatherdd, scale = 1))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vpgatherdd, SCALE = 1))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_i32gather_epi32(slice: *const i32, offsets: __m128i, scale: i32) -> __m128i {
+pub unsafe fn _mm_i32gather_epi32<const SCALE: i32>(
+    slice: *const i32,
+    offsets: __m128i,
+) -> __m128i {
+    static_assert_imm8_scale!(SCALE);
     let zero = _mm_setzero_si128().as_i32x4();
     let neg_one = _mm_set1_epi32(-1).as_i32x4();
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
-    macro_rules! call {
-        ($imm8:expr) => {
-            pgatherdd(zero, slice, offsets, neg_one, $imm8)
-        };
-    }
-    let r = constify_imm8_gather!(scale, call);
+    let r = pgatherdd(zero, slice, offsets, neg_one, SCALE as i8);
     transmute(r)
 }
 
@@ -5573,7 +5572,7 @@ mod tests {
             arr[i as usize] = i;
         }
         // A multiplier of 4 is word-addressing
-        let r = _mm_i32gather_epi32(arr.as_ptr(), _mm_setr_epi32(0, 16, 32, 48), 4);
+        let r = _mm_i32gather_epi32::<4>(arr.as_ptr(), _mm_setr_epi32(0, 16, 32, 48));
         assert_eq_m128i(r, _mm_setr_epi32(0, 16, 32, 48));
     }
 
