@@ -67,7 +67,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
 
         match *kind {
             clean::ModuleItem(..) => ItemType::Module,
-            clean::ExternCrateItem(..) => ItemType::ExternCrate,
+            clean::ExternCrateItem { .. } => ItemType::ExternCrate,
             clean::ImportItem(..) => ItemType::Import,
             clean::StructItem(..) => ItemType::Struct,
             clean::UnionItem(..) => ItemType::Union,
