@@ -53,12 +53,12 @@
 // FALSE - 'false' all bits are set to 0
 // FF - same as 'true'
 // MIN - minimal value (either 0 or the lowest negative number)
-// MAX - maximal value propr to overflow
+// MAX - maximal value proper to overflow
 //
 // # validate <values>
 // Validates a and b aginst the expected result of the test.
 // The special values 'TRUE' and 'FALSE' can be used to
-// represent the corect NEON representation of true or
+// represent the correct NEON representation of true or
 // false values. It too gets scaled to the type.
 //
 // Validate needs to be called before generate as it sets
@@ -165,6 +165,29 @@ validate TRUE, FALSE, FALSE, FALSE
 
 aarch64 = fcmeq
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+
+////////////////////
+// Floating-point absolute value
+////////////////////
+
+/// Floating-point absolute value
+name = vabs
+fn = simd_fabs
+a =  -0.1, -2.2, -3.3, -6.6
+validate 0.1, 2.2, 3.3, 6.6
+
+arm = vabs
+aarch64 = fabs
+generate float32x2_t:float32x2_t, float32x4_t:float32x4_t
+
+/// Floating-point absolute value
+name = vabs
+fn = simd_fabs
+a =  -0.1, -2.2, -3.3, -6.6
+validate 0.1, 2.2, 3.3, 6.6
+
+aarch64 = fabs
+generate float64x1_t:float64x1_t, float64x2_t:float64x2_t
 
 ////////////////////
 // greater then

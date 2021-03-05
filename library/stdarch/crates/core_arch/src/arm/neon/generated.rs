@@ -629,6 +629,26 @@ pub unsafe fn vceqq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     simd_eq(a, b)
 }
 
+/// Floating-point absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
+pub unsafe fn vabs_f32(a: float32x2_t) -> float32x2_t {
+    simd_fabs(a)
+}
+
+/// Floating-point absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vabs))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabs))]
+pub unsafe fn vabsq_f32(a: float32x4_t) -> float32x4_t {
+    simd_fabs(a)
+}
+
 /// Compare signed greater than
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3648,6 +3668,22 @@ mod test {
         let b: f32x4 = f32x4::new(1.2, 3.4, 5.6, 7.8);
         let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
         let r: u32x4 = transmute(vceqq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabs_f32() {
+        let a: f32x2 = f32x2::new(-0.1, -2.2);
+        let e: f32x2 = f32x2::new(0.1, 2.2);
+        let r: f32x2 = transmute(vabs_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsq_f32() {
+        let a: f32x4 = f32x4::new(-0.1, -2.2, -3.3, -6.6);
+        let e: f32x4 = f32x4::new(0.1, 2.2, 3.3, 6.6);
+        let r: f32x4 = transmute(vabsq_f32(transmute(a)));
         assert_eq!(r, e);
     }
 

@@ -271,6 +271,22 @@ pub unsafe fn vceqzq_f64(a: float64x2_t) -> uint64x2_t {
     simd_eq(a, transmute(b))
 }
 
+/// Floating-point absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabs))]
+pub unsafe fn vabs_f64(a: float64x1_t) -> float64x1_t {
+    simd_fabs(a)
+}
+
+/// Floating-point absolute value
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabs))]
+pub unsafe fn vabsq_f64(a: float64x2_t) -> float64x2_t {
+    simd_fabs(a)
+}
+
 /// Compare signed greater than
 #[inline]
 #[target_feature(enable = "neon")]
@@ -835,6 +851,22 @@ mod test {
         let a: f64x2 = f64x2::new(0.0, 1.2);
         let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
         let r: u64x2 = transmute(vceqzq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabs_f64() {
+        let a: f64 = -0.1;
+        let e: f64 = 0.1;
+        let r: f64 = transmute(vabs_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabsq_f64() {
+        let a: f64x2 = f64x2::new(-0.1, -2.2);
+        let e: f64x2 = f64x2::new(0.1, 2.2);
+        let r: f64x2 = transmute(vabsq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 

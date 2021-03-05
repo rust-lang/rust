@@ -299,7 +299,7 @@ fn gen_aarch64(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    single_para: bool,
+    para_num: i32,
     fixed: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
@@ -335,27 +335,36 @@ fn gen_aarch64(
     } else {
         String::new()
     };
-    let call = if !single_para {
+    let call = if para_num == 2 {
         format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
         )
-    } else if fixed.len() != 0 {
-        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
-        format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+    } else if para_num == 1 {
+        if fixed.len() != 0 {
+            let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+            format!(
+                r#"pub unsafe fn {}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
-            name,
-            in_t,
-            out_t,
-            values(in_t, &fixed),
-            ext_c,
-            current_fn,
-        )
+                name,
+                in_t,
+                out_t,
+                values(in_t, &fixed),
+                ext_c,
+                current_fn,
+            )
+        } else {
+            format!(
+                r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a)
+}}"#,
+                name, in_t, out_t, ext_c, current_fn,
+            )
+        }
     } else {
         String::new()
     };
@@ -370,14 +379,7 @@ fn gen_aarch64(
         current_comment, current_aarch64, call
     );
 
-    let test = gen_test(
-        name,
-        &in_t,
-        &out_t,
-        current_tests,
-        type_len(in_t),
-        single_para,
-    );
+    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), para_num);
     (function, test)
 }
 
@@ -387,7 +389,7 @@ fn gen_test(
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     len: usize,
-    single_para: bool,
+    para_num: i32,
 ) -> String {
     let mut test = format!(
         r#"
@@ -399,35 +401,44 @@ fn gen_test(
         let a: Vec<String> = a.iter().take(len).cloned().collect();
         let b: Vec<String> = b.iter().take(len).cloned().collect();
         let e: Vec<String> = e.iter().take(len).cloned().collect();
-        let t = if !single_para {
-            format!(
-                r#"
+        let t = {
+            match para_num {
+                1 => {
+                    format!(
+                        r#"
+        let a{};
+        let e{};
+        let r: {} = transmute({}(transmute(a)));
+        assert_eq!(r, e);
+"#,
+                        values(in_t, &a),
+                        values(out_t, &e),
+                        type_to_global_type(out_t),
+                        name
+                    )
+                }
+                2 => {
+                    format!(
+                        r#"
         let a{};
         let b{};
         let e{};
         let r: {} = transmute({}(transmute(a), transmute(b)));
         assert_eq!(r, e);
 "#,
-                values(in_t, &a),
-                values(in_t, &b),
-                values(out_t, &e),
-                type_to_global_type(out_t),
-                name
-            )
-        } else {
-            format!(
-                r#"
-        let a{};
-        let e{};
-        let r: {} = transmute({}(transmute(a)));
-        assert_eq!(r, e);
-"#,
-                values(in_t, &a),
-                values(out_t, &e),
-                type_to_global_type(out_t),
-                name
-            )
+                        values(in_t, &a),
+                        values(in_t, &b),
+                        values(out_t, &e),
+                        type_to_global_type(out_t),
+                        name
+                    )
+                }
+                _ => {
+                    panic!("no support para_num:{}", para_num.to_string())
+                }
+            }
         };
+
         test.push_str(&t);
     }
     test.push_str("    }\n");
@@ -446,7 +457,7 @@ fn gen_arm(
     in_t: &str,
     out_t: &str,
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    single_para: bool,
+    para_num: i32,
     fixed: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
@@ -472,7 +483,6 @@ fn gen_arm(
         }
         format!("{}_", name)
     };
-
     let ext_c =
         if let (Some(link_arm), Some(link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
             let ext = type_to_ext(in_t);
@@ -495,27 +505,36 @@ fn gen_arm(
         } else {
             String::new()
         };
-    let call = if !single_para {
+    let call = if para_num == 2 {
         format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
         )
-    } else if fixed.len() != 0 {
-        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
-        format!(
-            r#"pub unsafe fn {}(a: {}) -> {} {{
+    } else if para_num == 1 {
+        if fixed.len() != 0 {
+            let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+            format!(
+                r#"pub unsafe fn {}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
-            name,
-            in_t,
-            out_t,
-            values(in_t, &fixed),
-            ext_c,
-            current_fn,
-        )
+                name,
+                in_t,
+                out_t,
+                values(in_t, &fixed),
+                ext_c,
+                current_fn,
+            )
+        } else {
+            format!(
+                r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a)
+}}"#,
+                name, in_t, out_t, ext_c, current_fn,
+            )
+        }
     } else {
         String::new()
     };
@@ -534,14 +553,7 @@ fn gen_arm(
         expand_intrinsic(&current_aarch64, in_t),
         call,
     );
-    let test = gen_test(
-        name,
-        &in_t,
-        &out_t,
-        current_tests,
-        type_len(in_t),
-        single_para,
-    );
+    let test = gen_test(name, &in_t, &out_t, current_tests, type_len(in_t), para_num);
 
     (function, test)
 }
@@ -628,10 +640,10 @@ fn main() -> io::Result<()> {
     let mut current_aarch64: Option<String> = None;
     let mut link_arm: Option<String> = None;
     let mut link_aarch64: Option<String> = None;
+    let mut para_num = 2;
     let mut a: Vec<String> = Vec::new();
     let mut b: Vec<String> = Vec::new();
     let mut fixed: Vec<String> = Vec::new();
-    let mut single_para: bool = true;
     let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
 
     //
@@ -702,7 +714,10 @@ mod test {
             link_aarch64 = None;
             link_arm = None;
             current_tests = Vec::new();
-            single_para = true;
+            para_num = 2;
+            a = vec![];
+            b = vec![];
+            fixed = vec![];
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
             current_name = Some(String::from(&line[7..]));
@@ -716,7 +731,6 @@ mod test {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
             b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
-            single_para = false;
         } else if line.starts_with("fixed = ") {
             fixed = line[8..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("validate ") {
@@ -755,9 +769,11 @@ mod test {
                 } else {
                     panic!("Bad spec: {}", line)
                 }
+                if b.len() == 0 {
+                    para_num = 1;
+                }
                 let current_name = current_name.clone().unwrap();
                 let name = format!("{}{}", current_name, type_to_suffix(in_t),);
-
                 if let Some(current_arm) = current_arm.clone() {
                     let (function, test) = gen_arm(
                         &current_comment,
@@ -770,7 +786,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        single_para,
+                        para_num,
                         &fixed,
                     );
                     out_arm.push_str(&function);
@@ -785,7 +801,7 @@ mod test {
                         &in_t,
                         &out_t,
                         &current_tests,
-                        single_para,
+                        para_num,
                         &fixed,
                     );
                     out_aarch64.push_str(&function);
