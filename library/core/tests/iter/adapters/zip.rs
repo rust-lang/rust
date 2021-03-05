@@ -245,3 +245,23 @@ fn test_double_ended_zip() {
     assert_eq!(it.next_back(), Some((3, 3)));
     assert_eq!(it.next(), None);
 }
+
+#[test]
+fn test_issue_82282() {
+    fn overflowed_zip(arr: &[i32]) -> impl Iterator<Item = (i32, &())> {
+        static UNIT_EMPTY_ARR: [(); 0] = [];
+
+        let mapped = arr.into_iter().map(|i| *i);
+        let mut zipped = mapped.zip(UNIT_EMPTY_ARR.iter());
+        zipped.next();
+        zipped
+    }
+
+    let arr = [1, 2, 3];
+    let zip = overflowed_zip(&arr).zip(overflowed_zip(&arr));
+
+    assert_eq!(zip.size_hint(), (0, Some(0)));
+    for _ in zip {
+        panic!();
+    }
+}

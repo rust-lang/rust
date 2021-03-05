@@ -200,6 +200,7 @@ where
         } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a.size() {
             let i = self.index;
             self.index += 1;
+            self.len += 1;
             // match the base implementation's potential side effects
             // SAFETY: we just checked that `i` < `self.a.len()`
             unsafe {
@@ -258,7 +259,7 @@ where
             if sz_a != sz_b {
                 let sz_a = self.a.size();
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - cmp::max(self.len, self.index) {
+                    for _ in 0..sz_a - self.len {
                         self.a.next_back();
                     }
                 }
