@@ -1,7 +1,7 @@
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
-/* global hideThemeButtonState, showThemeButtonState */
+/* global switchTheme, useSystemTheme */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
@@ -106,6 +106,65 @@ function focusSearchBar() {
 function defocusSearchBar() {
     getSearchInput().blur();
 }
+
+function showThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "block";
+    themePicker.style.borderBottomRightRadius = "0";
+    themePicker.style.borderBottomLeftRadius = "0";
+}
+
+function hideThemeButtonState() {
+    var themePicker = getThemePickerElement();
+    var themeChoices = getThemesElement();
+
+    themeChoices.style.display = "none";
+    themePicker.style.borderBottomRightRadius = "3px";
+    themePicker.style.borderBottomLeftRadius = "3px";
+}
+
+// Set up the theme picker list.
+(function () {
+    var themeChoices = getThemesElement();
+    var themePicker = getThemePickerElement();
+    var availableThemes/* INSERT THEMES HERE */;
+
+    function switchThemeButtonState() {
+        if (themeChoices.style.display === "block") {
+            hideThemeButtonState();
+        } else {
+            showThemeButtonState();
+        }
+    }
+
+    function handleThemeButtonsBlur(e) {
+        var active = document.activeElement;
+        var related = e.relatedTarget;
+
+        if (active.id !== "theme-picker" &&
+            (!active.parentNode || active.parentNode.id !== "theme-choices") &&
+            (!related ||
+             (related.id !== "theme-picker" &&
+              (!related.parentNode || related.parentNode.id !== "theme-choices")))) {
+            hideThemeButtonState();
+        }
+    }
+
+    themePicker.onclick = switchThemeButtonState;
+    themePicker.onblur = handleThemeButtonsBlur;
+    availableThemes.forEach(function(item) {
+        var but = document.createElement("button");
+        but.textContent = item;
+        but.onclick = function() {
+            switchTheme(window.currentTheme, window.mainTheme, item, true);
+            useSystemTheme(false);
+        };
+        but.onblur = handleThemeButtonsBlur;
+        themeChoices.appendChild(but);
+    });
+}());
 
 (function() {
     "use strict";
