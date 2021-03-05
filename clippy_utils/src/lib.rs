@@ -63,9 +63,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, GenericArgs, HirId, ImplItem, ImplItemKind, Item,
-    ItemKind, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind,
-    Unsafety,
+    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
+    Item, ItemKind, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
+    TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -1002,6 +1002,21 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         },
         _ => None,
     })
+}
+
+/// Gets the parent node if it's an impl block.
+pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
+    let map = tcx.hir();
+    match map.parent_iter(id).next() {
+        Some((
+            _,
+            Node::Item(Item {
+                kind: ItemKind::Impl(imp),
+                ..
+            }),
+        )) => Some(imp),
+        _ => None,
+    }
 }
 
 /// Returns the base type for HIR references and pointers.
