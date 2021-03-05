@@ -2,9 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    expr::Statement, path::path, resolver::HasResolver, AdtId, AssocItemId, DefWithBodyId,
-};
+use hir_def::{expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId};
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
@@ -17,7 +15,7 @@ use crate::{
         MissingPatFields, RemoveThisSemicolon,
     },
     utils::variant_data,
-    InferenceResult, Ty,
+    AdtId, InferenceResult, Ty,
 };
 
 pub(crate) use hir_def::{
@@ -382,10 +380,14 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         let (params, required) = match mismatch.expected {
-            Ty::Adt(AdtId::EnumId(enum_id), ref parameters) if enum_id == core_result_enum => {
+            Ty::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref parameters)
+                if enum_id == core_result_enum =>
+            {
                 (parameters, "Ok".to_string())
             }
-            Ty::Adt(AdtId::EnumId(enum_id), ref parameters) if enum_id == core_option_enum => {
+            Ty::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref parameters)
+                if enum_id == core_option_enum =>
+            {
                 (parameters, "Some".to_string())
             }
             _ => return,

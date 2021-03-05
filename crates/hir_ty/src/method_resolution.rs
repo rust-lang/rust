@@ -8,8 +8,8 @@ use arrayvec::ArrayVec;
 use base_db::CrateId;
 use chalk_ir::Mutability;
 use hir_def::{
-    lang_item::LangItemTarget, AdtId, AssocContainerId, AssocItemId, FunctionId, GenericDefId,
-    HasModule, ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
+    lang_item::LangItemTarget, AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule,
+    ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -19,8 +19,8 @@ use crate::{
     db::HirDatabase,
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Scalar, Substs, TraitEnvironment,
-    TraitRef, Ty, TypeWalk,
+    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Scalar, Substs,
+    TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -32,7 +32,7 @@ pub enum TyFingerprint {
     Never,
     RawPtr(Mutability),
     Scalar(Scalar),
-    Adt(AdtId),
+    Adt(hir_def::AdtId),
     Dyn(TraitId),
     Tuple(usize),
     ForeignType(TypeAliasId),
@@ -50,7 +50,7 @@ impl TyFingerprint {
             &Ty::Slice(..) => TyFingerprint::Slice,
             &Ty::Array(..) => TyFingerprint::Array,
             &Ty::Scalar(scalar) => TyFingerprint::Scalar(scalar),
-            &Ty::Adt(adt, _) => TyFingerprint::Adt(adt),
+            &Ty::Adt(AdtId(adt), _) => TyFingerprint::Adt(adt),
             &Ty::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
             &Ty::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
             &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
@@ -231,7 +231,7 @@ impl Ty {
         let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
 
         let lang_item_targets = match self {
-            Ty::Adt(def_id, _) => {
+            Ty::Adt(AdtId(def_id), _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
             Ty::ForeignType(type_alias_id) => {

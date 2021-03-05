@@ -27,9 +27,9 @@ use std::{iter, mem, ops::Deref, sync::Arc};
 
 use base_db::salsa;
 use hir_def::{
-    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AdtId, AssocContainerId,
-    DefWithBodyId, FunctionId, GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId,
-    TypeAliasId, TypeParamId,
+    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, DefWithBodyId,
+    FunctionId, GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId,
+    TypeParamId,
 };
 use itertools::Itertools;
 
@@ -47,7 +47,9 @@ pub use lower::{
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
-pub use chalk_ir::{BoundVar, DebruijnIndex, Mutability, Scalar, TyVariableKind};
+pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariableKind};
+
+pub(crate) use crate::traits::chalk::Interner;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -131,7 +133,7 @@ pub enum AliasTy {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Ty {
     /// Structures, enumerations and unions.
-    Adt(AdtId, Substs),
+    Adt(AdtId<Interner>, Substs),
 
     /// Represents an associated item like `Iterator::Item`.  This is used
     /// when we have tried to normalize a projection like `T::Item` but
@@ -602,6 +604,10 @@ impl Ty {
         Ty::Tuple(0, Substs::empty())
     }
 
+    pub fn adt_ty(adt: hir_def::AdtId, substs: Substs) -> Ty {
+        Ty::Adt(AdtId(adt), substs)
+    }
+
     pub fn fn_ptr(sig: CallableSig) -> Self {
         Ty::Function(FnPointer {
             num_args: sig.params().len(),
@@ -650,9 +656,9 @@ impl Ty {
         t
     }
 
-    pub fn as_adt(&self) -> Option<(AdtId, &Substs)> {
+    pub fn as_adt(&self) -> Option<(hir_def::AdtId, &Substs)> {
         match self {
-            Ty::Adt(adt_def, parameters) => Some((*adt_def, parameters)),
+            Ty::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
             _ => None,
         }
     }
@@ -666,7 +672,7 @@ impl Ty {
 
     pub fn as_generic_def(&self) -> Option<GenericDefId> {
         match *self {
-            Ty::Adt(adt, ..) => Some(adt.into()),
+            Ty::Adt(AdtId(adt), ..) => Some(adt.into()),
             Ty::FnDef(callable, ..) => Some(callable.into()),
             Ty::AssociatedType(type_alias, ..) => Some(type_alias.into()),
             Ty::ForeignType(type_alias, ..) => Some(type_alias.into()),

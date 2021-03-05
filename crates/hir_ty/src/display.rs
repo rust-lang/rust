@@ -2,18 +2,19 @@
 
 use std::{borrow::Cow, fmt};
 
-use crate::{
-    db::HirDatabase, primitive, utils::generics, AliasTy, CallableDefId, CallableSig,
-    GenericPredicate, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs,
-    TraitRef, Ty,
-};
 use arrayvec::ArrayVec;
 use chalk_ir::Mutability;
 use hir_def::{
-    db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs, AdtId,
+    db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs,
     AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
+
+use crate::{
+    db::HirDatabase, primitive, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
+    GenericPredicate, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs,
+    TraitRef, Ty,
+};
 
 pub struct HirFormatter<'a> {
     pub db: &'a dyn HirDatabase,
@@ -400,13 +401,13 @@ impl HirDisplay for Ty {
                     write!(f, " -> {}", ret_display)?;
                 }
             }
-            Ty::Adt(def_id, parameters) => {
+            Ty::Adt(AdtId(def_id), parameters) => {
                 match f.display_target {
                     DisplayTarget::Diagnostics | DisplayTarget::Test => {
                         let name = match *def_id {
-                            AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
-                            AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
-                            AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
+                            hir_def::AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
+                            hir_def::AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
+                            hir_def::AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
                         };
                         write!(f, "{}", name)?;
                     }

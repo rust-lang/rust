@@ -315,9 +315,8 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
         let id = from_chalk(self.db, trait_id);
         self.db.trait_data(id).name.to_string()
     }
-    fn adt_name(&self, adt_id: chalk_ir::AdtId<Interner>) -> String {
-        let id = from_chalk(self.db, adt_id);
-        match id {
+    fn adt_name(&self, chalk_ir::AdtId(adt_id): AdtId) -> String {
+        match adt_id {
             hir_def::AdtId::StructId(id) => self.db.struct_data(id).name.to_string(),
             hir_def::AdtId::EnumId(id) => self.db.enum_data(id).name.to_string(),
             hir_def::AdtId::UnionId(id) => self.db.union_data(id).name.to_string(),
@@ -488,8 +487,8 @@ pub(crate) fn struct_datum_query(
     struct_id: AdtId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let adt_id = from_chalk(db, struct_id);
-    let type_ctor = Ty::Adt(adt_id, Substs::empty());
+    let type_ctor = Ty::Adt(struct_id, Substs::empty());
+    let chalk_ir::AdtId(adt_id) = struct_id;
     debug!("struct {:?} = {:?}", struct_id, type_ctor);
     let num_params = generics(db.upcast(), adt_id.into()).len();
     let upstream = adt_id.module(db.upcast()).krate() != krate;
@@ -684,10 +683,9 @@ pub(crate) fn fn_def_variance_query(
 pub(crate) fn adt_variance_query(
     db: &dyn HirDatabase,
     _krate: CrateId,
-    adt_id: AdtId,
+    chalk_ir::AdtId(adt_id): AdtId,
 ) -> Variances {
-    let adt: crate::AdtId = from_chalk(db, adt_id);
-    let generic_params = generics(db.upcast(), adt.into());
+    let generic_params = generics(db.upcast(), adt_id.into());
     Variances::from_iter(
         &Interner,
         std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),

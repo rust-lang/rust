@@ -8,7 +8,7 @@ use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AdtId, AssocContainerId, FieldId, Lookup,
+    AssocContainerId, FieldId, Lookup,
 };
 use hir_expand::name::{name, Name};
 use syntax::ast::RangeOp;
@@ -21,8 +21,8 @@ use crate::{
     primitive::{self, UintTy},
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    Binders, CallableDefId, FnPointer, FnSig, Obligation, OpaqueTyId, Rawness, Scalar, Substs,
-    TraitRef, Ty,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, Obligation, OpaqueTyId, Rawness, Scalar,
+    Substs, TraitRef, Ty,
 };
 
 use super::{
@@ -429,14 +429,14 @@ impl<'a> InferenceContext<'a> {
                     Ty::Tuple(_, substs) => {
                         name.as_tuple_index().and_then(|idx| substs.0.get(idx).cloned())
                     }
-                    Ty::Adt(AdtId::StructId(s), parameters) => {
+                    Ty::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
                         self.db.struct_data(s).variant_data.field(name).map(|local_id| {
                             let field = FieldId { parent: s.into(), local_id };
                             self.write_field_resolution(tgt_expr, field);
                             self.db.field_types(s.into())[field.local_id].clone().subst(&parameters)
                         })
                     }
-                    Ty::Adt(AdtId::UnionId(u), parameters) => {
+                    Ty::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
                         self.db.union_data(u).variant_data.field(name).map(|local_id| {
                             let field = FieldId { parent: u.into(), local_id };
                             self.write_field_resolution(tgt_expr, field);
@@ -498,7 +498,7 @@ impl<'a> InferenceContext<'a> {
                         _ => (),
                     }
                     sb = sb.fill(repeat_with(|| self.table.new_type_var()));
-                    Ty::Adt(box_, sb.build())
+                    Ty::adt_ty(box_, sb.build())
                 } else {
                     Ty::Unknown
                 }
@@ -586,31 +586,31 @@ impl<'a> InferenceContext<'a> {
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::Adt(adt, Substs::empty()),
+                        Some(adt) => Ty::adt_ty(adt, Substs::empty()),
                         None => Ty::Unknown,
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => Ty::Adt(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
                         None => Ty::Unknown,
                     },
                     (RangeOp::Inclusive, None, Some(ty)) => {
                         match self.resolve_range_to_inclusive() {
-                            Some(adt) => Ty::Adt(adt, Substs::single(ty)),
+                            Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
                             None => Ty::Unknown,
                         }
                     }
                     (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => Ty::Adt(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
                         None => Ty::Unknown,
                     },
                     (RangeOp::Inclusive, Some(_), Some(ty)) => {
                         match self.resolve_range_inclusive() {
-                            Some(adt) => Ty::Adt(adt, Substs::single(ty)),
+                            Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
                             None => Ty::Unknown,
                         }
                     }
                     (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => Ty::Adt(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
                         None => Ty::Unknown,
                     },
                     (RangeOp::Inclusive, _, None) => Ty::Unknown,

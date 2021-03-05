@@ -222,12 +222,12 @@ use hir_def::{
     adt::VariantData,
     body::Body,
     expr::{Expr, Literal, Pat, PatId},
-    AdtId, EnumVariantId, StructId, VariantId,
+    EnumVariantId, StructId, VariantId,
 };
 use la_arena::Idx;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{db::HirDatabase, InferenceResult, Ty};
+use crate::{db::HirDatabase, AdtId, InferenceResult, Ty};
 
 #[derive(Debug, Clone, Copy)]
 /// Either a pattern from the source code being analyzed, represented as
@@ -627,7 +627,7 @@ pub(super) fn is_useful(
     // - `!` type
     // In those cases, no match arm is useful.
     match cx.infer[cx.match_expr].strip_references() {
-        Ty::Adt(AdtId::EnumId(enum_id), ..) => {
+        Ty::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
             if cx.db.enum_data(*enum_id).variants.is_empty() {
                 return Ok(Usefulness::NotUseful);
             }
