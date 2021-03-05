@@ -1176,6 +1176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut no_field_errors = true;
 
         let mut inexistent_fields = vec![];
+        let mut invisible_fields = vec![];
         // Typecheck each field.
         for field in fields {
             let span = field.span;
@@ -1191,6 +1192,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field_map
                         .get(&ident)
                         .map(|(i, f)| {
+                            if !f
+                                .vis
+                                .is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                            {
+                                invisible_fields.push(field.ident);
+                            }
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(pat.hir_id), span);
                             self.field_ty(span, f, substs)
@@ -1281,6 +1288,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.error_tuple_variant_index_shorthand(variant, pat, fields)
                 {
                     err.emit();
+                } else if !invisible_fields.is_empty() {
+                    let mut err = self.error_invisible_fields(
+                        adt.variant_descr(),
+                        &invisible_fields,
+                        variant,
+                    );
+                    err.emit();
                 }
             }
         }
@@ -1357,6 +1371,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .span_label(span, format!("multiple uses of `{}` in pattern", ident))
         .span_label(other_field, format!("first use of `{}`", ident))
         .emit();
+    }
+
+    fn error_invisible_fields(
+        &self,
+        kind_name: &str,
+        invisible_fields: &[Ident],
+        variant: &ty::VariantDef,
+    ) -> DiagnosticBuilder<'tcx> {
+        let spans = invisible_fields.iter().map(|ident| ident.span).collect::<Vec<_>>();
+        let (field_names, t) = if invisible_fields.len() == 1 {
+            (format!("a field named `{}`", invisible_fields[0]), "is")
+        } else {
+            (
+                format!(
+                    "fields named {}",
+                    invisible_fields
+                        .iter()
+                        .map(|ident| format!("`{}`", ident))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ),
+                "are",
+            )
+        };
+        let err = struct_span_err!(
+            self.tcx.sess,
+            spans,
+            E0603,
+            "cannot match on {} of {} `{}`, which {} not accessible in current scope",
+            field_names,
+            kind_name,
+            self.tcx.def_path_str(variant.def_id),
+            t
+        );
+        err
     }
 
     fn error_inexistent_fields(

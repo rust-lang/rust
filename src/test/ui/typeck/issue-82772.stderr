@@ -1,0 +1,15 @@
+error[E0603]: cannot match on a field named `1` of struct `Box`, which is not accessible in current scope
+  --> $DIR/issue-82772.rs:5:15
+   |
+LL |     let Box { 1: _, .. }: Box<()>;
+   |               ^
+
+error[E0603]: cannot match on a field named `1` of struct `LocalModPrivateStruct`, which is not accessible in current scope
+  --> $DIR/issue-82772.rs:6:33
+   |
+LL |     let LocalModPrivateStruct { 1: _, .. } = LocalModPrivateStruct::default();
+   |                                 ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.
