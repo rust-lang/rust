@@ -390,7 +390,7 @@ pub trait MacResult {
         None
     }
 
-    /// Creates zero or more items in an `extern {}` block
+    /// Creates zero or more items in an `extern {}` block.
     fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[P<ast::ForeignItem>; 1]>> {
         None
     }
@@ -535,7 +535,7 @@ pub struct DummyResult {
 }
 
 impl DummyResult {
-    /// Creates a default MacResult that can be anything.
+    /// Creates a default `MacResult` that can be anything.
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
@@ -915,7 +915,7 @@ pub struct ExpansionData {
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
-/// One of these is made during expansion and incrementally updated as we go;
+/// An instance of this struct is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
@@ -1135,18 +1135,20 @@ pub fn expr_to_string(
         .map(|(symbol, style, _)| (symbol, style))
 }
 
-/// Non-fatally assert that `tts` is empty. Note that this function
-/// returns even when `tts` is non-empty, macros that *need* to stop
+/// Non-fatally assert that `tts` is empty.
+///
+/// Note that this function
+/// returns even when `tts` is non-empty. Macros that *need* to stop
 /// compilation should call
-/// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
-/// done as rarely as possible).
+/// `cx.parse_sess.span_diagnostic.abort_if_errors()`. (This should be
+/// done as rarely as possible.)
 pub fn check_zero_tts(cx: &ExtCtxt<'_>, sp: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
         cx.span_err(sp, &format!("{} takes no arguments", name));
     }
 }
 
-/// Parse an expression. On error, emit it, advancing to `Eof`, and return `None`.
+/// Parse an expression. On error, emit the error, advance to `Eof`, and return `None`.
 pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
     match p.parse_expr() {
         Ok(e) => return Some(e),
