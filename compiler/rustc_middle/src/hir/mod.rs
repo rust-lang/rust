@@ -28,21 +28,18 @@ struct HirOwnerData<'hir> {
 #[derive(Debug)]
 pub struct IndexedHir<'hir> {
     map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
+    parenting: FxHashMap<LocalDefId, HirId>,
 }
 
 #[derive(Debug)]
 pub struct Owner<'tcx> {
-    parent: HirId,
     node: Node<'tcx>,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let Owner { node, parent } = self;
-        hcx.while_hashing_hir_bodies(false, |hcx| {
-            parent.hash_stable(hcx, hasher);
-            node.hash_stable(hcx, hasher)
-        });
+        let Owner { node } = self;
+        hcx.while_hashing_hir_bodies(false, |hcx| node.hash_stable(hcx, hasher));
     }
 }
 

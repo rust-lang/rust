@@ -1,6 +1,6 @@
 use crate::arena::Arena;
 use crate::hir::map::{HirOwnerData, Map};
-use crate::hir::{Owner, OwnerNodes, ParentedNode};
+use crate::hir::{IndexedHir, Owner, OwnerNodes, ParentedNode};
 use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,6 +29,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     source_map: &'a SourceMap,
 
     map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
+    parenting: FxHashMap<LocalDefId, HirId>,
 
     /// The parent of this node
     parent_node: hir::HirId,
@@ -109,6 +110,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             map: (0..definitions.def_index_count())
                 .map(|_| HirOwnerData { signature: None, with_bodies: None })
                 .collect(),
+            parenting: FxHashMap::default(),
         };
         collector.insert_entry(
             hir::CRATE_HIR_ID,
@@ -119,15 +121,13 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         collector
     }
 
-    pub(super) fn finalize_and_compute_crate_hash(
-        mut self,
-    ) -> IndexVec<LocalDefId, HirOwnerData<'hir>> {
+    pub(super) fn finalize_and_compute_crate_hash(mut self) -> IndexedHir<'hir> {
         // Insert bodies into the map
         for (id, body) in self.krate.bodies.iter() {
             let bodies = &mut self.map[id.hir_id.owner].with_bodies.as_mut().unwrap().bodies;
             assert!(bodies.insert(id.hir_id.local_id, body).is_none());
         }
-        self.map
+        IndexedHir { map: self.map, parenting: self.parenting }
     }
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>, hash: Fingerprint) {
@@ -152,8 +152,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             nodes.hash = hash;
 
             debug_assert!(data.signature.is_none());
-            data.signature =
-                Some(self.arena.alloc(Owner { parent: entry.parent, node: entry.node }));
+            data.signature = Some(self.arena.alloc(Owner { node: entry.node }));
 
             let dk_parent = self.definitions.def_key(id.owner).parent;
             if let Some(dk_parent) = dk_parent {
@@ -165,6 +164,8 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                         id.owner, dk_parent, entry.parent,
                     )
                 }
+
+                debug_assert_eq!(self.parenting.get(&id.owner), Some(&entry.parent));
             }
         } else {
             assert_eq!(entry.parent.owner, id.owner);
@@ -234,6 +235,22 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         f(self, hash);
         self.current_dep_node_owner = prev_owner;
     }
+
+    fn insert_nested(&mut self, item: LocalDefId) {
+        #[cfg(debug_assertions)]
+        {
+            let dk_parent = self.definitions.def_key(item).parent.unwrap();
+            let dk_parent = LocalDefId { local_def_index: dk_parent };
+            let dk_parent = self.definitions.local_def_id_to_hir_id(dk_parent);
+            debug_assert_eq!(
+                dk_parent.owner, self.parent_node.owner,
+                "Different parents for {:?}",
+                item
+            )
+        }
+
+        assert_eq!(self.parenting.insert(item, self.parent_node), None);
+    }
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
@@ -249,18 +266,22 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
+        self.insert_nested(item.def_id);
         self.visit_item(self.krate.item(item));
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
+        self.insert_nested(item_id.def_id);
         self.visit_trait_item(self.krate.trait_item(item_id));
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
+        self.insert_nested(item_id.def_id);
         self.visit_impl_item(self.krate.impl_item(item_id));
     }
 
     fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
+        self.insert_nested(foreign_id.def_id);
         self.visit_foreign_item(self.krate.foreign_item(foreign_id));
     }
 
@@ -448,6 +469,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
             self.definitions.local_def_id_to_hir_id(LocalDefId { local_def_index })
         });
         self.with_parent(parent, |this| {
+            this.insert_nested(macro_def.def_id);
             this.with_dep_node_owner(macro_def.def_id, macro_def, |this, hash| {
                 this.insert_with_hash(
                     macro_def.span,

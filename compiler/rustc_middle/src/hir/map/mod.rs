@@ -285,8 +285,8 @@ impl<'hir> Map<'hir> {
 
     pub fn find_parent_node(&self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner)?;
-            Some(owner.parent)
+            let index = self.tcx.index_hir(LOCAL_CRATE);
+            index.parenting.get(&id.owner).copied()
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner)?;
             let node = owner.nodes[id.local_id].as_ref()?;
@@ -296,7 +296,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id).unwrap()
+        self.find_parent_node(hir_id).unwrap_or(CRATE_HIR_ID)
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -934,17 +934,13 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
-    let map = {
-        let hcx = tcx.create_stable_hashing_context();
+    let hcx = tcx.create_stable_hashing_context();
+    let mut collector =
+        NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
+    intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
-        let mut collector =
-            NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
-        intravisit::walk_crate(&mut collector, tcx.untracked_crate);
-
-        collector.finalize_and_compute_crate_hash()
-    };
-
-    tcx.arena.alloc(IndexedHir { map })
+    let map = collector.finalize_and_compute_crate_hash();
+    tcx.arena.alloc(map)
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
