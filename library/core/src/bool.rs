@@ -32,6 +32,14 @@ impl bool {
         if self { Some(f()) } else { None }
     }
 
+    /// Returns the opposite value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(false.not(), true);
+    /// assert_eq!(true.not(), false);
+    /// ```
     #[unstable(feature = "bool_not_method", issue = "none")]
     pub fn not(self) -> Self {
         !self
