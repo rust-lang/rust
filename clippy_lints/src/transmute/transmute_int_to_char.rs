@@ -17,28 +17,26 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Int(ty::IntTy::I32) | ty::Uint(ty::UintTy::U32), &ty::Char) => {
-            {
-                span_lint_and_then(
-                    cx,
-                    TRANSMUTE_INT_TO_CHAR,
-                    e.span,
-                    &format!("transmute from a `{}` to a `char`", from_ty),
-                    |diag| {
-                        let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                        let arg = if let ty::Int(_) = from_ty.kind() {
-                            arg.as_ty(ast::UintTy::U32.name_str())
-                        } else {
-                            arg
-                        };
-                        diag.span_suggestion(
-                            e.span,
-                            "consider using",
-                            format!("std::char::from_u32({}).unwrap()", arg.to_string()),
-                            Applicability::Unspecified,
-                        );
-                    },
-                )
-            };
+            span_lint_and_then(
+                cx,
+                TRANSMUTE_INT_TO_CHAR,
+                e.span,
+                &format!("transmute from a `{}` to a `char`", from_ty),
+                |diag| {
+                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                    let arg = if let ty::Int(_) = from_ty.kind() {
+                        arg.as_ty(ast::UintTy::U32.name_str())
+                    } else {
+                        arg
+                    };
+                    diag.span_suggestion(
+                        e.span,
+                        "consider using",
+                        format!("std::char::from_u32({}).unwrap()", arg.to_string()),
+                        Applicability::Unspecified,
+                    );
+                },
+            );
             true
         },
         _ => false,

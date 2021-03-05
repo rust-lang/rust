@@ -265,7 +265,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             let hir = cx.tcx.hir();
             let id = hir.get_parent_node(hir_ty.hir_id);
 
-            if !hir.opt_span(id).map(in_macro).unwrap_or(false) {
+            if !hir.opt_span(id).map_or(false, in_macro) {
                 match hir.find(id) {
                     Some(Node::Expr(Expr {
                         kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
