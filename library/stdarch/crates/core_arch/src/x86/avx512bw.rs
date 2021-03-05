@@ -9149,15 +9149,15 @@ pub unsafe fn _mm_mask_alignr_epi8<const IMM8: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_alignr_epi8&expand=259)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[rustc_args_required_const(3)]
-#[cfg_attr(test, assert_instr(vpalignr, imm8 = 5))]
-pub unsafe fn _mm_maskz_alignr_epi8(k: __mmask16, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_alignr_epi8(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[rustc_legacy_const_generics(3)]
+#[cfg_attr(test, assert_instr(vpalignr, IMM8 = 5))]
+pub unsafe fn _mm_maskz_alignr_epi8<const IMM8: i32>(
+    k: __mmask16,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let r = _mm_alignr_epi8(a, b, IMM8);
     let zero = _mm_setzero_si128().as_i8x16();
     transmute(simd_select_bitmask(k, r.as_i8x16(), zero))
 }
@@ -17788,9 +17788,9 @@ mod tests {
     unsafe fn test_mm_maskz_alignr_epi8() {
         let a = _mm_set_epi8(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0);
         let b = _mm_set1_epi8(1);
-        let r = _mm_maskz_alignr_epi8(0, a, b, 14);
+        let r = _mm_maskz_alignr_epi8::<14>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_alignr_epi8(0b11111111_11111111, a, b, 14);
+        let r = _mm_maskz_alignr_epi8::<14>(0b11111111_11111111, a, b);
         let e = _mm_set_epi8(0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1);
         assert_eq_m128i(r, e);
     }
