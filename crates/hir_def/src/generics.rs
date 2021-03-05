@@ -421,8 +421,7 @@ impl HasChildSource<LocalConstParamId> for GenericDefId {
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let (_, sm) = GenericParams::new(db, *self);
 
         let sm = sm.as_ref();
@@ -440,6 +439,5 @@ impl ChildBySource for GenericDefId {
             let id = ConstParamId { parent: *self, local_id };
             res[keys::CONST_PARAM].insert(sm.with_value(src.clone()), id);
         }
-        res
     }
 }
