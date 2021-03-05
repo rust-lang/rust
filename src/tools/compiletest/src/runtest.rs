@@ -3761,6 +3761,13 @@ impl<'test> TestCx<'test> {
 
         let mut files = vec![output_file];
         if self.config.bless {
+            // Delete non-revision .stderr/.stdout file if revisions are used.
+            // Without this, we'd just generate the new files and leave the old files around.
+            if self.revision.is_some() {
+                let old =
+                    expected_output_path(self.testpaths, None, &self.config.compare_mode, kind);
+                self.delete_file(&old);
+            }
             files.push(expected_output_path(
                 self.testpaths,
                 self.revision,
