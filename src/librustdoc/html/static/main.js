@@ -1548,9 +1548,9 @@ function defocusSearchBar() {
                 } else if (type === "structfield" && parentType === "variant") {
                     // Structfields belonging to variants are special: the
                     // final path element is the enum name.
-                    var splitPath = item.path.split("::");
-                    var enumName = splitPath.pop();
-                    path = splitPath.join("::");
+                    var enumNameIdx = item.path.lastIndexOf("::");
+                    var enumName = item.path.substr(enumNameIdx + 2);
+                    path = item.path.substr(0, enumNameIdx);
                     displayPath = path + "::" + enumName + "::" + myparent.name + "::";
                     anchor = "#variant." + myparent.name + ".field." + name;
                     pageType = "enum";
