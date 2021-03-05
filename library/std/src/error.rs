@@ -470,6 +470,24 @@ impl Error for char::DecodeUtf16Error {
     }
 }
 
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug + Ord, V: Debug> Error
+    for crate::collections::btree_map::OccupiedError<'a, K, V>
+{
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
+
+#[unstable(feature = "map_try_insert", issue = "82766")]
+impl<'a, K: Debug, V: Debug> Error for crate::collections::hash_map::OccupiedError<'a, K, V> {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "key already exists"
+    }
+}
+
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<T: Error> Error for Box<T> {
     #[allow(deprecated, deprecated_in_future)]
