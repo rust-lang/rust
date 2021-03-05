@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 // Local js definitions:
 /* global addClass, getSettingValue, hasClass */
 /* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
@@ -84,12 +85,20 @@ function getSearchElement() {
     return document.getElementById("search");
 }
 
+function getThemesElementId() {
+    return "theme-choices";
+}
+
 function getThemesElement() {
-    return document.getElementById("theme-choices");
+    return document.getElementById(getThemesElementId());
+}
+
+function getThemePickerElementId() {
+    return "theme-picker";
 }
 
 function getThemePickerElement() {
-    return document.getElementById("theme-picker");
+    return document.getElementById(getThemePickerElementId());
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -143,11 +152,11 @@ function hideThemeButtonState() {
         var active = document.activeElement;
         var related = e.relatedTarget;
 
-        if (active.id !== "theme-picker" &&
-            (!active.parentNode || active.parentNode.id !== "theme-choices") &&
+        if (active.id !== getThemePickerElementId() &&
+            (!active.parentNode || active.parentNode.id !== getThemesElementId()) &&
             (!related ||
-             (related.id !== "theme-picker" &&
-              (!related.parentNode || related.parentNode.id !== "theme-choices")))) {
+             (related.id !== getThemePickerElementId() &&
+              (!related.parentNode || related.parentNode.id !== getThemesElementId())))) {
             hideThemeButtonState();
         }
     }
@@ -512,8 +521,7 @@ function hideThemeButtonState() {
                 break;
 
             default:
-                var themePicker = getThemePickerElement();
-                if (themePicker.parentNode.contains(ev.target)) {
+                if (getThemePickerElement().parentNode.contains(ev.target)) {
                     handleThemeKeyDown(ev);
                 }
             }
@@ -526,7 +534,7 @@ function hideThemeButtonState() {
         switch (getVirtualKey(ev)) {
         case "ArrowUp":
             ev.preventDefault();
-            if (active.previousElementSibling && ev.target.id !== "theme-picker") {
+            if (active.previousElementSibling && ev.target.id !== getThemePickerElementId()) {
                 active.previousElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -535,7 +543,7 @@ function hideThemeButtonState() {
             break;
         case "ArrowDown":
             ev.preventDefault();
-            if (active.nextElementSibling && ev.target.id !== "theme-picker") {
+            if (active.nextElementSibling && ev.target.id !== getThemePickerElementId()) {
                 active.nextElementSibling.focus();
             } else {
                 showThemeButtonState();
@@ -545,7 +553,7 @@ function hideThemeButtonState() {
         case "Enter":
         case "Return":
         case "Space":
-            if (ev.target.id === "theme-picker" && themes.style.display === "none") {
+            if (ev.target.id === getThemePickerElementId() && themes.style.display === "none") {
                 ev.preventDefault();
                 showThemeButtonState();
                 themes.firstElementChild.focus();
