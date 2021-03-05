@@ -7996,23 +7996,18 @@ pub unsafe fn _mm_dbsad_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_dbsad_epu8&expand=2109)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[rustc_args_required_const(4)]
-#[cfg_attr(test, assert_instr(vdbpsadbw, imm8 = 0))]
-pub unsafe fn _mm_mask_dbsad_epu8(
+#[rustc_legacy_const_generics(4)]
+#[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
+pub unsafe fn _mm_mask_dbsad_epu8<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vdbpsadbw128(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vdbpsadbw128(a, b, IMM8);
     transmute(simd_select_bitmask(k, r, src.as_u16x8()))
 }
 
@@ -16922,9 +16917,9 @@ mod tests {
         let src = _mm_set1_epi16(1);
         let a = _mm_set1_epi8(2);
         let b = _mm_set1_epi8(4);
-        let r = _mm_mask_dbsad_epu8(src, 0, a, b, 0);
+        let r = _mm_mask_dbsad_epu8::<0>(src, 0, a, b);
         assert_eq_m128i(r, src);
-        let r = _mm_mask_dbsad_epu8(src, 0b11111111, a, b, 0);
+        let r = _mm_mask_dbsad_epu8::<0>(src, 0b11111111, a, b);
         let e = _mm_set1_epi16(8);
         assert_eq_m128i(r, e);
     }
