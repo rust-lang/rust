@@ -1,11 +1,10 @@
 #![crate_type = "lib"]
-#![deny(unused_attributes)]
-//~^ NOTE lint level is defined here
+#![deny(warnings)]
 #![doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute
-//~| WARNING will become a hard error in a future release
+//~^^ WARN
 
 #[doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute
-//~| WARNING will become a hard error in a future release
+//~^^ WARN
 pub fn foo() {}
