@@ -548,7 +548,7 @@ macro_rules! unpack {
     }};
 }
 
-fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, _abi: Abi) -> bool {
+fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, abi: Abi) -> bool {
     // Validate `#[unwind]` syntax regardless of platform-specific panic strategy.
     let attrs = &tcx.get_attrs(fn_def_id.to_def_id());
     let unwind_attr = attr::find_unwind_attr(&tcx.sess, attrs);
@@ -558,12 +558,42 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: LocalDefId, _abi: Abi) -> b
         return false;
     }
 
-    // This is a special case: some functions have a C abi but are meant to
-    // unwind anyway. Don't stop them.
     match unwind_attr {
-        None => false, // FIXME(#58794); should be `!(abi == Abi::Rust || abi == Abi::RustCall)`
+        // If an `#[unwind]` attribute was found, we should adhere to it.
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
+        // If no attribute was found and the panic strategy is `unwind`, then we should examine
+        // the function's ABI string to determine whether it should abort upon panic.
+        None => {
+            use Abi::*;
+            match abi {
+                // In the case of ABI's that have an `-unwind` equivalent, check whether the ABI
+                // permits unwinding. If so, we should not abort. Otherwise, we should.
+                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+                    !unwind
+                }
+                // Rust and `rust-call` functions are allowed to unwind, and should not abort.
+                Rust | RustCall => false,
+                // Other ABI's should abort.
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => true,
+            }
+        }
     }
 }
 

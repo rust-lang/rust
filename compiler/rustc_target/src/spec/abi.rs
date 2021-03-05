@@ -8,24 +8,21 @@ mod tests;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum Abi {
-    // N.B., this ordering MUST match the AbiDatas array below.
-    // (This is ensured by the test indices_are_correct().)
-
     // Multiplatform / generic ABIs
     //
     // These ABIs come first because every time we add a new ABI, we
     // have to re-bless all the hashing tests. These are used in many
     // places, so giving them stable values reduces test churn. The
     // specific values are meaningless.
-    Rust = 0,
-    C = 1,
+    Rust,
+    C { unwind: bool },
 
     // Single platform ABIs
     Cdecl,
-    Stdcall,
+    Stdcall { unwind: bool },
     Fastcall,
     Vectorcall,
-    Thiscall,
+    Thiscall { unwind: bool },
     Aapcs,
     Win64,
     SysV64,
@@ -39,7 +36,7 @@ pub enum Abi {
     CCmseNonSecureCall,
 
     // Multiplatform / generic ABIs
-    System,
+    System { unwind: bool },
     RustIntrinsic,
     RustCall,
     PlatformIntrinsic,
@@ -61,13 +58,16 @@ pub struct AbiData {
 const AbiDatas: &[AbiData] = &[
     // Cross-platform ABIs
     AbiData { abi: Abi::Rust, name: "Rust", generic: true },
-    AbiData { abi: Abi::C, name: "C", generic: true },
+    AbiData { abi: Abi::C { unwind: false }, name: "C", generic: true },
+    AbiData { abi: Abi::C { unwind: true }, name: "C-unwind", generic: true },
     // Platform-specific ABIs
     AbiData { abi: Abi::Cdecl, name: "cdecl", generic: false },
-    AbiData { abi: Abi::Stdcall, name: "stdcall", generic: false },
+    AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall", generic: false },
+    AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind", generic: false },
     AbiData { abi: Abi::Fastcall, name: "fastcall", generic: false },
     AbiData { abi: Abi::Vectorcall, name: "vectorcall", generic: false },
-    AbiData { abi: Abi::Thiscall, name: "thiscall", generic: false },
+    AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall", generic: false },
+    AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind", generic: false },
     AbiData { abi: Abi::Aapcs, name: "aapcs", generic: false },
     AbiData { abi: Abi::Win64, name: "win64", generic: false },
     AbiData { abi: Abi::SysV64, name: "sysv64", generic: false },
@@ -84,7 +84,8 @@ const AbiDatas: &[AbiData] = &[
     },
     AbiData { abi: Abi::CCmseNonSecureCall, name: "C-cmse-nonsecure-call", generic: false },
     // Cross-platform ABIs
-    AbiData { abi: Abi::System, name: "system", generic: true },
+    AbiData { abi: Abi::System { unwind: false }, name: "system", generic: true },
+    AbiData { abi: Abi::System { unwind: true }, name: "system-unwind", generic: true },
     AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic", generic: true },
     AbiData { abi: Abi::RustCall, name: "rust-call", generic: true },
     AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic", generic: true },
@@ -103,7 +104,52 @@ pub fn all_names() -> Vec<&'static str> {
 impl Abi {
     #[inline]
     pub fn index(self) -> usize {
-        self as usize
+        // N.B., this ordering MUST match the AbiDatas array above.
+        // (This is ensured by the test indices_are_correct().)
+        use Abi::*;
+        let i = match self {
+            // Cross-platform ABIs
+            Rust => 0,
+            C { unwind: false } => 1,
+            C { unwind: true } => 2,
+            // Platform-specific ABIs
+            Cdecl => 3,
+            Stdcall { unwind: false } => 4,
+            Stdcall { unwind: true } => 5,
+            Fastcall => 6,
+            Vectorcall => 7,
+            Thiscall { unwind: false } => 8,
+            Thiscall { unwind: true } => 9,
+            Aapcs => 10,
+            Win64 => 11,
+            SysV64 => 12,
+            PtxKernel => 13,
+            Msp430Interrupt => 14,
+            X86Interrupt => 15,
+            AmdGpuKernel => 16,
+            EfiApi => 17,
+            AvrInterrupt => 18,
+            AvrNonBlockingInterrupt => 19,
+            CCmseNonSecureCall => 20,
+            // Cross-platform ABIs
+            System { unwind: false } => 21,
+            System { unwind: true } => 22,
+            RustIntrinsic => 23,
+            RustCall => 24,
+            PlatformIntrinsic => 25,
+            Unadjusted => 26,
+        };
+        debug_assert!(
+            AbiDatas
+                .iter()
+                .enumerate()
+                .find(|(_, AbiData { abi, .. })| *abi == self)
+                .map(|(index, _)| index)
+                .expect("abi variant has associated data")
+                == i,
+            "Abi index did not match `AbiDatas` ordering"
+        );
+        i
     }
 
     #[inline]
@@ -122,6 +168,8 @@ impl Abi {
 
 impl fmt::Display for Abi {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "\"{}\"", self.name())
+        match self {
+            abi => write!(f, "\"{}\"", abi.name()),
+        }
     }
 }
