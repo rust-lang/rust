@@ -156,6 +156,17 @@ fn is_equivalent(
                 false
             }
         }
+        (ast::Expr::PrefixExpr(prefix0), ast::Expr::PrefixExpr(prefix1))
+            if prefix0.op_kind() == Some(ast::PrefixOp::Deref)
+                && prefix1.op_kind() == Some(ast::PrefixOp::Deref) =>
+        {
+            mark::hit!(test_pull_assignment_up_deref);
+            if let (Some(prefix0), Some(prefix1)) = (prefix0.expr(), prefix1.expr()) {
+                is_equivalent(sema, &prefix0, &prefix1)
+            } else {
+                false
+            }
+        }
         _ => false,
     }
 }
@@ -395,6 +406,38 @@ fn foo() {
         3
     };
 }"#,
+        )
+    }
+
+    #[test]
+    fn test_pull_assignment_up_deref() {
+        mark::check!(test_pull_assignment_up_deref);
+        check_assist(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+    let b = &mut a;
+
+    if true {
+        $0*b = 2;
+    } else {
+        *b = 3;
+    }
+}
+"#,
+            r#"
+fn foo() {
+    let mut a = 1;
+    let b = &mut a;
+
+    *b = if true {
+        2
+    } else {
+        3
+    };
+}
+"#,
         )
     }
 }
