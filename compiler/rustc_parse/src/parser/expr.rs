@@ -1973,6 +1973,102 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs))
     }
 
+    /// Attempt to recover from match arm body with statements and no surrounding braces.
+    fn parse_arm_body_missing_braces(
+        &mut self,
+        first_expr: &P<Expr>,
+        arrow_span: Span,
+    ) -> Option<P<Expr>> {
+        if self.token.kind != token::Semi {
+            return None;
+        }
+        let start_snapshot = self.clone();
+        let semi_sp = self.token.span;
+        self.bump(); // `;`
+        let mut stmts =
+            vec![self.mk_stmt(first_expr.span, ast::StmtKind::Expr(first_expr.clone()))];
+        let err = |this: &mut Parser<'_>, stmts: Vec<ast::Stmt>| {
+            let span = stmts[0].span.to(stmts[stmts.len() - 1].span);
+            let mut err = this.struct_span_err(span, "`match` arm body without braces");
+            let (these, s, are) =
+                if stmts.len() > 1 { ("these", "s", "are") } else { ("this", "", "is") };
+            err.span_label(
+                span,
+                &format!(
+                    "{these} statement{s} {are} not surrounded by a body",
+                    these = these,
+                    s = s,
+                    are = are
+                ),
+            );
+            err.span_label(arrow_span, "while parsing the `match` arm starting here");
+            if stmts.len() > 1 {
+                err.multipart_suggestion(
+                    &format!("surround the statement{} with a body", s),
+                    vec![
+                        (span.shrink_to_lo(), "{ ".to_string()),
+                        (span.shrink_to_hi(), " }".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_suggestion(
+                    semi_sp,
+                    "use a comma to end a `match` arm expression",
+                    ",".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
+            this.mk_expr_err(span)
+        };
+        // We might have either a `,` -> `;` typo, or a block without braces. We need
+        // a more subtle parsing strategy.
+        loop {
+            if self.token.kind == token::CloseDelim(token::Brace) {
+                // We have reached the closing brace of the `match` expression.
+                return Some(err(self, stmts));
+            }
+            if self.token.kind == token::Comma {
+                *self = start_snapshot;
+                return None;
+            }
+            let pre_pat_snapshot = self.clone();
+            match self.parse_pat_no_top_alt(None) {
+                Ok(_pat) => {
+                    if self.token.kind == token::FatArrow {
+                        // Reached arm end.
+                        *self = pre_pat_snapshot;
+                        return Some(err(self, stmts));
+                    }
+                }
+                Err(mut err) => {
+                    err.cancel();
+                }
+            }
+
+            *self = pre_pat_snapshot;
+            match self.parse_stmt_without_recovery(true, ForceCollect::No) {
+                // Consume statements for as long as possible.
+                Ok(Some(stmt)) => {
+                    stmts.push(stmt);
+                }
+                Ok(None) => {
+                    *self = start_snapshot;
+                    break;
+                }
+                // We couldn't parse either yet another statement missing it's
+                // enclosing block nor the next arm's pattern or closing brace.
+                Err(mut stmt_err) => {
+                    stmt_err.cancel();
+                    *self = start_snapshot;
+                    break;
+                }
+            }
+        }
+        None
+    }
+
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
@@ -2007,6 +2103,21 @@ impl<'a> Parser<'a> {
 
             if require_comma {
                 let sm = this.sess.source_map();
+                if let Some(body) = this.parse_arm_body_missing_braces(&expr, arrow_span) {
+                    let span = body.span;
+                    return Ok((
+                        ast::Arm {
+                            attrs,
+                            pat,
+                            guard,
+                            body,
+                            span,
+                            id: DUMMY_NODE_ID,
+                            is_placeholder: false,
+                        },
+                        TrailingToken::None,
+                    ));
+                }
                 this.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]).map_err(
                     |mut err| {
                         match (sm.span_to_lines(expr.span), sm.span_to_lines(arm_start_span)) {
