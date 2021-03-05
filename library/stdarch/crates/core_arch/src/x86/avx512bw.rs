@@ -7960,7 +7960,11 @@ pub unsafe fn _mm256_mask_dbsad_epu8<const IMM8: i32>(
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[rustc_legacy_const_generics(3)]
 #[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
-pub unsafe fn _mm256_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask16, a: __m256i, b: __m256i) -> __m256i {
+pub unsafe fn _mm256_maskz_dbsad_epu8<const IMM8: i32>(
+    k: __mmask16,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
     static_assert_imm8!(IMM8);
     let a = a.as_u8x32();
     let b = b.as_u8x32();
@@ -7977,17 +7981,13 @@ pub unsafe fn _mm256_maskz_dbsad_epu8<const IMM8: i32>(k: __mmask16, a: __m256i,
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_dbsad_epu8&expand=2108)
 #[inline]
 #[target_feature(enable = "avx512bw,avx512vl")]
-#[rustc_args_required_const(2)]
-#[cfg_attr(test, assert_instr(vdbpsadbw, imm8 = 0))]
-pub unsafe fn _mm_dbsad_epu8(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
+#[rustc_legacy_const_generics(2)]
+#[cfg_attr(test, assert_instr(vdbpsadbw, IMM8 = 0))]
+pub unsafe fn _mm_dbsad_epu8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
     let a = a.as_u8x16();
     let b = b.as_u8x16();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vdbpsadbw128(a, b, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = vdbpsadbw128(a, b, IMM8);
     transmute(r)
 }
 
@@ -16912,7 +16912,7 @@ mod tests {
     unsafe fn test_mm_dbsad_epu8() {
         let a = _mm_set1_epi8(2);
         let b = _mm_set1_epi8(4);
-        let r = _mm_dbsad_epu8(a, b, 0);
+        let r = _mm_dbsad_epu8::<0>(a, b);
         let e = _mm_set1_epi16(8);
         assert_eq_m128i(r, e);
     }
