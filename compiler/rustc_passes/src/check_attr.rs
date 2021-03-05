@@ -18,7 +18,7 @@ use rustc_hir::{
 };
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{
-    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTE, UNUSED_ATTRIBUTES,
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
@@ -549,7 +549,7 @@ impl CheckAttrVisitor<'tcx> {
                     } else if meta.has_name(sym::test) {
                         if CRATE_HIR_ID != hir_id {
                             self.tcx.struct_span_lint_hir(
-                                INVALID_DOC_ATTRIBUTE,
+                                INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 meta.span(),
                                 |lint| {
@@ -585,7 +585,7 @@ impl CheckAttrVisitor<'tcx> {
                         .any(|m| i_meta.has_name(*m))
                         {
                             self.tcx.struct_span_lint_hir(
-                                INVALID_DOC_ATTRIBUTE,
+                                INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 i_meta.span,
                                 |lint| {

@@ -3061,7 +3061,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_doc_attribute` lint detects when the `#[doc(...)]` is
+    /// The `invalid_doc_attributes` lint detects when the `#[doc(...)]` is
     /// misused.
     ///
     /// ### Example
@@ -3081,7 +3081,7 @@ declare_lint! {
     /// Previously, there were very like checks being performed on `#[doc(..)]`
     /// unlike the other attributes. It'll now catch all the issues that it
     /// silently ignored previously.
-    pub INVALID_DOC_ATTRIBUTE,
+    pub INVALID_DOC_ATTRIBUTES,
     Warn,
     "detects invalid `#[doc(...)]` attributes",
     @future_incompatible = FutureIncompatibleInfo {
