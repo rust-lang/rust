@@ -920,14 +920,15 @@ pub unsafe fn _mm_maskz_shrdv_epi16(k: __mmask8, a: __m128i, b: __m128i, c: __m1
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi64&expand=5060)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shldi_epi64(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shldi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshldvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     ))
 }
 
@@ -936,20 +937,20 @@ pub unsafe fn _mm512_shldi_epi64(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi64&expand=5058)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shldi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shldi_epi64<const IMM8: i32>(
     src: __m512i,
     k: __mmask8,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshldvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
 }
@@ -959,14 +960,19 @@ pub unsafe fn _mm512_mask_shldi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi64&expand=5059)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shldi_epi64(k: __mmask8, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shldi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshldvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     );
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -977,14 +983,15 @@ pub unsafe fn _mm512_maskz_shldi_epi64(k: __mmask8, a: __m512i, b: __m512i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi64&expand=5057)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shldi_epi64(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shldi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshldvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     ))
 }
 
@@ -993,20 +1000,20 @@ pub unsafe fn _mm256_shldi_epi64(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi64&expand=5055)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shldi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shldi_epi64<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshldvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i64x4()))
 }
@@ -1016,14 +1023,19 @@ pub unsafe fn _mm256_mask_shldi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi64&expand=5056)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shldi_epi64(k: __mmask8, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shldi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshldvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     );
     let zero = _mm256_setzero_si256().as_i64x4();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1034,14 +1046,15 @@ pub unsafe fn _mm256_maskz_shldi_epi64(k: __mmask8, a: __m256i, b: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi64&expand=5054)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shldi_epi64(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shldi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshldvq128(
         a.as_i64x2(),
         b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
+        _mm_set1_epi64x(imm8).as_i64x2(),
     ))
 }
 
@@ -1050,21 +1063,17 @@ pub unsafe fn _mm_shldi_epi64(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi64&expand=5052)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shldi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shldi_epi64<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i64x2 = vpshldvq128(
-        a.as_i64x2(),
-        b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
-    );
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
+    let shf: i64x2 = vpshldvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
 }
 
@@ -1073,15 +1082,16 @@ pub unsafe fn _mm_mask_shldi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi64&expand=5053)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shldi_epi64(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i64x2 = vpshldvq128(
-        a.as_i64x2(),
-        b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
-    );
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shldi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
+    let shf: i64x2 = vpshldvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     let zero = _mm_setzero_si128().as_i64x2();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -1091,14 +1101,14 @@ pub unsafe fn _mm_maskz_shldi_epi64(k: __mmask8, a: __m128i, b: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi32&expand=5051)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shldi_epi32(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shldi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
     transmute(vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     ))
 }
 
@@ -1107,20 +1117,19 @@ pub unsafe fn _mm512_shldi_epi32(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi32&expand=5049)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shldi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shldi_epi32<const IMM8: i32>(
     src: __m512i,
     k: __mmask16,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
     let shf: i32x16 = vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
 }
@@ -1130,14 +1139,18 @@ pub unsafe fn _mm512_mask_shldi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi32&expand=5050)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shldi_epi32(k: __mmask16, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shldi_epi32<const IMM8: i32>(
+    k: __mmask16,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
     let shf: i32x16 = vpshldvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     );
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1148,14 +1161,14 @@ pub unsafe fn _mm512_maskz_shldi_epi32(k: __mmask16, a: __m512i, b: __m512i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi32&expand=5048)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shldi_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shldi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     transmute(vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     ))
 }
 
@@ -1164,20 +1177,19 @@ pub unsafe fn _mm256_shldi_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi32&expand=5046)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shldi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shldi_epi32<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
     let shf: i32x8 = vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i32x8()))
 }
@@ -1187,14 +1199,18 @@ pub unsafe fn _mm256_mask_shldi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi32&expand=5047)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shldi_epi32(k: __mmask8, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shldi_epi32<const IMM8: i32>(
+    k: __mmask8,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
     let shf: i32x8 = vpshldvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     );
     let zero = _mm256_setzero_si256().as_i32x8();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1205,14 +1221,14 @@ pub unsafe fn _mm256_maskz_shldi_epi32(k: __mmask8, a: __m256i, b: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi32&expand=5045)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shldi_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shldi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
     transmute(vpshldvd128(
         a.as_i32x4(),
         b.as_i32x4(),
-        _mm_set1_epi32(imm8).as_i32x4(),
+        _mm_set1_epi32(IMM8).as_i32x4(),
     ))
 }
 
@@ -1221,17 +1237,16 @@ pub unsafe fn _mm_shldi_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi32&expand=5043)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shldi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shldi_epi32<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(imm8).as_i32x4());
+    static_assert_imm8!(IMM8);
+    let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
 }
 
@@ -1240,11 +1255,15 @@ pub unsafe fn _mm_mask_shldi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi32&expand=5044)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shldi_epi32(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(imm8).as_i32x4());
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shldi_epi32<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let shf: i32x4 = vpshldvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     let zero = _mm_setzero_si128().as_i32x4();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -1254,14 +1273,15 @@ pub unsafe fn _mm_maskz_shldi_epi32(k: __mmask8, a: __m128i, b: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shldi_epi16&expand=5042)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shldi_epi16(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shldi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     transmute(vpshldvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     ))
 }
 
@@ -1270,20 +1290,20 @@ pub unsafe fn _mm512_shldi_epi16(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shldi_epi16&expand=5040)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shldi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shldi_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     let shf: i16x32 = vpshldvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i16x32()))
 }
@@ -1293,14 +1313,19 @@ pub unsafe fn _mm512_mask_shldi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shldi_epi16&expand=5041)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shldi_epi16(k: __mmask32, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shldi_epi16<const IMM8: i32>(
+    k: __mmask32,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     let shf: i16x32 = vpshldvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     );
     let zero = _mm512_setzero_si512().as_i16x32();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1311,14 +1336,15 @@ pub unsafe fn _mm512_maskz_shldi_epi16(k: __mmask32, a: __m512i, b: __m512i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shldi_epi16&expand=5039)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shldi_epi16(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shldi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     transmute(vpshldvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     ))
 }
 
@@ -1327,20 +1353,20 @@ pub unsafe fn _mm256_shldi_epi16(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shldi_epi16&expand=5037)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shldi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shldi_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshldvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i16x16()))
 }
@@ -1350,13 +1376,19 @@ pub unsafe fn _mm256_mask_shldi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shldi_epi16&expand=5038)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shldi_epi16(k: __mmask16, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shldi_epi16<const IMM8: i32>(
+    k: __mmask16,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshldvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     );
     let zero = _mm256_setzero_si256().as_i16x16();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1367,13 +1399,15 @@ pub unsafe fn _mm256_maskz_shldi_epi16(k: __mmask16, a: __m256i, b: __m256i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shldi_epi16&expand=5036)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shldi_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shldi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     transmute(vpshldvw128(
         a.as_i16x8(),
         b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
+        _mm_set1_epi16(imm8).as_i16x8(),
     ))
 }
 
@@ -1382,20 +1416,17 @@ pub unsafe fn _mm_shldi_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shldi_epi16&expand=5034)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shldi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shldi_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    let shf: i16x8 = vpshldvw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
-    );
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
+    let shf: i16x8 = vpshldvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     transmute(simd_select_bitmask(k, shf, src.as_i16x8()))
 }
 
@@ -1404,14 +1435,16 @@ pub unsafe fn _mm_mask_shldi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shldi_epi16&expand=5035)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shldi_epi16(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    let shf: i16x8 = vpshldvw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
-    );
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shldi_epi16<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
+    let shf: i16x8 = vpshldvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     let zero = _mm_setzero_si128().as_i16x8();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -1421,14 +1454,15 @@ pub unsafe fn _mm_maskz_shldi_epi16(k: __mmask8, a: __m128i, b: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi64&expand=5114)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shrdi_epi64(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shrdi_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshrdvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     ))
 }
 
@@ -1437,20 +1471,20 @@ pub unsafe fn _mm512_shrdi_epi64(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi64&expand=5112)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shrdi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shrdi_epi64<const IMM8: i32>(
     src: __m512i,
     k: __mmask8,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshrdvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i64x8()))
 }
@@ -1460,14 +1494,19 @@ pub unsafe fn _mm512_mask_shrdi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi64&expand=5113)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 255))] //should be vpshrdq
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shrdi_epi64(k: __mmask8, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 255))] //should be vpshrdq
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shrdi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x8 = vpshrdvq(
         a.as_i64x8(),
         b.as_i64x8(),
-        _mm512_set1_epi64(imm8 as i64).as_i64x8(),
+        _mm512_set1_epi64(imm8).as_i64x8(),
     );
     let zero = _mm512_setzero_si512().as_i64x8();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1478,14 +1517,15 @@ pub unsafe fn _mm512_maskz_shrdi_epi64(k: __mmask8, a: __m512i, b: __m512i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi64&expand=5111)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shrdi_epi64(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shrdi_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshrdvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     ))
 }
 
@@ -1494,20 +1534,20 @@ pub unsafe fn _mm256_shrdi_epi64(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi64&expand=5109)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shrdi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shrdi_epi64<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshrdvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i64x4()))
 }
@@ -1517,14 +1557,19 @@ pub unsafe fn _mm256_mask_shrdi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi64&expand=5110)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shrdi_epi64(k: __mmask8, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shrdi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     let shf: i64x4 = vpshrdvq256(
         a.as_i64x4(),
         b.as_i64x4(),
-        _mm256_set1_epi64x(imm8 as i64).as_i64x4(),
+        _mm256_set1_epi64x(imm8).as_i64x4(),
     );
     let zero = _mm256_setzero_si256().as_i64x4();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1535,14 +1580,15 @@ pub unsafe fn _mm256_maskz_shrdi_epi64(k: __mmask8, a: __m256i, b: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi64&expand=5108)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shrdi_epi64(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shrdi_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
     transmute(vpshrdvq128(
         a.as_i64x2(),
         b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
+        _mm_set1_epi64x(imm8).as_i64x2(),
     ))
 }
 
@@ -1551,21 +1597,17 @@ pub unsafe fn _mm_shrdi_epi64(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi64&expand=5106)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shrdi_epi64(
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shrdi_epi64<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i64x2 = vpshrdvq128(
-        a.as_i64x2(),
-        b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
-    );
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
+    let shf: i64x2 = vpshrdvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     transmute(simd_select_bitmask(k, shf, src.as_i64x2()))
 }
 
@@ -1574,15 +1616,16 @@ pub unsafe fn _mm_mask_shrdi_epi64(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi64&expand=5107)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldq, imm8 = 5))] //should be vpshrdq
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shrdi_epi64(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i64x2 = vpshrdvq128(
-        a.as_i64x2(),
-        b.as_i64x2(),
-        _mm_set1_epi64x(imm8 as i64).as_i64x2(),
-    );
+#[cfg_attr(test, assert_instr(vpshldq, IMM8 = 5))] //should be vpshrdq
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shrdi_epi64<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i64;
+    let shf: i64x2 = vpshrdvq128(a.as_i64x2(), b.as_i64x2(), _mm_set1_epi64x(imm8).as_i64x2());
     let zero = _mm_setzero_si128().as_i64x2();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -1592,14 +1635,14 @@ pub unsafe fn _mm_maskz_shrdi_epi64(k: __mmask8, a: __m128i, b: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi32&expand=5105)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shrdi_epi32(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shrdi_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
     transmute(vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     ))
 }
 
@@ -1608,20 +1651,19 @@ pub unsafe fn _mm512_shrdi_epi32(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi32&expand=5103)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shrdi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shrdi_epi32<const IMM8: i32>(
     src: __m512i,
     k: __mmask16,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
     let shf: i32x16 = vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i32x16()))
 }
@@ -1631,14 +1673,18 @@ pub unsafe fn _mm512_mask_shrdi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi32&expand=5104)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shrdi_epi32(k: __mmask16, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shrdi_epi32<const IMM8: i32>(
+    k: __mmask16,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
     let shf: i32x16 = vpshrdvd(
         a.as_i32x16(),
         b.as_i32x16(),
-        _mm512_set1_epi32(imm8).as_i32x16(),
+        _mm512_set1_epi32(IMM8).as_i32x16(),
     );
     let zero = _mm512_setzero_si512().as_i32x16();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1649,14 +1695,14 @@ pub unsafe fn _mm512_maskz_shrdi_epi32(k: __mmask16, a: __m512i, b: __m512i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi32&expand=5102)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shrdi_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shrdi_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     transmute(vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     ))
 }
 
@@ -1665,20 +1711,19 @@ pub unsafe fn _mm256_shrdi_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi32&expand=5100)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shrdi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shrdi_epi32<const IMM8: i32>(
     src: __m256i,
     k: __mmask8,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+    static_assert_imm8!(IMM8);
     let shf: i32x8 = vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i32x8()))
 }
@@ -1688,14 +1733,18 @@ pub unsafe fn _mm256_mask_shrdi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi32&expand=5101)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shrdi_epi32(k: __mmask8, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shrdi_epi32<const IMM8: i32>(
+    k: __mmask8,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
     let shf: i32x8 = vpshrdvd256(
         a.as_i32x8(),
         b.as_i32x8(),
-        _mm256_set1_epi32(imm8).as_i32x8(),
+        _mm256_set1_epi32(IMM8).as_i32x8(),
     );
     let zero = _mm256_setzero_si256().as_i32x8();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1706,14 +1755,14 @@ pub unsafe fn _mm256_maskz_shrdi_epi32(k: __mmask8, a: __m256i, b: __m256i, imm8
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi32&expand=5099)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shrdi_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shrdi_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
     transmute(vpshrdvd128(
         a.as_i32x4(),
         b.as_i32x4(),
-        _mm_set1_epi32(imm8).as_i32x4(),
+        _mm_set1_epi32(IMM8).as_i32x4(),
     ))
 }
 
@@ -1722,17 +1771,16 @@ pub unsafe fn _mm_shrdi_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi32&expand=5097)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shrdi_epi32(
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shrdi_epi32<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(imm8).as_i32x4());
+    static_assert_imm8!(IMM8);
+    let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     transmute(simd_select_bitmask(k, shf, src.as_i32x4()))
 }
 
@@ -1741,11 +1789,15 @@ pub unsafe fn _mm_mask_shrdi_epi32(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi32&expand=5098)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldd, imm8 = 5))] //should be vpshldd
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shrdi_epi32(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    assert!(imm8 >= 0 && imm8 <= 255);
-    let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(imm8).as_i32x4());
+#[cfg_attr(test, assert_instr(vpshldd, IMM8 = 5))] //should be vpshldd
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let shf: i32x4 = vpshrdvd128(a.as_i32x4(), b.as_i32x4(), _mm_set1_epi32(IMM8).as_i32x4());
     let zero = _mm_setzero_si128().as_i32x4();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -1755,14 +1807,16 @@ pub unsafe fn _mm_maskz_shrdi_epi32(k: __mmask8, a: __m128i, b: __m128i, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_shrdi_epi16&expand=5096)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm512_shrdi_epi16(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     transmute(vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     ))
 }
 
@@ -1771,20 +1825,21 @@ pub unsafe fn _mm512_shrdi_epi16(a: __m512i, b: __m512i, imm8: i32) -> __m512i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_shrdi_epi16&expand=5094)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm512_mask_shrdi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
     src: __m512i,
     k: __mmask32,
     a: __m512i,
     b: __m512i,
-    imm8: i32,
 ) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x32 = vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i16x32()))
 }
@@ -1794,14 +1849,20 @@ pub unsafe fn _mm512_mask_shrdi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_shrdi_epi16&expand=5095)
 #[inline]
 #[target_feature(enable = "avx512vbmi2")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm512_maskz_shrdi_epi16(k: __mmask32, a: __m512i, b: __m512i, imm8: i32) -> __m512i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
+    k: __mmask32,
+    a: __m512i,
+    b: __m512i,
+) -> __m512i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x32 = vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
-        _mm512_set1_epi16(imm8 as i16).as_i16x32(),
+        _mm512_set1_epi16(imm8).as_i16x32(),
     );
     let zero = _mm512_setzero_si512().as_i16x32();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1812,14 +1873,16 @@ pub unsafe fn _mm512_maskz_shrdi_epi16(k: __mmask32, a: __m512i, b: __m512i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shrdi_epi16&expand=5093)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm256_shrdi_epi16(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     transmute(vpshrdvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     ))
 }
 
@@ -1828,20 +1891,21 @@ pub unsafe fn _mm256_shrdi_epi16(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_shrdi_epi16&expand=5091)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm256_mask_shrdi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
     src: __m256i,
     k: __mmask16,
     a: __m256i,
     b: __m256i,
-    imm8: i32,
 ) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     assert!(imm8 >= 0 && imm8 <= 255);
     let shf: i16x16 = vpshrdvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     );
     transmute(simd_select_bitmask(k, shf, src.as_i16x16()))
 }
@@ -1851,13 +1915,19 @@ pub unsafe fn _mm256_mask_shrdi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_shrdi_epi16&expand=5092)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm256_maskz_shrdi_epi16(k: __mmask16, a: __m256i, b: __m256i, imm8: i32) -> __m256i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm256_maskz_shrdi_epi16<const IMM8: i32>(
+    k: __mmask16,
+    a: __m256i,
+    b: __m256i,
+) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     let shf: i16x16 = vpshrdvw256(
         a.as_i16x16(),
         b.as_i16x16(),
-        _mm256_set1_epi16(imm8 as i16).as_i16x16(),
+        _mm256_set1_epi16(imm8).as_i16x16(),
     );
     let zero = _mm256_setzero_si256().as_i16x16();
     transmute(simd_select_bitmask(k, shf, zero))
@@ -1868,13 +1938,15 @@ pub unsafe fn _mm256_maskz_shrdi_epi16(k: __mmask16, a: __m256i, b: __m256i, imm
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shrdi_epi16&expand=5090)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_shrdi_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_shrdi_epi16<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
     transmute(vpshrdvw128(
         a.as_i16x8(),
         b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
+        _mm_set1_epi16(imm8).as_i16x8(),
     ))
 }
 
@@ -1883,20 +1955,17 @@ pub unsafe fn _mm_shrdi_epi16(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_shrdi_epi16&expand=5088)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(4)]
-pub unsafe fn _mm_mask_shrdi_epi16(
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(4)]
+pub unsafe fn _mm_mask_shrdi_epi16<const IMM8: i32>(
     src: __m128i,
     k: __mmask8,
     a: __m128i,
     b: __m128i,
-    imm8: i32,
 ) -> __m128i {
-    let shf: i16x8 = vpshrdvw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
-    );
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
+    let shf: i16x8 = vpshrdvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     transmute(simd_select_bitmask(k, shf, src.as_i16x8()))
 }
 
@@ -1905,14 +1974,16 @@ pub unsafe fn _mm_mask_shrdi_epi16(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_shrdi_epi16&expand=5089)
 #[inline]
 #[target_feature(enable = "avx512vbmi2,avx512vl")]
-#[cfg_attr(test, assert_instr(vpshldw, imm8 = 5))] //should be vpshrdw
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_maskz_shrdi_epi16(k: __mmask8, a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    let shf: i16x8 = vpshrdvw128(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        _mm_set1_epi16(imm8 as i16).as_i16x8(),
-    );
+#[cfg_attr(test, assert_instr(vpshldw, IMM8 = 5))] //should be vpshrdw
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_maskz_shrdi_epi16<const IMM8: i32>(
+    k: __mmask8,
+    a: __m128i,
+    b: __m128i,
+) -> __m128i {
+    static_assert_imm8!(IMM8);
+    let imm8 = IMM8 as i16;
+    let shf: i16x8 = vpshrdvw128(a.as_i16x8(), b.as_i16x8(), _mm_set1_epi16(imm8).as_i16x8());
     let zero = _mm_setzero_si128().as_i16x8();
     transmute(simd_select_bitmask(k, shf, zero))
 }
@@ -2921,7 +2992,7 @@ mod tests {
     unsafe fn test_mm512_shldi_epi64() {
         let a = _mm512_set1_epi64(1);
         let b = _mm512_set1_epi64(1 << 63);
-        let r = _mm512_shldi_epi64(a, b, 2);
+        let r = _mm512_shldi_epi64::<2>(a, b);
         let e = _mm512_set1_epi64(6);
         assert_eq_m512i(r, e);
     }
@@ -2930,9 +3001,9 @@ mod tests {
     unsafe fn test_mm512_mask_shldi_epi64() {
         let a = _mm512_set1_epi64(1);
         let b = _mm512_set1_epi64(1 << 63);
-        let r = _mm512_mask_shldi_epi64(a, 0, a, b, 2);
+        let r = _mm512_mask_shldi_epi64::<2>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shldi_epi64(a, 0b11111111, a, b, 2);
+        let r = _mm512_mask_shldi_epi64::<2>(a, 0b11111111, a, b);
         let e = _mm512_set1_epi64(6);
         assert_eq_m512i(r, e);
     }
@@ -2941,9 +3012,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shldi_epi64() {
         let a = _mm512_set1_epi64(1);
         let b = _mm512_set1_epi64(1 << 63);
-        let r = _mm512_maskz_shldi_epi64(0, a, b, 2);
+        let r = _mm512_maskz_shldi_epi64::<2>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shldi_epi64(0b11111111, a, b, 2);
+        let r = _mm512_maskz_shldi_epi64::<2>(0b11111111, a, b);
         let e = _mm512_set1_epi64(6);
         assert_eq_m512i(r, e);
     }
@@ -2952,7 +3023,7 @@ mod tests {
     unsafe fn test_mm256_shldi_epi64() {
         let a = _mm256_set1_epi64x(1);
         let b = _mm256_set1_epi64x(1 << 63);
-        let r = _mm256_shldi_epi64(a, b, 2);
+        let r = _mm256_shldi_epi64::<2>(a, b);
         let e = _mm256_set1_epi64x(6);
         assert_eq_m256i(r, e);
     }
@@ -2961,9 +3032,9 @@ mod tests {
     unsafe fn test_mm256_mask_shldi_epi64() {
         let a = _mm256_set1_epi64x(1);
         let b = _mm256_set1_epi64x(1 << 63);
-        let r = _mm256_mask_shldi_epi64(a, 0, a, b, 2);
+        let r = _mm256_mask_shldi_epi64::<2>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shldi_epi64(a, 0b00001111, a, b, 2);
+        let r = _mm256_mask_shldi_epi64::<2>(a, 0b00001111, a, b);
         let e = _mm256_set1_epi64x(6);
         assert_eq_m256i(r, e);
     }
@@ -2972,9 +3043,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shldi_epi64() {
         let a = _mm256_set1_epi64x(1);
         let b = _mm256_set1_epi64x(1 << 63);
-        let r = _mm256_maskz_shldi_epi64(0, a, b, 2);
+        let r = _mm256_maskz_shldi_epi64::<2>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shldi_epi64(0b00001111, a, b, 2);
+        let r = _mm256_maskz_shldi_epi64::<2>(0b00001111, a, b);
         let e = _mm256_set1_epi64x(6);
         assert_eq_m256i(r, e);
     }
@@ -2983,7 +3054,7 @@ mod tests {
     unsafe fn test_mm_shldi_epi64() {
         let a = _mm_set1_epi64x(1);
         let b = _mm_set1_epi64x(1 << 63);
-        let r = _mm_shldi_epi64(a, b, 2);
+        let r = _mm_shldi_epi64::<2>(a, b);
         let e = _mm_set1_epi64x(6);
         assert_eq_m128i(r, e);
     }
@@ -2992,9 +3063,9 @@ mod tests {
     unsafe fn test_mm_mask_shldi_epi64() {
         let a = _mm_set1_epi64x(1);
         let b = _mm_set1_epi64x(1 << 63);
-        let r = _mm_mask_shldi_epi64(a, 0, a, b, 2);
+        let r = _mm_mask_shldi_epi64::<2>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shldi_epi64(a, 0b00000011, a, b, 2);
+        let r = _mm_mask_shldi_epi64::<2>(a, 0b00000011, a, b);
         let e = _mm_set1_epi64x(6);
         assert_eq_m128i(r, e);
     }
@@ -3003,9 +3074,9 @@ mod tests {
     unsafe fn test_mm_maskz_shldi_epi64() {
         let a = _mm_set1_epi64x(1);
         let b = _mm_set1_epi64x(1 << 63);
-        let r = _mm_maskz_shldi_epi64(0, a, b, 2);
+        let r = _mm_maskz_shldi_epi64::<2>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shldi_epi64(0b00000011, a, b, 2);
+        let r = _mm_maskz_shldi_epi64::<2>(0b00000011, a, b);
         let e = _mm_set1_epi64x(6);
         assert_eq_m128i(r, e);
     }
@@ -3014,7 +3085,7 @@ mod tests {
     unsafe fn test_mm512_shldi_epi32() {
         let a = _mm512_set1_epi32(1);
         let b = _mm512_set1_epi32(1 << 31);
-        let r = _mm512_shldi_epi32(a, b, 2);
+        let r = _mm512_shldi_epi32::<2>(a, b);
         let e = _mm512_set1_epi32(6);
         assert_eq_m512i(r, e);
     }
@@ -3023,9 +3094,9 @@ mod tests {
     unsafe fn test_mm512_mask_shldi_epi32() {
         let a = _mm512_set1_epi32(1);
         let b = _mm512_set1_epi32(1 << 31);
-        let r = _mm512_mask_shldi_epi32(a, 0, a, b, 2);
+        let r = _mm512_mask_shldi_epi32::<2>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shldi_epi32(a, 0b11111111_11111111, a, b, 2);
+        let r = _mm512_mask_shldi_epi32::<2>(a, 0b11111111_11111111, a, b);
         let e = _mm512_set1_epi32(6);
         assert_eq_m512i(r, e);
     }
@@ -3034,9 +3105,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shldi_epi32() {
         let a = _mm512_set1_epi32(1);
         let b = _mm512_set1_epi32(1 << 31);
-        let r = _mm512_maskz_shldi_epi32(0, a, b, 2);
+        let r = _mm512_maskz_shldi_epi32::<2>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shldi_epi32(0b11111111_11111111, a, b, 2);
+        let r = _mm512_maskz_shldi_epi32::<2>(0b11111111_11111111, a, b);
         let e = _mm512_set1_epi32(6);
         assert_eq_m512i(r, e);
     }
@@ -3045,7 +3116,7 @@ mod tests {
     unsafe fn test_mm256_shldi_epi32() {
         let a = _mm256_set1_epi32(1);
         let b = _mm256_set1_epi32(1 << 31);
-        let r = _mm256_shldi_epi32(a, b, 2);
+        let r = _mm256_shldi_epi32::<2>(a, b);
         let e = _mm256_set1_epi32(6);
         assert_eq_m256i(r, e);
     }
@@ -3054,9 +3125,9 @@ mod tests {
     unsafe fn test_mm256_mask_shldi_epi32() {
         let a = _mm256_set1_epi32(1);
         let b = _mm256_set1_epi32(1 << 31);
-        let r = _mm256_mask_shldi_epi32(a, 0, a, b, 2);
+        let r = _mm256_mask_shldi_epi32::<2>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shldi_epi32(a, 0b11111111, a, b, 2);
+        let r = _mm256_mask_shldi_epi32::<2>(a, 0b11111111, a, b);
         let e = _mm256_set1_epi32(6);
         assert_eq_m256i(r, e);
     }
@@ -3065,9 +3136,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shldi_epi32() {
         let a = _mm256_set1_epi32(1);
         let b = _mm256_set1_epi32(1 << 31);
-        let r = _mm256_maskz_shldi_epi32(0, a, b, 2);
+        let r = _mm256_maskz_shldi_epi32::<2>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shldi_epi32(0b11111111, a, b, 2);
+        let r = _mm256_maskz_shldi_epi32::<2>(0b11111111, a, b);
         let e = _mm256_set1_epi32(6);
         assert_eq_m256i(r, e);
     }
@@ -3076,7 +3147,7 @@ mod tests {
     unsafe fn test_mm_shldi_epi32() {
         let a = _mm_set1_epi32(1);
         let b = _mm_set1_epi32(1 << 31);
-        let r = _mm_shldi_epi32(a, b, 2);
+        let r = _mm_shldi_epi32::<2>(a, b);
         let e = _mm_set1_epi32(6);
         assert_eq_m128i(r, e);
     }
@@ -3085,9 +3156,9 @@ mod tests {
     unsafe fn test_mm_mask_shldi_epi32() {
         let a = _mm_set1_epi32(1);
         let b = _mm_set1_epi32(1 << 31);
-        let r = _mm_mask_shldi_epi32(a, 0, a, b, 2);
+        let r = _mm_mask_shldi_epi32::<2>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shldi_epi32(a, 0b00001111, a, b, 2);
+        let r = _mm_mask_shldi_epi32::<2>(a, 0b00001111, a, b);
         let e = _mm_set1_epi32(6);
         assert_eq_m128i(r, e);
     }
@@ -3096,9 +3167,9 @@ mod tests {
     unsafe fn test_mm_maskz_shldi_epi32() {
         let a = _mm_set1_epi32(1);
         let b = _mm_set1_epi32(1 << 31);
-        let r = _mm_maskz_shldi_epi32(0, a, b, 2);
+        let r = _mm_maskz_shldi_epi32::<2>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shldi_epi32(0b00001111, a, b, 2);
+        let r = _mm_maskz_shldi_epi32::<2>(0b00001111, a, b);
         let e = _mm_set1_epi32(6);
         assert_eq_m128i(r, e);
     }
@@ -3107,7 +3178,7 @@ mod tests {
     unsafe fn test_mm512_shldi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1 << 15);
-        let r = _mm512_shldi_epi16(a, b, 2);
+        let r = _mm512_shldi_epi16::<2>(a, b);
         let e = _mm512_set1_epi16(6);
         assert_eq_m512i(r, e);
     }
@@ -3116,9 +3187,9 @@ mod tests {
     unsafe fn test_mm512_mask_shldi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1 << 15);
-        let r = _mm512_mask_shldi_epi16(a, 0, a, b, 2);
+        let r = _mm512_mask_shldi_epi16::<2>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shldi_epi16(a, 0b11111111_11111111_11111111_11111111, a, b, 2);
+        let r = _mm512_mask_shldi_epi16::<2>(a, 0b11111111_11111111_11111111_11111111, a, b);
         let e = _mm512_set1_epi16(6);
         assert_eq_m512i(r, e);
     }
@@ -3127,9 +3198,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shldi_epi16() {
         let a = _mm512_set1_epi16(1);
         let b = _mm512_set1_epi16(1 << 15);
-        let r = _mm512_maskz_shldi_epi16(0, a, b, 2);
+        let r = _mm512_maskz_shldi_epi16::<2>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shldi_epi16(0b11111111_11111111_11111111_11111111, a, b, 2);
+        let r = _mm512_maskz_shldi_epi16::<2>(0b11111111_11111111_11111111_11111111, a, b);
         let e = _mm512_set1_epi16(6);
         assert_eq_m512i(r, e);
     }
@@ -3138,7 +3209,7 @@ mod tests {
     unsafe fn test_mm256_shldi_epi16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1 << 15);
-        let r = _mm256_shldi_epi16(a, b, 2);
+        let r = _mm256_shldi_epi16::<2>(a, b);
         let e = _mm256_set1_epi16(6);
         assert_eq_m256i(r, e);
     }
@@ -3147,9 +3218,9 @@ mod tests {
     unsafe fn test_mm256_mask_shldi_epi16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1 << 15);
-        let r = _mm256_mask_shldi_epi16(a, 0, a, b, 2);
+        let r = _mm256_mask_shldi_epi16::<2>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shldi_epi16(a, 0b11111111_11111111, a, b, 2);
+        let r = _mm256_mask_shldi_epi16::<2>(a, 0b11111111_11111111, a, b);
         let e = _mm256_set1_epi16(6);
         assert_eq_m256i(r, e);
     }
@@ -3158,9 +3229,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shldi_epi16() {
         let a = _mm256_set1_epi16(1);
         let b = _mm256_set1_epi16(1 << 15);
-        let r = _mm256_maskz_shldi_epi16(0, a, b, 2);
+        let r = _mm256_maskz_shldi_epi16::<2>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shldi_epi16(0b11111111_11111111, a, b, 2);
+        let r = _mm256_maskz_shldi_epi16::<2>(0b11111111_11111111, a, b);
         let e = _mm256_set1_epi16(6);
         assert_eq_m256i(r, e);
     }
@@ -3169,7 +3240,7 @@ mod tests {
     unsafe fn test_mm_shldi_epi16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1 << 15);
-        let r = _mm_shldi_epi16(a, b, 2);
+        let r = _mm_shldi_epi16::<2>(a, b);
         let e = _mm_set1_epi16(6);
         assert_eq_m128i(r, e);
     }
@@ -3178,9 +3249,9 @@ mod tests {
     unsafe fn test_mm_mask_shldi_epi16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1 << 15);
-        let r = _mm_mask_shldi_epi16(a, 0, a, b, 2);
+        let r = _mm_mask_shldi_epi16::<2>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shldi_epi16(a, 0b11111111, a, b, 2);
+        let r = _mm_mask_shldi_epi16::<2>(a, 0b11111111, a, b);
         let e = _mm_set1_epi16(6);
         assert_eq_m128i(r, e);
     }
@@ -3189,9 +3260,9 @@ mod tests {
     unsafe fn test_mm_maskz_shldi_epi16() {
         let a = _mm_set1_epi16(1);
         let b = _mm_set1_epi16(1 << 15);
-        let r = _mm_maskz_shldi_epi16(0, a, b, 2);
+        let r = _mm_maskz_shldi_epi16::<2>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shldi_epi16(0b11111111, a, b, 2);
+        let r = _mm_maskz_shldi_epi16::<2>(0b11111111, a, b);
         let e = _mm_set1_epi16(6);
         assert_eq_m128i(r, e);
     }
@@ -3200,7 +3271,7 @@ mod tests {
     unsafe fn test_mm512_shrdi_epi64() {
         let a = _mm512_set1_epi64(8);
         let b = _mm512_set1_epi64(2);
-        let r = _mm512_shrdi_epi64(a, b, 1);
+        let r = _mm512_shrdi_epi64::<1>(a, b);
         let e = _mm512_set1_epi64(1);
         assert_eq_m512i(r, e);
     }
@@ -3209,9 +3280,9 @@ mod tests {
     unsafe fn test_mm512_mask_shrdi_epi64() {
         let a = _mm512_set1_epi64(8);
         let b = _mm512_set1_epi64(2);
-        let r = _mm512_mask_shrdi_epi64(a, 0, a, b, 1);
+        let r = _mm512_mask_shrdi_epi64::<1>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shrdi_epi64(a, 0b11111111, a, b, 1);
+        let r = _mm512_mask_shrdi_epi64::<1>(a, 0b11111111, a, b);
         let e = _mm512_set1_epi64(1);
         assert_eq_m512i(r, e);
     }
@@ -3220,9 +3291,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shrdi_epi64() {
         let a = _mm512_set1_epi64(8);
         let b = _mm512_set1_epi64(2);
-        let r = _mm512_maskz_shrdi_epi64(0, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi64::<1>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shrdi_epi64(0b11111111, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi64::<1>(0b11111111, a, b);
         let e = _mm512_set1_epi64(1);
         assert_eq_m512i(r, e);
     }
@@ -3231,7 +3302,7 @@ mod tests {
     unsafe fn test_mm256_shrdi_epi64() {
         let a = _mm256_set1_epi64x(8);
         let b = _mm256_set1_epi64x(2);
-        let r = _mm256_shrdi_epi64(a, b, 1);
+        let r = _mm256_shrdi_epi64::<1>(a, b);
         let e = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, e);
     }
@@ -3240,9 +3311,9 @@ mod tests {
     unsafe fn test_mm256_mask_shrdi_epi64() {
         let a = _mm256_set1_epi64x(8);
         let b = _mm256_set1_epi64x(2);
-        let r = _mm256_mask_shrdi_epi64(a, 0, a, b, 1);
+        let r = _mm256_mask_shrdi_epi64::<1>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shrdi_epi64(a, 0b00001111, a, b, 1);
+        let r = _mm256_mask_shrdi_epi64::<1>(a, 0b00001111, a, b);
         let e = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, e);
     }
@@ -3251,9 +3322,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shrdi_epi64() {
         let a = _mm256_set1_epi64x(8);
         let b = _mm256_set1_epi64x(2);
-        let r = _mm256_maskz_shrdi_epi64(0, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi64::<1>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shrdi_epi64(0b00001111, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi64::<1>(0b00001111, a, b);
         let e = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, e);
     }
@@ -3262,7 +3333,7 @@ mod tests {
     unsafe fn test_mm_shrdi_epi64() {
         let a = _mm_set1_epi64x(8);
         let b = _mm_set1_epi64x(2);
-        let r = _mm_shrdi_epi64(a, b, 1);
+        let r = _mm_shrdi_epi64::<1>(a, b);
         let e = _mm_set1_epi64x(1);
         assert_eq_m128i(r, e);
     }
@@ -3271,9 +3342,9 @@ mod tests {
     unsafe fn test_mm_mask_shrdi_epi64() {
         let a = _mm_set1_epi64x(8);
         let b = _mm_set1_epi64x(2);
-        let r = _mm_mask_shrdi_epi64(a, 0, a, b, 1);
+        let r = _mm_mask_shrdi_epi64::<1>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shrdi_epi64(a, 0b00000011, a, b, 1);
+        let r = _mm_mask_shrdi_epi64::<1>(a, 0b00000011, a, b);
         let e = _mm_set1_epi64x(1);
         assert_eq_m128i(r, e);
     }
@@ -3282,9 +3353,9 @@ mod tests {
     unsafe fn test_mm_maskz_shrdi_epi64() {
         let a = _mm_set1_epi64x(8);
         let b = _mm_set1_epi64x(2);
-        let r = _mm_maskz_shrdi_epi64(0, a, b, 1);
+        let r = _mm_maskz_shrdi_epi64::<1>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shrdi_epi64(0b00000011, a, b, 1);
+        let r = _mm_maskz_shrdi_epi64::<1>(0b00000011, a, b);
         let e = _mm_set1_epi64x(1);
         assert_eq_m128i(r, e);
     }
@@ -3293,7 +3364,7 @@ mod tests {
     unsafe fn test_mm512_shrdi_epi32() {
         let a = _mm512_set1_epi32(8);
         let b = _mm512_set1_epi32(2);
-        let r = _mm512_shrdi_epi32(a, b, 1);
+        let r = _mm512_shrdi_epi32::<1>(a, b);
         let e = _mm512_set1_epi32(1);
         assert_eq_m512i(r, e);
     }
@@ -3302,9 +3373,9 @@ mod tests {
     unsafe fn test_mm512_mask_shrdi_epi32() {
         let a = _mm512_set1_epi32(8);
         let b = _mm512_set1_epi32(2);
-        let r = _mm512_mask_shrdi_epi32(a, 0, a, b, 1);
+        let r = _mm512_mask_shrdi_epi32::<1>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shrdi_epi32(a, 0b11111111_11111111, a, b, 1);
+        let r = _mm512_mask_shrdi_epi32::<1>(a, 0b11111111_11111111, a, b);
         let e = _mm512_set1_epi32(1);
         assert_eq_m512i(r, e);
     }
@@ -3313,9 +3384,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shrdi_epi32() {
         let a = _mm512_set1_epi32(8);
         let b = _mm512_set1_epi32(2);
-        let r = _mm512_maskz_shrdi_epi32(0, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi32::<1>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shrdi_epi32(0b11111111_11111111, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi32::<1>(0b11111111_11111111, a, b);
         let e = _mm512_set1_epi32(1);
         assert_eq_m512i(r, e);
     }
@@ -3324,7 +3395,7 @@ mod tests {
     unsafe fn test_mm256_shrdi_epi32() {
         let a = _mm256_set1_epi32(8);
         let b = _mm256_set1_epi32(2);
-        let r = _mm256_shrdi_epi32(a, b, 1);
+        let r = _mm256_shrdi_epi32::<1>(a, b);
         let e = _mm256_set1_epi32(1);
         assert_eq_m256i(r, e);
     }
@@ -3333,9 +3404,9 @@ mod tests {
     unsafe fn test_mm256_mask_shrdi_epi32() {
         let a = _mm256_set1_epi32(8);
         let b = _mm256_set1_epi32(2);
-        let r = _mm256_mask_shrdi_epi32(a, 0, a, b, 1);
+        let r = _mm256_mask_shrdi_epi32::<1>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shrdi_epi32(a, 0b11111111, a, b, 1);
+        let r = _mm256_mask_shrdi_epi32::<1>(a, 0b11111111, a, b);
         let e = _mm256_set1_epi32(1);
         assert_eq_m256i(r, e);
     }
@@ -3344,9 +3415,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shrdi_epi32() {
         let a = _mm256_set1_epi32(8);
         let b = _mm256_set1_epi32(2);
-        let r = _mm256_maskz_shrdi_epi32(0, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi32::<1>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shrdi_epi32(0b11111111, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi32::<1>(0b11111111, a, b);
         let e = _mm256_set1_epi32(1);
         assert_eq_m256i(r, e);
     }
@@ -3355,7 +3426,7 @@ mod tests {
     unsafe fn test_mm_shrdi_epi32() {
         let a = _mm_set1_epi32(8);
         let b = _mm_set1_epi32(2);
-        let r = _mm_shrdi_epi32(a, b, 1);
+        let r = _mm_shrdi_epi32::<1>(a, b);
         let e = _mm_set1_epi32(1);
         assert_eq_m128i(r, e);
     }
@@ -3364,9 +3435,9 @@ mod tests {
     unsafe fn test_mm_mask_shrdi_epi32() {
         let a = _mm_set1_epi32(8);
         let b = _mm_set1_epi32(2);
-        let r = _mm_mask_shrdi_epi32(a, 0, a, b, 1);
+        let r = _mm_mask_shrdi_epi32::<1>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shrdi_epi32(a, 0b00001111, a, b, 1);
+        let r = _mm_mask_shrdi_epi32::<1>(a, 0b00001111, a, b);
         let e = _mm_set1_epi32(1);
         assert_eq_m128i(r, e);
     }
@@ -3375,9 +3446,9 @@ mod tests {
     unsafe fn test_mm_maskz_shrdi_epi32() {
         let a = _mm_set1_epi32(8);
         let b = _mm_set1_epi32(2);
-        let r = _mm_maskz_shrdi_epi32(0, a, b, 1);
+        let r = _mm_maskz_shrdi_epi32::<1>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shrdi_epi32(0b00001111, a, b, 1);
+        let r = _mm_maskz_shrdi_epi32::<1>(0b00001111, a, b);
         let e = _mm_set1_epi32(1);
         assert_eq_m128i(r, e);
     }
@@ -3386,7 +3457,7 @@ mod tests {
     unsafe fn test_mm512_shrdi_epi16() {
         let a = _mm512_set1_epi16(8);
         let b = _mm512_set1_epi16(2);
-        let r = _mm512_shrdi_epi16(a, b, 1);
+        let r = _mm512_shrdi_epi16::<1>(a, b);
         let e = _mm512_set1_epi16(1);
         assert_eq_m512i(r, e);
     }
@@ -3395,9 +3466,9 @@ mod tests {
     unsafe fn test_mm512_mask_shrdi_epi16() {
         let a = _mm512_set1_epi16(8);
         let b = _mm512_set1_epi16(2);
-        let r = _mm512_mask_shrdi_epi16(a, 0, a, b, 1);
+        let r = _mm512_mask_shrdi_epi16::<1>(a, 0, a, b);
         assert_eq_m512i(r, a);
-        let r = _mm512_mask_shrdi_epi16(a, 0b11111111_11111111_11111111_11111111, a, b, 1);
+        let r = _mm512_mask_shrdi_epi16::<1>(a, 0b11111111_11111111_11111111_11111111, a, b);
         let e = _mm512_set1_epi16(1);
         assert_eq_m512i(r, e);
     }
@@ -3406,9 +3477,9 @@ mod tests {
     unsafe fn test_mm512_maskz_shrdi_epi16() {
         let a = _mm512_set1_epi16(8);
         let b = _mm512_set1_epi16(2);
-        let r = _mm512_maskz_shrdi_epi16(0, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi16::<1>(0, a, b);
         assert_eq_m512i(r, _mm512_setzero_si512());
-        let r = _mm512_maskz_shrdi_epi16(0b11111111_11111111_11111111_11111111, a, b, 1);
+        let r = _mm512_maskz_shrdi_epi16::<1>(0b11111111_11111111_11111111_11111111, a, b);
         let e = _mm512_set1_epi16(1);
         assert_eq_m512i(r, e);
     }
@@ -3417,7 +3488,7 @@ mod tests {
     unsafe fn test_mm256_shrdi_epi16() {
         let a = _mm256_set1_epi16(8);
         let b = _mm256_set1_epi16(2);
-        let r = _mm256_shrdi_epi16(a, b, 1);
+        let r = _mm256_shrdi_epi16::<1>(a, b);
         let e = _mm256_set1_epi16(1);
         assert_eq_m256i(r, e);
     }
@@ -3426,9 +3497,9 @@ mod tests {
     unsafe fn test_mm256_mask_shrdi_epi16() {
         let a = _mm256_set1_epi16(8);
         let b = _mm256_set1_epi16(2);
-        let r = _mm256_mask_shrdi_epi16(a, 0, a, b, 1);
+        let r = _mm256_mask_shrdi_epi16::<1>(a, 0, a, b);
         assert_eq_m256i(r, a);
-        let r = _mm256_mask_shrdi_epi16(a, 0b11111111_11111111, a, b, 1);
+        let r = _mm256_mask_shrdi_epi16::<1>(a, 0b11111111_11111111, a, b);
         let e = _mm256_set1_epi16(1);
         assert_eq_m256i(r, e);
     }
@@ -3437,9 +3508,9 @@ mod tests {
     unsafe fn test_mm256_maskz_shrdi_epi16() {
         let a = _mm256_set1_epi16(8);
         let b = _mm256_set1_epi16(2);
-        let r = _mm256_maskz_shrdi_epi16(0, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi16::<1>(0, a, b);
         assert_eq_m256i(r, _mm256_setzero_si256());
-        let r = _mm256_maskz_shrdi_epi16(0b11111111_11111111, a, b, 1);
+        let r = _mm256_maskz_shrdi_epi16::<1>(0b11111111_11111111, a, b);
         let e = _mm256_set1_epi16(1);
         assert_eq_m256i(r, e);
     }
@@ -3448,7 +3519,7 @@ mod tests {
     unsafe fn test_mm_shrdi_epi16() {
         let a = _mm_set1_epi16(8);
         let b = _mm_set1_epi16(2);
-        let r = _mm_shrdi_epi16(a, b, 1);
+        let r = _mm_shrdi_epi16::<1>(a, b);
         let e = _mm_set1_epi16(1);
         assert_eq_m128i(r, e);
     }
@@ -3457,9 +3528,9 @@ mod tests {
     unsafe fn test_mm_mask_shrdi_epi16() {
         let a = _mm_set1_epi16(8);
         let b = _mm_set1_epi16(2);
-        let r = _mm_mask_shrdi_epi16(a, 0, a, b, 1);
+        let r = _mm_mask_shrdi_epi16::<1>(a, 0, a, b);
         assert_eq_m128i(r, a);
-        let r = _mm_mask_shrdi_epi16(a, 0b11111111, a, b, 1);
+        let r = _mm_mask_shrdi_epi16::<1>(a, 0b11111111, a, b);
         let e = _mm_set1_epi16(1);
         assert_eq_m128i(r, e);
     }
@@ -3468,9 +3539,9 @@ mod tests {
     unsafe fn test_mm_maskz_shrdi_epi16() {
         let a = _mm_set1_epi16(8);
         let b = _mm_set1_epi16(2);
-        let r = _mm_maskz_shrdi_epi16(0, a, b, 1);
+        let r = _mm_maskz_shrdi_epi16::<1>(0, a, b);
         assert_eq_m128i(r, _mm_setzero_si128());
-        let r = _mm_maskz_shrdi_epi16(0b11111111, a, b, 1);
+        let r = _mm_maskz_shrdi_epi16::<1>(0b11111111, a, b);
         let e = _mm_set1_epi16(1);
         assert_eq_m128i(r, e);
     }

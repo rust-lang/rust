@@ -1,32 +1,33 @@
 //! Utility macros.
 
-// For round instructions, the only valid values for rounding are 4, 8, 9, 10 and 11.
-// This macro enforces that.
-#[allow(unused)]
-macro_rules! constify_imm4_round {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b1111 {
-            4 => $expand!(4),
-            8 => $expand!(8),
-            9 => $expand!(9),
-            10 => $expand!(10),
-            11 => $expand!(11),
-            _ => panic!("Invalid round value"),
-        }
+// Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
+// not a round number.
+pub(crate) struct ValidateConstRound<const IMM: i32>;
+impl<const IMM: i32> ValidateConstRound<IMM> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11) as usize);
     };
 }
 
-// For sae instructions, the only valid values for sae are 4 and 8.
-// This macro enforces that.
 #[allow(unused)]
-macro_rules! constify_imm4_sae {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b1111 {
-            4 => $expand!(4),
-            8 => $expand!(8),
-            _ => panic!("Invalid sae value"),
-        }
+macro_rules! static_assert_rounding {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::x86_64::macros::ValidateConstRound::<$imm>::VALID;
+    };
+}
+
+// Helper struct used to trigger const eval errors when the const generic immediate value `imm` is
+// not a sae number.
+pub(crate) struct ValidateConstSae<const IMM: i32>;
+impl<const IMM: i32> ValidateConstSae<IMM> {
+    pub(crate) const VALID: () = {
+        let _ = 1 / ((IMM == 4 || IMM == 8) as usize);
+    };
+}
+
+#[allow(unused)]
+macro_rules! static_assert_sae {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::x86_64::macros::ValidateConstSae::<$imm>::VALID;
     };
 }

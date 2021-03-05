@@ -2642,74 +2642,25 @@ pub unsafe fn _mm256_shuffle_epi8(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shuffle_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpermilps, imm8 = 9))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpermilps, MASK = 9))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
-    // simd_shuffleX requires that its selector parameter be made up of
-    // constant values, but we can't enforce that here. In spirit, we need
-    // to write a `match` on all possible values of a byte, and for each value,
-    // hard-code the correct `simd_shuffleX` call using only constants. We
-    // then hope for LLVM to do the rest.
-    //
-    // Of course, that's... awful. So we try to use macros to do it for us.
-    let imm8 = (imm8 & 0xFF) as u8;
-
-    let a = a.as_i32x8();
-    macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            simd_shuffle8(
-                a,
-                a,
-                [
-                    $x01,
-                    $x23,
-                    $x45,
-                    $x67,
-                    4 + $x01,
-                    4 + $x23,
-                    4 + $x45,
-                    4 + $x67,
-                ],
-            )
-        };
-    }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i32x8 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
+pub unsafe fn _mm256_shuffle_epi32<const MASK: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(MASK);
+    let r: i32x8 = simd_shuffle8(
+        a.as_i32x8(),
+        a.as_i32x8(),
+        [
+            MASK as u32 & 0b11,
+            (MASK as u32 >> 2) & 0b11,
+            (MASK as u32 >> 4) & 0b11,
+            (MASK as u32 >> 6) & 0b11,
+            (MASK as u32 & 0b11) + 4,
+            ((MASK as u32 >> 2) & 0b11) + 4,
+            ((MASK as u32 >> 4) & 0b11) + 4,
+            ((MASK as u32 >> 6) & 0b11) + 4,
+        ],
+    );
     transmute(r)
 }
 
