@@ -99,6 +99,11 @@ fn valid_examples() {
         let x = 2;
         println!("{}", x);
     }
+
+    // Let's test empty blocks
+    if false {
+    } else {
+    }
 }
 
 /// This makes sure that the `if_same_then_else` masks the `shared_code_in_if_blocks` lint
@@ -128,20 +133,12 @@ fn trigger_other_lint() {
         println!("I'm a doppelgänger");
         // Don't listen to my clone below
 
-        if y == 90 {
-            "=^.^="
-        } else {
-            ":D"
-        }
+        if y == 90 { "=^.^=" } else { ":D" }
     } else {
         // Don't listen to my clone above
         println!("I'm a doppelgänger");
 
-        if y == 90 {
-            "=^.^="
-        } else {
-            ":D"
-        }
+        if y == 90 { "=^.^=" } else { ":D" }
     };
 
     if x == 0 {
