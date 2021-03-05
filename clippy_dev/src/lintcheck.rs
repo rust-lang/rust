@@ -229,6 +229,7 @@ impl Crate {
         target_dir_index: &AtomicUsize,
         thread_limit: usize,
         total_crates_to_lint: usize,
+        fix: bool,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
@@ -252,7 +253,18 @@ impl Crate {
 
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
-        let mut args = vec!["--", "--message-format=json", "--", "--cap-lints=warn"];
+        let mut args = if fix {
+            vec![
+                "-Zunstable-options",
+                "--fix",
+                "-Zunstable-options",
+                "--allow-no-vcs",
+                "--",
+                "--cap-lints=warn",
+            ]
+        } else {
+            vec!["--", "--message-format=json", "--", "--cap-lints=warn"]
+        };
 
         if let Some(options) = &self.options {
             for opt in options {
@@ -282,6 +294,23 @@ impl Crate {
                 );
             });
         let stdout = String::from_utf8_lossy(&all_output.stdout);
+        let stderr = String::from_utf8_lossy(&all_output.stderr);
+
+        if fix {
+            if let Some(stderr) = stderr
+                .lines()
+                .find(|line| line.contains("failed to automatically apply fixes suggested by rustc to crate"))
+            {
+                let subcrate = &stderr[63..];
+                println!(
+                    "ERROR: failed to apply some suggetion to {} / to (sub)crate {}",
+                    self.name, subcrate
+                );
+            }
+            // fast path, we don't need the warnings anyway
+            return Vec::new();
+        }
+
         let output_lines = stdout.lines();
         let warnings: Vec<ClippyWarning> = output_lines
             .into_iter()
@@ -289,6 +318,7 @@ impl Crate {
             .filter(|line| filter_clippy_warnings(&line))
             .map(|json_msg| parse_json_message(json_msg, &self))
             .collect();
+
         warnings
     }
 }
@@ -301,6 +331,8 @@ struct LintcheckConfig {
     sources_toml_path: PathBuf,
     // we save the clippy lint results here
     lintcheck_results_path: PathBuf,
+    // whether to just run --fix and not collect all the warnings
+    fix: bool,
 }
 
 impl LintcheckConfig {
@@ -342,11 +374,13 @@ impl LintcheckConfig {
             // no -j passed, use a single thread
             None => 1,
         };
+        let fix: bool = clap_config.is_present("fix");
 
         LintcheckConfig {
             max_jobs,
             sources_toml_path,
             lintcheck_results_path,
+            fix,
         }
     }
 }
@@ -598,7 +632,7 @@ pub fn run(clap_config: &ArgMatches) {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1))
+            .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1, config.fix))
             .collect()
     } else {
         if config.max_jobs > 1 {
@@ -621,7 +655,9 @@ pub fn run(clap_config: &ArgMatches) {
             crates
                 .into_par_iter()
                 .map(|krate| krate.download_and_extract())
-                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates))
+                .flat_map(|krate| {
+                    krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates, config.fix)
+                })
                 .collect()
         } else {
             // run sequential
@@ -629,10 +665,15 @@ pub fn run(clap_config: &ArgMatches) {
             crates
                 .into_iter()
                 .map(|krate| krate.download_and_extract())
-                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates))
+                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates, config.fix))
                 .collect()
         }
     };
+
+    // if we are in --fix mode, don't change the log files, terminate here
+    if config.fix {
+        return;
+    }
 
     // generate some stats
     let (stats_formatted, new_stats) = gather_stats(&clippy_warnings);
