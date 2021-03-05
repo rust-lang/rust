@@ -19904,7 +19904,7 @@ pub unsafe fn _mm512_maskz_permute_ps(k: __mmask16, a: __m512, imm8: i32) -> __m
 pub unsafe fn _mm256_mask_permute_ps(src: __m256, k: __mmask8, a: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_permute_ps(a, $imm8)
+            _mm256_permute_ps::<$imm8>(a)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
@@ -19921,7 +19921,7 @@ pub unsafe fn _mm256_mask_permute_ps(src: __m256, k: __mmask8, a: __m256, imm8: 
 pub unsafe fn _mm256_maskz_permute_ps(k: __mmask8, a: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_permute_ps(a, $imm8)
+            _mm256_permute_ps::<$imm8>(a)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
@@ -19939,7 +19939,7 @@ pub unsafe fn _mm256_maskz_permute_ps(k: __mmask8, a: __m256, imm8: i32) -> __m2
 pub unsafe fn _mm_mask_permute_ps(src: __m128, k: __mmask8, a: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm_permute_ps(a, $imm8)
+            _mm_permute_ps::<$imm8>(a)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
@@ -19956,7 +19956,7 @@ pub unsafe fn _mm_mask_permute_ps(src: __m128, k: __mmask8, a: __m128, imm8: i32
 pub unsafe fn _mm_maskz_permute_ps(k: __mmask8, a: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm_permute_ps(a, $imm8)
+            _mm_permute_ps::<$imm8>(a)
         };
     }
     let r = constify_imm8_sae!(imm8, call);
@@ -20058,10 +20058,10 @@ pub unsafe fn _mm512_maskz_permute_pd(k: __mmask8, a: __m512d, imm8: i32) -> __m
 pub unsafe fn _mm256_mask_permute_pd(src: __m256d, k: __mmask8, a: __m256d, imm8: i32) -> __m256d {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_permute_pd(a, $imm8)
+            _mm256_permute_pd::<$imm8>(a)
         };
     }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = constify_imm4!(imm8, call);
     transmute(simd_select_bitmask(k, r.as_f64x4(), src.as_f64x4()))
 }
 
@@ -20075,10 +20075,10 @@ pub unsafe fn _mm256_mask_permute_pd(src: __m256d, k: __mmask8, a: __m256d, imm8
 pub unsafe fn _mm256_maskz_permute_pd(k: __mmask8, a: __m256d, imm8: i32) -> __m256d {
     macro_rules! call {
         ($imm8:expr) => {
-            _mm256_permute_pd(a, $imm8)
+            _mm256_permute_pd::<$imm8>(a)
         };
     }
-    let r = constify_imm8_sae!(imm8, call);
+    let r = constify_imm4!(imm8, call);
     let zero = _mm256_setzero_pd().as_f64x4();
     transmute(simd_select_bitmask(k, r.as_f64x4(), zero))
 }
@@ -20088,15 +20088,15 @@ pub unsafe fn _mm256_maskz_permute_pd(k: __mmask8, a: __m256d, imm8: i32) -> __m
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_permute_pd&expand=4153)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0b01))]
-#[rustc_args_required_const(3)]
-pub unsafe fn _mm_mask_permute_pd(src: __m128d, k: __mmask8, a: __m128d, imm8: i32) -> __m128d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_permute_pd(a, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vpermilpd, IMM2 = 0b01))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn _mm_mask_permute_pd<const IMM2: i32>(
+    src: __m128d,
+    k: __mmask8,
+    a: __m128d,
+) -> __m128d {
+    static_assert_imm2!(IMM2);
+    let r = _mm_permute_pd::<IMM2>(a);
     transmute(simd_select_bitmask(k, r.as_f64x2(), src.as_f64x2()))
 }
 
@@ -20105,15 +20105,11 @@ pub unsafe fn _mm_mask_permute_pd(src: __m128d, k: __mmask8, a: __m128d, imm8: i
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_permute_pd&expand=4154)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vpermilpd, imm8 = 0b01))]
-#[rustc_args_required_const(2)]
-pub unsafe fn _mm_maskz_permute_pd(k: __mmask8, a: __m128d, imm8: i32) -> __m128d {
-    macro_rules! call {
-        ($imm8:expr) => {
-            _mm_permute_pd(a, $imm8)
-        };
-    }
-    let r = constify_imm8_sae!(imm8, call);
+#[cfg_attr(test, assert_instr(vpermilpd, IMM2 = 0b01))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn _mm_maskz_permute_pd<const IMM2: i32>(k: __mmask8, a: __m128d) -> __m128d {
+    static_assert_imm2!(IMM2);
+    let r = _mm_permute_pd::<IMM2>(a);
     let zero = _mm_setzero_pd().as_f64x2();
     transmute(simd_select_bitmask(k, r.as_f64x2(), zero))
 }
