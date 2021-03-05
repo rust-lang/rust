@@ -1,19 +1,12 @@
-error[E0601]: `main` function not found in crate `associated_type_lifetime_ice`
-  --> $DIR/associated-type-lifetime-ice.rs:1:1
+error: internal compiler error: unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
+  --> $DIR/associated-type-lifetime-ice.rs:29:5
    |
-LL | / #![feature(type_alias_impl_trait)]
-LL | | #![no_std]
-LL | |
-LL | | pub trait AssociatedImpl {
-...  |
+LL | /     fn f() -> Self::ImplTrait {
+LL | |         ()
 LL | |     }
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/associated-type-lifetime-ice.rs`
+   | |_____^
+   |
+   = error: internal compiler error: unexpected panic
 
-error: language item required, but not found: `eh_personality`
-
-error: `#[panic_handler]` function required, but not found
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0601`.
+query stack during panic:
+end of query stack
