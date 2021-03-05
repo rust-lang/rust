@@ -36,7 +36,7 @@ fn main() {
             }
 
             #[used]
-            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register();
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
         }
     }
 
