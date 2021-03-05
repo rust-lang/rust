@@ -1,6 +1,8 @@
 use crate::cmp;
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, DEFAULT_BUF_SIZE};
+use crate::io::{
+    self, BufRead, Initializer, IoSliceMut, Read, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+};
 
 /// The `BufReader<R>` struct adds buffering to any reader.
 ///
@@ -90,10 +92,9 @@ impl<R: Read> BufReader<R> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         unsafe {
-            let mut buffer = Vec::with_capacity(capacity);
-            buffer.set_len(capacity);
-            inner.initializer().initialize(&mut buffer);
-            BufReader { inner, buf: buffer.into_boxed_slice(), pos: 0, cap: 0 }
+            let mut buf = Box::new_uninit_slice(capacity).assume_init();
+            inner.initializer().initialize(&mut buf);
+            BufReader { inner, buf, pos: 0, cap: 0 }
         }
     }
 }
@@ -433,5 +434,11 @@ impl<R: Seek> Seek for BufReader<R> {
                 "overflow when subtracting remaining buffer size from inner stream position",
             )
         })
+    }
+}
+
+impl<T> SizeHint for BufReader<T> {
+    fn lower_bound(&self) -> usize {
+        self.buffer().len()
     }
 }

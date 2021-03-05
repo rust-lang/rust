@@ -18,7 +18,7 @@ use crate::{Edition, Span, DUMMY_SP, SESSION_GLOBALS};
 #[cfg(test)]
 mod tests;
 
-// The proc macro code for this is in `src/librustc_macros/src/symbols.rs`.
+// The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
     // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
     // this should be rarely necessary though if the keywords are kept in alphabetic order.
@@ -129,6 +129,7 @@ symbols! {
         BTreeMap,
         BTreeSet,
         BinaryHeap,
+        Borrow,
         C,
         CString,
         Center,
@@ -141,6 +142,7 @@ symbols! {
         Decodable,
         Decoder,
         Default,
+        Deref,
         Encodable,
         Encoder,
         Eq,
@@ -789,6 +791,9 @@ symbols! {
         none_error,
         nontemporal_store,
         nontrapping_dash_fptoint: "nontrapping-fptoint",
+        noop_method_borrow,
+        noop_method_clone,
+        noop_method_deref,
         noreturn,
         nostack,
         not,

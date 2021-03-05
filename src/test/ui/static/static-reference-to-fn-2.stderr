@@ -40,6 +40,8 @@ LL | |         statefn: &id(state1 as StateMachineFunc)
    | |                   ------------------------------ temporary value created here
 LL | |     }
    | |_____^ returns a value referencing data owned by the current function
+   |
+   = help: use `.collect()` to allocate the iterator
 
 error: aborting due to 4 previous errors
 
