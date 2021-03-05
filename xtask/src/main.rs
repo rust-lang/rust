@@ -28,11 +28,7 @@ use std::{
 use walkdir::{DirEntry, WalkDir};
 use xshell::{cmd, cp, pushd, pushenv};
 
-use crate::{
-    codegen::Mode,
-    dist::DistCmd,
-    install::{InstallCmd, Malloc, ServerOpt},
-};
+use crate::{codegen::Mode, dist::DistCmd};
 
 fn main() -> Result<()> {
     let _d = pushd(project_root())?;
@@ -43,30 +39,9 @@ fn main() -> Result<()> {
             println!("{}", flags::Xtask::HELP);
             return Ok(());
         }
-        flags::XtaskCmd::Install(flags) => {
-            if flags.server && flags.client {
-                eprintln!(
-                    "error: The argument `--server` cannot be used with `--client`\n\n\
-                     For more information try --help"
-                );
-                return Ok(());
-            }
-
-            let malloc = if flags.mimalloc {
-                Malloc::Mimalloc
-            } else if flags.jemalloc {
-                Malloc::Jemalloc
-            } else {
-                Malloc::System
-            };
-
-            let client_bin = flags.code_bin.map(|it| it.parse()).transpose()?;
-
-            InstallCmd {
-                client: if flags.server { None } else { client_bin },
-                server: if flags.client { None } else { Some(ServerOpt { malloc }) },
-            }
-            .run()
+        flags::XtaskCmd::Install(cmd) => {
+            cmd.validate()?;
+            cmd.run()
         }
         flags::XtaskCmd::Codegen(cmd) => cmd.run(),
         flags::XtaskCmd::Lint(_) => run_clippy(),

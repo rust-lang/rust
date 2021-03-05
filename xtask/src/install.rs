@@ -5,12 +5,24 @@ use std::{env, path::PathBuf, str};
 use anyhow::{bail, format_err, Context, Result};
 use xshell::{cmd, pushd};
 
+use crate::flags;
+
 // Latest stable, feel free to send a PR if this lags behind.
 const REQUIRED_RUST_VERSION: u32 = 50;
 
-pub(crate) struct InstallCmd {
-    pub(crate) client: Option<ClientOpt>,
-    pub(crate) server: Option<ServerOpt>,
+impl flags::Install {
+    pub(crate) fn run(self) -> Result<()> {
+        if cfg!(target_os = "macos") {
+            fix_path_for_mac().context("Fix path for mac")?
+        }
+        if let Some(server) = self.server() {
+            install_server(server).context("install server")?;
+        }
+        if let Some(client) = self.client() {
+            install_client(client).context("install client")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -68,21 +80,6 @@ pub(crate) enum Malloc {
     System,
     Mimalloc,
     Jemalloc,
-}
-
-impl InstallCmd {
-    pub(crate) fn run(self) -> Result<()> {
-        if cfg!(target_os = "macos") {
-            fix_path_for_mac().context("Fix path for mac")?
-        }
-        if let Some(server) = self.server {
-            install_server(server).context("install server")?;
-        }
-        if let Some(client) = self.client {
-            install_client(client).context("install client")?;
-        }
-        Ok(())
-    }
 }
 
 fn fix_path_for_mac() -> Result<()> {
