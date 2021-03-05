@@ -39,10 +39,7 @@ fn main() -> Result<()> {
             println!("{}", flags::Xtask::HELP);
             return Ok(());
         }
-        flags::XtaskCmd::Install(cmd) => {
-            cmd.validate()?;
-            cmd.run()
-        }
+        flags::XtaskCmd::Install(cmd) => cmd.run(),
         flags::XtaskCmd::Codegen(cmd) => cmd.run(),
         flags::XtaskCmd::Lint(_) => run_clippy(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),

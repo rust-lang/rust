@@ -141,14 +141,6 @@ impl Xtask {
 // generated end
 
 impl Install {
-    pub(crate) fn validate(&self) -> xflags::Result<()> {
-        if let Some(code_bin) = &self.code_bin {
-            if let Err(err) = code_bin.parse::<ClientOpt>() {
-                return Err(xflags::Error::new(format!("failed to parse `--code-bin`: {}", err)));
-            }
-        }
-        Ok(())
-    }
     pub(crate) fn server(&self) -> Option<ServerOpt> {
         if self.client && !self.server {
             return None;
@@ -166,7 +158,6 @@ impl Install {
         if !self.client && self.server {
             return None;
         }
-        let client_opt = self.code_bin.as_ref().and_then(|it| it.parse().ok()).unwrap_or_default();
-        Some(client_opt)
+        Some(ClientOpt { code_bin: self.code_bin.clone() })
     }
 }
