@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
 
     /// If `force_capture` is true, forces collection of tokens regardless of whether
     /// or not we have attributes
-    fn parse_stmt_without_recovery(
+    crate fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
