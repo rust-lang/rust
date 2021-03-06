@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
                 for_span,
                 "for loop over a single element",
                 "try",
-                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0)), target.name, list_item_name, block_str),
+                format!("{{\n{}let {} = &{};{}}}", " ".repeat(indent_of(cx, cx.tcx.hir().span(block.stmts[0].hir_id)).unwrap_or(0)), target.name, list_item_name, block_str),
                 Applicability::MachineApplicable
             )
         }

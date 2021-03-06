@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                             );
                         }
                     } else {
-                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
+                        let span = block.expr.as_ref().map_or_else(|| cx.tcx.hir().span(block.stmts[0].hir_id), |e| e.span);
                         if span.from_expansion() || differing_macro_contexts(expr.span, span) {
                             return;
                         }

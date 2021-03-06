@@ -69,7 +69,8 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
             for stmt in block.stmts {
                 for amn in &ASSERT_MACRO_NAMES {
                     if_chain! {
-                        if is_expn_of(stmt.span, amn).is_some();
+                        let stmt_span = cx.tcx.hir().span(stmt.hir_id);
+                        if is_expn_of(stmt_span, amn).is_some();
                         if let StmtKind::Semi(ref matchexpr) = stmt.kind;
                         if let Some(macro_args) = higher::extract_assert_macro_args(matchexpr);
                         if macro_args.len() == 2;

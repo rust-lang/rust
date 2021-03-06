@@ -310,10 +310,10 @@ impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
         match stmt.kind {
             StmtKind::Item(..) => {}
             StmtKind::Local(..) => {
-                self.items.push((ItemKind::NonAsm, stmt.span));
+                self.items.push((ItemKind::NonAsm, self.tcx.hir().span(stmt.hir_id)));
             }
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
-                self.check_expr(expr, stmt.span);
+                self.check_expr(expr, self.tcx.hir().span(stmt.hir_id));
             }
         }
     }

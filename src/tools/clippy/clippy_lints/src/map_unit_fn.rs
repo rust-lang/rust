@@ -143,7 +143,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
                     match inner_stmt.kind {
                         hir::StmtKind::Local(ref local) => Some(local.span),
                         hir::StmtKind::Expr(ref e) => Some(e.span),
-                        hir::StmtKind::Semi(..) => Some(inner_stmt.span),
+                        hir::StmtKind::Semi(..) => Some(cx.tcx.hir().span(inner_stmt.hir_id)),
                         hir::StmtKind::Item(..) => None,
                     }
                 },
@@ -216,6 +216,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
         };
     let fn_arg = &map_args[1];
 
+    let stmt_span = cx.tcx.hir().span(stmt.hir_id);
     if is_unit_function(cx, fn_arg) {
         let msg = suggestion_msg("function", map_type);
         let suggestion = format!(
@@ -227,7 +228,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
         );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
-            diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::MachineApplicable);
+            diag.span_suggestion(stmt_span, "try this", suggestion, Applicability::MachineApplicable);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -242,7 +243,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
                     snippet(cx, reduced_expr_span, "_")
                 );
                 diag.span_suggestion(
-                    stmt.span,
+                    stmt_span,
                     "try this",
                     suggestion,
                     Applicability::MachineApplicable, // snippet
@@ -254,7 +255,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
                     snippet(cx, binding.pat.span, "_"),
                     snippet(cx, var_arg.span, "_"),
                 );
-                diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::HasPlaceholders);
+                diag.span_suggestion(stmt_span, "try this", suggestion, Applicability::HasPlaceholders);
             }
         });
     }
@@ -262,7 +263,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
 
 impl<'tcx> LateLintPass<'tcx> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
-        if stmt.span.from_expansion() {
+        if cx.tcx.hir().span(stmt.hir_id).from_expansion() {
             return;
         }
 

@@ -116,17 +116,18 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let iter_call = &iter_calls[0];
+                    let stmt_span = cx.tcx.hir().span(stmt.hir_id);
                     span_lint_and_then(
                         cx,
                         super::NEEDLESS_COLLECT,
-                        stmt.span.until(iter_call.span),
+                        stmt_span.until(iter_call.span),
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
                             let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_source, ".."), iter_call.get_iter_method(cx));
                             diag.multipart_suggestion(
                                 iter_call.get_suggestion_text(),
                                 vec![
-                                    (stmt.span, String::new()),
+                                    (stmt_span, String::new()),
                                     (iter_call.span, iter_replacement)
                                 ],
                                 Applicability::MachineApplicable,// MaybeIncorrect,

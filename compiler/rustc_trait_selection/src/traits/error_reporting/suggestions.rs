@@ -920,7 +920,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // Once that is added, close #54771.
                     if let Some(ref stmt) = blk.stmts.last() {
                         if let hir::StmtKind::Semi(_) = stmt.kind {
-                            let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                            let stmt_span = self.tcx.hir().span(stmt.hir_id);
+                            let sp = self.tcx.sess.source_map().end_point(stmt_span);
                             err.span_label(sp, "consider removing this semicolon");
                         }
                     }

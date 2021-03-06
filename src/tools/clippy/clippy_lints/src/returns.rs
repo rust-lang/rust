@@ -159,7 +159,8 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, block: &Block<'tcx>) {
     } else if let Some(stmt) = block.stmts.iter().last() {
         match stmt.kind {
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => {
-                check_final_expr(cx, expr, Some(stmt.span), RetReplacement::Empty);
+                let stmt_span = cx.tcx.hir().span(stmt.hir_id);
+                check_final_expr(cx, expr, Some(stmt_span), RetReplacement::Empty);
             },
             _ => (),
         }

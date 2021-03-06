@@ -122,7 +122,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
                 if let Some(stmt) = block.stmts.last();
                 if let StmtKind::Semi(_) = stmt.kind;
                 then {
-                    let data = stmt.span.data();
+                    let data = cx.tcx.hir().span(stmt.hir_id).data();
                     // Make a span out of the semicolon for the help message
                     Some((span, Some(Span::new(data.hi-BytePos(1), data.hi, data.ctxt))))
                 } else {

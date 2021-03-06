@@ -577,8 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(expr) = &block.expr {
             (expr.span, None)
         } else if let Some(stmt) = block.stmts.last() {
+            let span = self.tcx.hir().span(stmt.hir_id);
             // possibly incorrect trailing `;` in the else arm
-            (stmt.span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
+            (span, expected_ty.and_then(|ty| self.could_remove_semicolon(block, ty)))
         } else {
             // empty block; point at its entirety
             (block.span, None)

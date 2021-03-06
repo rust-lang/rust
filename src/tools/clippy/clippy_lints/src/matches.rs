@@ -936,7 +936,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                     if_chain! {
                         if matching_wild;
                         if let ExprKind::Block(ref block, _) = arm.body.kind;
-                        if is_panic_block(block);
+                        if is_panic_block(cx, block);
                         then {
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
                             span_lint_and_note(cx,
@@ -1065,13 +1065,14 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
 }
 
 // If the block contains only a `panic!` macro (as expression or statement)
-fn is_panic_block(block: &Block<'_>) -> bool {
+fn is_panic_block(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
         (&Some(ref exp), 0, _) => {
             is_expn_of(exp.span, "panic").is_some() && is_expn_of(exp.span, "unreachable").is_none()
         },
         (&None, 1, Some(stmt)) => {
-            is_expn_of(stmt.span, "panic").is_some() && is_expn_of(stmt.span, "unreachable").is_none()
+            let stmt_span = cx.tcx.hir().span(stmt.hir_id);
+            is_expn_of(stmt_span, "panic").is_some() && is_expn_of(stmt_span, "unreachable").is_none()
         },
         _ => false,
     }

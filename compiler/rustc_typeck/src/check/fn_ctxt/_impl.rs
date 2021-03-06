@@ -1136,7 +1136,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             return None;
         }
-        let original_span = original_sp(last_stmt.span, blk.span);
+        let last_stmt_span = self.tcx.hir().span(last_stmt.hir_id);
+        let original_span = original_sp(last_stmt_span, blk.span);
         Some((original_span.with_lo(original_span.hi() - BytePos(1)), needs_box))
     }
 

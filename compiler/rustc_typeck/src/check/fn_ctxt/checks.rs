@@ -547,7 +547,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
         }
 
-        self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");
+        let stmt_span = self.tcx.hir().span(stmt.hir_id);
+        self.warn_if_unreachable(stmt.hir_id, stmt_span, "statement");
 
         // Hide the outer diverging and `has_errors` flags.
         let old_diverges = self.diverges.replace(Diverges::Maybe);
@@ -572,7 +573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // in order to capture the fact that this `match` is the last statement in its
                 // function. This is done for better suggestions to remove the `;`.
                 let expectation = match expr.kind {
-                    hir::ExprKind::Match(..) if is_last => IsLast(stmt.span),
+                    hir::ExprKind::Match(..) if is_last => IsLast(self.tcx.hir().span(stmt.hir_id)),
                     _ => NoExpectation,
                 };
                 self.check_expr_with_expectation(expr, expectation);

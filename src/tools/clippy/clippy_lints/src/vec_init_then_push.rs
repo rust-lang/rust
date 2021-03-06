@@ -134,10 +134,11 @@ impl LateLintPass<'_> for VecInitThenPush {
                 if let ExprKind::MethodCall(path, _, [self_arg, _], _) = expr.kind;
                 if path_to_local_id(self_arg, searcher.local_id);
                 if path.ident.name.as_str() == "push";
+                let stmt_span = cx.tcx.hir().span(stmt.hir_id);
                 then {
                     self.searcher = Some(VecPushSearcher {
                         found: searcher.found + 1,
-                        err_span: searcher.err_span.to(stmt.span),
+                        err_span: searcher.err_span.to(stmt_span),
                         .. searcher
                     });
                 } else {

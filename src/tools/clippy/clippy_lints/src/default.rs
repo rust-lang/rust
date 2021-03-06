@@ -209,10 +209,11 @@ impl LateLintPass<'_> for Default {
                 };
 
                 // span lint once per statement that binds default
+                let first_assign_span = cx.tcx.hir().span(first_assign.unwrap().hir_id);
                 span_lint_and_note(
                     cx,
                     FIELD_REASSIGN_WITH_DEFAULT,
-                    first_assign.unwrap().span,
+                    first_assign_span,
                     "field assignment outside of initializer for an instance created with Default::default()",
                     Some(local.span),
                     &format!(
