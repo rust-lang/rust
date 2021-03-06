@@ -507,7 +507,14 @@ fn cargo_to_crate_graph(
                         continue;
                     }
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                        add_dep(&mut crate_graph, from, name.clone(), to);
+                        if !crate_graph[from].dependencies.iter().any(|d| d.name == name) {
+                            add_dep(&mut crate_graph, from, name.clone(), to);
+                        } else {
+                            // eprintln!(
+                            //     "Skipped {} for {:?}",
+                            //     &name, &crate_graph[from].display_name
+                            // );
+                        }
                     }
                 }
             }
