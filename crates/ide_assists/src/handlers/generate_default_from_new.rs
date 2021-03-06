@@ -54,6 +54,8 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
 
     let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
     if is_default_implemented(ctx, &impl_) {
+        mark::hit!(default_block_is_already_present);
+        mark::hit!(struct_in_module_with_default);
         return None;
     }
 
@@ -86,20 +88,18 @@ impl Default for {} {{
 fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> bool {
     let db = ctx.sema.db;
     let impl_ = ctx.sema.to_def(impl_);
-    let impl_def;
-    match impl_ {
-        Some(value) => impl_def = value,
+    let impl_def = match impl_ {
+        Some(value) => value,
         None => return false,
-    }
+    };
 
     let ty = impl_def.target_ty(db);
     let krate = impl_def.module(db).krate();
     let default = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
-    let default_trait;
-    match default {
-        Some(value) => default_trait = value,
+    let default_trait = match default {
+        Some(value) => value,
         None => return false,
-    }
+    };
 
     ty.impls_trait(db, default_trait, &[])
 }
@@ -199,7 +199,7 @@ impl Example {
             r#"
 struct Example { _inner: () }
 
-impl Exmaple {
+impl Example {
     pub fn a$0dd() -> Self {
         Self { _inner: () }
     }
@@ -211,6 +211,7 @@ impl Exmaple {
 
     #[test]
     fn default_block_is_already_present() {
+        mark::check!(default_block_is_already_present);
         check_not_applicable(
             r#"
 struct Example { _inner: () }
@@ -339,6 +340,7 @@ impl Default for Example {
 
     #[test]
     fn struct_in_module_with_default() {
+        mark::check!(struct_in_module_with_default);
         check_not_applicable(
             r#"
 mod test {
