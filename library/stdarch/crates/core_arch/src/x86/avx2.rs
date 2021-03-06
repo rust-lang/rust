@@ -358,39 +358,28 @@ pub unsafe fn _mm256_avg_epu8(a: __m256i, b: __m256i) -> __m256i {
     transmute(pavgb(a.as_u8x32(), b.as_u8x32()))
 }
 
-/// Blends packed 32-bit integers from `a` and `b` using control mask `imm8`.
+/// Blends packed 32-bit integers from `a` and `b` using control mask `IMM4`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_blend_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vblendps, IMM4 = 9))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
-    let imm8 = (imm8 & 0xFF) as u8;
+pub unsafe fn _mm_blend_epi32<const IMM4: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm4!(IMM4);
     let a = a.as_i32x4();
     let b = b.as_i32x4();
-    macro_rules! blend2 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, b, [$a, $b, $c, $d])
-        };
-    }
-    macro_rules! blend1 {
-        ($a:expr, $b:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => blend2!($a, $b, 2, 3),
-                0b01 => blend2!($a, $b, 6, 3),
-                0b10 => blend2!($a, $b, 2, 7),
-                _ => blend2!($a, $b, 6, 7),
-            }
-        };
-    }
-    let r: i32x4 = match imm8 & 0b11 {
-        0b00 => blend1!(0, 1),
-        0b01 => blend1!(4, 1),
-        0b10 => blend1!(0, 5),
-        _ => blend1!(4, 5),
-    };
+    let r: i32x4 = simd_shuffle4(
+        a,
+        b,
+        [
+            [0, 4, 0, 4][IMM4 as usize & 0b11],
+            [1, 1, 5, 5][IMM4 as usize & 0b11],
+            [2, 6, 2, 6][(IMM4 as usize >> 2) & 0b11],
+            [3, 3, 7, 7][(IMM4 as usize >> 2) & 0b11],
+        ],
+    );
     transmute(r)
 }
 
@@ -4065,10 +4054,10 @@ mod tests {
     unsafe fn test_mm_blend_epi32() {
         let (a, b) = (_mm_set1_epi32(3), _mm_set1_epi32(9));
         let e = _mm_setr_epi32(9, 3, 3, 3);
-        let r = _mm_blend_epi32(a, b, 0x01 as i32);
+        let r = _mm_blend_epi32::<0x01>(a, b);
         assert_eq_m128i(r, e);
 
-        let r = _mm_blend_epi32(b, a, 0x0E as i32);
+        let r = _mm_blend_epi32::<0x0E>(b, a);
         assert_eq_m128i(r, e);
     }
 
