@@ -11,13 +11,7 @@ use super::{AttrVec, Attribute, Stmt, StmtKind};
 pub trait AstLike: Sized {
     fn attrs(&self) -> &[Attribute];
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
-    /// Called by `Parser::collect_tokens` to store the collected
-    /// tokens inside an AST node
-    fn finalize_tokens(&mut self, _tokens: LazyTokenStream) {
-        // This default impl makes this trait easier to implement
-        // in tools like `rust-analyzer`
-        panic!("`finalize_tokens` is not supported!")
-    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>>;
 }
 
 impl<T: AstLike + 'static> AstLike for P<T> {
@@ -27,8 +21,8 @@ impl<T: AstLike + 'static> AstLike for P<T> {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         (**self).visit_attrs(f);
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        (**self).finalize_tokens(tokens)
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        (**self).tokens_mut()
     }
 }
 
@@ -42,12 +36,12 @@ fn visit_attrvec(attrs: &mut AttrVec, f: impl FnOnce(&mut Vec<Attribute>)) {
 
 impl AstLike for StmtKind {
     fn attrs(&self) -> &[Attribute] {
-        match *self {
-            StmtKind::Local(ref local) => local.attrs(),
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
-            StmtKind::Item(ref item) => item.attrs(),
+        match self {
+            StmtKind::Local(local) => local.attrs(),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
+            StmtKind::Item(item) => item.attrs(),
             StmtKind::Empty => &[],
-            StmtKind::MacCall(ref mac) => &*mac.attrs,
+            StmtKind::MacCall(mac) => &mac.attrs,
         }
     }
 
@@ -60,17 +54,14 @@ impl AstLike for StmtKind {
             StmtKind::MacCall(mac) => visit_attrvec(&mut mac.attrs, f),
         }
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        let stmt_tokens = match self {
-            StmtKind::Local(ref mut local) => &mut local.tokens,
-            StmtKind::Item(ref mut item) => &mut item.tokens,
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => &mut expr.tokens,
-            StmtKind::Empty => return,
-            StmtKind::MacCall(ref mut mac) => &mut mac.tokens,
-        };
-        if stmt_tokens.is_none() {
-            *stmt_tokens = Some(tokens);
-        }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        Some(match self {
+            StmtKind::Local(local) => &mut local.tokens,
+            StmtKind::Item(item) => &mut item.tokens,
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => &mut expr.tokens,
+            StmtKind::Empty => return None,
+            StmtKind::MacCall(mac) => &mut mac.tokens,
+        })
     }
 }
 
@@ -82,8 +73,8 @@ impl AstLike for Stmt {
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         self.kind.visit_attrs(f);
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        self.kind.finalize_tokens(tokens)
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        self.kind.tokens_mut()
     }
 }
 
@@ -92,17 +83,13 @@ impl AstLike for Attribute {
         &[]
     }
     fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {}
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        match &mut self.kind {
-            AttrKind::Normal(_, attr_tokens) => {
-                if attr_tokens.is_none() {
-                    *attr_tokens = Some(tokens);
-                }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        Some(match &mut self.kind {
+            AttrKind::Normal(_, tokens) => tokens,
+            kind @ AttrKind::DocComment(..) => {
+                panic!("Called tokens_mut on doc comment attr {:?}", kind)
             }
-            AttrKind::DocComment(..) => {
-                panic!("Called finalize_tokens on doc comment attr {:?}", self)
-            }
-        }
+        })
     }
 }
 
@@ -115,10 +102,8 @@ impl<T: AstLike> AstLike for Option<T> {
             inner.visit_attrs(f);
         }
     }
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        if let Some(inner) = self {
-            inner.finalize_tokens(tokens);
-        }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        self.as_mut().and_then(|inner| inner.tokens_mut())
     }
 }
 
@@ -152,11 +137,8 @@ macro_rules! derive_has_tokens_and_attrs {
                 VecOrAttrVec::visit(&mut self.attrs, f)
             }
 
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                Some(&mut self.tokens)
             }
         }
     )* }
@@ -173,7 +155,9 @@ macro_rules! derive_has_attrs_no_tokens {
                 VecOrAttrVec::visit(&mut self.attrs, f)
             }
 
-            fn finalize_tokens(&mut self, _tokens: LazyTokenStream) {}
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                None
+            }
         }
     )* }
 }
@@ -185,14 +169,10 @@ macro_rules! derive_has_tokens_no_attrs {
                 &[]
             }
 
-            fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {
-            }
+            fn visit_attrs(&mut self, _f: impl FnOnce(&mut Vec<Attribute>)) {}
 
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-
+            fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+                Some(&mut self.tokens)
             }
         }
     )* }

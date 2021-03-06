@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, token, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
+use rustc_ast::{self as ast, token, AstLike, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_expand::config::StripUnconfigured;
@@ -59,15 +59,9 @@ impl MultiItemModifier for Expander {
                     // Erase the tokens if cfg-stripping modified the item
                     // This will cause us to synthesize fake tokens
                     // when `nt_to_tokenstream` is called on this item.
-                    match &mut item {
-                        Annotatable::Item(item) => item,
-                        Annotatable::Stmt(stmt) => match &mut stmt.kind {
-                            StmtKind::Item(item) => item,
-                            _ => unreachable!(),
-                        },
-                        _ => unreachable!(),
+                    if let Some(tokens) = item.tokens_mut() {
+                        *tokens = None;
                     }
-                    .tokens = None;
                 }
                 ExpandResult::Ready(vec![item])
             }
