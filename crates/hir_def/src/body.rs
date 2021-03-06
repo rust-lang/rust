@@ -87,11 +87,11 @@ impl Expander {
         module: ModuleId,
     ) -> Expander {
         let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
-        let crate_def_map = module.def_map(db);
+        let def_map = module.def_map(db);
         let ast_id_map = db.ast_id_map(current_file_id);
         Expander {
             cfg_expander,
-            def_map: crate_def_map,
+            def_map,
             current_file_id,
             ast_id_map,
             module: module.local_id,

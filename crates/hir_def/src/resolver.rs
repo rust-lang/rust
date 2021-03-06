@@ -34,7 +34,7 @@ pub struct Resolver {
 // FIXME how to store these best
 #[derive(Debug, Clone)]
 struct ModuleItemMap {
-    crate_def_map: Arc<DefMap>,
+    def_map: Arc<DefMap>,
     module_id: LocalModuleId,
 }
 
@@ -337,11 +337,11 @@ impl Resolver {
         let mut traits = FxHashSet::default();
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
-                if let Some(prelude) = m.crate_def_map.prelude() {
+                if let Some(prelude) = m.def_map.prelude() {
                     let prelude_def_map = prelude.def_map(db);
                     traits.extend(prelude_def_map[prelude.local_id].scope.traits());
                 }
-                traits.extend(m.crate_def_map[m.module_id].scope.traits());
+                traits.extend(m.def_map[m.module_id].scope.traits());
             }
         }
         traits
@@ -349,7 +349,7 @@ impl Resolver {
 
     fn module_scope(&self) -> Option<(&DefMap, LocalModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
-            Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
+            Scope::ModuleScope(m) => Some((&*m.def_map, m.module_id)),
 
             _ => None,
         })
@@ -413,21 +413,21 @@ impl Scope {
                 //         def: m.module.into(),
                 //     }),
                 // );
-                m.crate_def_map[m.module_id].scope.entries().for_each(|(name, def)| {
+                m.def_map[m.module_id].scope.entries().for_each(|(name, def)| {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
-                m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
+                m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
                     let scope = PerNs::macros(macro_, Visibility::Public);
                     seen.insert((name.clone(), scope));
                     f(name.clone(), ScopeDef::PerNs(scope));
                 });
-                m.crate_def_map.extern_prelude().for_each(|(name, &def)| {
+                m.def_map.extern_prelude().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::types(def, Visibility::Public)));
                 });
                 BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(def));
                 });
-                if let Some(prelude) = m.crate_def_map.prelude() {
+                if let Some(prelude) = m.def_map.prelude() {
                     let prelude_def_map = prelude.def_map(db);
                     prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, def)| {
                         let seen_tuple = (name.clone(), def);
@@ -513,8 +513,8 @@ impl Resolver {
         self.push_scope(Scope::ImplDefScope(impl_def))
     }
 
-    fn push_module_scope(self, crate_def_map: Arc<DefMap>, module_id: LocalModuleId) -> Resolver {
-        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
+    fn push_module_scope(self, def_map: Arc<DefMap>, module_id: LocalModuleId) -> Resolver {
+        self.push_scope(Scope::ModuleScope(ModuleItemMap { def_map, module_id }))
     }
 
     fn push_expr_scope(
@@ -534,7 +534,7 @@ impl ModuleItemMap {
         path: &ModPath,
     ) -> Option<ResolveValueResult> {
         let (module_def, idx) =
-            self.crate_def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
+            self.def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
         match idx {
             None => {
                 let value = to_value_ns(module_def)?;
@@ -564,7 +564,7 @@ impl ModuleItemMap {
         path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>)> {
         let (module_def, idx) =
-            self.crate_def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
+            self.def_map.resolve_path(db, self.module_id, &path, BuiltinShadowMode::Other);
         let res = to_type_ns(module_def)?;
         Some((res, idx))
     }

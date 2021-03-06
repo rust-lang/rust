@@ -365,14 +365,14 @@ impl Module {
         let _p = profile::span("Module::diagnostics").detail(|| {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
-        let crate_def_map = self.id.def_map(db.upcast());
-        crate_def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
+        let def_map = self.id.def_map(db.upcast());
+        def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
-                    if crate_def_map[m.id.local_id].origin.is_inline() {
+                    if def_map[m.id.local_id].origin.is_inline() {
                         m.diagnostics(db, sink)
                     }
                 }
