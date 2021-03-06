@@ -33,6 +33,7 @@ mod print_item;
 mod write_shared;
 
 crate use context::*;
+crate use write_shared::FILES_UNVERSIONED;
 
 use std::cell::{Cell, RefCell};
 use std::collections::VecDeque;
