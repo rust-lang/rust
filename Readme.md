@@ -42,7 +42,7 @@ $ $cg_clif_dir/build/cargo.sh build
 
 This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
 
-For additional ways to use rustc_codegen_cranelift like the JIT mode see [full_usage.md](docs/full_usage.md).
+For additional ways to use rustc_codegen_cranelift like the JIT mode see [usage.md](docs/usage.md).
 
 ## Env vars
 

@@ -12,7 +12,7 @@ In the directory with your project (where you can do the usual `cargo build`), r
 $ $cg_clif_dir/build/cargo.sh build
 ```
 
-This will build and run your project with rustc_codegen_cranelift instead of the usual LLVM backend.
+This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
 
 ## Rustc
 
