@@ -103,6 +103,44 @@ validate 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
 generate int*_t, uint*_t, int64x*_t, uint64x*_t
 
 ////////////////////
+// Absolute difference between the arguments
+////////////////////
+
+/// Absolute difference between the arguments
+name = vabd
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+validate 15, 13, 11, 9, 7, 5, 3, 1, 1, 3, 5, 7, 9, 11, 13, 15
+
+arm = vabd.s
+aarch64 = sabd
+link-arm = vabds._EXT_
+link-aarch64 = sabd._EXT_
+generate int*_t
+
+arm = vabd.s
+aarch64 = uabd
+link-arm = vabdu._EXT_
+link-aarch64 = uabd._EXT_
+generate uint*_t
+
+/// Absolute difference between the arguments of Floating
+name = vabd
+a = 1.0, 2.0, 5.0, -4.0
+b = 9.0, 3.0, 2.0, 8.0
+validate 8.0, 1.0, 3.0, 12.0
+
+aarch64 = fabd
+link-aarch64 = fabd._EXT_
+generate float64x*_t
+
+arm = vabd.s
+aarch64 = fabd
+link-arm = vabds._EXT_
+link-aarch64 = fabd._EXT_
+generate float*_t
+
+////////////////////
 // equality
 ////////////////////
 

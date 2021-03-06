@@ -489,6 +489,230 @@ pub unsafe fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     simd_xor(a, b)
 }
 
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v8i8")]
+        fn vabd_s8_(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+    }
+vabd_s8_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabdq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v16i8")]
+        fn vabdq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    }
+vabdq_s8_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v4i16")]
+        fn vabd_s16_(a: int16x4_t, b: int16x4_t) -> int16x4_t;
+    }
+vabd_s16_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabdq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v8i16")]
+        fn vabdq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    }
+vabdq_s16_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v2i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v2i32")]
+        fn vabd_s32_(a: int32x2_t, b: int32x2_t) -> int32x2_t;
+    }
+vabd_s32_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.s32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sabd))]
+pub unsafe fn vabdq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sabd.v4i32")]
+        fn vabdq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    }
+vabdq_s32_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v8i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v8i8")]
+        fn vabd_u8_(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
+    }
+vabd_u8_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabdq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v16i8")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v16i8")]
+        fn vabdq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
+    }
+vabdq_u8_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabd_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v4i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v4i16")]
+        fn vabd_u16_(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
+    }
+vabd_u16_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabdq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v8i16")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v8i16")]
+        fn vabdq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
+    }
+vabdq_u16_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v2i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v2i32")]
+        fn vabd_u32_(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
+    }
+vabd_u32_(a, b)
+}
+
+/// Absolute difference between the arguments
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.u32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uabd))]
+pub unsafe fn vabdq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabdu.v4i32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uabd.v4i32")]
+        fn vabdq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
+    }
+vabdq_u32_(a, b)
+}
+
+/// Absolute difference between the arguments of Floating
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
+pub unsafe fn vabd_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v2f32")]
+        fn vabd_f32_(a: float32x2_t, b: float32x2_t) -> float32x2_t;
+    }
+vabd_f32_(a, b)
+}
+
+/// Absolute difference between the arguments of Floating
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vabd.f32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fabd))]
+pub unsafe fn vabdq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v4f32")]
+        fn vabdq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    }
+vabdq_f32_(a, b)
+}
+
 /// Compare bitwise Equal (vector)
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3470,6 +3694,132 @@ mod test {
         let b: u64x2 = u64x2::new(0x00, 0x00);
         let e: u64x2 = u64x2::new(0x00, 0x01);
         let r: u64x2 = transmute(veorq_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_s8() {
+        let a: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x8 = i8x8::new(16, 15, 14, 13, 12, 11, 10, 9);
+        let e: i8x8 = i8x8::new(15, 13, 11, 9, 7, 5, 3, 1);
+        let r: i8x8 = transmute(vabd_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_s8() {
+        let a: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: i8x16 = i8x16::new(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+        let e: i8x16 = i8x16::new(15, 13, 11, 9, 7, 5, 3, 1, 1, 3, 5, 7, 9, 11, 13, 15);
+        let r: i8x16 = transmute(vabdq_s8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_s16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let b: i16x4 = i16x4::new(16, 15, 14, 13);
+        let e: i16x4 = i16x4::new(15, 13, 11, 9);
+        let r: i16x4 = transmute(vabd_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_s16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i16x8 = i16x8::new(16, 15, 14, 13, 12, 11, 10, 9);
+        let e: i16x8 = i16x8::new(15, 13, 11, 9, 7, 5, 3, 1);
+        let r: i16x8 = transmute(vabdq_s16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let b: i32x2 = i32x2::new(16, 15);
+        let e: i32x2 = i32x2::new(15, 13);
+        let r: i32x2 = transmute(vabd_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 3, 4);
+        let b: i32x4 = i32x4::new(16, 15, 14, 13);
+        let e: i32x4 = i32x4::new(15, 13, 11, 9);
+        let r: i32x4 = transmute(vabdq_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_u8() {
+        let a: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u8x8 = u8x8::new(16, 15, 14, 13, 12, 11, 10, 9);
+        let e: u8x8 = u8x8::new(15, 13, 11, 9, 7, 5, 3, 1);
+        let r: u8x8 = transmute(vabd_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_u8() {
+        let a: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: u8x16 = u8x16::new(16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1);
+        let e: u8x16 = u8x16::new(15, 13, 11, 9, 7, 5, 3, 1, 1, 3, 5, 7, 9, 11, 13, 15);
+        let r: u8x16 = transmute(vabdq_u8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_u16() {
+        let a: u16x4 = u16x4::new(1, 2, 3, 4);
+        let b: u16x4 = u16x4::new(16, 15, 14, 13);
+        let e: u16x4 = u16x4::new(15, 13, 11, 9);
+        let r: u16x4 = transmute(vabd_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_u16() {
+        let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u16x8 = u16x8::new(16, 15, 14, 13, 12, 11, 10, 9);
+        let e: u16x8 = u16x8::new(15, 13, 11, 9, 7, 5, 3, 1);
+        let r: u16x8 = transmute(vabdq_u16(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let b: u32x2 = u32x2::new(16, 15);
+        let e: u32x2 = u32x2::new(15, 13);
+        let r: u32x2 = transmute(vabd_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(16, 15, 14, 13);
+        let e: u32x4 = u32x4::new(15, 13, 11, 9);
+        let r: u32x4 = transmute(vabdq_u32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_f32() {
+        let a: f32x2 = f32x2::new(1.0, 2.0);
+        let b: f32x2 = f32x2::new(9.0, 3.0);
+        let e: f32x2 = f32x2::new(8.0, 1.0);
+        let r: f32x2 = transmute(vabd_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_f32() {
+        let a: f32x4 = f32x4::new(1.0, 2.0, 5.0, -4.0);
+        let b: f32x4 = f32x4::new(9.0, 3.0, 2.0, 8.0);
+        let e: f32x4 = f32x4::new(8.0, 1.0, 3.0, 12.0);
+        let r: f32x4 = transmute(vabdq_f32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

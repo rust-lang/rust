@@ -9,6 +9,32 @@ use super::*;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
+/// Absolute difference between the arguments of Floating
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabd))]
+pub unsafe fn vabd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v1f64")]
+        fn vabd_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+    }
+    vabd_f64_(a, b)
+}
+
+/// Absolute difference between the arguments of Floating
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fabd))]
+pub unsafe fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v2f64")]
+        fn vabdq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+    }
+    vabdq_f64_(a, b)
+}
+
 /// Compare bitwise Equal (vector)
 #[inline]
 #[target_feature(enable = "neon")]
@@ -569,6 +595,24 @@ mod test {
     use crate::core_arch::simd::*;
     use std::mem::transmute;
     use stdarch_test::simd_test;
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabd_f64() {
+        let a: f64 = 1.0;
+        let b: f64 = 9.0;
+        let e: f64 = 8.0;
+        let r: f64 = transmute(vabd_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vabdq_f64() {
+        let a: f64x2 = f64x2::new(1.0, 2.0);
+        let b: f64x2 = f64x2::new(9.0, 3.0);
+        let e: f64x2 = f64x2::new(8.0, 1.0);
+        let r: f64x2 = transmute(vabdq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_u64() {
