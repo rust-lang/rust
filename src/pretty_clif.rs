@@ -69,13 +69,15 @@ use crate::prelude::*;
 
 #[derive(Debug)]
 pub(crate) struct CommentWriter {
+    enabled: bool,
     global_comments: Vec<String>,
     entity_comments: FxHashMap<AnyEntity, String>,
 }
 
 impl CommentWriter {
     pub(crate) fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        let global_comments = if cfg!(debug_assertions) {
+        let enabled = should_write_ir(tcx);
+        let global_comments = if enabled {
             vec![
                 format!("symbol {}", tcx.symbol_name(instance).name),
                 format!("instance {:?}", instance),
@@ -86,13 +88,17 @@ impl CommentWriter {
             vec![]
         };
 
-        CommentWriter { global_comments, entity_comments: FxHashMap::default() }
+        CommentWriter { enabled, global_comments, entity_comments: FxHashMap::default() }
     }
 }
 
-#[cfg(debug_assertions)]
 impl CommentWriter {
+    pub(crate) fn enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub(crate) fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
+        debug_assert!(self.enabled);
         self.global_comments.push(comment.into());
     }
 
@@ -101,6 +107,8 @@ impl CommentWriter {
         entity: E,
         comment: S,
     ) {
+        debug_assert!(self.enabled);
+
         use std::collections::hash_map::Entry;
         match self.entity_comments.entry(entity.into()) {
             Entry::Occupied(mut occ) => {
@@ -179,7 +187,6 @@ impl FuncWriter for &'_ CommentWriter {
     }
 }
 
-#[cfg(debug_assertions)]
 impl FunctionCx<'_, '_, '_> {
     pub(crate) fn add_global_comment<S: Into<String>>(&mut self, comment: S) {
         self.clif_comments.add_global_comment(comment);

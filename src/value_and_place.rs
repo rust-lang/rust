@@ -413,7 +413,7 @@ impl<'tcx> CPlace<'tcx> {
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         from: CValue<'tcx>,
-        #[cfg_attr(not(debug_assertions), allow(unused_variables))] method: &'static str,
+        method: &'static str,
     ) {
         fn transmute_value<'tcx>(
             fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -461,8 +461,7 @@ impl<'tcx> CPlace<'tcx> {
 
         assert_eq!(self.layout().size, from.layout().size);
 
-        #[cfg(debug_assertions)]
-        {
+        if fx.clif_comments.enabled() {
             use cranelift_codegen::cursor::{Cursor, CursorPosition};
             let cur_block = match fx.bcx.cursor().position() {
                 CursorPosition::After(block) => block,

@@ -219,8 +219,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             codegen_stmt(fx, block, stmt);
         }
 
-        #[cfg(debug_assertions)]
-        {
+        if fx.clif_comments.enabled() {
             let mut terminator_head = "\n".to_string();
             bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
@@ -433,12 +432,14 @@ fn codegen_stmt<'tcx>(
 
     fx.set_debug_loc(stmt.source_info);
 
-    #[cfg(false_debug_assertions)]
+    #[cfg(disabled)]
     match &stmt.kind {
         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => {} // Those are not very useful
         _ => {
-            let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
-            fx.add_comment(inst, format!("{:?}", stmt));
+            if fx.clif_comments.enabled() {
+                let inst = fx.bcx.func.layout.last_inst(cur_block).unwrap();
+                fx.add_comment(inst, format!("{:?}", stmt));
+            }
         }
     }
 

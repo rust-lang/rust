@@ -248,8 +248,8 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 /// as necessary.
 pub(super) fn cvalue_for_param<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))] local: Option<mir::Local>,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))] local_field: Option<usize>,
+    local: Option<mir::Local>,
+    local_field: Option<usize>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> Option<CValue<'tcx>> {
@@ -263,7 +263,6 @@ pub(super) fn cvalue_for_param<'tcx>(
         })
         .collect::<SmallVec<[_; 2]>>();
 
-    #[cfg(debug_assertions)]
     crate::abi::comments::add_arg_comment(
         fx,
         "arg",

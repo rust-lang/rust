@@ -82,8 +82,9 @@ pub(crate) fn codegen_tls_ref<'tcx>(
 ) -> CValue<'tcx> {
     let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    fx.add_comment(local_data_id, format!("tls {:?}", def_id));
+    if fx.clif_comments.enabled() {
+        fx.add_comment(local_data_id, format!("tls {:?}", def_id));
+    }
     let tls_ptr = fx.bcx.ins().tls_value(fx.pointer_type, local_data_id);
     CValue::by_val(tls_ptr, layout)
 }
@@ -95,8 +96,9 @@ fn codegen_static_ref<'tcx>(
 ) -> CPlace<'tcx> {
     let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    fx.add_comment(local_data_id, format!("{:?}", def_id));
+    if fx.clif_comments.enabled() {
+        fx.add_comment(local_data_id, format!("{:?}", def_id));
+    }
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
     assert!(
@@ -182,8 +184,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                                 data_id_for_alloc_id(fx.cx.module, ptr.alloc_id, alloc.mutability);
                             let local_data_id =
                                 fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                            #[cfg(debug_assertions)]
-                            fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
+                            if fx.clif_comments.enabled() {
+                                fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
+                            }
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
@@ -198,8 +201,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                             let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
                             let local_data_id =
                                 fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-                            #[cfg(debug_assertions)]
-                            fx.add_comment(local_data_id, format!("{:?}", def_id));
+                            if fx.clif_comments.enabled() {
+                                fx.add_comment(local_data_id, format!("{:?}", def_id));
+                            }
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         None => bug!("missing allocation {:?}", ptr.alloc_id),
@@ -240,8 +244,9 @@ fn pointer_for_allocation<'tcx>(
     let data_id = data_id_for_alloc_id(fx.cx.module, alloc_id, alloc.mutability);
 
     let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    #[cfg(debug_assertions)]
-    fx.add_comment(local_data_id, format!("{:?}", alloc_id));
+    if fx.clif_comments.enabled() {
+        fx.add_comment(local_data_id, format!("{:?}", alloc_id));
+    }
     let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
     crate::pointer::Pointer::new(global_ptr)
 }
