@@ -9,7 +9,6 @@ pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
     unwind_context: &mut UnwindContext<'_>,
-    use_jit: bool,
 ) {
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
@@ -27,14 +26,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(
-        tcx,
-        module,
-        unwind_context,
-        main_def_id,
-        use_start_lang_item,
-        use_jit,
-    );
+    create_entry_fn(tcx, module, unwind_context, main_def_id, use_start_lang_item);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
@@ -42,7 +34,6 @@ pub(crate) fn maybe_create_entry_wrapper(
         unwind_context: &mut UnwindContext<'_>,
         rust_main_def_id: DefId,
         use_start_lang_item: bool,
-        use_jit: bool,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -57,23 +48,17 @@ pub(crate) fn maybe_create_entry_wrapper(
                 AbiParam::new(m.target_config().pointer_type()),
                 AbiParam::new(m.target_config().pointer_type()),
             ],
-            returns: vec![AbiParam::new(
-                m.target_config().pointer_type(), /*isize*/
-            )],
+            returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
             call_conv: CallConv::triple_default(m.isa().triple()),
         };
 
-        let cmain_func_id = m
-            .declare_function("main", Linkage::Export, &cmain_sig)
-            .unwrap();
+        let cmain_func_id = m.declare_function("main", Linkage::Export, &cmain_sig).unwrap();
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
         let main_name = tcx.symbol_name(instance).name.to_string();
         let main_sig = get_function_sig(tcx, m.isa().triple(), instance);
-        let main_func_id = m
-            .declare_function(&main_name, Linkage::Import, &main_sig)
-            .unwrap();
+        let main_func_id = m.declare_function(&main_name, Linkage::Import, &main_sig).unwrap();
 
         let mut ctx = Context::new();
         ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig);
@@ -85,8 +70,6 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.switch_to_block(block);
             let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
-
-            crate::atomic_shim::init_global_lock(m, &mut bcx, use_jit);
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
@@ -103,9 +86,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 .polymorphize(tcx);
                 let start_func_id = import_function(tcx, m, start_instance);
 
-                let main_val = bcx
-                    .ins()
-                    .func_addr(m.target_config().pointer_type(), main_func_ref);
+                let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
                 bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
