@@ -1233,7 +1233,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Option<Result<T, E>> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
             Ok(None) => None,
