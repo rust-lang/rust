@@ -528,6 +528,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
+            InlineAsmRegClass::Err => unreachable!(),
         }
         .to_string(),
     }
@@ -594,6 +595,7 @@ fn modifier_to_llvm(
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 
@@ -637,6 +639,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 
