@@ -104,6 +104,7 @@ struct FunctionBuilder {
     fn_name: ast::Name,
     type_params: Option<ast::GenericParamList>,
     params: ast::ParamList,
+    ret_type: Option<ast::RetType>,
     file: FileId,
     needs_pub: bool,
 }
@@ -131,8 +132,9 @@ impl FunctionBuilder {
         let target_module = target_module.or_else(|| ctx.sema.scope(target.syntax()).module())?;
         let fn_name = fn_name(&path)?;
         let (type_params, params) = fn_args(ctx, target_module, &call)?;
+        let ret_type = fn_ret_type(ctx, target_module, &call);
 
-        Some(Self { target, fn_name, type_params, params, file, needs_pub })
+        Some(Self { target, fn_name, type_params, params, ret_type, file, needs_pub })
     }
 
     fn render(self) -> FunctionTemplate {
@@ -145,7 +147,7 @@ impl FunctionBuilder {
             self.type_params,
             self.params,
             fn_body,
-            Some(make::ret_type(make::ty_unit())),
+            Some(self.ret_type.unwrap_or_else(|| make::ret_type(make::ty_unit()))),
         );
         let leading_ws;
         let trailing_ws;
@@ -221,6 +223,23 @@ fn fn_args(
         .zip(arg_types)
         .map(|(name, ty)| make::param(make::ident_pat(make::name(&name)).into(), make::ty(&ty)));
     Some((None, make::param_list(None, params)))
+}
+
+fn fn_ret_type(
+    ctx: &AssistContext,
+    target_module: hir::Module,
+    call: &ast::CallExpr,
+) -> Option<ast::RetType> {
+    let ty = ctx.sema.type_of_expr(&ast::Expr::CallExpr(call.clone()))?;
+    if ty.is_unknown() {
+        return None;
+    }
+
+    if let Ok(rendered) = ty.display_source_code(ctx.db(), target_module.into()) {
+        Some(make::ret_type(make::ty(&rendered)))
+    } else {
+        None
+    }
 }
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
@@ -546,7 +565,7 @@ impl Baz {
     }
 }
 
-fn bar(baz: Baz) ${0:-> ()} {
+fn bar(baz: Baz) ${0:-> Baz} {
     todo!()
 }
 ",
@@ -1056,6 +1075,27 @@ fn main() {
 pub(crate) fn bar() ${0:-> ()} {
     todo!()
 }",
+        )
+    }
+
+    #[test]
+    fn add_function_with_return_type() {
+        check_assist(
+            generate_function,
+            r"
+fn main() {
+    let x: u32 = foo$0();
+}
+",
+            r"
+fn main() {
+    let x: u32 = foo();
+}
+
+fn foo() ${0:-> u32} {
+    todo!()
+}
+",
         )
     }
 
