@@ -658,9 +658,8 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
             {
                 continue;
             }
-            let mut err =
-                diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn(
+            let mut err = diag.struct_warn(&format!("the `{}` flag is deprecated", flag));
+            err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                  for more information",
             );
