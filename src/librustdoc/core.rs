@@ -76,7 +76,7 @@ crate struct DocContext<'tcx> {
     ///
     /// See `collect_intra_doc_links::traits_implemented_by` for more details.
     /// `map<module, set<trait>>`
-    crate module_trait_cache: RefCell<FxHashMap<DefId, FxHashSet<DefId>>>,
+    crate module_trait_cache: FxHashMap<DefId, FxHashSet<DefId>>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -169,13 +169,13 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
+    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<HirId> {
         if MAX_DEF_IDX.with(|m| {
             m.borrow().get(&def_id.krate).map(|&idx| idx <= def_id.index).unwrap_or(false)
         }) {
             None
         } else {
-            def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
+            def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
         }
     }
 }
@@ -450,7 +450,7 @@ crate fn run_global_ctxt(
             .cloned()
             .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
             .collect(),
-        module_trait_cache: RefCell::new(FxHashMap::default()),
+        module_trait_cache: FxHashMap::default(),
         cache: Cache::new(access_levels, render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,
@@ -479,7 +479,7 @@ crate fn run_global_ctxt(
                 https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html";
             tcx.struct_lint_node(
                 crate::lint::MISSING_CRATE_LEVEL_DOCS,
-                ctxt.as_local_hir_id(m.def_id).unwrap(),
+                DocContext::as_local_hir_id(tcx, m.def_id).unwrap(),
                 |lint| {
                     let mut diag =
                         lint.build("no documentation found for this crate's top-level module");

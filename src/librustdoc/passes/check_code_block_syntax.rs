@@ -48,9 +48,12 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         let buffer = buffer.borrow();
 
         if buffer.has_errors || is_empty {
-            let mut diag = if let Some(sp) =
-                super::source_span_for_markdown_range(self.cx, &dox, &code_block.range, &item.attrs)
-            {
+            let mut diag = if let Some(sp) = super::source_span_for_markdown_range(
+                self.cx.tcx,
+                &dox,
+                &code_block.range,
+                &item.attrs,
+            ) {
                 let (warning_message, suggest_using_text) = if buffer.has_errors {
                     ("could not parse code block as Rust code", true)
                 } else {
