@@ -10,6 +10,7 @@ mod filter_map_identity;
 mod filter_map_map;
 mod filter_map_next;
 mod filter_next;
+mod flat_map_identity;
 mod from_iter_instead_of_collect;
 mod get_unwrap;
 mod implicit_clone;
@@ -1709,7 +1710,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["map", "find"] => filter_map::check(cx, expr, true),
             ["flat_map", "filter"] => filter_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => filter_map_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
-            ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
+            ["flat_map", ..] => flat_map_identity::check(cx, expr, arg_lists[0], method_spans[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
             ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
             ["is_some", "position"] => {
@@ -2753,55 +2754,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint use of `flat_map` for `Iterators` where `flatten` would be sufficient
-fn lint_flat_map_identity<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    flat_map_args: &'tcx [hir::Expr<'_>],
-    flat_map_span: Span,
-) {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let arg_node = &flat_map_args[1].kind;
-
-        let apply_lint = |message: &str| {
-            span_lint_and_sugg(
-                cx,
-                FLAT_MAP_IDENTITY,
-                flat_map_span.with_hi(expr.span.hi()),
-                message,
-                "try",
-                "flatten()".to_string(),
-                Applicability::MachineApplicable,
-            );
-        };
-
-        if_chain! {
-            if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
-            let body = cx.tcx.hir().body(*body_id);
-
-            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.kind;
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.kind;
-
-            if path.segments.len() == 1;
-            if path.segments[0].ident.name == binding_ident.name;
-
-            then {
-                apply_lint("called `flat_map(|x| x)` on an `Iterator`");
-            }
-        }
-
-        if_chain! {
-            if let hir::ExprKind::Path(ref qpath) = arg_node;
-
-            if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
-
-            then {
-                apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`");
-            }
-        }
-    }
 }
 
 /// lint searching an Iterator followed by `is_some()`
