@@ -35,10 +35,9 @@ smallvec = "1.6.1"
 #gimli = { path = "../" }
 
 [features]
-default = ["jit", "inline_asm", "jemalloc"]
+default = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
-jemalloc = []
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
