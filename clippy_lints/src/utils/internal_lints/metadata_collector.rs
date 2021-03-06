@@ -15,8 +15,6 @@
 
 // # Applicability
 // - TODO xFrednet 2021-01-17: Find lint emit and collect applicability
-//   - TODO xFrednet 2021-02-28:  1x reference to closure
-//     - See clippy_lints/src/needless_pass_by_value.rs@NeedlessPassByValue::check_fn
 //   - TODO xFrednet 2021-02-28:  4x weird emission forwarding
 //     - See clippy_lints/src/enum_variants.rs@EnumVariantNames::check_name
 //   - TODO xFrednet 2021-02-28:  6x emission forwarding with local that is initializes from
@@ -26,14 +24,12 @@
 //     - See clippy_lints/src/misc.rs@check_binary
 //   - TODO xFrednet 2021-02-28:  2x lint from local from method call
 //     - See clippy_lints/src/non_copy_const.rs@lint
-//   - TODO xFrednet 2021-02-28: 20x lint from local
-//     - See clippy_lints/src/map_unit_fn.rs@lint_map_unit_fn
 // # NITs
 // - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
 
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath};
+use rustc_hir::{self as hir, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath, def::DefKind};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -49,7 +45,7 @@ use crate::utils::{
 };
 
 /// This is the output file of the lint collector.
-const OUTPUT_FILE: &str = "metadata_collection.json";
+const OUTPUT_FILE: &str = "../metadata_collection.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 2] = ["lint_author", "deep_code_inspection"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
@@ -270,12 +266,16 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// ```
     fn check_expr(&mut self, cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) {
         if let Some(args) = match_lint_emission(cx, expr) {
-            if let Some((lint_name, applicability, is_multi_part)) = extract_complex_emission_info(cx, args) {
+            let mut emission_info = extract_complex_emission_info(cx, args);
+            if emission_info.is_empty() {
+                lint_collection_error_span(cx, expr.span, "Look, here ... I have no clue what todo with it");
+                return;
+            }
+
+            for (lint_name, applicability, is_multi_part) in emission_info.drain(..) {
                 let app_info = self.applicability_into.entry(lint_name).or_default();
                 app_info.applicability = applicability;
                 app_info.is_multi_suggestion = is_multi_part;
-            } else {
-                lint_collection_error_span(cx, expr.span, "Look, here ... I have no clue what todo with it");
             }
         }
     }
@@ -380,8 +380,8 @@ fn match_lint_emission<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) 
 fn extract_complex_emission_info<'hir>(
     cx: &LateContext<'hir>,
     args: &'hir [hir::Expr<'hir>],
-) -> Option<(String, Option<String>, bool)> {
-    let mut lint_name = None;
+) -> Vec<(String, Option<String>, bool)> {
+    let mut lints= Vec::new();
     let mut applicability = None;
     let mut multi_part = false;
 
@@ -390,9 +390,8 @@ fn extract_complex_emission_info<'hir>(
 
         if match_type(cx, arg_ty, &paths::LINT) {
             // If we found the lint arg, extract the lint name
-            if let ExprKind::Path(ref lint_path) = arg.kind {
-                lint_name = Some(last_path_segment(lint_path).ident.name);
-            }
+            let mut resolved_lints = resolve_lints(cx, arg);
+            lints.append(&mut resolved_lints);
         } else if match_type(cx, arg_ty, &paths::APPLICABILITY) {
             applicability = resolve_applicability(cx, arg);
         } else if arg_ty.is_closure() {
@@ -402,7 +401,14 @@ fn extract_complex_emission_info<'hir>(
         }
     }
 
-    lint_name.map(|lint_name| (sym_to_string(lint_name).to_ascii_lowercase(), applicability, multi_part))
+    lints.drain(..).map(|lint_name| (lint_name, applicability.clone(), multi_part)).collect()
+}
+
+/// Resolves the possible lints that this expression could reference
+fn resolve_lints(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Vec<String> {
+    let mut resolver = LintResolver::new(cx);
+    resolver.visit_expr(expr);
+    resolver.lints
 }
 
 /// This function tries to resolve the linked applicability to the given expression.
@@ -424,6 +430,50 @@ fn check_is_multi_part(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hi
     }
 
     false
+}
+
+struct LintResolver<'a, 'hir> {
+    cx: &'a LateContext<'hir>,
+    lints: Vec<String>,
+}
+
+impl<'a, 'hir> LintResolver<'a, 'hir> {
+    fn new(cx: &'a LateContext<'hir>) -> Self {
+        Self {
+            cx,
+            lints: Vec::<String>::default(),
+        }
+    }
+}
+
+impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
+    type Map = Map<'hir>;
+
+    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
+        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    }
+
+    fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+        if_chain! {
+            if let ExprKind::Path(qpath) = &expr.kind;
+            if let QPath::Resolved(_, path) = qpath;
+            
+            let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&expr));
+            if match_type(self.cx, expr_ty, &paths::LINT);
+            then {
+                if let hir::def::Res::Def(DefKind::Static, _) = path.res {
+                    let lint_name = last_path_segment(qpath).ident.name;
+                    self.lints.push(sym_to_string(lint_name).to_ascii_lowercase());
+                } else if let Some(local) = get_parent_local(self.cx, expr) {
+                    if let Some(local_init) = local.init {
+                        intravisit::walk_expr(self, local_init);
+                    }
+                }
+            }
+        }
+
+        intravisit::walk_expr(self, expr);
+    }
 }
 
 /// This visitor finds the highest applicability value in the visited expressions
@@ -488,7 +538,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
     }
 }
 
-/// This returns the parent local node if the expression is a reference to
+/// This returns the parent local node if the expression is a reference one
 fn get_parent_local(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<&'hir hir::Local<'hir>> {
     if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind {
         if let hir::def::Res::Local(local_hir) = path.res {

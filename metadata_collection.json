@@ -2,7 +2,7 @@
   {
     "id": "approx_constant",
     "id_span": {
-      "path": "clippy_lints/src/approx_const.rs",
+      "path": "src/approx_const.rs",
       "line": 34
     },
     "group": "clippy::correctness",
@@ -15,7 +15,7 @@
   {
     "id": "integer_arithmetic",
     "id_span": {
-      "path": "clippy_lints/src/arithmetic.rs",
+      "path": "src/arithmetic.rs",
       "line": 28
     },
     "group": "clippy::restriction",
@@ -28,7 +28,7 @@
   {
     "id": "float_arithmetic",
     "id_span": {
-      "path": "clippy_lints/src/arithmetic.rs",
+      "path": "src/arithmetic.rs",
       "line": 46
     },
     "group": "clippy::restriction",
@@ -41,7 +41,7 @@
   {
     "id": "as_conversions",
     "id_span": {
-      "path": "clippy_lints/src/as_conversions.rs",
+      "path": "src/as_conversions.rs",
       "line": 42
     },
     "group": "clippy::restriction",
@@ -54,7 +54,7 @@
   {
     "id": "inline_asm_x86_intel_syntax",
     "id_span": {
-      "path": "clippy_lints/src/asm_syntax.rs",
+      "path": "src/asm_syntax.rs",
       "line": 78
     },
     "group": "clippy::restriction",
@@ -64,7 +64,7 @@
   {
     "id": "inline_asm_x86_att_syntax",
     "id_span": {
-      "path": "clippy_lints/src/asm_syntax.rs",
+      "path": "src/asm_syntax.rs",
       "line": 114
     },
     "group": "clippy::restriction",
@@ -74,7 +74,7 @@
   {
     "id": "assertions_on_constants",
     "id_span": {
-      "path": "clippy_lints/src/assertions_on_constants.rs",
+      "path": "src/assertions_on_constants.rs",
       "line": 23
     },
     "group": "clippy::style",
@@ -87,7 +87,7 @@
   {
     "id": "assign_op_pattern",
     "id_span": {
-      "path": "clippy_lints/src/assign_ops.rs",
+      "path": "src/assign_ops.rs",
       "line": 33
     },
     "group": "clippy::style",
@@ -100,7 +100,7 @@
   {
     "id": "misrefactored_assign_op",
     "id_span": {
-      "path": "clippy_lints/src/assign_ops.rs",
+      "path": "src/assign_ops.rs",
       "line": 56
     },
     "group": "clippy::complexity",
@@ -113,7 +113,7 @@
   {
     "id": "async_yields_async",
     "id_span": {
-      "path": "clippy_lints/src/async_yields_async.rs",
+      "path": "src/async_yields_async.rs",
       "line": 36
     },
     "group": "clippy::correctness",
@@ -126,7 +126,7 @@
   {
     "id": "invalid_atomic_ordering",
     "id_span": {
-      "path": "clippy_lints/src/atomic_ordering.rs",
+      "path": "src/atomic_ordering.rs",
       "line": 47
     },
     "group": "clippy::correctness",
@@ -139,7 +139,7 @@
   {
     "id": "inline_always",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 65
     },
     "group": "clippy::pedantic",
@@ -152,7 +152,7 @@
   {
     "id": "useless_attribute",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 99
     },
     "group": "clippy::correctness",
@@ -165,7 +165,7 @@
   {
     "id": "deprecated_semver",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 118
     },
     "group": "clippy::correctness",
@@ -178,7 +178,7 @@
   {
     "id": "empty_line_after_outer_attr",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 153
     },
     "group": "clippy::nursery",
@@ -191,7 +191,7 @@
   {
     "id": "blanket_clippy_restriction_lints",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 176
     },
     "group": "clippy::style",
@@ -204,7 +204,7 @@
   {
     "id": "deprecated_cfg_attr",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 205
     },
     "group": "clippy::complexity",
@@ -217,7 +217,7 @@
   {
     "id": "mismatched_target_os",
     "id_span": {
-      "path": "clippy_lints/src/attrs.rs",
+      "path": "src/attrs.rs",
       "line": 238
     },
     "group": "clippy::correctness",
@@ -230,7 +230,7 @@
   {
     "id": "await_holding_lock",
     "id_span": {
-      "path": "clippy_lints/src/await_holding_invalid.rs",
+      "path": "src/await_holding_invalid.rs",
       "line": 47
     },
     "group": "clippy::pedantic",
@@ -243,7 +243,7 @@
   {
     "id": "await_holding_refcell_ref",
     "id_span": {
-      "path": "clippy_lints/src/await_holding_invalid.rs",
+      "path": "src/await_holding_invalid.rs",
       "line": 86
     },
     "group": "clippy::pedantic",
@@ -256,7 +256,7 @@
   {
     "id": "bad_bit_mask",
     "id_span": {
-      "path": "clippy_lints/src/bit_mask.rs",
+      "path": "src/bit_mask.rs",
       "line": 44
     },
     "group": "clippy::correctness",
@@ -269,7 +269,7 @@
   {
     "id": "ineffective_bit_mask",
     "id_span": {
-      "path": "clippy_lints/src/bit_mask.rs",
+      "path": "src/bit_mask.rs",
       "line": 73
     },
     "group": "clippy::correctness",
@@ -282,7 +282,7 @@
   {
     "id": "verbose_bit_mask",
     "id_span": {
-      "path": "clippy_lints/src/bit_mask.rs",
+      "path": "src/bit_mask.rs",
       "line": 92
     },
     "group": "clippy::pedantic",
@@ -295,7 +295,7 @@
   {
     "id": "blacklisted_name",
     "id_span": {
-      "path": "clippy_lints/src/blacklisted_name.rs",
+      "path": "src/blacklisted_name.rs",
       "line": 20
     },
     "group": "clippy::style",
@@ -308,7 +308,7 @@
   {
     "id": "blocks_in_if_conditions",
     "id_span": {
-      "path": "clippy_lints/src/blocks_in_if_conditions.rs",
+      "path": "src/blocks_in_if_conditions.rs",
       "line": 42
     },
     "group": "clippy::style",
@@ -321,7 +321,7 @@
   {
     "id": "nonminimal_bool",
     "id_span": {
-      "path": "clippy_lints/src/booleans.rs",
+      "path": "src/booleans.rs",
       "line": 31
     },
     "group": "clippy::complexity",
@@ -334,7 +334,7 @@
   {
     "id": "logic_bug",
     "id_span": {
-      "path": "clippy_lints/src/booleans.rs",
+      "path": "src/booleans.rs",
       "line": 49
     },
     "group": "clippy::correctness",
@@ -347,10 +347,10 @@
   {
     "id": "naive_bytecount",
     "id_span": {
-      "path": "clippy_lints/src/bytecount.rs",
+      "path": "src/bytecount.rs",
       "line": 30
     },
-    "group": "clippy::perf",
+    "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for naive byte counts\n **Why is this bad?** The [`bytecount`](https://crates.io/crates/bytecount)\n crate has methods to count your bytes faster, especially for large slices.\n\n **Known problems:** If you have predominantly small slices, the\n `bytecount::count(..)` method may actually be slower. However, if you can\n ensure that less than 2³²-1 matches arise, the `naive_count_32(..)` can be\n faster in those cases.\n\n **Example:**\n\n ```rust\n # let vec = vec![1_u8];\n &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead\n ```\n",
     "applicability": {
       "is_multi_suggestion": false,
@@ -360,7 +360,7 @@
   {
     "id": "cargo_common_metadata",
     "id_span": {
-      "path": "clippy_lints/src/cargo_common_metadata.rs",
+      "path": "src/cargo_common_metadata.rs",
       "line": 49
     },
     "group": "clippy::cargo",
@@ -373,7 +373,7 @@
   {
     "id": "case_sensitive_file_extension_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/case_sensitive_file_extension_comparisons.rs",
+      "path": "src/case_sensitive_file_extension_comparisons.rs",
       "line": 34
     },
     "group": "clippy::pedantic",
@@ -386,7 +386,7 @@
   {
     "id": "checked_conversions",
     "id_span": {
-      "path": "clippy_lints/src/checked_conversions.rs",
+      "path": "src/checked_conversions.rs",
       "line": 40
     },
     "group": "clippy::pedantic",
@@ -399,7 +399,7 @@
   {
     "id": "cognitive_complexity",
     "id_span": {
-      "path": "clippy_lints/src/cognitive_complexity.rs",
+      "path": "src/cognitive_complexity.rs",
       "line": 24
     },
     "group": "clippy::nursery",
@@ -412,7 +412,7 @@
   {
     "id": "collapsible_if",
     "id_span": {
-      "path": "clippy_lints/src/collapsible_if.rs",
+      "path": "src/collapsible_if.rs",
       "line": 50
     },
     "group": "clippy::style",
@@ -425,7 +425,7 @@
   {
     "id": "collapsible_else_if",
     "id_span": {
-      "path": "clippy_lints/src/collapsible_if.rs",
+      "path": "src/collapsible_if.rs",
       "line": 85
     },
     "group": "clippy::style",
@@ -438,7 +438,7 @@
   {
     "id": "collapsible_match",
     "id_span": {
-      "path": "clippy_lints/src/collapsible_match.rs",
+      "path": "src/collapsible_match.rs",
       "line": 44
     },
     "group": "clippy::style",
@@ -451,7 +451,7 @@
   {
     "id": "comparison_chain",
     "id_span": {
-      "path": "clippy_lints/src/comparison_chain.rs",
+      "path": "src/comparison_chain.rs",
       "line": 49
     },
     "group": "clippy::style",
@@ -464,7 +464,7 @@
   {
     "id": "ifs_same_cond",
     "id_span": {
-      "path": "clippy_lints/src/copies.rs",
+      "path": "src/copies.rs",
       "line": 33
     },
     "group": "clippy::correctness",
@@ -477,7 +477,7 @@
   {
     "id": "same_functions_in_if_condition",
     "id_span": {
-      "path": "clippy_lints/src/copies.rs",
+      "path": "src/copies.rs",
       "line": 80
     },
     "group": "clippy::pedantic",
@@ -490,7 +490,7 @@
   {
     "id": "if_same_then_else",
     "id_span": {
-      "path": "clippy_lints/src/copies.rs",
+      "path": "src/copies.rs",
       "line": 101
     },
     "group": "clippy::correctness",
@@ -503,7 +503,7 @@
   {
     "id": "copy_iterator",
     "id_span": {
-      "path": "clippy_lints/src/copy_iterator.rs",
+      "path": "src/copy_iterator.rs",
       "line": 27
     },
     "group": "clippy::pedantic",
@@ -516,7 +516,7 @@
   {
     "id": "create_dir",
     "id_span": {
-      "path": "clippy_lints/src/create_dir.rs",
+      "path": "src/create_dir.rs",
       "line": 24
     },
     "group": "clippy::restriction",
@@ -529,7 +529,7 @@
   {
     "id": "dbg_macro",
     "id_span": {
-      "path": "clippy_lints/src/dbg_macro.rs",
+      "path": "src/dbg_macro.rs",
       "line": 25
     },
     "group": "clippy::restriction",
@@ -542,7 +542,7 @@
   {
     "id": "default_trait_access",
     "id_span": {
-      "path": "clippy_lints/src/default.rs",
+      "path": "src/default.rs",
       "line": 33
     },
     "group": "clippy::pedantic",
@@ -555,7 +555,7 @@
   {
     "id": "field_reassign_with_default",
     "id_span": {
-      "path": "clippy_lints/src/default.rs",
+      "path": "src/default.rs",
       "line": 63
     },
     "group": "clippy::style",
@@ -568,7 +568,7 @@
   {
     "id": "default_numeric_fallback",
     "id_span": {
-      "path": "clippy_lints/src/default_numeric_fallback.rs",
+      "path": "src/default_numeric_fallback.rs",
       "line": 44
     },
     "group": "clippy::restriction",
@@ -581,7 +581,7 @@
   {
     "id": "explicit_deref_methods",
     "id_span": {
-      "path": "clippy_lints/src/dereference.rs",
+      "path": "src/dereference.rs",
       "line": 32
     },
     "group": "clippy::pedantic",
@@ -594,7 +594,7 @@
   {
     "id": "derive_hash_xor_eq",
     "id_span": {
-      "path": "clippy_lints/src/derive.rs",
+      "path": "src/derive.rs",
       "line": 42
     },
     "group": "clippy::correctness",
@@ -607,7 +607,7 @@
   {
     "id": "derive_ord_xor_partial_ord",
     "id_span": {
-      "path": "clippy_lints/src/derive.rs",
+      "path": "src/derive.rs",
       "line": 93
     },
     "group": "clippy::correctness",
@@ -620,7 +620,7 @@
   {
     "id": "expl_impl_clone_on_copy",
     "id_span": {
-      "path": "clippy_lints/src/derive.rs",
+      "path": "src/derive.rs",
       "line": 119
     },
     "group": "clippy::pedantic",
@@ -633,7 +633,7 @@
   {
     "id": "unsafe_derive_deserialize",
     "id_span": {
-      "path": "clippy_lints/src/derive.rs",
+      "path": "src/derive.rs",
       "line": 153
     },
     "group": "clippy::pedantic",
@@ -646,7 +646,7 @@
   {
     "id": "disallowed_method",
     "id_span": {
-      "path": "clippy_lints/src/disallowed_method.rs",
+      "path": "src/disallowed_method.rs",
       "line": 46
     },
     "group": "clippy::nursery",
@@ -659,7 +659,7 @@
   {
     "id": "doc_markdown",
     "id_span": {
-      "path": "clippy_lints/src/doc.rs",
+      "path": "src/doc.rs",
       "line": 63
     },
     "group": "clippy::pedantic",
@@ -672,7 +672,7 @@
   {
     "id": "missing_safety_doc",
     "id_span": {
-      "path": "clippy_lints/src/doc.rs",
+      "path": "src/doc.rs",
       "line": 97
     },
     "group": "clippy::style",
@@ -685,7 +685,7 @@
   {
     "id": "missing_errors_doc",
     "id_span": {
-      "path": "clippy_lints/src/doc.rs",
+      "path": "src/doc.rs",
       "line": 126
     },
     "group": "clippy::pedantic",
@@ -698,7 +698,7 @@
   {
     "id": "missing_panics_doc",
     "id_span": {
-      "path": "clippy_lints/src/doc.rs",
+      "path": "src/doc.rs",
       "line": 157
     },
     "group": "clippy::pedantic",
@@ -711,7 +711,7 @@
   {
     "id": "needless_doctest_main",
     "id_span": {
-      "path": "clippy_lints/src/doc.rs",
+      "path": "src/doc.rs",
       "line": 185
     },
     "group": "clippy::style",
@@ -724,7 +724,7 @@
   {
     "id": "double_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/double_comparison.rs",
+      "path": "src/double_comparison.rs",
       "line": 33
     },
     "group": "clippy::complexity",
@@ -737,7 +737,7 @@
   {
     "id": "double_parens",
     "id_span": {
-      "path": "clippy_lints/src/double_parens.rs",
+      "path": "src/double_parens.rs",
       "line": 35
     },
     "group": "clippy::complexity",
@@ -750,7 +750,7 @@
   {
     "id": "drop_ref",
     "id_span": {
-      "path": "clippy_lints/src/drop_forget_ref.rs",
+      "path": "src/drop_forget_ref.rs",
       "line": 26
     },
     "group": "clippy::correctness",
@@ -760,7 +760,7 @@
   {
     "id": "forget_ref",
     "id_span": {
-      "path": "clippy_lints/src/drop_forget_ref.rs",
+      "path": "src/drop_forget_ref.rs",
       "line": 47
     },
     "group": "clippy::correctness",
@@ -770,7 +770,7 @@
   {
     "id": "drop_copy",
     "id_span": {
-      "path": "clippy_lints/src/drop_forget_ref.rs",
+      "path": "src/drop_forget_ref.rs",
       "line": 68
     },
     "group": "clippy::correctness",
@@ -780,7 +780,7 @@
   {
     "id": "forget_copy",
     "id_span": {
-      "path": "clippy_lints/src/drop_forget_ref.rs",
+      "path": "src/drop_forget_ref.rs",
       "line": 95
     },
     "group": "clippy::correctness",
@@ -790,7 +790,7 @@
   {
     "id": "duration_subsec",
     "id_span": {
-      "path": "clippy_lints/src/duration_subsec.rs",
+      "path": "src/duration_subsec.rs",
       "line": 34
     },
     "group": "clippy::complexity",
@@ -803,7 +803,7 @@
   {
     "id": "else_if_without_else",
     "id_span": {
-      "path": "clippy_lints/src/else_if_without_else.rs",
+      "path": "src/else_if_without_else.rs",
       "line": 44
     },
     "group": "clippy::restriction",
@@ -816,7 +816,7 @@
   {
     "id": "empty_enum",
     "id_span": {
-      "path": "clippy_lints/src/empty_enum.rs",
+      "path": "src/empty_enum.rs",
       "line": 38
     },
     "group": "clippy::pedantic",
@@ -829,7 +829,7 @@
   {
     "id": "map_entry",
     "id_span": {
-      "path": "clippy_lints/src/entry.rs",
+      "path": "src/entry.rs",
       "line": 48
     },
     "group": "clippy::perf",
@@ -842,7 +842,7 @@
   {
     "id": "enum_clike_unportable_variant",
     "id_span": {
-      "path": "clippy_lints/src/enum_clike.rs",
+      "path": "src/enum_clike.rs",
       "line": 31
     },
     "group": "clippy::correctness",
@@ -855,7 +855,7 @@
   {
     "id": "enum_variant_names",
     "id_span": {
-      "path": "clippy_lints/src/enum_variants.rs",
+      "path": "src/enum_variants.rs",
       "line": 36
     },
     "group": "clippy::style",
@@ -865,7 +865,7 @@
   {
     "id": "pub_enum_variant_names",
     "id_span": {
-      "path": "clippy_lints/src/enum_variants.rs",
+      "path": "src/enum_variants.rs",
       "line": 66
     },
     "group": "clippy::pedantic",
@@ -875,7 +875,7 @@
   {
     "id": "module_name_repetitions",
     "id_span": {
-      "path": "clippy_lints/src/enum_variants.rs",
+      "path": "src/enum_variants.rs",
       "line": 91
     },
     "group": "clippy::pedantic",
@@ -888,7 +888,7 @@
   {
     "id": "module_inception",
     "id_span": {
-      "path": "clippy_lints/src/enum_variants.rs",
+      "path": "src/enum_variants.rs",
       "line": 121
     },
     "group": "clippy::style",
@@ -901,7 +901,7 @@
   {
     "id": "eq_op",
     "id_span": {
-      "path": "clippy_lints/src/eq_op.rs",
+      "path": "src/eq_op.rs",
       "line": 34
     },
     "group": "clippy::correctness",
@@ -914,7 +914,7 @@
   {
     "id": "op_ref",
     "id_span": {
-      "path": "clippy_lints/src/eq_op.rs",
+      "path": "src/eq_op.rs",
       "line": 56
     },
     "group": "clippy::style",
@@ -927,7 +927,7 @@
   {
     "id": "erasing_op",
     "id_span": {
-      "path": "clippy_lints/src/erasing_op.rs",
+      "path": "src/erasing_op.rs",
       "line": 25
     },
     "group": "clippy::correctness",
@@ -940,7 +940,7 @@
   {
     "id": "boxed_local",
     "id_span": {
-      "path": "clippy_lints/src/escape.rs",
+      "path": "src/escape.rs",
       "line": 43
     },
     "group": "clippy::perf",
@@ -953,7 +953,7 @@
   {
     "id": "redundant_closure",
     "id_span": {
-      "path": "clippy_lints/src/eta_reduction.rs",
+      "path": "src/eta_reduction.rs",
       "line": 37
     },
     "group": "clippy::style",
@@ -966,7 +966,7 @@
   {
     "id": "redundant_closure_for_method_calls",
     "id_span": {
-      "path": "clippy_lints/src/eta_reduction.rs",
+      "path": "src/eta_reduction.rs",
       "line": 61
     },
     "group": "clippy::pedantic",
@@ -979,7 +979,7 @@
   {
     "id": "eval_order_dependence",
     "id_span": {
-      "path": "clippy_lints/src/eval_order_dependence.rs",
+      "path": "src/eval_order_dependence.rs",
       "line": 38
     },
     "group": "clippy::complexity",
@@ -992,7 +992,7 @@
   {
     "id": "diverging_sub_expression",
     "id_span": {
-      "path": "clippy_lints/src/eval_order_dependence.rs",
+      "path": "src/eval_order_dependence.rs",
       "line": 62
     },
     "group": "clippy::complexity",
@@ -1005,7 +1005,7 @@
   {
     "id": "struct_excessive_bools",
     "id_span": {
-      "path": "clippy_lints/src/excessive_bools.rs",
+      "path": "src/excessive_bools.rs",
       "line": 40
     },
     "group": "clippy::pedantic",
@@ -1018,7 +1018,7 @@
   {
     "id": "fn_params_excessive_bools",
     "id_span": {
-      "path": "clippy_lints/src/excessive_bools.rs",
+      "path": "src/excessive_bools.rs",
       "line": 78
     },
     "group": "clippy::pedantic",
@@ -1031,27 +1031,33 @@
   {
     "id": "exhaustive_enums",
     "id_span": {
-      "path": "clippy_lints/src/exhaustive_items.rs",
+      "path": "src/exhaustive_items.rs",
       "line": 34
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Warns on any exported `enum`s that are not tagged `#[non_exhaustive]`\n **Why is this bad?** Exhaustive enums are typically fine, but a project which does\n not wish to make a stability commitment around exported enums may wish to\n disable them by default.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n enum Foo {\n     Bar,\n     Baz\n }\n ```\n Use instead:\n ```rust\n #[non_exhaustive]\n enum Foo {\n     Bar,\n     Baz\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MaybeIncorrect"
+    }
   },
   {
     "id": "exhaustive_structs",
     "id_span": {
-      "path": "clippy_lints/src/exhaustive_items.rs",
+      "path": "src/exhaustive_items.rs",
       "line": 64
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Warns on any exported `structs`s that are not tagged `#[non_exhaustive]`\n **Why is this bad?** Exhaustive structs are typically fine, but a project which does\n not wish to make a stability commitment around exported structs may wish to\n disable them by default.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n struct Foo {\n     bar: u8,\n     baz: String,\n }\n ```\n Use instead:\n ```rust\n #[non_exhaustive]\n struct Foo {\n     bar: u8,\n     baz: String,\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MaybeIncorrect"
+    }
   },
   {
     "id": "exit",
     "id_span": {
-      "path": "clippy_lints/src/exit.rs",
+      "path": "src/exit.rs",
       "line": 20
     },
     "group": "clippy::restriction",
@@ -1064,7 +1070,7 @@
   {
     "id": "explicit_write",
     "id_span": {
-      "path": "clippy_lints/src/explicit_write.rs",
+      "path": "src/explicit_write.rs",
       "line": 25
     },
     "group": "clippy::complexity",
@@ -1077,7 +1083,7 @@
   {
     "id": "fallible_impl_from",
     "id_span": {
-      "path": "clippy_lints/src/fallible_impl_from.rs",
+      "path": "src/fallible_impl_from.rs",
       "line": 45
     },
     "group": "clippy::nursery",
@@ -1090,7 +1096,7 @@
   {
     "id": "float_equality_without_abs",
     "id_span": {
-      "path": "clippy_lints/src/float_equality_without_abs.rs",
+      "path": "src/float_equality_without_abs.rs",
       "line": 37
     },
     "group": "clippy::correctness",
@@ -1103,7 +1109,7 @@
   {
     "id": "excessive_precision",
     "id_span": {
-      "path": "clippy_lints/src/float_literal.rs",
+      "path": "src/float_literal.rs",
       "line": 30
     },
     "group": "clippy::style",
@@ -1116,7 +1122,7 @@
   {
     "id": "lossy_float_literal",
     "id_span": {
-      "path": "clippy_lints/src/float_literal.rs",
+      "path": "src/float_literal.rs",
       "line": 54
     },
     "group": "clippy::restriction",
@@ -1129,7 +1135,7 @@
   {
     "id": "imprecise_flops",
     "id_span": {
-      "path": "clippy_lints/src/floating_point_arithmetic.rs",
+      "path": "src/floating_point_arithmetic.rs",
       "line": 45
     },
     "group": "clippy::nursery",
@@ -1142,7 +1148,7 @@
   {
     "id": "suboptimal_flops",
     "id_span": {
-      "path": "clippy_lints/src/floating_point_arithmetic.rs",
+      "path": "src/floating_point_arithmetic.rs",
       "line": 102
     },
     "group": "clippy::nursery",
@@ -1155,7 +1161,7 @@
   {
     "id": "useless_format",
     "id_span": {
-      "path": "clippy_lints/src/format.rs",
+      "path": "src/format.rs",
       "line": 37
     },
     "group": "clippy::complexity",
@@ -1168,7 +1174,7 @@
   {
     "id": "suspicious_assignment_formatting",
     "id_span": {
-      "path": "clippy_lints/src/formatting.rs",
+      "path": "src/formatting.rs",
       "line": 22
     },
     "group": "clippy::style",
@@ -1181,7 +1187,7 @@
   {
     "id": "suspicious_unary_op_formatting",
     "id_span": {
-      "path": "clippy_lints/src/formatting.rs",
+      "path": "src/formatting.rs",
       "line": 44
     },
     "group": "clippy::style",
@@ -1194,7 +1200,7 @@
   {
     "id": "suspicious_else_formatting",
     "id_span": {
-      "path": "clippy_lints/src/formatting.rs",
+      "path": "src/formatting.rs",
       "line": 80
     },
     "group": "clippy::style",
@@ -1207,7 +1213,7 @@
   {
     "id": "possible_missing_comma",
     "id_span": {
-      "path": "clippy_lints/src/formatting.rs",
+      "path": "src/formatting.rs",
       "line": 100
     },
     "group": "clippy::correctness",
@@ -1220,7 +1226,7 @@
   {
     "id": "from_over_into",
     "id_span": {
-      "path": "clippy_lints/src/from_over_into.rs",
+      "path": "src/from_over_into.rs",
       "line": 39
     },
     "group": "clippy::style",
@@ -1233,7 +1239,7 @@
   {
     "id": "from_str_radix_10",
     "id_span": {
-      "path": "clippy_lints/src/from_str_radix_10.rs",
+      "path": "src/from_str_radix_10.rs",
       "line": 37
     },
     "group": "clippy::style",
@@ -1246,7 +1252,7 @@
   {
     "id": "too_many_arguments",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 39
     },
     "group": "clippy::complexity",
@@ -1259,7 +1265,7 @@
   {
     "id": "too_many_lines",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 62
     },
     "group": "clippy::pedantic",
@@ -1272,7 +1278,7 @@
   {
     "id": "not_unsafe_ptr_arg_deref",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 96
     },
     "group": "clippy::correctness",
@@ -1285,7 +1291,7 @@
   {
     "id": "must_use_unit",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 117
     },
     "group": "clippy::style",
@@ -1298,7 +1304,7 @@
   {
     "id": "double_must_use",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 142
     },
     "group": "clippy::style",
@@ -1311,7 +1317,7 @@
   {
     "id": "must_use_candidate",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 170
     },
     "group": "clippy::pedantic",
@@ -1324,7 +1330,7 @@
   {
     "id": "result_unit_err",
     "id_span": {
-      "path": "clippy_lints/src/functions.rs",
+      "path": "src/functions.rs",
       "line": 216
     },
     "group": "clippy::style",
@@ -1337,7 +1343,7 @@
   {
     "id": "future_not_send",
     "id_span": {
-      "path": "clippy_lints/src/future_not_send.rs",
+      "path": "src/future_not_send.rs",
       "line": 44
     },
     "group": "clippy::nursery",
@@ -1350,7 +1356,7 @@
   {
     "id": "get_last_with_len",
     "id_span": {
-      "path": "clippy_lints/src/get_last_with_len.rs",
+      "path": "src/get_last_with_len.rs",
       "line": 40
     },
     "group": "clippy::complexity",
@@ -1363,7 +1369,7 @@
   {
     "id": "identity_op",
     "id_span": {
-      "path": "clippy_lints/src/identity_op.rs",
+      "path": "src/identity_op.rs",
       "line": 24
     },
     "group": "clippy::complexity",
@@ -1376,7 +1382,7 @@
   {
     "id": "if_let_mutex",
     "id_span": {
-      "path": "clippy_lints/src/if_let_mutex.rs",
+      "path": "src/if_let_mutex.rs",
       "line": 36
     },
     "group": "clippy::correctness",
@@ -1389,7 +1395,7 @@
   {
     "id": "if_let_some_result",
     "id_span": {
-      "path": "clippy_lints/src/if_let_some_result.rs",
+      "path": "src/if_let_some_result.rs",
       "line": 34
     },
     "group": "clippy::style",
@@ -1402,7 +1408,7 @@
   {
     "id": "if_not_else",
     "id_span": {
-      "path": "clippy_lints/src/if_not_else.rs",
+      "path": "src/if_not_else.rs",
       "line": 43
     },
     "group": "clippy::pedantic",
@@ -1415,7 +1421,7 @@
   {
     "id": "implicit_return",
     "id_span": {
-      "path": "clippy_lints/src/implicit_return.rs",
+      "path": "src/implicit_return.rs",
       "line": 33
     },
     "group": "clippy::restriction",
@@ -1428,7 +1434,7 @@
   {
     "id": "implicit_saturating_sub",
     "id_span": {
-      "path": "clippy_lints/src/implicit_saturating_sub.rs",
+      "path": "src/implicit_saturating_sub.rs",
       "line": 32
     },
     "group": "clippy::pedantic",
@@ -1441,7 +1447,7 @@
   {
     "id": "inconsistent_struct_constructor",
     "id_span": {
-      "path": "clippy_lints/src/inconsistent_struct_constructor.rs",
+      "path": "src/inconsistent_struct_constructor.rs",
       "line": 58
     },
     "group": "clippy::style",
@@ -1454,7 +1460,7 @@
   {
     "id": "out_of_bounds_indexing",
     "id_span": {
-      "path": "clippy_lints/src/indexing_slicing.rs",
+      "path": "src/indexing_slicing.rs",
       "line": 32
     },
     "group": "clippy::correctness",
@@ -1467,7 +1473,7 @@
   {
     "id": "indexing_slicing",
     "id_span": {
-      "path": "clippy_lints/src/indexing_slicing.rs",
+      "path": "src/indexing_slicing.rs",
       "line": 81
     },
     "group": "clippy::restriction",
@@ -1480,27 +1486,33 @@
   {
     "id": "infinite_iter",
     "id_span": {
-      "path": "clippy_lints/src/infinite_iter.rs",
+      "path": "src/infinite_iter.rs",
       "line": 21
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for iteration that is guaranteed to be infinite.\n **Why is this bad?** While there may be places where this is acceptable\n (e.g., in event streams), in most cases this is simply an error.\n\n **Known problems:** None.\n\n **Example:**\n ```no_run\n use std::iter;\n\n iter::repeat(1_u8).collect::<Vec<_>>();\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "maybe_infinite_iter",
     "id_span": {
-      "path": "clippy_lints/src/infinite_iter.rs",
+      "path": "src/infinite_iter.rs",
       "line": 40
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for iteration that may be infinite.\n **Why is this bad?** While there may be places where this is acceptable\n (e.g., in event streams), in most cases this is simply an error.\n\n **Known problems:** The code may have a condition to stop iteration, but\n this lint is not clever enough to analyze it.\n\n **Example:**\n ```rust\n let infinite_iter = 0..;\n [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "multiple_inherent_impl",
     "id_span": {
-      "path": "clippy_lints/src/inherent_impl.rs",
+      "path": "src/inherent_impl.rs",
       "line": 37
     },
     "group": "clippy::restriction",
@@ -1513,7 +1525,7 @@
   {
     "id": "inherent_to_string",
     "id_span": {
-      "path": "clippy_lints/src/inherent_to_string.rs",
+      "path": "src/inherent_to_string.rs",
       "line": 44
     },
     "group": "clippy::style",
@@ -1526,7 +1538,7 @@
   {
     "id": "inherent_to_string_shadow_display",
     "id_span": {
-      "path": "clippy_lints/src/inherent_to_string.rs",
+      "path": "src/inherent_to_string.rs",
       "line": 89
     },
     "group": "clippy::correctness",
@@ -1539,7 +1551,7 @@
   {
     "id": "inline_fn_without_body",
     "id_span": {
-      "path": "clippy_lints/src/inline_fn_without_body.rs",
+      "path": "src/inline_fn_without_body.rs",
       "line": 27
     },
     "group": "clippy::correctness",
@@ -1552,7 +1564,7 @@
   {
     "id": "int_plus_one",
     "id_span": {
-      "path": "clippy_lints/src/int_plus_one.rs",
+      "path": "src/int_plus_one.rs",
       "line": 31
     },
     "group": "clippy::complexity",
@@ -1565,7 +1577,7 @@
   {
     "id": "integer_division",
     "id_span": {
-      "path": "clippy_lints/src/integer_division.rs",
+      "path": "src/integer_division.rs",
       "line": 26
     },
     "group": "clippy::restriction",
@@ -1578,7 +1590,7 @@
   {
     "id": "items_after_statements",
     "id_span": {
-      "path": "clippy_lints/src/items_after_statements.rs",
+      "path": "src/items_after_statements.rs",
       "line": 48
     },
     "group": "clippy::pedantic",
@@ -1591,7 +1603,7 @@
   {
     "id": "large_const_arrays",
     "id_span": {
-      "path": "clippy_lints/src/large_const_arrays.rs",
+      "path": "src/large_const_arrays.rs",
       "line": 30
     },
     "group": "clippy::perf",
@@ -1604,7 +1616,7 @@
   {
     "id": "large_enum_variant",
     "id_span": {
-      "path": "clippy_lints/src/large_enum_variant.rs",
+      "path": "src/large_enum_variant.rs",
       "line": 39
     },
     "group": "clippy::perf",
@@ -1617,7 +1629,7 @@
   {
     "id": "large_stack_arrays",
     "id_span": {
-      "path": "clippy_lints/src/large_stack_arrays.rs",
+      "path": "src/large_stack_arrays.rs",
       "line": 23
     },
     "group": "clippy::pedantic",
@@ -1630,7 +1642,7 @@
   {
     "id": "len_zero",
     "id_span": {
-      "path": "clippy_lints/src/len_zero.rs",
+      "path": "src/len_zero.rs",
       "line": 41
     },
     "group": "clippy::style",
@@ -1643,7 +1655,7 @@
   {
     "id": "len_without_is_empty",
     "id_span": {
-      "path": "clippy_lints/src/len_zero.rs",
+      "path": "src/len_zero.rs",
       "line": 66
     },
     "group": "clippy::style",
@@ -1656,7 +1668,7 @@
   {
     "id": "comparison_to_empty",
     "id_span": {
-      "path": "clippy_lints/src/len_zero.rs",
+      "path": "src/len_zero.rs",
       "line": 103
     },
     "group": "clippy::style",
@@ -1669,7 +1681,7 @@
   {
     "id": "useless_let_if_seq",
     "id_span": {
-      "path": "clippy_lints/src/let_if_seq.rs",
+      "path": "src/let_if_seq.rs",
       "line": 49
     },
     "group": "clippy::nursery",
@@ -1682,7 +1694,7 @@
   {
     "id": "let_underscore_must_use",
     "id_span": {
-      "path": "clippy_lints/src/let_underscore.rs",
+      "path": "src/let_underscore.rs",
       "line": 29
     },
     "group": "clippy::restriction",
@@ -1695,7 +1707,7 @@
   {
     "id": "let_underscore_lock",
     "id_span": {
-      "path": "clippy_lints/src/let_underscore.rs",
+      "path": "src/let_underscore.rs",
       "line": 56
     },
     "group": "clippy::correctness",
@@ -1708,7 +1720,7 @@
   {
     "id": "let_underscore_drop",
     "id_span": {
-      "path": "clippy_lints/src/let_underscore.rs",
+      "path": "src/let_underscore.rs",
       "line": 97
     },
     "group": "clippy::pedantic",
@@ -1721,7 +1733,7 @@
   {
     "id": "needless_lifetimes",
     "id_span": {
-      "path": "clippy_lints/src/lifetimes.rs",
+      "path": "src/lifetimes.rs",
       "line": 46
     },
     "group": "clippy::complexity",
@@ -1734,7 +1746,7 @@
   {
     "id": "extra_unused_lifetimes",
     "id_span": {
-      "path": "clippy_lints/src/lifetimes.rs",
+      "path": "src/lifetimes.rs",
       "line": 74
     },
     "group": "clippy::complexity",
@@ -1747,7 +1759,7 @@
   {
     "id": "unreadable_literal",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 33
     },
     "group": "clippy::pedantic",
@@ -1760,7 +1772,7 @@
   {
     "id": "mistyped_literal_suffixes",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 57
     },
     "group": "clippy::correctness",
@@ -1773,7 +1785,7 @@
   {
     "id": "inconsistent_digit_grouping",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 80
     },
     "group": "clippy::style",
@@ -1786,7 +1798,7 @@
   {
     "id": "unusual_byte_groupings",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 99
     },
     "group": "clippy::style",
@@ -1799,7 +1811,7 @@
   {
     "id": "large_digit_groups",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 118
     },
     "group": "clippy::pedantic",
@@ -1812,7 +1824,7 @@
   {
     "id": "decimal_literal_representation",
     "id_span": {
-      "path": "clippy_lints/src/literal_representation.rs",
+      "path": "src/literal_representation.rs",
       "line": 136
     },
     "group": "clippy::restriction",
@@ -1825,8 +1837,8 @@
   {
     "id": "manual_memcpy",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 57
+      "path": "src/loops/mod.rs",
+      "line": 50
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for for-loops that manually copy items between slices that could be optimized by having a memcpy.\n\n **Why is this bad?** It is not as fast as a memcpy.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let src = vec![1];\n # let mut dst = vec![0; 65];\n for i in 0..src.len() {\n     dst[i + 64] = src[i];\n }\n ```\n Could be written as:\n ```rust\n # let src = vec![1];\n # let mut dst = vec![0; 65];\n dst[64..(src.len() + 64)].clone_from_slice(&src[..]);\n ```\n",
@@ -1838,8 +1850,8 @@
   {
     "id": "needless_range_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 85
+      "path": "src/loops/mod.rs",
+      "line": 78
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for looping over the range of `0..len` of some collection just to get the values by index.\n\n **Why is this bad?** Just iterating the collection itself makes the intent\n more clear and is probably faster.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let vec = vec!['a', 'b', 'c'];\n for i in 0..vec.len() {\n     println!(\"{}\", vec[i]);\n }\n ```\n Could be written as:\n ```rust\n let vec = vec!['a', 'b', 'c'];\n for i in vec {\n     println!(\"{}\", i);\n }\n ```\n",
@@ -1851,8 +1863,8 @@
   {
     "id": "explicit_iter_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 114
+      "path": "src/loops/mod.rs",
+      "line": 107
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for loops on `x.iter()` where `&x` will do, and suggests the latter.\n\n **Why is this bad?** Readability.\n\n **Known problems:** False negatives. We currently only warn on some known\n types.\n\n **Example:**\n ```rust\n // with `y` a `Vec` or slice:\n # let y = vec![1];\n for x in y.iter() {\n     // ..\n }\n ```\n can be rewritten to\n ```rust\n # let y = vec![1];\n for x in &y {\n     // ..\n }\n ```\n",
@@ -1864,8 +1876,8 @@
   {
     "id": "explicit_into_iter_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 142
+      "path": "src/loops/mod.rs",
+      "line": 135
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for loops on `y.into_iter()` where `y` will do, and suggests the latter.\n\n **Why is this bad?** Readability.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n # let y = vec![1];\n // with `y` a `Vec` or slice:\n for x in y.into_iter() {\n     // ..\n }\n ```\n can be rewritten to\n ```rust\n # let y = vec![1];\n for x in y {\n     // ..\n }\n ```\n",
@@ -1877,8 +1889,8 @@
   {
     "id": "iter_next_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 165
+      "path": "src/loops/mod.rs",
+      "line": 158
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for loops on `x.next()`.\n **Why is this bad?** `next()` returns either `Some(value)` if there was a\n value, or `None` otherwise. The insidious thing is that `Option<_>`\n implements `IntoIterator`, so that possibly one value will be iterated,\n leading to some hard to find bugs. No one will want to write such code\n [except to win an Underhanded Rust\n Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).\n\n **Known problems:** None.\n\n **Example:**\n ```ignore\n for x in y.next() {\n     ..\n }\n ```\n",
@@ -1890,8 +1902,8 @@
   {
     "id": "for_loops_over_fallibles",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 208
+      "path": "src/loops/mod.rs",
+      "line": 201
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for `for` loops over `Option` or `Result` values.\n **Why is this bad?** Readability. This is more clearly expressed as an `if\n let`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let opt = Some(1);\n\n // Bad\n for x in opt {\n     // ..\n }\n\n // Good\n if let Some(x) = opt {\n     // ..\n }\n ```\n\n // or\n\n ```rust\n # let res: Result<i32, std::io::Error> = Ok(1);\n\n // Bad\n for x in &res {\n     // ..\n }\n\n // Good\n if let Ok(x) = res {\n     // ..\n }\n ```\n",
@@ -1903,8 +1915,8 @@
   {
     "id": "while_let_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 237
+      "path": "src/loops/mod.rs",
+      "line": 230
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Detects `loop + match` combinations that are easier written as a `while let` loop.\n\n **Why is this bad?** The `while let` loop is usually shorter and more\n readable.\n\n **Known problems:** Sometimes the wrong binding is displayed ([#383](https://github.com/rust-lang/rust-clippy/issues/383)).\n\n **Example:**\n ```rust,no_run\n # let y = Some(1);\n loop {\n     let x = match y {\n         Some(x) => x,\n         None => break,\n     };\n     // .. do something with x\n }\n // is easier written as\n while let Some(x) = y {\n     // .. do something with x\n };\n ```\n",
@@ -1916,8 +1928,8 @@
   {
     "id": "needless_collect",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 259
+      "path": "src/loops/mod.rs",
+      "line": 252
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for functions collecting an iterator when collect is not needed.\n\n **Why is this bad?** `collect` causes the allocation of a new data structure,\n when this allocation may not be needed.\n\n **Known problems:**\n None\n\n **Example:**\n ```rust\n # let iterator = vec![1].into_iter();\n let len = iterator.clone().collect::<Vec<_>>().len();\n // should be\n let len = iterator.count();\n ```\n",
@@ -1929,8 +1941,8 @@
   {
     "id": "explicit_counter_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 289
+      "path": "src/loops/mod.rs",
+      "line": 282
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks `for` loops over slices with an explicit counter and suggests the use of `.enumerate()`.\n\n **Why is it bad?** Using `.enumerate()` makes the intent more clear,\n declutters the code and may be faster in some instances.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let v = vec![1];\n # fn bar(bar: usize, baz: usize) {}\n let mut i = 0;\n for item in &v {\n     bar(i, *item);\n     i += 1;\n }\n ```\n Could be written as\n ```rust\n # let v = vec![1];\n # fn bar(bar: usize, baz: usize) {}\n for (i, item) in v.iter().enumerate() { bar(i, *item); }\n ```\n",
@@ -1942,8 +1954,8 @@
   {
     "id": "empty_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 322
+      "path": "src/loops/mod.rs",
+      "line": 315
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for empty `loop` expressions.\n **Why is this bad?** These busy loops burn CPU cycles without doing\n anything. It is _almost always_ a better idea to `panic!` than to have\n a busy loop.\n\n If panicking isn't possible, think of the environment and either:\n   - block on something\n   - sleep the thread for some microseconds\n   - yield or pause the thread\n\n For `std` targets, this can be done with\n [`std::thread::sleep`](https://doc.rust-lang.org/std/thread/fn.sleep.html)\n or [`std::thread::yield_now`](https://doc.rust-lang.org/std/thread/fn.yield_now.html).\n\n For `no_std` targets, doing this is more complicated, especially because\n `#[panic_handler]`s can't panic. To stop/pause the thread, you will\n probably need to invoke some target-specific intrinsic. Examples include:\n   - [`x86_64::instructions::hlt`](https://docs.rs/x86_64/0.12.2/x86_64/instructions/fn.hlt.html)\n   - [`cortex_m::asm::wfi`](https://docs.rs/cortex-m/0.6.3/cortex_m/asm/fn.wfi.html)\n\n **Known problems:** None.\n\n **Example:**\n ```no_run\n loop {}\n ```\n",
@@ -1955,8 +1967,8 @@
   {
     "id": "while_let_on_iterator",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 341
+      "path": "src/loops/mod.rs",
+      "line": 334
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for `while let` expressions on iterators.\n **Why is this bad?** Readability. A simple `for` loop is shorter and conveys\n the intent better.\n\n **Known problems:** None.\n\n **Example:**\n ```ignore\n while let Some(val) = iter() {\n     ..\n }\n ```\n",
@@ -1968,8 +1980,8 @@
   {
     "id": "for_kv_map",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 369
+      "path": "src/loops/mod.rs",
+      "line": 362
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for iterating a map (`HashMap` or `BTreeMap`) and ignoring either the keys or values.\n\n **Why is this bad?** Readability. There are `keys` and `values` methods that\n can be used to express that don't need the values or keys.\n\n **Known problems:** None.\n\n **Example:**\n ```ignore\n for (k, _) in &map {\n     ..\n }\n ```\n\n could be replaced by\n\n ```ignore\n for k in map.keys() {\n     ..\n }\n ```\n",
@@ -1981,8 +1993,8 @@
   {
     "id": "never_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 390
+      "path": "src/loops/mod.rs",
+      "line": 383
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for loops that will always `break`, `return` or `continue` an outer loop.\n\n **Why is this bad?** This loop never loops, all it does is obfuscating the\n code.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n loop {\n     ..;\n     break;\n }\n ```\n",
@@ -1994,8 +2006,8 @@
   {
     "id": "mut_range_bound",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 410
+      "path": "src/loops/mod.rs",
+      "line": 403
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for loops which have a range bound that is a mutable variable\n **Why is this bad?** One might think that modifying the mutable variable changes the loop bounds\n\n **Known problems:** None\n\n **Example:**\n ```rust\n let mut foo = 42;\n for i in 0..foo {\n     foo -= 1;\n     println!(\"{}\", i); // prints numbers from 0 to 42, not 0 to 21\n }\n ```\n",
@@ -2007,8 +2019,8 @@
   {
     "id": "while_immutable_condition",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 433
+      "path": "src/loops/mod.rs",
+      "line": 426
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks whether variables used within while loop condition can be (and are) mutated in the body.\n\n **Why is this bad?** If the condition is unchanged, entering the body of the loop\n will lead to an infinite loop.\n\n **Known problems:** If the `while`-loop is in a closure, the check for mutation of the\n condition variables in the body can cause false negatives. For example when only `Upvar` `a` is\n in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.\n\n **Example:**\n ```rust\n let i = 0;\n while i > 10 {\n     println!(\"let me loop forever!\");\n }\n ```\n",
@@ -2020,8 +2032,8 @@
   {
     "id": "same_item_push",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 466
+      "path": "src/loops/mod.rs",
+      "line": 459
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks whether a for loop is being used to push a constant value into a Vec.\n\n **Why is this bad?** This kind of operation can be expressed more succinctly with\n `vec![item;SIZE]` or `vec.resize(NEW_SIZE, item)` and using these alternatives may also\n have better performance.\n **Known problems:** None\n\n **Example:**\n ```rust\n let item1 = 2;\n let item2 = 3;\n let mut vec: Vec<u8> = Vec::new();\n for _ in 0..20 {\n    vec.push(item1);\n }\n for _ in 0..30 {\n     vec.push(item2);\n }\n ```\n could be written as\n ```rust\n let item1 = 2;\n let item2 = 3;\n let mut vec: Vec<u8> = vec![item1; 20];\n vec.resize(20 + 30, item2);\n ```\n",
@@ -2033,8 +2045,8 @@
   {
     "id": "single_element_loop",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 491
+      "path": "src/loops/mod.rs",
+      "line": 484
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks whether a for loop has a single element.\n **Why is this bad?** There is no reason to have a loop of a\n single element.\n **Known problems:** None\n\n **Example:**\n ```rust\n let item1 = 2;\n for item in &[item1] {\n     println!(\"{}\", item);\n }\n ```\n could be written as\n ```rust\n let item1 = 2;\n let item = &item1;\n println!(\"{}\", item);\n ```\n",
@@ -2046,8 +2058,8 @@
   {
     "id": "manual_flatten",
     "id_span": {
-      "path": "clippy_lints/src/loops.rs",
-      "line": 522
+      "path": "src/loops/mod.rs",
+      "line": 515
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Check for unnecessary `if let` usage in a for loop where only the `Some` or `Ok` variant of the iterator element is used.\n\n **Why is this bad?** It is verbose and can be simplified\n by first calling the `flatten` method on the `Iterator`.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n let x = vec![Some(1), Some(2), Some(3)];\n for n in x {\n     if let Some(n) = n {\n         println!(\"{}\", n);\n     }\n }\n ```\n Use instead:\n ```rust\n let x = vec![Some(1), Some(2), Some(3)];\n for n in x.into_iter().flatten() {\n     println!(\"{}\", n);\n }\n ```\n",
@@ -2059,7 +2071,7 @@
   {
     "id": "macro_use_imports",
     "id_span": {
-      "path": "clippy_lints/src/macro_use.rs",
+      "path": "src/macro_use.rs",
       "line": 25
     },
     "group": "clippy::pedantic",
@@ -2072,7 +2084,7 @@
   {
     "id": "main_recursion",
     "id_span": {
-      "path": "clippy_lints/src/main_recursion.rs",
+      "path": "src/main_recursion.rs",
       "line": 22
     },
     "group": "clippy::style",
@@ -2085,7 +2097,7 @@
   {
     "id": "manual_async_fn",
     "id_span": {
-      "path": "clippy_lints/src/manual_async_fn.rs",
+      "path": "src/manual_async_fn.rs",
       "line": 32
     },
     "group": "clippy::style",
@@ -2098,11 +2110,11 @@
   {
     "id": "manual_map",
     "id_span": {
-      "path": "clippy_lints/src/manual_map.rs",
-      "line": 36
+      "path": "src/manual_map.rs",
+      "line": 44
     },
-    "group": "clippy::nursery",
-    "docs": " **What it does:** Checks for usages of `match` which could be implemented using `map`\n **Why is this bad?** Using the `map` method is clearer and more concise.\n\n **Known problems:** `map` is not capable of representing some control flow which works fine in `match`.\n\n **Example:**\n\n ```rust\n match Some(0) {\n     Some(x) => Some(x + 1),\n     None => None,\n };\n ```\n Use instead:\n ```rust\n Some(0).map(|x| x + 1);\n ```\n",
+    "group": "clippy::style",
+    "docs": " **What it does:** Checks for usages of `match` which could be implemented using `map`\n **Why is this bad?** Using the `map` method is clearer and more concise.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n match Some(0) {\n     Some(x) => Some(x + 1),\n     None => None,\n };\n ```\n Use instead:\n ```rust\n Some(0).map(|x| x + 1);\n ```\n",
     "applicability": {
       "is_multi_suggestion": false,
       "applicability": "MachineApplicable"
@@ -2111,7 +2123,7 @@
   {
     "id": "manual_non_exhaustive",
     "id_span": {
-      "path": "clippy_lints/src/manual_non_exhaustive.rs",
+      "path": "src/manual_non_exhaustive.rs",
       "line": 56
     },
     "group": "clippy::style",
@@ -2124,7 +2136,7 @@
   {
     "id": "manual_ok_or",
     "id_span": {
-      "path": "clippy_lints/src/manual_ok_or.rs",
+      "path": "src/manual_ok_or.rs",
       "line": 34
     },
     "group": "clippy::pedantic",
@@ -2137,7 +2149,7 @@
   {
     "id": "manual_strip",
     "id_span": {
-      "path": "clippy_lints/src/manual_strip.rs",
+      "path": "src/manual_strip.rs",
       "line": 52
     },
     "group": "clippy::complexity",
@@ -2150,7 +2162,7 @@
   {
     "id": "manual_unwrap_or",
     "id_span": {
-      "path": "clippy_lints/src/manual_unwrap_or.rs",
+      "path": "src/manual_unwrap_or.rs",
       "line": 36
     },
     "group": "clippy::complexity",
@@ -2163,7 +2175,7 @@
   {
     "id": "map_clone",
     "id_span": {
-      "path": "clippy_lints/src/map_clone.rs",
+      "path": "src/map_clone.rs",
       "line": 40
     },
     "group": "clippy::style",
@@ -2176,7 +2188,7 @@
   {
     "id": "map_err_ignore",
     "id_span": {
-      "path": "clippy_lints/src/map_err_ignore.rs",
+      "path": "src/map_err_ignore.rs",
       "line": 101
     },
     "group": "clippy::restriction",
@@ -2189,7 +2201,7 @@
   {
     "id": "map_identity",
     "id_span": {
-      "path": "clippy_lints/src/map_identity.rs",
+      "path": "src/map_identity.rs",
       "line": 30
     },
     "group": "clippy::complexity",
@@ -2202,27 +2214,33 @@
   {
     "id": "option_map_unit_fn",
     "id_span": {
-      "path": "clippy_lints/src/map_unit_fn.rs",
+      "path": "src/map_unit_fn.rs",
       "line": 48
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `option.map(f)` where f is a function or closure that returns the unit type `()`.\n\n **Why is this bad?** Readability, this can be written more clearly with\n an if let statement\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n # fn do_stuff() -> Option<String> { Some(String::new()) }\n # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }\n # fn format_msg(foo: String) -> String { String::new() }\n let x: Option<String> = do_stuff();\n x.map(log_err_msg);\n # let x: Option<String> = do_stuff();\n x.map(|msg| log_err_msg(format_msg(msg)));\n ```\n\n The correct use would be:\n\n ```rust\n # fn do_stuff() -> Option<String> { Some(String::new()) }\n # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }\n # fn format_msg(foo: String) -> String { String::new() }\n let x: Option<String> = do_stuff();\n if let Some(msg) = x {\n     log_err_msg(msg);\n }\n\n # let x: Option<String> = do_stuff();\n if let Some(msg) = x {\n     log_err_msg(format_msg(msg));\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": true,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "result_map_unit_fn",
     "id_span": {
-      "path": "clippy_lints/src/map_unit_fn.rs",
+      "path": "src/map_unit_fn.rs",
       "line": 89
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `result.map(f)` where f is a function or closure that returns the unit type `()`.\n\n **Why is this bad?** Readability, this can be written more clearly with\n an if let statement\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n # fn do_stuff() -> Result<String, String> { Ok(String::new()) }\n # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }\n # fn format_msg(foo: String) -> String { String::new() }\n let x: Result<String, String> = do_stuff();\n x.map(log_err_msg);\n # let x: Result<String, String> = do_stuff();\n x.map(|msg| log_err_msg(format_msg(msg)));\n ```\n\n The correct use would be:\n\n ```rust\n # fn do_stuff() -> Result<String, String> { Ok(String::new()) }\n # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }\n # fn format_msg(foo: String) -> String { String::new() }\n let x: Result<String, String> = do_stuff();\n if let Ok(msg) = x {\n     log_err_msg(msg);\n };\n # let x: Result<String, String> = do_stuff();\n if let Ok(msg) = x {\n     log_err_msg(format_msg(msg));\n };\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": true,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "match_on_vec_items",
     "id_span": {
-      "path": "clippy_lints/src/match_on_vec_items.rs",
+      "path": "src/match_on_vec_items.rs",
       "line": 41
     },
     "group": "clippy::pedantic",
@@ -2235,27 +2253,33 @@
   {
     "id": "single_match",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 55
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for matches with a single arm where an `if let` will usually suffice.\n\n **Why is this bad?** Just readability – `if let` nests less than a `match`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # fn bar(stool: &str) {}\n # let x = Some(\"abc\");\n // Bad\n match x {\n     Some(ref foo) => bar(foo),\n     _ => (),\n }\n\n // Good\n if let Some(ref foo) = x {\n     bar(foo);\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "HasPlaceholders"
+    }
   },
   {
     "id": "single_match_else",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 94
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for matches with two arms where an `if let else` will usually suffice.\n\n **Why is this bad?** Just readability – `if let` nests less than a `match`.\n\n **Known problems:** Personal style preferences may differ.\n\n **Example:**\n\n Using `match`:\n\n ```rust\n # fn bar(foo: &usize) {}\n # let other_ref: usize = 1;\n # let x: Option<&usize> = Some(&1);\n match x {\n     Some(ref foo) => bar(foo),\n     _ => bar(&other_ref),\n }\n ```\n\n Using `if let` with `else`:\n\n ```rust\n # fn bar(foo: &usize) {}\n # let other_ref: usize = 1;\n # let x: Option<&usize> = Some(&1);\n if let Some(ref foo) = x {\n     bar(foo);\n } else {\n     bar(&other_ref);\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "HasPlaceholders"
+    }
   },
   {
     "id": "match_ref_pats",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 125
     },
     "group": "clippy::style",
@@ -2268,7 +2292,7 @@
   {
     "id": "match_bool",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 159
     },
     "group": "clippy::pedantic",
@@ -2281,7 +2305,7 @@
   {
     "id": "match_overlapping_arm",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 181
     },
     "group": "clippy::style",
@@ -2294,7 +2318,7 @@
   {
     "id": "match_wild_err_arm",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 203
     },
     "group": "clippy::pedantic",
@@ -2307,7 +2331,7 @@
   {
     "id": "match_as_ref",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 229
     },
     "group": "clippy::complexity",
@@ -2320,7 +2344,7 @@
   {
     "id": "wildcard_enum_match_arm",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 258
     },
     "group": "clippy::restriction",
@@ -2333,7 +2357,7 @@
   {
     "id": "match_wildcard_for_single_variants",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 290
     },
     "group": "clippy::pedantic",
@@ -2346,7 +2370,7 @@
   {
     "id": "wildcard_in_or_patterns",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 317
     },
     "group": "clippy::complexity",
@@ -2359,7 +2383,7 @@
   {
     "id": "infallible_destructuring_match",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 352
     },
     "group": "clippy::style",
@@ -2372,7 +2396,7 @@
   {
     "id": "match_single_binding",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 380
     },
     "group": "clippy::complexity",
@@ -2385,7 +2409,7 @@
   {
     "id": "rest_pat_in_fully_bound_structs",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 410
     },
     "group": "clippy::restriction",
@@ -2398,7 +2422,7 @@
   {
     "id": "redundant_pattern_matching",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 458
     },
     "group": "clippy::style",
@@ -2411,7 +2435,7 @@
   {
     "id": "match_like_matches_macro",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 491
     },
     "group": "clippy::style",
@@ -2424,7 +2448,7 @@
   {
     "id": "match_same_arms",
     "id_span": {
-      "path": "clippy_lints/src/matches.rs",
+      "path": "src/matches.rs",
       "line": 532
     },
     "group": "clippy::pedantic",
@@ -2437,7 +2461,7 @@
   {
     "id": "mem_discriminant_non_enum",
     "id_span": {
-      "path": "clippy_lints/src/mem_discriminant.rs",
+      "path": "src/mem_discriminant.rs",
       "line": 25
     },
     "group": "clippy::correctness",
@@ -2450,7 +2474,7 @@
   {
     "id": "mem_forget",
     "id_span": {
-      "path": "clippy_lints/src/mem_forget.rs",
+      "path": "src/mem_forget.rs",
       "line": 21
     },
     "group": "clippy::restriction",
@@ -2463,7 +2487,7 @@
   {
     "id": "mem_replace_option_with_none",
     "id_span": {
-      "path": "clippy_lints/src/mem_replace.rs",
+      "path": "src/mem_replace.rs",
       "line": 37
     },
     "group": "clippy::style",
@@ -2476,7 +2500,7 @@
   {
     "id": "mem_replace_with_uninit",
     "id_span": {
-      "path": "clippy_lints/src/mem_replace.rs",
+      "path": "src/mem_replace.rs",
       "line": 69
     },
     "group": "clippy::correctness",
@@ -2489,7 +2513,7 @@
   {
     "id": "mem_replace_with_default",
     "id_span": {
-      "path": "clippy_lints/src/mem_replace.rs",
+      "path": "src/mem_replace.rs",
       "line": 93
     },
     "group": "clippy::style",
@@ -2502,8 +2526,8 @@
   {
     "id": "unwrap_used",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 82
+      "path": "src/methods/mod.rs",
+      "line": 84
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.\n **Why is this bad?** It is better to handle the `None` or `Err` case,\n or at least call `.expect(_)` with a more helpful message. Still, for a lot of\n quick-and-dirty code, `unwrap` is a good choice, which is why this lint is\n `Allow` by default.\n\n `result.unwrap()` will let the thread panic on `Err` values.\n Normally, you want to implement more sophisticated error handling,\n and propagate errors upwards with `?` operator.\n\n Even if you want to panic on errors, not all `Error`s implement good\n messages on display. Therefore, it may be beneficial to look at the places\n where they may get displayed. Activate this lint to do just that.\n\n **Known problems:** None.\n\n **Examples:**\n ```rust\n # let opt = Some(1);\n\n // Bad\n opt.unwrap();\n\n // Good\n opt.expect(\"more helpful message\");\n ```\n\n // or\n\n ```rust\n # let res: Result<usize, ()> = Ok(1);\n\n // Bad\n res.unwrap();\n\n // Good\n res.expect(\"more helpful message\");\n ```\n",
@@ -2512,8 +2536,8 @@
   {
     "id": "expect_used",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 124
+      "path": "src/methods/mod.rs",
+      "line": 126
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Checks for `.expect()` calls on `Option`s and `Result`s.\n **Why is this bad?** Usually it is better to handle the `None` or `Err` case.\n Still, for a lot of quick-and-dirty code, `expect` is a good choice, which is why\n this lint is `Allow` by default.\n\n `result.expect()` will let the thread panic on `Err`\n values. Normally, you want to implement more sophisticated error handling,\n and propagate errors upwards with `?` operator.\n\n **Known problems:** None.\n\n **Examples:**\n ```rust,ignore\n # let opt = Some(1);\n\n // Bad\n opt.expect(\"one\");\n\n // Good\n let opt = Some(1);\n opt?;\n ```\n\n // or\n\n ```rust\n # let res: Result<usize, ()> = Ok(1);\n\n // Bad\n res.expect(\"one\");\n\n // Good\n res?;\n # Ok::<(), ()>(())\n ```\n",
@@ -2522,8 +2546,8 @@
   {
     "id": "should_implement_trait",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 153
+      "path": "src/methods/mod.rs",
+      "line": 155
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog\n post](http://llogiq.github.io/2015/07/30/traits.html) for further\n information) instead of an inherent implementation.\n\n **Why is this bad?** Implementing the traits improve ergonomics for users of\n the code, often with very little cost. Also people seeing a `mul(...)`\n method\n may expect `*` to work equally, so you should have good reason to disappoint\n them.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n struct X;\n impl X {\n     fn add(&self, other: &X) -> X {\n         // ..\n # X\n     }\n }\n ```\n",
@@ -2535,28 +2559,34 @@
   {
     "id": "wrong_self_convention",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 186
+      "path": "src/methods/mod.rs",
+      "line": 188
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for methods with certain name prefixes and which doesn't match how self is taken. The actual rules are:\n\n |Prefix |`self` taken          |\n |-------|----------------------|\n |`as_`  |`&self` or `&mut self`|\n |`from_`| none                 |\n |`into_`|`self`                |\n |`is_`  |`&self` or none       |\n |`to_`  |`&self`               |\n\n **Why is this bad?** Consistency breeds readability. If you follow the\n conventions, your users won't be surprised that they, e.g., need to supply a\n mutable reference to a `as_..` function.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # struct X;\n impl X {\n     fn as_str(self) -> &'static str {\n         // ..\n # \"\"\n     }\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "wrong_pub_self_convention",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 210
+      "path": "src/methods/mod.rs",
+      "line": 212
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** This is the same as [`wrong_self_convention`](#wrong_self_convention), but for public items.\n\n **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).\n\n **Known problems:** Actually *renaming* the function may break clients if\n the function is part of the public interface. In that case, be mindful of\n the stability guarantees you've given your users.\n\n **Example:**\n ```rust\n # struct X;\n impl<'a> X {\n     pub fn as_str(self) -> &'a str {\n         \"foo\"\n     }\n }\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "ok_expect",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 233
+      "path": "src/methods/mod.rs",
+      "line": 235
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `ok().expect(..)`.\n **Why is this bad?** Because you usually call `expect()` on the `Result`\n directly to get a better error message.\n\n **Known problems:** The error type needs to implement `Debug`\n\n **Example:**\n ```rust\n # let x = Ok::<_, ()>(());\n\n // Bad\n x.ok().expect(\"why did I do this again?\");\n\n // Good\n x.expect(\"why did I do this again?\");\n ```\n",
@@ -2568,8 +2598,8 @@
   {
     "id": "map_unwrap_or",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 270
+      "path": "src/methods/mod.rs",
+      "line": 272
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for usage of `option.map(_).unwrap_or(_)` or `option.map(_).unwrap_or_else(_)` or `result.map(_).unwrap_or_else(_)`.\n\n **Why is this bad?** Readability, these can be written more concisely (resp.) as\n `option.map_or(_, _)`, `option.map_or_else(_, _)` and `result.map_or_else(_, _)`.\n\n **Known problems:** The order of the arguments is not in execution order\n\n **Examples:**\n ```rust\n # let x = Some(1);\n\n // Bad\n x.map(|a| a + 1).unwrap_or(0);\n\n // Good\n x.map_or(0, |a| a + 1);\n ```\n\n // or\n\n ```rust\n # let x: Result<usize, ()> = Ok(1);\n # fn some_function(foo: ()) -> usize { 1 }\n\n // Bad\n x.map(|a| a + 1).unwrap_or_else(some_function);\n\n // Good\n x.map_or_else(some_function, |a| a + 1);\n ```\n",
@@ -2581,28 +2611,34 @@
   {
     "id": "option_map_or_none",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 293
+      "path": "src/methods/mod.rs",
+      "line": 295
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `_.map_or(None, _)`.\n **Why is this bad?** Readability, this can be written more concisely as\n `_.and_then(_)`.\n\n **Known problems:** The order of the arguments is not in execution order.\n\n **Example:**\n ```rust\n # let opt = Some(1);\n\n // Bad\n opt.map_or(None, |a| Some(a + 1));\n\n // Good\n opt.and_then(|a| Some(a + 1));\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "result_map_or_into_option",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 319
+      "path": "src/methods/mod.rs",
+      "line": 321
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `_.map_or(None, Some)`.\n **Why is this bad?** Readability, this can be written more concisely as\n `_.ok()`.\n\n **Known problems:** None.\n\n **Example:**\n\n Bad:\n ```rust\n # let r: Result<u32, &str> = Ok(1);\n assert_eq!(Some(1), r.map_or(None, Some));\n ```\n\n Good:\n ```rust\n # let r: Result<u32, &str> = Ok(1);\n assert_eq!(Some(1), r.ok());\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "bind_instead_of_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 352
+      "path": "src/methods/mod.rs",
+      "line": 354
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))` or `_.or_else(|x| Err(y))`.\n\n **Why is this bad?** Readability, this can be written more concisely as\n `_.map(|x| y)` or `_.map_err(|x| y)`.\n\n **Known problems:** None\n\n **Example:**\n\n ```rust\n # fn opt() -> Option<&'static str> { Some(\"42\") }\n # fn res() -> Result<&'static str, &'static str> { Ok(\"42\") }\n let _ = opt().and_then(|s| Some(s.len()));\n let _ = res().and_then(|s| if s.len() == 42 { Ok(10) } else { Ok(20) });\n let _ = res().or_else(|s| if s.len() == 42 { Err(10) } else { Err(20) });\n ```\n\n The correct use would be:\n\n ```rust\n # fn opt() -> Option<&'static str> { Some(\"42\") }\n # fn res() -> Result<&'static str, &'static str> { Ok(\"42\") }\n let _ = opt().map(|s| s.len());\n let _ = res().map(|s| if s.len() == 42 { 10 } else { 20 });\n let _ = res().map_err(|s| if s.len() == 42 { 10 } else { 20 });\n ```\n",
@@ -2614,8 +2650,8 @@
   {
     "id": "filter_next",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 375
+      "path": "src/methods/mod.rs",
+      "line": 377
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.filter(_).next()`.\n **Why is this bad?** Readability, this can be written more concisely as\n `_.find(_)`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let vec = vec![1];\n vec.iter().filter(|x| **x == 0).next();\n ```\n Could be written as\n ```rust\n # let vec = vec![1];\n vec.iter().find(|x| **x == 0);\n ```\n",
@@ -2627,8 +2663,8 @@
   {
     "id": "skip_while_next",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 398
+      "path": "src/methods/mod.rs",
+      "line": 400
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.skip_while(condition).next()`.\n **Why is this bad?** Readability, this can be written more concisely as\n `_.find(!condition)`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let vec = vec![1];\n vec.iter().skip_while(|x| **x == 0).next();\n ```\n Could be written as\n ```rust\n # let vec = vec![1];\n vec.iter().find(|x| **x != 0);\n ```\n",
@@ -2640,8 +2676,8 @@
   {
     "id": "map_flatten",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 421
+      "path": "src/methods/mod.rs",
+      "line": 423
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for usage of `_.map(_).flatten(_)`,\n **Why is this bad?** Readability, this can be written more concisely as\n `_.flat_map(_)`\n\n **Known problems:**\n\n **Example:**\n ```rust\n let vec = vec![vec![1]];\n\n // Bad\n vec.iter().map(|x| x.iter()).flatten();\n\n // Good\n vec.iter().flat_map(|x| x.iter());\n ```\n",
@@ -2653,8 +2689,8 @@
   {
     "id": "filter_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 450
+      "path": "src/methods/mod.rs",
+      "line": 452
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for usage of `_.filter(_).map(_)`, `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.\n\n **Why is this bad?** Readability, this can be written more concisely as\n `_.filter_map(_)`.\n\n **Known problems:** Often requires a condition + Option/Iterator creation\n inside the closure.\n\n **Example:**\n ```rust\n let vec = vec![1];\n\n // Bad\n vec.iter().filter(|x| **x == 0).map(|x| *x * 2);\n\n // Good\n vec.iter().filter_map(|x| if *x == 0 {\n     Some(*x * 2)\n } else {\n     None\n });\n ```\n",
@@ -2666,28 +2702,34 @@
   {
     "id": "manual_filter_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 476
+      "path": "src/methods/mod.rs",
+      "line": 478
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.filter(_).map(_)` that can be written more simply as `filter_map(_)`.\n\n **Why is this bad?** Redundant code in the `filter` and `map` operations is poor style and\n less performant.\n\n **Known problems:** None.\n\n **Example:**\n Bad:\n ```rust\n (0_i32..10)\n     .filter(|n| n.checked_add(1).is_some())\n     .map(|n| n.checked_add(1).unwrap());\n ```\n\n Good:\n ```rust\n (0_i32..10).filter_map(|n| n.checked_add(1));\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "manual_find_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 502
+      "path": "src/methods/mod.rs",
+      "line": 504
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.find(_).map(_)` that can be written more simply as `find_map(_)`.\n\n **Why is this bad?** Redundant code in the `find` and `map` operations is poor style and\n less performant.\n\n **Known problems:** None.\n\n **Example:**\n Bad:\n ```rust\n (0_i32..10)\n     .find(|n| n.checked_add(1).is_some())\n     .map(|n| n.checked_add(1).unwrap());\n ```\n\n Good:\n ```rust\n (0_i32..10).find_map(|n| n.checked_add(1));\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "filter_map_next",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 524
+      "path": "src/methods/mod.rs",
+      "line": 526
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for usage of `_.filter_map(_).next()`.\n **Why is this bad?** Readability, this can be written more concisely as\n `_.find_map(_)`.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n  (0..3).filter_map(|x| if x == 2 { Some(x) } else { None }).next();\n ```\n Can be written as\n\n ```rust\n  (0..3).find_map(|x| if x == 2 { Some(x) } else { None });\n ```\n",
@@ -2699,8 +2741,8 @@
   {
     "id": "flat_map_identity",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 546
+      "path": "src/methods/mod.rs",
+      "line": 548
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `flat_map(|x| x)`.\n **Why is this bad?** Readability, this can be written more concisely by using `flatten`.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n # let iter = vec![vec![0]].into_iter();\n iter.flat_map(|x| x);\n ```\n Can be written as\n ```rust\n # let iter = vec![vec![0]].into_iter();\n iter.flatten();\n ```\n",
@@ -2712,8 +2754,8 @@
   {
     "id": "search_is_some",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 570
+      "path": "src/methods/mod.rs",
+      "line": 572
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for an iterator or string search (such as `find()`, `position()`, or `rposition()`) followed by a call to `is_some()`.\n\n **Why is this bad?** Readability, this can be written more concisely as\n `_.any(_)` or `_.contains(_)`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let vec = vec![1];\n vec.iter().find(|x| **x == 0).is_some();\n ```\n Could be written as\n ```rust\n # let vec = vec![1];\n vec.iter().any(|x| *x == 0);\n ```\n",
@@ -2725,8 +2767,8 @@
   {
     "id": "chars_next_cmp",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 594
+      "path": "src/methods/mod.rs",
+      "line": 596
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `.chars().next()` on a `str` to check if it starts with a given char.\n\n **Why is this bad?** Readability, this can be written more concisely as\n `_.starts_with(_)`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let name = \"foo\";\n if name.chars().next() == Some('_') {};\n ```\n Could be written as\n ```rust\n let name = \"foo\";\n if name.starts_with('_') {};\n ```\n",
@@ -2735,8 +2777,8 @@
   {
     "id": "or_fun_call",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 625
+      "path": "src/methods/mod.rs",
+      "line": 627
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`, etc., and suggests to use `or_else`, `unwrap_or_else`, etc., or\n `unwrap_or_default` instead.\n\n **Why is this bad?** The function will always be called and potentially\n allocate an object acting as the default.\n\n **Known problems:** If the function has side-effects, not calling it will\n change the semantic of the program, but you shouldn't rely on that anyway.\n\n **Example:**\n ```rust\n # let foo = Some(String::new());\n foo.unwrap_or(String::new());\n ```\n this can instead be written:\n ```rust\n # let foo = Some(String::new());\n foo.unwrap_or_else(String::new);\n ```\n or\n ```rust\n # let foo = Some(String::new());\n foo.unwrap_or_default();\n ```\n",
@@ -2748,8 +2790,8 @@
   {
     "id": "expect_fun_call",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 660
+      "path": "src/methods/mod.rs",
+      "line": 662
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`, etc., and suggests to use `unwrap_or_else` instead\n\n **Why is this bad?** The function will always be called.\n\n **Known problems:** If the function has side-effects, not calling it will\n change the semantics of the program, but you shouldn't rely on that anyway.\n\n **Example:**\n ```rust\n # let foo = Some(String::new());\n # let err_code = \"418\";\n # let err_msg = \"I'm a teapot\";\n foo.expect(&format!(\"Err {}: {}\", err_code, err_msg));\n ```\n or\n ```rust\n # let foo = Some(String::new());\n # let err_code = \"418\";\n # let err_msg = \"I'm a teapot\";\n foo.expect(format!(\"Err {}: {}\", err_code, err_msg).as_str());\n ```\n this can instead be written:\n ```rust\n # let foo = Some(String::new());\n # let err_code = \"418\";\n # let err_msg = \"I'm a teapot\";\n foo.unwrap_or_else(|| panic!(\"Err {}: {}\", err_code, err_msg));\n ```\n",
@@ -2761,8 +2803,8 @@
   {
     "id": "clone_on_copy",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 677
+      "path": "src/methods/mod.rs",
+      "line": 679
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `.clone()` on a `Copy` type.\n **Why is this bad?** The only reason `Copy` types implement `Clone` is for\n generics, not for using the `clone` method on a concrete type.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n 42u64.clone();\n ```\n",
@@ -2774,8 +2816,8 @@
   {
     "id": "clone_on_ref_ptr",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 702
+      "path": "src/methods/mod.rs",
+      "line": 704
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Checks for usage of `.clone()` on a ref-counted pointer, (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified\n function syntax instead (e.g., `Rc::clone(foo)`).\n\n **Why is this bad?** Calling '.clone()' on an Rc, Arc, or Weak\n can obscure the fact that only the pointer is being cloned, not the underlying\n data.\n\n **Example:**\n ```rust\n # use std::rc::Rc;\n let x = Rc::new(1);\n\n // Bad\n x.clone();\n\n // Good\n Rc::clone(&x);\n ```\n",
@@ -2787,8 +2829,8 @@
   {
     "id": "clone_double_ref",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 724
+      "path": "src/methods/mod.rs",
+      "line": 726
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for usage of `.clone()` on an `&&T`.\n **Why is this bad?** Cloning an `&&T` copies the inner `&T`, instead of\n cloning the underlying `T`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n fn main() {\n     let x = vec![1];\n     let y = &&x;\n     let z = y.clone();\n     println!(\"{:p} {:p}\", *y, z); // prints out the same pointer\n }\n ```\n",
@@ -2800,8 +2842,8 @@
   {
     "id": "inefficient_to_string",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 747
+      "path": "src/methods/mod.rs",
+      "line": 749
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for usage of `.to_string()` on an `&&T` where `T` implements `ToString` directly (like `&&str` or `&&String`).\n\n **Why is this bad?** This bypasses the specialized implementation of\n `ToString` and instead goes through the more expensive string formatting\n facilities.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n // Generic implementation for `T: Display` is used (slow)\n [\"foo\", \"bar\"].iter().map(|s| s.to_string());\n\n // OK, the specialized impl is used\n [\"foo\", \"bar\"].iter().map(|&s| s.to_string());\n ```\n",
@@ -2813,8 +2855,8 @@
   {
     "id": "new_ret_no_self",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 808
+      "path": "src/methods/mod.rs",
+      "line": 810
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for `new` not returning a type that contains `Self`.\n **Why is this bad?** As a convention, `new` methods are used to make a new\n instance of a type.\n\n **Known problems:** None.\n\n **Example:**\n In an impl block:\n ```rust\n # struct Foo;\n # struct NotAFoo;\n impl Foo {\n     fn new() -> NotAFoo {\n # NotAFoo\n     }\n }\n ```\n\n ```rust\n # struct Foo;\n struct Bar(Foo);\n impl Foo {\n     // Bad. The type name must contain `Self`\n     fn new() -> Bar {\n # Bar(Foo)\n     }\n }\n ```\n\n ```rust\n # struct Foo;\n # struct FooError;\n impl Foo {\n     // Good. Return type contains `Self`\n     fn new() -> Result<Foo, FooError> {\n # Ok(Foo)\n     }\n }\n ```\n\n Or in a trait definition:\n ```rust\n pub trait Trait {\n     // Bad. The type name must contain `Self`\n     fn new();\n }\n ```\n\n ```rust\n pub trait Trait {\n     // Good. Return type contains `Self`\n     fn new() -> Self;\n }\n ```\n",
@@ -2826,8 +2868,8 @@
   {
     "id": "single_char_pattern",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 829
+      "path": "src/methods/mod.rs",
+      "line": 831
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for string methods that receive a single-character `str` as an argument, e.g., `_.split(\"x\")`.\n\n **Why is this bad?** Performing these methods using a `char` is faster than\n using a `str`.\n\n **Known problems:** Does not catch multi-byte unicode characters.\n\n **Example:**\n ```rust,ignore\n // Bad\n _.split(\"x\");\n\n // Good\n _.split('x');\n",
@@ -2839,8 +2881,8 @@
   {
     "id": "iterator_step_by_zero",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 848
+      "path": "src/methods/mod.rs",
+      "line": 850
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for calling `.step_by(0)` on iterators which panics.\n **Why is this bad?** This very much looks like an oversight. Use `panic!()` instead if you\n actually intend to panic.\n\n **Known problems:** None.\n\n **Example:**\n ```rust,should_panic\n for x in (0..100).step_by(0) {\n     //..\n }\n ```\n",
@@ -2852,8 +2894,8 @@
   {
     "id": "iter_nth_zero",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 876
+      "path": "src/methods/mod.rs",
+      "line": 878
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for the use of `iter.nth(0)`.\n **Why is this bad?** `iter.next()` is equivalent to\n `iter.nth(0)`, as they both consume the next element,\n  but is more readable.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n # use std::collections::HashSet;\n // Bad\n # let mut s = HashSet::new();\n # s.insert(1);\n let x = s.iter().nth(0);\n\n // Good\n # let mut s = HashSet::new();\n # s.insert(1);\n let x = s.iter().next();\n ```\n",
@@ -2865,8 +2907,8 @@
   {
     "id": "iter_nth",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 902
+      "path": "src/methods/mod.rs",
+      "line": 904
     },
     "group": "clippy::perf",
     "docs": " **What it does:** Checks for use of `.iter().nth()` (and the related `.iter_mut().nth()`) on standard library types with O(1) element access.\n\n **Why is this bad?** `.get()` and `.get_mut()` are more efficient and more\n readable.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let some_vec = vec![0, 1, 2, 3];\n let bad_vec = some_vec.iter().nth(3);\n let bad_slice = &some_vec[..].iter().nth(3);\n ```\n The correct use would be:\n ```rust\n let some_vec = vec![0, 1, 2, 3];\n let bad_vec = some_vec.get(3);\n let bad_slice = &some_vec[..].get(3);\n ```\n",
@@ -2878,8 +2920,8 @@
   {
     "id": "iter_skip_next",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 926
+      "path": "src/methods/mod.rs",
+      "line": 928
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for use of `.skip(x).next()` on iterators.\n **Why is this bad?** `.nth(x)` is cleaner\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let some_vec = vec![0, 1, 2, 3];\n let bad_vec = some_vec.iter().skip(3).next();\n let bad_slice = &some_vec[..].iter().skip(3).next();\n ```\n The correct use would be:\n ```rust\n let some_vec = vec![0, 1, 2, 3];\n let bad_vec = some_vec.iter().nth(3);\n let bad_slice = &some_vec[..].iter().nth(3);\n ```\n",
@@ -2891,8 +2933,8 @@
   {
     "id": "get_unwrap",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 959
+      "path": "src/methods/mod.rs",
+      "line": 961
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Checks for use of `.get().unwrap()` (or `.get_mut().unwrap`) on a standard library type which implements `Index`\n\n **Why is this bad?** Using the Index trait (`[]`) is more clear and more\n concise.\n\n **Known problems:** Not a replacement for error handling: Using either\n `.unwrap()` or the Index trait (`[]`) carries the risk of causing a `panic`\n if the value being accessed is `None`. If the use of `.get().unwrap()` is a\n temporary placeholder for dealing with the `Option` type, then this does\n not mitigate the need for error handling. If there is a chance that `.get()`\n will be `None` in your program, then it is advisable that the `None` case\n is handled in a future refactor instead of using `.unwrap()` or the Index\n trait.\n\n **Example:**\n ```rust\n let mut some_vec = vec![0, 1, 2, 3];\n let last = some_vec.get(3).unwrap();\n *some_vec.get_mut(0).unwrap() = 1;\n ```\n The correct use would be:\n ```rust\n let mut some_vec = vec![0, 1, 2, 3];\n let last = some_vec[3];\n some_vec[0] = 1;\n ```\n",
@@ -2904,8 +2946,8 @@
   {
     "id": "string_extend_chars",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 988
+      "path": "src/methods/mod.rs",
+      "line": 990
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for the use of `.extend(s.chars())` where s is a `&str` or `String`.\n\n **Why is this bad?** `.push_str(s)` is clearer\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let abc = \"abc\";\n let def = String::from(\"def\");\n let mut s = String::new();\n s.extend(abc.chars());\n s.extend(def.chars());\n ```\n The correct use would be:\n ```rust\n let abc = \"abc\";\n let def = String::from(\"def\");\n let mut s = String::new();\n s.push_str(abc);\n s.push_str(&def);\n ```\n",
@@ -2917,8 +2959,8 @@
   {
     "id": "iter_cloned_collect",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1011
+      "path": "src/methods/mod.rs",
+      "line": 1013
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for the use of `.cloned().collect()` on slice to create a `Vec`.\n\n **Why is this bad?** `.to_vec()` is clearer\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let s = [1, 2, 3, 4, 5];\n let s2: Vec<isize> = s[..].iter().cloned().collect();\n ```\n The better use would be:\n ```rust\n let s = [1, 2, 3, 4, 5];\n let s2: Vec<isize> = s.to_vec();\n ```\n",
@@ -2930,8 +2972,8 @@
   {
     "id": "chars_last_cmp",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1035
+      "path": "src/methods/mod.rs",
+      "line": 1037
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `_.chars().last()` or `_.chars().next_back()` on a `str` to check if it ends with a given char.\n\n **Why is this bad?** Readability, this can be written more concisely as\n `_.ends_with(_)`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let name = \"_\";\n\n // Bad\n name.chars().last() == Some('_') || name.chars().next_back() == Some('-');\n\n // Good\n name.ends_with('_') || name.ends_with('-');\n ```\n",
@@ -2940,8 +2982,8 @@
   {
     "id": "useless_asref",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1060
+      "path": "src/methods/mod.rs",
+      "line": 1062
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `.as_ref()` or `.as_mut()` where the types before and after the call are the same.\n\n **Why is this bad?** The call is unnecessary.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # fn do_stuff(x: &[i32]) {}\n let x: &[i32] = &[1, 2, 3, 4, 5];\n do_stuff(x.as_ref());\n ```\n The correct use would be:\n ```rust\n # fn do_stuff(x: &[i32]) {}\n let x: &[i32] = &[1, 2, 3, 4, 5];\n do_stuff(x);\n ```\n",
@@ -2953,8 +2995,8 @@
   {
     "id": "unnecessary_fold",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1082
+      "path": "src/methods/mod.rs",
+      "line": 1084
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for using `fold` when a more succinct alternative exists. Specifically, this checks for `fold`s which could be replaced by `any`, `all`,\n `sum` or `product`.\n\n **Why is this bad?** Readability.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let _ = (0..3).fold(false, |acc, x| acc || x > 2);\n ```\n This could be written as:\n ```rust\n let _ = (0..3).any(|x| x > 2);\n ```\n",
@@ -2966,8 +3008,8 @@
   {
     "id": "unnecessary_filter_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1111
+      "path": "src/methods/mod.rs",
+      "line": 1113
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for `filter_map` calls which could be replaced by `filter` or `map`. More specifically it checks if the closure provided is only performing one of the\n filter or map operations and suggests the appropriate option.\n\n **Why is this bad?** Complexity. The intent is also clearer if only a single\n operation is being performed.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n let _ = (0..3).filter_map(|x| if x > 2 { Some(x) } else { None });\n\n // As there is no transformation of the argument this could be written as:\n let _ = (0..3).filter(|&x| x > 2);\n ```\n\n ```rust\n let _ = (0..4).filter_map(|x| Some(x + 1));\n\n // As there is no conditional check on the argument this could be written as:\n let _ = (0..4).map(|x| x + 1);\n ```\n",
@@ -2979,8 +3021,8 @@
   {
     "id": "into_iter_on_ref",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1135
+      "path": "src/methods/mod.rs",
+      "line": 1137
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for `into_iter` calls on references which should be replaced by `iter` or `iter_mut`.\n\n **Why is this bad?** Readability. Calling `into_iter` on a reference will not move out its\n content into the resulting iterator, which is confusing. It is better just call `iter` or\n `iter_mut` directly.\n\n **Known problems:** None\n\n **Example:**\n\n ```rust\n // Bad\n let _ = (&vec![3, 4, 5]).into_iter();\n\n // Good\n let _ = (&vec![3, 4, 5]).iter();\n ```\n",
@@ -2992,8 +3034,8 @@
   {
     "id": "suspicious_map",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1154
+      "path": "src/methods/mod.rs",
+      "line": 1156
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for calls to `map` followed by a `count`.\n **Why is this bad?** It looks suspicious. Maybe `map` was confused with `filter`.\n If the `map` call is intentional, this should be rewritten. Or, if you intend to\n drive the iterator to completion, you can just use `for_each` instead.\n\n **Known problems:** None\n\n **Example:**\n\n ```rust\n let _ = (0..3).map(|x| x + 2).count();\n ```\n",
@@ -3005,8 +3047,8 @@
   {
     "id": "uninit_assumed_init",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1186
+      "path": "src/methods/mod.rs",
+      "line": 1188
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for `MaybeUninit::uninit().assume_init()`.\n **Why is this bad?** For most types, this is undefined behavior.\n\n **Known problems:** For now, we accept empty tuples and tuples / arrays\n of `MaybeUninit`. There may be other types that allow uninitialized\n data, but those are not yet rigorously defined.\n\n **Example:**\n\n ```rust\n // Beware the UB\n use std::mem::MaybeUninit;\n\n let _: usize = unsafe { MaybeUninit::uninit().assume_init() };\n ```\n\n Note that the following is OK:\n\n ```rust\n use std::mem::MaybeUninit;\n\n let _: [MaybeUninit<bool>; 5] = unsafe {\n     MaybeUninit::uninit().assume_init()\n };\n ```\n",
@@ -3018,8 +3060,8 @@
   {
     "id": "manual_saturating_arithmetic",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1213
+      "path": "src/methods/mod.rs",
+      "line": 1215
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for `.checked_add/sub(x).unwrap_or(MAX/MIN)`.\n **Why is this bad?** These can be written simply with `saturating_add/sub` methods.\n\n **Example:**\n\n ```rust\n # let y: u32 = 0;\n # let x: u32 = 100;\n let add = x.checked_add(y).unwrap_or(u32::MAX);\n let sub = x.checked_sub(y).unwrap_or(u32::MIN);\n ```\n\n can be written using dedicated methods for saturating addition/subtraction as:\n\n ```rust\n # let y: u32 = 0;\n # let x: u32 = 100;\n let add = x.saturating_add(y);\n let sub = x.saturating_sub(y);\n ```\n",
@@ -3031,8 +3073,8 @@
   {
     "id": "zst_offset",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1230
+      "path": "src/methods/mod.rs",
+      "line": 1232
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to zero-sized types\n\n **Why is this bad?** This is a no-op, and likely unintended\n\n **Known problems:** None\n\n **Example:**\n ```rust\n unsafe { (&() as *const ()).offset(1) };\n ```\n",
@@ -3044,8 +3086,8 @@
   {
     "id": "filetype_is_file",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1270
+      "path": "src/methods/mod.rs",
+      "line": 1272
     },
     "group": "clippy::restriction",
     "docs": " **What it does:** Checks for `FileType::is_file()`.\n **Why is this bad?** When people testing a file type with `FileType::is_file`\n they are testing whether a path is something they can get bytes from. But\n `is_file` doesn't cover special file types in unix-like systems, and doesn't cover\n symlink in windows. Using `!FileType::is_dir()` is a better way to that intention.\n\n **Example:**\n\n ```rust\n # || {\n let metadata = std::fs::metadata(\"foo.txt\")?;\n let filetype = metadata.file_type();\n\n if filetype.is_file() {\n     // read file\n }\n # Ok::<_, std::io::Error>(())\n # };\n ```\n\n should be written as:\n\n ```rust\n # || {\n let metadata = std::fs::metadata(\"foo.txt\")?;\n let filetype = metadata.file_type();\n\n if !filetype.is_dir() {\n     // read file\n }\n # Ok::<_, std::io::Error>(())\n # };\n ```\n",
@@ -3057,8 +3099,8 @@
   {
     "id": "option_as_ref_deref",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1295
+      "path": "src/methods/mod.rs",
+      "line": 1297
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `_.as_ref().map(Deref::deref)` or it's aliases (such as String::as_str).\n **Why is this bad?** Readability, this can be written more concisely as\n `_.as_deref()`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let opt = Some(\"\".to_string());\n opt.as_ref().map(String::as_str)\n # ;\n ```\n Can be written as\n ```rust\n # let opt = Some(\"\".to_string());\n opt.as_deref()\n # ;\n ```\n",
@@ -3070,8 +3112,8 @@
   {
     "id": "iter_next_slice",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1321
+      "path": "src/methods/mod.rs",
+      "line": 1323
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `iter().next()` on a Slice or an Array\n **Why is this bad?** These can be shortened into `.get()`\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n # let a = [1, 2, 3];\n # let b = vec![1, 2, 3];\n a[2..].iter().next();\n b.iter().next();\n ```\n should be written as:\n ```rust\n # let a = [1, 2, 3];\n # let b = vec![1, 2, 3];\n a.get(2);\n b.get(0);\n ```\n",
@@ -3083,8 +3125,8 @@
   {
     "id": "single_char_add_str",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1346
+      "path": "src/methods/mod.rs",
+      "line": 1348
     },
     "group": "clippy::style",
     "docs": " **What it does:** Warns when using `push_str`/`insert_str` with a single-character string literal where `push`/`insert` with a `char` would work fine.\n\n **Why is this bad?** It's less clear that we are pushing a single character.\n\n **Known problems:** None\n\n **Example:**\n ```rust\n let mut string = String::new();\n string.insert_str(0, \"R\");\n string.push_str(\"R\");\n ```\n Could be written as\n ```rust\n let mut string = String::new();\n string.insert(0, 'R');\n string.push('R');\n ```\n",
@@ -3096,8 +3138,8 @@
   {
     "id": "unnecessary_lazy_evaluations",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1382
+      "path": "src/methods/mod.rs",
+      "line": 1384
     },
     "group": "clippy::style",
     "docs": " **What it does:** As the counterpart to `or_fun_call`, this lint looks for unnecessary lazily evaluated closures on `Option` and `Result`.\n\n This lint suggests changing the following functions, when eager evaluation results in\n simpler code:\n  - `unwrap_or_else` to `unwrap_or`\n  - `and_then` to `and`\n  - `or_else` to `or`\n  - `get_or_insert_with` to `get_or_insert`\n  - `ok_or_else` to `ok_or`\n\n **Why is this bad?** Using eager evaluation is shorter and simpler in some cases.\n\n **Known problems:** It is possible, but not recommended for `Deref` and `Index` to have\n side effects. Eagerly evaluating them can change the semantics of the program.\n\n **Example:**\n\n ```rust\n // example code where clippy issues a warning\n let opt: Option<u32> = None;\n\n opt.unwrap_or_else(|| 42);\n ```\n Use instead:\n ```rust\n let opt: Option<u32> = None;\n\n opt.unwrap_or(42);\n ```\n",
@@ -3109,8 +3151,8 @@
   {
     "id": "map_collect_result_unit",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1403
+      "path": "src/methods/mod.rs",
+      "line": 1405
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for usage of `_.map(_).collect::<Result<(), _>()`.\n **Why is this bad?** Using `try_for_each` instead is more readable and idiomatic.\n\n **Known problems:** None\n\n **Example:**\n\n ```rust\n (0..3).map(|t| Err(t)).collect::<Result<(), _>>();\n ```\n Use instead:\n ```rust\n (0..3).try_for_each(|t| Err(t));\n ```\n",
@@ -3122,8 +3164,8 @@
   {
     "id": "from_iter_instead_of_collect",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1436
+      "path": "src/methods/mod.rs",
+      "line": 1438
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for `from_iter()` function calls on types that implement the `FromIterator` trait.\n\n **Why is this bad?** It is recommended style to use collect. See\n [FromIterator documentation](https://doc.rust-lang.org/std/iter/trait.FromIterator.html)\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n use std::iter::FromIterator;\n\n let five_fives = std::iter::repeat(5).take(5);\n\n let v = Vec::from_iter(five_fives);\n\n assert_eq!(v, vec![5, 5, 5, 5, 5]);\n ```\n Use instead:\n ```rust\n let five_fives = std::iter::repeat(5).take(5);\n\n let v: Vec<i32> = five_fives.collect();\n\n assert_eq!(v, vec![5, 5, 5, 5, 5]);\n ```\n",
@@ -3135,8 +3177,8 @@
   {
     "id": "inspect_for_each",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1466
+      "path": "src/methods/mod.rs",
+      "line": 1468
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `inspect().for_each()`.\n **Why is this bad?** It is the same as performing the computation\n inside `inspect` at the beginning of the closure in `for_each`.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n [1,2,3,4,5].iter()\n .inspect(|&x| println!(\"inspect the number: {}\", x))\n .for_each(|&x| {\n     assert!(x >= 0);\n });\n ```\n Can be written as\n ```rust\n [1,2,3,4,5].iter()\n .for_each(|&x| {\n     println!(\"inspect the number: {}\", x);\n     assert!(x >= 0);\n });\n ```\n",
@@ -3148,8 +3190,8 @@
   {
     "id": "filter_map_identity",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1489
+      "path": "src/methods/mod.rs",
+      "line": 1491
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for usage of `filter_map(|x| x)`.\n **Why is this bad?** Readability, this can be written more concisely by using `flatten`.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n # let iter = vec![Some(1)].into_iter();\n iter.filter_map(|x| x);\n ```\n Use instead:\n ```rust\n # let iter = vec![Some(1)].into_iter();\n iter.flatten();\n ```\n",
@@ -3161,8 +3203,8 @@
   {
     "id": "bytes_nth",
     "id_span": {
-      "path": "clippy_lints/src/methods/mod.rs",
-      "line": 1511
+      "path": "src/methods/mod.rs",
+      "line": 1513
     },
     "group": "clippy::style",
     "docs": " **What it does:** Checks for the use of `.bytes().nth()`.\n **Why is this bad?** `.as_bytes().get()` is more efficient and more\n readable.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n // Bad\n let _ = \"Hello\".bytes().nth(3);\n\n // Good\n let _ = \"Hello\".as_bytes().get(3);\n ```\n",
@@ -3172,9 +3214,35 @@
     }
   },
   {
+    "id": "implicit_clone",
+    "id_span": {
+      "path": "src/methods/mod.rs",
+      "line": 1539
+    },
+    "group": "clippy::pedantic",
+    "docs": " **What it does:** Checks for the usage of `_.to_owned()`, `vec.to_vec()`, or similar when calling `_.clone()` would be clearer.\n **Why is this bad?** These methods do the same thing as `_.clone()` but may be confusing as\n to why we are calling `to_vec` on something that is already a `Vec` or calling `to_owned` on something that is already owned.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n let a = vec![1, 2, 3];\n let b = a.to_vec();\n let c = a.to_owned();\n ```\n Use instead:\n ```rust\n let a = vec![1, 2, 3];\n let b = a.clone();\n let c = a.clone();\n ```\n",
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
+  },
+  {
+    "id": "iter_count",
+    "id_span": {
+      "path": "src/methods/mod.rs",
+      "line": 1565
+    },
+    "group": "clippy::complexity",
+    "docs": " **What it does:** Checks for the use of `.iter().count()`.\n **Why is this bad?** `.len()` is more efficient and more\n readable.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n // Bad\n let some_vec = vec![0, 1, 2, 3];\n let _ = some_vec.iter().count();\n let _ = &some_vec[..].iter().count();\n\n // Good\n let some_vec = vec![0, 1, 2, 3];\n let _ = some_vec.len();\n let _ = &some_vec[..].len();\n ```\n",
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
+  },
+  {
     "id": "min_max",
     "id_span": {
-      "path": "clippy_lints/src/minmax.rs",
+      "path": "src/minmax.rs",
       "line": 28
     },
     "group": "clippy::correctness",
@@ -3187,7 +3255,7 @@
   {
     "id": "toplevel_ref_arg",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 53
     },
     "group": "clippy::style",
@@ -3200,7 +3268,7 @@
   {
     "id": "cmp_nan",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 76
     },
     "group": "clippy::correctness",
@@ -3213,7 +3281,7 @@
   {
     "id": "float_cmp",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 109
     },
     "group": "clippy::correctness",
@@ -3223,7 +3291,7 @@
   {
     "id": "cmp_owned",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 136
     },
     "group": "clippy::perf",
@@ -3236,7 +3304,7 @@
   {
     "id": "modulo_one",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 159
     },
     "group": "clippy::correctness",
@@ -3249,7 +3317,7 @@
   {
     "id": "used_underscore_binding",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 181
     },
     "group": "clippy::pedantic",
@@ -3262,7 +3330,7 @@
   {
     "id": "short_circuit_statement",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 201
     },
     "group": "clippy::complexity",
@@ -3275,7 +3343,7 @@
   {
     "id": "zero_ptr",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 223
     },
     "group": "clippy::style",
@@ -3288,7 +3356,7 @@
   {
     "id": "float_cmp_const",
     "id_span": {
-      "path": "clippy_lints/src/misc.rs",
+      "path": "src/misc.rs",
       "line": 254
     },
     "group": "clippy::restriction",
@@ -3298,7 +3366,7 @@
   {
     "id": "unneeded_field_pattern",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 44
     },
     "group": "clippy::restriction",
@@ -3311,7 +3379,7 @@
   {
     "id": "duplicate_underscore_argument",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 65
     },
     "group": "clippy::style",
@@ -3324,7 +3392,7 @@
   {
     "id": "double_neg",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 83
     },
     "group": "clippy::style",
@@ -3337,7 +3405,7 @@
   {
     "id": "mixed_case_hex_literals",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 104
     },
     "group": "clippy::style",
@@ -3350,7 +3418,7 @@
   {
     "id": "unseparated_literal_suffix",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 125
     },
     "group": "clippy::pedantic",
@@ -3363,7 +3431,7 @@
   {
     "id": "zero_prefixed_literal",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 163
     },
     "group": "clippy::complexity",
@@ -3376,7 +3444,7 @@
   {
     "id": "builtin_type_shadow",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 184
     },
     "group": "clippy::style",
@@ -3389,7 +3457,7 @@
   {
     "id": "redundant_pattern",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 213
     },
     "group": "clippy::style",
@@ -3402,7 +3470,7 @@
   {
     "id": "unneeded_wildcard_pattern",
     "id_span": {
-      "path": "clippy_lints/src/misc_early.rs",
+      "path": "src/misc_early.rs",
       "line": 247
     },
     "group": "clippy::complexity",
@@ -3415,7 +3483,7 @@
   {
     "id": "missing_const_for_fn",
     "id_span": {
-      "path": "clippy_lints/src/missing_const_for_fn.rs",
+      "path": "src/missing_const_for_fn.rs",
       "line": 72
     },
     "group": "clippy::nursery",
@@ -3428,7 +3496,7 @@
   {
     "id": "missing_docs_in_private_items",
     "id_span": {
-      "path": "clippy_lints/src/missing_doc.rs",
+      "path": "src/missing_doc.rs",
       "line": 29
     },
     "group": "clippy::restriction",
@@ -3441,7 +3509,7 @@
   {
     "id": "missing_inline_in_public_items",
     "id_span": {
-      "path": "clippy_lints/src/missing_inline.rs",
+      "path": "src/missing_inline.rs",
       "line": 55
     },
     "group": "clippy::restriction",
@@ -3454,7 +3522,7 @@
   {
     "id": "modulo_arithmetic",
     "id_span": {
-      "path": "clippy_lints/src/modulo_arithmetic.rs",
+      "path": "src/modulo_arithmetic.rs",
       "line": 26
     },
     "group": "clippy::restriction",
@@ -3467,7 +3535,7 @@
   {
     "id": "multiple_crate_versions",
     "id_span": {
-      "path": "clippy_lints/src/multiple_crate_versions.rs",
+      "path": "src/multiple_crate_versions.rs",
       "line": 32
     },
     "group": "clippy::cargo",
@@ -3480,7 +3548,7 @@
   {
     "id": "mutable_key_type",
     "id_span": {
-      "path": "clippy_lints/src/mut_key.rs",
+      "path": "src/mut_key.rs",
       "line": 50
     },
     "group": "clippy::correctness",
@@ -3493,7 +3561,7 @@
   {
     "id": "mut_mut",
     "id_span": {
-      "path": "clippy_lints/src/mut_mut.rs",
+      "path": "src/mut_mut.rs",
       "line": 24
     },
     "group": "clippy::pedantic",
@@ -3506,7 +3574,7 @@
   {
     "id": "mut_mutex_lock",
     "id_span": {
-      "path": "clippy_lints/src/mut_mutex_lock.rs",
+      "path": "src/mut_mutex_lock.rs",
       "line": 40
     },
     "group": "clippy::style",
@@ -3519,7 +3587,7 @@
   {
     "id": "unnecessary_mut_passed",
     "id_span": {
-      "path": "clippy_lints/src/mut_reference.rs",
+      "path": "src/mut_reference.rs",
       "line": 25
     },
     "group": "clippy::style",
@@ -3532,7 +3600,7 @@
   {
     "id": "debug_assert_with_mut_call",
     "id_span": {
-      "path": "clippy_lints/src/mutable_debug_assertion.rs",
+      "path": "src/mutable_debug_assertion.rs",
       "line": 28
     },
     "group": "clippy::nursery",
@@ -3545,7 +3613,7 @@
   {
     "id": "mutex_atomic",
     "id_span": {
-      "path": "clippy_lints/src/mutex_atomic.rs",
+      "path": "src/mutex_atomic.rs",
       "line": 34
     },
     "group": "clippy::perf",
@@ -3558,7 +3626,7 @@
   {
     "id": "mutex_integer",
     "id_span": {
-      "path": "clippy_lints/src/mutex_atomic.rs",
+      "path": "src/mutex_atomic.rs",
       "line": 59
     },
     "group": "clippy::nursery",
@@ -3571,7 +3639,7 @@
   {
     "id": "needless_arbitrary_self_type",
     "id_span": {
-      "path": "clippy_lints/src/needless_arbitrary_self_type.rs",
+      "path": "src/needless_arbitrary_self_type.rs",
       "line": 55
     },
     "group": "clippy::complexity",
@@ -3584,7 +3652,7 @@
   {
     "id": "needless_bool",
     "id_span": {
-      "path": "clippy_lints/src/needless_bool.rs",
+      "path": "src/needless_bool.rs",
       "line": 38
     },
     "group": "clippy::complexity",
@@ -3597,7 +3665,7 @@
   {
     "id": "bool_comparison",
     "id_span": {
-      "path": "clippy_lints/src/needless_bool.rs",
+      "path": "src/needless_bool.rs",
       "line": 62
     },
     "group": "clippy::complexity",
@@ -3610,7 +3678,7 @@
   {
     "id": "needless_borrow",
     "id_span": {
-      "path": "clippy_lints/src/needless_borrow.rs",
+      "path": "src/needless_borrow.rs",
       "line": 32
     },
     "group": "clippy::nursery",
@@ -3623,7 +3691,7 @@
   {
     "id": "needless_borrowed_reference",
     "id_span": {
-      "path": "clippy_lints/src/needless_borrowed_ref.rs",
+      "path": "src/needless_borrowed_ref.rs",
       "line": 48
     },
     "group": "clippy::complexity",
@@ -3636,7 +3704,7 @@
   {
     "id": "needless_continue",
     "id_span": {
-      "path": "clippy_lints/src/needless_continue.rs",
+      "path": "src/needless_continue.rs",
       "line": 114
     },
     "group": "clippy::pedantic",
@@ -3649,7 +3717,7 @@
   {
     "id": "needless_pass_by_value",
     "id_span": {
-      "path": "clippy_lints/src/needless_pass_by_value.rs",
+      "path": "src/needless_pass_by_value.rs",
       "line": 50
     },
     "group": "clippy::pedantic",
@@ -3662,7 +3730,7 @@
   {
     "id": "needless_question_mark",
     "id_span": {
-      "path": "clippy_lints/src/needless_question_mark.rs",
+      "path": "src/needless_question_mark.rs",
       "line": 57
     },
     "group": "clippy::complexity",
@@ -3675,7 +3743,7 @@
   {
     "id": "needless_update",
     "id_span": {
-      "path": "clippy_lints/src/needless_update.rs",
+      "path": "src/needless_update.rs",
       "line": 43
     },
     "group": "clippy::complexity",
@@ -3688,7 +3756,7 @@
   {
     "id": "neg_cmp_op_on_partial_ord",
     "id_span": {
-      "path": "clippy_lints/src/neg_cmp_op_on_partial_ord.rs",
+      "path": "src/neg_cmp_op_on_partial_ord.rs",
       "line": 41
     },
     "group": "clippy::complexity",
@@ -3701,7 +3769,7 @@
   {
     "id": "neg_multiply",
     "id_span": {
-      "path": "clippy_lints/src/neg_multiply.rs",
+      "path": "src/neg_multiply.rs",
       "line": 21
     },
     "group": "clippy::style",
@@ -3714,7 +3782,7 @@
   {
     "id": "new_without_default",
     "id_span": {
-      "path": "clippy_lints/src/new_without_default.rs",
+      "path": "src/new_without_default.rs",
       "line": 48
     },
     "group": "clippy::style",
@@ -3727,7 +3795,7 @@
   {
     "id": "no_effect",
     "id_span": {
-      "path": "clippy_lints/src/no_effect.rs",
+      "path": "src/no_effect.rs",
       "line": 22
     },
     "group": "clippy::complexity",
@@ -3740,7 +3808,7 @@
   {
     "id": "unnecessary_operation",
     "id_span": {
-      "path": "clippy_lints/src/no_effect.rs",
+      "path": "src/no_effect.rs",
       "line": 40
     },
     "group": "clippy::complexity",
@@ -3753,7 +3821,7 @@
   {
     "id": "declare_interior_mutable_const",
     "id_span": {
-      "path": "clippy_lints/src/non_copy_const.rs",
+      "path": "src/non_copy_const.rs",
       "line": 69
     },
     "group": "clippy::style",
@@ -3763,7 +3831,7 @@
   {
     "id": "borrow_interior_mutable_const",
     "id_span": {
-      "path": "clippy_lints/src/non_copy_const.rs",
+      "path": "src/non_copy_const.rs",
       "line": 110
     },
     "group": "clippy::style",
@@ -3773,7 +3841,7 @@
   {
     "id": "similar_names",
     "id_span": {
-      "path": "clippy_lints/src/non_expressive_names.rs",
+      "path": "src/non_expressive_names.rs",
       "line": 27
     },
     "group": "clippy::pedantic",
@@ -3786,7 +3854,7 @@
   {
     "id": "many_single_char_names",
     "id_span": {
-      "path": "clippy_lints/src/non_expressive_names.rs",
+      "path": "src/non_expressive_names.rs",
       "line": 45
     },
     "group": "clippy::style",
@@ -3799,7 +3867,7 @@
   {
     "id": "just_underscores_and_digits",
     "id_span": {
-      "path": "clippy_lints/src/non_expressive_names.rs",
+      "path": "src/non_expressive_names.rs",
       "line": 65
     },
     "group": "clippy::style",
@@ -3812,7 +3880,7 @@
   {
     "id": "nonsensical_open_options",
     "id_span": {
-      "path": "clippy_lints/src/open_options.rs",
+      "path": "src/open_options.rs",
       "line": 23
     },
     "group": "clippy::correctness",
@@ -3825,7 +3893,7 @@
   {
     "id": "option_env_unwrap",
     "id_span": {
-      "path": "clippy_lints/src/option_env_unwrap.rs",
+      "path": "src/option_env_unwrap.rs",
       "line": 28
     },
     "group": "clippy::correctness",
@@ -3838,7 +3906,7 @@
   {
     "id": "option_if_let_else",
     "id_span": {
-      "path": "clippy_lints/src/option_if_let_else.rs",
+      "path": "src/option_if_let_else.rs",
       "line": 59
     },
     "group": "clippy::pedantic",
@@ -3851,7 +3919,7 @@
   {
     "id": "overflow_check_conditional",
     "id_span": {
-      "path": "clippy_lints/src/overflow_check_conditional.rs",
+      "path": "src/overflow_check_conditional.rs",
       "line": 21
     },
     "group": "clippy::complexity",
@@ -3864,7 +3932,7 @@
   {
     "id": "panic_in_result_fn",
     "id_span": {
-      "path": "clippy_lints/src/panic_in_result_fn.rs",
+      "path": "src/panic_in_result_fn.rs",
       "line": 29
     },
     "group": "clippy::restriction",
@@ -3877,7 +3945,7 @@
   {
     "id": "panic",
     "id_span": {
-      "path": "clippy_lints/src/panic_unimplemented.rs",
+      "path": "src/panic_unimplemented.rs",
       "line": 19
     },
     "group": "clippy::restriction",
@@ -3890,7 +3958,7 @@
   {
     "id": "unimplemented",
     "id_span": {
-      "path": "clippy_lints/src/panic_unimplemented.rs",
+      "path": "src/panic_unimplemented.rs",
       "line": 35
     },
     "group": "clippy::restriction",
@@ -3903,7 +3971,7 @@
   {
     "id": "todo",
     "id_span": {
-      "path": "clippy_lints/src/panic_unimplemented.rs",
+      "path": "src/panic_unimplemented.rs",
       "line": 51
     },
     "group": "clippy::restriction",
@@ -3916,7 +3984,7 @@
   {
     "id": "unreachable",
     "id_span": {
-      "path": "clippy_lints/src/panic_unimplemented.rs",
+      "path": "src/panic_unimplemented.rs",
       "line": 67
     },
     "group": "clippy::restriction",
@@ -3929,7 +3997,7 @@
   {
     "id": "partialeq_ne_impl",
     "id_span": {
-      "path": "clippy_lints/src/partialeq_ne_impl.rs",
+      "path": "src/partialeq_ne_impl.rs",
       "line": 27
     },
     "group": "clippy::complexity",
@@ -3942,7 +4010,7 @@
   {
     "id": "trivially_copy_pass_by_ref",
     "id_span": {
-      "path": "clippy_lints/src/pass_by_ref_or_value.rs",
+      "path": "src/pass_by_ref_or_value.rs",
       "line": 52
     },
     "group": "clippy::pedantic",
@@ -3955,7 +4023,7 @@
   {
     "id": "large_types_passed_by_value",
     "id_span": {
-      "path": "clippy_lints/src/pass_by_ref_or_value.rs",
+      "path": "src/pass_by_ref_or_value.rs",
       "line": 84
     },
     "group": "clippy::pedantic",
@@ -3968,7 +4036,7 @@
   {
     "id": "path_buf_push_overwrite",
     "id_span": {
-      "path": "clippy_lints/src/path_buf_push_overwrite.rs",
+      "path": "src/path_buf_push_overwrite.rs",
       "line": 36
     },
     "group": "clippy::nursery",
@@ -3981,7 +4049,7 @@
   {
     "id": "pattern_type_mismatch",
     "id_span": {
-      "path": "clippy_lints/src/pattern_type_mismatch.rs",
+      "path": "src/pattern_type_mismatch.rs",
       "line": 79
     },
     "group": "clippy::restriction",
@@ -3994,7 +4062,7 @@
   {
     "id": "precedence",
     "id_span": {
-      "path": "clippy_lints/src/precedence.rs",
+      "path": "src/precedence.rs",
       "line": 44
     },
     "group": "clippy::complexity",
@@ -4007,7 +4075,7 @@
   {
     "id": "ptr_arg",
     "id_span": {
-      "path": "clippy_lints/src/ptr.rs",
+      "path": "src/ptr.rs",
       "line": 69
     },
     "group": "clippy::style",
@@ -4020,7 +4088,7 @@
   {
     "id": "cmp_null",
     "id_span": {
-      "path": "clippy_lints/src/ptr.rs",
+      "path": "src/ptr.rs",
       "line": 95
     },
     "group": "clippy::style",
@@ -4033,7 +4101,7 @@
   {
     "id": "mut_from_ref",
     "id_span": {
-      "path": "clippy_lints/src/ptr.rs",
+      "path": "src/ptr.rs",
       "line": 117
     },
     "group": "clippy::correctness",
@@ -4046,7 +4114,7 @@
   {
     "id": "ptr_eq",
     "id_span": {
-      "path": "clippy_lints/src/ptr_eq.rs",
+      "path": "src/ptr_eq.rs",
       "line": 32
     },
     "group": "clippy::style",
@@ -4059,7 +4127,7 @@
   {
     "id": "ptr_offset_with_cast",
     "id_span": {
-      "path": "clippy_lints/src/ptr_offset_with_cast.rs",
+      "path": "src/ptr_offset_with_cast.rs",
       "line": 40
     },
     "group": "clippy::complexity",
@@ -4072,7 +4140,7 @@
   {
     "id": "question_mark",
     "id_span": {
-      "path": "clippy_lints/src/question_mark.rs",
+      "path": "src/question_mark.rs",
       "line": 34
     },
     "group": "clippy::style",
@@ -4085,7 +4153,7 @@
   {
     "id": "range_zip_with_len",
     "id_span": {
-      "path": "clippy_lints/src/ranges.rs",
+      "path": "src/ranges.rs",
       "line": 40
     },
     "group": "clippy::complexity",
@@ -4098,7 +4166,7 @@
   {
     "id": "range_plus_one",
     "id_span": {
-      "path": "clippy_lints/src/ranges.rs",
+      "path": "src/ranges.rs",
       "line": 74
     },
     "group": "clippy::pedantic",
@@ -4111,7 +4179,7 @@
   {
     "id": "range_minus_one",
     "id_span": {
-      "path": "clippy_lints/src/ranges.rs",
+      "path": "src/ranges.rs",
       "line": 99
     },
     "group": "clippy::pedantic",
@@ -4124,7 +4192,7 @@
   {
     "id": "reversed_empty_ranges",
     "id_span": {
-      "path": "clippy_lints/src/ranges.rs",
+      "path": "src/ranges.rs",
       "line": 132
     },
     "group": "clippy::correctness",
@@ -4137,7 +4205,7 @@
   {
     "id": "manual_range_contains",
     "id_span": {
-      "path": "clippy_lints/src/ranges.rs",
+      "path": "src/ranges.rs",
       "line": 159
     },
     "group": "clippy::style",
@@ -4150,7 +4218,7 @@
   {
     "id": "redundant_clone",
     "id_span": {
-      "path": "clippy_lints/src/redundant_clone.rs",
+      "path": "src/redundant_clone.rs",
       "line": 63
     },
     "group": "clippy::perf",
@@ -4163,7 +4231,7 @@
   {
     "id": "redundant_closure_call",
     "id_span": {
-      "path": "clippy_lints/src/redundant_closure_call.rs",
+      "path": "src/redundant_closure_call.rs",
       "line": 32
     },
     "group": "clippy::complexity",
@@ -4176,7 +4244,7 @@
   {
     "id": "redundant_else",
     "id_span": {
-      "path": "clippy_lints/src/redundant_else.rs",
+      "path": "src/redundant_else.rs",
       "line": 37
     },
     "group": "clippy::pedantic",
@@ -4189,7 +4257,7 @@
   {
     "id": "redundant_field_names",
     "id_span": {
-      "path": "clippy_lints/src/redundant_field_names.rs",
+      "path": "src/redundant_field_names.rs",
       "line": 34
     },
     "group": "clippy::style",
@@ -4202,7 +4270,7 @@
   {
     "id": "redundant_pub_crate",
     "id_span": {
-      "path": "clippy_lints/src/redundant_pub_crate.rs",
+      "path": "src/redundant_pub_crate.rs",
       "line": 30
     },
     "group": "clippy::nursery",
@@ -4215,7 +4283,7 @@
   {
     "id": "redundant_slicing",
     "id_span": {
-      "path": "clippy_lints/src/redundant_slicing.rs",
+      "path": "src/redundant_slicing.rs",
       "line": 33
     },
     "group": "clippy::complexity",
@@ -4228,7 +4296,7 @@
   {
     "id": "redundant_static_lifetimes",
     "id_span": {
-      "path": "clippy_lints/src/redundant_static_lifetimes.rs",
+      "path": "src/redundant_static_lifetimes.rs",
       "line": 30
     },
     "group": "clippy::style",
@@ -4241,7 +4309,7 @@
   {
     "id": "ref_option_ref",
     "id_span": {
-      "path": "clippy_lints/src/ref_option_ref.rs",
+      "path": "src/ref_option_ref.rs",
       "line": 28
     },
     "group": "clippy::pedantic",
@@ -4254,7 +4322,7 @@
   {
     "id": "deref_addrof",
     "id_span": {
-      "path": "clippy_lints/src/reference.rs",
+      "path": "src/reference.rs",
       "line": 29
     },
     "group": "clippy::complexity",
@@ -4267,7 +4335,7 @@
   {
     "id": "ref_in_deref",
     "id_span": {
-      "path": "clippy_lints/src/reference.rs",
+      "path": "src/reference.rs",
       "line": 120
     },
     "group": "clippy::complexity",
@@ -4280,7 +4348,7 @@
   {
     "id": "invalid_regex",
     "id_span": {
-      "path": "clippy_lints/src/regex.rs",
+      "path": "src/regex.rs",
       "line": 25
     },
     "group": "clippy::correctness",
@@ -4293,7 +4361,7 @@
   {
     "id": "trivial_regex",
     "id_span": {
-      "path": "clippy_lints/src/regex.rs",
+      "path": "src/regex.rs",
       "line": 46
     },
     "group": "clippy::nursery",
@@ -4306,7 +4374,7 @@
   {
     "id": "repeat_once",
     "id_span": {
-      "path": "clippy_lints/src/repeat_once.rs",
+      "path": "src/repeat_once.rs",
       "line": 33
     },
     "group": "clippy::complexity",
@@ -4319,7 +4387,7 @@
   {
     "id": "let_and_return",
     "id_span": {
-      "path": "clippy_lints/src/returns.rs",
+      "path": "src/returns.rs",
       "line": 38
     },
     "group": "clippy::style",
@@ -4332,7 +4400,7 @@
   {
     "id": "needless_return",
     "id_span": {
-      "path": "clippy_lints/src/returns.rs",
+      "path": "src/returns.rs",
       "line": 63
     },
     "group": "clippy::style",
@@ -4345,7 +4413,7 @@
   {
     "id": "self_assignment",
     "id_span": {
-      "path": "clippy_lints/src/self_assignment.rs",
+      "path": "src/self_assignment.rs",
       "line": 29
     },
     "group": "clippy::correctness",
@@ -4358,7 +4426,7 @@
   {
     "id": "semicolon_if_nothing_returned",
     "id_span": {
-      "path": "clippy_lints/src/semicolon_if_nothing_returned.rs",
+      "path": "src/semicolon_if_nothing_returned.rs",
       "line": 30
     },
     "group": "clippy::restriction",
@@ -4371,7 +4439,7 @@
   {
     "id": "serde_api_misuse",
     "id_span": {
-      "path": "clippy_lints/src/serde_api.rs",
+      "path": "src/serde_api.rs",
       "line": 16
     },
     "group": "clippy::correctness",
@@ -4384,7 +4452,7 @@
   {
     "id": "shadow_same",
     "id_span": {
-      "path": "clippy_lints/src/shadow.rs",
+      "path": "src/shadow.rs",
       "line": 34
     },
     "group": "clippy::restriction",
@@ -4397,7 +4465,7 @@
   {
     "id": "shadow_reuse",
     "id_span": {
-      "path": "clippy_lints/src/shadow.rs",
+      "path": "src/shadow.rs",
       "line": 61
     },
     "group": "clippy::restriction",
@@ -4410,7 +4478,7 @@
   {
     "id": "shadow_unrelated",
     "id_span": {
-      "path": "clippy_lints/src/shadow.rs",
+      "path": "src/shadow.rs",
       "line": 93
     },
     "group": "clippy::pedantic",
@@ -4423,7 +4491,7 @@
   {
     "id": "single_component_path_imports",
     "id_span": {
-      "path": "clippy_lints/src/single_component_path_imports.rs",
+      "path": "src/single_component_path_imports.rs",
       "line": 32
     },
     "group": "clippy::style",
@@ -4436,7 +4504,7 @@
   {
     "id": "size_of_in_element_count",
     "id_span": {
-      "path": "clippy_lints/src/size_of_in_element_count.rs",
+      "path": "src/size_of_in_element_count.rs",
       "line": 31
     },
     "group": "clippy::correctness",
@@ -4449,7 +4517,7 @@
   {
     "id": "slow_vector_initialization",
     "id_span": {
-      "path": "clippy_lints/src/slow_vector_initialization.rs",
+      "path": "src/slow_vector_initialization.rs",
       "line": 37
     },
     "group": "clippy::perf",
@@ -4462,7 +4530,7 @@
   {
     "id": "stable_sort_primitive",
     "id_span": {
-      "path": "clippy_lints/src/stable_sort_primitive.rs",
+      "path": "src/stable_sort_primitive.rs",
       "line": 36
     },
     "group": "clippy::perf",
@@ -4475,7 +4543,7 @@
   {
     "id": "string_add_assign",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 37
     },
     "group": "clippy::pedantic",
@@ -4488,7 +4556,7 @@
   {
     "id": "string_add",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 65
     },
     "group": "clippy::restriction",
@@ -4501,7 +4569,7 @@
   {
     "id": "string_lit_as_bytes",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 107
     },
     "group": "clippy::nursery",
@@ -4514,7 +4582,7 @@
   {
     "id": "string_from_utf8_as_bytes",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 196
     },
     "group": "clippy::complexity",
@@ -4527,7 +4595,7 @@
   {
     "id": "str_to_string",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 313
     },
     "group": "clippy::restriction",
@@ -4540,7 +4608,7 @@
   {
     "id": "string_to_string",
     "id_span": {
-      "path": "clippy_lints/src/strings.rs",
+      "path": "src/strings.rs",
       "line": 362
     },
     "group": "clippy::restriction",
@@ -4553,7 +4621,7 @@
   {
     "id": "suspicious_operation_groupings",
     "id_span": {
-      "path": "clippy_lints/src/suspicious_operation_groupings.rs",
+      "path": "src/suspicious_operation_groupings.rs",
       "line": 60
     },
     "group": "clippy::style",
@@ -4566,7 +4634,7 @@
   {
     "id": "suspicious_arithmetic_impl",
     "id_span": {
-      "path": "clippy_lints/src/suspicious_trait_impl.rs",
+      "path": "src/suspicious_trait_impl.rs",
       "line": 27
     },
     "group": "clippy::correctness",
@@ -4579,7 +4647,7 @@
   {
     "id": "suspicious_op_assign_impl",
     "id_span": {
-      "path": "clippy_lints/src/suspicious_trait_impl.rs",
+      "path": "src/suspicious_trait_impl.rs",
       "line": 48
     },
     "group": "clippy::correctness",
@@ -4592,7 +4660,7 @@
   {
     "id": "manual_swap",
     "id_span": {
-      "path": "clippy_lints/src/swap.rs",
+      "path": "src/swap.rs",
       "line": 36
     },
     "group": "clippy::complexity",
@@ -4605,7 +4673,7 @@
   {
     "id": "almost_swapped",
     "id_span": {
-      "path": "clippy_lints/src/swap.rs",
+      "path": "src/swap.rs",
       "line": 61
     },
     "group": "clippy::correctness",
@@ -4618,7 +4686,7 @@
   {
     "id": "tabs_in_doc_comments",
     "id_span": {
-      "path": "clippy_lints/src/tabs_in_doc_comments.rs",
+      "path": "src/tabs_in_doc_comments.rs",
       "line": 54
     },
     "group": "clippy::style",
@@ -4631,7 +4699,7 @@
   {
     "id": "temporary_assignment",
     "id_span": {
-      "path": "clippy_lints/src/temporary_assignment.rs",
+      "path": "src/temporary_assignment.rs",
       "line": 19
     },
     "group": "clippy::complexity",
@@ -4644,7 +4712,7 @@
   {
     "id": "to_digit_is_some",
     "id_span": {
-      "path": "clippy_lints/src/to_digit_is_some.rs",
+      "path": "src/to_digit_is_some.rs",
       "line": 27
     },
     "group": "clippy::style",
@@ -4657,7 +4725,7 @@
   {
     "id": "to_string_in_display",
     "id_span": {
-      "path": "clippy_lints/src/to_string_in_display.rs",
+      "path": "src/to_string_in_display.rs",
       "line": 40
     },
     "group": "clippy::correctness",
@@ -4670,7 +4738,7 @@
   {
     "id": "type_repetition_in_bounds",
     "id_span": {
-      "path": "clippy_lints/src/trait_bounds.rs",
+      "path": "src/trait_bounds.rs",
       "line": 28
     },
     "group": "clippy::pedantic",
@@ -4683,7 +4751,7 @@
   {
     "id": "trait_duplication_in_bounds",
     "id_span": {
-      "path": "clippy_lints/src/trait_bounds.rs",
+      "path": "src/trait_bounds.rs",
       "line": 57
     },
     "group": "clippy::pedantic",
@@ -4696,8 +4764,8 @@
   {
     "id": "wrong_transmute",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 29
+      "path": "src/transmute/mod.rs",
+      "line": 34
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for transmutes that can't ever be correct on any architecture.\n\n **Why is this bad?** It's basically guaranteed to be undefined behaviour.\n\n **Known problems:** When accessing C, users might want to store pointer\n sized objects in `extradata` arguments to save an allocation.\n\n **Example:**\n ```ignore\n let ptr: *const T = core::intrinsics::transmute('x')\n ```\n",
@@ -4709,8 +4777,8 @@
   {
     "id": "useless_transmute",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 48
+      "path": "src/transmute/mod.rs",
+      "line": 53
     },
     "group": "clippy::nursery",
     "docs": " **What it does:** Checks for transmutes to the original type of the object and transmutes that could be a cast.\n\n **Why is this bad?** Readability. The code tricks people into thinking that\n something complex is going on.\n\n **Known problems:** None.\n\n **Example:**\n ```rust,ignore\n core::intrinsics::transmute(t); // where the result type is the same as `t`'s\n ```\n",
@@ -4722,8 +4790,8 @@
   {
     "id": "transmutes_expressible_as_ptr_casts",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 73
+      "path": "src/transmute/mod.rs",
+      "line": 78
     },
     "group": "clippy::complexity",
     "docs": " **What it does:**Checks for transmutes that could be a pointer cast.\n **Why is this bad?** Readability. The code tricks people into thinking that\n something complex is going on.\n\n **Known problems:** None.\n\n **Example:**\n\n ```rust\n # let p: *const [i32] = &[];\n unsafe { std::mem::transmute::<*const [i32], *const [u16]>(p) };\n ```\n Use instead:\n ```rust\n # let p: *const [i32] = &[];\n p as *const [u16];\n ```\n",
@@ -4735,8 +4803,8 @@
   {
     "id": "crosspointer_transmute",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 91
+      "path": "src/transmute/mod.rs",
+      "line": 96
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes between a type `T` and `*T`.\n **Why is this bad?** It's easy to mistakenly transmute between a type and a\n pointer to that type.\n\n **Known problems:** None.\n\n **Example:**\n ```rust,ignore\n core::intrinsics::transmute(t) // where the result type is the same as\n                                // `*t` or `&t`'s\n ```\n",
@@ -4748,8 +4816,8 @@
   {
     "id": "transmute_ptr_to_ref",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 116
+      "path": "src/transmute/mod.rs",
+      "line": 121
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from a pointer to a reference.\n **Why is this bad?** This can always be rewritten with `&` and `*`.\n\n **Known problems:**\n - `mem::transmute` in statics and constants is stable from Rust 1.46.0,\n while dereferencing raw pointer is not stable yet.\n If you need to do this in those places,\n you would have to use `transmute` instead.\n\n **Example:**\n ```rust,ignore\n unsafe {\n     let _: &T = std::mem::transmute(p); // where p: *const T\n }\n\n // can be written:\n let _: &T = &*p;\n ```\n",
@@ -4761,8 +4829,8 @@
   {
     "id": "transmute_int_to_char",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 147
+      "path": "src/transmute/mod.rs",
+      "line": 152
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from an integer to a `char`.\n **Why is this bad?** Not every integer is a Unicode scalar value.\n\n **Known problems:**\n - [`from_u32`] which this lint suggests using is slower than `transmute`\n as it needs to validate the input.\n If you are certain that the input is always a valid Unicode scalar value,\n use [`from_u32_unchecked`] which is as fast as `transmute`\n but has a semantically meaningful name.\n - You might want to handle `None` returned from [`from_u32`] instead of calling `unwrap`.\n\n [`from_u32`]: https://doc.rust-lang.org/std/char/fn.from_u32.html\n [`from_u32_unchecked`]: https://doc.rust-lang.org/std/char/fn.from_u32_unchecked.html\n\n **Example:**\n ```rust\n let x = 1_u32;\n unsafe {\n     let _: char = std::mem::transmute(x); // where x: u32\n }\n\n // should be:\n let _ = std::char::from_u32(x).unwrap();\n ```\n",
@@ -4774,8 +4842,8 @@
   {
     "id": "transmute_bytes_to_str",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 178
+      "path": "src/transmute/mod.rs",
+      "line": 183
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from a `&[u8]` to a `&str`.\n **Why is this bad?** Not every byte slice is a valid UTF-8 string.\n\n **Known problems:**\n - [`from_utf8`] which this lint suggests using is slower than `transmute`\n as it needs to validate the input.\n If you are certain that the input is always a valid UTF-8,\n use [`from_utf8_unchecked`] which is as fast as `transmute`\n but has a semantically meaningful name.\n - You might want to handle errors returned from [`from_utf8`] instead of calling `unwrap`.\n\n [`from_utf8`]: https://doc.rust-lang.org/std/str/fn.from_utf8.html\n [`from_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked.html\n\n **Example:**\n ```rust\n let b: &[u8] = &[1_u8, 2_u8];\n unsafe {\n     let _: &str = std::mem::transmute(b); // where b: &[u8]\n }\n\n // should be:\n let _ = std::str::from_utf8(b).unwrap();\n ```\n",
@@ -4787,8 +4855,8 @@
   {
     "id": "transmute_int_to_bool",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 200
+      "path": "src/transmute/mod.rs",
+      "line": 205
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from an integer to a `bool`.\n **Why is this bad?** This might result in an invalid in-memory representation of a `bool`.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let x = 1_u8;\n unsafe {\n     let _: bool = std::mem::transmute(x); // where x: u8\n }\n\n // should be:\n let _: bool = x != 0;\n ```\n",
@@ -4800,8 +4868,8 @@
   {
     "id": "transmute_int_to_float",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 222
+      "path": "src/transmute/mod.rs",
+      "line": 227
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from an integer to a float.\n **Why is this bad?** Transmutes are dangerous and error-prone, whereas `from_bits` is intuitive\n and safe.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n unsafe {\n     let _: f32 = std::mem::transmute(1_u32); // where x: u32\n }\n\n // should be:\n let _: f32 = f32::from_bits(1_u32);\n ```\n",
@@ -4813,8 +4881,8 @@
   {
     "id": "transmute_float_to_int",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 244
+      "path": "src/transmute/mod.rs",
+      "line": 249
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from a float to an integer.\n **Why is this bad?** Transmutes are dangerous and error-prone, whereas `to_bits` is intuitive\n and safe.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n unsafe {\n     let _: u32 = std::mem::transmute(1f32);\n }\n\n // should be:\n let _: u32 = 1f32.to_bits();\n ```\n",
@@ -4826,8 +4894,8 @@
   {
     "id": "transmute_ptr_to_ptr",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 271
+      "path": "src/transmute/mod.rs",
+      "line": 276
     },
     "group": "clippy::complexity",
     "docs": " **What it does:** Checks for transmutes from a pointer to a pointer, or from a reference to a reference.\n\n **Why is this bad?** Transmutes are dangerous, and these can instead be\n written as casts.\n\n **Known problems:** None.\n\n **Example:**\n ```rust\n let ptr = &1u32 as *const u32;\n unsafe {\n     // pointer-to-pointer transmute\n     let _: *const f32 = std::mem::transmute(ptr);\n     // ref-ref transmute\n     let _: &f32 = std::mem::transmute(&1u32);\n }\n // These can be respectively written:\n let _ = ptr as *const f32;\n let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };\n ```\n",
@@ -4839,8 +4907,8 @@
   {
     "id": "unsound_collection_transmute",
     "id_span": {
-      "path": "clippy_lints/src/transmute.rs",
-      "line": 299
+      "path": "src/transmute/mod.rs",
+      "line": 304
     },
     "group": "clippy::correctness",
     "docs": " **What it does:** Checks for transmutes between collections whose types have different ABI, size or alignment.\n\n **Why is this bad?** This is undefined behavior.\n\n **Known problems:** Currently, we cannot know whether a type is a\n collection, so we just lint the ones that come with `std`.\n\n **Example:**\n ```rust\n // different size, therefore likely out-of-bounds memory access\n // You absolutely do not want this in your code!\n unsafe {\n     std::mem::transmute::<_, Vec<u32>>(vec![2_u16])\n };\n ```\n\n You must always iterate, map and collect the values:\n\n ```rust\n vec![2_u16].into_iter().map(u32::from).collect::<Vec<_>>();\n ```\n",
@@ -4852,7 +4920,7 @@
   {
     "id": "transmuting_null",
     "id_span": {
-      "path": "clippy_lints/src/transmuting_null.rs",
+      "path": "src/transmuting_null.rs",
       "line": 23
     },
     "group": "clippy::correctness",
@@ -4865,7 +4933,7 @@
   {
     "id": "try_err",
     "id_span": {
-      "path": "clippy_lints/src/try_err.rs",
+      "path": "src/try_err.rs",
       "line": 43
     },
     "group": "clippy::style",
@@ -4878,7 +4946,7 @@
   {
     "id": "box_vec",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 66
     },
     "group": "clippy::perf",
@@ -4891,7 +4959,7 @@
   {
     "id": "vec_box",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 95
     },
     "group": "clippy::complexity",
@@ -4904,7 +4972,7 @@
   {
     "id": "option_option",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 133
     },
     "group": "clippy::pedantic",
@@ -4917,7 +4985,7 @@
   {
     "id": "linkedlist",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 169
     },
     "group": "clippy::pedantic",
@@ -4930,7 +4998,7 @@
   {
     "id": "borrowed_box",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 193
     },
     "group": "clippy::complexity",
@@ -4943,7 +5011,7 @@
   {
     "id": "redundant_allocation",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 217
     },
     "group": "clippy::perf",
@@ -4956,7 +5024,7 @@
   {
     "id": "rc_buffer",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 248
     },
     "group": "clippy::restriction",
@@ -4969,7 +5037,7 @@
   {
     "id": "let_unit_value",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 768
     },
     "group": "clippy::pedantic",
@@ -4982,7 +5050,7 @@
   {
     "id": "unit_cmp",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 849
     },
     "group": "clippy::correctness",
@@ -4995,7 +5063,7 @@
   {
     "id": "unit_arg",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 922
     },
     "group": "clippy::complexity",
@@ -5008,7 +5076,7 @@
   {
     "id": "cast_precision_loss",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1158
     },
     "group": "clippy::pedantic",
@@ -5021,7 +5089,7 @@
   {
     "id": "cast_sign_loss",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1179
     },
     "group": "clippy::pedantic",
@@ -5034,7 +5102,7 @@
   {
     "id": "cast_possible_truncation",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1201
     },
     "group": "clippy::pedantic",
@@ -5047,7 +5115,7 @@
   {
     "id": "cast_possible_wrap",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1224
     },
     "group": "clippy::pedantic",
@@ -5060,7 +5128,7 @@
   {
     "id": "cast_lossless",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1256
     },
     "group": "clippy::pedantic",
@@ -5073,7 +5141,7 @@
   {
     "id": "unnecessary_cast",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1281
     },
     "group": "clippy::complexity",
@@ -5086,7 +5154,7 @@
   {
     "id": "cast_ptr_alignment",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1305
     },
     "group": "clippy::pedantic",
@@ -5099,7 +5167,7 @@
   {
     "id": "fn_to_numeric_cast",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1332
     },
     "group": "clippy::style",
@@ -5112,7 +5180,7 @@
   {
     "id": "fn_to_numeric_cast_with_truncation",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1362
     },
     "group": "clippy::style",
@@ -5125,7 +5193,7 @@
   {
     "id": "type_complexity",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 1897
     },
     "group": "clippy::complexity",
@@ -5138,7 +5206,7 @@
   {
     "id": "char_lit_as_u8",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2068
     },
     "group": "clippy::complexity",
@@ -5151,7 +5219,7 @@
   {
     "id": "absurd_extreme_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2133
     },
     "group": "clippy::correctness",
@@ -5164,7 +5232,7 @@
   {
     "id": "invalid_upcast_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2294
     },
     "group": "clippy::pedantic",
@@ -5177,7 +5245,7 @@
   {
     "id": "implicit_hasher",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2515
     },
     "group": "clippy::pedantic",
@@ -5190,7 +5258,7 @@
   {
     "id": "cast_ref_to_mut",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2866
     },
     "group": "clippy::correctness",
@@ -5203,7 +5271,7 @@
   {
     "id": "ptr_as_ptr",
     "id_span": {
-      "path": "clippy_lints/src/types.rs",
+      "path": "src/types.rs",
       "line": 2922
     },
     "group": "clippy::pedantic",
@@ -5216,7 +5284,7 @@
   {
     "id": "undropped_manually_drops",
     "id_span": {
-      "path": "clippy_lints/src/undropped_manually_drops.rs",
+      "path": "src/undropped_manually_drops.rs",
       "line": 27
     },
     "group": "clippy::correctness",
@@ -5229,7 +5297,7 @@
   {
     "id": "invisible_characters",
     "id_span": {
-      "path": "clippy_lints/src/unicode.rs",
+      "path": "src/unicode.rs",
       "line": 20
     },
     "group": "clippy::correctness",
@@ -5242,7 +5310,7 @@
   {
     "id": "non_ascii_literal",
     "id_span": {
-      "path": "clippy_lints/src/unicode.rs",
+      "path": "src/unicode.rs",
       "line": 44
     },
     "group": "clippy::pedantic",
@@ -5255,7 +5323,7 @@
   {
     "id": "unicode_not_nfc",
     "id_span": {
-      "path": "clippy_lints/src/unicode.rs",
+      "path": "src/unicode.rs",
       "line": 61
     },
     "group": "clippy::pedantic",
@@ -5268,7 +5336,7 @@
   {
     "id": "unit_return_expecting_ord",
     "id_span": {
-      "path": "clippy_lints/src/unit_return_expecting_ord.rs",
+      "path": "src/unit_return_expecting_ord.rs",
       "line": 30
     },
     "group": "clippy::correctness",
@@ -5281,7 +5349,7 @@
   {
     "id": "fn_address_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/unnamed_address.rs",
+      "path": "src/unnamed_address.rs",
       "line": 27
     },
     "group": "clippy::correctness",
@@ -5294,7 +5362,7 @@
   {
     "id": "vtable_address_comparisons",
     "id_span": {
-      "path": "clippy_lints/src/unnamed_address.rs",
+      "path": "src/unnamed_address.rs",
       "line": 51
     },
     "group": "clippy::correctness",
@@ -5307,7 +5375,7 @@
   {
     "id": "unnecessary_sort_by",
     "id_span": {
-      "path": "clippy_lints/src/unnecessary_sort_by.rs",
+      "path": "src/unnecessary_sort_by.rs",
       "line": 41
     },
     "group": "clippy::complexity",
@@ -5320,7 +5388,7 @@
   {
     "id": "unnecessary_wraps",
     "id_span": {
-      "path": "clippy_lints/src/unnecessary_wraps.rs",
+      "path": "src/unnecessary_wraps.rs",
       "line": 50
     },
     "group": "clippy::pedantic",
@@ -5333,7 +5401,7 @@
   {
     "id": "unnested_or_patterns",
     "id_span": {
-      "path": "clippy_lints/src/unnested_or_patterns.rs",
+      "path": "src/unnested_or_patterns.rs",
       "line": 47
     },
     "group": "clippy::pedantic",
@@ -5346,7 +5414,7 @@
   {
     "id": "unsafe_removed_from_name",
     "id_span": {
-      "path": "clippy_lints/src/unsafe_removed_from_name.rs",
+      "path": "src/unsafe_removed_from_name.rs",
       "line": 24
     },
     "group": "clippy::style",
@@ -5359,7 +5427,7 @@
   {
     "id": "unused_io_amount",
     "id_span": {
-      "path": "clippy_lints/src/unused_io_amount.rs",
+      "path": "src/unused_io_amount.rs",
       "line": 28
     },
     "group": "clippy::correctness",
@@ -5372,7 +5440,7 @@
   {
     "id": "unused_self",
     "id_span": {
-      "path": "clippy_lints/src/unused_self.rs",
+      "path": "src/unused_self.rs",
       "line": 33
     },
     "group": "clippy::pedantic",
@@ -5385,7 +5453,7 @@
   {
     "id": "unused_unit",
     "id_span": {
-      "path": "clippy_lints/src/unused_unit.rs",
+      "path": "src/unused_unit.rs",
       "line": 27
     },
     "group": "clippy::style",
@@ -5398,7 +5466,7 @@
   {
     "id": "unnecessary_unwrap",
     "id_span": {
-      "path": "clippy_lints/src/unwrap.rs",
+      "path": "src/unwrap.rs",
       "line": 40
     },
     "group": "clippy::complexity",
@@ -5411,7 +5479,7 @@
   {
     "id": "panicking_unwrap",
     "id_span": {
-      "path": "clippy_lints/src/unwrap.rs",
+      "path": "src/unwrap.rs",
       "line": 63
     },
     "group": "clippy::correctness",
@@ -5424,7 +5492,7 @@
   {
     "id": "unwrap_in_result",
     "id_span": {
-      "path": "clippy_lints/src/unwrap_in_result.rs",
+      "path": "src/unwrap_in_result.rs",
       "line": 47
     },
     "group": "clippy::restriction",
@@ -5437,7 +5505,7 @@
   {
     "id": "upper_case_acronyms",
     "id_span": {
-      "path": "clippy_lints/src/upper_case_acronyms.rs",
+      "path": "src/upper_case_acronyms.rs",
       "line": 35
     },
     "group": "clippy::style",
@@ -5450,7 +5518,7 @@
   {
     "id": "use_self",
     "id_span": {
-      "path": "clippy_lints/src/use_self.rs",
+      "path": "src/use_self.rs",
       "line": 53
     },
     "group": "clippy::nursery",
@@ -5463,7 +5531,7 @@
   {
     "id": "useless_conversion",
     "id_span": {
-      "path": "clippy_lints/src/useless_conversion.rs",
+      "path": "src/useless_conversion.rs",
       "line": 32
     },
     "group": "clippy::complexity",
@@ -5476,7 +5544,7 @@
   {
     "id": "useless_vec",
     "id_span": {
-      "path": "clippy_lints/src/vec.rs",
+      "path": "src/vec.rs",
       "line": 36
     },
     "group": "clippy::perf",
@@ -5489,7 +5557,7 @@
   {
     "id": "vec_init_then_push",
     "id_span": {
-      "path": "clippy_lints/src/vec_init_then_push.rs",
+      "path": "src/vec_init_then_push.rs",
       "line": 32
     },
     "group": "clippy::perf",
@@ -5502,7 +5570,7 @@
   {
     "id": "vec_resize_to_zero",
     "id_span": {
-      "path": "clippy_lints/src/vec_resize_to_zero.rs",
+      "path": "src/vec_resize_to_zero.rs",
       "line": 24
     },
     "group": "clippy::correctness",
@@ -5515,7 +5583,7 @@
   {
     "id": "verbose_file_reads",
     "id_span": {
-      "path": "clippy_lints/src/verbose_file_reads.rs",
+      "path": "src/verbose_file_reads.rs",
       "line": 29
     },
     "group": "clippy::restriction",
@@ -5528,7 +5596,7 @@
   {
     "id": "wildcard_dependencies",
     "id_span": {
-      "path": "clippy_lints/src/wildcard_dependencies.rs",
+      "path": "src/wildcard_dependencies.rs",
       "line": 24
     },
     "group": "clippy::cargo",
@@ -5541,27 +5609,33 @@
   {
     "id": "enum_glob_use",
     "id_span": {
-      "path": "clippy_lints/src/wildcard_imports.rs",
+      "path": "src/wildcard_imports.rs",
       "line": 32
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for `use Enum::*`.\n **Why is this bad?** It is usually better style to use the prefixed name of\n an enumeration variant, rather than importing variants.\n\n **Known problems:** Old-style enumerations that prefix the variants are\n still around.\n\n **Example:**\n ```rust,ignore\n // Bad\n use std::cmp::Ordering::*;\n foo(Less);\n\n // Good\n use std::cmp::Ordering;\n foo(Ordering::Less)\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "wildcard_imports",
     "id_span": {
-      "path": "clippy_lints/src/wildcard_imports.rs",
+      "path": "src/wildcard_imports.rs",
       "line": 83
     },
     "group": "clippy::pedantic",
     "docs": " **What it does:** Checks for wildcard imports `use _::*`.\n **Why is this bad?** wildcard imports can pollute the namespace. This is especially bad if\n you try to import something through a wildcard, that already has been imported by name from\n a different source:\n\n ```rust,ignore\n use crate1::foo; // Imports a function named foo\n use crate2::*; // Has a function named foo\n\n foo(); // Calls crate1::foo\n ```\n\n This can lead to confusing error messages at best and to unexpected behavior at worst.\n\n **Exceptions:**\n\n Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)\n provide modules named \"prelude\" specifically designed for wildcard import.\n\n `use super::*` is allowed in test modules. This is defined as any module with \"test\" in the name.\n\n These exceptions can be disabled using the `warn-on-all-wildcard-imports` configuration flag.\n\n **Known problems:** If macros are imported through the wildcard, this macro is not included\n by the suggestion and has to be added by hand.\n\n Applying the suggestion when explicit imports of the things imported with a glob import\n exist, may result in `unused_imports` warnings.\n\n **Example:**\n\n ```rust,ignore\n // Bad\n use crate1::*;\n\n foo();\n ```\n\n ```rust,ignore\n // Good\n use crate1::foo;\n\n foo();\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": "MachineApplicable"
+    }
   },
   {
     "id": "println_empty_string",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 33
     },
     "group": "clippy::style",
@@ -5574,7 +5648,7 @@
   {
     "id": "print_with_newline",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 57
     },
     "group": "clippy::style",
@@ -5587,7 +5661,7 @@
   {
     "id": "print_stdout",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 75
     },
     "group": "clippy::restriction",
@@ -5600,7 +5674,7 @@
   {
     "id": "print_stderr",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 93
     },
     "group": "clippy::restriction",
@@ -5613,7 +5687,7 @@
   {
     "id": "use_debug",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 110
     },
     "group": "clippy::restriction",
@@ -5626,17 +5700,20 @@
   {
     "id": "print_literal",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 133
     },
     "group": "clippy::style",
     "docs": " **What it does:** This lint warns about the use of literals as `print!`/`println!` args.\n **Why is this bad?** Using literals as `println!` args is inefficient\n (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary\n (i.e., just put the literal in the format string)\n\n **Known problems:** Will also warn with macro calls as arguments that expand to literals\n -- e.g., `println!(\"{}\", env!(\"FOO\"))`.\n\n **Example:**\n ```rust\n println!(\"{}\", \"foo\");\n ```\n use the literal without formatting:\n ```rust\n println!(\"foo\");\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "writeln_empty_string",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 156
     },
     "group": "clippy::style",
@@ -5649,7 +5726,7 @@
   {
     "id": "write_with_newline",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 182
     },
     "group": "clippy::style",
@@ -5662,17 +5739,20 @@
   {
     "id": "write_literal",
     "id_span": {
-      "path": "clippy_lints/src/write.rs",
+      "path": "src/write.rs",
       "line": 207
     },
     "group": "clippy::style",
     "docs": " **What it does:** This lint warns about the use of literals as `write!`/`writeln!` args.\n **Why is this bad?** Using literals as `writeln!` args is inefficient\n (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary\n (i.e., just put the literal in the format string)\n\n **Known problems:** Will also warn with macro calls as arguments that expand to literals\n -- e.g., `writeln!(buf, \"{}\", env!(\"FOO\"))`.\n\n **Example:**\n ```rust\n # use std::fmt::Write;\n # let mut buf = String::new();\n // Bad\n writeln!(buf, \"{}\", \"foo\");\n\n // Good\n writeln!(buf, \"foo\");\n ```\n",
-    "applicability": null
+    "applicability": {
+      "is_multi_suggestion": false,
+      "applicability": null
+    }
   },
   {
     "id": "zero_divided_by_zero",
     "id_span": {
-      "path": "clippy_lints/src/zero_div_zero.rs",
+      "path": "src/zero_div_zero.rs",
       "line": 23
     },
     "group": "clippy::complexity",
@@ -5685,7 +5765,7 @@
   {
     "id": "zero_sized_map_values",
     "id_span": {
-      "path": "clippy_lints/src/zero_sized_map_values.rs",
+      "path": "src/zero_sized_map_values.rs",
       "line": 37
     },
     "group": "clippy::pedantic",
