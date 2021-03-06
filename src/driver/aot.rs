@@ -163,6 +163,22 @@ pub(super) fn run_aot(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)> {
+    use rustc_span::symbol::sym;
+
+    let subsystem = tcx
+        .sess
+        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != sym::windows && subsystem != sym::console {
+            tcx.sess.fatal(&format!(
+                "invalid windows subsystem `{}`, only \
+                                    `windows` and `console` are allowed",
+                subsystem
+            ));
+        }
+        subsystem.to_string()
+    });
+
     let mut work_products = FxHashMap::default();
 
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
@@ -280,7 +296,7 @@ pub(super) fn run_aot(
             allocator_module,
             metadata_module,
             metadata,
-            windows_subsystem: None, // Windows is not yet supported
+            windows_subsystem,
             linker_info: LinkerInfo::new(tcx),
             crate_info: CrateInfo::new(tcx),
         },
