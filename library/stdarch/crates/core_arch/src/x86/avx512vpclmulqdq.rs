@@ -125,6 +125,10 @@ mod tests {
             assert_eq_m128i($op($vec_res, 1), $lin_res[1]);
             assert_eq_m128i($op($vec_res, 0), $lin_res[0]);
         };
+        (assert_eq_m128i($op:ident::<2>($vec_res:ident),$lin_res:ident[2]);) => {
+            assert_eq_m128i($op::<1>($vec_res), $lin_res[1]);
+            assert_eq_m128i($op::<0>($vec_res), $lin_res[0]);
+        };
     }
 
     // this function tests one of the possible 4 instances
@@ -209,7 +213,7 @@ mod tests {
         for i in 0..2 {
             e_decomp[i] = linear(a_decomp[i], b_decomp[i]);
         }
-        unroll! {assert_eq_m128i(_mm256_extracti128_si256(r,2),e_decomp[2]);}
+        unroll! {assert_eq_m128i(_mm256_extracti128_si256::<2>(r),e_decomp[2]);}
     }
 
     #[simd_test(enable = "avx512vpclmulqdq,avx512f")]

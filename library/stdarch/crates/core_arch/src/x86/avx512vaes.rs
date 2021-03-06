@@ -155,18 +155,18 @@ mod tests {
             0x978093862CDE7187,
         );
         let mut a_decomp = [_mm_setzero_si128(); 2];
-        a_decomp[0] = _mm256_extracti128_si256(a, 0);
-        a_decomp[1] = _mm256_extracti128_si256(a, 1);
+        a_decomp[0] = _mm256_extracti128_si256::<0>(a);
+        a_decomp[1] = _mm256_extracti128_si256::<1>(a);
         let mut k_decomp = [_mm_setzero_si128(); 2];
-        k_decomp[0] = _mm256_extracti128_si256(k, 0);
-        k_decomp[1] = _mm256_extracti128_si256(k, 1);
+        k_decomp[0] = _mm256_extracti128_si256::<0>(k);
+        k_decomp[1] = _mm256_extracti128_si256::<1>(k);
         let r = vectorized(a, k);
         let mut e_decomp = [_mm_setzero_si128(); 2];
         for i in 0..2 {
             e_decomp[i] = linear(a_decomp[i], k_decomp[i]);
         }
-        assert_eq_m128i(_mm256_extracti128_si256(r, 0), e_decomp[0]);
-        assert_eq_m128i(_mm256_extracti128_si256(r, 1), e_decomp[1]);
+        assert_eq_m128i(_mm256_extracti128_si256::<0>(r), e_decomp[0]);
+        assert_eq_m128i(_mm256_extracti128_si256::<1>(r), e_decomp[1]);
     }
 
     #[target_feature(enable = "sse2")]

@@ -989,24 +989,22 @@ pub unsafe fn _mm256_cvtepu8_epi64(a: __m128i) -> __m256i {
     transmute::<i64x4, _>(simd_cast(v32))
 }
 
-/// Extracts 128 bits (of integer data) from `a` selected with `imm8`.
+/// Extracts 128 bits (of integer data) from `a` selected with `IMM1`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extracti128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
     all(test, not(target_os = "windows")),
-    assert_instr(vextractf128, imm8 = 1)
+    assert_instr(vextractf128, IMM1 = 1)
 )]
-#[rustc_args_required_const(1)]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_extracti128_si256(a: __m256i, imm8: i32) -> __m128i {
+pub unsafe fn _mm256_extracti128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
+    static_assert_imm1!(IMM1);
     let a = a.as_i64x4();
     let b = _mm256_undefined_si256().as_i64x4();
-    let dst: i64x2 = match imm8 & 0b01 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        _ => simd_shuffle2(a, b, [2, 3]),
-    };
+    let dst: i64x2 = simd_shuffle2(a, b, [[0, 1], [2, 3]][IMM1 as usize]);
     transmute(dst)
 }
 
@@ -4412,7 +4410,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extracti128_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
-        let r = _mm256_extracti128_si256(a, 0b01);
+        let r = _mm256_extracti128_si256::<1>(a);
         let e = _mm_setr_epi64x(3, 4);
         assert_eq_m128i(r, e);
     }
