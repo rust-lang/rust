@@ -385,6 +385,11 @@
                         "Force import paths to be absolute by always starting them with `crate` or the crate name they refer to."
                     ]
                 },
+                "rust-analyzer.assist.importGroup": {
+                    "markdownDescription": "Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.callInfo.full": {
                     "markdownDescription": "Show function name and docs in parameter hints.",
                     "default": true,

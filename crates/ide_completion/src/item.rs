@@ -5,7 +5,7 @@ use std::fmt;
 use hir::{Documentation, ModPath, Mutability};
 use ide_db::{
     helpers::{
-        insert_use::{self, ImportScope, MergeBehavior},
+        insert_use::{self, ImportScope, InsertUseConfig},
         mod_path_to_ast, SnippetCap,
     },
     SymbolKind,
@@ -280,14 +280,11 @@ pub struct ImportEdit {
 impl ImportEdit {
     /// Attempts to insert the import to the given scope, producing a text edit.
     /// May return no edit in edge cases, such as scope already containing the import.
-    pub fn to_text_edit(&self, merge_behavior: Option<MergeBehavior>) -> Option<TextEdit> {
+    pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
         let _p = profile::span("ImportEdit::to_text_edit");
 
-        let rewriter = insert_use::insert_use(
-            &self.import_scope,
-            mod_path_to_ast(&self.import_path),
-            merge_behavior,
-        );
+        let rewriter =
+            insert_use::insert_use(&self.import_scope, mod_path_to_ast(&self.import_path), cfg);
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();
         algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);

@@ -35,7 +35,8 @@ config_data! {
         assist_importMergeBehaviour: MergeBehaviorDef  = "\"full\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
-
+        /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
+        assist_importGroup: bool                       = "true",
         /// Show function name and docs in parameter hints.
         callInfo_full: bool = "true",
 
@@ -574,6 +575,7 @@ impl Config {
                 ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
                 ImportPrefixDef::BySelf => PrefixKind::BySelf,
             },
+            group: self.data.assist_importGroup,
         }
     }
     pub fn completion(&self) -> CompletionConfig {

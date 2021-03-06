@@ -19,6 +19,7 @@ use test_utils::mark;
 pub struct InsertUseConfig {
     pub merge: Option<MergeBehavior>,
     pub prefix_kind: hir::PrefixKind,
+    pub group: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -99,13 +100,13 @@ fn is_inner_comment(token: SyntaxToken) -> bool {
 pub fn insert_use<'a>(
     scope: &ImportScope,
     path: ast::Path,
-    merge: Option<MergeBehavior>,
+    cfg: InsertUseConfig,
 ) -> SyntaxRewriter<'a> {
     let _p = profile::span("insert_use");
     let mut rewriter = SyntaxRewriter::default();
     let use_item = make::use_(None, make::use_tree(path.clone(), None, None, false));
     // merge into existing imports if possible
-    if let Some(mb) = merge {
+    if let Some(mb) = cfg.merge {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 rewriter.replace(existing_use.syntax(), merged.syntax());
@@ -116,7 +117,7 @@ pub fn insert_use<'a>(
 
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
-    let (insert_position, add_blank) = find_insert_position(scope, path);
+    let (insert_position, add_blank) = find_insert_position(scope, path, cfg.group);
 
     let indent = if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
         Some(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into())
@@ -538,6 +539,7 @@ impl AddBlankLine {
 fn find_insert_position(
     scope: &ImportScope,
     insert_path: ast::Path,
+    group_imports: bool,
 ) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
     let group = ImportGroup::new(&insert_path);
     let path_node_iter = scope
@@ -550,6 +552,14 @@ fn find_insert_position(
             let has_tl = tree.use_tree_list().is_some();
             Some((path, has_tl, node))
         });
+
+    if !group_imports {
+        if let Some((_, _, node)) = path_node_iter.last() {
+            return (InsertPosition::After(node.into()), AddBlankLine::Before);
+        }
+        return (InsertPosition::First, AddBlankLine::AfterTwice);
+    }
+
     // Iterator that discards anything thats not in the required grouping
     // This implementation allows the user to rearrange their import groups as this only takes the first group that fits
     let group_iter = path_node_iter
@@ -565,6 +575,7 @@ fn find_insert_position(
             use_tree_path_cmp(&insert_path, false, path, has_tl) != Ordering::Greater
         },
     );
+
     match post_insert {
         // insert our import before that element
         Some((.., node)) => (InsertPosition::Before(node.into()), AddBlankLine::After),

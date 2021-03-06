@@ -154,7 +154,7 @@ fn insert_import(
         mod_path.pop_segment();
         mod_path.push_segment(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(scope_node, &ctx.sema)?;
-        *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use.merge);
+        *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use);
     }
     Some(())
 }

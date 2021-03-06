@@ -1,6 +1,30 @@
 use super::*;
 
+use hir::PrefixKind;
 use test_utils::assert_eq_text;
+
+#[test]
+fn insert_not_group() {
+    check(
+        "use external_crate2::bar::A",
+        r"
+use std::bar::B;
+use external_crate::bar::A;
+use crate::bar::A;
+use self::bar::A;
+use super::bar::A;",
+        r"
+use std::bar::B;
+use external_crate::bar::A;
+use crate::bar::A;
+use self::bar::A;
+use super::bar::A;
+use external_crate2::bar::A;",
+        None,
+        false,
+        false,
+    );
+}
 
 #[test]
 fn insert_existing() {
@@ -239,6 +263,7 @@ fn insert_empty_module() {
     use foo::bar;
 }",
         None,
+        true,
         true,
     )
 }
@@ -584,6 +609,7 @@ fn check(
     ra_fixture_after: &str,
     mb: Option<MergeBehavior>,
     module: bool,
+    group: bool,
 ) {
     let mut syntax = ast::SourceFile::parse(ra_fixture_before).tree().syntax().clone();
     if module {
@@ -597,21 +623,25 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    let rewriter = insert_use(&file, path, mb);
+    let rewriter = insert_use(
+        &file,
+        path,
+        InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group },
+    );
     let result = rewriter.rewrite(file.as_syntax_node()).to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
 
 fn check_full(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Full), false)
+    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Full), false, true)
 }
 
 fn check_last(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Last), false)
+    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Last), false, true)
 }
 
 fn check_none(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, None, false)
+    check(path, ra_fixture_before, ra_fixture_after, None, false, true)
 }
 
 fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior) {
