@@ -37,7 +37,7 @@ pub enum ConstKind<'tcx> {
     Error(ty::DelaySpanBugEmitted),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstKind<'_>, 40);
 
 impl<'tcx> ConstKind<'tcx> {
