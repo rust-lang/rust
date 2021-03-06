@@ -440,6 +440,37 @@ impl Default for Version {
 }
 
 #[test]
+fn doctest_generate_default_from_new() {
+    check_doc_test(
+        "generate_default_from_new",
+        r#####"
+struct Example { _inner: () }
+
+impl Example {
+    pub fn n$0ew() -> Self {
+        Self { _inner: () }
+    }
+}
+"#####,
+        r#####"
+struct Example { _inner: () }
+
+impl Example {
+    pub fn new() -> Self {
+        Self { _inner: () }
+    }
+}
+
+impl Default for Example {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_derive() {
     check_doc_test(
         "generate_derive",
