@@ -79,15 +79,14 @@ macro_rules! impl_float_vector {
             /// Returns true for each lane if its value is subnormal.
             #[inline]
             pub fn is_subnormal(self) -> crate::$mask_ty<LANES> {
-                let exponent_mask = crate::$bits_ty::splat(!0 << <$type>::MANTISSA_DIGITS);
-                self.abs().lanes_ne(Self::splat(0.0)) & (self.to_bits() & exponent_mask).lanes_eq(crate::$bits_ty::splat(0))
+                self.abs().lanes_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(<$type>::INFINITY).to_bits()).lanes_eq(crate::$bits_ty::splat(0))
             }
 
             /// Returns true for each lane if its value is neither neither zero, infinite,
             /// subnormal, or `NaN`.
             #[inline]
             pub fn is_normal(self) -> crate::$mask_ty<LANES> {
-                !(self.abs().lanes_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal())
+                !(self.abs().lanes_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
             }
         }
     };
