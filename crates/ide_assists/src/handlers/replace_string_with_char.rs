@@ -25,15 +25,16 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -
     if value.chars().take(2).count() != 1 {
         return None;
     }
+    let quote_offets = token.quote_offsets()?;
 
     acc.add(
         AssistId("replace_string_with_char", AssistKind::RefactorRewrite),
         "Replace string with char",
         target,
         |edit| {
-            let token_text = token.syntax().text();
-            let inner_text = &token_text[1..token_text.len() - 1];
-            edit.replace(token.syntax().text_range(), format!("'{}'", inner_text));
+            let (left, right) = quote_offets.quotes;
+            edit.replace(left, String::from('\''));
+            edit.replace(right, String::from('\''));
         },
     )
 }
@@ -49,10 +50,10 @@ mod tests {
         check_assist_target(
             replace_string_with_char,
             r#"
-            fn f() {
-                let s = "$0c";
-            }
-            "#,
+fn f() {
+    let s = "$0c";
+}
+"#,
             r#""c""#,
         );
     }
@@ -62,15 +63,15 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-    fn f() {
-        let s = "$0c";
-    }
-    "#,
+fn f() {
+    let s = "$0c";
+}
+"#,
             r##"
-    fn f() {
-        let s = 'c';
-    }
-    "##,
+fn f() {
+    let s = 'c';
+}
+"##,
         )
     }
 
@@ -79,15 +80,15 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-    fn f() {
-        let s = "$0😀";
-    }
-    "#,
+fn f() {
+    let s = "$0😀";
+}
+"#,
             r##"
-    fn f() {
-        let s = '😀';
-    }
-    "##,
+fn f() {
+    let s = '😀';
+}
+"##,
         )
     }
 
@@ -96,10 +97,10 @@ mod tests {
         check_assist_not_applicable(
             replace_string_with_char,
             r#"
-    fn f() {
-        let s = "$0test";
-    }
-    "#,
+fn f() {
+    let s = "$0test";
+}
+"#,
         )
     }
 
@@ -108,15 +109,15 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-                fn f() {
-                    format!($0"x", 92)
-                }
-                "#,
+fn f() {
+    format!($0"x", 92)
+}
+"#,
             r##"
-                fn f() {
-                    format!('x', 92)
-                }
-                "##,
+fn f() {
+    format!('x', 92)
+}
+"##,
         )
     }
 
@@ -125,15 +126,15 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-                fn f() {
-                    find($0"x");
-                }
-                "#,
+fn f() {
+    find($0"x");
+}
+"#,
             r##"
-                fn f() {
-                    find('x');
-                }
-                "##,
+fn f() {
+    find('x');
+}
+"##,
         )
     }
 
@@ -142,15 +143,15 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-                fn f() {
-                    find($0"\n");
-                }
-                "#,
+fn f() {
+    find($0"\n");
+}
+"#,
             r##"
-                fn f() {
-                    find('\n');
-                }
-                "##,
+fn f() {
+    find('\n');
+}
+"##,
         )
     }
 
@@ -159,15 +160,32 @@ mod tests {
         check_assist(
             replace_string_with_char,
             r#"
-                fn f() {
-                    find($0"\u{7FFF}");
-                }
-                "#,
+fn f() {
+    find($0"\u{7FFF}");
+}
+"#,
             r##"
-                fn f() {
-                    find('\u{7FFF}');
-                }
-                "##,
+fn f() {
+    find('\u{7FFF}');
+}
+"##,
+        )
+    }
+
+    #[test]
+    fn replace_raw_string_with_char() {
+        check_assist(
+            replace_string_with_char,
+            r##"
+fn f() {
+    $0r#"X"#
+}
+"##,
+            r##"
+fn f() {
+    'X'
+}
+"##,
         )
     }
 }
