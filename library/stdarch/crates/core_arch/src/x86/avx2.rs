@@ -1813,24 +1813,22 @@ pub unsafe fn _mm256_mask_i64gather_pd<const SCALE: i32>(
 }
 
 /// Copies `a` to `dst`, then insert 128 bits (of integer data) from `b` at the
-/// location specified by `imm8`.
+/// location specified by `IMM1`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_inserti128_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
 #[cfg_attr(
     all(test, not(target_os = "windows")),
-    assert_instr(vinsertf128, imm8 = 1)
+    assert_instr(vinsertf128, IMM1 = 1)
 )]
-#[rustc_args_required_const(2)]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_inserti128_si256(a: __m256i, b: __m128i, imm8: i32) -> __m256i {
+pub unsafe fn _mm256_inserti128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
+    static_assert_imm1!(IMM1);
     let a = a.as_i64x4();
     let b = _mm256_castsi128_si256(b).as_i64x4();
-    let dst: i64x4 = match imm8 & 0b01 {
-        0 => simd_shuffle4(a, b, [4, 5, 2, 3]),
-        _ => simd_shuffle4(a, b, [0, 1, 4, 5]),
-    };
+    let dst: i64x4 = simd_shuffle4(a, b, [[4, 5, 2, 3], [0, 1, 4, 5]][IMM1 as usize]);
     transmute(dst)
 }
 
@@ -4494,7 +4492,7 @@ mod tests {
     unsafe fn test_mm256_inserti128_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm_setr_epi64x(7, 8);
-        let r = _mm256_inserti128_si256(a, b, 0b01);
+        let r = _mm256_inserti128_si256::<1>(a, b);
         let e = _mm256_setr_epi64x(1, 2, 7, 8);
         assert_eq_m256i(r, e);
     }
