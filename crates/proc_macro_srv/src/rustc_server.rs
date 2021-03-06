@@ -199,39 +199,43 @@ pub mod token_stream {
 
     impl ToString for TokenStream {
         fn to_string(&self) -> String {
-            tokentrees_to_text(&self.token_trees[..])
-        }
-    }
+            return tokentrees_to_text(&self.token_trees[..]);
 
-    fn tokentrees_to_text(tkns: &[tt::TokenTree]) -> String {
-        tkns.iter()
-            .fold((String::new(), true), |(last, last_to_joint), tkn| {
-                let s = [last, tokentree_to_text(tkn)].join(if last_to_joint { "" } else { " " });
-                let mut is_joint = false;
-                if let tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) = tkn {
-                    if punct.spacing == tt::Spacing::Joint {
-                        is_joint = true;
+            fn tokentrees_to_text(tkns: &[tt::TokenTree]) -> String {
+                tkns.iter()
+                    .fold((String::new(), true), |(last, last_to_joint), tkn| {
+                        let s = [last, tokentree_to_text(tkn)].join(if last_to_joint {
+                            ""
+                        } else {
+                            " "
+                        });
+                        let mut is_joint = false;
+                        if let tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) = tkn {
+                            if punct.spacing == tt::Spacing::Joint {
+                                is_joint = true;
+                            }
+                        }
+                        (s, is_joint)
+                    })
+                    .0
+            }
+
+            fn tokentree_to_text(tkn: &tt::TokenTree) -> String {
+                match tkn {
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.text.clone().into(),
+                    tt::TokenTree::Leaf(tt::Leaf::Literal(literal)) => literal.text.clone().into(),
+                    tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => format!("{}", punct.char),
+                    tt::TokenTree::Subtree(subtree) => {
+                        let content = tokentrees_to_text(&subtree.token_trees);
+                        let (open, close) = match subtree.delimiter.map(|it| it.kind) {
+                            None => ("", ""),
+                            Some(tt::DelimiterKind::Brace) => ("{", "}"),
+                            Some(tt::DelimiterKind::Parenthesis) => ("(", ")"),
+                            Some(tt::DelimiterKind::Bracket) => ("[", "]"),
+                        };
+                        format!("{}{}{}", open, content, close)
                     }
                 }
-                (s, is_joint)
-            })
-            .0
-    }
-
-    fn tokentree_to_text(tkn: &tt::TokenTree) -> String {
-        match tkn {
-            tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.text.clone().into(),
-            tt::TokenTree::Leaf(tt::Leaf::Literal(literal)) => literal.text.clone().into(),
-            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => format!("{}", punct.char),
-            tt::TokenTree::Subtree(subtree) => {
-                let content = tokentrees_to_text(&subtree.token_trees);
-                let (open, close) = match subtree.delimiter.map(|it| it.kind) {
-                    None => ("", ""),
-                    Some(tt::DelimiterKind::Brace) => ("{", "}"),
-                    Some(tt::DelimiterKind::Parenthesis) => ("(", ")"),
-                    Some(tt::DelimiterKind::Bracket) => ("[", "]"),
-                };
-                format!("{}{}{}", open, content, close)
             }
         }
     }
