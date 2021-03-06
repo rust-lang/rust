@@ -55,3 +55,20 @@ See [env_vars.md](docs/env_vars.md) for all env vars used by rustc_codegen_crane
       `llvm_asm!` will remain unimplemented forever. `asm!` doesn't yet support reg classes. You
       have to specify specific registers instead.
 * SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171), some basic things work)
+
+## License
+
+Licensed under either of
+
+  * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+    http://www.apache.org/licenses/LICENSE-2.0)
+  * MIT license ([LICENSE-MIT](LICENSE-MIT) or
+    http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you shall be dual licensed as above, without any
+additional terms or conditions.
