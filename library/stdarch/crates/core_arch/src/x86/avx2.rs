@@ -2313,54 +2313,22 @@ pub unsafe fn _mm256_permutevar8x32_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute4x64_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpermpd, imm8 = 9))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpermpd, IMM8 = 9))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
-    let imm8 = (imm8 & 0xFF) as u8;
+pub unsafe fn _mm256_permute4x64_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     let zero = _mm256_setzero_si256().as_i64x4();
-    let a = a.as_i64x4();
-    macro_rules! permute4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, zero, [$a, $b, $c, $d])
-        };
-    }
-    macro_rules! permute3 {
-        ($a:expr, $b:expr, $c:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => permute4!($a, $b, $c, 0),
-                0b01 => permute4!($a, $b, $c, 1),
-                0b10 => permute4!($a, $b, $c, 2),
-                _ => permute4!($a, $b, $c, 3),
-            }
-        };
-    }
-    macro_rules! permute2 {
-        ($a:expr, $b:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => permute3!($a, $b, 0),
-                0b01 => permute3!($a, $b, 1),
-                0b10 => permute3!($a, $b, 2),
-                _ => permute3!($a, $b, 3),
-            }
-        };
-    }
-    macro_rules! permute1 {
-        ($a:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => permute2!($a, 0),
-                0b01 => permute2!($a, 1),
-                0b10 => permute2!($a, 2),
-                _ => permute2!($a, 3),
-            }
-        };
-    }
-    let r: i64x4 = match imm8 & 0b11 {
-        0b00 => permute1!(0),
-        0b01 => permute1!(1),
-        0b10 => permute1!(2),
-        _ => permute1!(3),
-    };
+    let r: i64x4 = simd_shuffle4(
+        a.as_i64x4(),
+        zero,
+        [
+            IMM8 as u32 & 0b11,
+            (IMM8 as u32 >> 2) & 0b11,
+            (IMM8 as u32 >> 4) & 0b11,
+            (IMM8 as u32 >> 6) & 0b11,
+        ],
+    );
     transmute(r)
 }
 
@@ -5422,7 +5390,7 @@ mod tests {
     unsafe fn test_mm256_permute4x64_epi64() {
         let a = _mm256_setr_epi64x(100, 200, 300, 400);
         let expected = _mm256_setr_epi64x(400, 100, 200, 100);
-        let r = _mm256_permute4x64_epi64(a, 0b00010011);
+        let r = _mm256_permute4x64_epi64::<0b00010011>(a);
         assert_eq_m256i(r, expected);
     }
 
