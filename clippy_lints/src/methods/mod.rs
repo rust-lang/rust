@@ -3,6 +3,7 @@ mod bytes_nth;
 mod clone_on_ref_ptr;
 mod expect_used;
 mod filetype_is_file;
+mod filter_map;
 mod filter_map_identity;
 mod filter_next;
 mod from_iter_instead_of_collect;
@@ -43,7 +44,7 @@ use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{Expr, ExprKind, PatKind, TraitItem, TraitItemKind, UnOp};
+use rustc_hir::{PatKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
@@ -1698,10 +1699,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
             ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
             ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
-            ["map", "filter"] => lint_filter_map(cx, expr, false),
+            ["map", "filter"] => filter_map::check(cx, expr, false),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
-            ["map", "find"] => lint_filter_map(cx, expr, true),
+            ["map", "find"] => filter_map::check(cx, expr, true),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
@@ -2748,80 +2749,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint use of `filter().map()` or `find().map()` for `Iterators`
-fn lint_filter_map<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_find: bool) {
-    if_chain! {
-        if let ExprKind::MethodCall(_, _, [map_recv, map_arg], map_span) = expr.kind;
-        if let ExprKind::MethodCall(_, _, [_, filter_arg], filter_span) = map_recv.kind;
-        if match_trait_method(cx, map_recv, &paths::ITERATOR);
-
-        // filter(|x| ...is_some())...
-        if let ExprKind::Closure(_, _, filter_body_id, ..) = filter_arg.kind;
-        let filter_body = cx.tcx.hir().body(filter_body_id);
-        if let [filter_param] = filter_body.params;
-        // optional ref pattern: `filter(|&x| ..)`
-        let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
-            (ref_pat, true)
-        } else {
-            (filter_param.pat, false)
-        };
-        // closure ends with is_some() or is_ok()
-        if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
-        if let ExprKind::MethodCall(path, _, [filter_arg], _) = filter_body.value.kind;
-        if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
-        if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::option_type, opt_ty.did) {
-            Some(false)
-        } else if cx.tcx.is_diagnostic_item(sym::result_type, opt_ty.did) {
-            Some(true)
-        } else {
-            None
-        };
-        if path.ident.name.as_str() == if is_result { "is_ok" } else { "is_some" };
-
-        // ...map(|x| ...unwrap())
-        if let ExprKind::Closure(_, _, map_body_id, ..) = map_arg.kind;
-        let map_body = cx.tcx.hir().body(map_body_id);
-        if let [map_param] = map_body.params;
-        if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;
-        // closure ends with expect() or unwrap()
-        if let ExprKind::MethodCall(seg, _, [map_arg, ..], _) = map_body.value.kind;
-        if matches!(seg.ident.name, sym::expect | sym::unwrap | sym::unwrap_or);
-
-        let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
-            // in `filter(|x| ..)`, replace `*x` with `x`
-            let a_path = if_chain! {
-                if !is_filter_param_ref;
-                if let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind;
-                then { expr_path } else { a }
-            };
-            // let the filter closure arg and the map closure arg be equal
-            if_chain! {
-                if path_to_local_id(a_path, filter_param_id);
-                if path_to_local_id(b, map_param_id);
-                if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
-                then {
-                    return true;
-                }
-            }
-            false
-        };
-        if SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(filter_arg, map_arg);
-        then {
-            let span = filter_span.to(map_span);
-            let (filter_name, lint) = if is_find {
-                ("find", MANUAL_FIND_MAP)
-            } else {
-                ("filter", MANUAL_FILTER_MAP)
-            };
-            let msg = format!("`{}(..).map(..)` can be simplified as `{0}_map(..)`", filter_name);
-            let to_opt = if is_result { ".ok()" } else { "" };
-            let sugg = format!("{}_map(|{}| {}{})", filter_name, map_param_ident,
-                snippet(cx, map_arg.span, ".."), to_opt);
-            span_lint_and_sugg(cx, lint, span, &msg, "try", sugg, Applicability::MachineApplicable);
-        }
-    }
 }
 
 const FILTER_MAP_NEXT_MSRV: RustcVersion = RustcVersion::new(1, 30, 0);
