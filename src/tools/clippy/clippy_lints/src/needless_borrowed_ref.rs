@@ -43,7 +43,8 @@ declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        if pat.span.from_expansion() {
+        let pat_span = cx.tcx.hir().span(pat.hir_id);
+        if pat_span.from_expansion() {
             // OK, simple enough, lints doesn't check in macro.
             return;
         }
@@ -64,12 +65,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
                     return;
                 }
                 let mut applicability = Applicability::MachineApplicable;
-                span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat.span,
+                span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat_span,
                                    "this pattern takes a reference on something that is being de-referenced",
                                    |diag| {
                                        let hint = snippet_with_applicability(cx, spanned_name.span, "..", &mut applicability).into_owned();
                                        diag.span_suggestion(
-                                           pat.span,
+                                           pat_span,
                                            "try removing the `&ref` part and just keep",
                                            hint,
                                            applicability,

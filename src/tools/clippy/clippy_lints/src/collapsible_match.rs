@@ -6,7 +6,7 @@ use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, QPath, StmtKind
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{DefIdTree, TyCtxt, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::MultiSpan;
 
 declare_clippy_lint! {
     /// **What it does:** Finds nested `match` or `if let` expressions where the patterns may be "collapsed" together
@@ -65,7 +65,7 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
         let expr = strip_singleton_blocks(arm.body);
         if let ExprKind::Match(expr_in, arms_inner, _) = expr.kind;
         // the outer arm pattern and the inner match
-        if expr_in.span.ctxt() == arm.pat.span.ctxt();
+        if expr_in.span.ctxt() == cx.tcx.hir().span(arm.pat.hir_id).ctxt();
         // there must be no more than two arms in the inner match for this lint
         if arms_inner.len() == 2;
         // no if guards on the inner match
@@ -98,9 +98,10 @@ fn check_arm<'tcx>(arm: &Arm<'tcx>, wild_outer_arm: &Arm<'tcx>, cx: &LateContext
                 expr.span,
                 "unnecessary nested match",
                 |diag| {
-                    let mut help_span = MultiSpan::from_spans(vec![binding_span, non_wild_inner_arm.pat.span]);
+                    let binding_span = cx.tcx.hir().span(binding_span);
+                    let mut help_span = MultiSpan::from_spans(vec![binding_span, cx.tcx.hir().span(non_wild_inner_arm.pat.hir_id)]);
                     help_span.push_span_label(binding_span, "replace this binding".into());
-                    help_span.push_span_label(non_wild_inner_arm.pat.span, "with this pattern".into());
+                    help_span.push_span_label(cx.tcx.hir().span(non_wild_inner_arm.pat.hir_id), "with this pattern".into());
                     diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );
@@ -136,7 +137,7 @@ fn arm_is_wild_like(arm: &Arm<'_>, tcx: TyCtxt<'_>) -> bool {
     }
 }
 
-fn find_pat_binding(pat: &Pat<'_>, hir_id: HirId) -> Option<Span> {
+fn find_pat_binding(pat: &Pat<'_>, hir_id: HirId) -> Option<HirId> {
     let mut span = None;
     pat.walk_short(|p| match &p.kind {
         // ignore OR patterns
@@ -144,7 +145,7 @@ fn find_pat_binding(pat: &Pat<'_>, hir_id: HirId) -> Option<Span> {
         PatKind::Binding(_bm, _, _ident, _) => {
             let found = p.hir_id == hir_id;
             if found {
-                span = Some(p.span);
+                span = Some(p.hir_id);
             }
             !found
         },

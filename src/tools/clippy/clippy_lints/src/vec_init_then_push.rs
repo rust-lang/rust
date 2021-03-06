@@ -95,11 +95,12 @@ impl LateLintPass<'_> for VecInitThenPush {
             if let PatKind::Binding(BindingAnnotation::Mutable, id, _, None) = local.pat.kind;
             if let Some(init_kind) = get_vec_init_kind(cx, init);
             then {
+                let local_pat_span = cx.tcx.hir().span(local.pat.hir_id);
                 self.searcher = Some(VecPushSearcher {
                         local_id: id,
                         init: init_kind,
                         lhs_is_local: true,
-                        lhs_span: local.ty.map_or(local.pat.span, |t| local.pat.span.to(t.span)),
+                        lhs_span: local.ty.map_or(local_pat_span, |t| local_pat_span.to(t.span)),
                         err_span: local_span,
                         found: 0,
                     });

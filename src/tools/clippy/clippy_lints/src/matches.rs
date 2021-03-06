@@ -635,8 +635,8 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     format!(
                         "let {}({}) = {};",
                         snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, target.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(local.pat.hir_id), "..", &mut applicability),
+                        snippet_with_applicability(cx, cx.tcx.hir().span(target.hir_id), "..", &mut applicability),
                     ),
                     applicability,
                 );
@@ -645,9 +645,10 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
+        let pat_span = cx.tcx.hir().span(pat.hir_id);
         if_chain! {
-            if !in_external_macro(cx.sess(), pat.span);
-            if !in_macro(pat.span);
+            if !in_external_macro(cx.sess(), pat_span);
+            if !in_macro(pat_span);
             if let PatKind::Struct(QPath::Resolved(_, ref path), fields, true) = pat.kind;
             if let Some(def_id) = path.res.opt_def_id();
             let ty = cx.tcx.type_of(def_id);
@@ -659,7 +660,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 span_lint_and_help(
                     cx,
                     REST_PAT_IN_FULLY_BOUND_STRUCTS,
-                    pat.span,
+                    pat_span,
                     "unnecessary use of `..` pattern in struct binding. All fields were already bound",
                     None,
                     "consider removing `..` from this binding",
@@ -759,7 +760,7 @@ fn report_single_match_single_pattern(
                 snippet(cx, ex.span, ".."),
                 // PartialEq for different reference counts may not exist.
                 "&".repeat(ref_count_diff),
-                snippet(cx, arms[0].pat.span, ".."),
+                snippet(cx, cx.tcx.hir().span(arms[0].pat.hir_id), ".."),
                 expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
                 els_str,
             );
@@ -768,7 +769,7 @@ fn report_single_match_single_pattern(
             let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
             let sugg = format!(
                 "if let {} = {} {}{}",
-                snippet(cx, arms[0].pat.span, ".."),
+                snippet(cx, cx.tcx.hir().span(arms[0].pat.hir_id), ".."),
                 snippet(cx, ex.span, ".."),
                 expr_block(cx, &arms[0].body, None, "..", Some(expr.span)),
                 els_str,
@@ -942,7 +943,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
                             span_lint_and_note(cx,
                                 MATCH_WILD_ERR_ARM,
-                                arm.pat.span,
+                                cx.tcx.hir().span(arm.pat.hir_id),
                                 &format!("`Err({})` matches all errors", &ident_bind_name),
                                 None,
                                 "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
@@ -969,9 +970,9 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
     let mut wildcard_ident = None;
     for arm in arms {
         if let PatKind::Wild = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
+            wildcard_span = Some(cx.tcx.hir().span(arm.pat.hir_id));
         } else if let PatKind::Binding(_, _, ident, None) = arm.pat.kind {
-            wildcard_span = Some(arm.pat.span);
+            wildcard_span = Some(cx.tcx.hir().span(arm.pat.hir_id));
             wildcard_ident = Some(ident);
         }
     }
@@ -1100,7 +1101,10 @@ fn check_match_ref_pats(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 
         suggs.extend(arms.iter().filter_map(|a| {
             if let PatKind::Ref(ref refp, _) = a.pat.kind {
-                Some((a.pat.span, snippet(cx, refp.span, "..").to_string()))
+                Some((
+                    cx.tcx.hir().span(a.pat.hir_id),
+                    snippet(cx, cx.tcx.hir().span(refp.hir_id), "..").to_string(),
+                ))
             } else {
                 None
             }
@@ -1174,7 +1178,7 @@ fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
                 span_lint_and_help(
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
-                    arm.pat.span,
+                    cx.tcx.hir().span(arm.pat.hir_id),
                     "wildcard pattern covers any other pattern as it will match anyway",
                     None,
                     "consider handling `_` separately",
@@ -1222,7 +1226,7 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
             let pat = {
                 use itertools::Itertools as _;
                 b0_arms.iter()
-                    .map(|arm| snippet_with_applicability(cx, arm.pat.span, "..", &mut applicability))
+                    .map(|arm| snippet_with_applicability(cx, cx.tcx.hir().span(arm.pat.hir_id), "..", &mut applicability))
                     .join(" | ")
             };
             let pat_and_guard = if let Some(Guard::If(g)) = if_guard {
@@ -1310,7 +1314,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
     }
 
     let matched_vars = ex.span;
-    let bind_names = arms[0].pat.span;
+    let bind_names = cx.tcx.hir().span(arms[0].pat.hir_id);
     let match_body = remove_blocks(&arms[0].body);
     let mut snippet_body = if match_body.span.from_expansion() {
         Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
@@ -1347,7 +1351,12 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
                         snippet_with_applicability(cx, bind_names, "..", &mut applicability),
                         snippet_with_applicability(cx, matched_vars, "..", &mut applicability),
                         " ".repeat(indent_of(cx, expr.span).unwrap_or(0)),
-                        snippet_with_applicability(cx, parent_let_node.pat.span, "..", &mut applicability),
+                        snippet_with_applicability(
+                            cx,
+                            cx.tcx.hir().span(parent_let_node.pat.hir_id),
+                            "..",
+                            &mut applicability
+                        ),
                         snippet_body
                     ),
                 )
@@ -1436,7 +1445,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                         RangeEnd::Excluded => Bound::Excluded(rhs),
                     };
                     return Some(SpannedRange {
-                        span: pat.span,
+                        span: cx.tcx.hir().span(pat.hir_id),
                         node: (lhs, rhs),
                     });
                 }
@@ -1444,7 +1453,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                 if let PatKind::Lit(ref value) = pat.kind {
                     let value = constant(cx, cx.typeck_results(), value)?.0;
                     return Some(SpannedRange {
-                        span: pat.span,
+                        span: cx.tcx.hir().span(pat.hir_id),
                         node: (value.clone(), Bound::Included(value)),
                     });
                 }
@@ -1696,7 +1705,7 @@ mod redundant_pattern_match {
         span_lint_and_then(
             cx,
             REDUNDANT_PATTERN_MATCHING,
-            arms[0].pat.span,
+            cx.tcx.hir().span(arms[0].pat.hir_id),
             &format!("redundant pattern matching, consider using `{}`", good_method),
             |diag| {
                 // while let ... = ... { ... }
@@ -1939,8 +1948,8 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
                     // span for the whole pattern, the suggestion is only shown when there is only
                     // one pattern. The user should know about `|` if they are already using it…
 
-                    let lhs = snippet(cx, i.pat.span, "<pat1>");
-                    let rhs = snippet(cx, j.pat.span, "<pat2>");
+                    let lhs = snippet(cx, cx.tcx.hir().span(i.pat.hir_id), "<pat1>");
+                    let rhs = snippet(cx, cx.tcx.hir().span(j.pat.hir_id), "<pat2>");
 
                     if let PatKind::Wild = j.pat.kind {
                         // if the last arm is _, then i could be integrated into _
@@ -1954,7 +1963,10 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
                             ),
                         );
                     } else {
-                        diag.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        diag.span_help(
+                            cx.tcx.hir().span(i.pat.hir_id),
+                            &format!("consider refactoring into `{} | {}`", lhs, rhs),
+                        );
                     }
                 },
             );
@@ -1974,6 +1986,6 @@ fn pat_contains_local(pat: &Pat<'_>, id: HirId) -> bool {
 /// Returns true if all the bindings in the `Pat` are in `ids` and vice versa
 fn bindings_eq(pat: &Pat<'_>, mut ids: FxHashSet<HirId>) -> bool {
     let mut result = true;
-    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.remove(&id));
+    pat.each_binding_or_first(&mut |_, id, _| result &= ids.remove(&id));
     result && ids.is_empty()
 }

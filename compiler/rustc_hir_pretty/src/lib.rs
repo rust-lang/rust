@@ -341,18 +341,21 @@ impl<'a> State<'a> {
     pub fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)
     where
         F: FnMut(&mut State<'_>, &T),
-        G: FnMut(&T) -> rustc_span::Span,
+        G: FnMut(&State<'_>, &T) -> rustc_span::Span,
     {
         self.rbox(0, b);
         let len = elts.len();
         let mut i = 0;
         for elt in elts {
-            self.maybe_print_comment(get_span(elt).hi());
+            self.maybe_print_comment(get_span(self, elt).hi());
             op(self, elt);
             i += 1;
             if i < len {
                 self.s.word(",");
-                self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi()));
+                self.maybe_print_trailing_comment(
+                    get_span(self, elt),
+                    Some(get_span(self, &elts[i]).hi()),
+                );
                 self.space_if_not_bol();
             }
         }
@@ -360,7 +363,7 @@ impl<'a> State<'a> {
     }
 
     pub fn commasep_exprs(&mut self, b: Breaks, exprs: &[hir::Expr<'_>]) {
-        self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
+        self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |_, e| e.span)
     }
 
     pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
@@ -1237,7 +1240,7 @@ impl<'a> State<'a> {
                 s.print_expr(&field.expr);
                 s.end()
             },
-            |f| f.span,
+            |_, f| f.span,
         );
         match *wth {
             Some(ref expr) => {
@@ -1887,7 +1890,8 @@ impl<'a> State<'a> {
     }
 
     pub fn print_pat(&mut self, pat: &hir::Pat<'_>) {
-        self.maybe_print_comment(pat.span.lo());
+        let span = self.span(pat.hir_id);
+        self.maybe_print_comment(span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
@@ -1951,7 +1955,7 @@ impl<'a> State<'a> {
                         s.print_pat(&f.pat);
                         s.end()
                     },
-                    |f| f.pat.span,
+                    |s, f| s.span(f.pat.hir_id),
                 );
                 if etc {
                     if !fields.is_empty() {

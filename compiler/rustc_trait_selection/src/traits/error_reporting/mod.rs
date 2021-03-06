@@ -784,21 +784,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .params
                     .iter()
                     .map(|arg| {
-                        if let hir::Pat { kind: hir::PatKind::Tuple(ref args, _), span, .. } =
-                            *arg.pat
-                        {
+                        let span = hir.span(arg.pat.hir_id);
+                        if let hir::PatKind::Tuple(ref args, _) = arg.pat.kind {
                             Some(ArgKind::Tuple(
                                 Some(span),
                                 args.iter()
                                     .map(|pat| {
-                                        sm.span_to_snippet(pat.span)
+                                        sm.span_to_snippet(hir.span(pat.hir_id))
                                             .ok()
                                             .map(|snippet| (snippet, "_".to_owned()))
                                     })
                                     .collect::<Option<Vec<_>>>()?,
                             ))
                         } else {
-                            let name = sm.span_to_snippet(arg.pat.span).ok()?;
+                            let name = sm.span_to_snippet(span).ok()?;
                             Some(ArgKind::Arg(name, "_".to_owned()))
                         }
                     })

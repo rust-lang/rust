@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
+                snippet(cx, cx.tcx.hir().span(pat.hir_id), "_"),
                 snippet(cx, arg.span, "_")
             ),
         );
@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
             None,
             &format!(
                 "consider replacing `for {0} in {1}` with `if let Ok({0}) = {1}`",
-                snippet(cx, pat.span, "_"),
+                snippet(cx, cx.tcx.hir().span(pat.hir_id), "_"),
                 snippet(cx, arg.span, "_")
             ),
         );

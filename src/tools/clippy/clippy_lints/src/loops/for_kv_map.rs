@@ -14,15 +14,17 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
 ) {
-    let pat_span = pat.span;
+    let pat_span = cx.tcx.hir().span(pat.hir_id);
 
     if let PatKind::Tuple(ref pat, _) = pat.kind {
         if pat.len() == 2 {
             let arg_span = arg.span;
             let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
-                    (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", ty, mutbl),
-                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, Mutability::Not),
+                    (key, _) if pat_is_wild(cx, key, body) => (cx.tcx.hir().span(pat[1].hir_id), "value", ty, mutbl),
+                    (_, value) if pat_is_wild(cx, value, body) => {
+                        (cx.tcx.hir().span(pat[0].hir_id), "key", ty, Mutability::Not)
+                    },
                     _ => return,
                 },
                 _ => return,

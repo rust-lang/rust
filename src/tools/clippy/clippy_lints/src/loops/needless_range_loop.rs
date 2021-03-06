@@ -151,7 +151,7 @@ pub(super) fn check<'tcx>(
                                 diag,
                                 "consider using an iterator",
                                 vec![
-                                    (pat.span, format!("({}, <item>)", ident.name)),
+                                    (cx.tcx.hir().span(pat.hir_id), format!("({}, <item>)", ident.name)),
                                     (
                                         arg.span,
                                         format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2),
@@ -176,7 +176,7 @@ pub(super) fn check<'tcx>(
                             multispan_sugg(
                                 diag,
                                 "consider using an iterator",
-                                vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
+                                vec![(cx.tcx.hir().span(pat.hir_id), "<item>".to_string()), (arg.span, repl)],
                             );
                         },
                     );

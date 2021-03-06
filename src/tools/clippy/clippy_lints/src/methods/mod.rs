@@ -1888,7 +1888,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     item.vis.node.is_pub(),
                     self_ty,
                     first_arg_ty,
-                    first_arg.pat.span
+                    cx.tcx.hir().span(first_arg.pat.hir_id)
                 );
             }
         }

@@ -49,7 +49,8 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
                 let loop_var = if pat_args.is_empty() {
                     "_".to_string()
                 } else {
-                    snippet_with_applicability(cx, pat_args[0].span, "_", &mut applicability).into_owned()
+                    snippet_with_applicability(cx, cx.tcx.hir().span(pat_args[0].hir_id), "_", &mut applicability)
+                        .into_owned()
                 };
                 span_lint_and_sugg(
                     cx,

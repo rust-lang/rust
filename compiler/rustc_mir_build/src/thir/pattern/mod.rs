@@ -369,7 +369,8 @@ impl<'a, 'tcx> Pat<'tcx> {
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
             let msg = format!("encountered errors lowering pattern: {:?}", pcx.errors);
-            tcx.sess.delay_span_bug(pat.span, &msg);
+            let pat_span = tcx.hir().span(pat.hir_id);
+            tcx.sess.delay_span_bug(pat_span, &msg);
         }
         debug!("Pat::from_hir({:?}) = {:?}", pat, result);
         result
@@ -512,6 +513,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
+        let pat_span = self.tcx.hir().span(pat.hir_id);
 
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
@@ -520,7 +522,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
-                let lo_span = lo_expr.map_or(pat.span, |e| e.span);
+                let lo_span = lo_expr.map_or(pat_span, |e| e.span);
                 let lo = lo_expr.map(|e| self.lower_range_expr(e));
                 let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
@@ -532,7 +534,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             "found bad range pattern `{:?}` outside of error recovery",
                             (&lo, &hi),
                         );
-                        self.tcx.sess.delay_span_bug(pat.span, msg);
+                        self.tcx.sess.delay_span_bug(pat_span, msg);
                         PatKind::Wild
                     }
                 };
@@ -542,7 +544,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // constants somewhere. Have them on the range pattern.
                 for end in &[lo, hi] {
                     if let Some((_, Some(ascription))) = end {
-                        let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
+                        let subpattern = Pat { span: pat_span, ty, kind: Box::new(kind) };
                         kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
                     }
                 }
@@ -551,7 +553,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.hir_id, pat.span);
+                return self.lower_path(qpath, pat.hir_id, pat_span);
             }
 
             hir::PatKind::Ref(ref subpattern, _) | hir::PatKind::Box(ref subpattern) => {
@@ -559,13 +561,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
+                self.slice_or_array_pattern(pat_span, ty, prefix, slice, suffix)
             }
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
                 let tys = match ty.kind() {
                     ty::Tuple(ref tys) => tys,
-                    _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
+                    _ => span_bug!(pat_span, "unexpected type for tuple pattern: {:?}", ty),
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
                 PatKind::Leaf { subpatterns }
@@ -614,11 +616,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.kind() {
                     ty::Adt(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
+                    _ => span_bug!(pat_span, "tuple struct pattern not applied to an ADT {:?}", ty),
                 };
                 let variant_def = adt_def.variant_of_res(res);
                 let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
-                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(res, pat.hir_id, pat_span, ty, subpatterns)
             }
 
             hir::PatKind::Struct(ref qpath, ref fields, _) => {
@@ -631,13 +633,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     })
                     .collect();
 
-                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(res, pat.hir_id, pat_span, ty, subpatterns)
             }
 
             hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
-        Pat { span: pat.span, ty, kind: Box::new(kind) }
+        Pat { span: pat_span, ty, kind: Box::new(kind) }
     }
 
     fn lower_tuple_subpats(

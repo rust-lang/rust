@@ -41,7 +41,8 @@ macro_rules! create_maybe_get_coercion_reason {
                 }
             }
             if let hir::Node::Local(hir::Local { ty: Some(_), pat, .. }) = node {
-                return Some((pat.span, "expected because of this assignment".to_string()));
+                let pat_span = self.tcx.hir().span(pat.hir_id);
+                return Some((pat_span, "expected because of this assignment".to_string()));
             }
             None
         }

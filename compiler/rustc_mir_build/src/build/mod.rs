@@ -858,10 +858,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         argument_scope: region::Scope,
         expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<()> {
+        let tcx = self.tcx;
+        let tcx_hir = tcx.hir();
+        let hir_typeck_results = self.typeck_results;
+
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
-            let source_info =
-                SourceInfo::outermost(arg_opt.map_or(self.fn_span, |arg| arg.pat.span));
+            let source_info = SourceInfo::outermost(
+                arg_opt.map_or(self.fn_span, |arg| tcx_hir.span(arg.pat.hir_id)),
+            );
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
@@ -875,10 +880,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
         }
-
-        let tcx = self.tcx;
-        let tcx_hir = tcx.hir();
-        let hir_typeck_results = self.typeck_results;
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
         // indexed closure and we stored in a map called closure_captures in TypeckResults
@@ -954,7 +955,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                arg_opt.as_ref().map_or(expr.span, |arg| arg.pat.span),
+                arg_opt.as_ref().map_or(expr.span, |arg| tcx_hir.span(arg.pat.hir_id)),
                 argument_scope,
                 local,
                 DropKind::Value,

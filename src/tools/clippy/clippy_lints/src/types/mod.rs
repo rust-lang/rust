@@ -416,7 +416,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnitValue {
         if let StmtKind::Local(ref local) = stmt.kind {
             if is_unit(cx.typeck_results().pat_ty(&local.pat)) {
                 let stmt_span = cx.tcx.hir().span(stmt.hir_id);
-                if in_external_macro(cx.sess(), stmt_span) || local.pat.span.from_expansion() {
+                if in_external_macro(cx.sess(), stmt_span) || cx.tcx.hir().span(local.pat.hir_id).from_expansion() {
                     return;
                 }
                 if higher::is_from_for_desugar(local) {
@@ -1458,7 +1458,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let pos = snippet_opt(cx, item.span.until(body.params[0].pat.span))
+                            let pos = snippet_opt(cx, item.span.until(cx.tcx.hir().span(body.params[0].pat.hir_id)))
                                 .and_then(|snip| {
                                     let i = snip.find("fn")?;
                                     Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))

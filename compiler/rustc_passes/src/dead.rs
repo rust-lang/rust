@@ -157,7 +157,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
             ty::Adt(adt, _) => adt.variant_of_res(res),
-            _ => span_bug!(lhs.span, "non-ADT in struct pattern"),
+            _ => span_bug!(self.tcx.hir().span(lhs.hir_id), "non-ADT in struct pattern"),
         };
         for pat in pats {
             if let PatKind::Wild = pat.pat.kind {

@@ -37,7 +37,12 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'
                             "try",
                             format!(
                                 "while let {} = {} {{ .. }}",
-                                snippet_with_applicability(cx, arms[0].pat.span, "..", &mut applicability),
+                                snippet_with_applicability(
+                                    cx,
+                                    cx.tcx.hir().span(arms[0].pat.hir_id),
+                                    "..",
+                                    &mut applicability
+                                ),
                                 snippet_with_applicability(cx, matchexpr.span, "..", &mut applicability),
                             ),
                             applicability,

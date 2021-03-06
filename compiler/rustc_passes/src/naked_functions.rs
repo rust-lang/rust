@@ -91,7 +91,7 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
             _ => {
                 tcx.sess
                     .struct_span_err(
-                        param.pat.span,
+                        tcx.hir().span(param.pat.hir_id),
                         "patterns not allowed in naked function parameters",
                     )
                     .emit();
@@ -104,7 +104,7 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
 fn check_no_parameters_use<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>) {
     let mut params = hir::HirIdSet::default();
     for param in body.params {
-        param.pat.each_binding(|_binding_mode, hir_id, _span, _ident| {
+        param.pat.each_binding(|_binding_mode, hir_id, _ident| {
             params.insert(hir_id);
         });
     }

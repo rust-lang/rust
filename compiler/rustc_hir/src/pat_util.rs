@@ -2,7 +2,6 @@ use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
 use crate::hir::{self, HirId, PatKind};
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
 
 use std::iter::{Enumerate, ExactSizeIterator};
 
@@ -60,10 +59,10 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
 impl hir::Pat<'_> {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Span, Ident)) {
+    pub fn each_binding(&self, mut f: impl FnMut(hir::BindingAnnotation, HirId, Ident)) {
         self.walk_always(|p| {
             if let PatKind::Binding(binding_mode, _, ident, _) = p.kind {
-                f(binding_mode, p.hir_id, p.span, ident);
+                f(binding_mode, p.hir_id, ident);
             }
         });
     }
@@ -72,17 +71,14 @@ impl hir::Pat<'_> {
     /// `match foo() { Some(a) => (), None => () }`.
     ///
     /// When encountering an or-pattern `p_0 | ... | p_n` only `p_0` will be visited.
-    pub fn each_binding_or_first(
-        &self,
-        f: &mut impl FnMut(hir::BindingAnnotation, HirId, Span, Ident),
-    ) {
+    pub fn each_binding_or_first(&self, f: &mut impl FnMut(hir::BindingAnnotation, HirId, Ident)) {
         self.walk(|p| match &p.kind {
             PatKind::Or(ps) => {
                 ps[0].each_binding_or_first(f);
                 false
             }
             PatKind::Binding(bm, _, ident, _) => {
-                f(*bm, p.hir_id, p.span, *ident);
+                f(*bm, p.hir_id, *ident);
                 true
             }
             _ => true,
@@ -150,7 +146,7 @@ impl hir::Pat<'_> {
     // ref bindings are be implicit after #42640 (default match binding modes). See issue #44848.
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
-        self.each_binding(|annotation, _, _, _| match annotation {
+        self.each_binding(|annotation, _, _| match annotation {
             hir::BindingAnnotation::Ref => match result {
                 None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
                 _ => {}

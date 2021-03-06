@@ -798,7 +798,6 @@ pub struct Pat<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub kind: PatKind<'hir>,
-    pub span: Span,
     // Whether to use default binding modes.
     // At present, this is false only for destructuring assignment.
     pub default_binding_modes: bool,
@@ -3056,7 +3055,7 @@ impl<'hir> Node<'hir> {
 mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Block<'static>, 40);
     rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
-    rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::Pat<'static>, 80);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 

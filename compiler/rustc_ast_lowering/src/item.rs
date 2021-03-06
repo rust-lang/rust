@@ -1129,7 +1129,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // parameters (c.f. rust-lang/rust#64512).
             for (index, parameter) in decl.inputs.iter().enumerate() {
                 let parameter = this.lower_param(parameter);
-                let span = parameter.pat.span;
+                let span = this.spans[parameter.pat.hir_id];
 
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.

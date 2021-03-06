@@ -122,7 +122,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(&param.pat));
             debug!("consume_body: param_ty = {:?}", param_ty);
 
-            let param_place = self.mc.cat_rvalue(param.hir_id, param.pat.span, param_ty);
+            let pat_span = self.tcx().hir().span(param.pat.hir_id);
+            let param_place = self.mc.cat_rvalue(param.hir_id, pat_span, param_ty);
 
             self.walk_irrefutable_pat(&param_place, &param.pat);
         }
@@ -542,8 +543,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
                 debug!("walk_pat: binding place={:?} pat={:?}", place, pat,);
+                let pat_span = tcx.hir().span(pat.hir_id);
                 if let Some(bm) =
-                    mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                    mc.typeck_results.extract_binding_mode(tcx.sess, pat.hir_id, pat_span)
                 {
                     debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
@@ -554,7 +556,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     // Each match binding is effectively an assignment to the
                     // binding being produced.
                     let def = Res::Local(canonical_id);
-                    if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
+                    if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat_span, pat_ty, def) {
                         delegate.mutate(binding_place, binding_place.hir_id);
                     }
 

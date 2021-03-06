@@ -168,8 +168,8 @@ impl LateLintPass<'_> for ManualMap {
                 // TODO: handle explicit reference annotations.
                 format!(
                     "|{}| {}",
-                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app),
-                    snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                    snippet_with_context(cx, cx.tcx.hir().span(some_pat.hir_id), expr_ctxt, "..", &mut app),
+                    snippet_with_context(cx, cx.tcx.hir().span(some_expr.hir_id), expr_ctxt, "..", &mut app)
                 )
             } else {
                 // Refutable bindings and mixed reference annotations can't be handled by `map`.
@@ -279,7 +279,7 @@ fn try_parse_pattern(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxCon
                     .res
                     .opt_def_id()
                     .map_or(false, |id| match_def_path(cx, id, &paths::OPTION_SOME))
-                    && pat.span.ctxt() == ctxt =>
+                    && cx.tcx.hir().span(pat.hir_id).ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },

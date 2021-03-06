@@ -1322,7 +1322,8 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     // Check types of patterns.
     fn visit_pat(&mut self, pattern: &'tcx hir::Pat<'tcx>) {
-        if self.check_expr_pat_type(pattern.hir_id, pattern.span) {
+        let span = self.tcx.hir().span(pattern.hir_id);
+        if self.check_expr_pat_type(pattern.hir_id, span) {
             // Do not check nested patterns if the error already happened.
             return;
         }

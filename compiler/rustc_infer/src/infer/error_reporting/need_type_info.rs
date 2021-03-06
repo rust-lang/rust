@@ -464,7 +464,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             local_visitor.visit_expr(expr);
         }
         let err_span = if let Some(pattern) = local_visitor.found_arg_pattern {
-            pattern.span
+            self.tcx.hir().span(pattern.hir_id)
         } else if let Some(span) = arg_data.span {
             // `span` here lets us point at `sum` instead of the entire right hand side expr:
             // error[E0282]: type annotations needed
@@ -637,12 +637,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             //            with the type parameter `_` specified
             // ```
             err.span_label(
-                pattern.span,
+                self.tcx.hir().span(pattern.hir_id),
                 format!("consider giving this closure parameter {}", suffix),
             );
         } else if let Some(pattern) = local_visitor.found_local_pattern {
+            let pattern_span = self.tcx.hir().span(pattern.hir_id);
             let msg = if let Some(simple_ident) = pattern.simple_ident() {
-                match pattern.span.desugaring_kind() {
+                match pattern_span.desugaring_kind() {
                     None => format!("consider giving `{}` {}", simple_ident, suffix),
                     Some(DesugaringKind::ForLoop(_)) => {
                         "the element type for this iterator is not specified".to_string()
@@ -652,7 +653,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             } else {
                 format!("consider giving this pattern {}", suffix)
             };
-            err.span_label(pattern.span, msg);
+            err.span_label(pattern_span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
             if let ExprKind::MethodCall(segment, _, exprs, _) = &e.kind {
                 // Suggest impl candidates:

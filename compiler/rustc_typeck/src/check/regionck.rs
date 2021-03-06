@@ -322,7 +322,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat<'_>) {
         debug!("regionck::visit_pat(pat={:?})", pat);
-        pat.each_binding(|_, hir_id, span, _| {
+        pat.each_binding(|_, hir_id, _| {
+            let span = self.tcx.hir().span(hir_id);
             let typ = self.resolve_node_type(hir_id);
             let body_id = self.body_id;
             dropck::check_drop_obligations(self, typ, span, body_id);
@@ -562,8 +563,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_fn_params(&self, params: &[hir::Param<'_>]) {
         for param in params {
             let param_ty = self.node_ty(param.hir_id);
-            let param_cmt =
-                self.with_mc(|mc| mc.cat_rvalue(param.hir_id, param.pat.span, param_ty));
+            let span = self.tcx.hir().span(param.pat.hir_id);
+            let param_cmt = self.with_mc(|mc| mc.cat_rvalue(param.hir_id, span, param_ty));
             debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
             self.link_pattern(param_cmt, &param.pat);
         }
@@ -574,13 +575,14 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_pattern(&self, discr_cmt: PlaceWithHirId<'tcx>, root_pat: &hir::Pat<'_>) {
         debug!("link_pattern(discr_cmt={:?}, root_pat={:?})", discr_cmt, root_pat);
         ignore_err!(self.with_mc(|mc| {
-            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, span, hir_id, .. }| {
+            mc.cat_pattern(discr_cmt, root_pat, |sub_cmt, hir::Pat { kind, hir_id, .. }| {
                 // `ref x` pattern
                 if let PatKind::Binding(..) = kind {
+                    let span = self.tcx.hir().span(*hir_id);
                     if let Some(ty::BindByReference(mutbl)) =
-                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, *span)
+                        mc.typeck_results.extract_binding_mode(self.tcx.sess, *hir_id, span)
                     {
-                        self.link_region_from_node_type(*span, *hir_id, mutbl, &sub_cmt);
+                        self.link_region_from_node_type(span, *hir_id, mutbl, &sub_cmt);
                     }
                 }
             })

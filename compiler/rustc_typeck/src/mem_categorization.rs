@@ -67,24 +67,17 @@ use rustc_trait_selection::infer::InferCtxtExt;
 
 crate trait HirNode {
     fn hir_id(&self) -> hir::HirId;
-    fn span(&self) -> Span;
 }
 
 impl HirNode for hir::Expr<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
     }
-    fn span(&self) -> Span {
-        self.span
-    }
 }
 
 impl HirNode for hir::Pat<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
-    }
-    fn span(&self) -> Span {
-        self.span
     }
 }
 
@@ -672,10 +665,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         // that (where the `ref` on `x` is implied).
         op(&place_with_id, pat);
 
+        let pat_span = self.infcx.tcx.hir().span(pat.hir_id);
         match pat.kind {
             PatKind::Tuple(ref subpats, dots_pos) => {
                 // (p1, ..., pN)
-                let total_fields = self.total_fields_in_tuple(pat.hir_id, pat.span)?;
+                let total_fields = self.total_fields_in_tuple(pat.hir_id, pat_span)?;
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?;
@@ -688,9 +682,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
             PatKind::TupleStruct(ref qpath, ref subpats, dots_pos) => {
                 // S(p1, ..., pN)
-                let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat.span)?;
+                let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat_span)?;
                 let total_fields =
-                    self.total_fields_in_adt_variant(pat.hir_id, variant_index, pat.span)?;
+                    self.total_fields_in_adt_variant(pat.hir_id, variant_index, pat_span)?;
 
                 for (i, subpat) in subpats.iter().enumerate_and_adjust(total_fields, dots_pos) {
                     let subpat_ty = self.pat_ty_adjusted(&subpat)?;
@@ -704,7 +698,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             PatKind::Struct(ref qpath, field_pats, _) => {
                 // S { f1: p1, ..., fN: pN }
 
-                let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat.span)?;
+                let variant_index = self.variant_index_for_adt(qpath, pat.hir_id, pat_span)?;
 
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?;

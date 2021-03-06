@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
                         format!(
                             "for ({}, {}) in {}.enumerate()",
                             name,
-                            snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                            snippet_with_applicability(cx, cx.tcx.hir().span(pat.hir_id), "item", &mut applicability),
                             make_iterator_snippet(cx, arg, &mut applicability),
                         ),
                         applicability,

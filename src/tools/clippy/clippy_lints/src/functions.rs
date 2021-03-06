@@ -577,8 +577,9 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut FxHashSet<
     if let hir::PatKind::Wild = pat.kind {
         return false; // ignore `_` patterns
     }
+    let pat_span = cx.tcx.hir().span(pat.hir_id);
     if cx.tcx.has_typeck_results(pat.hir_id.owner.to_def_id()) {
-        is_mutable_ty(cx, &cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat.span, tys)
+        is_mutable_ty(cx, &cx.tcx.typeck(pat.hir_id.owner).pat_ty(pat), pat_span, tys)
     } else {
         false
     }
