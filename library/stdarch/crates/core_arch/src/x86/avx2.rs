@@ -2351,53 +2351,21 @@ pub unsafe fn _mm256_permute2x128_si256<const IMM8: i32>(a: __m256i, b: __m256i)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permute4x64_pd)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpermpd, imm8 = 1))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpermpd, IMM8 = 1))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_permute4x64_pd(a: __m256d, imm8: i32) -> __m256d {
-    let imm8 = (imm8 & 0xFF) as u8;
-    let undef = _mm256_undefined_pd();
-    macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            simd_shuffle4(a, undef, [$x01, $x23, $x45, $x67])
-        };
-    }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    }
+pub unsafe fn _mm256_permute4x64_pd<const IMM8: i32>(a: __m256d) -> __m256d {
+    static_assert_imm8!(IMM8);
+    simd_shuffle4(
+        a,
+        _mm256_undefined_pd(),
+        [
+            IMM8 as u32 & 0b11,
+            (IMM8 as u32 >> 2) & 0b11,
+            (IMM8 as u32 >> 4) & 0b11,
+            (IMM8 as u32 >> 6) & 0b11,
+        ],
+    )
 }
 
 /// Shuffles eight 32-bit foating-point elements in `a` across lanes using
@@ -5406,7 +5374,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_permute4x64_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
-        let r = _mm256_permute4x64_pd(a, 0b00_01_00_11);
+        let r = _mm256_permute4x64_pd::<0b00_01_00_11>(a);
         let e = _mm256_setr_pd(4., 1., 2., 1.);
         assert_eq_m256d(r, e);
     }
