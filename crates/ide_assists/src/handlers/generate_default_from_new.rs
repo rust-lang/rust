@@ -53,8 +53,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
-    let implements_default = is_default_implemented(ctx, &impl_)?;
-    if implements_default {
+    if is_default_implemented(ctx, &impl_) {
         return None;
     }
 
@@ -84,14 +83,25 @@ impl Default for {} {{
     )
 }
 
-fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> Option<bool> {
+fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> bool {
     let db = ctx.sema.db;
-    let impl_def = ctx.sema.to_def(impl_)?;
+    let impl_ = ctx.sema.to_def(impl_);
+    let impl_def;
+    match impl_ {
+        Some(value) => impl_def = value,
+        None => return false,
+    }
+
     let ty = impl_def.target_ty(db);
     let krate = impl_def.module(db).krate();
-    let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default()?;
-    let implements_default = ty.impls_trait(db, default_trait, &[]);
-    Some(implements_default)
+    let default = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
+    let default_trait;
+    match default {
+        Some(value) => default_trait = value,
+        None => return false,
+    }
+
+    ty.impls_trait(db, default_trait, &[])
 }
 
 #[cfg(test)]
@@ -205,7 +215,7 @@ impl Exmaple {
             r#"
 struct Example { _inner: () }
 
-impl Exmaple {
+impl Example {
     pub fn n$0ew() -> Self {
         Self { _inner: () }
     }
