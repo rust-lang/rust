@@ -238,7 +238,7 @@ macro_rules! define_client_side {
         $(impl $name {
             #[allow(unused)]
             $(pub(crate) fn $method($($arg: $arg_ty),*) $(-> $ret_ty)* {
-                panic!("hello");
+                panic!("crates should be linked against the sysroot version of proc_macro, not this one from rust-analyzer");
                 // Bridge::with(|bridge| {
                 //     let mut b = bridge.cached_buffer.take();
 
