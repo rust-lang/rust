@@ -2,7 +2,7 @@ use crate::{
     assist_context::{AssistContext, Assists},
     AssistId,
 };
-use hir::TypeRef;
+use ide_db::helpers::FamousDefs;
 use syntax::{
     ast::{self, Impl, NameOwner},
     AstNode,
@@ -53,7 +53,8 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
-    if is_default_implemented(ctx, &impl_).is_some() {
+    let implements_default = is_default_implemented(ctx, &impl_)?;
+    if implements_default {
         return None;
     }
 
@@ -85,29 +86,25 @@ impl Default for {} {{
 
 fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> Option<bool> {
     let db = ctx.sema.db;
-    let module = impl_.syntax().parent()?;
-    let sema_scope = ctx.sema.scope(&module);
-    let impls = sema_scope.module()?.impl_defs(db);
-    let mut name = None;
-    for i in impls {
-        if let Some(TypeRef::Path(p)) = i.target_trait(db) {
-            name = p.segments().iter().map(|s| s.name.to_string()).find(|n| n == "Default");
-        }
-    }
-
-    name.map(|n| !n.is_empty())
+    let impl_def = ctx.sema.to_def(impl_)?;
+    let ty = impl_def.target_ty(db);
+    let krate = impl_def.module(db).krate();
+    let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default()?;
+    let implements_default = ty.impls_trait(db, default_trait, &[]);
+    Some(implements_default)
 }
 
 #[cfg(test)]
 mod tests {
+    use ide_db::helpers::FamousDefs;
+
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn generate_default() {
-        check_assist(
-            generate_default_from_new,
+        check_pass(
             r#"
 struct Example { _inner: () }
 
@@ -141,8 +138,7 @@ fn main() {}
 
     #[test]
     fn generate_default2() {
-        check_assist(
-            generate_default_from_new,
+        check_pass(
             r#"
 struct Test { value: u32 }
 
@@ -173,8 +169,7 @@ impl Default for Test {
     #[test]
     fn new_function_with_parameters() {
         mark::check!(new_function_with_parameters);
-        check_assist_not_applicable(
-            generate_default_from_new,
+        check_not_applicable(
             r#"
 struct Example { _inner: () }
 
@@ -190,8 +185,7 @@ impl Example {
     #[test]
     fn other_function_than_new() {
         mark::check!(other_function_than_new);
-        check_assist_not_applicable(
-            generate_default_from_new,
+        check_not_applicable(
             r#"
 struct Example { _inner: () }
 
@@ -207,8 +201,7 @@ impl Exmaple {
 
     #[test]
     fn default_block_is_already_present() {
-        check_assist_not_applicable(
-            generate_default_from_new,
+        check_not_applicable(
             r#"
 struct Example { _inner: () }
 
@@ -229,8 +222,7 @@ impl Default for Example {
 
     #[test]
     fn standalone_new_function() {
-        check_assist_not_applicable(
-            generate_default_from_new,
+        check_not_applicable(
             r#"
 fn n$0ew() -> u32 {
     0
@@ -241,8 +233,7 @@ fn n$0ew() -> u32 {
 
     #[test]
     fn multiple_struct_blocks() {
-        check_assist(
-            generate_default_from_new,
+        check_pass(
             r#"
 struct Example { _inner: () }
 struct Test { value: u32 }
@@ -274,8 +265,7 @@ impl Default for Example {
 
     #[test]
     fn when_struct_is_after_impl() {
-        check_assist(
-            generate_default_from_new,
+        check_pass(
             r#"
 impl Example {
     pub fn $0new() -> Self {
@@ -305,8 +295,7 @@ struct Example { _inner: () }
 
     #[test]
     fn struct_in_module() {
-        check_assist(
-            generate_default_from_new,
+        check_pass(
             r#"
 mod test {
     struct Example { _inner: () }
@@ -340,8 +329,7 @@ impl Default for Example {
 
     #[test]
     fn struct_in_module_with_default() {
-        check_assist_not_applicable(
-            generate_default_from_new,
+        check_not_applicable(
             r#"
 mod test {
     struct Example { _inner: () }
@@ -360,5 +348,15 @@ mod test {
 }
 "#,
         );
+    }
+
+    fn check_pass(before: &str, after: &str) {
+        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
+        check_assist(generate_default_from_new, before, after);
+    }
+
+    fn check_not_applicable(before: &str) {
+        let before = &format!("//- /main.rs crate:main deps:core{}{}", before, FamousDefs::FIXTURE);
+        check_assist_not_applicable(generate_default_from_new, before);
     }
 }
