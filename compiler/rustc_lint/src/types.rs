@@ -217,7 +217,11 @@ fn report_bin_hex_error(
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
-                let actually = size.sign_extend(val) as i128;
+                let actually = if negative {
+                    -(size.sign_extend(val) as i128)
+                } else {
+                    size.sign_extend(val) as i128
+                };
                 (t.name_str(), actually.to_string())
             }
             attr::IntType::UnsignedInt(t) => {
@@ -226,11 +230,22 @@ fn report_bin_hex_error(
             }
         };
         let mut err = lint.build(&format!("literal out of range for `{}`", t));
-        err.note(&format!(
-            "the literal `{}` (decimal `{}`) does not fit into \
-             the type `{}` and will become `{}{}`",
-            repr_str, val, t, actually, t
-        ));
+        if negative {
+            // If the value is negative,
+            // emits a note about the value itself, apart from the literal.
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}`",
+                repr_str, val, t
+            ));
+            err.note(&format!("and the value `-{}` will become `{}{}`", repr_str, actually, t));
+        } else {
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+        }
         if let Some(sugg_ty) =
             get_type_suggestion(&cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
