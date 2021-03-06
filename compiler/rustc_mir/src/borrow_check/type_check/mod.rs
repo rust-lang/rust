@@ -40,6 +40,7 @@ use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::{Fallible, NoSolution};
 use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations};
+use type_op::TypeOpOutput;
 
 use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
@@ -1113,13 +1114,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory,
         op: impl type_op::TypeOp<'tcx, Output = R>,
     ) -> Fallible<R> {
-        let (r, opt_data) = op.fully_perform(self.infcx)?;
+        let TypeOpOutput { output, constraints, .. } = op.fully_perform(self.infcx)?;
 
-        if let Some(data) = &opt_data {
+        if let Some(data) = &constraints {
             self.push_region_constraints(locations, category, data);
         }
 
-        Ok(r)
+        Ok(output)
     }
 
     fn push_region_constraints(
