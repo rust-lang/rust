@@ -2,7 +2,6 @@
 
 use crate::prelude::*;
 
-use cranelift_codegen::entity::EntityRef;
 use cranelift_codegen::ir::immediates::Offset32;
 
 fn codegen_field<'tcx>(
