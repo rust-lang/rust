@@ -141,12 +141,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     if let ExprKind::Block { body } = &expr.kind {
                         if let Some(tail_expr) = &body.expr {
                             let mut expr = &*tail_expr;
-                            while let ExprKind::Block { body: subblock } = &expr.kind {
-                                if let Some(subtail_expr) = &subblock.expr {
-                                    expr = subtail_expr
-                                } else {
-                                    break;
-                                }
+                            while let ExprKind::Block {
+                                body: Block { expr: Some(nested_expr), .. },
+                            }
+                            | ExprKind::Scope { value: nested_expr, .. } = &expr.kind
+                            {
+                                expr = nested_expr;
                             }
                             this.block_context.push(BlockFrame::TailExpr {
                                 tail_result_is_ignored: true,
