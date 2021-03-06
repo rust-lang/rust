@@ -22,6 +22,7 @@ mod iter_count;
 mod iter_next_slice;
 mod iter_nth;
 mod iter_nth_zero;
+mod iter_skip_next;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
 mod map_collect_result_unit;
@@ -1730,7 +1731,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["nth", "bytes"] => bytes_nth::check(cx, expr, &arg_lists[1]),
             ["nth", ..] => iter_nth_zero::check(cx, expr, arg_lists[0]),
             ["step_by", ..] => iterator_step_by_zero::check(cx, expr, arg_lists[0]),
-            ["next", "skip"] => lint_iter_skip_next(cx, expr, arg_lists[1]),
+            ["next", "skip"] => iter_skip_next::check(cx, expr, arg_lists[1]),
             ["collect", "cloned"] => iter_cloned_collect::check(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
@@ -2506,24 +2507,6 @@ fn lint_unnecessary_fold(cx: &LateContext<'_>, expr: &hir::Expr<'_>, fold_args: 
                 check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
             },
             _ => (),
-        }
-    }
-}
-
-fn lint_iter_skip_next(cx: &LateContext<'_>, expr: &hir::Expr<'_>, skip_args: &[hir::Expr<'_>]) {
-    // lint if caller of skip is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        if let [caller, n] = skip_args {
-            let hint = format!(".nth({})", snippet(cx, n.span, ".."));
-            span_lint_and_sugg(
-                cx,
-                ITER_SKIP_NEXT,
-                expr.span.trim_start(caller.span).unwrap(),
-                "called `skip(..).next()` on an iterator",
-                "use `nth` instead",
-                hint,
-                Applicability::MachineApplicable,
-            );
         }
     }
 }
