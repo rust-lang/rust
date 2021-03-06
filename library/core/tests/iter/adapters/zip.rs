@@ -265,3 +265,26 @@ fn test_issue_82282() {
         panic!();
     }
 }
+
+#[test]
+fn test_issue_82291() {
+    use std::cell::Cell;
+
+    let mut v1 = [()];
+    let v2 = [()];
+
+    let called = Cell::new(0);
+
+    let mut zip = v1
+        .iter_mut()
+        .map(|r| {
+            called.set(called.get() + 1);
+            r
+        })
+        .zip(&v2);
+
+    zip.next_back();
+    assert_eq!(called.get(), 1);
+    zip.next();
+    assert_eq!(called.get(), 1);
+}

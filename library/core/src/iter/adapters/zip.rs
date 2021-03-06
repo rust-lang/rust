@@ -13,9 +13,10 @@ use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 pub struct Zip<A, B> {
     a: A,
     b: B,
-    // index and len are only used by the specialized version of zip
+    // index, len and a_len are only used by the specialized version of zip
     index: usize,
     len: usize,
+    a_len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
@@ -110,6 +111,7 @@ where
             b,
             index: 0, // unused
             len: 0,   // unused
+            a_len: 0, // unused
         }
     }
 
@@ -184,8 +186,9 @@ where
     B: TrustedRandomAccess + Iterator,
 {
     fn new(a: A, b: B) -> Self {
-        let len = cmp::min(a.size(), b.size());
-        Zip { a, b, index: 0, len }
+        let a_len = a.size();
+        let len = cmp::min(a_len, b.size());
+        Zip { a, b, index: 0, len, a_len }
     }
 
     #[inline]
@@ -197,7 +200,7 @@ where
             unsafe {
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
-        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a.size() {
+        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
             let i = self.index;
             self.index += 1;
             self.len += 1;
@@ -262,6 +265,7 @@ where
                     for _ in 0..sz_a - self.len {
                         self.a.next_back();
                     }
+                    self.a_len = self.len;
                 }
                 let sz_b = self.b.size();
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
@@ -273,6 +277,7 @@ where
         }
         if self.index < self.len {
             self.len -= 1;
+            self.a_len -= 1;
             let i = self.len;
             // SAFETY: `i` is smaller than the previous value of `self.len`,
             // which is also smaller than or equal to `self.a.len()` and `self.b.len()`
