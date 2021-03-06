@@ -412,108 +412,40 @@ pub unsafe fn _mm256_blend_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m
     transmute(r)
 }
 
-/// Blends packed 16-bit integers from `a` and `b` using control mask `imm8`.
+/// Blends packed 16-bit integers from `a` and `b` using control mask `IMM8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpblendw, imm8 = 9))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vpblendw, IMM8 = 9))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_blend_epi16(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    let imm8 = (imm8 & 0xFF) as u8;
+pub unsafe fn _mm256_blend_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i16x16();
     let b = b.as_i16x16();
-    macro_rules! blend4 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $e:expr,
-            $f:expr,
-            $g:expr,
-            $h:expr,
-            $i:expr,
-            $j:expr,
-            $k:expr,
-            $l:expr,
-            $m:expr,
-            $n:expr,
-            $o:expr,
-            $p:expr
-        ) => {
-            simd_shuffle16(
-                a,
-                b,
-                [
-                    $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p,
-                ],
-            )
-        };
-    }
-    macro_rules! blend3 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $e:expr,
-            $f:expr,
-            $a2:expr,
-            $b2:expr,
-            $c2:expr,
-            $d2:expr,
-            $e2:expr,
-            $f2:expr
-        ) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7, $a2, $b2, $c2, $d2, $e2, $f2, 14, 15),
-                0b01 => {
-                    blend4!($a, $b, $c, $d, $e, $f, 22, 7, $a2, $b2, $c2, $d2, $e2, $f2, 30, 15)
-                }
-                0b10 => {
-                    blend4!($a, $b, $c, $d, $e, $f, 6, 23, $a2, $b2, $c2, $d2, $e2, $f2, 14, 31)
-                }
-                _ => blend4!($a, $b, $c, $d, $e, $f, 22, 23, $a2, $b2, $c2, $d2, $e2, $f2, 30, 31),
-            }
-        };
-    }
-    macro_rules! blend2 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $a2:expr,
-            $b2:expr,
-            $c2:expr,
-            $d2:expr
-        ) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => blend3!($a, $b, $c, $d, 4, 5, $a2, $b2, $c2, $d2, 12, 13),
-                0b01 => blend3!($a, $b, $c, $d, 20, 5, $a2, $b2, $c2, $d2, 28, 13),
-                0b10 => blend3!($a, $b, $c, $d, 4, 21, $a2, $b2, $c2, $d2, 12, 29),
-                _ => blend3!($a, $b, $c, $d, 20, 21, $a2, $b2, $c2, $d2, 28, 29),
-            }
-        };
-    }
-    macro_rules! blend1 {
-        ($a1:expr, $b1:expr, $a2:expr, $b2:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => blend2!($a1, $b1, 2, 3, $a2, $b2, 10, 11),
-                0b01 => blend2!($a1, $b1, 18, 3, $a2, $b2, 26, 11),
-                0b10 => blend2!($a1, $b1, 2, 19, $a2, $b2, 10, 27),
-                _ => blend2!($a1, $b1, 18, 19, $a2, $b2, 26, 27),
-            }
-        };
-    }
-    let r: i16x16 = match imm8 & 0b11 {
-        0b00 => blend1!(0, 1, 8, 9),
-        0b01 => blend1!(16, 1, 24, 9),
-        0b10 => blend1!(0, 17, 8, 25),
-        _ => blend1!(16, 17, 24, 25),
-    };
+    let r: i16x16 = simd_shuffle16(
+        a,
+        b,
+        [
+            [0, 16, 0, 16][IMM8 as usize & 0b11],
+            [1, 1, 17, 17][IMM8 as usize & 0b11],
+            [2, 18, 2, 18][(IMM8 as usize >> 2) & 0b11],
+            [3, 3, 19, 19][(IMM8 as usize >> 2) & 0b11],
+            [4, 20, 4, 20][(IMM8 as usize >> 4) & 0b11],
+            [5, 5, 21, 21][(IMM8 as usize >> 4) & 0b11],
+            [6, 22, 6, 22][(IMM8 as usize >> 6) & 0b11],
+            [7, 7, 23, 23][(IMM8 as usize >> 6) & 0b11],
+            [8, 24, 8, 24][IMM8 as usize & 0b11],
+            [9, 9, 25, 25][IMM8 as usize & 0b11],
+            [10, 26, 10, 26][(IMM8 as usize >> 2) & 0b11],
+            [11, 11, 27, 27][(IMM8 as usize >> 2) & 0b11],
+            [12, 28, 12, 28][(IMM8 as usize >> 4) & 0b11],
+            [13, 13, 29, 29][(IMM8 as usize >> 4) & 0b11],
+            [14, 30, 14, 30][(IMM8 as usize >> 6) & 0b11],
+            [15, 15, 31, 31][(IMM8 as usize >> 6) & 0b11],
+        ],
+    );
     transmute(r)
 }
 
@@ -4045,10 +3977,10 @@ mod tests {
     unsafe fn test_mm256_blend_epi16() {
         let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(9));
         let e = _mm256_setr_epi16(9, 3, 3, 3, 3, 3, 3, 3, 9, 3, 3, 3, 3, 3, 3, 3);
-        let r = _mm256_blend_epi16(a, b, 0x01 as i32);
+        let r = _mm256_blend_epi16::<0x01>(a, b);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_blend_epi16(b, a, 0xFE as i32);
+        let r = _mm256_blend_epi16::<0xFE>(b, a);
         assert_eq_m256i(r, e);
     }
 
