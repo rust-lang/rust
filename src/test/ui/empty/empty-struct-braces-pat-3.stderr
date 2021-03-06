@@ -1,66 +1,40 @@
 error[E0532]: expected tuple struct or tuple variant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-3.rs:17:9
    |
-LL |     Empty3 {}
-   |     --------- `E::Empty3` defined here
-...
 LL |         E::Empty3() => ()
-   |         ^^^^^^^^^^^ help: use struct pattern syntax instead: `E::Empty3 {}`
+   |         ^^^^^^^^^ not a tuple struct or tuple variant
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
   --> $DIR/empty-struct-braces-pat-3.rs:21:9
    |
 LL |         XE::XEmpty3() => ()
-   |         ^^^^^^^^^^^^^
+   |         ^^^^-------
+   |             |
+   |             help: a tuple variant with a similar name exists: `XEmpty5`
    | 
-  ::: $DIR/auxiliary/empty-struct.rs:6:5
+  ::: $DIR/auxiliary/empty-struct.rs:8:5
    |
-LL |     XEmpty3 {},
-   |     ------- `XE::XEmpty3` defined here
-LL |     XEmpty4,
 LL |     XEmpty5(),
    |     --------- similarly named tuple variant `XEmpty5` defined here
-   |
-help: use struct pattern syntax instead
-   |
-LL |         XE::XEmpty3 { /* fields */ } => ()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: a tuple variant with a similar name exists
-   |
-LL |         XE::XEmpty5() => ()
-   |             ^^^^^^^
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `E::Empty3`
   --> $DIR/empty-struct-braces-pat-3.rs:25:9
    |
-LL |     Empty3 {}
-   |     --------- `E::Empty3` defined here
-...
 LL |         E::Empty3(..) => ()
-   |         ^^^^^^^^^^^^^ help: use struct pattern syntax instead: `E::Empty3 {}`
+   |         ^^^^^^^^^ not a tuple struct or tuple variant
 
 error[E0532]: expected tuple struct or tuple variant, found struct variant `XE::XEmpty3`
   --> $DIR/empty-struct-braces-pat-3.rs:29:9
    |
 LL |         XE::XEmpty3(..) => ()
-   |         ^^^^^^^^^^^^^^^
+   |         ^^^^-------
+   |             |
+   |             help: a tuple variant with a similar name exists: `XEmpty5`
    | 
-  ::: $DIR/auxiliary/empty-struct.rs:6:5
+  ::: $DIR/auxiliary/empty-struct.rs:8:5
    |
-LL |     XEmpty3 {},
-   |     ------- `XE::XEmpty3` defined here
-LL |     XEmpty4,
 LL |     XEmpty5(),
    |     --------- similarly named tuple variant `XEmpty5` defined here
-   |
-help: use struct pattern syntax instead
-   |
-LL |         XE::XEmpty3 { /* fields */ } => ()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: a tuple variant with a similar name exists
-   |
-LL |         XE::XEmpty5(..) => ()
-   |             ^^^^^^^
 
 error: aborting due to 4 previous errors
 

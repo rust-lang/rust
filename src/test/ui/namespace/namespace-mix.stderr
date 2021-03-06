@@ -7,7 +7,6 @@ LL |     pub struct TS();
 LL |     check(m1::S);
    |           ^^^^^
    |
-   = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
@@ -30,7 +29,6 @@ LL |     check(xm1::S);
 LL |     pub struct TS();
    |     ---------------- similarly named tuple struct `TS` defined here
    |
-   = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
@@ -45,18 +43,12 @@ LL | use xm2::S;
 error[E0423]: expected value, found struct variant `m7::V`
   --> $DIR/namespace-mix.rs:100:11
    |
-LL |         V {},
-   |         ---- `m7::V` defined here
 LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
 ...
 LL |     check(m7::V);
    |           ^^^^^
    |
-help: use struct literal syntax instead
-   |
-LL |     check(m7::V {});
-   |           ^^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
@@ -74,17 +66,11 @@ error[E0423]: expected value, found struct variant `xm7::V`
 LL |     check(xm7::V);
    |           ^^^^^^
    | 
-  ::: $DIR/auxiliary/namespace-mix.rs:6:9
+  ::: $DIR/auxiliary/namespace-mix.rs:7:9
    |
-LL |         V {},
-   |         - `xm7::V` defined here
 LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
    |
-help: use struct literal syntax instead
-   |
-LL |     check(xm7::V { /* fields */ });
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
 help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);

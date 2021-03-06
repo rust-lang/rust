@@ -428,15 +428,32 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
 
-                if let Some(val) = res {
-                    self.smart_resolve_context_dependent_help(
-                        &mut err,
-                        span,
-                        source,
-                        val,
-                        &path_str,
-                        &fallback_label,
-                    );
+                if let Some(res) = res {
+                    if let Res::Def(DefKind::Struct, _) = res {
+                        // Try Levenshtein algorithm.
+                        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
+
+                        // Try context-dependent help if relaxed lookup didn't work.
+                        if self.smart_resolve_context_dependent_help(
+                            &mut err,
+                            span,
+                            source,
+                            res,
+                            &path_str,
+                            &fallback_label,
+                        ) {
+                            // We do this to avoid losing a secondary span when we override the main error span.
+                            self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
+                            return (err, candidates);
+                        }
+                    } else {
+                        err.span_suggestion(
+                            call_span,
+                            &format!("try calling `{}` as a method", ident),
+                            format!("self.{}({})", path_str, args_snippet),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                 } else {
                     err.span_suggestion(
                         call_span,
@@ -452,21 +469,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         // Try Levenshtein algorithm.
         let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
-        // Try context-dependent help if relaxed lookup didn't work.
-        if let Some(res) = res {
-            if self.smart_resolve_context_dependent_help(
-                &mut err,
-                span,
-                source,
-                res,
-                &path_str,
-                &fallback_label,
-            ) {
-                // We do this to avoid losing a secondary span when we override the main error span.
-                self.r.add_typo_suggestion(&mut err, typo_sugg, ident_span);
-                return (err, candidates);
-            }
-        }
 
         if !self.type_ascription_suggestion(&mut err, base_span) {
             let mut fallback = false;

@@ -1,22 +1,14 @@
 error[E0423]: expected value, found struct variant `Homura::Madoka`
   --> $DIR/issue-19452.rs:10:18
    |
-LL |     Madoka { age: u32 }
-   |     ------------------- `Homura::Madoka` defined here
-...
 LL |     let homura = Homura::Madoka;
-   |                  ^^^^^^^^^^^^^^ help: use struct literal syntax instead: `Homura::Madoka { age: val }`
+   |                  ^^^^^^^^^^^^^^ not a value
 
 error[E0423]: expected value, found struct variant `issue_19452_aux::Homura::Madoka`
   --> $DIR/issue-19452.rs:13:18
    |
 LL |     let homura = issue_19452_aux::Homura::Madoka;
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `issue_19452_aux::Homura::Madoka { /* fields */ }`
-   | 
-  ::: $DIR/auxiliary/issue-19452-aux.rs:2:5
-   |
-LL |     Madoka { age: u32 }
-   |     ------ `issue_19452_aux::Homura::Madoka` defined here
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a value
 
 error: aborting due to 2 previous errors
 

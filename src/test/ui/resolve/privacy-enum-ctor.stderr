@@ -2,68 +2,19 @@ error[E0423]: expected value, found enum `n::Z`
   --> $DIR/privacy-enum-ctor.rs:23:9
    |
 LL |         n::Z;
-   |         ^^^^
-   |
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:11:9
-   |
-LL | /         pub(in m) enum Z {
-LL | |             Fn(u8),
-LL | |             Struct {
-LL | |                 s: u8,
-LL | |             },
-LL | |             Unit,
-LL | |         }
-   | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
-help: the following enum variants are available
-   |
-LL |         (m::Z::Fn(/* fields */));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         (m::Z::Struct { /* fields */ });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^ not a value
 
 error[E0423]: expected value, found enum `Z`
   --> $DIR/privacy-enum-ctor.rs:25:9
    |
 LL |         Z;
-   |         ^
-   |
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:11:9
-   |
-LL | /         pub(in m) enum Z {
-LL | |             Fn(u8),
-LL | |             Struct {
-LL | |                 s: u8,
-LL | |             },
-LL | |             Unit,
-LL | |         }
-   | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL |         m::Z::Unit;
-   |         ^^^^^^^^^^
-help: the following enum variants are available
-   |
-LL |         (m::Z::Fn(/* fields */));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
-LL |         (m::Z::Struct { /* fields */ });
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^ not a value
 
 error[E0423]: expected value, found struct variant `Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:29:20
    |
-LL | /             Struct {
-LL | |                 s: u8,
-LL | |             },
-   | |_____________- `Z::Struct` defined here
-...
-LL |           let _: Z = Z::Struct;
-   |                      ^^^^^^^^^ help: use struct literal syntax instead: `Z::Struct { s: val }`
+LL |         let _: Z = Z::Struct;
+   |                    ^^^^^^^^^ not a value
 
 error[E0423]: expected value, found enum `m::E`
   --> $DIR/privacy-enum-ctor.rs:41:16
@@ -74,27 +25,6 @@ LL |     fn f() {
 LL |     let _: E = m::E;
    |                ^^^^
    |
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:2:5
-   |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____^
-help: you might have meant to use the following enum variant
-   |
-LL |     let _: E = E::Unit;
-   |                ^^^^^^^
-help: the following enum variants are available
-   |
-LL |     let _: E = (E::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^
-LL |     let _: E = (E::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: a function with a similar name exists
    |
 LL |     let _: E = m::f;
@@ -109,41 +39,15 @@ LL | use std::f64::consts::E;
 error[E0423]: expected value, found struct variant `m::E::Struct`
   --> $DIR/privacy-enum-ctor.rs:45:16
    |
-LL | /         Struct {
-LL | |             s: u8,
-LL | |         },
-   | |_________- `m::E::Struct` defined here
-...
-LL |       let _: E = m::E::Struct;
-   |                  ^^^^^^^^^^^^ help: use struct literal syntax instead: `m::E::Struct { s: val }`
+LL |     let _: E = m::E::Struct;
+   |                ^^^^^^^^^^^^ not a value
 
 error[E0423]: expected value, found enum `E`
   --> $DIR/privacy-enum-ctor.rs:49:16
    |
 LL |     let _: E = E;
-   |                ^
+   |                ^ not a value
    |
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:2:5
-   |
-LL | /     pub enum E {
-LL | |         Fn(u8),
-LL | |         Struct {
-LL | |             s: u8,
-LL | |         },
-LL | |         Unit,
-LL | |     }
-   | |_____^
-help: you might have meant to use the following enum variant
-   |
-LL |     let _: E = E::Unit;
-   |                ^^^^^^^
-help: the following enum variants are available
-   |
-LL |     let _: E = (E::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^
-LL |     let _: E = (E::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider importing one of these items instead
    |
 LL | use std::f32::consts::E;
@@ -154,13 +58,8 @@ LL | use std::f64::consts::E;
 error[E0423]: expected value, found struct variant `E::Struct`
   --> $DIR/privacy-enum-ctor.rs:53:16
    |
-LL | /         Struct {
-LL | |             s: u8,
-LL | |         },
-   | |_________- `E::Struct` defined here
-...
-LL |       let _: E = E::Struct;
-   |                  ^^^^^^^^^ help: use struct literal syntax instead: `E::Struct { s: val }`
+LL |     let _: E = E::Struct;
+   |                ^^^^^^^^^ not a value
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:57:12
@@ -184,29 +83,7 @@ error[E0423]: expected value, found enum `m::n::Z`
   --> $DIR/privacy-enum-ctor.rs:57:16
    |
 LL |     let _: Z = m::n::Z;
-   |                ^^^^^^^
-   |
-note: the enum is defined here
-  --> $DIR/privacy-enum-ctor.rs:11:9
-   |
-LL | /         pub(in m) enum Z {
-LL | |             Fn(u8),
-LL | |             Struct {
-LL | |                 s: u8,
-LL | |             },
-LL | |             Unit,
-LL | |         }
-   | |_________^
-help: you might have meant to use the following enum variant
-   |
-LL |     let _: Z = m::Z::Unit;
-   |                ^^^^^^^^^^
-help: the following enum variants are available
-   |
-LL |     let _: Z = (m::Z::Fn(/* fields */));
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     let _: Z = (m::Z::Struct { /* fields */ });
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^ not a value
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:61:12
@@ -247,13 +124,8 @@ LL | use m::Z;
 error[E0423]: expected value, found struct variant `m::n::Z::Struct`
   --> $DIR/privacy-enum-ctor.rs:64:16
    |
-LL | /             Struct {
-LL | |                 s: u8,
-LL | |             },
-   | |_____________- `m::n::Z::Struct` defined here
-...
-LL |       let _: Z = m::n::Z::Struct;
-   |                  ^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `m::n::Z::Struct { s: val }`
+LL |     let _: Z = m::n::Z::Struct;
+   |                ^^^^^^^^^^^^^^^ not a value
 
 error[E0412]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:68:12

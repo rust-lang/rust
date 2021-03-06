@@ -9,22 +9,12 @@ error[E0423]: expected value, found macro `semitransparent`
    |
 LL |     semitransparent;
    |     ^^^^^^^^^^^^^^^ not a value
-   |
-help: use `!` to invoke the macro
-   |
-LL |     semitransparent!;
-   |                    ^
 
 error[E0423]: expected value, found macro `opaque`
   --> $DIR/rustc-macro-transparency.rs:30:5
    |
 LL |     opaque;
    |     ^^^^^^ not a value
-   |
-help: use `!` to invoke the macro
-   |
-LL |     opaque!;
-   |           ^
 
 error: aborting due to 3 previous errors
 

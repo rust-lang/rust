@@ -1,14 +1,8 @@
-error[E0423]: cannot initialize a tuple struct which contains private fields
+error[E0423]: expected function, tuple struct or tuple variant, found struct `Bar`
   --> $DIR/issue-75906.rs:11:13
    |
 LL |     let y = Bar(12);
-   |             ^^^
-   |
-note: constructor is not visible here due to private fields
-  --> $DIR/issue-75906.rs:4:20
-   |
-LL |     pub struct Bar(u8);
-   |                    ^^ private field
+   |             ^^^ not a function, tuple struct or tuple variant
 
 error: aborting due to previous error
 

@@ -1,11 +1,8 @@
 error[E0532]: expected unit struct, unit variant or constant, found tuple variant `E::S`
   --> $DIR/pat-tuple-underfield.rs:44:9
    |
-LL |     S(i32, f32),
-   |     ----------- `E::S` defined here
-...
 LL |         E::S => {}
-   |         ^^^^ help: use the tuple variant pattern syntax instead: `E::S(_, _)`
+   |         ^^^^ not a unit struct, unit variant or constant
 
 error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:9:9

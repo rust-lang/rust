@@ -3,20 +3,11 @@ error[E0423]: expected value, found struct variant `E::B`
    |
 LL |     A(usize),
    |     -------- similarly named tuple variant `A` defined here
-LL |     B { a: usize },
-   |     -------------- `E::B` defined here
 ...
 LL |     let _: E = E::B;
-   |                ^^^^
-   |
-help: use struct literal syntax instead
-   |
-LL |     let _: E = E::B { a: val };
-   |                ^^^^^^^^^^^^^^^
-help: a tuple variant with a similar name exists
-   |
-LL |     let _: E = E::A;
-   |                   ^
+   |                ^^^-
+   |                   |
+   |                   help: a tuple variant with a similar name exists: `A`
 
 error[E0308]: mismatched types
   --> $DIR/fn-or-tuple-struct-without-args.rs:29:20

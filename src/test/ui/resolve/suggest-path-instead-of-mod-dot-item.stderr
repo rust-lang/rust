@@ -2,25 +2,19 @@ error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:17:5
    |
 LL |     a.I
-   |     ^--
-   |     |
-   |     help: use the path separator to refer to an item: `a::I`
+   |     ^ not a value
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:22:5
    |
 LL |     a.g()
-   |     ^--
-   |     |
-   |     help: use the path separator to refer to an item: `a::g`
+   |     ^ not a value
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
    |
 LL |     a.b.J
-   |     ^--
-   |     |
-   |     help: use the path separator to refer to an item: `a::b`
+   |     ^ not a value
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:32:5
@@ -29,24 +23,15 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b.J
-   |     ^^^^
-   |
-help: use the path separator to refer to an item
-   |
-LL |     a::b::J
-   |
-help: a constant with a similar name exists
-   |
-LL |     a::I.J
-   |        ^
+   |     ^^^-
+   |        |
+   |        help: a constant with a similar name exists: `I`
 
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
    |
 LL |     a.b.f();
-   |     ^--
-   |     |
-   |     help: use the path separator to refer to an item: `a::b`
+   |     ^ not a value
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:40:12
@@ -66,16 +51,9 @@ LL |     pub const I: i32 = 1;
    |     --------------------- similarly named constant `I` defined here
 ...
 LL |     a::b.f()
-   |     ^^^^
-   |
-help: use the path separator to refer to an item
-   |
-LL |     a::b::f()
-   |     ^^^^^^^
-help: a constant with a similar name exists
-   |
-LL |     a::I.f()
-   |        ^
+   |     ^^^-
+   |        |
+   |        help: a constant with a similar name exists: `I`
 
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:5
