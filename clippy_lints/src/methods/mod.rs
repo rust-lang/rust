@@ -42,6 +42,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_lazy_eval;
 mod unwrap_used;
+mod useless_asref;
 mod wrong_self_convention;
 mod zst_offset;
 
@@ -65,11 +66,11 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, get_parent_expr, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of,
+    contains_return, contains_ty, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of,
     is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_trait_method,
     match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths, remove_blocks, return_ty,
     single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_sugg, strip_pat_refs, walk_ptrs_ty_depth, SpanlessEq,
+    span_lint_and_help, span_lint_and_sugg, strip_pat_refs, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1733,8 +1734,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["step_by", ..] => iterator_step_by_zero::check(cx, expr, arg_lists[0]),
             ["next", "skip"] => iter_skip_next::check(cx, expr, arg_lists[1]),
             ["collect", "cloned"] => iter_cloned_collect::check(cx, expr, arg_lists[1]),
-            ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
-            ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
+            ["as_ref"] => useless_asref::check(cx, expr, "as_ref", arg_lists[0]),
+            ["as_mut"] => useless_asref::check(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
             ["filter_map", ..] => {
                 unnecessary_filter_map::check(cx, expr, arg_lists[0]);
@@ -2747,42 +2748,6 @@ fn get_hint_if_single_char_arg(
             Some(hint)
         } else {
             None
-        }
-    }
-}
-
-/// Checks for the `USELESS_ASREF` lint.
-fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_ref_args: &[hir::Expr<'_>]) {
-    // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
-    // check if the call is to the actual `AsRef` or `AsMut` trait
-    if match_trait_method(cx, expr, &paths::ASREF_TRAIT) || match_trait_method(cx, expr, &paths::ASMUT_TRAIT) {
-        // check if the type after `as_ref` or `as_mut` is the same as before
-        let recvr = &as_ref_args[0];
-        let rcv_ty = cx.typeck_results().expr_ty(recvr);
-        let res_ty = cx.typeck_results().expr_ty(expr);
-        let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
-        let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
-        if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
-            // allow the `as_ref` or `as_mut` if it is followed by another method call
-            if_chain! {
-                if let Some(parent) = get_parent_expr(cx, expr);
-                if let hir::ExprKind::MethodCall(_, ref span, _, _) = parent.kind;
-                if span != &expr.span;
-                then {
-                    return;
-                }
-            }
-
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                USELESS_ASREF,
-                expr.span,
-                &format!("this call to `{}` does nothing", call_name),
-                "try this",
-                snippet_with_applicability(cx, recvr.span, "..", &mut applicability).to_string(),
-                applicability,
-            );
         }
     }
 }
