@@ -7384,7 +7384,7 @@ pub unsafe fn _mm256_mask_shufflehi_epi16<const IMM8: i32>(
     a: __m256i,
 ) -> __m256i {
     static_assert_imm8!(IMM8);
-    let shuffle = _mm256_shufflehi_epi16(a, IMM8);
+    let shuffle = _mm256_shufflehi_epi16::<IMM8>(a);
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), src.as_i16x16()))
 }
 
@@ -7397,7 +7397,7 @@ pub unsafe fn _mm256_mask_shufflehi_epi16<const IMM8: i32>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_maskz_shufflehi_epi16<const IMM8: i32>(k: __mmask16, a: __m256i) -> __m256i {
     static_assert_imm8!(IMM8);
-    let shuffle = _mm256_shufflehi_epi16(a, IMM8);
+    let shuffle = _mm256_shufflehi_epi16::<IMM8>(a);
     let zero = _mm256_setzero_si256().as_i16x16();
     transmute(simd_select_bitmask(k, shuffle.as_i16x16(), zero))
 }
