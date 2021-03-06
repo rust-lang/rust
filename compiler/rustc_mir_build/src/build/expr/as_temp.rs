@@ -38,8 +38,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        if let ExprKind::Scope { region_scope, lint_level, value } = &expr.kind {
-            return this.in_scope((*region_scope, source_info), *lint_level, |this| {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
+            return this.in_scope((region_scope, source_info), lint_level, |this| {
                 this.as_temp(block, temp_lifetime, value, mutability)
             });
         }

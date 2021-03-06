@@ -643,7 +643,7 @@ where
                         fn_def.did.to_def_id(),
                         &arguments,
                         arg_scope,
-                        &expr,
+                        expr,
                     )
                 }))
             }));

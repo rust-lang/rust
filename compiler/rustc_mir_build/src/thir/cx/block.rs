@@ -11,7 +11,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
     crate fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> Block<'thir, 'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
-        let stmts = self.mirror_stmts(block.hir_id.local_id, &*block.stmts);
+        let stmts = self.mirror_stmts(block.hir_id.local_id, block.stmts);
         let opt_destruction_scope =
             self.region_scope_tree.opt_destruction_scope(block.hir_id.local_id);
         Block {
@@ -23,7 +23,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             opt_destruction_scope,
             span: block.span,
             stmts,
-            expr: block.expr.as_ref().map(|expr| self.mirror_expr(expr)),
+            expr: block.expr.map(|expr| self.mirror_expr(expr)),
             safety_mode: match block.rules {
                 hir::BlockCheckMode::DefaultBlock => BlockSafety::Safe,
                 hir::BlockCheckMode::UnsafeBlock(..) => BlockSafety::ExplicitUnsafe(block.hir_id),
@@ -59,7 +59,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         data: region::ScopeData::Remainder(region::FirstStatementIndex::new(index)),
                     };
 
-                    let mut pattern = self.pattern_from_hir(&local.pat);
+                    let mut pattern = self.pattern_from_hir(local.pat);
 
                     if let Some(ty) = &local.ty {
                         if let Some(&user_ty) =

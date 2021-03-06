@@ -21,10 +21,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(expr.span);
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
-        match &expr.kind {
+        match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((*region_scope, source_info), *lint_level, |this| {
-                    this.stmt_expr(block, &value, statement_scope)
+                this.in_scope((region_scope, source_info), lint_level, |this| {
+                    this.stmt_expr(block, value, statement_scope)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
@@ -40,12 +40,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Generate better code for things that don't need to be
                 // dropped.
                 if lhs.ty.needs_drop(this.tcx, this.param_env) {
-                    let rhs = unpack!(block = this.as_local_operand(block, &rhs));
-                    let lhs = unpack!(block = this.as_place(block, &lhs));
+                    let rhs = unpack!(block = this.as_local_operand(block, rhs));
+                    let lhs = unpack!(block = this.as_place(block, lhs));
                     unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs));
                 } else {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, &rhs));
-                    let lhs = unpack!(block = this.as_place(block, &lhs));
+                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
+                    let lhs = unpack!(block = this.as_place(block, lhs));
                     this.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
@@ -67,21 +67,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_local_operand(block, &rhs));
-                let lhs = unpack!(block = this.as_place(block, &lhs));
+                let rhs = unpack!(block = this.as_local_operand(block, rhs));
+                let lhs = unpack!(block = this.as_place(block, lhs));
 
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(
-                    block = this.build_binary_op(
-                        block,
-                        *op,
-                        expr_span,
-                        lhs_ty,
-                        Operand::Copy(lhs),
-                        rhs
-                    )
+                    block =
+                        this.build_binary_op(block, op, expr_span, lhs_ty, Operand::Copy(lhs), rhs)
                 );
                 this.cfg.push_assign(block, source_info, lhs, result);
 
@@ -89,12 +83,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                this.break_scope(block, None, BreakableTarget::Continue(*label), source_info)
+                this.break_scope(block, None, BreakableTarget::Continue(label), source_info)
             }
             ExprKind::Break { label, value } => this.break_scope(
                 block,
                 value.as_deref(),
-                BreakableTarget::Break(*label),
+                BreakableTarget::Break(label),
                 source_info,
             ),
             ExprKind::Return { value } => {
@@ -120,7 +114,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Statement {
                         source_info,
                         kind: StatementKind::LlvmInlineAsm(box LlvmInlineAsm {
-                            asm: (*asm).clone(),
+                            asm: asm.clone(),
                             outputs,
                             inputs,
                         }),

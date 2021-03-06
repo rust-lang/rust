@@ -98,11 +98,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { region_scope, lint_level, value } = &expr.kind {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
-            let region_scope = (*region_scope, source_info);
+            let region_scope = (region_scope, source_info);
             return this
-                .in_scope(region_scope, *lint_level, |this| this.as_operand(block, scope, &value));
+                .in_scope(region_scope, lint_level, |this| this.as_operand(block, scope, value));
         }
 
         let category = Category::of(&expr.kind).unwrap();
@@ -128,11 +128,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { region_scope, lint_level, value } = &expr.kind {
+        if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
-            let region_scope = (*region_scope, source_info);
-            return this.in_scope(region_scope, *lint_level, |this| {
-                this.as_call_operand(block, scope, &value)
+            let region_scope = (region_scope, source_info);
+            return this.in_scope(region_scope, lint_level, |this| {
+                this.as_call_operand(block, scope, value)
             });
         }
 
@@ -149,7 +149,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.
-                if let ExprKind::Deref { ref arg } = expr.kind {
+                if let ExprKind::Deref { arg } = expr.kind {
                     // Generate let tmp0 = arg0
                     let operand = unpack!(block = this.as_temp(block, scope, arg, Mutability::Mut));
 

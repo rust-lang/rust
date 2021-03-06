@@ -406,28 +406,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        match &expr.kind {
+        match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((*region_scope, source_info), *lint_level, |this| {
-                    this.expr_as_place(block, &value, mutability, fake_borrow_temps)
+                this.in_scope((region_scope, source_info), lint_level, |this| {
+                    this.expr_as_place(block, value, mutability, fake_borrow_temps)
                 })
             }
             ExprKind::Field { lhs, name } => {
-                let place_builder = unpack!(
-                    block = this.expr_as_place(block, &lhs, mutability, fake_borrow_temps,)
-                );
-                block.and(place_builder.field(*name, expr.ty))
+                let place_builder =
+                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
-                let place_builder = unpack!(
-                    block = this.expr_as_place(block, &arg, mutability, fake_borrow_temps,)
-                );
+                let place_builder =
+                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
                 block,
-                &lhs,
-                &index,
+                lhs,
+                index,
                 mutability,
                 fake_borrow_temps,
                 expr.temp_lifetime,
@@ -435,16 +433,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
             ),
             ExprKind::UpvarRef { closure_def_id, var_hir_id } => {
-                let upvar_id = ty::UpvarId::new(*var_hir_id, closure_def_id.expect_local());
+                let upvar_id = ty::UpvarId::new(var_hir_id, closure_def_id.expect_local());
                 this.lower_captured_upvar(block, upvar_id)
             }
 
             ExprKind::VarRef { id } => {
-                let place_builder = if this.is_bound_var_in_guard(*id) {
-                    let index = this.var_local_id(*id, RefWithinGuard);
+                let place_builder = if this.is_bound_var_in_guard(id) {
+                    let index = this.var_local_id(id, RefWithinGuard);
                     PlaceBuilder::from(index).deref()
                 } else {
-                    let index = this.var_local_id(*id, OutsideGuard);
+                    let index = this.var_local_id(id, OutsideGuard);
                     PlaceBuilder::from(index)
                 };
                 block.and(place_builder)
@@ -452,13 +450,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, &source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
                 );
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty: *user_ty,
+                            user_ty,
                             inferred_ty: expr.ty,
                         });
 
@@ -481,12 +479,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
                 let temp =
-                    unpack!(block = this.as_temp(block, source.temp_lifetime, &source, mutability));
+                    unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
                         this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: source_info.span,
-                            user_ty: *user_ty,
+                            user_ty,
                             inferred_ty: expr.ty,
                         });
                     this.cfg.push(

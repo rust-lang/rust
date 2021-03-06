@@ -23,29 +23,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr,
             targeted_by_break,
             safety_mode,
-        } = ast_block;
+        } = *ast_block;
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
-            this.in_scope((*region_scope, source_info), LintLevel::Inherited, move |this| {
-                if *targeted_by_break {
-                    this.in_breakable_scope(None, destination, *span, |this| {
+            this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
+                if targeted_by_break {
+                    this.in_breakable_scope(None, destination, span, |this| {
                         Some(this.ast_block_stmts(
                             destination,
                             block,
-                            *span,
-                            &stmts,
-                            expr.as_deref(),
-                            *safety_mode,
+                            span,
+                            stmts,
+                            expr,
+                            safety_mode,
                         ))
                     })
                 } else {
-                    this.ast_block_stmts(
-                        destination,
-                        block,
-                        *span,
-                        &stmts,
-                        expr.as_deref(),
-                        *safety_mode,
-                    )
+                    this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
                 }
             })
         })
@@ -87,15 +80,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(span);
         for Stmt { kind, opt_destruction_scope } in stmts {
             match kind {
-                StmtKind::Expr { scope, expr } => {
+                &StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     unpack!(
                         block = this.in_opt_scope(
                             opt_destruction_scope.map(|de| (de, source_info)),
                             |this| {
-                                let si = (*scope, source_info);
+                                let si = (scope, source_info);
                                 this.in_scope(si, LintLevel::Inherited, |this| {
-                                    this.stmt_expr(block, &expr, Some(*scope))
+                                    this.stmt_expr(block, expr, Some(scope))
                                 })
                             }
                         )
@@ -110,7 +103,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span = remainder_scope.span(this.tcx, &this.region_scope_tree);
+                    let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
 
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
@@ -128,11 +121,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         this.declare_bindings(
                                             visibility_scope,
                                             remainder_span,
-                                            &pattern,
+                                            pattern,
                                             ArmHasGuard(false),
                                             Some((None, initializer_span)),
                                         );
-                                        this.expr_into_pattern(block, pattern.clone(), &init)
+                                        this.expr_into_pattern(block, pattern.clone(), init)
                                     })
                                 }
                             )
@@ -143,7 +136,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,
-                                &pattern,
+                                pattern,
                                 ArmHasGuard(false),
                                 None,
                             );

@@ -203,7 +203,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                     ExprKind::Call {
                         ty: method.ty,
                         fun: self.arena.alloc(method),
-                        args: &*self
+                        args: self
                             .arena
                             .alloc_from_iter(vec![self.mirror_expr_inner(fun), tupled_args]),
                         from_hir_call: true,
@@ -243,7 +243,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                             adt_def,
                             substs,
                             variant_index: index,
-                            fields: &*field_refs,
+                            fields: field_refs,
                             user_ty,
                             base: None,
                         }
@@ -277,7 +277,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 if self.typeck_results().is_method_call(expr) {
                     let lhs = self.mirror_expr_inner(lhs);
                     let rhs = self.mirror_expr_inner(rhs);
-                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(vec![lhs, rhs]))
+                    self.overloaded_operator(expr, self.arena.alloc_from_iter(vec![lhs, rhs]))
                 } else {
                     ExprKind::AssignOp {
                         op: bin_op(op.node),
@@ -297,7 +297,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 if self.typeck_results().is_method_call(expr) {
                     let lhs = self.mirror_expr_inner(lhs);
                     let rhs = self.mirror_expr_inner(rhs);
-                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(vec![lhs, rhs]))
+                    self.overloaded_operator(expr, self.arena.alloc_from_iter(vec![lhs, rhs]))
                 } else {
                     // FIXME overflow
                     match op.node {
@@ -332,7 +332,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         expr,
                         expr_ty,
                         None,
-                        &*self.arena.alloc_from_iter(vec![lhs, index]),
+                        self.arena.alloc_from_iter(vec![lhs, index]),
                         expr.span,
                     )
                 } else {
@@ -347,7 +347,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         expr,
                         expr_ty,
                         None,
-                        &*self.arena.alloc_from_iter(iter::once(arg)),
+                        self.arena.alloc_from_iter(iter::once(arg)),
                         expr.span,
                     )
                 } else {
@@ -358,7 +358,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             hir::ExprKind::Unary(hir::UnOp::Not, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
                     let arg = self.mirror_expr_inner(arg);
-                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(iter::once(arg)))
+                    self.overloaded_operator(expr, self.arena.alloc_from_iter(iter::once(arg)))
                 } else {
                     ExprKind::Unary { op: UnOp::Not, arg: self.mirror_expr(arg) }
                 }
@@ -367,7 +367,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             hir::ExprKind::Unary(hir::UnOp::Neg, ref arg) => {
                 if self.typeck_results().is_method_call(expr) {
                     let arg = self.mirror_expr_inner(arg);
-                    self.overloaded_operator(expr, &*self.arena.alloc_from_iter(iter::once(arg)))
+                    self.overloaded_operator(expr, self.arena.alloc_from_iter(iter::once(arg)))
                 } else if let hir::ExprKind::Lit(ref lit) = arg.kind {
                     ExprKind::Literal {
                         literal: self.const_eval_literal(&lit.node, expr_ty, lit.span, true),

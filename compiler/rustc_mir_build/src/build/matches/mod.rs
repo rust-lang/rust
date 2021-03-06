@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Guard::IfLet(pat, scrutinee) => {
                     let scrutinee_span = scrutinee.span;
                     let scrutinee_place =
-                        unpack!(block = self.lower_scrutinee(block, &scrutinee, scrutinee_span));
+                        unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span));
                     let mut guard_candidate = Candidate::new(scrutinee_place, &pat, false);
                     let wildcard = Pat::wildcard_from_ty(pat.ty);
                     let mut otherwise_candidate = Candidate::new(scrutinee_place, &wildcard, false);
