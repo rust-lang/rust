@@ -14,27 +14,30 @@ crate fn expand(
     ecx: &mut ExtCtxt<'_>,
     _span: Span,
     meta_item: &ast::MetaItem,
-    item: Annotatable,
+    annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
+    cfg_eval(ecx, annotatable)
+}
 
+crate fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable> {
     let mut visitor = CfgEval {
         cfg: StripUnconfigured { sess: ecx.sess, features: ecx.ecfg.features, modified: false },
     };
-    let mut item = visitor.fully_configure(item);
+    let mut annotatable = visitor.configure_annotatable(annotatable);
     if visitor.cfg.modified {
         // Erase the tokens if cfg-stripping modified the item
         // This will cause us to synthesize fake tokens
         // when `nt_to_tokenstream` is called on this item.
-        if let Some(tokens) = item.tokens_mut() {
+        if let Some(tokens) = annotatable.tokens_mut() {
             *tokens = None;
         }
     }
-    vec![item]
+    vec![annotatable]
 }
 
-crate struct CfgEval<'a> {
-    pub cfg: StripUnconfigured<'a>,
+struct CfgEval<'a> {
+    cfg: StripUnconfigured<'a>,
 }
 
 impl CfgEval<'_> {
@@ -42,10 +45,10 @@ impl CfgEval<'_> {
         self.cfg.configure(node)
     }
 
-    crate fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
+    fn configure_annotatable(&mut self, annotatable: Annotatable) -> Annotatable {
         // Since the item itself has already been configured by the InvocationCollector,
         // we know that fold result vector will contain exactly one element
-        match item {
+        match annotatable {
             Annotatable::Item(item) => Annotatable::Item(self.flat_map_item(item).pop().unwrap()),
             Annotatable::TraitItem(item) => {
                 Annotatable::TraitItem(self.flat_map_trait_item(item).pop().unwrap())
