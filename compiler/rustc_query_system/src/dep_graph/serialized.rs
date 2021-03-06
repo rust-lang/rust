@@ -12,7 +12,9 @@ use smallvec::SmallVec;
 use std::convert::TryInto;
 
 #[cfg(parallel_compiler)]
-use {rustc_data_structures::sync::WorkerLocal, std::sync::mpsc, std::thread};
+use {
+    rustc_data_structures::sync::WorkerLocal, rustc_index::vec::Idx, std::sync::mpsc, std::thread,
+};
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
