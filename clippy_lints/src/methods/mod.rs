@@ -20,6 +20,7 @@ mod map_collect_result_unit;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_unwrap_or;
+mod single_char_insert_string;
 mod skip_while_next;
 mod string_extend_chars;
 mod suspicious_map;
@@ -1779,7 +1780,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
                         lint_single_char_push_string(cx, expr, args);
                     } else if match_def_path(cx, fn_def_id, &paths::INSERT_STR) {
-                        lint_single_char_insert_string(cx, expr, args);
+                        single_char_insert_string::check(cx, expr, args);
                     }
                 }
 
@@ -3229,26 +3230,6 @@ fn lint_single_char_push_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args
             expr.span,
             "calling `push_str()` using a single-character string literal",
             "consider using `push` with a character literal",
-            sugg,
-            applicability,
-        );
-    }
-}
-
-/// lint for length-1 `str`s as argument for `insert_str`
-fn lint_single_char_insert_string(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
-    let mut applicability = Applicability::MachineApplicable;
-    if let Some(extension_string) = get_hint_if_single_char_arg(cx, &args[2], &mut applicability) {
-        let base_string_snippet =
-            snippet_with_applicability(cx, args[0].span.source_callsite(), "_", &mut applicability);
-        let pos_arg = snippet_with_applicability(cx, args[1].span, "..", &mut applicability);
-        let sugg = format!("{}.insert({}, {})", base_string_snippet, pos_arg, extension_string);
-        span_lint_and_sugg(
-            cx,
-            SINGLE_CHAR_ADD_STR,
-            expr.span,
-            "calling `insert_str()` using a single-character string literal",
-            "consider using `insert` with a character literal",
             sugg,
             applicability,
         );
