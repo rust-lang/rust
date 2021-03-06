@@ -3,7 +3,7 @@ use crate::config::StripUnconfigured;
 use crate::configure;
 use crate::hygiene::SyntaxContext;
 use crate::mbe::macro_rules::annotate_err_with_kind;
-use crate::module::{parse_external_mod, push_directory, Directory, DirectoryOwnership};
+use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
 use rustc_ast as ast;
@@ -355,16 +355,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     // FIXME: Avoid visiting the crate as a `Mod` item,
     // make crate a first class expansion target instead.
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        let mut module = ModuleData {
-            mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
-            directory: match self.cx.source_map().span_to_unmapped_path(krate.span) {
-                FileName::Real(name) => name.into_local_path(),
-                other => PathBuf::from(other.to_string()),
-            },
+        let file_path = match self.cx.source_map().span_to_unmapped_path(krate.span) {
+            FileName::Real(name) => name.into_local_path(),
+            other => PathBuf::from(other.to_string()),
         };
-        module.directory.pop();
-        self.cx.root_path = module.directory.clone();
-        self.cx.current_expansion.module = Rc::new(module);
+        let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
+        self.cx.root_path = dir_path.clone();
+        self.cx.current_expansion.module = Rc::new(ModuleData {
+            mod_path: vec![Ident::from_str(&self.cx.ecfg.crate_name)],
+            file_path_stack: vec![file_path],
+            dir_path,
+        });
 
         let krate_item = AstFragment::Items(smallvec![P(ast::Item {
             attrs: krate.attrs,
@@ -1245,10 +1246,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_block(&mut self, block: &mut P<Block>) {
-        let old_directory_ownership = self.cx.current_expansion.directory_ownership;
-        self.cx.current_expansion.directory_ownership = DirectoryOwnership::UnownedViaBlock;
+        let orig_dir_ownership = mem::replace(
+            &mut self.cx.current_expansion.dir_ownership,
+            DirOwnership::UnownedViaBlock,
+        );
         noop_visit_block(block, self);
-        self.cx.current_expansion.directory_ownership = old_directory_ownership;
+        self.cx.current_expansion.dir_ownership = orig_dir_ownership;
     }
 
     fn flat_map_item(&mut self, item: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -1276,63 +1279,76 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(_, ref mut mod_kind) if ident != Ident::invalid() => {
-                let sess = &self.cx.sess.parse_sess;
-                let orig_ownership = self.cx.current_expansion.directory_ownership;
-                let mut module = (*self.cx.current_expansion.module).clone();
-
-                let pushed = &mut false; // Record `parse_external_mod` pushing so we can pop.
-                let dir = Directory { ownership: orig_ownership, path: module.directory };
-                let Directory { ownership, path } = match mod_kind {
-                    ModKind::Loaded(_, Inline::Yes, _) => {
+                let (file_path, dir_path, dir_ownership) = match mod_kind {
+                    ModKind::Loaded(_, inline, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
+                        assert!(
+                            *inline == Inline::Yes,
+                            "`mod` item is loaded from a file for the second time"
+                        );
+                        let (dir_path, dir_ownership) = mod_dir_path(
+                            &self.cx.sess,
+                            ident,
+                            &attrs,
+                            &self.cx.current_expansion.module,
+                            self.cx.current_expansion.dir_ownership,
+                        );
                         item.attrs = attrs;
-                        push_directory(&self.cx.sess, ident, &item.attrs, dir)
-                    }
-                    ModKind::Loaded(_, Inline::No, _) => {
-                        panic!("`mod` item is loaded from a file for the second time")
+                        (None, dir_path, dir_ownership)
                     }
                     ModKind::Unloaded => {
                         // We have an outline `mod foo;` so we need to parse the file.
-                        let (items, inner_span, dir) =
-                            parse_external_mod(&self.cx.sess, ident, span, dir, &mut attrs, pushed);
+                        let old_attrs_len = attrs.len();
+                        let ParsedExternalMod {
+                            mut items,
+                            inner_span,
+                            file_path,
+                            dir_path,
+                            dir_ownership,
+                        } = parse_external_mod(
+                            &self.cx.sess,
+                            ident,
+                            span,
+                            &self.cx.current_expansion.module,
+                            self.cx.current_expansion.dir_ownership,
+                            &mut attrs,
+                        );
 
-                        let krate =
-                            ast::Crate { attrs, items, span: inner_span, proc_macros: vec![] };
                         if let Some(extern_mod_loaded) = self.cx.extern_mod_loaded {
-                            extern_mod_loaded(&krate, ident);
+                            (attrs, items) = extern_mod_loaded(ident, attrs, items, inner_span);
                         }
 
-                        *mod_kind = ModKind::Loaded(krate.items, Inline::No, inner_span);
-                        item.attrs = krate.attrs;
-                        // File can have inline attributes, e.g., `#![cfg(...)]` & co. => Reconfigure.
-                        item = match self.configure(item) {
-                            Some(node) => node,
-                            None => {
-                                if *pushed {
-                                    sess.included_mod_stack.borrow_mut().pop();
-                                }
-                                return Default::default();
-                            }
-                        };
-                        dir
+                        *mod_kind = ModKind::Loaded(items, Inline::No, inner_span);
+                        item.attrs = attrs;
+                        if item.attrs.len() > old_attrs_len {
+                            // If we loaded an out-of-line module and added some inner attributes,
+                            // then we need to re-configure it.
+                            // FIXME: Attributes also need to be recollected
+                            // for resolution and expansion.
+                            item = configure!(self, item);
+                        }
+                        (Some(file_path), dir_path, dir_ownership)
                     }
                 };
 
                 // Set the module info before we flat map.
-                self.cx.current_expansion.directory_ownership = ownership;
-                module.directory = path;
+                let mut module = self.cx.current_expansion.module.with_dir_path(dir_path);
                 module.mod_path.push(ident);
+                if let Some(file_path) = file_path {
+                    module.file_path_stack.push(file_path);
+                }
+
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
+                let orig_dir_ownership =
+                    mem::replace(&mut self.cx.current_expansion.dir_ownership, dir_ownership);
 
                 let result = noop_flat_map_item(item, self);
 
                 // Restore the module info.
+                self.cx.current_expansion.dir_ownership = orig_dir_ownership;
                 self.cx.current_expansion.module = orig_module;
-                self.cx.current_expansion.directory_ownership = orig_ownership;
-                if *pushed {
-                    sess.included_mod_stack.borrow_mut().pop();
-                }
+
                 result
             }
             _ => {
