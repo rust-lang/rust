@@ -25,9 +25,11 @@ mod iter_nth_zero;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
 mod map_collect_result_unit;
+mod map_flatten;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_unwrap_or;
+mod search_is_some;
 mod single_char_insert_string;
 mod single_char_pattern;
 mod single_char_push_string;
@@ -1711,13 +1713,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["flat_map", "filter"] => filter_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => filter_map_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => flat_map_identity::check(cx, expr, arg_lists[0], method_spans[0]),
-            ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
-            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
+            ["flatten", "map"] => map_flatten::check(cx, expr, arg_lists[1]),
+            ["is_some", "find"] => search_is_some::check(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
             ["is_some", "position"] => {
-                lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
+                search_is_some::check(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["is_some", "rposition"] => {
-                lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
+                search_is_some::check(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => string_extend_chars::check(cx, expr, arg_lists[0]),
             ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
@@ -2566,59 +2568,6 @@ fn derefs_to_slice<'tcx>(
     }
 }
 
-/// lint use of `map().flatten()` for `Iterators` and 'Options'
-fn lint_map_flatten<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
-    // lint if caller of `.map().flatten()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let map_closure_ty = cx.typeck_results().expr_ty(&map_args[1]);
-        let is_map_to_option = match map_closure_ty.kind() {
-            ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
-                let map_closure_sig = match map_closure_ty.kind() {
-                    ty::Closure(_, substs) => substs.as_closure().sig(),
-                    _ => map_closure_ty.fn_sig(cx.tcx),
-                };
-                let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());
-                is_type_diagnostic_item(cx, map_closure_return_ty, sym::option_type)
-            },
-            _ => false,
-        };
-
-        let method_to_use = if is_map_to_option {
-            // `(...).map(...)` has type `impl Iterator<Item=Option<...>>
-            "filter_map"
-        } else {
-            // `(...).map(...)` has type `impl Iterator<Item=impl Iterator<...>>
-            "flat_map"
-        };
-        let func_snippet = snippet(cx, map_args[1].span, "..");
-        let hint = format!(".{0}({1})", method_to_use, func_snippet);
-        span_lint_and_sugg(
-            cx,
-            MAP_FLATTEN,
-            expr.span.with_lo(map_args[0].span.hi()),
-            "called `map(..).flatten()` on an `Iterator`",
-            &format!("try using `{}` instead", method_to_use),
-            hint,
-            Applicability::MachineApplicable,
-        );
-    }
-
-    // lint if caller of `.map().flatten()` is an Option
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
-        let func_snippet = snippet(cx, map_args[1].span, "..");
-        let hint = format!(".and_then({})", func_snippet);
-        span_lint_and_sugg(
-            cx,
-            MAP_FLATTEN,
-            expr.span.with_lo(map_args[0].span.hi()),
-            "called `map(..).flatten()` on an `Option`",
-            "try using `and_then` instead",
-            hint,
-            Applicability::MachineApplicable,
-        );
-    }
-}
-
 const MAP_UNWRAP_OR_MSRV: RustcVersion = RustcVersion::new(1, 41, 0);
 
 /// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
@@ -2754,93 +2703,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint searching an Iterator followed by `is_some()`
-/// or calling `find()` on a string followed by `is_some()`
-fn lint_search_is_some<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    search_method: &str,
-    search_args: &'tcx [hir::Expr<'_>],
-    is_some_args: &'tcx [hir::Expr<'_>],
-    method_span: Span,
-) {
-    // lint if caller of search is an Iterator
-    if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
-        let msg = format!(
-            "called `is_some()` after searching an `Iterator` with `{}`",
-            search_method
-        );
-        let hint = "this is more succinctly expressed by calling `any()`";
-        let search_snippet = snippet(cx, search_args[1].span, "..");
-        if search_snippet.lines().count() <= 1 {
-            // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
-            // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
-            let any_search_snippet = if_chain! {
-                if search_method == "find";
-                if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].kind;
-                let closure_body = cx.tcx.hir().body(body_id);
-                if let Some(closure_arg) = closure_body.params.get(0);
-                then {
-                    if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
-                        Some(search_snippet.replacen('&', "", 1))
-                    } else if let PatKind::Binding(_, _, ident, _) = strip_pat_refs(&closure_arg.pat).kind {
-                        let name = &*ident.name.as_str();
-                        Some(search_snippet.replace(&format!("*{}", name), name))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            };
-            // add note if not multi-line
-            span_lint_and_sugg(
-                cx,
-                SEARCH_IS_SOME,
-                method_span.with_hi(expr.span.hi()),
-                &msg,
-                "use `any()` instead",
-                format!(
-                    "any({})",
-                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
-                ),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, &msg, None, hint);
-        }
-    }
-    // lint if `find()` is called by `String` or `&str`
-    else if search_method == "find" {
-        let is_string_or_str_slice = |e| {
-            let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_diagnostic_item(cx, self_ty, sym::string_type) {
-                true
-            } else {
-                *self_ty.kind() == ty::Str
-            }
-        };
-        if_chain! {
-            if is_string_or_str_slice(&search_args[0]);
-            if is_string_or_str_slice(&search_args[1]);
-            then {
-                let msg = "called `is_some()` after calling `find()` on a string";
-                let mut applicability = Applicability::MachineApplicable;
-                let find_arg = snippet_with_applicability(cx, search_args[1].span, "..", &mut applicability);
-                span_lint_and_sugg(
-                    cx,
-                    SEARCH_IS_SOME,
-                    method_span.with_hi(expr.span.hi()),
-                    msg,
-                    "use `contains()` instead",
-                    format!("contains({})", find_arg),
-                    applicability,
-                );
-            }
-        }
-    }
 }
 
 /// Used for `lint_binary_expr_with_method_call`.
