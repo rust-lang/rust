@@ -9,6 +9,7 @@ mod get_unwrap;
 mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
+mod into_iter_on_ref;
 mod iter_cloned_collect;
 mod iter_count;
 mod iter_next_slice;
@@ -21,6 +22,7 @@ mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_unwrap_or;
 mod single_char_insert_string;
+mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod string_extend_chars;
@@ -53,12 +55,11 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    contains_return, contains_ty, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro,
-    is_copy, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath,
-    match_trait_method, match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths,
-    remove_blocks, return_ty, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
-    span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth,
-    SpanlessEq,
+    contains_return, contains_ty, get_parent_expr, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of,
+    is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_trait_method,
+    match_type, meets_msrv, method_calls, method_chain_args, path_to_local_id, paths, remove_blocks, return_ty,
+    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_help, span_lint_and_sugg, span_lint_and_then, strip_pat_refs, sugg, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1789,12 +1790,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
                         for &(method, pos) in &PATTERN_METHODS {
                             if method_call.ident.name.as_str() == method && args.len() > pos {
-                                lint_single_char_pattern(cx, expr, &args[pos]);
+                                single_char_pattern::check(cx, expr, &args[pos]);
                             }
                         }
                     },
                     ty::Ref(..) if method_call.ident.name == sym::into_iter => {
-                        lint_into_iter(cx, expr, self_ty, *method_span);
+                        into_iter_on_ref::check(cx, expr, self_ty, *method_span);
                     },
                     _ => (),
                 }
@@ -3202,22 +3203,6 @@ fn get_hint_if_single_char_arg(
     }
 }
 
-/// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern(cx: &LateContext<'_>, _expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
-    let mut applicability = Applicability::MachineApplicable;
-    if let Some(hint) = get_hint_if_single_char_arg(cx, arg, &mut applicability) {
-        span_lint_and_sugg(
-            cx,
-            SINGLE_CHAR_PATTERN,
-            arg.span,
-            "single-character string constant used as pattern",
-            "try using a `char` instead",
-            hint,
-            applicability,
-        );
-    }
-}
-
 /// Checks for the `USELESS_ASREF` lint.
 fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_ref_args: &[hir::Expr<'_>]) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
@@ -3251,40 +3236,6 @@ fn lint_asref(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, as_re
                 applicability,
             );
         }
-    }
-}
-
-fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symbol, &'static str)> {
-    has_iter_method(cx, self_ref_ty).map(|ty_name| {
-        let mutbl = match self_ref_ty.kind() {
-            ty::Ref(_, _, mutbl) => mutbl,
-            _ => unreachable!(),
-        };
-        let method_name = match mutbl {
-            hir::Mutability::Not => "iter",
-            hir::Mutability::Mut => "iter_mut",
-        };
-        (ty_name, method_name)
-    })
-}
-
-fn lint_into_iter(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<'_>, method_span: Span) {
-    if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
-        return;
-    }
-    if let Some((kind, method_name)) = ty_has_iter_method(cx, self_ref_ty) {
-        span_lint_and_sugg(
-            cx,
-            INTO_ITER_ON_REF,
-            method_span,
-            &format!(
-                "this `.into_iter()` call is equivalent to `.{}()` and will not consume the `{}`",
-                method_name, kind,
-            ),
-            "call directly",
-            method_name.to_string(),
-            Applicability::MachineApplicable,
-        );
     }
 }
 
