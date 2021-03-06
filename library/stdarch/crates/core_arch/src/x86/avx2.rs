@@ -2531,57 +2531,34 @@ pub unsafe fn _mm256_shufflehi_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_shufflelo_epi16)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpshuflw, imm8 = 9))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpshuflw, IMM8 = 9))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
-    let imm8 = (imm8 & 0xFF) as u8;
+pub unsafe fn _mm256_shufflelo_epi16<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i16x16();
-    macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[rustfmt::skip]
-                        simd_shuffle16(a, a, [
-                            0+$x01, 0+$x23, 0+$x45, 0+$x67, 4, 5, 6, 7,
-                            8+$x01, 8+$x23, 8+$x45, 8+$x67, 12, 13, 14, 15,
-                        ])
-        };
-    }
-    macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => shuffle_done!($x01, $x23, $x45, 0),
-                0b01 => shuffle_done!($x01, $x23, $x45, 1),
-                0b10 => shuffle_done!($x01, $x23, $x45, 2),
-                _ => shuffle_done!($x01, $x23, $x45, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => shuffle_x67!($x01, $x23, 0),
-                0b01 => shuffle_x67!($x01, $x23, 1),
-                0b10 => shuffle_x67!($x01, $x23, 2),
-                _ => shuffle_x67!($x01, $x23, 3),
-            }
-        };
-    }
-    macro_rules! shuffle_x23 {
-        ($x01:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => shuffle_x45!($x01, 0),
-                0b01 => shuffle_x45!($x01, 1),
-                0b10 => shuffle_x45!($x01, 2),
-                _ => shuffle_x45!($x01, 3),
-            }
-        };
-    }
-    let r: i16x16 = match imm8 & 0b11 {
-        0b00 => shuffle_x23!(0),
-        0b01 => shuffle_x23!(1),
-        0b10 => shuffle_x23!(2),
-        _ => shuffle_x23!(3),
-    };
+    let r: i16x16 = simd_shuffle16(
+        a,
+        a,
+        [
+            0 + (IMM8 as u32 & 0b11),
+            0 + ((IMM8 as u32 >> 2) & 0b11),
+            0 + ((IMM8 as u32 >> 4) & 0b11),
+            0 + ((IMM8 as u32 >> 6) & 0b11),
+            4,
+            5,
+            6,
+            7,
+            8 + (IMM8 as u32 & 0b11),
+            8 + ((IMM8 as u32 >> 2) & 0b11),
+            8 + ((IMM8 as u32 >> 4) & 0b11),
+            8 + ((IMM8 as u32 >> 6) & 0b11),
+            12,
+            13,
+            14,
+            15,
+        ],
+    );
     transmute(r)
 }
 
@@ -4884,7 +4861,7 @@ mod tests {
             44, 22, 22, 11, 0, 1, 2, 3,
             88, 66, 66, 55, 4, 5, 6, 7,
         );
-        let r = _mm256_shufflelo_epi16(a, 0b00_01_01_11);
+        let r = _mm256_shufflelo_epi16::<0b00_01_01_11>(a);
         assert_eq_m256i(r, e);
     }
 
