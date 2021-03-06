@@ -1008,7 +1008,7 @@ mod tests {
             let expected_result = _mm256_gf2p8mul_epi8(left, right);
             let result_masked = _mm256_maskz_gf2p8mul_epi8(mask_bytes, left, right);
             let expected_masked =
-                _mm256_blend_epi32(_mm256_setzero_si256(), expected_result, MASK_WORDS);
+                _mm256_blend_epi32::<MASK_WORDS>(_mm256_setzero_si256(), expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }
@@ -1026,7 +1026,7 @@ mod tests {
             const MASK_WORDS: i32 = 0b01_10_11_00;
             let expected_result = _mm256_gf2p8mul_epi8(left, right);
             let result_masked = _mm256_mask_gf2p8mul_epi8(left, mask_bytes, left, right);
-            let expected_masked = _mm256_blend_epi32(left, expected_result, MASK_WORDS);
+            let expected_masked = _mm256_blend_epi32::<MASK_WORDS>(left, expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }
@@ -1207,7 +1207,7 @@ mod tests {
             let result_masked =
                 _mm256_maskz_gf2p8affine_epi64_epi8(mask_bytes, vector, matrix, CONSTANT_BYTE);
             let expected_masked =
-                _mm256_blend_epi32(_mm256_setzero_si256(), expected_result, MASK_WORDS);
+                _mm256_blend_epi32::<MASK_WORDS>(_mm256_setzero_si256(), expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }
@@ -1228,7 +1228,7 @@ mod tests {
             let expected_result = _mm256_gf2p8affine_epi64_epi8(left, right, CONSTANT_BYTE);
             let result_masked =
                 _mm256_mask_gf2p8affine_epi64_epi8(left, mask_bytes, left, right, CONSTANT_BYTE);
-            let expected_masked = _mm256_blend_epi32(left, expected_result, MASK_WORDS);
+            let expected_masked = _mm256_blend_epi32::<MASK_WORDS>(left, expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }
@@ -1456,7 +1456,7 @@ mod tests {
             let result_masked =
                 _mm256_maskz_gf2p8affineinv_epi64_epi8(mask_bytes, vector, matrix, CONSTANT_BYTE);
             let expected_masked =
-                _mm256_blend_epi32(_mm256_setzero_si256(), expected_result, MASK_WORDS);
+                _mm256_blend_epi32::<MASK_WORDS>(_mm256_setzero_si256(), expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }
@@ -1477,7 +1477,7 @@ mod tests {
             let expected_result = _mm256_gf2p8affineinv_epi64_epi8(left, right, CONSTANT_BYTE);
             let result_masked =
                 _mm256_mask_gf2p8affineinv_epi64_epi8(left, mask_bytes, left, right, CONSTANT_BYTE);
-            let expected_masked = _mm256_blend_epi32(left, expected_result, MASK_WORDS);
+            let expected_masked = _mm256_blend_epi32::<MASK_WORDS>(left, expected_result);
             assert_eq_m256i(result_masked, expected_masked);
         }
     }

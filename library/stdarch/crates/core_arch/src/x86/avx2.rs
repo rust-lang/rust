@@ -383,68 +383,32 @@ pub unsafe fn _mm_blend_epi32<const IMM4: i32>(a: __m128i, b: __m128i) -> __m128
     transmute(r)
 }
 
-/// Blends packed 32-bit integers from `a` and `b` using control mask `imm8`.
+/// Blends packed 32-bit integers from `a` and `b` using control mask `IMM8`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_blend_epi32)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vblendps, imm8 = 9))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vblendps, IMM8 = 9))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_blend_epi32(a: __m256i, b: __m256i, imm8: i32) -> __m256i {
-    let imm8 = (imm8 & 0xFF) as u8;
+pub unsafe fn _mm256_blend_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
     let a = a.as_i32x8();
     let b = b.as_i32x8();
-    macro_rules! blend4 {
-        (
-            $a:expr,
-            $b:expr,
-            $c:expr,
-            $d:expr,
-            $e:expr,
-            $f:expr,
-            $g:expr,
-            $h:expr
-        ) => {
-            simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h])
-        };
-    }
-    macro_rules! blend3 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {
-            match (imm8 >> 6) & 0b11 {
-                0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7),
-                0b01 => blend4!($a, $b, $c, $d, $e, $f, 14, 7),
-                0b10 => blend4!($a, $b, $c, $d, $e, $f, 6, 15),
-                _ => blend4!($a, $b, $c, $d, $e, $f, 14, 15),
-            }
-        };
-    }
-    macro_rules! blend2 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            match (imm8 >> 4) & 0b11 {
-                0b00 => blend3!($a, $b, $c, $d, 4, 5),
-                0b01 => blend3!($a, $b, $c, $d, 12, 5),
-                0b10 => blend3!($a, $b, $c, $d, 4, 13),
-                _ => blend3!($a, $b, $c, $d, 12, 13),
-            }
-        };
-    }
-    macro_rules! blend1 {
-        ($a:expr, $b:expr) => {
-            match (imm8 >> 2) & 0b11 {
-                0b00 => blend2!($a, $b, 2, 3),
-                0b01 => blend2!($a, $b, 10, 3),
-                0b10 => blend2!($a, $b, 2, 11),
-                _ => blend2!($a, $b, 10, 11),
-            }
-        };
-    }
-    let r: i32x8 = match imm8 & 0b11 {
-        0b00 => blend1!(0, 1),
-        0b01 => blend1!(8, 1),
-        0b10 => blend1!(0, 9),
-        _ => blend1!(8, 9),
-    };
+    let r: i32x8 = simd_shuffle8(
+        a,
+        b,
+        [
+            [0, 8, 0, 8][IMM8 as usize & 0b11],
+            [1, 1, 9, 9][IMM8 as usize & 0b11],
+            [2, 10, 2, 10][(IMM8 as usize >> 2) & 0b11],
+            [3, 3, 11, 11][(IMM8 as usize >> 2) & 0b11],
+            [4, 12, 4, 12][(IMM8 as usize >> 4) & 0b11],
+            [5, 5, 13, 13][(IMM8 as usize >> 4) & 0b11],
+            [6, 14, 6, 14][(IMM8 as usize >> 6) & 0b11],
+            [7, 7, 15, 15][(IMM8 as usize >> 6) & 0b11],
+        ],
+    );
     transmute(r)
 }
 
@@ -4065,15 +4029,15 @@ mod tests {
     unsafe fn test_mm256_blend_epi32() {
         let (a, b) = (_mm256_set1_epi32(3), _mm256_set1_epi32(9));
         let e = _mm256_setr_epi32(9, 3, 3, 3, 3, 3, 3, 3);
-        let r = _mm256_blend_epi32(a, b, 0x01 as i32);
+        let r = _mm256_blend_epi32::<0x01>(a, b);
         assert_eq_m256i(r, e);
 
         let e = _mm256_setr_epi32(3, 9, 3, 3, 3, 3, 3, 9);
-        let r = _mm256_blend_epi32(a, b, 0x82 as i32);
+        let r = _mm256_blend_epi32::<0x82>(a, b);
         assert_eq_m256i(r, e);
 
         let e = _mm256_setr_epi32(3, 3, 9, 9, 9, 9, 9, 3);
-        let r = _mm256_blend_epi32(a, b, 0x7C as i32);
+        let r = _mm256_blend_epi32::<0x7C>(a, b);
         assert_eq_m256i(r, e);
     }
 
