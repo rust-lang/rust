@@ -144,7 +144,14 @@ fn encode_node<K: DepKind>(
 ) -> FileEncodeResult {
     #[cfg(debug_assertions)]
     if let Some(record_graph) = &_record_graph {
-        record_graph.lock().push(_index, node.node, &node.edges);
+        if let Some(record_graph) = &mut if cfg!(parallel_compiler) {
+            Some(record_graph.lock())
+        } else {
+            // Do not ICE when a query is called from within `with_query`.
+            record_graph.try_lock()
+        } {
+            record_graph.push(_index, node.node, &node.edges);
+        }
     }
 
     if let Some(record_stats) = &record_stats {
