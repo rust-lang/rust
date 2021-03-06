@@ -15,7 +15,7 @@ fn vtable_memflags() -> MemFlags {
     flags
 }
 
-pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable: Value) -> Value {
+pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -25,7 +25,7 @@ pub(crate) fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable: V
     )
 }
 
-pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable: Value) -> Value {
+pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -35,7 +35,7 @@ pub(crate) fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable: Valu
     )
 }
 
-pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable: Value) -> Value {
+pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, '_>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -46,7 +46,7 @@ pub(crate) fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Module>, vtable:
 }
 
 pub(crate) fn get_ptr_and_method_ref<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
     idx: usize,
 ) -> (Value, Value) {
@@ -68,7 +68,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 }
 
 pub(crate) fn get_vtable<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
@@ -85,7 +85,7 @@ pub(crate) fn get_vtable<'tcx>(
 }
 
 fn build_vtable<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {
@@ -94,7 +94,7 @@ fn build_vtable<'tcx>(
 
     let drop_in_place_fn = import_function(
         tcx,
-        &mut fx.cx.module,
+        fx.cx.module,
         Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx),
     );
 
@@ -111,7 +111,7 @@ fn build_vtable<'tcx>(
         opt_mth.map(|(def_id, substs)| {
             import_function(
                 tcx,
-                &mut fx.cx.module,
+                fx.cx.module,
                 Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs)
                     .unwrap()
                     .polymorphize(fx.tcx),
@@ -165,11 +165,8 @@ fn build_vtable<'tcx>(
 }
 
 fn write_usize(tcx: TyCtxt<'_>, buf: &mut [u8], idx: usize, num: u64) {
-    let pointer_size = tcx
-        .layout_of(ParamEnv::reveal_all().and(tcx.types.usize))
-        .unwrap()
-        .size
-        .bytes() as usize;
+    let pointer_size =
+        tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.usize)).unwrap().size.bytes() as usize;
     let target = &mut buf[idx * pointer_size..(idx + 1) * pointer_size];
 
     match tcx.data_layout.endian {

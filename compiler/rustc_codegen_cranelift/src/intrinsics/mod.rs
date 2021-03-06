@@ -9,6 +9,7 @@ pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use crate::prelude::*;
+use cranelift_codegen::ir::AtomicRmwOp;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
 macro intrinsic_pat {
@@ -112,38 +113,6 @@ macro call_intrinsic_match {
     }
 }
 
-macro atomic_binop_return_old($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) {
-    crate::atomic_shim::lock_global_lock($fx);
-
-    let clif_ty = $fx.clif_type($T).unwrap();
-    let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
-    let new = $fx.bcx.ins().$op(old, $src);
-    $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
-    $ret.write_cvalue($fx, CValue::by_val(old, $fx.layout_of($T)));
-
-    crate::atomic_shim::unlock_global_lock($fx);
-}
-
-macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $ret:ident) {
-    crate::atomic_shim::lock_global_lock($fx);
-
-    // Read old
-    let clif_ty = $fx.clif_type($T).unwrap();
-    let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
-
-    // Compare
-    let is_eq = $fx.bcx.ins().icmp(IntCC::SignedGreaterThan, old, $src);
-    let new = $fx.bcx.ins().select(is_eq, old, $src);
-
-    // Write new
-    $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
-
-    let ret_val = CValue::by_val(old, $ret.layout());
-    $ret.write_cvalue($fx, ret_val);
-
-    crate::atomic_shim::unlock_global_lock($fx);
-}
-
 macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     match $ty.kind() {
         ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
@@ -184,12 +153,12 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
     }
 }
 
-fn simd_for_each_lane<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, M>,
+        &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -213,13 +182,13 @@ fn simd_for_each_lane<'tcx, M: Module>(
     }
 }
 
-fn simd_pair_for_each_lane<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_pair_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
     f: impl Fn(
-        &mut FunctionCx<'_, 'tcx, M>,
+        &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
@@ -246,11 +215,11 @@ fn simd_pair_for_each_lane<'tcx, M: Module>(
     }
 }
 
-fn simd_reduce<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_reduce<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, TyAndLayout<'tcx>, Value, Value) -> Value,
+    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     let lane_layout = fx.layout_of(lane_ty);
@@ -258,20 +227,19 @@ fn simd_reduce<'tcx, M: Module>(
 
     let mut res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     for lane_idx in 1..lane_count {
-        let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
-            .load_scalar(fx);
+        let lane =
+            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
         res_val = f(fx, lane_layout, res_val, lane);
     }
     let res = CValue::by_val(res_val, lane_layout);
     ret.write_cvalue(fx, res);
 }
 
-fn simd_reduce_bool<'tcx, M: Module>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+fn simd_reduce_bool<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, 'tcx, M>, Value, Value) -> Value,
+    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
@@ -279,9 +247,8 @@ fn simd_reduce_bool<'tcx, M: Module>(
     let res_val = val.value_field(fx, mir::Field::new(0)).load_scalar(fx);
     let mut res_val = fx.bcx.ins().band_imm(res_val, 1); // mask to boolean
     for lane_idx in 1..lane_count {
-        let lane = val
-            .value_field(fx, mir::Field::new(lane_idx.try_into().unwrap()))
-            .load_scalar(fx);
+        let lane =
+            val.value_field(fx, mir::Field::new(lane_idx.try_into().unwrap())).load_scalar(fx);
         let lane = fx.bcx.ins().band_imm(lane, 1); // mask to boolean
         res_val = f(fx, res_val, lane);
     }
@@ -290,7 +257,7 @@ fn simd_reduce_bool<'tcx, M: Module>(
 }
 
 fn bool_to_zero_or_max_uint<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     val: Value,
 ) -> CValue<'tcx> {
@@ -424,7 +391,7 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
 }
 
 pub(crate) fn codegen_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
@@ -912,136 +879,175 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         };
 
         _ if intrinsic.starts_with("atomic_fence"), () {
-            crate::atomic_shim::lock_global_lock(fx);
-            crate::atomic_shim::unlock_global_lock(fx);
+            fx.bcx.ins().fence();
         };
         _ if intrinsic.starts_with("atomic_singlethreadfence"), () {
-            crate::atomic_shim::lock_global_lock(fx);
-            crate::atomic_shim::unlock_global_lock(fx);
+            // FIXME use a compiler fence once Cranelift supports it
+            fx.bcx.ins().fence();
         };
-        _ if intrinsic.starts_with("atomic_load"), (c ptr) {
-            crate::atomic_shim::lock_global_lock(fx);
+        _ if intrinsic.starts_with("atomic_load"), <T> (v ptr) {
+            validate_atomic_type!(fx, intrinsic, span, T);
+            let ty = fx.clif_type(T).unwrap();
 
-            let inner_layout =
-                fx.layout_of(ptr.layout().ty.builtin_deref(true).unwrap().ty);
-            validate_atomic_type!(fx, intrinsic, span, inner_layout.ty);
-            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), inner_layout);
+            let val = fx.bcx.ins().atomic_load(ty, MemFlags::trusted(), ptr);
+
+            let val = CValue::by_val(val, fx.layout_of(T));
             ret.write_cvalue(fx, val);
-
-            crate::atomic_shim::unlock_global_lock(fx);
         };
         _ if intrinsic.starts_with("atomic_store"), (v ptr, c val) {
             validate_atomic_type!(fx, intrinsic, span, val.layout().ty);
 
-            crate::atomic_shim::lock_global_lock(fx);
+            let val = val.load_scalar(fx);
 
-            let dest = CPlace::for_ptr(Pointer::new(ptr), val.layout());
-            dest.write_cvalue(fx, val);
-
-            crate::atomic_shim::unlock_global_lock(fx);
+            fx.bcx.ins().atomic_store(MemFlags::trusted(), val, ptr);
         };
-        _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, T);
+        _ if intrinsic.starts_with("atomic_xchg"), (v ptr, c new) {
+            let layout = new.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
 
-            crate::atomic_shim::lock_global_lock(fx);
+            let new = new.load_scalar(fx);
 
-            // Read old
-            let clif_ty = fx.clif_type(T).unwrap();
-            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-            ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Xchg, ptr, new);
 
-            // Write new
-            let dest = CPlace::for_ptr(Pointer::new(ptr), src.layout());
-            dest.write_cvalue(fx, src);
-
-            crate::atomic_shim::unlock_global_lock(fx);
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
-            validate_atomic_type!(fx, intrinsic, span, T);
+        _ if intrinsic.starts_with("atomic_cxchg"), (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
+            let layout = new.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
 
             let test_old = test_old.load_scalar(fx);
             let new = new.load_scalar(fx);
 
-            crate::atomic_shim::lock_global_lock(fx);
-
-            // Read old
-            let clif_ty = fx.clif_type(T).unwrap();
-            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-
-            // Compare
+            let old = fx.bcx.ins().atomic_cas(MemFlags::trusted(), ptr, test_old, new);
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
-            let new = fx.bcx.ins().select(is_eq, new, old); // Keep old if not equal to test_old
-
-            // Write new
-            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
 
             let ret_val = CValue::by_val_pair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
-            ret.write_cvalue(fx, ret_val);
-
-            crate::atomic_shim::unlock_global_lock(fx);
+            ret.write_cvalue(fx, ret_val)
         };
 
-        _ if intrinsic.starts_with("atomic_xadd"), <T> (v ptr, c amount) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_xadd"), (v ptr, c amount) {
+            let layout = amount.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let amount = amount.load_scalar(fx);
-            atomic_binop_return_old! (fx, iadd<T>(ptr, amount) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Add, ptr, amount);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_xsub"), <T> (v ptr, c amount) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_xsub"), (v ptr, c amount) {
+            let layout = amount.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let amount = amount.load_scalar(fx);
-            atomic_binop_return_old! (fx, isub<T>(ptr, amount) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Sub, ptr, amount);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_and"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
-            let src = src.load_scalar(fx);
-            atomic_binop_return_old! (fx, band<T>(ptr, src) -> ret);
-        };
-        _ if intrinsic.starts_with("atomic_nand"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, T);
+        _ if intrinsic.starts_with("atomic_and"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
 
-            crate::atomic_shim::lock_global_lock(fx);
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::And, ptr, src);
 
-            let clif_ty = fx.clif_type(T).unwrap();
-            let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
-            let and = fx.bcx.ins().band(old, src);
-            let new = fx.bcx.ins().bnot(and);
-            fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
-            ret.write_cvalue(fx, CValue::by_val(old, fx.layout_of(T)));
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
+        };
+        _ if intrinsic.starts_with("atomic_or"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
 
-            crate::atomic_shim::unlock_global_lock(fx);
-        };
-        _ if intrinsic.starts_with("atomic_or"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
             let src = src.load_scalar(fx);
-            atomic_binop_return_old! (fx, bor<T>(ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Or, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_xor"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_xor"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let src = src.load_scalar(fx);
-            atomic_binop_return_old! (fx, bxor<T>(ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Xor, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
 
-        _ if intrinsic.starts_with("atomic_max"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        // FIXME https://github.com/bytecodealliance/wasmtime/issues/2647
+        _ if intrinsic.starts_with("atomic_nand"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let src = src.load_scalar(fx);
-            atomic_minmax!(fx, IntCC::SignedGreaterThan, <T> (ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Nand, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_umax"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_max"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let src = src.load_scalar(fx);
-            atomic_minmax!(fx, IntCC::UnsignedGreaterThan, <T> (ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Smax, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_min"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_umax"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let src = src.load_scalar(fx);
-            atomic_minmax!(fx, IntCC::SignedLessThan, <T> (ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Umax, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
-        _ if intrinsic.starts_with("atomic_umin"), <T> (v ptr, c src) {
-            validate_atomic_type!(fx, intrinsic, span, ret.layout().ty);
+        _ if intrinsic.starts_with("atomic_min"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
             let src = src.load_scalar(fx);
-            atomic_minmax!(fx, IntCC::UnsignedLessThan, <T> (ptr, src) -> ret);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Smin, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
+        };
+        _ if intrinsic.starts_with("atomic_umin"), (v ptr, c src) {
+            let layout = src.layout();
+            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            let ty = fx.clif_type(layout.ty).unwrap();
+
+            let src = src.load_scalar(fx);
+
+            let old = fx.bcx.ins().atomic_rmw(ty, MemFlags::trusted(), AtomicRmwOp::Umin, ptr, src);
+
+            let old = CValue::by_val(old, layout);
+            ret.write_cvalue(fx, old);
         };
 
         minnumf32, (v a, v b) {

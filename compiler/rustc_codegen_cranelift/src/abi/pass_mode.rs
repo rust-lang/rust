@@ -71,12 +71,7 @@ fn cast_target_to_abi_params(cast: CastTarget) -> SmallVec<[AbiParam; 2]> {
         .prefix
         .iter()
         .flatten()
-        .map(|&kind| {
-            reg_to_abi_param(Reg {
-                kind,
-                size: cast.prefix_chunk_size,
-            })
-        })
+        .map(|&kind| reg_to_abi_param(Reg { kind, size: cast.prefix_chunk_size }))
         .chain((0..rest_count).map(|_| reg_to_abi_param(cast.rest.unit)))
         .collect::<SmallVec<_>>();
 
@@ -98,12 +93,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         match self.mode {
             PassMode::Ignore => smallvec![],
             PassMode::Direct(attrs) => match &self.layout.abi {
-                Abi::Scalar(scalar) => {
-                    smallvec![apply_arg_attrs_to_abi_param(
-                        AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
-                        attrs
-                    )]
-                }
+                Abi::Scalar(scalar) => smallvec![apply_arg_attrs_to_abi_param(
+                    AbiParam::new(scalar_to_clif_type(tcx, scalar.clone())),
+                    attrs
+                )],
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
                     smallvec![AbiParam::new(vector_ty)]
@@ -122,11 +115,7 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.abi),
             },
             PassMode::Cast(cast) => cast_target_to_abi_params(cast),
-            PassMode::Indirect {
-                attrs,
-                extra_attrs: None,
-                on_stack,
-            } => {
+            PassMode::Indirect { attrs, extra_attrs: None, on_stack } => {
                 if on_stack {
                     let size = u32::try_from(self.layout.size.bytes()).unwrap();
                     smallvec![apply_arg_attrs_to_abi_param(
@@ -134,17 +123,10 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                         attrs
                     )]
                 } else {
-                    smallvec![apply_arg_attrs_to_abi_param(
-                        AbiParam::new(pointer_ty(tcx)),
-                        attrs
-                    )]
+                    smallvec![apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs)]
                 }
             }
-            PassMode::Indirect {
-                attrs,
-                extra_attrs: Some(extra_attrs),
-                on_stack,
-            } => {
+            PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack } => {
                 assert!(!on_stack);
                 smallvec![
                     apply_arg_attrs_to_abi_param(AbiParam::new(pointer_ty(tcx)), attrs),
@@ -158,10 +140,9 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         match self.mode {
             PassMode::Ignore => (None, vec![]),
             PassMode::Direct(_) => match &self.layout.abi {
-                Abi::Scalar(scalar) => (
-                    None,
-                    vec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))],
-                ),
+                Abi::Scalar(scalar) => {
+                    (None, vec![AbiParam::new(scalar_to_clif_type(tcx, scalar.clone()))])
+                }
                 Abi::Vector { .. } => {
                     let vector_ty = crate::intrinsics::clif_vector_type(tcx, self.layout).unwrap();
                     (None, vec![AbiParam::new(vector_ty)])
@@ -177,31 +158,19 @@ impl<'tcx> ArgAbiExt<'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 _ => unreachable!("{:?}", self.layout.abi),
             },
             PassMode::Cast(cast) => (None, cast_target_to_abi_params(cast).into_iter().collect()),
-            PassMode::Indirect {
-                attrs: _,
-                extra_attrs: None,
-                on_stack,
-            } => {
+            PassMode::Indirect { attrs: _, extra_attrs: None, on_stack } => {
                 assert!(!on_stack);
-                (
-                    Some(AbiParam::special(
-                        pointer_ty(tcx),
-                        ArgumentPurpose::StructReturn,
-                    )),
-                    vec![],
-                )
+                (Some(AbiParam::special(pointer_ty(tcx), ArgumentPurpose::StructReturn)), vec![])
             }
-            PassMode::Indirect {
-                attrs: _,
-                extra_attrs: Some(_),
-                on_stack: _,
-            } => unreachable!("unsized return value"),
+            PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+                unreachable!("unsized return value")
+            }
         }
     }
 }
 
 pub(super) fn to_casted_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
     cast: CastTarget,
 ) -> SmallVec<[Value; 2]> {
@@ -211,9 +180,7 @@ pub(super) fn to_casted_value<'tcx>(
     cast_target_to_abi_params(cast)
         .into_iter()
         .map(|param| {
-            let val = ptr
-                .offset_i64(fx, offset)
-                .load(fx, param.value_type, MemFlags::new());
+            let val = ptr.offset_i64(fx, offset).load(fx, param.value_type, MemFlags::new());
             offset += i64::from(param.value_type.bytes());
             val
         })
@@ -221,16 +188,13 @@ pub(super) fn to_casted_value<'tcx>(
 }
 
 pub(super) fn from_casted_value<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     block_params: &[Value],
     layout: TyAndLayout<'tcx>,
     cast: CastTarget,
 ) -> CValue<'tcx> {
     let abi_params = cast_target_to_abi_params(cast);
-    let abi_param_size: u32 = abi_params
-        .iter()
-        .map(|param| param.value_type.bytes())
-        .sum();
+    let abi_param_size: u32 = abi_params.iter().map(|param| param.value_type.bytes()).sum();
     let layout_size = u32::try_from(layout.size.bytes()).unwrap();
     let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
@@ -260,7 +224,7 @@ pub(super) fn from_casted_value<'tcx>(
 
 /// Get a set of values to be passed as function arguments.
 pub(super) fn adjust_arg_for_abi<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     arg: CValue<'tcx>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
 ) -> SmallVec<[Value; 2]> {
@@ -283,7 +247,7 @@ pub(super) fn adjust_arg_for_abi<'tcx>(
 /// Create a [`CValue`] containing the value of a function parameter adding clif function parameters
 /// as necessary.
 pub(super) fn cvalue_for_param<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local: Option<mir::Local>,
     #[cfg_attr(not(debug_assertions), allow(unused_variables))] local_field: Option<usize>,
     arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -294,10 +258,7 @@ pub(super) fn cvalue_for_param<'tcx>(
         .into_iter()
         .map(|abi_param| {
             let block_param = block_params_iter.next().unwrap();
-            assert_eq!(
-                fx.bcx.func.dfg.value_type(block_param),
-                abi_param.value_type
-            );
+            assert_eq!(fx.bcx.func.dfg.value_type(block_param), abi_param.value_type);
             block_param
         })
         .collect::<SmallVec<[_; 2]>>();
@@ -321,29 +282,14 @@ pub(super) fn cvalue_for_param<'tcx>(
         }
         PassMode::Pair(_, _) => {
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
-            Some(CValue::by_val_pair(
-                block_params[0],
-                block_params[1],
-                arg_abi.layout,
-            ))
+            Some(CValue::by_val_pair(block_params[0], block_params[1], arg_abi.layout))
         }
         PassMode::Cast(cast) => Some(from_casted_value(fx, &block_params, arg_abi.layout, cast)),
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: _,
-        } => {
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
             assert_eq!(block_params.len(), 1, "{:?}", block_params);
-            Some(CValue::by_ref(
-                Pointer::new(block_params[0]),
-                arg_abi.layout,
-            ))
+            Some(CValue::by_ref(Pointer::new(block_params[0]), arg_abi.layout))
         }
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: _,
-        } => {
+        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
             assert_eq!(block_params.len(), 2, "{:?}", block_params);
             Some(CValue::by_ref_unsized(
                 Pointer::new(block_params[0]),
