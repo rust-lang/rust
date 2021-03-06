@@ -6,6 +6,7 @@ mod filetype_is_file;
 mod filter_map;
 mod filter_map_identity;
 mod filter_map_map;
+mod filter_map_next;
 mod filter_next;
 mod from_iter_instead_of_collect;
 mod get_unwrap;
@@ -1702,7 +1703,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
             ["map", "filter"] => filter_map::check(cx, expr, false),
             ["map", "filter_map"] => filter_map_map::check(cx, expr, arg_lists[1], arg_lists[0]),
-            ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
+            ["next", "filter_map"] => filter_map_next::check(cx, expr, arg_lists[1], self.msrv.as_ref()),
             ["map", "find"] => filter_map::check(cx, expr, true),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2750,40 +2751,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-const FILTER_MAP_NEXT_MSRV: RustcVersion = RustcVersion::new(1, 30, 0);
-
-/// lint use of `filter_map().next()` for `Iterators`
-fn lint_filter_map_next<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    filter_args: &'tcx [hir::Expr<'_>],
-    msrv: Option<&RustcVersion>,
-) {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        if !meets_msrv(msrv, &FILTER_MAP_NEXT_MSRV) {
-            return;
-        }
-
-        let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find_map(..)` instead";
-        let filter_snippet = snippet(cx, filter_args[1].span, "..");
-        if filter_snippet.lines().count() <= 1 {
-            let iter_snippet = snippet(cx, filter_args[0].span, "..");
-            span_lint_and_sugg(
-                cx,
-                FILTER_MAP_NEXT,
-                expr.span,
-                msg,
-                "try this",
-                format!("{}.find_map({})", iter_snippet, filter_snippet),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);
-        }
-    }
 }
 
 /// lint use of `filter().flat_map()` for `Iterators`
