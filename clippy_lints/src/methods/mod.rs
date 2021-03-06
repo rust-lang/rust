@@ -30,6 +30,7 @@ mod map_collect_result_unit;
 mod map_flatten;
 mod ok_expect;
 mod option_as_ref_deref;
+mod option_map_or_none;
 mod option_map_unwrap_or;
 mod search_is_some;
 mod single_char_insert_string;
@@ -1692,7 +1693,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or");
                 }
             },
-            ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
+            ["map_or", ..] => option_map_or_none::check(cx, expr, arg_lists[0]),
             ["and_then", ..] => {
                 let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, arg_lists[0]);
                 let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, arg_lists[0]);
@@ -2429,76 +2430,6 @@ fn lint_map_unwrap_or_else<'tcx>(
     }
 
     false
-}
-
-/// lint use of `_.map_or(None, _)` for `Option`s and `Result`s
-fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_or_args: &'tcx [hir::Expr<'_>]) {
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym::option_type);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_or_args[0]), sym::result_type);
-
-    // There are two variants of this `map_or` lint:
-    // (1) using `map_or` as an adapter from `Result<T,E>` to `Option<T>`
-    // (2) using `map_or` as a combinator instead of `and_then`
-    //
-    // (For this lint) we don't care if any other type calls `map_or`
-    if !is_option && !is_result {
-        return;
-    }
-
-    let (lint_name, msg, instead, hint) = {
-        let default_arg_is_none = if let hir::ExprKind::Path(ref qpath) = map_or_args[1].kind {
-            match_qpath(qpath, &paths::OPTION_NONE)
-        } else {
-            return;
-        };
-
-        if !default_arg_is_none {
-            // nothing to lint!
-            return;
-        }
-
-        let f_arg_is_some = if let hir::ExprKind::Path(ref qpath) = map_or_args[2].kind {
-            match_qpath(qpath, &paths::OPTION_SOME)
-        } else {
-            false
-        };
-
-        if is_option {
-            let self_snippet = snippet(cx, map_or_args[0].span, "..");
-            let func_snippet = snippet(cx, map_or_args[2].span, "..");
-            let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
-                       `and_then(..)` instead";
-            (
-                OPTION_MAP_OR_NONE,
-                msg,
-                "try using `and_then` instead",
-                format!("{0}.and_then({1})", self_snippet, func_snippet),
-            )
-        } else if f_arg_is_some {
-            let msg = "called `map_or(None, Some)` on a `Result` value. This can be done more directly by calling \
-                       `ok()` instead";
-            let self_snippet = snippet(cx, map_or_args[0].span, "..");
-            (
-                RESULT_MAP_OR_INTO_OPTION,
-                msg,
-                "try using `ok` instead",
-                format!("{0}.ok()", self_snippet),
-            )
-        } else {
-            // nothing to lint!
-            return;
-        }
-    };
-
-    span_lint_and_sugg(
-        cx,
-        lint_name,
-        expr.span,
-        msg,
-        instead,
-        hint,
-        Applicability::MachineApplicable,
-    );
 }
 
 /// Used for `lint_binary_expr_with_method_call`.
