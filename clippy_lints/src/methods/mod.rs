@@ -3,6 +3,7 @@ mod bytes_nth;
 mod clone_on_ref_ptr;
 mod expect_used;
 mod filetype_is_file;
+mod filter_flat_map;
 mod filter_map;
 mod filter_map_identity;
 mod filter_map_map;
@@ -1705,7 +1706,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["map", "filter_map"] => filter_map_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => filter_map_next::check(cx, expr, arg_lists[1], self.msrv.as_ref()),
             ["map", "find"] => filter_map::check(cx, expr, true),
-            ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["flat_map", "filter"] => filter_flat_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
@@ -2751,22 +2752,6 @@ fn lint_map_or_none<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map
         hint,
         Applicability::MachineApplicable,
     );
-}
-
-/// lint use of `filter().flat_map()` for `Iterators`
-fn lint_filter_flat_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _filter_args: &'tcx [hir::Expr<'_>],
-    _map_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.filter().flat_map()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter(..).flat_map(..)` on an `Iterator`";
-        let hint = "this is more succinctly expressed by calling `.flat_map(..)` \
-                    and filtering by returning `iter::empty()`";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
-    }
 }
 
 /// lint use of `filter_map().flat_map()` for `Iterators`
