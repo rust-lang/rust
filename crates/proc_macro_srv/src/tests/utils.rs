@@ -52,7 +52,7 @@ pub fn assert_expand(
     let expander = dylib::Expander::new(&path).unwrap();
     let fixture = parse_string(ra_fixture).unwrap();
 
-    let res = expander.expand(macro_name, &fixture.subtree, None).unwrap();
+    let res = expander.expand(macro_name, &fixture.into_subtree(), None).unwrap();
     assert_eq_text!(&expect.trim(), &format!("{:?}", res));
 }
 
