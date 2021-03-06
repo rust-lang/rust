@@ -230,6 +230,7 @@ mod identity_op;
 mod if_let_mutex;
 mod if_let_some_result;
 mod if_not_else;
+mod if_then_some_else_none;
 mod implicit_return;
 mod implicit_saturating_sub;
 mod inconsistent_struct_constructor;
@@ -667,6 +668,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &if_let_mutex::IF_LET_MUTEX,
         &if_let_some_result::IF_LET_SOME_RESULT,
         &if_not_else::IF_NOT_ELSE,
+        &if_then_some_else_none::IF_THEN_SOME_ELSE_NONE,
         &implicit_return::IMPLICIT_RETURN,
         &implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
         &inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
@@ -1282,6 +1284,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
     store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);
     store.register_late_pass(|| box manual_map::ManualMap);
+    store.register_late_pass(|| box if_then_some_else_none::IfThenSomeElseNone);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1297,6 +1300,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&exhaustive_items::EXHAUSTIVE_STRUCTS),
         LintId::of(&exit::EXIT),
         LintId::of(&float_literal::LOSSY_FLOAT_LITERAL),
+        LintId::of(&if_then_some_else_none::IF_THEN_SOME_ELSE_NONE),
         LintId::of(&implicit_return::IMPLICIT_RETURN),
         LintId::of(&indexing_slicing::INDEXING_SLICING),
         LintId::of(&inherent_impl::MULTIPLE_INHERENT_IMPL),

@@ -1,0 +1,16 @@
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:5:13
+   |
+LL |       let _ = if foo() {
+   |  _____________^
+LL | |         println!("true!");
+LL | |         Some("foo")
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^ help: try this: `foo().then(|| { /* snippet */ "foo" })`
+   |
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+
+error: aborting due to previous error
+
