@@ -1,8 +1,8 @@
-error: an or-pattern parameter must be wrapped in parentheses
+error: top-level or-patterns are not allowed in function parameters
   --> $DIR/remove-leading-vert.rs:12:14
    |
 LL |     fn fun1( | A: E) {}
-   |              ^^^ help: remove the leading `|`: `A`
+   |              ^^^ help: remove the `|`: `A`
 
 error: unexpected `||` before function parameter
   --> $DIR/remove-leading-vert.rs:13:14
@@ -135,7 +135,7 @@ LL |         | A | B | => {}
    |         while parsing this or-pattern starting here
 
 error: a trailing `|` is not allowed in an or-pattern
-  --> $DIR/remove-leading-vert.rs:43:11
+  --> $DIR/remove-leading-vert.rs:46:11
    |
 LL |     let a | : u8 = 0;
    |         - ^ help: remove the `|`
@@ -143,7 +143,7 @@ LL |     let a | : u8 = 0;
    |         while parsing this or-pattern starting here
 
 error: a trailing `|` is not allowed in an or-pattern
-  --> $DIR/remove-leading-vert.rs:44:11
+  --> $DIR/remove-leading-vert.rs:47:11
    |
 LL |     let a | = 0;
    |         - ^ help: remove the `|`
@@ -151,7 +151,7 @@ LL |     let a | = 0;
    |         while parsing this or-pattern starting here
 
 error: a trailing `|` is not allowed in an or-pattern
-  --> $DIR/remove-leading-vert.rs:45:11
+  --> $DIR/remove-leading-vert.rs:48:11
    |
 LL |     let a | ;
    |         - ^ help: remove the `|`

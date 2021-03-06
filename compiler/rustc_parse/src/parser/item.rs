@@ -1757,8 +1757,9 @@ impl<'a> Parser<'a> {
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
-                let pat = this.parse_fn_param_pat()?;
-                if let Err(mut err) = this.expect(&token::Colon) {
+                let (pat, colon) = this.parse_fn_param_pat_colon()?;
+                if !colon {
+                    let mut err = this.unexpected::<()>().unwrap_err();
                     return if let Some(ident) =
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {
