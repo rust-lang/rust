@@ -5,9 +5,9 @@ use super::{DepKind, DepNode, DepNodeIndex};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{AtomicU32, Lock, Lrc, Ordering};
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
 use std::convert::TryInto;
 
@@ -85,20 +85,30 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
         let mut edge_list_data = Vec::with_capacity(edge_count);
 
         for _index in 0..node_count {
-            let node = NodeInfo::<K, SerializedDepNodeIndex>::decode(d)?;
-            debug!(?_index, ?node);
+            d.read_struct("NodeInfo", 3, |d| {
+                let dep_node: DepNode<K> = d.read_struct_field("node", 0, Decodable::decode)?;
+                let _i: SerializedDepNodeIndex = nodes.push(dep_node);
+                debug_assert_eq!(_i.index(), _index);
 
-            let _i: SerializedDepNodeIndex = nodes.push(node.node);
-            debug_assert_eq!(_i.index(), _index);
-            let _i: SerializedDepNodeIndex = fingerprints.push(node.fingerprint);
-            debug_assert_eq!(_i.index(), _index);
+                let fingerprint: Fingerprint =
+                    d.read_struct_field("fingerprint", 1, Decodable::decode)?;
+                let _i: SerializedDepNodeIndex = fingerprints.push(fingerprint);
+                debug_assert_eq!(_i.index(), _index);
 
-            let start = edge_list_data.len().try_into().unwrap();
-            edge_list_data.extend(node.edges.into_iter());
-            let end = edge_list_data.len().try_into().unwrap();
-
-            let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
-            debug_assert_eq!(_i.index(), _index);
+                d.read_struct_field("edges", 2, |d| {
+                    d.read_seq(|d, len| {
+                        let start = edge_list_data.len().try_into().unwrap();
+                        for e in 0..len {
+                            let edge = d.read_seq_elt(e, Decodable::decode)?;
+                            edge_list_data.push(edge);
+                        }
+                        let end = edge_list_data.len().try_into().unwrap();
+                        let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
+                        debug_assert_eq!(_i.index(), _index);
+                        Ok(())
+                    })
+                })
+            })?;
         }
 
         Ok(SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data })
@@ -106,10 +116,10 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 }
 
 #[derive(Debug, Encodable, Decodable)]
-pub struct NodeInfo<K: DepKind, I: Idx> {
+pub struct NodeInfo<K: DepKind> {
     node: DepNode<K>,
     fingerprint: Fingerprint,
-    edges: SmallVec<[I; 8]>,
+    edges: SmallVec<[DepNodeIndex; 8]>,
 }
 
 struct Stat<K: DepKind> {
@@ -128,7 +138,7 @@ struct Stats<K: DepKind> {
 fn encode_node<K: DepKind>(
     encoder: &mut FileEncoder,
     _index: DepNodeIndex,
-    node: &NodeInfo<K, DepNodeIndex>,
+    node: &NodeInfo<K>,
     _record_graph: &Option<Lrc<Lock<DepGraphQuery<K>>>>,
     record_stats: &Option<Lrc<Lock<Stats<K>>>>,
 ) -> FileEncodeResult {
@@ -181,7 +191,7 @@ pub struct GraphEncoder<K: DepKind> {
 
 #[cfg(parallel_compiler)]
 pub struct GraphEncoder<K: DepKind> {
-    send: WorkerLocal<mpsc::Sender<(DepNodeIndex, NodeInfo<K, DepNodeIndex>)>>,
+    send: WorkerLocal<mpsc::Sender<(DepNodeIndex, NodeInfo<K>)>>,
     thread: thread::JoinHandle<FileEncodeResult>,
     counter: AtomicU32,
     record_graph: Option<Lrc<Lock<DepGraphQuery<K>>>>,
@@ -350,8 +360,8 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 #[instrument(skip(encoder, recv, process))]
 fn encode_graph<K: DepKind + Encodable<FileEncoder>>(
     mut encoder: FileEncoder,
-    recv: mpsc::Receiver<(DepNodeIndex, NodeInfo<K, DepNodeIndex>)>,
-    process: impl Fn(&mut FileEncoder, DepNodeIndex, &NodeInfo<K, DepNodeIndex>) -> FileEncodeResult,
+    recv: mpsc::Receiver<(DepNodeIndex, NodeInfo<K>)>,
+    process: impl Fn(&mut FileEncoder, DepNodeIndex, &NodeInfo<K>) -> FileEncodeResult,
 ) -> FileEncodeResult {
     let mut edge_count: usize = 0;
     let node_count: usize = ordered_recv(recv, |index, node| {
@@ -366,8 +376,8 @@ fn encode_graph<K: DepKind + Encodable<FileEncoder>>(
 /// the messages may not arrive in order. This function sorts them as they come.
 #[cfg(parallel_compiler)]
 fn ordered_recv<K: DepKind + Encodable<opaque::FileEncoder>>(
-    recv: mpsc::Receiver<(DepNodeIndex, NodeInfo<K, DepNodeIndex>)>,
-    mut f: impl FnMut(DepNodeIndex, &NodeInfo<K, DepNodeIndex>) -> FileEncodeResult,
+    recv: mpsc::Receiver<(DepNodeIndex, NodeInfo<K>)>,
+    mut f: impl FnMut(DepNodeIndex, &NodeInfo<K>) -> FileEncodeResult,
 ) -> Result<usize, std::io::Error> {
     let mut pending = Vec::<(DepNodeIndex, _)>::new();
     let mut expected = DepNodeIndex::new(0);
