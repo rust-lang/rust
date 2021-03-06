@@ -1,6 +1,7 @@
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use crate::thir::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
@@ -23,7 +24,8 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
     ///
     /// [`mirror_exprs`]: Self::mirror_exprs
     crate fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> &'thir Expr<'thir, 'tcx> {
-        self.arena.alloc(self.mirror_expr_inner(expr))
+        // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
+        ensure_sufficient_stack(|| self.arena.alloc(self.mirror_expr_inner(expr)))
     }
 
     /// Mirrors and allocates a slice of [`hir::Expr`]s. They will be allocated as a
