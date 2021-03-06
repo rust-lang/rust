@@ -28,6 +28,7 @@ mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
 mod map_collect_result_unit;
 mod map_flatten;
+mod map_unwrap_or;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -66,11 +67,10 @@ use rustc_span::symbol::{sym, Symbol, SymbolStr};
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::utils::eager_or_lazy::is_lazyness_candidate;
-use crate::utils::usage::mutated_variables;
 use crate::utils::{
     contains_return, contains_ty, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of,
-    is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_type, meets_msrv,
-    method_calls, method_chain_args, paths, return_ty, single_segment_path, snippet, snippet_with_applicability,
+    is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_type, method_calls,
+    method_chain_args, paths, return_ty, single_segment_path, snippet, snippet_with_applicability,
     snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 
@@ -1689,7 +1689,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["expect", ..] => expect_used::check(cx, expr, arg_lists[0]),
             ["unwrap_or", "map"] => option_map_unwrap_or::check(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
             ["unwrap_or_else", "map"] => {
-                if !lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0], self.msrv.as_ref()) {
+                if !map_unwrap_or::check(cx, expr, arg_lists[1], arg_lists[0], self.msrv.as_ref()) {
                     unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or");
                 }
             },
@@ -2363,73 +2363,6 @@ fn derefs_to_slice<'tcx>(
             _ => None,
         }
     }
-}
-
-const MAP_UNWRAP_OR_MSRV: RustcVersion = RustcVersion::new(1, 41, 0);
-
-/// lint use of `map().unwrap_or_else()` for `Option`s and `Result`s
-/// Return true if lint triggered
-fn lint_map_unwrap_or_else<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    map_args: &'tcx [hir::Expr<'_>],
-    unwrap_args: &'tcx [hir::Expr<'_>],
-    msrv: Option<&RustcVersion>,
-) -> bool {
-    if !meets_msrv(msrv, &MAP_UNWRAP_OR_MSRV) {
-        return false;
-    }
-    // lint if the caller of `map()` is an `Option`
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::result_type);
-
-    if is_option || is_result {
-        // Don't make a suggestion that may fail to compile due to mutably borrowing
-        // the same variable twice.
-        let map_mutated_vars = mutated_variables(&map_args[0], cx);
-        let unwrap_mutated_vars = mutated_variables(&unwrap_args[1], cx);
-        if let (Some(map_mutated_vars), Some(unwrap_mutated_vars)) = (map_mutated_vars, unwrap_mutated_vars) {
-            if map_mutated_vars.intersection(&unwrap_mutated_vars).next().is_some() {
-                return false;
-            }
-        } else {
-            return false;
-        }
-
-        // lint message
-        let msg = if is_option {
-            "called `map(<f>).unwrap_or_else(<g>)` on an `Option` value. This can be done more directly by calling \
-            `map_or_else(<g>, <f>)` instead"
-        } else {
-            "called `map(<f>).unwrap_or_else(<g>)` on a `Result` value. This can be done more directly by calling \
-            `.map_or_else(<g>, <f>)` instead"
-        };
-        // get snippets for args to map() and unwrap_or_else()
-        let map_snippet = snippet(cx, map_args[1].span, "..");
-        let unwrap_snippet = snippet(cx, unwrap_args[1].span, "..");
-        // lint, with note if neither arg is > 1 line and both map() and
-        // unwrap_or_else() have the same span
-        let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
-        if same_span && !multiline {
-            let var_snippet = snippet(cx, map_args[0].span, "..");
-            span_lint_and_sugg(
-                cx,
-                MAP_UNWRAP_OR,
-                expr.span,
-                msg,
-                "try this",
-                format!("{}.map_or_else({}, {})", var_snippet, unwrap_snippet, map_snippet),
-                Applicability::MachineApplicable,
-            );
-            return true;
-        } else if same_span && multiline {
-            span_lint(cx, MAP_UNWRAP_OR, expr.span, msg);
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Used for `lint_binary_expr_with_method_call`.
