@@ -484,13 +484,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// Resolves a string as a path within a particular namespace. Returns an
     /// optional URL fragment in the case of variants and methods.
     fn resolve<'path>(
-        &self,
+        &mut self,
         path_str: &'path str,
         ns: Namespace,
         module_id: DefId,
         extra_fragment: &Option<String>,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
-        let cx = &self.cx;
+        let tcx = self.cx.tcx;
 
         if let Some(res) = self.resolve_path(path_str, ns, module_id) {
             match res {
@@ -498,7 +498,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // item a separate function.
                 Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
                 Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
-                Res::Def(DefKind::Variant, _) => return handle_variant(cx, res, extra_fragment),
+                Res::Def(DefKind::Variant, _) => {
+                    return handle_variant(self.cx, res, extra_fragment);
+                }
                 // Not a trait item; just return what we found.
                 Res::Primitive(ty) => {
                     if extra_fragment.is_some() {
@@ -565,13 +567,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
                 // Checks if item_name belongs to `impl SomeItem`
-                let assoc_item = cx
-                    .tcx
+                let assoc_item = tcx
                     .inherent_impls(did)
                     .iter()
                     .flat_map(|&imp| {
-                        cx.tcx.associated_items(imp).find_by_name_and_namespace(
-                            cx.tcx,
+                        tcx.associated_items(imp).find_by_name_and_namespace(
+                            tcx,
                             Ident::with_dummy_span(item_name),
                             ns,
                             imp,
@@ -587,7 +588,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
                         let kind =
-                            resolve_associated_trait_item(did, module_id, item_name, ns, &self.cx);
+                            resolve_associated_trait_item(did, module_id, item_name, ns, self.cx);
                         debug!("got associated item kind {:?}", kind);
                         kind
                     });
@@ -611,7 +612,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     debug!("looking for variants or fields named {} for {:?}", item_name, did);
                     // FIXME(jynelson): why is this different from
                     // `variant_field`?
-                    match cx.tcx.type_of(did).kind() {
+                    match tcx.type_of(did).kind() {
                         ty::Adt(def, _) => {
                             let field = if def.is_enum() {
                                 def.all_fields().find(|item| item.ident.name == item_name)
@@ -652,10 +653,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     None
                 }
             }
-            Res::Def(DefKind::Trait, did) => cx
-                .tcx
+            Res::Def(DefKind::Trait, did) => tcx
                 .associated_items(did)
-                .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, did)
+                .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, did)
                 .map(|item| {
                     let kind = match item.kind {
                         ty::AssocKind::Const => "associatedconstant",
@@ -699,7 +699,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// This returns the `Res` even if it was erroneous for some reason
     /// (such as having invalid URL fragments or being in the wrong namespace).
     fn check_full_res(
-        &self,
+        &mut self,
         ns: Namespace,
         path_str: &str,
         module_id: DefId,
@@ -733,7 +733,7 @@ fn resolve_associated_trait_item(
     module: DefId,
     item_name: Symbol,
     ns: Namespace,
-    cx: &DocContext<'_>,
+    cx: &mut DocContext<'_>,
 ) -> Option<(ty::AssocKind, DefId)> {
     // FIXME: this should also consider blanket impls (`impl<T> X for T`). Unfortunately
     // `get_auto_trait_and_blanket_impls` is broken because the caching behavior is wrong. In the
@@ -758,10 +758,10 @@ fn resolve_associated_trait_item(
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> FxHashSet<DefId> {
-    let mut cache = cx.module_trait_cache.borrow_mut();
-    let in_scope_traits = cache.entry(module).or_insert_with(|| {
-        cx.enter_resolver(|resolver| {
+fn traits_implemented_by(cx: &mut DocContext<'_>, type_: DefId, module: DefId) -> FxHashSet<DefId> {
+    let mut resolver = cx.resolver.borrow_mut();
+    let in_scope_traits = cx.module_trait_cache.entry(module).or_insert_with(|| {
+        resolver.access(|resolver| {
             let parent_scope = &ParentScope::module(resolver.get_module(module), resolver);
             resolver
                 .traits_in_scope(None, parent_scope, SyntaxContext::root(), None)
@@ -771,13 +771,14 @@ fn traits_implemented_by(cx: &DocContext<'_>, type_: DefId, module: DefId) -> Fx
         })
     });
 
-    let ty = cx.tcx.type_of(type_);
+    let tcx = cx.tcx;
+    let ty = tcx.type_of(type_);
     let iter = in_scope_traits.iter().flat_map(|&trait_| {
         trace!("considering explicit impl for trait {:?}", trait_);
 
         // Look at each trait implementation to see if it's an impl for `did`
-        cx.tcx.find_map_relevant_impl(trait_, ty, |impl_| {
-            let trait_ref = cx.tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
+        tcx.find_map_relevant_impl(trait_, ty, |impl_| {
+            let trait_ref = tcx.impl_trait_ref(impl_).expect("this is not an inherent impl");
             // Check if these are the same type.
             let impl_type = trait_ref.self_ty();
             trace!(
@@ -1146,7 +1147,7 @@ impl LinkCollector<'_, '_> {
                 suggest_disambiguator(resolved, diag, path_str, dox, sp, &ori_link.range);
             };
             report_diagnostic(
-                self.cx,
+                self.cx.tcx,
                 BROKEN_INTRA_DOC_LINKS,
                 &msg,
                 &item,
@@ -1220,7 +1221,7 @@ impl LinkCollector<'_, '_> {
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
                         let span = super::source_span_for_markdown_range(
-                            self.cx,
+                            self.cx.tcx,
                             dox,
                             &ori_link.range,
                             &item.attrs,
@@ -1308,7 +1309,7 @@ impl LinkCollector<'_, '_> {
     /// After parsing the disambiguator, resolve the main part of the link.
     // FIXME(jynelson): wow this is just so much
     fn resolve_with_disambiguator(
-        &self,
+        &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
     ) -> Option<(Res, Option<String>)> {
@@ -1674,7 +1675,7 @@ impl Suggestion {
 /// parameter of the callback will contain it, and the primary span of the diagnostic will be set
 /// to it.
 fn report_diagnostic(
-    cx: &DocContext<'_>,
+    tcx: TyCtxt<'_>,
     lint: &'static Lint,
     msg: &str,
     item: &Item,
@@ -1682,7 +1683,7 @@ fn report_diagnostic(
     link_range: &Range<usize>,
     decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
 ) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
+    let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
@@ -1694,10 +1695,10 @@ fn report_diagnostic(
     let attrs = &item.attrs;
     let sp = span_of_attrs(attrs).unwrap_or(item.source.span());
 
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
+    tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(cx, dox, link_range, attrs);
+        let span = super::source_span_for_markdown_range(tcx, dox, link_range, attrs);
 
         if let Some(sp) = span {
             diag.set_span(sp);
@@ -1732,7 +1733,7 @@ fn report_diagnostic(
 /// handled earlier. For example, if passed `Item::Crate(std)` and `path_str`
 /// `std::io::Error::x`, this will resolve `std::io::Error`.
 fn resolution_failure(
-    collector: &LinkCollector<'_, '_>,
+    collector: &mut LinkCollector<'_, '_>,
     item: &Item,
     path_str: &str,
     disambiguator: Option<Disambiguator>,
@@ -1742,7 +1743,7 @@ fn resolution_failure(
 ) {
     let tcx = collector.cx.tcx;
     report_diagnostic(
-        collector.cx,
+        tcx,
         BROKEN_INTRA_DOC_LINKS,
         &format!("unresolved link to `{}`", path_str),
         item,
@@ -1973,7 +1974,7 @@ fn anchor_failure(
         ),
     };
 
-    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "contains invalid anchor");
         }
@@ -2013,7 +2014,7 @@ fn ambiguity_error(
         }
     }
 
-    report_diagnostic(cx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, item, dox, &link_range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "ambiguous link");
         } else {
@@ -2066,7 +2067,7 @@ fn privacy_error(cx: &DocContext<'_>, item: &Item, path_str: &str, dox: &str, li
     let msg =
         format!("public documentation for `{}` links to private item `{}`", item_name, path_str);
 
-    report_diagnostic(cx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
+    report_diagnostic(cx.tcx, PRIVATE_INTRA_DOC_LINKS, &msg, item, dox, &link.range, |diag, sp| {
         if let Some(sp) = sp {
             diag.span_label(sp, "this item is private");
         }

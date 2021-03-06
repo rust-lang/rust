@@ -167,7 +167,8 @@ fn extract_tags(
 
 impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
-        let hir_id = match self.cx.as_local_hir_id(item.def_id) {
+        let tcx = self.cx.tcx;
+        let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
             Some(hir_id) => hir_id,
             None => {
                 // If non-local, no need to check anything.
@@ -176,13 +177,13 @@ impl<'a, 'tcx> DocFolder for InvalidHtmlTagsLinter<'a, 'tcx> {
         };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
         if !dox.is_empty() {
-            let cx = &self.cx;
             let report_diag = |msg: &str, range: &Range<usize>| {
-                let sp = match super::source_span_for_markdown_range(cx, &dox, range, &item.attrs) {
+                let sp = match super::source_span_for_markdown_range(tcx, &dox, range, &item.attrs)
+                {
                     Some(sp) => sp,
                     None => span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
                 };
-                cx.tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
+                tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
                     lint.build(msg).emit()
                 });
             };
