@@ -175,19 +175,11 @@ name = vabs
 fn = simd_fabs
 a =  -0.1, -2.2, -3.3, -6.6
 validate 0.1, 2.2, 3.3, 6.6
-
-arm = vabs
-aarch64 = fabs
-generate float32x2_t:float32x2_t, float32x4_t:float32x4_t
-
-/// Floating-point absolute value
-name = vabs
-fn = simd_fabs
-a =  -0.1, -2.2, -3.3, -6.6
-validate 0.1, 2.2, 3.3, 6.6
-
 aarch64 = fabs
 generate float64x1_t:float64x1_t, float64x2_t:float64x2_t
+
+arm = vabs
+generate float32x2_t:float32x2_t, float32x4_t:float32x4_t
 
 ////////////////////
 // greater then
