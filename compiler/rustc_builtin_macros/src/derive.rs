@@ -1,3 +1,5 @@
+use crate::cfg_eval::CfgEval;
+
 use rustc_ast::{self as ast, token, AstLike, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
@@ -52,10 +54,11 @@ impl MultiItemModifier for Expander {
         // FIXME: Try to cache intermediate results to avoid collecting same paths multiple times.
         match ecx.resolver.resolve_derives(ecx.current_expansion.id, derives, ecx.force_mode) {
             Ok(()) => {
-                let mut visitor =
-                    StripUnconfigured { sess, features: ecx.ecfg.features, modified: false };
+                let mut visitor = CfgEval {
+                    cfg: StripUnconfigured { sess, features: ecx.ecfg.features, modified: false },
+                };
                 let mut item = visitor.fully_configure(item);
-                if visitor.modified {
+                if visitor.cfg.modified {
                     // Erase the tokens if cfg-stripping modified the item
                     // This will cause us to synthesize fake tokens
                     // when `nt_to_tokenstream` is called on this item.
