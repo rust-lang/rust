@@ -12,11 +12,11 @@ mod permute;
 #[macro_use]
 mod transmute;
 
+mod comparisons;
 mod fmt;
 mod intrinsics;
 mod ops;
 mod round;
-mod comparisons;
 
 mod math;
 

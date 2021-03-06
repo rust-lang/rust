@@ -28,6 +28,28 @@ macro_rules! define_opaque_mask {
                 Self(<$inner_ty>::splat(value))
             }
 
+            /// Converts an array to a SIMD vector.
+            pub fn from_array(array: [bool; LANES]) -> Self {
+                let mut vector = Self::splat(false);
+                let mut i = 0;
+                while i < $lanes {
+                    vector.set(i, array[i]);
+                    i += 1;
+                }
+                vector
+            }
+
+            /// Converts a SIMD vector to an array.
+            pub fn to_array(self) -> [bool; LANES] {
+                let mut array = [false; LANES];
+                let mut i = 0;
+                while i < $lanes {
+                    array[i] = self.test(i);
+                    i += 1;
+                }
+                array
+            }
+
             /// Tests the value of the specified lane.
             ///
             /// # Panics
@@ -82,6 +104,19 @@ macro_rules! define_opaque_mask {
         {
             fn from(value: $name<$lanes>) -> Self {
                 value.0
+            }
+        }
+
+        // vector/array conversion
+        impl<const $lanes: usize> From<[bool; $lanes]> for $name<$lanes> where $bits_ty: crate::LanesAtMost64 {
+            fn from(array: [bool; $lanes]) -> Self {
+                Self::from_array(array)
+            }
+        }
+
+        impl <const $lanes: usize> From<$name<$lanes>> for [bool; $lanes] where $bits_ty: crate::LanesAtMost64 {
+            fn from(vector: $name<$lanes>) -> Self {
+                vector.to_array()
             }
         }
 
