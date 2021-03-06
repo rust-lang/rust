@@ -299,9 +299,9 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
-    flags_builder
-        .set("enable_verifier", if cfg!(debug_assertions) { "true" } else { "false" })
-        .unwrap();
+    let enable_verifier =
+        cfg!(debug_assertions) || std::env::var("CG_CLIF_ENABLE_VERIFIER").is_ok();
+    flags_builder.set("enable_verifier", if enable_verifier { "true" } else { "false" }).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",

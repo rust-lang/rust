@@ -65,6 +65,9 @@ jobs:
         export COMPILE_RUNS=2
         export RUN_RUNS=2
 
+        # Enable extra checks
+        export CG_CLIF_ENABLE_VERIFIER=1
+
         ./test.sh
 
     - name: Package prebuilt cg_clif
