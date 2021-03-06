@@ -914,8 +914,20 @@ impl Attributes {
         self.other_attrs
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string()))
-            .filter(|v| !v.is_empty())
+            .map(|a| {
+                if let Some(values) = a.meta_item_list() {
+                    values
+                        .iter()
+                        .map(|l| match l.literal().unwrap().kind {
+                            ast::LitKind::Str(s, _) => s.as_str().to_string(),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![a.value_str().map(|s| s.to_string()).unwrap()]
+                }
+            })
+            .flatten()
             .collect::<FxHashSet<_>>()
     }
 }

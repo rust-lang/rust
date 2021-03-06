@@ -390,10 +390,25 @@ impl CheckAttrVisitor<'tcx> {
             .emit();
     }
 
-    fn check_doc_alias(&self, meta: &NestedMetaItem, hir_id: HirId, target: Target) -> bool {
-        let doc_alias = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
+    fn check_doc_alias_value(
+        &self,
+        meta: &NestedMetaItem,
+        doc_alias: &str,
+        hir_id: HirId,
+        target: Target,
+        is_list: bool,
+    ) -> bool {
         if doc_alias.is_empty() {
-            self.doc_attr_str_error(meta, "alias");
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                    &format!(
+                        "`#[doc(alias{})]` attribute cannot have empty value",
+                        if is_list { "(\"...\")" } else { " = \"...\"" },
+                    ),
+                )
+                .emit();
             return false;
         }
         if let Some(c) =
@@ -403,7 +418,11 @@ impl CheckAttrVisitor<'tcx> {
                 .sess
                 .struct_span_err(
                     meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!("{:?} character isn't allowed in `#[doc(alias = \"...\")]`", c),
+                    &format!(
+                        "{:?} character isn't allowed in `#[doc(alias{})]`",
+                        c,
+                        if is_list { "(\"...\")" } else { " = \"...\"" },
+                    ),
                 )
                 .emit();
             return false;
@@ -413,7 +432,10 @@ impl CheckAttrVisitor<'tcx> {
                 .sess
                 .struct_span_err(
                     meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    "`#[doc(alias = \"...\")]` cannot start or end with ' '",
+                    &format!(
+                        "`#[doc(alias{})]` cannot start or end with ' '",
+                        if is_list { "(\"...\")" } else { " = \"...\"" },
+                    ),
                 )
                 .emit();
             return false;
@@ -446,7 +468,11 @@ impl CheckAttrVisitor<'tcx> {
                 .sess
                 .struct_span_err(
                     meta.span(),
-                    &format!("`#[doc(alias = \"...\")]` isn't allowed on {}", err),
+                    &format!(
+                        "`#[doc(alias{})]` isn't allowed on {}",
+                        if is_list { "(\"...\")" } else { " = \"...\"" },
+                        err,
+                    ),
                 )
                 .emit();
             return false;
@@ -457,12 +483,65 @@ impl CheckAttrVisitor<'tcx> {
                 .sess
                 .struct_span_err(
                     meta.span(),
-                    &format!("`#[doc(alias = \"...\")]` is the same as the item's name"),
+                    &format!(
+                        "`#[doc(alias{})]` is the same as the item's name",
+                        if is_list { "(\"...\")" } else { " = \"...\"" },
+                    ),
                 )
                 .emit();
             return false;
         }
         true
+    }
+
+    fn check_doc_alias(&self, meta: &NestedMetaItem, hir_id: HirId, target: Target) -> bool {
+        if let Some(values) = meta.meta_item_list() {
+            let mut errors = 0;
+            for v in values {
+                match v.literal() {
+                    Some(l) => match l.kind {
+                        LitKind::Str(s, _) => {
+                            if !self.check_doc_alias_value(v, &s.as_str(), hir_id, target, true) {
+                                errors += 1;
+                            }
+                        }
+                        _ => {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    v.span(),
+                                    "`#[doc(alias(\"a\")]` expects string literals",
+                                )
+                                .emit();
+                            errors += 1;
+                        }
+                    },
+                    None => {
+                        self.tcx
+                            .sess
+                            .struct_span_err(
+                                v.span(),
+                                "`#[doc(alias(\"a\")]` expects string literals",
+                            )
+                            .emit();
+                        errors += 1;
+                    }
+                }
+            }
+            errors == 0
+        } else if let Some(doc_alias) = meta.value_str().map(|s| s.to_string()) {
+            self.check_doc_alias_value(meta, &doc_alias, hir_id, target, false)
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    "doc alias attribute expects a string `#[doc(alias = \"a\")]` or a list of \
+                     strings: `#[doc(alias(\"a\", \"b\")]`",
+                )
+                .emit();
+            false
+        }
     }
 
     fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
