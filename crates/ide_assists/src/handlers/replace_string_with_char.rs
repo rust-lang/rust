@@ -31,7 +31,9 @@ pub(crate) fn replace_string_with_char(acc: &mut Assists, ctx: &AssistContext) -
         "Replace string with char",
         target,
         |edit| {
-            edit.replace(token.syntax().text_range(), format!("'{}'", value));
+            let token_text = token.syntax().text();
+            let inner_text = &token_text[1..token_text.len() - 1];
+            edit.replace(token.syntax().text_range(), format!("'{}'", inner_text));
         },
     )
 }
@@ -130,6 +132,40 @@ mod tests {
             r##"
                 fn f() {
                     find('x');
+                }
+                "##,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_newline() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+                fn f() {
+                    find($0"\n");
+                }
+                "#,
+            r##"
+                fn f() {
+                    find('\n');
+                }
+                "##,
+        )
+    }
+
+    #[test]
+    fn replace_string_with_char_unicode_escape() {
+        check_assist(
+            replace_string_with_char,
+            r#"
+                fn f() {
+                    find($0"\u{7FFF}");
+                }
+                "#,
+            r##"
+                fn f() {
+                    find('\u{7FFF}');
                 }
                 "##,
         )
