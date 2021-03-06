@@ -1,13 +1,10 @@
 // Run clippy on a fixed set of crates and collect the warnings.
-// This helps observing the impact clippy changs have on a set of real-world code.
+// This helps observing the impact clippy changes have on a set of real-world code (and not just our testsuite).
 //
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
 
-#![cfg(feature = "lintcheck")]
 #![allow(clippy::filter_map, clippy::collapsible_else_if)]
-
-use crate::clippy_project_root;
 
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -18,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use clap::ArgMatches;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -564,7 +561,9 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
 /// # Panics
 ///
 /// This function panics if the clippy binaries don't exist.
-pub fn run(clap_config: &ArgMatches) {
+pub fn main() {
+    let clap_config = &get_clap_config();
+
     let config = LintcheckConfig::from_clap(clap_config);
 
     println!("Compiling clippy...");
@@ -798,6 +797,65 @@ fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
             panic!("cannot create crate extraction dir");
         }
     });
+}
+
+fn get_clap_config<'a>() -> ArgMatches<'a> {
+    let lintcheck_sbcmd = SubCommand::with_name("lintcheck")
+        .about("run clippy on a set of crates and check output")
+        .arg(
+            Arg::with_name("only")
+                .takes_value(true)
+                .value_name("CRATE")
+                .long("only")
+                .help("only process a single crate of the list"),
+        )
+        .arg(
+            Arg::with_name("crates-toml")
+                .takes_value(true)
+                .value_name("CRATES-SOURCES-TOML-PATH")
+                .long("crates-toml")
+                .help("set the path for a crates.toml where lintcheck should read the sources from"),
+        )
+        .arg(
+            Arg::with_name("threads")
+                .takes_value(true)
+                .value_name("N")
+                .short("j")
+                .long("jobs")
+                .help("number of threads to use, 0 automatic choice"),
+        )
+        .arg(Arg::with_name("fix").help("runs cargo clippy --fix and checks if all suggestions apply"));
+
+    let app = App::new("Clippy developer tooling");
+
+    let app = app.subcommand(lintcheck_sbcmd);
+
+    app.get_matches()
+}
+
+/// Returns the path to the Clippy project directory
+///
+/// # Panics
+///
+/// Panics if the current directory could not be retrieved, there was an error reading any of the
+/// Cargo.toml files or ancestor directory is the clippy root directory
+#[must_use]
+pub fn clippy_project_root() -> PathBuf {
+    let current_dir = std::env::current_dir().unwrap();
+    for path in current_dir.ancestors() {
+        let result = std::fs::read_to_string(path.join("Cargo.toml"));
+        if let Err(err) = &result {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                continue;
+            }
+        }
+
+        let content = result.unwrap();
+        if content.contains("[package]\nname = \"clippy\"") {
+            return path.to_path_buf();
+        }
+    }
+    panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
 }
 
 #[test]
