@@ -1,6 +1,7 @@
 use hir::HirDisplay;
 use ide_db::{base_db::FileId, helpers::SnippetCap};
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::to_lower_snake_case;
 use syntax::{
     ast::{
         self,
@@ -257,14 +258,15 @@ fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
 fn fn_arg_name(fn_arg: &ast::Expr) -> Option<String> {
     match fn_arg {
         ast::Expr::CastExpr(cast_expr) => fn_arg_name(&cast_expr.expr()?),
-        _ => Some(
-            fn_arg
+        _ => {
+            let s = fn_arg
                 .syntax()
                 .descendants()
                 .filter(|d| ast::NameRef::can_cast(d.kind()))
                 .last()?
-                .to_string(),
-        ),
+                .to_string();
+            Some(to_lower_snake_case(&s))
+        }
     }
 }
 
@@ -445,6 +447,52 @@ mod baz {
 }
 ",
         )
+    }
+
+    #[test]
+    fn add_function_with_upper_camel_case_arg() {
+        check_assist(
+            generate_function,
+            r"
+struct BazBaz;
+fn foo() {
+    bar$0(BazBaz);
+}
+",
+            r"
+struct BazBaz;
+fn foo() {
+    bar(BazBaz);
+}
+
+fn bar(baz_baz: BazBaz) ${0:-> ()} {
+    todo!()
+}
+",
+        );
+    }
+
+    #[test]
+    fn add_function_with_upper_camel_case_arg_as_cast() {
+        check_assist(
+            generate_function,
+            r"
+struct BazBaz;
+fn foo() {
+    bar$0(&BazBaz as *const BazBaz);
+}
+",
+            r"
+struct BazBaz;
+fn foo() {
+    bar(&BazBaz as *const BazBaz);
+}
+
+fn bar(baz_baz: *const BazBaz) ${0:-> ()} {
+    todo!()
+}
+",
+        );
     }
 
     #[test]
