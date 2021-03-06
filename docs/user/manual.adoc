@@ -226,6 +226,8 @@ The are several LSP client implementations for vim or neovim:
    * inlay hints for variables and method chaining, _Neovim Only_
    * semantic highlighting is not implemented yet
 
+Note: for code actions, use `coc-codeaction-cursor` and `coc-codeaction-selected`; `coc-codeaction` and `coc-codeaction-line` are unlikely to be useful.
+
 ==== LanguageClient-neovim
 
 1. Install LanguageClient-neovim by following the instructions
