@@ -499,7 +499,11 @@ fn cargo_to_crate_graph(
 
             if let Some(&to) = pkg_to_lib_crate.get(&dep) {
                 for pkg in cargo.packages() {
-                    if !cargo[pkg].is_member {
+                    let package = &cargo[pkg];
+                    if matches!(
+                        (package.is_member, package.metadata.rustc_private),
+                        (true, Some(false)) | (false, Some(false)) | (false, None)
+                    ) {
                         continue;
                     }
                     for &from in pkg_crates.get(&pkg).into_iter().flatten() {
