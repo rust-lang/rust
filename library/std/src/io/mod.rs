@@ -251,6 +251,7 @@
 #[cfg(test)]
 mod tests;
 
+use crate::borrow::{Borrow, Cow};
 use crate::cmp;
 use crate::fmt;
 use crate::memchr;
@@ -1208,6 +1209,13 @@ impl<'a> Deref for IoSlice<'a> {
     #[inline]
     fn deref(&self) -> &[u8] {
         self.0.as_slice()
+    }
+}
+
+#[stable(feature = "ioslice_from_cow_u8", since = "1.52.0")]
+impl<'a> From<&'a Cow<'_, [u8]>> for IoSlice<'a> {
+    fn from(buf: &'a Cow<'_, [u8]>) -> IoSlice<'a> {
+        IoSlice::new(buf.borrow())
     }
 }
 
