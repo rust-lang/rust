@@ -11,8 +11,6 @@
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
-#[cfg(feature = "jit")]
-extern crate libc;
 extern crate snap;
 #[macro_use]
 extern crate rustc_middle;
@@ -53,7 +51,6 @@ mod abi;
 mod allocator;
 mod analyze;
 mod archive;
-mod atomic_shim;
 mod backend;
 mod base;
 mod cast;
@@ -129,9 +126,9 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'tcx, M: Module> {
+struct CodegenCx<'m, 'tcx: 'm> {
     tcx: TyCtxt<'tcx>,
-    module: M,
+    module: &'m mut dyn Module,
     global_asm: String,
     constants_cx: ConstantCx,
     cached_context: Context,
@@ -140,14 +137,20 @@ struct CodegenCx<'tcx, M: Module> {
     unwind_context: UnwindContext<'tcx>,
 }
 
-impl<'tcx, M: Module> CodegenCx<'tcx, M> {
-    fn new(tcx: TyCtxt<'tcx>, module: M, debug_info: bool, pic_eh_frame: bool) -> Self {
-        let unwind_context = UnwindContext::new(tcx, module.isa(), pic_eh_frame);
-        let debug_context = if debug_info {
-            Some(DebugContext::new(tcx, module.isa()))
-        } else {
-            None
-        };
+impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        backend_config: BackendConfig,
+        module: &'m mut dyn Module,
+        debug_info: bool,
+    ) -> Self {
+        let unwind_context = UnwindContext::new(
+            tcx,
+            module.isa(),
+            matches!(backend_config.codegen_mode, CodegenMode::Aot),
+        );
+        let debug_context =
+            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
         CodegenCx {
             tcx,
             module,
@@ -160,14 +163,9 @@ impl<'tcx, M: Module> CodegenCx<'tcx, M> {
         }
     }
 
-    fn finalize(mut self) -> (M, String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        self.constants_cx.finalize(self.tcx, &mut self.module);
-        (
-            self.module,
-            self.global_asm,
-            self.debug_context,
-            self.unwind_context,
-        )
+    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
+        self.constants_cx.finalize(self.tcx, self.module);
+        (self.global_asm, self.debug_context, self.unwind_context)
     }
 }
 
@@ -302,14 +300,7 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
     flags_builder
-        .set(
-            "enable_verifier",
-            if cfg!(debug_assertions) {
-                "true"
-            } else {
-                "false"
-            },
-        )
+        .set("enable_verifier", if cfg!(debug_assertions) { "true" } else { "false" })
         .unwrap();
 
     let tls_model = match target_triple.binary_format {
@@ -338,11 +329,7 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
 
     let flags = settings::Flags::new(flags_builder);
 
-    let variant = if cfg!(feature = "oldbe") {
-        cranelift_codegen::isa::BackendVariant::Legacy
-    } else {
-        cranelift_codegen::isa::BackendVariant::MachInst
-    };
+    let variant = cranelift_codegen::isa::BackendVariant::MachInst;
     let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
     // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
     // is interpreted as `bsr`.

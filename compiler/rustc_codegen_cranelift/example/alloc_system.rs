@@ -8,66 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![no_std]
-#![allow(unused_attributes)]
-#![unstable(feature = "alloc_system",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "32838")]
-#![feature(allocator_api)]
-#![feature(core_intrinsics)]
-#![feature(nll)]
-#![feature(staged_api)]
-#![feature(rustc_attrs)]
-#![feature(alloc_layout_extra)]
-#![cfg_attr(
-    all(target_arch = "wasm32", not(target_os = "emscripten")),
-    feature(integer_atomics, stdsimd)
-)]
+#![feature(allocator_api, rustc_private)]
 #![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
+
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
 #[cfg(all(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
               target_arch = "powerpc",
-              target_arch = "powerpc64",
-              target_arch = "asmjs",
-              target_arch = "wasm32")))]
-#[allow(dead_code)]
+              target_arch = "powerpc64")))]
 const MIN_ALIGN: usize = 8;
 #[cfg(all(any(target_arch = "x86_64",
               target_arch = "aarch64",
               target_arch = "mips64",
               target_arch = "s390x",
               target_arch = "sparc64")))]
-#[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
-/// The default memory allocator provided by the operating system.
-///
-/// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
-/// plus related functions.
-///
-/// This type can be used in a `static` item
-/// with the `#[global_allocator]` attribute
-/// to force the global allocator to be the system’s one.
-/// (The default is jemalloc for executables, on some platforms.)
-///
-/// ```rust
-/// use std::alloc::System;
-///
-/// #[global_allocator]
-/// static A: System = System;
-///
-/// fn main() {
-///     let a = Box::new(4); // Allocates from the system allocator.
-///     println!("{}", a);
-/// }
-/// ```
-///
-/// It can also be used directly to allocate memory
-/// independently of the standard library’s global allocator.
-#[stable(feature = "alloc_system_type", since = "1.28.0")]
 pub struct System;
 #[cfg(any(windows, unix, target_os = "redox"))]
 mod realloc_fallback {
@@ -96,7 +54,6 @@ mod platform {
     use MIN_ALIGN;
     use System;
     use core::alloc::{GlobalAlloc, Layout};
-    #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -221,7 +178,6 @@ mod platform {
         };
         ptr as *mut u8
     }
-    #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -252,91 +208,5 @@ mod platform {
                 self.realloc_fallback(ptr, layout, new_size)
             }
         }
-    }
-}
-// This is an implementation of a global allocator on the wasm32 platform when
-// emscripten is not in use. In that situation there's no actual runtime for us
-// to lean on for allocation, so instead we provide our own!
-//
-// The wasm32 instruction set has two instructions for getting the current
-// amount of memory and growing the amount of memory. These instructions are the
-// foundation on which we're able to build an allocator, so we do so! Note that
-// the instructions are also pretty "global" and this is the "global" allocator
-// after all!
-//
-// The current allocator here is the `dlmalloc` crate which we've got included
-// in the rust-lang/rust repository as a submodule. The crate is a port of
-// dlmalloc.c from C to Rust and is basically just so we can have "pure Rust"
-// for now which is currently technically required (can't link with C yet).
-//
-// The crate itself provides a global allocator which on wasm has no
-// synchronization as there are no threads!
-#[cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))]
-mod platform {
-    extern crate dlmalloc;
-    use core::alloc::{GlobalAlloc, Layout};
-    use System;
-    static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
-    #[stable(feature = "alloc_system_type", since = "1.28.0")]
-    unsafe impl GlobalAlloc for System {
-        #[inline]
-        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-            let _lock = lock::lock();
-            DLMALLOC.malloc(layout.size(), layout.align())
-        }
-        #[inline]
-        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-            let _lock = lock::lock();
-            DLMALLOC.calloc(layout.size(), layout.align())
-        }
-        #[inline]
-        unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-            let _lock = lock::lock();
-            DLMALLOC.free(ptr, layout.size(), layout.align())
-        }
-        #[inline]
-        unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-            let _lock = lock::lock();
-            DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size)
-        }
-    }
-    #[cfg(target_feature = "atomics")]
-    mod lock {
-        use core::arch::wasm32;
-        use core::sync::atomic::{AtomicI32, Ordering::SeqCst};
-        static LOCKED: AtomicI32 = AtomicI32::new(0);
-        pub struct DropLock;
-        pub fn lock() -> DropLock {
-            loop {
-                if LOCKED.swap(1, SeqCst) == 0 {
-                    return DropLock
-                }
-                unsafe {
-                    let r = wasm32::atomic::wait_i32(
-                        &LOCKED as *const AtomicI32 as *mut i32,
-                        1,  // expected value
-                        -1, // timeout
-                    );
-                    debug_assert!(r == 0 || r == 1);
-                }
-            }
-        }
-        impl Drop for DropLock {
-            fn drop(&mut self) {
-                let r = LOCKED.swap(0, SeqCst);
-                debug_assert_eq!(r, 1);
-                unsafe {
-                    wasm32::atomic::wake(
-                        &LOCKED as *const AtomicI32 as *mut i32,
-                        1, // only one thread
-                    );
-                }
-            }
-        }
-    }
-    #[cfg(not(target_feature = "atomics"))]
-    mod lock {
-        #[inline]
-        pub fn lock() {} // no atomics, no threads, that's easy!
     }
 }
