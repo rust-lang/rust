@@ -34,7 +34,16 @@ impl TokenStream {
     }
 
     pub fn with_subtree(subtree: tt::Subtree) -> Self {
-        TokenStream { subtree }
+        if subtree.delimiter.is_some() {
+            TokenStream {
+                subtree: tt::Subtree {
+                    token_trees: vec![TokenTree::Subtree(subtree)],
+                    delimiter: None,
+                },
+            }
+        } else {
+            TokenStream { subtree }
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -185,7 +194,7 @@ pub mod token_stream {
                 mbe::parse_to_token_tree(src).ok_or("Failed to parse from mbe")?;
 
             let subtree = subtree_replace_token_ids_with_unspecified(subtree);
-            Ok(TokenStream { subtree })
+            Ok(TokenStream::with_subtree(subtree))
         }
     }
 
@@ -778,5 +787,28 @@ mod tests {
         };
 
         assert_eq!(s.to_string(), "struct T {}");
+    }
+
+    #[test]
+    fn test_rustc_server_from_str() {
+        use std::str::FromStr;
+        let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
+            delimiter: Some(tt::Delimiter {
+                id: tt::TokenId::unspecified(),
+                kind: tt::DelimiterKind::Parenthesis,
+            }),
+            token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                text: "a".into(),
+                id: tt::TokenId::unspecified(),
+            }))],
+        });
+
+        let t1 = TokenStream::from_str("(a)").unwrap();
+        assert_eq!(t1.subtree.token_trees.len(), 1);
+        assert_eq!(t1.subtree.token_trees[0], subtree_paren_a);
+
+        let t2 = TokenStream::from_str("(a);").unwrap();
+        assert_eq!(t2.subtree.token_trees.len(), 2);
+        assert_eq!(t2.subtree.token_trees[0], subtree_paren_a);
     }
 }
