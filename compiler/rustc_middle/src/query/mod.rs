@@ -52,6 +52,15 @@ rustc_queries! {
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    /// Gives access to the HIR node's parent for the HIR owner `key`.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query hir_owner_parent(key: LocalDefId) -> hir::HirId {
+        eval_always
+        desc { |tcx| "HIR parent of `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
     /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.

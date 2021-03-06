@@ -129,6 +129,10 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();
+    providers.hir_owner_parent = |tcx, id| {
+        let index = tcx.index_hir(LOCAL_CRATE);
+        index.parenting.get(&id).copied().unwrap_or(CRATE_HIR_ID)
+    };
     providers.hir_attrs = |tcx, id| AttributeMap { map: &tcx.untracked_crate.attrs, prefix: id };
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {

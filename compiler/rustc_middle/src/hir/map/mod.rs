@@ -285,8 +285,7 @@ impl<'hir> Map<'hir> {
 
     pub fn find_parent_node(&self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let index = self.tcx.index_hir(LOCAL_CRATE);
-            index.parenting.get(&id.owner).copied()
+            Some(self.tcx.hir_owner_parent(id.owner))
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner)?;
             let node = owner.nodes[id.local_id].as_ref()?;
