@@ -5,6 +5,7 @@ mod expect_used;
 mod filetype_is_file;
 mod filter_map;
 mod filter_map_identity;
+mod filter_map_map;
 mod filter_next;
 mod from_iter_instead_of_collect;
 mod get_unwrap;
@@ -1700,7 +1701,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
             ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
             ["map", "filter"] => filter_map::check(cx, expr, false),
-            ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map", "filter_map"] => filter_map_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1], self.msrv.as_ref()),
             ["map", "find"] => filter_map::check(cx, expr, true),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2782,21 +2783,6 @@ fn lint_filter_map_next<'tcx>(
         } else {
             span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);
         }
-    }
-}
-
-/// lint use of `filter_map().map()` for `Iterators`
-fn lint_filter_map_map<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _filter_args: &'tcx [hir::Expr<'_>],
-    _map_args: &'tcx [hir::Expr<'_>],
-) {
-    // lint if caller of `.filter_map().map()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
-        let msg = "called `filter_map(..).map(..)` on an `Iterator`";
-        let hint = "this is more succinctly expressed by only calling `.filter_map(..)` instead";
-        span_lint_and_help(cx, FILTER_MAP, expr.span, msg, None, hint);
     }
 }
 
