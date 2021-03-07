@@ -81,22 +81,6 @@ macro_rules! static_assert_imm8_scale {
     };
 }
 
-macro_rules! constify_imm3 {
-    ($imm8:expr, $expand:ident) => {
-        #[allow(overflowing_literals)]
-        match ($imm8) & 0b111 {
-            0 => $expand!(0),
-            1 => $expand!(1),
-            2 => $expand!(2),
-            3 => $expand!(3),
-            4 => $expand!(4),
-            5 => $expand!(5),
-            6 => $expand!(6),
-            _ => $expand!(7),
-        }
-    };
-}
-
 // For gather instructions, the only valid values for scale are 1, 2, 4 and 8.
 // This macro enforces that.
 #[allow(unused)]

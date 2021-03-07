@@ -130,14 +130,14 @@ pub unsafe fn assert_eq_m512i(a: __m512i, b: __m512i) {
 }
 
 pub unsafe fn assert_eq_m512(a: __m512, b: __m512) {
-    let cmp = _mm512_cmp_ps_mask(a, b, _CMP_EQ_OQ);
+    let cmp = _mm512_cmp_ps_mask::<_CMP_EQ_OQ>(a, b);
     if cmp != 0b11111111_11111111 {
         panic!("{:?} != {:?}", a, b);
     }
 }
 
 pub unsafe fn assert_eq_m512d(a: __m512d, b: __m512d) {
-    let cmp = _mm512_cmp_pd_mask(a, b, _CMP_EQ_OQ);
+    let cmp = _mm512_cmp_pd_mask::<_CMP_EQ_OQ>(a, b);
     if cmp != 0b11111111 {
         panic!("{:?} != {:?}", a, b);
     }
