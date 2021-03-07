@@ -333,7 +333,6 @@ error: invalid parentheses around `let` expression in `if let`
 LL |     if (let 0 = 1) {}
    |        ^         ^
    |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
 help: `if let` needs to be written without parentheses
    |
 LL |     if let 0 = 1 {}
@@ -345,7 +344,6 @@ error: invalid parentheses around `let` expression in `if let`
 LL |     if (((let 0 = 1))) {}
    |        ^^^         ^^^
    |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
 help: `if let` needs to be written without parentheses
    |
 LL |     if let 0 = 1 {}
@@ -581,7 +579,6 @@ error: invalid parentheses around `let` expression in `if let`
 LL |     use_expr!((let 0 = 1));
    |               ^         ^
    |
-   = note: only supported directly without parentheses in conditions of `if`- and `while`-expressions, as well as in `let` chains within parentheses
 help: `if let` needs to be written without parentheses
    |
 LL |     use_expr!(let 0 = 1);

@@ -366,24 +366,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn if_let_expr_with_parens(&mut self, cond: &Expr, paren: &Expr) {
         let start = cond.span.until(paren.span);
         let end = paren.span.shrink_to_hi().until(cond.span.shrink_to_hi());
-        let mut err = self.sess.struct_span_err(
-            vec![start, end],
-            "invalid parentheses around `let` expression in `if let`",
-        );
-        if self.sess.opts.unstable_features.is_nightly_build() {
-            err.note(
-                "only supported directly without parentheses in conditions of `if`- and \
-                 `while`-expressions, as well as in `let` chains within parentheses",
-            );
-        } else {
-            err.note("variable declaration using `let` is a statement, not a condition");
-        }
-        err.multipart_suggestion(
-            "`if let` needs to be written without parentheses",
-            vec![(start, String::new()), (end, String::new())],
-            rustc_errors::Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.sess
+            .struct_span_err(
+                vec![start, end],
+                "invalid parentheses around `let` expression in `if let`",
+            )
+            .multipart_suggestion(
+                "`if let` needs to be written without parentheses",
+                vec![(start, String::new()), (end, String::new())],
+                rustc_errors::Applicability::MachineApplicable,
+            )
+            .emit();
         // Ideally, we'd remove the feature gating of a `let` expression since we are already
         // complaining about it here, but `feature_gate::check_crate` has already run by now:
         // self.sess.parse_sess.gated_spans.ungate_last(sym::let_chains, paren.span);
