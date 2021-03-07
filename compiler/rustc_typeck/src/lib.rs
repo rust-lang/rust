@@ -142,7 +142,7 @@ fn require_same_types<'tcx>(
 ) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
         match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
@@ -444,7 +444,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = AstConv::instantiate_poly_trait_ref_inner(
+    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref_inner(
         &item_cx,
         hir_trait,
         DUMMY_SP,

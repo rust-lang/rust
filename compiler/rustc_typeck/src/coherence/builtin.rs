@@ -246,7 +246,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     ))
                     .emit();
                 } else {
-                    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
                     for field in coerced_fields {
                         let predicate = predicate_for_trait_def(
@@ -506,7 +506,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
             }
         };
 
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);

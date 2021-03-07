@@ -285,7 +285,7 @@ impl dyn Any + Send {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Any::is::<T>(self)
+        <dyn Any>::is::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
@@ -309,7 +309,7 @@ impl dyn Any + Send {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Any::downcast_ref::<T>(self)
+        <dyn Any>::downcast_ref::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
@@ -337,7 +337,7 @@ impl dyn Any + Send {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        Any::downcast_mut::<T>(self)
+        <dyn Any>::downcast_mut::<T>(self)
     }
 }
 
@@ -363,7 +363,7 @@ impl dyn Any + Send + Sync {
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Any::is::<T>(self)
+        <dyn Any>::is::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
@@ -387,7 +387,7 @@ impl dyn Any + Send + Sync {
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Any::downcast_ref::<T>(self)
+        <dyn Any>::downcast_ref::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
@@ -415,7 +415,7 @@ impl dyn Any + Send + Sync {
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        Any::downcast_mut::<T>(self)
+        <dyn Any>::downcast_mut::<T>(self)
     }
 }
 
