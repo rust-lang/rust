@@ -17,7 +17,7 @@ use rustc_hash::FxHashSet;
 
 pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
-pub fn with_for_exact_name(
+pub fn with_exact_name(
     sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
     exact_name: String,

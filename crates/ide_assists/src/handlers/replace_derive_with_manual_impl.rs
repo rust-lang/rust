@@ -65,23 +65,20 @@ pub(crate) fn replace_derive_with_manual_impl(
     let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
     let current_crate = current_module.krate();
 
-    let found_traits = items_locator::with_for_exact_name(
-        &ctx.sema,
-        current_crate,
-        trait_token.text().to_string(),
-    )
-    .into_iter()
-    .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {
-        ModuleDef::Trait(trait_) => Some(trait_),
-        _ => None,
-    })
-    .flat_map(|trait_| {
-        current_module
-            .find_use_path(ctx.sema.db, hir::ModuleDef::Trait(trait_))
-            .as_ref()
-            .map(mod_path_to_ast)
-            .zip(Some(trait_))
-    });
+    let found_traits =
+        items_locator::with_exact_name(&ctx.sema, current_crate, trait_token.text().to_string())
+            .into_iter()
+            .filter_map(|item| match ModuleDef::from(item.as_module_def_id()?) {
+                ModuleDef::Trait(trait_) => Some(trait_),
+                _ => None,
+            })
+            .flat_map(|trait_| {
+                current_module
+                    .find_use_path(ctx.sema.db, hir::ModuleDef::Trait(trait_))
+                    .as_ref()
+                    .map(mod_path_to_ast)
+                    .zip(Some(trait_))
+            });
 
     let mut no_traits_found = true;
     for (trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {

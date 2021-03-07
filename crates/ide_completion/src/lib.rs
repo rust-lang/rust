@@ -150,7 +150,7 @@ pub fn resolve_completion_edits(
     let current_crate = current_module.krate();
 
     let (import_path, item_to_import) =
-        items_locator::with_for_exact_name(&ctx.sema, current_crate, imported_name)
+        items_locator::with_exact_name(&ctx.sema, current_crate, imported_name)
             .into_iter()
             .filter_map(|candidate| {
                 current_module

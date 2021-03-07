@@ -112,9 +112,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     Some(())
 }
 
-pub(super) fn find_importable_node<'a>(
-    ctx: &'a AssistContext,
-) -> Option<(ImportAssets<'a>, SyntaxNode)> {
+pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets, SyntaxNode)> {
     if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
         ImportAssets::for_exact_path(&path_under_caret, &ctx.sema)
             .zip(Some(path_under_caret.syntax().clone()))

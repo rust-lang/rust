@@ -774,7 +774,7 @@ fn find_root(node: &SyntaxNode) -> SyntaxNode {
 ///
 /// Note that if you are wondering "what does this specific existing name mean?",
 /// you'd better use the `resolve_` family of methods.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SemanticsScope<'a> {
     pub db: &'a dyn HirDatabase,
     file_id: HirFileId,

@@ -1,11 +1,11 @@
 //! Look up accessible paths for items.
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
+    ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics, Type,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode};
+use syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{
     items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
@@ -62,38 +62,37 @@ impl NameToImport {
 }
 
 #[derive(Debug)]
-pub struct ImportAssets<'a> {
+pub struct ImportAssets {
     import_candidate: ImportCandidate,
+    candidate_node: SyntaxNode,
     module_with_candidate: Module,
-    scope: SemanticsScope<'a>,
 }
 
-impl<'a> ImportAssets<'a> {
+impl ImportAssets {
     pub fn for_method_call(
         method_call: &ast::MethodCallExpr,
-        sema: &'a Semantics<RootDatabase>,
+        sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
-        let scope = sema.scope(method_call.syntax());
+        let candidate_node = method_call.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::for_method_call(sema, method_call)?,
-            module_with_candidate: scope.module()?,
-            scope,
+            module_with_candidate: sema.scope(&candidate_node).module()?,
+            candidate_node,
         })
     }
 
     pub fn for_exact_path(
         fully_qualified_path: &ast::Path,
-        sema: &'a Semantics<RootDatabase>,
+        sema: &Semantics<RootDatabase>,
     ) -> Option<Self> {
-        let syntax_under_caret = fully_qualified_path.syntax();
-        if syntax_under_caret.ancestors().find_map(ast::Use::cast).is_some() {
+        let candidate_node = fully_qualified_path.syntax().clone();
+        if candidate_node.ancestors().find_map(ast::Use::cast).is_some() {
             return None;
         }
-        let scope = sema.scope(syntax_under_caret);
         Some(Self {
             import_candidate: ImportCandidate::for_regular_path(sema, fully_qualified_path)?,
-            module_with_candidate: scope.module()?,
-            scope,
+            module_with_candidate: sema.scope(&candidate_node).module()?,
+            candidate_node,
         })
     }
 
@@ -102,12 +101,12 @@ impl<'a> ImportAssets<'a> {
         qualifier: Option<ast::Path>,
         fuzzy_name: String,
         sema: &Semantics<RootDatabase>,
-        scope: SemanticsScope<'a>,
+        candidate_node: SyntaxNode,
     ) -> Option<Self> {
         Some(Self {
             import_candidate: ImportCandidate::for_fuzzy_path(qualifier, fuzzy_name, sema)?,
             module_with_candidate,
-            scope,
+            candidate_node,
         })
     }
 
@@ -115,7 +114,7 @@ impl<'a> ImportAssets<'a> {
         module_with_method_call: Module,
         receiver_ty: Type,
         fuzzy_method_name: String,
-        scope: SemanticsScope<'a>,
+        candidate_node: SyntaxNode,
     ) -> Option<Self> {
         Some(Self {
             import_candidate: ImportCandidate::TraitMethod(TraitImportCandidate {
@@ -123,7 +122,7 @@ impl<'a> ImportAssets<'a> {
                 name: NameToImport::Fuzzy(fuzzy_method_name),
             }),
             module_with_candidate: module_with_method_call,
-            scope,
+            candidate_node,
         })
     }
 }
@@ -156,7 +155,7 @@ impl LocatedImport {
     }
 }
 
-impl<'a> ImportAssets<'a> {
+impl ImportAssets {
     pub fn import_candidate(&self) -> &ImportCandidate {
         &self.import_candidate
     }
@@ -182,7 +181,7 @@ impl<'a> ImportAssets<'a> {
         prefixed: Option<PrefixKind>,
     ) -> Vec<LocatedImport> {
         let items_with_candidate_name = match self.name_to_import() {
-            NameToImport::Exact(exact_name) => items_locator::with_for_exact_name(
+            NameToImport::Exact(exact_name) => items_locator::with_exact_name(
                 sema,
                 self.module_with_candidate.krate(),
                 exact_name.clone(),
@@ -209,7 +208,7 @@ impl<'a> ImportAssets<'a> {
             }
         };
 
-        let scope_definitions = self.scope_definitions();
+        let scope_definitions = self.scope_definitions(sema);
         self.applicable_defs(sema.db, prefixed, items_with_candidate_name)
             .into_iter()
             .filter(|import| import.import_path.len() > 1)
@@ -218,9 +217,9 @@ impl<'a> ImportAssets<'a> {
             .collect()
     }
 
-    fn scope_definitions(&self) -> FxHashSet<ScopeDef> {
+    fn scope_definitions(&self, sema: &Semantics<RootDatabase>) -> FxHashSet<ScopeDef> {
         let mut scope_definitions = FxHashSet::default();
-        self.scope.process_all_names(&mut |_, scope_def| {
+        sema.scope(&self.candidate_node).process_all_names(&mut |_, scope_def| {
             scope_definitions.insert(scope_def);
         });
         scope_definitions

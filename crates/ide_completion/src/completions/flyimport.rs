@@ -169,23 +169,28 @@ pub(crate) fn position_for_import<'a>(
     })
 }
 
-fn import_assets<'a>(ctx: &'a CompletionContext, fuzzy_name: String) -> Option<ImportAssets<'a>> {
+fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
     let current_module = ctx.scope.module()?;
     if let Some(dot_receiver) = &ctx.dot_receiver {
         ImportAssets::for_fuzzy_method_call(
             current_module,
             ctx.sema.type_of_expr(dot_receiver)?,
             fuzzy_name,
-            ctx.scope.clone(),
+            dot_receiver.syntax().clone(),
         )
     } else {
         let fuzzy_name_length = fuzzy_name.len();
+        let approximate_node = match current_module.definition_source(ctx.db).value {
+            hir::ModuleSource::SourceFile(s) => s.syntax().clone(),
+            hir::ModuleSource::Module(m) => m.syntax().clone(),
+            hir::ModuleSource::BlockExpr(b) => b.syntax().clone(),
+        };
         let assets_for_path = ImportAssets::for_fuzzy_path(
             current_module,
             ctx.path_qual.clone(),
             fuzzy_name,
             &ctx.sema,
-            ctx.scope.clone(),
+            approximate_node,
         )?;
 
         if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
