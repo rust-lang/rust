@@ -283,11 +283,8 @@ impl ImportEdit {
     pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
         let _p = profile::span("ImportEdit::to_text_edit");
 
-        let rewriter = insert_use::insert_use(
-            &self.scope,
-            mod_path_to_ast(&self.import.import_path),
-            cfg,
-        );
+        let rewriter =
+            insert_use::insert_use(&self.scope, mod_path_to_ast(&self.import.import_path), cfg);
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();
         algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
