@@ -359,8 +359,8 @@ impl S {
 fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
-                fn a()  -> ()
-                me b(…) -> ()
+                fn a()  fn()
+                me b(…) fn(&self)
                 ct C    const C: i32 = 42;
                 ta T    type T = i32;
             "#]],
@@ -387,7 +387,7 @@ mod m {
 fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
-                fn public_method() -> ()
+                fn public_method() fn()
                 ct PUBLIC_CONST    pub(crate) const PUBLIC_CONST: u32 = 1;
                 ta PublicType      pub(crate) type PublicType = u32;
             "#]],
@@ -404,7 +404,7 @@ impl E { fn m() { } }
 fn foo() { let _ = E::$0 }
         "#,
             expect![[r#"
-                fn m() -> ()
+                fn m() fn()
             "#]],
         );
     }
@@ -419,7 +419,7 @@ impl U { fn m() { } }
 fn foo() { let _ = U::$0 }
 "#,
             expect![[r#"
-                fn m() -> ()
+                fn m() fn()
             "#]],
         );
     }
@@ -449,7 +449,7 @@ trait Trait { fn m(); }
 fn foo() { let _ = Trait::$0 }
 "#,
             expect![[r#"
-                fn m() -> ()
+                fn m() fn()
             "#]],
         );
     }
@@ -466,7 +466,7 @@ impl Trait for S {}
 fn foo() { let _ = S::$0 }
 "#,
             expect![[r#"
-                fn m() -> ()
+                fn m() fn()
             "#]],
         );
     }
@@ -483,7 +483,7 @@ impl Trait for S {}
 fn foo() { let _ = <S as Trait>::$0 }
 "#,
             expect![[r#"
-                fn m() -> ()
+                fn m() fn()
             "#]],
         );
     }
@@ -512,11 +512,11 @@ fn foo<T: Sub>() { T::$0 }
                 ta SubTy        type SubTy;
                 ta Ty           type Ty;
                 ct C2           const C2: ();
-                fn subfunc()    -> ()
-                me submethod(…) -> ()
+                fn subfunc()    fn()
+                me submethod(…) fn(&self)
                 ct CONST        const CONST: u8;
-                fn func()       -> ()
-                me method(…)    -> ()
+                fn func()       fn()
+                me method(…)    fn(&self)
             "#]],
         );
     }
@@ -552,11 +552,11 @@ impl<T> Sub for Wrap<T> {
                 ta SubTy        type SubTy;
                 ta Ty           type Ty;
                 ct CONST        const CONST: u8 = 0;
-                fn func()       -> ()
-                me method(…)    -> ()
+                fn func()       fn()
+                me method(…)    fn(&self)
                 ct C2           const C2: () = ();
-                fn subfunc()    -> ()
-                me submethod(…) -> ()
+                fn subfunc()    fn()
+                me submethod(…) fn(&self)
             "#]],
         );
     }
@@ -573,8 +573,8 @@ impl T { fn bar() {} }
 fn main() { T::$0; }
 "#,
             expect![[r#"
-                fn foo() -> ()
-                fn bar() -> ()
+                fn foo() fn()
+                fn bar() fn()
             "#]],
         );
     }
@@ -589,7 +589,7 @@ macro_rules! foo { () => {} }
 fn main() { let _ = crate::$0 }
         "#,
             expect![[r##"
-                fn main()  -> ()
+                fn main()  fn()
                 ma foo!(…) #[macro_export] macro_rules! foo
             "##]],
         );
@@ -633,7 +633,7 @@ mod p {
 "#,
             expect![[r#"
                 ct RIGHT_CONST
-                fn right_fn()  -> ()
+                fn right_fn()  fn()
                 st RightType
             "#]],
         );
@@ -680,8 +680,8 @@ fn main() { m!(self::f$0); }
 fn foo() {}
 "#,
             expect![[r#"
-                fn main() -> ()
-                fn foo()  -> ()
+                fn main() fn()
+                fn foo()  fn()
             "#]],
         );
     }
@@ -699,7 +699,7 @@ mod m {
 "#,
             expect![[r#"
                 md z
-                fn z() -> ()
+                fn z() fn()
             "#]],
         );
     }
@@ -719,7 +719,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-                fn new() -> HashMap<K, V, RandomState>
+                fn new() fn() -> HashMap<K, V, RandomState>
             "#]],
         );
     }
@@ -752,8 +752,8 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn main() -> ()
-                fn foo(…) -> ()
+                fn main() fn()
+                fn foo(…) fn(i32, i32)
             "#]],
         );
     }
@@ -776,7 +776,7 @@ impl Foo {
             expect![[r#"
                 ev Bar    ()
                 ev Baz    ()
-                me foo(…) -> ()
+                me foo(…) fn(self)
             "#]],
         );
     }
@@ -800,7 +800,7 @@ impl u8 {
 "#,
             expect![[r#"
                 ct MAX     pub const MAX: Self = 255;
-                me func(…) -> ()
+                me func(…) fn(self)
             "#]],
         );
     }

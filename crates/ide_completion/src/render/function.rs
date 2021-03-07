@@ -2,6 +2,7 @@
 
 use hir::{HasSource, HirDisplay, Type};
 use ide_db::SymbolKind;
+use itertools::Itertools;
 use syntax::ast::Fn;
 
 use crate::{
@@ -59,8 +60,34 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn detail(&self) -> String {
-        let ty = self.func.ret_type(self.ctx.db());
-        format!("-> {}", ty.display(self.ctx.db()))
+        let params = if let Some(self_param) = self.func.self_param(self.ctx.db()) {
+            let params = self
+                .func
+                .assoc_fn_params(self.ctx.db())
+                .into_iter()
+                .skip(1) // skip the self param because we are manually handling that
+                .map(|p| p.ty().display(self.ctx.db()).to_string());
+
+            std::iter::once(self_param.display(self.ctx.db()).to_owned()).chain(params).join(", ")
+        } else {
+            let params = self
+                .func
+                .assoc_fn_params(self.ctx.db())
+                .into_iter()
+                .map(|p| p.ty().display(self.ctx.db()).to_string())
+                .join(", ");
+            params
+        };
+
+        let ret_ty = self.func.ret_type(self.ctx.db());
+        let ret = if ret_ty.is_unit() {
+            // Omit the `-> ()` for unit return types
+            String::new()
+        } else {
+            format!(" -> {}", ret_ty.display(self.ctx.db()))
+        };
+
+        format!("fn({}){}", params, ret)
     }
 
     fn add_arg(&self, arg: &str, ty: &Type) -> String {
