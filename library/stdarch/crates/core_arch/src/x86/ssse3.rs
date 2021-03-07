@@ -86,71 +86,55 @@ pub unsafe fn _mm_shuffle_epi8(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_alignr_epi8)
 #[inline]
 #[target_feature(enable = "ssse3")]
-#[cfg_attr(test, assert_instr(palignr, n = 15))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(palignr, IMM8 = 15))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
-    let n = n as u32;
+pub unsafe fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
+    static_assert_imm8!(IMM8);
     // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
-    if n > 32 {
+    if IMM8 > 32 {
         return _mm_set1_epi8(0);
     }
     // If palignr is shifting the pair of input vectors more than one lane,
     // but less than two lanes, convert to shifting in zeroes.
-    let (a, b, n) = if n > 16 {
-        (_mm_set1_epi8(0), a, n - 16)
+    let (a, b) = if IMM8 > 16 {
+        (_mm_set1_epi8(0), a)
     } else {
-        (a, b, n)
+        (a, b)
     };
-    let a = a.as_i8x16();
-    let b = b.as_i8x16();
-
-    macro_rules! shuffle {
-        ($shift:expr) => {
-            simd_shuffle16(
-                b,
-                a,
-                [
-                    0 + $shift,
-                    1 + $shift,
-                    2 + $shift,
-                    3 + $shift,
-                    4 + $shift,
-                    5 + $shift,
-                    6 + $shift,
-                    7 + $shift,
-                    8 + $shift,
-                    9 + $shift,
-                    10 + $shift,
-                    11 + $shift,
-                    12 + $shift,
-                    13 + $shift,
-                    14 + $shift,
-                    15 + $shift,
-                ],
-            )
-        };
+    const fn mask(shift: u32, i: u32) -> u32 {
+        if shift > 32 {
+            // Unused, but needs to be a valid index.
+            i
+        } else if shift > 16 {
+            shift - 16 + i
+        } else {
+            shift + i
+        }
     }
-    let r: i8x16 = match n {
-        0 => shuffle!(0),
-        1 => shuffle!(1),
-        2 => shuffle!(2),
-        3 => shuffle!(3),
-        4 => shuffle!(4),
-        5 => shuffle!(5),
-        6 => shuffle!(6),
-        7 => shuffle!(7),
-        8 => shuffle!(8),
-        9 => shuffle!(9),
-        10 => shuffle!(10),
-        11 => shuffle!(11),
-        12 => shuffle!(12),
-        13 => shuffle!(13),
-        14 => shuffle!(14),
-        15 => shuffle!(15),
-        _ => shuffle!(16),
-    };
+    let r: i8x16 = simd_shuffle16(
+        b.as_i8x16(),
+        a.as_i8x16(),
+        [
+            mask(IMM8 as u32, 0),
+            mask(IMM8 as u32, 1),
+            mask(IMM8 as u32, 2),
+            mask(IMM8 as u32, 3),
+            mask(IMM8 as u32, 4),
+            mask(IMM8 as u32, 5),
+            mask(IMM8 as u32, 6),
+            mask(IMM8 as u32, 7),
+            mask(IMM8 as u32, 8),
+            mask(IMM8 as u32, 9),
+            mask(IMM8 as u32, 10),
+            mask(IMM8 as u32, 11),
+            mask(IMM8 as u32, 12),
+            mask(IMM8 as u32, 13),
+            mask(IMM8 as u32, 14),
+            mask(IMM8 as u32, 15),
+        ],
+    );
     transmute(r)
 }
 
@@ -404,10 +388,10 @@ mod tests {
             12, 5, 5, 10,
             4, 1, 8, 0,
         );
-        let r = _mm_alignr_epi8(a, b, 33);
+        let r = _mm_alignr_epi8::<33>(a, b);
         assert_eq_m128i(r, _mm_set1_epi8(0));
 
-        let r = _mm_alignr_epi8(a, b, 17);
+        let r = _mm_alignr_epi8::<17>(a, b);
         #[rustfmt::skip]
         let expected = _mm_setr_epi8(
             2, 3, 4, 5, 6, 7, 8, 9,
@@ -415,10 +399,10 @@ mod tests {
         );
         assert_eq_m128i(r, expected);
 
-        let r = _mm_alignr_epi8(a, b, 16);
+        let r = _mm_alignr_epi8::<16>(a, b);
         assert_eq_m128i(r, a);
 
-        let r = _mm_alignr_epi8(a, b, 15);
+        let r = _mm_alignr_epi8::<15>(a, b);
         #[rustfmt::skip]
         let expected = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
@@ -426,7 +410,7 @@ mod tests {
         );
         assert_eq_m128i(r, expected);
 
-        let r = _mm_alignr_epi8(a, b, 0);
+        let r = _mm_alignr_epi8::<0>(a, b);
         assert_eq_m128i(r, b);
     }
 

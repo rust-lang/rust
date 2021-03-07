@@ -9140,7 +9140,7 @@ pub unsafe fn _mm_mask_alignr_epi8<const IMM8: i32>(
     b: __m128i,
 ) -> __m128i {
     static_assert_imm8!(IMM8);
-    let r = _mm_alignr_epi8(a, b, IMM8);
+    let r = _mm_alignr_epi8::<IMM8>(a, b);
     transmute(simd_select_bitmask(k, r.as_i8x16(), src.as_i8x16()))
 }
 
@@ -9157,7 +9157,7 @@ pub unsafe fn _mm_maskz_alignr_epi8<const IMM8: i32>(
     b: __m128i,
 ) -> __m128i {
     static_assert_imm8!(IMM8);
-    let r = _mm_alignr_epi8(a, b, IMM8);
+    let r = _mm_alignr_epi8::<IMM8>(a, b);
     let zero = _mm_setzero_si128().as_i8x16();
     transmute(simd_select_bitmask(k, r.as_i8x16(), zero))
 }
