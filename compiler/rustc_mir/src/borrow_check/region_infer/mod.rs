@@ -21,7 +21,7 @@ use crate::borrow_check::{
     constraints::{
         graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
     },
-    diagnostics::{RegionErrorKind, RegionErrors},
+    diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
     nll::{PoloniusOutput, ToRegionVid},
     region_infer::reverse_sccs::ReverseSccGraph,
@@ -83,6 +83,9 @@ pub struct RegionInferenceContext<'tcx> {
     /// Map closure bounds to a `Span` that should be used for error reporting.
     closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
+
+    /// Map universe indexes to information on why we created it.
+    _universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -253,6 +256,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Location,
             FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
         >,
+        universe_causes: IndexVec<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues<RegionVid>,
         elements: &Rc<RegionValueElements>,
@@ -293,6 +297,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             member_constraints,
             member_constraints_applied: Vec::new(),
             closure_bounds_mapping,
+            _universe_causes: universe_causes,
             scc_universes,
             scc_representatives,
             scc_values,

@@ -6,6 +6,7 @@ use rustc_middle::ty::{self, Const, Ty};
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::borrow_check::constraints::OutlivesConstraint;
+use crate::borrow_check::diagnostics::UniverseInfo;
 use crate::borrow_check::type_check::{BorrowCheckContext, Locations};
 
 /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -29,7 +30,14 @@ pub(super) fn relate_types<'tcx>(
     debug!("relate_types(a={:?}, v={:?}, b={:?}, locations={:?})", a, v, b, locations);
     TypeRelating::new(
         infcx,
-        NllTypeRelatingDelegate::new(infcx, borrowck_context, param_env, locations, category),
+        NllTypeRelatingDelegate::new(
+            infcx,
+            borrowck_context,
+            param_env,
+            locations,
+            category,
+            UniverseInfo::relate(a, b),
+        ),
         v,
     )
     .relate(a, b)?;
@@ -47,6 +55,10 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 
     /// What category do we assign the resulting `'a: 'b` relationships?
     category: ConstraintCategory,
+
+    /// Information so that error reporting knows what types we are relating
+    /// when reporting a bound region error.
+    universe_info: UniverseInfo<'tcx>,
 }
 
 impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
@@ -56,8 +68,9 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
+        universe_info: UniverseInfo<'tcx>,
     ) -> Self {
-        Self { infcx, borrowck_context, param_env, locations, category }
+        Self { infcx, borrowck_context, param_env, locations, category, universe_info }
     }
 }
 
@@ -67,7 +80,11 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     }
 
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
-        self.infcx.create_next_universe()
+        let info_universe =
+            self.borrowck_context.constraints.universe_causes.push(self.universe_info.clone());
+        let universe = self.infcx.create_next_universe();
+        assert_eq!(info_universe, universe);
+        universe
     }
 
     fn next_existential_region_var(&mut self, from_forall: bool) -> ty::Region<'tcx> {

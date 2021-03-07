@@ -1506,7 +1506,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.inner.borrow_mut().projection_cache().clear();
     }
 
-    fn universe(&self) -> ty::UniverseIndex {
+    pub fn universe(&self) -> ty::UniverseIndex {
         self.universe.get()
     }
 
