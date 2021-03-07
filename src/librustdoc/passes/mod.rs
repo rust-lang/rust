@@ -1,6 +1,7 @@
 //! Contains information about "passes", used to modify crate information during the documentation
 //! process.
 
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use std::ops::Range;
 
@@ -167,7 +168,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
 /// attributes are not all sugared doc comments. It's difficult to calculate the correct span in
 /// that case due to escaping and other source features.
 crate fn source_span_for_markdown_range(
-    cx: &DocContext<'_>,
+    tcx: TyCtxt<'_>,
     markdown: &str,
     md_range: &Range<usize>,
     attrs: &clean::Attributes,
@@ -179,7 +180,7 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
-    let snippet = cx.sess().source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
+    let snippet = tcx.sess.source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();
