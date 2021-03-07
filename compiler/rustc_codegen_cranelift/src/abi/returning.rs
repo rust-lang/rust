@@ -8,14 +8,13 @@ use smallvec::{smallvec, SmallVec};
 
 /// Can the given type be returned into an ssa var or does it need to be returned on the stack.
 pub(crate) fn can_return_to_ssa_var<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Module>,
+    fx: &FunctionCx<'_, '_, 'tcx>,
     func: &mir::Operand<'tcx>,
     args: &[mir::Operand<'tcx>],
 ) -> bool {
     let fn_ty = fx.monomorphize(func.ty(fx.mir, fx.tcx));
-    let fn_sig = fx
-        .tcx
-        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
+    let fn_sig =
+        fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), fn_ty.fn_sig(fx.tcx));
 
     // Handle special calls like instrinsics and empty drop glue.
     let instance = if let ty::FnDef(def_id, substs) = *fn_ty.kind() {
@@ -42,11 +41,7 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
     let fn_abi = if let Some(instance) = instance {
         FnAbi::of_instance(&RevealAllLayoutCx(fx.tcx), instance, &extra_args)
     } else {
-        FnAbi::of_fn_ptr(
-            &RevealAllLayoutCx(fx.tcx),
-            fn_ty.fn_sig(fx.tcx),
-            &extra_args,
-        )
+        FnAbi::of_fn_ptr(&RevealAllLayoutCx(fx.tcx), fn_ty.fn_sig(fx.tcx), &extra_args)
     };
     match fn_abi.ret.mode {
         PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => true,
@@ -58,15 +53,12 @@ pub(crate) fn can_return_to_ssa_var<'tcx>(
 /// Return a place where the return value of the current function can be written to. If necessary
 /// this adds an extra parameter pointing to where the return value needs to be stored.
 pub(super) fn codegen_return_param<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Module>,
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     ssa_analyzed: &rustc_index::vec::IndexVec<Local, crate::analyze::SsaKind>,
     block_params_iter: &mut impl Iterator<Item = Value>,
 ) -> CPlace<'tcx> {
     let (ret_place, ret_param): (_, SmallVec<[_; 2]>) = match fx.fn_abi.as_ref().unwrap().ret.mode {
-        PassMode::Ignore => (
-            CPlace::no_place(fx.fn_abi.as_ref().unwrap().ret.layout),
-            smallvec![],
-        ),
+        PassMode::Ignore => (CPlace::no_place(fx.fn_abi.as_ref().unwrap().ret.layout), smallvec![]),
         PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => {
             let is_ssa = ssa_analyzed[RETURN_PLACE] == crate::analyze::SsaKind::Ssa;
             (
@@ -79,26 +71,17 @@ pub(super) fn codegen_return_param<'tcx>(
                 smallvec![],
             )
         }
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: _,
-        } => {
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
             let ret_param = block_params_iter.next().unwrap();
             assert_eq!(fx.bcx.func.dfg.value_type(ret_param), pointer_ty(fx.tcx));
             (
-                CPlace::for_ptr(
-                    Pointer::new(ret_param),
-                    fx.fn_abi.as_ref().unwrap().ret.layout,
-                ),
+                CPlace::for_ptr(Pointer::new(ret_param), fx.fn_abi.as_ref().unwrap().ret.layout),
                 smallvec![ret_param],
             )
         }
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: _,
-        } => unreachable!("unsized return value"),
+        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+            unreachable!("unsized return value")
+        }
     };
 
     #[cfg(not(debug_assertions))]
@@ -120,27 +103,21 @@ pub(super) fn codegen_return_param<'tcx>(
 
 /// Invokes the closure with if necessary a value representing the return pointer. When the closure
 /// returns the call return value(s) if any are written to the correct place.
-pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
-    fx: &mut FunctionCx<'_, 'tcx, M>,
+pub(super) fn codegen_with_call_return_arg<'tcx, T>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
     ret_arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
-    f: impl FnOnce(&mut FunctionCx<'_, 'tcx, M>, Option<Value>) -> (Inst, T),
+    f: impl FnOnce(&mut FunctionCx<'_, '_, 'tcx>, Option<Value>) -> (Inst, T),
 ) -> (Inst, T) {
     let return_ptr = match ret_arg_abi.mode {
         PassMode::Ignore => None,
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: _,
-        } => match ret_place {
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => match ret_place {
             Some(ret_place) => Some(ret_place.to_ptr().get_addr(fx)),
             None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)), // FIXME allocate temp stack slot
         },
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: _,
-        } => unreachable!("unsized return value"),
+        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+            unreachable!("unsized return value")
+        }
         PassMode::Direct(_) | PassMode::Pair(_, _) | PassMode::Cast(_) => None,
     };
 
@@ -177,37 +154,24 @@ pub(super) fn codegen_with_call_return_arg<'tcx, M: Module, T>(
                 ret_place.write_cvalue(fx, result);
             }
         }
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: _,
-        } => {}
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: _,
-        } => unreachable!("unsized return value"),
+        PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {}
+        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+            unreachable!("unsized return value")
+        }
     }
 
     (call_inst, meta)
 }
 
 /// Codegen a return instruction with the right return value(s) if any.
-pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, impl Module>) {
+pub(crate) fn codegen_return(fx: &mut FunctionCx<'_, '_, '_>) {
     match fx.fn_abi.as_ref().unwrap().ret.mode {
-        PassMode::Ignore
-        | PassMode::Indirect {
-            attrs: _,
-            extra_attrs: None,
-            on_stack: _,
-        } => {
+        PassMode::Ignore | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
             fx.bcx.ins().return_(&[]);
         }
-        PassMode::Indirect {
-            attrs: _,
-            extra_attrs: Some(_),
-            on_stack: _,
-        } => unreachable!("unsized return value"),
+        PassMode::Indirect { attrs: _, extra_attrs: Some(_), on_stack: _ } => {
+            unreachable!("unsized return value")
+        }
         PassMode::Direct(_) => {
             let place = fx.get_local_place(RETURN_PLACE);
             let ret_val = place.to_cvalue(fx).load_scalar(fx);

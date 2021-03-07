@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Settings
 export CHANNEL="release"
 build_sysroot="clif"
 target_dir='build'
-oldbe=''
 while [[ $# != 0 ]]; do
     case $1 in
         "--debug")
@@ -19,12 +18,9 @@ while [[ $# != 0 ]]; do
             target_dir=$2
             shift
             ;;
-        "--oldbe")
-            oldbe='--features oldbe'
-            ;;
         *)
             echo "Unknown flag '$1'"
-            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--oldbe]"
+            echo "Usage: ./build.sh [--debug] [--sysroot none|clif|llvm] [--target-dir DIR]"
             exit 1
             ;;
     esac
@@ -34,19 +30,19 @@ done
 # Build cg_clif
 unset CARGO_TARGET_DIR
 unamestr=$(uname)
-if [[ "$unamestr" == 'Linux' ]]; then
+if [[ "$unamestr" == 'Linux' || "$unamestr" == "FreeBSD" ]]; then
    export RUSTFLAGS='-Clink-arg=-Wl,-rpath=$ORIGIN/../lib '$RUSTFLAGS
 elif [[ "$unamestr" == 'Darwin' ]]; then
    export RUSTFLAGS='-Csplit-debuginfo=unpacked -Clink-arg=-Wl,-rpath,@loader_path/../lib -Zosx-rpath-install-name '$RUSTFLAGS
    dylib_ext='dylib'
 else
-   echo "Unsupported os"
+   echo "Unsupported os $unamestr"
    exit 1
 fi
 if [[ "$CHANNEL" == "release" ]]; then
-    cargo build $oldbe --release
+    cargo build --release
 else
-    cargo build $oldbe
+    cargo build
 fi
 
 source scripts/ext_config.sh

@@ -3,8 +3,6 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift_codegen::ir::{InstructionData, Opcode, ValueDef};
-
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -56,11 +54,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
             FloatTy::F64 => types::F64,
         },
         ty::FnPtr(_) => pointer_ty(tcx),
-        ty::RawPtr(TypeAndMut {
-            ty: pointee_ty,
-            mutbl: _,
-        })
-        | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 return None;
             } else {
@@ -99,11 +93,7 @@ fn clif_pair_type_from_ty<'tcx>(
             }
             (a, b)
         }
-        ty::RawPtr(TypeAndMut {
-            ty: pointee_ty,
-            mutbl: _,
-        })
-        | ty::Ref(_, pointee_ty, _) => {
+        ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
             if has_ptr_meta(tcx, pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
@@ -116,15 +106,8 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = tcx.mk_ptr(TypeAndMut {
-        ty,
-        mutbl: rustc_hir::Mutability::Not,
-    });
-    match &tcx
-        .layout_of(ParamEnv::reveal_all().and(ptr_ty))
-        .unwrap()
-        .abi
-    {
+    let ptr_ty = tcx.mk_ptr(TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
+    match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
         Abi::Scalar(_) => false,
         Abi::ScalarPair(_, _) => true,
         abi => unreachable!("Abi of ptr to {:?} is {:?}???", ty, abi),
@@ -132,7 +115,7 @@ pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 pub(crate) fn codegen_icmp_imm(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     intcc: IntCC,
     lhs: Value,
     rhs: i128,
@@ -172,51 +155,6 @@ pub(crate) fn codegen_icmp_imm(
     } else {
         let rhs = i64::try_from(rhs).expect("codegen_icmp_imm rhs out of range for <128bit int");
         fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
-    }
-}
-
-fn resolve_normal_value_imm(func: &Function, val: Value) -> Option<i64> {
-    if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
-        if let InstructionData::UnaryImm {
-            opcode: Opcode::Iconst,
-            imm,
-        } = func.dfg[inst]
-        {
-            Some(imm.into())
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
-fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
-    let (lsb, msb) = if let ValueDef::Result(inst, 0 /*param*/) = func.dfg.value_def(val) {
-        if let InstructionData::Binary {
-            opcode: Opcode::Iconcat,
-            args: [lsb, msb],
-        } = func.dfg[inst]
-        {
-            (lsb, msb)
-        } else {
-            return None;
-        }
-    } else {
-        return None;
-    };
-
-    let lsb = u128::from(resolve_normal_value_imm(func, lsb)? as u64);
-    let msb = u128::from(resolve_normal_value_imm(func, msb)? as u64);
-
-    Some(msb << 64 | lsb)
-}
-
-pub(crate) fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
-    if func.dfg.value_type(val) == types::I128 {
-        resolve_128bit_value_imm(func, val)
-    } else {
-        resolve_normal_value_imm(func, val).map(|imm| u128::from(imm as u64))
     }
 }
 
@@ -288,8 +226,8 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx, M>,
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
+    pub(crate) cx: &'clif mut crate::CodegenCx<'m, 'tcx>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
 
@@ -316,7 +254,7 @@ pub(crate) struct FunctionCx<'clif, 'tcx, M: Module> {
     pub(crate) inline_asm_index: u32,
 }
 
-impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> LayoutOf for FunctionCx<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyAndLayout = TyAndLayout<'tcx>;
 
@@ -325,31 +263,31 @@ impl<'tcx, M: Module> LayoutOf for FunctionCx<'_, 'tcx, M> {
     }
 }
 
-impl<'tcx, M: Module> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> layout::HasTyCtxt<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, M: Module> rustc_target::abi::HasDataLayout for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> rustc_target::abi::HasDataLayout for FunctionCx<'_, '_, 'tcx> {
     fn data_layout(&self) -> &rustc_target::abi::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'tcx, M: Module> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> layout::HasParamEnv<'tcx> for FunctionCx<'_, '_, 'tcx> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         ParamEnv::reveal_all()
     }
 }
 
-impl<'tcx, M: Module> HasTargetSpec for FunctionCx<'_, 'tcx, M> {
+impl<'tcx> HasTargetSpec for FunctionCx<'_, '_, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
     }
 }
 
-impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
+impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     pub(crate) fn monomorphize<T>(&self, value: T) -> T
     where
         T: TypeFoldable<'tcx> + Copy,
@@ -416,12 +354,7 @@ impl<'tcx, M: Module> FunctionCx<'_, 'tcx, M> {
         let msg_id = self
             .cx
             .module
-            .declare_data(
-                &format!("__{}_{:08x}", prefix, msg_hash),
-                Linkage::Local,
-                false,
-                false,
-            )
+            .declare_data(&format!("__{}_{:08x}", prefix, msg_hash), Linkage::Local, false, false)
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
@@ -444,15 +377,13 @@ impl<'tcx> LayoutOf for RevealAllLayoutCx<'tcx> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyAndLayout<'tcx> {
         assert!(!ty.still_further_specializable());
-        self.0
-            .layout_of(ParamEnv::reveal_all().and(&ty))
-            .unwrap_or_else(|e| {
-                if let layout::LayoutError::SizeOverflow(_) = e {
-                    self.0.sess.fatal(&e.to_string())
-                } else {
-                    bug!("failed to get layout for `{}`: {}", ty, e)
-                }
-            })
+        self.0.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap_or_else(|e| {
+            if let layout::LayoutError::SizeOverflow(_) = e {
+                self.0.sess.fatal(&e.to_string())
+            } else {
+                bug!("failed to get layout for `{}`: {}", ty, e)
+            }
+        })
     }
 }
 

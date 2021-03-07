@@ -315,6 +315,13 @@ impl Options {
             return Err(0);
         }
 
+        if matches.opt_strs("print").iter().any(|opt| opt == "unversioned-files") {
+            for file in crate::html::render::FILES_UNVERSIONED.keys() {
+                println!("{}", file);
+            }
+            return Err(0);
+        }
+
         let color = config::parse_color(&matches);
         let (json_rendered, _artifacts) = config::parse_json(&matches);
         let error_format = config::parse_error_format(&matches, color, json_rendered);
@@ -658,9 +665,8 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
             {
                 continue;
             }
-            let mut err =
-                diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
-            err.warn(
+            let mut err = diag.struct_warn(&format!("the `{}` flag is deprecated", flag));
+            err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                  for more information",
             );

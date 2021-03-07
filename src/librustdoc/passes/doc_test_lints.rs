@@ -82,7 +82,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
 }
 
 crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
+    let hir_id = match DocContext::as_local_hir_id(cx.tcx, item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
