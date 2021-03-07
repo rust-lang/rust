@@ -32,8 +32,9 @@ use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
-use crate::clean::inline;
+use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
@@ -1986,11 +1987,64 @@ crate struct Static {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-crate struct Constant {
-    crate type_: Type,
-    crate expr: String,
-    crate value: Option<String>,
-    crate is_literal: bool,
+crate enum Constant {
+    /// Typed constant value.
+    TyConst { type_: Type, expr: String },
+    /// A constant (expression) that’s not an item or associated item. These are usually found
+    /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
+    /// used to define explicit discriminant values for enum variants.
+    Generic { type_: Type, body: BodyId },
+    /// Inlined constant (from another crate).
+    Inline { type_: Type, did: DefId },
+    /// const FOO: u32 = ...;
+    Const { type_: Type, did: DefId, body: BodyId },
+}
+
+impl Constant {
+    crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
+        match self {
+            Self::TyConst { expr, .. } => expr.clone(),
+            Self::Inline { did, .. } => print_inlined_const(tcx, *did),
+            Self::Const { body, .. } | Self::Generic { body, .. } => print_const_expr(tcx, *body),
+        }
+    }
+
+    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        match self {
+            Self::TyConst { .. } | Self::Generic { .. } => None,
+            Self::Inline { did, .. } | Self::Const { did, .. } => print_evaluated_const(tcx, *did),
+        }
+    }
+
+    crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
+        match self {
+            Self::TyConst { .. } => false,
+            Self::Inline { did, .. } => did
+                .as_local()
+                .map_or(false, |did| is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(did))),
+            Self::Const { body, .. } | Self::Generic { body, .. } => {
+                is_literal_expr(tcx, body.hir_id)
+            }
+        }
+    }
+
+    crate fn type_(&self) -> &Type {
+        match *self {
+            Self::TyConst { ref type_, .. }
+            | Self::Inline { ref type_, .. }
+            | Self::Const { ref type_, .. }
+            | Self::Generic { ref type_, .. } => type_,
+        }
+    }
+
+    crate fn to_type(self) -> Type {
+        match self {
+            Self::TyConst { type_, .. }
+            | Self::Inline { type_, .. }
+            | Self::Const { type_, .. }
+            | Self::Generic { type_, .. } => type_,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

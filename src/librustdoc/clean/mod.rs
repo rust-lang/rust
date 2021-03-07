@@ -393,14 +393,12 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
 
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
-        Constant {
+        Constant::Generic {
             type_: cx
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
                 .clean(cx),
-            expr: print_const_expr(cx.tcx, self.value.body),
-            value: None,
-            is_literal: is_literal_expr(cx, self.value.body.hir_id),
+            body: self.value.body,
         }
     }
 }
@@ -1135,7 +1133,7 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
-                    Some(inline::print_inlined_const(cx, self.def_id))
+                    Some(inline::print_inlined_const(cx.tcx, self.def_id))
                 } else {
                     None
                 };
@@ -1745,12 +1743,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
-        Constant {
-            type_: self.ty.clean(cx),
-            expr: format!("{}", self),
-            value: None,
-            is_literal: false,
-        }
+        // FIXME: instead of storing `format!("{}", self)`, store `self` directly instead.
+        Constant::TyConst { type_: self.ty.clean(cx), expr: format!("{}", self) }
     }
 }
 
@@ -1951,11 +1945,10 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Static(ty, mutability, body_id) => {
                     StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
                 }
-                ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+                ItemKind::Const(ty, body_id) => ConstantItem(Constant::Const {
                     type_: ty.clean(cx),
-                    expr: print_const_expr(cx.tcx, body_id),
-                    value: print_evaluated_const(cx, def_id),
-                    is_literal: is_literal_expr(cx, body_id.hir_id),
+                    body: body_id,
+                    did: def_id,
                 }),
                 ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                     bounds: ty.bounds.clean(cx),
