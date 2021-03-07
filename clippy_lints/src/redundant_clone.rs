@@ -165,7 +165,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
                     if res == cloned;
-                    if match_def_path(cx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
+                    if cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id);
                     if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
                         || match_type(cx, pred_arg_ty, &paths::OS_STRING);
                     then {

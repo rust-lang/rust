@@ -63,8 +63,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
-    MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
+    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, GenericArgs, HirId, ImplItem, ImplItemKind, Item,
+    ItemKind, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind,
+    Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -270,6 +271,27 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
         QPath::TypeRelative(_, ref seg) => seg,
         QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
+}
+
+pub fn get_qpath_generics(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
+    match path {
+        QPath::Resolved(_, p) => p.segments.last().and_then(|s| s.args),
+        QPath::TypeRelative(_, s) => s.args,
+        QPath::LangItem(..) => None,
+    }
+}
+
+pub fn get_qpath_generic_tys(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+    get_qpath_generics(path)
+        .map_or([].as_ref(), |a| a.args)
+        .iter()
+        .filter_map(|a| {
+            if let hir::GenericArg::Type(ty) = a {
+                Some(ty)
+            } else {
+                None
+            }
+        })
 }
 
 pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {

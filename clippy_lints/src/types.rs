@@ -11,8 +11,8 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
     BinOpKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericBounds, GenericParamKind, HirId,
-    ImplItem, ImplItemKind, Item, ItemKind, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node, QPath, Stmt,
-    StmtKind, SyntheticTyParamKind, TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
+    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Lit, Local, MatchSource, MutTy, Mutability, Node,
+    QPath, Stmt, StmtKind, SyntheticTyParamKind, TraitFn, TraitItem, TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -23,7 +23,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::sym;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
@@ -32,9 +32,9 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, indent_of, int_bits, is_hir_ty_cfg_dependant,
-    is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args,
-    multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
+    clip, comparisons, differing_macro_contexts, get_qpath_generic_tys, higher, in_constant, indent_of, int_bits,
+    is_hir_ty_cfg_dependant, is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv,
+    method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
     snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
     span_lint_and_then, unsext,
 };
@@ -287,37 +287,55 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 }
 
-/// Checks if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext<'_>, qpath: &QPath<'_>, path: &[&str]) -> Option<Span> {
-    let last = last_path_segment(qpath);
-    if_chain! {
-        if let Some(ref params) = last.args;
-        if !params.parenthesized;
-        if let Some(ty) = params.args.iter().find_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        });
-        if let TyKind::Path(ref qpath) = ty.kind;
-        if let Some(did) = cx.qpath_res(qpath, ty.hir_id).opt_def_id();
-        if match_def_path(cx, did, path);
-        then {
-            return Some(ty.span);
-        }
+/// Checks if the first type parameter is a lang item.
+fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangItem) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .and_then(|id| (cx.tcx.lang_items().require(item) == Ok(id)).then(|| ty))
+    } else {
+        None
     }
-    None
+}
+
+/// Checks if the first type parameter is a diagnostic item.
+fn is_ty_param_diagnostic_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: Symbol) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .and_then(|id| cx.tcx.is_diagnostic_item(item, id).then(|| ty))
+    } else {
+        None
+    }
+}
+
+/// Checks if the first type parameter is a given item.
+fn is_ty_param_path(cx: &LateContext<'_>, qpath: &QPath<'tcx>, path: &[&str]) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .and_then(|id| match_def_path(cx, id, path).then(|| ty))
+    } else {
+        None
+    }
 }
 
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if match_type_parameter(cx, qpath, &paths::STRING).is_some() {
-        return Some("str");
+    if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
+        Some("str")
+    } else if is_ty_param_path(cx, qpath, &paths::OS_STRING).is_some() {
+        Some("std::ffi::OsStr")
+    } else if is_ty_param_path(cx, qpath, &paths::PATH_BUF).is_some() {
+        Some("std::path::Path")
+    } else {
+        None
     }
-    if match_type_parameter(cx, qpath, &paths::OS_STRING).is_some() {
-        return Some("std::ffi::OsStr");
-    }
-    if match_type_parameter(cx, qpath, &paths::PATH_BUF).is_some() {
-        return Some("std::path::Path");
-    }
-    None
 }
 
 fn match_borrows_parameter(_cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Span> {
@@ -381,7 +399,7 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
+                        if is_ty_param_diagnostic_item(cx, qpath, sym::vec_type).is_some() {
                             span_lint_and_help(
                                 cx,
                                 BOX_VEC,
@@ -393,7 +411,7 @@ impl Types {
                             return; // don't recurse into the type
                         }
                     } else if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
-                        if let Some(span) = match_type_parameter(cx, qpath, &paths::RC) {
+                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Rc) {
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
                                 cx,
@@ -401,22 +419,19 @@ impl Types {
                                 hir_ty.span,
                                 "usage of `Rc<Rc<T>>`",
                                 "try",
-                                snippet_with_applicability(cx, span, "..", &mut applicability).to_string(),
+                                snippet_with_applicability(cx, ty.span, "..", &mut applicability).to_string(),
                                 applicability,
                             );
                             return; // don't recurse into the type
                         }
-                        if match_type_parameter(cx, qpath, &paths::BOX).is_some() {
-                            let box_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => match &ty.kind {
-                                    TyKind::Path(qpath) => qpath,
-                                    _ => return,
-                                },
+                        if let Some(ty) = is_ty_param_lang_item(cx, qpath, LangItem::OwnedBox) {
+                            let qpath = match &ty.kind {
+                                TyKind::Path(qpath) => qpath,
                                 _ => return,
                             };
-                            let inner_span = match &last_path_segment(&box_ty).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => ty.span,
-                                _ => return,
+                            let inner_span = match get_qpath_generic_tys(qpath).next() {
+                                Some(ty) => ty.span,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
@@ -445,17 +460,14 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
-                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => match &ty.kind {
-                                    TyKind::Path(qpath) => qpath,
-                                    _ => return,
-                                },
+                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
+                            let qpath = match &ty.kind {
+                                TyKind::Path(qpath) => qpath,
                                 _ => return,
                             };
-                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => ty.span,
-                                _ => return,
+                            let inner_span = match get_qpath_generic_tys(qpath).next() {
+                                Some(ty) => ty.span,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
@@ -498,17 +510,14 @@ impl Types {
                             );
                             return; // don't recurse into the type
                         }
-                        if match_type_parameter(cx, qpath, &paths::VEC).is_some() {
-                            let vec_ty = match &last_path_segment(qpath).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => match &ty.kind {
-                                    TyKind::Path(qpath) => qpath,
-                                    _ => return,
-                                },
+                        if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::vec_type) {
+                            let qpath = match &ty.kind {
+                                TyKind::Path(qpath) => qpath,
                                 _ => return,
                             };
-                            let inner_span = match &last_path_segment(&vec_ty).args.unwrap().args[0] {
-                                GenericArg::Type(ty) => ty.span,
-                                _ => return,
+                            let inner_span = match get_qpath_generic_tys(qpath).next() {
+                                Some(ty) => ty.span,
+                                None => return,
                             };
                             let mut applicability = Applicability::MachineApplicable;
                             span_lint_and_sugg(
@@ -563,7 +572,7 @@ impl Types {
                             }
                         }
                     } else if cx.tcx.is_diagnostic_item(sym::option_type, def_id) {
-                        if match_type_parameter(cx, qpath, &paths::OPTION).is_some() {
+                        if is_ty_param_diagnostic_item(cx, qpath, sym::option_type).is_some() {
                             span_lint(
                                 cx,
                                 OPTION_OPTION,
