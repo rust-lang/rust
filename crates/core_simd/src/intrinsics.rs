@@ -41,9 +41,11 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_cast<T, U>(x: T) -> U;
 
     // floor
+    #[cfg(feature = "std")]
     pub(crate) fn simd_floor<T>(x: T) -> T;
 
     // ceil
+    #[cfg(feature = "std")]
     pub(crate) fn simd_ceil<T>(x: T) -> T;
 
     pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;

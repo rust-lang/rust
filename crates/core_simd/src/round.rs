@@ -7,6 +7,7 @@ macro_rules! implement {
             Self: crate::LanesAtMost64,
         {
             /// Returns the largest integer less than or equal to each lane.
+            #[cfg(feature = "std")]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn floor(self) -> Self {
@@ -14,6 +15,7 @@ macro_rules! implement {
             }
 
             /// Returns the smallest integer greater than or equal to each lane.
+            #[cfg(feature = "std")]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn ceil(self) -> Self {
