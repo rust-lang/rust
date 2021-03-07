@@ -100,6 +100,14 @@ export class Config {
     get channel() { return this.get<UpdatesChannel>("updates.channel"); }
     get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
+    get httpProxy() {
+        const httpProxy = vscode
+            .workspace
+            .getConfiguration('http')
+            .get<null | string>("proxy")!;
+
+        return httpProxy || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
+    }
 
     get inlayHints() {
         return {

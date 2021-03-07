@@ -1,4 +1,6 @@
 import fetch from "node-fetch";
+var HttpsProxyAgent = require('https-proxy-agent');
+
 import * as vscode from "vscode";
 import * as stream from "stream";
 import * as crypto from "crypto";
@@ -17,6 +19,7 @@ const REPO = "rust-analyzer";
 export async function fetchRelease(
     releaseTag: string,
     githubToken: string | null | undefined,
+    httpProxy: string | null | undefined,
 ): Promise<GithubRelease> {
 
     const apiEndpointPath = `/repos/${OWNER}/${REPO}/releases/tags/${releaseTag}`;
@@ -30,7 +33,14 @@ export async function fetchRelease(
         headers.Authorization = "token " + githubToken;
     }
 
-    const response = await fetch(requestUrl, { headers: headers });
+    const response = await (() => {
+        if (httpProxy) {
+            log.debug(`Fetching release metadata via proxy: ${httpProxy}`);
+            return fetch(requestUrl, { headers: headers, agent: new HttpsProxyAgent(httpProxy) });
+        }
+
+        return fetch(requestUrl, { headers: headers });
+    })();
 
     if (!response.ok) {
         log.error("Error fetching artifact release info", {
@@ -73,6 +83,7 @@ interface DownloadOpts {
     dest: string;
     mode?: number;
     gunzip?: boolean;
+    httpProxy?: string;
 }
 
 export async function download(opts: DownloadOpts) {
@@ -91,7 +102,7 @@ export async function download(opts: DownloadOpts) {
         },
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
-            await downloadFile(opts.url, tempFile, opts.mode, !!opts.gunzip, (readBytes, totalBytes) => {
+            await downloadFile(opts.url, tempFile, opts.mode, !!opts.gunzip, opts.httpProxy, (readBytes, totalBytes) => {
                 const newPercentage = Math.round((readBytes / totalBytes) * 100);
                 if (newPercentage !== lastPercentage) {
                     progress.report({
@@ -113,9 +124,17 @@ async function downloadFile(
     destFilePath: fs.PathLike,
     mode: number | undefined,
     gunzip: boolean,
+    httpProxy: string | null | undefined,
     onProgress: (readBytes: number, totalBytes: number) => void
 ): Promise<void> {
-    const res = await fetch(url);
+    const res = await (() => {
+        if (httpProxy) {
+            log.debug(`Downloading ${url} via proxy: ${httpProxy}`);
+            return fetch(url, { agent: new HttpsProxyAgent(httpProxy) });
+        }
+
+        return fetch(url);
+    })();
 
     if (!res.ok) {
         log.error("Error", res.status, "while downloading file from", url);
