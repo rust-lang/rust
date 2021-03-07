@@ -1,4 +1,6 @@
 use rustc_infer::infer::canonical::Canonical;
+use rustc_infer::traits::ObligationCause;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
@@ -32,14 +34,33 @@ impl UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
     }
 
-    crate fn _report_error(
+    crate fn report_error(
         &self,
-        _mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
         _placeholder: ty::PlaceholderRegion,
         _error_element: RegionElement,
-        _span: Span,
+        span: Span,
     ) {
-        todo!();
+        // FIXME: improve this error message
+        match self.0 {
+            UniverseInfoInner::RelateTys { expected, found } => {
+                let body_id = mbcx.infcx.tcx.hir().local_def_id_to_hir_id(mbcx.mir_def_id());
+                let err = mbcx.infcx.report_mismatched_types(
+                    &ObligationCause::misc(span, body_id),
+                    expected,
+                    found,
+                    TypeError::RegionsPlaceholderMismatch,
+                );
+                err.buffer(&mut mbcx.errors_buffer);
+            }
+            UniverseInfoInner::TypeOp(_) | UniverseInfoInner::Other => {
+                mbcx.infcx
+                    .tcx
+                    .sess
+                    .struct_span_err(span, "higher-ranked subtype error")
+                    .buffer(&mut mbcx.errors_buffer);
+            }
+        }
     }
 }
 

@@ -223,12 +223,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         error_vid,
                     );
 
-                    // FIXME: improve this error message
-                    self.infcx
-                        .tcx
-                        .sess
-                        .struct_span_err(span, "higher-ranked subtype error")
-                        .buffer(&mut self.errors_buffer);
+                    let universe = placeholder.universe;
+                    let universe_info = self.regioncx.universe_info(universe);
+
+                    universe_info.report_error(self, placeholder, error_element, span);
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
