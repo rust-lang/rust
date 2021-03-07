@@ -39,10 +39,11 @@ use crate::ptr;
 /// let b: bool = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
 ///
-/// Moreover, uninitialized memory is special in that the compiler knows that
-/// it does not have a fixed value. This makes it undefined behavior to have
-/// uninitialized data in a variable even if that variable has an integer type,
-/// which otherwise can hold any *fixed* bit pattern:
+/// Moreover, uninitialized memory is special in that it does not have a fixed value ("fixed"
+/// meaning "it won't change without being written to"). Reading the same uninitialized byte
+/// multiple times can give different results. This makes it undefined behavior to have
+/// uninitialized data in a variable even if that variable has an integer type, which otherwise can
+/// hold any *fixed* bit pattern:
 ///
 /// ```rust,no_run
 /// # #![allow(invalid_value)]
