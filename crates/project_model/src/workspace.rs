@@ -453,6 +453,9 @@ fn cargo_to_crate_graph(
             let mut queue = VecDeque::new();
             queue.push_back(root_pkg);
             while let Some(pkg) = queue.pop_front() {
+                if rustc_pkg_crates.contains_key(&pkg) {
+                    continue;
+                }
                 for dep in &rustc_workspace[pkg].dependencies {
                     queue.push_back(dep.pkg);
                 }
@@ -481,7 +484,7 @@ fn cargo_to_crate_graph(
         }
         // Now add a dep edge from all targets of upstream to the lib
         // target of downstream.
-        for pkg in rustc_workspace.packages() {
+        for pkg in rustc_pkg_crates.keys().copied() {
             for dep in rustc_workspace[pkg].dependencies.iter() {
                 let name = CrateName::new(&dep.name).unwrap();
                 if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
@@ -519,6 +522,8 @@ fn cargo_to_crate_graph(
                 }
             }
         }
+    } else {
+        eprintln!("No cargo workspace");
     }
     crate_graph
 }
