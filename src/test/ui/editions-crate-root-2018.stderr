@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: could not find `nonexistant` in the list of imported crates
+  --> $DIR/editions-crate-root-2018.rs:4:26
+   |
+LL |     fn global_inner(_: ::nonexistant::Foo) {
+   |                          ^^^^^^^^^^^ could not find `nonexistant` in the list of imported crates
+
+error[E0433]: failed to resolve: maybe a missing crate `nonexistant`?
+  --> $DIR/editions-crate-root-2018.rs:7:30
+   |
+LL |     fn crate_inner(_: crate::nonexistant::Foo) {
+   |                              ^^^^^^^^^^^ maybe a missing crate `nonexistant`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.
