@@ -602,7 +602,7 @@ trait UnusedDelimLint {
         use rustc_ast::ExprKind::*;
         let (value, ctx, followed_by_block, left_pos, right_pos) = match e.kind {
             // Do not lint `unused_braces` in `if let` expressions.
-            If(ref cond, ref block, ..)
+            If(ref cond, ref block, _)
                 if !matches!(cond.kind, Let(_, _)) || Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX =>
             {
                 let left = e.span.lo() + rustc_span::BytePos(2);
@@ -816,8 +816,33 @@ impl UnusedParens {
 
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ExprKind::Let(ref pat, ..) | ExprKind::ForLoop(ref pat, ..) = e.kind {
-            self.check_unused_parens_pat(cx, pat, false, false);
+        match e.kind {
+            ExprKind::Let(ref pat, _) | ExprKind::ForLoop(ref pat, ..) => {
+                self.check_unused_parens_pat(cx, pat, false, false);
+            }
+            // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already
+            // handle a hard error for them during AST lowering in `lower_expr_mut`, but we still
+            // want to complain about things like `if let 42 = (42)`.
+            ExprKind::If(ref cond, ref block, ref else_)
+                if matches!(cond.peel_parens().kind, ExprKind::Let(..)) =>
+            {
+                self.check_unused_delims_expr(
+                    cx,
+                    cond.peel_parens(),
+                    UnusedDelimsCtx::LetScrutineeExpr,
+                    true,
+                    None,
+                    None,
+                );
+                for stmt in &block.stmts {
+                    <Self as UnusedDelimLint>::check_stmt(self, cx, stmt);
+                }
+                if let Some(e) = else_ {
+                    <Self as UnusedDelimLint>::check_expr(self, cx, e);
+                }
+                return;
+            }
+            _ => {}
         }
 
         <Self as UnusedDelimLint>::check_expr(self, cx, e)
