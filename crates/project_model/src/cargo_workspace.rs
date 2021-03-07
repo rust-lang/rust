@@ -112,7 +112,7 @@ pub struct PackageData {
 
 #[derive(Deserialize, Default, Debug, Clone, Eq, PartialEq)]
 pub struct RustAnalyzerPackageMetaData {
-    pub rustc_private: Option<bool>,
+    pub rustc_private: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
