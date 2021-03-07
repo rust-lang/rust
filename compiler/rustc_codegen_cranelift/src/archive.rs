@@ -12,10 +12,7 @@ use object::{Object, ObjectSymbol, SymbolKind};
 
 #[derive(Debug)]
 enum ArchiveEntry {
-    FromArchive {
-        archive_index: usize,
-        entry_index: usize,
-    },
+    FromArchive { archive_index: usize, entry_index: usize },
     File(PathBuf),
 }
 
@@ -30,7 +27,6 @@ pub(crate) struct ArArchiveBuilder<'a> {
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
     entries: Vec<(String, ArchiveEntry)>,
-    update_symbols: bool,
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
@@ -46,10 +42,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 let entry = entry.unwrap();
                 entries.push((
                     String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
-                    ArchiveEntry::FromArchive {
-                        archive_index: 0,
-                        entry_index: i,
-                    },
+                    ArchiveEntry::FromArchive { archive_index: 0, entry_index: i },
                 ));
                 i += 1;
             }
@@ -69,7 +62,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
             src_archives,
             entries,
-            update_symbols: false,
         }
     }
 
@@ -95,14 +87,9 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 
     fn add_native_library(&mut self, name: rustc_span::symbol::Symbol) {
         let location = find_library(name, &self.lib_search_paths, self.sess);
-        self.add_archive(location.clone(), |_| false)
-            .unwrap_or_else(|e| {
-                panic!(
-                    "failed to add native library {}: {}",
-                    location.to_string_lossy(),
-                    e
-                );
-            });
+        self.add_archive(location.clone(), |_| false).unwrap_or_else(|e| {
+            panic!("failed to add native library {}: {}", location.to_string_lossy(), e);
+        });
     }
 
     fn add_rlib(
@@ -136,9 +123,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         })
     }
 
-    fn update_symbols(&mut self) {
-        self.update_symbols = true;
-    }
+    fn update_symbols(&mut self) {}
 
     fn build(mut self) {
         enum BuilderKind {
@@ -156,10 +141,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             // FIXME only read the symbol table of the object files to avoid having to keep all
             // object files in memory at once, or read them twice.
             let data = match entry {
-                ArchiveEntry::FromArchive {
-                    archive_index,
-                    entry_index,
-                } => {
+                ArchiveEntry::FromArchive { archive_index, entry_index } => {
                     // FIXME read symbols from symtab
                     use std::io::Read;
                     let (ref _src_archive_path, ref mut src_archive) =
@@ -225,10 +207,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                             err
                         ));
                     }),
-                    entries
-                        .iter()
-                        .map(|(name, _)| name.as_bytes().to_vec())
-                        .collect(),
+                    entries.iter().map(|(name, _)| name.as_bytes().to_vec()).collect(),
                     ar::GnuSymbolTableFormat::Size32,
                     symbol_table,
                 )
@@ -271,8 +250,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 .expect("Couldn't run ranlib");
 
             if !status.success() {
-                self.sess
-                    .fatal(&format!("Ranlib exited with code {:?}", status.code()));
+                self.sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
             }
         }
     }
@@ -292,13 +270,8 @@ impl<'a> ArArchiveBuilder<'a> {
             let file_name = String::from_utf8(entry.header().identifier().to_vec())
                 .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
             if !skip(&file_name) {
-                self.entries.push((
-                    file_name,
-                    ArchiveEntry::FromArchive {
-                        archive_index,
-                        entry_index: i,
-                    },
-                ));
+                self.entries
+                    .push((file_name, ArchiveEntry::FromArchive { archive_index, entry_index: i }));
             }
             i += 1;
         }

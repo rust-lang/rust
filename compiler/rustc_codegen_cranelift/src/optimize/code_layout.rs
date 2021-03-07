@@ -15,10 +15,7 @@ pub(super) fn optimize_function(ctx: &mut Context, cold_blocks: &EntitySet<Block
     // bytecodealliance/cranelift#1339 is implemented.
 
     let mut block_insts = FxHashMap::default();
-    for block in cold_blocks
-        .keys()
-        .filter(|&block| cold_blocks.contains(block))
-    {
+    for block in cold_blocks.keys().filter(|&block| cold_blocks.contains(block)) {
         let insts = ctx.func.layout.block_insts(block).collect::<Vec<_>>();
         for &inst in &insts {
             ctx.func.layout.remove_inst(inst);
@@ -28,10 +25,7 @@ pub(super) fn optimize_function(ctx: &mut Context, cold_blocks: &EntitySet<Block
     }
 
     // And then append them at the back again.
-    for block in cold_blocks
-        .keys()
-        .filter(|&block| cold_blocks.contains(block))
-    {
+    for block in cold_blocks.keys().filter(|&block| cold_blocks.contains(block)) {
         ctx.func.layout.append_block(block);
         for inst in block_insts.remove(&block).unwrap() {
             ctx.func.layout.append_inst(inst, block);

@@ -3,7 +3,7 @@
 use crate::prelude::*;
 
 pub(crate) fn clif_intcast(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     val: Value,
     to: Type,
     signed: bool,
@@ -40,18 +40,14 @@ pub(crate) fn clif_intcast(
         // reduce
         (types::I128, _) => {
             let (lsb, _msb) = fx.bcx.ins().isplit(val);
-            if to == types::I64 {
-                lsb
-            } else {
-                fx.bcx.ins().ireduce(to, lsb)
-            }
+            if to == types::I64 { lsb } else { fx.bcx.ins().ireduce(to, lsb) }
         }
         (_, _) => fx.bcx.ins().ireduce(to, val),
     }
 }
 
 pub(crate) fn clif_int_or_float_cast(
-    fx: &mut FunctionCx<'_, '_, impl Module>,
+    fx: &mut FunctionCx<'_, '_, '_>,
     from: Value,
     from_signed: bool,
     to_ty: Type,
@@ -87,11 +83,7 @@ pub(crate) fn clif_int_or_float_cast(
                 },
             );
 
-            let from_rust_ty = if from_signed {
-                fx.tcx.types.i128
-            } else {
-                fx.tcx.types.u128
-            };
+            let from_rust_ty = if from_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
 
             let to_rust_ty = match to_ty {
                 types::F32 => fx.tcx.types.f32,
@@ -100,11 +92,7 @@ pub(crate) fn clif_int_or_float_cast(
             };
 
             return fx
-                .easy_call(
-                    &name,
-                    &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
-                    to_rust_ty,
-                )
+                .easy_call(&name, &[CValue::by_val(from, fx.layout_of(from_rust_ty))], to_rust_ty)
                 .load_scalar(fx);
         }
 
@@ -138,18 +126,10 @@ pub(crate) fn clif_int_or_float_cast(
                 _ => unreachable!(),
             };
 
-            let to_rust_ty = if to_signed {
-                fx.tcx.types.i128
-            } else {
-                fx.tcx.types.u128
-            };
+            let to_rust_ty = if to_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
 
             return fx
-                .easy_call(
-                    &name,
-                    &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
-                    to_rust_ty,
-                )
+                .easy_call(&name, &[CValue::by_val(from, fx.layout_of(from_rust_ty))], to_rust_ty)
                 .load_scalar(fx);
         }
 
