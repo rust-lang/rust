@@ -576,7 +576,8 @@ impl CheckAttrVisitor<'tcx> {
                             sym::masked,
                             sym::no_default_passes, // deprecated
                             sym::no_inline,
-                            sym::passes, // deprecated
+                            sym::passes,  // deprecated
+                            sym::plugins, // removed, but rustdoc warns about it itself
                             sym::primitive,
                             sym::spotlight,
                             sym::test,

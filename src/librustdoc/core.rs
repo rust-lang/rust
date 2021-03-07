@@ -22,7 +22,7 @@ use rustc_session::DiagnosticOutput;
 use rustc_session::Session;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -389,7 +389,7 @@ crate fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
     mut default_passes: passes::DefaultPassOption,
-    mut manual_passes: Vec<String>,
+    manual_passes: Vec<String>,
     render_options: RenderOptions,
     output_format: OutputFormat,
 ) -> (clean::Crate, RenderOptions, Cache) {
@@ -490,20 +490,43 @@ crate fn run_global_ctxt(
         }
     }
 
-    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler) {
-        let mut msg = diag
-            .struct_warn(&format!("the `#![doc({})]` attribute is considered deprecated", name));
-        msg.warn(
+    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
+        let mut msg =
+            diag.struct_span_warn(sp, &format!("the `#![doc({})]` attribute is deprecated", name));
+        msg.note(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
              for more information",
         );
 
         if name == "no_default_passes" {
             msg.help("you may want to use `#![doc(document_private_items)]`");
+        } else if name.starts_with("plugins") {
+            msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
         }
 
         msg.emit();
     }
+
+    let parse_pass = |name: &str, sp: Option<Span>| {
+        if let Some(pass) = passes::find_pass(name) {
+            Some(ConditionalPass::always(pass))
+        } else {
+            let msg = &format!("ignoring unknown pass `{}`", name);
+            let mut warning = if let Some(sp) = sp {
+                tcx.sess.struct_span_warn(sp, msg)
+            } else {
+                tcx.sess.struct_warn(msg)
+            };
+            if name == "collapse-docs" {
+                warning.note("the `collapse-docs` pass was removed in #80261 <https://github.com/rust-lang/rust/pull/80261>");
+            }
+            warning.emit();
+            None
+        }
+    };
+
+    let mut manual_passes: Vec<_> =
+        manual_passes.into_iter().flat_map(|name| parse_pass(&name, None)).collect();
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
@@ -513,29 +536,25 @@ crate fn run_global_ctxt(
         let name = attr.name_or_empty();
         if attr.is_word() {
             if name == sym::no_default_passes {
-                report_deprecated_attr("no_default_passes", diag);
+                report_deprecated_attr("no_default_passes", diag, attr.span());
                 if default_passes == passes::DefaultPassOption::Default {
                     default_passes = passes::DefaultPassOption::None;
                 }
             }
         } else if let Some(value) = attr.value_str() {
-            let sink = match name {
+            match name {
                 sym::passes => {
-                    report_deprecated_attr("passes = \"...\"", diag);
-                    &mut manual_passes
+                    report_deprecated_attr("passes = \"...\"", diag, attr.span());
                 }
                 sym::plugins => {
-                    report_deprecated_attr("plugins = \"...\"", diag);
-                    eprintln!(
-                        "WARNING: `#![doc(plugins = \"...\")]` \
-                         no longer functions; see CVE-2018-1000622"
-                    );
+                    report_deprecated_attr("plugins = \"...\"", diag, attr.span());
                     continue;
                 }
                 _ => continue,
             };
             for name in value.as_str().split_whitespace() {
-                sink.push(name.to_string());
+                let span = attr.name_value_literal_span().unwrap_or(attr.span());
+                manual_passes.extend(parse_pass(name, Some(span)));
             }
         }
 
@@ -544,17 +563,7 @@ crate fn run_global_ctxt(
         }
     }
 
-    let passes = passes::defaults(default_passes).iter().copied().chain(
-        manual_passes.into_iter().flat_map(|name| {
-            if let Some(pass) = passes::find_pass(&name) {
-                Some(ConditionalPass::always(pass))
-            } else {
-                error!("unknown pass {}, skipping", name);
-                None
-            }
-        }),
-    );
-
+    let passes = passes::defaults(default_passes).iter().copied().chain(manual_passes);
     info!("Executing passes");
 
     for p in passes {
