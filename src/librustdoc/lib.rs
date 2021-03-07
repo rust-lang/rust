@@ -71,6 +71,24 @@ use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGro
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
+/// A macro to create a FxHashMap.
+///
+/// Example:
+///
+/// ```
+/// let letters = map!{"a" => "b", "c" => "d"};
+/// ```
+///
+/// Trailing commas are allowed.
+/// Commas between elements are required (even if the expression is a block).
+macro_rules! map {
+    ($( $key: expr => $val: expr ),* $(,)*) => {{
+        let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+        $( map.insert($key, $val); )*
+        map
+    }}
+}
+
 #[macro_use]
 mod externalfiles;
 
@@ -505,6 +523,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "generate-redirect-map",
                 "Generate JSON file at the top level instead of generating HTML redirection files",
             )
+        }),
+        unstable("print", |o| {
+            o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
         }),
     ]
 }
