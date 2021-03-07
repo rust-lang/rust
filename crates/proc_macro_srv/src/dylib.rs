@@ -138,7 +138,7 @@ impl Expander {
                         parsed_body,
                         false,
                     );
-                    return res.map(|it| it.subtree);
+                    return res.map(|it| it.into_subtree());
                 }
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
@@ -147,7 +147,7 @@ impl Expander {
                         parsed_body,
                         false,
                     );
-                    return res.map(|it| it.subtree);
+                    return res.map(|it| it.into_subtree());
                 }
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
@@ -157,7 +157,7 @@ impl Expander {
                         parsed_body,
                         false,
                     );
-                    return res.map(|it| it.subtree);
+                    return res.map(|it| it.into_subtree());
                 }
                 _ => continue,
             }
