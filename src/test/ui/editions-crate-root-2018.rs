@@ -5,7 +5,7 @@ mod inner {
         //~^ ERROR failed to resolve: could not find `nonexistant` in the list of imported crates
     }
     fn crate_inner(_: crate::nonexistant::Foo) {
-        //~^ ERROR failed to resolve: maybe a missing crate `nonexistant`?
+        //~^ ERROR failed to resolve: could not find `nonexistant` in the crate root
     }
 
     fn bare_global(_: ::nonexistant) {

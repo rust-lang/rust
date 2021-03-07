@@ -2433,8 +2433,10 @@ impl<'a> Resolver<'a> {
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
-                        } else {
+                        } else if self.session.edition() == Edition::Edition2015 {
                             (format!("maybe a missing crate `{}`?", ident), None)
+                        } else {
+                            (format!("could not find `{}` in the crate root", ident), None)
                         }
                     } else if i == 0 {
                         if ident

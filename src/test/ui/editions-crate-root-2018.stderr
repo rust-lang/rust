@@ -4,11 +4,11 @@ error[E0433]: failed to resolve: could not find `nonexistant` in the list of imp
 LL |     fn global_inner(_: ::nonexistant::Foo) {
    |                          ^^^^^^^^^^^ could not find `nonexistant` in the list of imported crates
 
-error[E0433]: failed to resolve: maybe a missing crate `nonexistant`?
+error[E0433]: failed to resolve: could not find `nonexistant` in the crate root
   --> $DIR/editions-crate-root-2018.rs:7:30
    |
 LL |     fn crate_inner(_: crate::nonexistant::Foo) {
-   |                              ^^^^^^^^^^^ maybe a missing crate `nonexistant`?
+   |                              ^^^^^^^^^^^ could not find `nonexistant` in the crate root
 
 error[E0412]: cannot find crate `nonexistant` in the list of imported crates
   --> $DIR/editions-crate-root-2018.rs:11:25
