@@ -32,8 +32,9 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     trait_def_id, impl_def_id
                 );
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
+                let trait_ty = trait_ref.self_ty();
                 let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    match trait_ref.self_ty().kind() {
+                    match trait_ty.kind() {
                         ty::Param(_) => {}
                         _ => return false,
                     }
@@ -48,7 +49,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     // Require the type the impl is implemented on to match
                     // our type, and ignore the impl if there was a mismatch.
                     let cause = traits::ObligationCause::dummy();
-                    let eq_result = infcx.at(&cause, param_env).eq(trait_ref.self_ty(), ty);
+                    let eq_result = infcx.at(&cause, param_env).eq(trait_ty, ty);
                     if let Ok(InferOk { value: (), obligations }) = eq_result {
                         // FIXME(eddyb) ignoring `obligations` might cause false positives.
                         drop(obligations);
@@ -128,7 +129,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .clean(self.cx),
                         negative_polarity: false,
                         synthetic: false,
-                        blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
+                        blanket_impl: Some(trait_ty.clean(self.cx)),
                     }),
                 });
             });
