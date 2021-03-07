@@ -418,12 +418,14 @@ impl Drop for Socket {
 }
 
 impl AsInner<c::SOCKET> for Socket {
+    #[inline]
     fn as_inner(&self) -> &c::SOCKET {
         &self.0
     }
 }
 
 impl FromInner<c::SOCKET> for Socket {
+    #[inline]
     fn from_inner(sock: c::SOCKET) -> Socket {
         Socket(sock)
     }

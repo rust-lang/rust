@@ -615,6 +615,7 @@ impl SystemTimeError {
     /// }
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
+    #[inline]
     pub fn duration(&self) -> Duration {
         self.0
     }
@@ -636,6 +637,7 @@ impl fmt::Display for SystemTimeError {
 }
 
 impl FromInner<time::SystemTime> for SystemTime {
+    #[inline]
     fn from_inner(time: time::SystemTime) -> SystemTime {
         SystemTime(time)
     }

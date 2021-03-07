@@ -237,6 +237,7 @@ pub mod net {
     }
 
     impl FromInner<Socket> for TcpStream {
+        #[inline]
         fn from_inner(socket: Socket) -> TcpStream {
             TcpStream { inner: socket }
         }

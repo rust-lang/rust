@@ -73,11 +73,13 @@ impl FileDesc {
         unsafe { FileDesc { fd } }
     }
 
+    #[inline]
     pub fn raw(&self) -> c_int {
         self.fd
     }
 
     /// Extracts the actual file descriptor without closing it.
+    #[inline]
     pub fn into_raw(self) -> c_int {
         let fd = self.fd;
         mem::forget(self);
@@ -285,6 +287,7 @@ impl<'a> Read for &'a FileDesc {
 }
 
 impl AsInner<c_int> for FileDesc {
+    #[inline]
     fn as_inner(&self) -> &c_int {
         &self.fd
     }

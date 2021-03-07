@@ -43,18 +43,21 @@ impl From<OsString> for EnvKey {
 }
 
 impl From<EnvKey> for OsString {
+    #[inline]
     fn from(k: EnvKey) -> Self {
         k.0
     }
 }
 
 impl Borrow<OsStr> for EnvKey {
+    #[inline]
     fn borrow(&self) -> &OsStr {
         &self.0
     }
 }
 
 impl AsRef<OsStr> for EnvKey {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         &self.0
     }
@@ -322,12 +325,14 @@ impl Stdio {
 }
 
 impl From<AnonPipe> for Stdio {
+    #[inline]
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Handle(pipe.into_handle())
     }
 }
 
 impl From<File> for Stdio {
+    #[inline]
     fn from(file: File) -> Stdio {
         Stdio::Handle(file.into_handle())
     }

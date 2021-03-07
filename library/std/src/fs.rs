@@ -584,16 +584,19 @@ impl File {
 }
 
 impl AsInner<fs_imp::File> for File {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::File {
         &self.inner
     }
 }
 impl FromInner<fs_imp::File> for File {
+    #[inline]
     fn from_inner(f: fs_imp::File) -> File {
         File { inner: f }
     }
 }
 impl IntoInner<fs_imp::File> for File {
+    #[inline]
     fn into_inner(self) -> fs_imp::File {
         self.inner
     }
@@ -925,12 +928,14 @@ impl OpenOptions {
 }
 
 impl AsInner<fs_imp::OpenOptions> for OpenOptions {
+    #[inline]
     fn as_inner(&self) -> &fs_imp::OpenOptions {
         &self.0
     }
 }
 
 impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
+    #[inline]
     fn as_inner_mut(&mut self) -> &mut fs_imp::OpenOptions {
         &mut self.0
     }

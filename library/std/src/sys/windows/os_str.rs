@@ -14,18 +14,21 @@ pub struct Buf {
 }
 
 impl IntoInner<Wtf8Buf> for Buf {
+    #[inline]
     fn into_inner(self) -> Wtf8Buf {
         self.inner
     }
 }
 
 impl FromInner<Wtf8Buf> for Buf {
+    #[inline]
     fn from_inner(inner: Wtf8Buf) -> Self {
         Buf { inner }
     }
 }
 
 impl AsInner<Wtf8> for Buf {
+    #[inline]
     fn as_inner(&self) -> &Wtf8 {
         &self.inner
     }
@@ -72,10 +75,12 @@ impl Buf {
         self.inner.capacity()
     }
 
+    #[inline]
     pub fn from_string(s: String) -> Buf {
         Buf { inner: Wtf8Buf::from_string(s) }
     }
 
+    #[inline]
     pub fn as_slice(&self) -> &Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_slice() returns &Wtf8.
@@ -83,6 +88,7 @@ impl Buf {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 
+    #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Slice {
         // SAFETY: Slice is just a wrapper for Wtf8,
         // and self.inner.as_mut_slice() returns &mut Wtf8.
@@ -145,10 +151,12 @@ impl Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 
+    #[inline]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.as_str()
     }
 
+    #[inline]
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
         self.inner.to_string_lossy()
     }
@@ -159,6 +167,7 @@ impl Slice {
         Buf { inner: buf }
     }
 
+    #[inline]
     pub fn clone_into(&self, buf: &mut Buf) {
         self.inner.clone_into(&mut buf.inner)
     }

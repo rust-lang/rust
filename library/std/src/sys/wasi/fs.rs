@@ -95,6 +95,7 @@ impl FileAttr {
         Ok(SystemTime::from_wasi_timestamp(self.meta.ctim))
     }
 
+    #[inline]
     pub fn as_wasi(&self) -> &wasi::Filestat {
         &self.meta
     }

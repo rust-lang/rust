@@ -106,10 +106,12 @@ impl TcpStream {
         unsupported()
     }
 
+    #[inline]
     pub fn fd(&self) -> &WasiFd {
         &self.fd
     }
 
+    #[inline]
     pub fn into_fd(self) -> WasiFd {
         self.fd
     }
@@ -322,10 +324,12 @@ impl UdpSocket {
         unsupported()
     }
 
+    #[inline]
     pub fn fd(&self) -> &WasiFd {
         &self.fd
     }
 
+    #[inline]
     pub fn into_fd(self) -> WasiFd {
         self.fd
     }

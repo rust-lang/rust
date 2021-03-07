@@ -1619,6 +1619,7 @@ impl From<RecvError> for RecvTimeoutError {
     /// This conversion always returns `RecvTimeoutError::Disconnected`.
     ///
     /// No data is allocated on the heap.
+    #[inline]
     fn from(err: RecvError) -> RecvTimeoutError {
         match err {
             RecvError => RecvTimeoutError::Disconnected,

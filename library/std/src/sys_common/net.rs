@@ -387,10 +387,12 @@ impl TcpListener {
         Ok(TcpListener { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
 
+    #[inline]
     pub fn into_socket(self) -> Socket {
         self.inner
     }
@@ -439,6 +441,7 @@ impl TcpListener {
 }
 
 impl FromInner<Socket> for TcpListener {
+    #[inline]
     fn from_inner(socket: Socket) -> TcpListener {
         TcpListener { inner: socket }
     }
@@ -477,10 +480,12 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
+    #[inline]
     pub fn socket(&self) -> &Socket {
         &self.inner
     }
 
+    #[inline]
     pub fn into_socket(self) -> Socket {
         self.inner
     }

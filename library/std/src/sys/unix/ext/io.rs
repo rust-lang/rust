@@ -142,6 +142,7 @@ impl IntoRawFd for fs::File {
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdin {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDIN_FILENO
     }
@@ -149,6 +150,7 @@ impl AsRawFd for io::Stdin {
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdout {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDOUT_FILENO
     }
@@ -156,6 +158,7 @@ impl AsRawFd for io::Stdout {
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stderr {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDERR_FILENO
     }
@@ -163,6 +166,7 @@ impl AsRawFd for io::Stderr {
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StdinLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDIN_FILENO
     }
@@ -170,6 +174,7 @@ impl<'a> AsRawFd for io::StdinLock<'a> {
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StdoutLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDOUT_FILENO
     }
@@ -177,6 +182,7 @@ impl<'a> AsRawFd for io::StdoutLock<'a> {
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StderrLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDERR_FILENO
     }

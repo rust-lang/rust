@@ -626,6 +626,7 @@ impl Wtf8 {
         }
     }
 
+    #[inline]
     pub fn clone_into(&self, buf: &mut Wtf8Buf) {
         self.bytes.clone_into(&mut buf.bytes)
     }

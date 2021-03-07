@@ -416,6 +416,7 @@ impl FileType {
 }
 
 impl FromInner<u32> for FilePermissions {
+    #[inline]
     fn from_inner(mode: u32) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
     }

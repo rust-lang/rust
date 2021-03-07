@@ -297,6 +297,7 @@ impl FromVecWithNulError {
     ///
     /// assert_eq!(&bytes[..], value.unwrap_err().as_bytes());
     /// ```
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
@@ -665,6 +666,7 @@ impl CString {
     ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
+    #[inline]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
         unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
     }
@@ -1012,6 +1014,7 @@ impl NulError {
     /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn into_vec(self) -> Vec<u8> {
         self.1
     }
@@ -1086,12 +1089,14 @@ impl IntoStringError {
     /// Consumes this error, returning original [`CString`] which generated the
     /// error.
     #[stable(feature = "cstring_into", since = "1.7.0")]
+    #[inline]
     pub fn into_cstring(self) -> CString {
         self.inner
     }
 
     /// Access the underlying UTF-8 error that was the cause of this error.
     #[stable(feature = "cstring_into", since = "1.7.0")]
+    #[inline]
     pub fn utf8_error(&self) -> Utf8Error {
         self.error
     }

@@ -514,12 +514,14 @@ impl SocketAddrV6 {
 }
 
 impl FromInner<c::sockaddr_in> for SocketAddrV4 {
+    #[inline]
     fn from_inner(addr: c::sockaddr_in) -> SocketAddrV4 {
         SocketAddrV4 { inner: addr }
     }
 }
 
 impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
+    #[inline]
     fn from_inner(addr: c::sockaddr_in6) -> SocketAddrV6 {
         SocketAddrV6 { inner: addr }
     }
@@ -528,6 +530,7 @@ impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV4> for SocketAddr {
     /// Converts a [`SocketAddrV4`] into a [`SocketAddr::V4`].
+    #[inline]
     fn from(sock4: SocketAddrV4) -> SocketAddr {
         SocketAddr::V4(sock4)
     }
@@ -536,6 +539,7 @@ impl From<SocketAddrV4> for SocketAddr {
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
 impl From<SocketAddrV6> for SocketAddr {
     /// Converts a [`SocketAddrV6`] into a [`SocketAddr::V6`].
+    #[inline]
     fn from(sock6: SocketAddrV6) -> SocketAddr {
         SocketAddr::V6(sock6)
     }

@@ -369,6 +369,7 @@ impl From<String> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for OsString {
+    #[inline]
     fn from(s: &T) -> OsString {
         s.as_ref().to_os_string()
     }
@@ -774,6 +775,7 @@ impl OsStr {
     /// assert_eq!("grüße, jürgen ❤", s.to_ascii_lowercase());
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[inline]
     pub fn to_ascii_lowercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_lowercase())
     }
@@ -796,6 +798,7 @@ impl OsStr {
     /// assert_eq!("GRüßE, JüRGEN ❤", s.to_ascii_uppercase());
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
+    #[inline]
     pub fn to_ascii_uppercase(&self) -> OsString {
         OsString::from_inner(self.inner.to_ascii_uppercase())
     }

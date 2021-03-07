@@ -659,6 +659,7 @@ impl String {
     /// assert_eq!(rebuilt, "hello");
     /// ```
     #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    #[inline]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
     }
@@ -1615,6 +1616,7 @@ impl FromUtf8Error {
     /// assert_eq!(&[0, 159], value.unwrap_err().as_bytes());
     /// ```
     #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
+    #[inline]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
@@ -1638,6 +1640,7 @@ impl FromUtf8Error {
     /// assert_eq!(vec![0, 159], value.unwrap_err().into_bytes());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn into_bytes(self) -> Vec<u8> {
         self.bytes
     }
@@ -2318,6 +2321,7 @@ impl From<Box<str>> for String {
     ///
     /// assert_eq!("hello world", s3)
     /// ```
+    #[inline]
     fn from(s: Box<str>) -> String {
         s.into_string()
     }
@@ -2489,6 +2493,7 @@ impl<'a> Drain<'a> {
     /// assert_eq!(drain.as_str(), "bc");
     /// ```
     #[unstable(feature = "string_drain_as_str", issue = "76905")] // Note: uncomment AsRef impls below when stabilizing.
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.iter.as_str()
     }

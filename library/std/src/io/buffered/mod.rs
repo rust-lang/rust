@@ -88,6 +88,7 @@ impl<W> IntoInnerError<W> {
     /// };
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn error(&self) -> &Error {
         &self.1
     }
