@@ -583,7 +583,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                                    _ => false,
+                                    FnRetTy::Ty(_) => false,
                                 };
 
                                 if returns_nothing && !is_async && !block.stmts.is_empty() {

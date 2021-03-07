@@ -957,6 +957,16 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
     }
 }
 
+/// If the pattern is an `or` pattern, call the function once for each sub pattern. Otherwise, call
+/// the function once on the given pattern.
+pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>, mut f: F) {
+    if let PatKind::Or(pats) = pat.kind {
+        pats.iter().cloned().for_each(f)
+    } else {
+        f(pat)
+    }
+}
+
 /// Checks for the `#[automatically_derived]` attribute all `#[derive]`d
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
