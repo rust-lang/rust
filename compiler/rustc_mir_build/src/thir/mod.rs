@@ -29,6 +29,7 @@ mod arena;
 pub use arena::Arena;
 
 mod util;
+pub mod visit;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LintLevel {
