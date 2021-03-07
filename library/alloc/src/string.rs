@@ -2243,39 +2243,37 @@ impl ToString for u8 {
     }
 }
 
-// 2 digit decimal look up table
-static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
-      2021222324252627282930313233343536373839\
-      4041424344454647484950515253545556575859\
-      6061626364656667686970717273747576777879\
-      8081828384858687888990919293949596979899";
-
 #[stable(feature = "i8_to_string_specialization", since = "1.999.0")]
 impl ToString for i8 {
     #[inline]
     fn to_string(&self) -> String {
-        let mut n = *self;
-        let mut vec: Vec<u8> = if n < 0 {
-            // convert the negative num to positive by summing 1 to it's 2 complement
-            // ( -128u8.abs() would panic )
-            n = (!n).wrapping_add(1);
-            let mut v = Vec::with_capacity(4);
-            v.push(b'-');
-            v
+        let mut vec = vec![0; 4];
+        let n = *self;
+        let mut free = 0;
+        let mut n: u8 = if n.is_negative() {
+            vec[free] = b'-';
+            free += 1;
+            i8::unsigned_abs(n)
         } else {
-            Vec::with_capacity(3)
+            n as u8
         };
-        let mut n = n as u8;
         if n >= 10 {
             if n >= 100 {
                 n -= 100;
-                vec.push(b'1');
+                vec[free] = b'1';
+                free += 1;
             }
-            let nn = n * 2;
-            vec.extend_from_slice(&DEC_DIGITS_LUT[nn as usize..=nn as usize + 1]);
-        } else {
-            vec.push(b'0' + (n as u8));
+            debug_assert!(n < 100);
+            vec[free] = b'0' + n / 10;
+            free += 1;
+            n %= 10;
         }
+        debug_assert!(n < 10);
+        vec[free] = b'0' + n;
+        free += 1;
+        vec.truncate(free);
+
+        // SAFETY: Vec only contains ascii so valid utf8
         unsafe { String::from_utf8_unchecked(vec) }
     }
 }
