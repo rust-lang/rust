@@ -478,16 +478,16 @@ fn handle_rustc_crates(
     // The root package of the rustc-dev component is rustc_driver, so we match that
     let root_pkg =
         rustc_workspace.packages().find(|package| rustc_workspace[*package].name == "rustc_driver");
-    // The rustc workspace might be incomplete (such as if rustc-dev is not installed for the current toolchain)
-    // and `rustcSource` is set to discover.
+    // The rustc workspace might be incomplete (such as if rustc-dev is not
+    // installed for the current toolchain) and `rustcSource` is set to discover.
     if let Some(root_pkg) = root_pkg {
         // Iterate through every crate in the dependency subtree of rustc_driver using BFS
         let mut queue = VecDeque::new();
         queue.push_back(root_pkg);
         while let Some(pkg) = queue.pop_front() {
             // Don't duplicate packages if they are dependended on a diamond pattern
-            // N.B. if this line is ommitted, we try and analyse either 48_000 or 480_000 crates
-            // neither of which makes
+            // N.B. if this line is ommitted, we try to analyse over 4_800_000 crates
+            // which is not ideal
             if rustc_pkg_crates.contains_key(&pkg) {
                 continue;
             }
