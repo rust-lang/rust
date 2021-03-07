@@ -1053,6 +1053,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+/// Truncate the capture so that the place being borrowed is in accordance with RFC 1240,
+/// which states that it's unsafe to take a reference into a struct marked `repr(packed)`.
+fn restrict_repr_packed_field_ref_capture<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    place: &Place<'tcx>,
+) -> Place<'tcx> {
+    let pos = place.projections.iter().enumerate().position(|(i, p)| {
+        let ty = place.ty_before_projection(i);
+
+        // Return true for fields of packed structs, unless those fields have alignment 1.
+        match p.kind {
+            ProjectionKind::Field(..) => match ty.kind() {
+                ty::Adt(def, _) if def.repr.packed() => {
+                    match tcx.layout_raw(param_env.and(p.ty)) {
+                        Ok(layout) if layout.align.abi.bytes() == 1 => {
+                            // if the alignment is 1, the type can't be further
+                            // disaligned.
+                            debug!(
+                                "restrict_repr_packed_field_ref_capture: ({:?}) - align = 1",
+                                place
+                            );
+                            false
+                        }
+                        _ => {
+                            debug!("restrict_repr_packed_field_ref_capture: ({:?}) - true", place);
+                            true
+                        }
+                    }
+                }
+
+                _ => false,
+            },
+            _ => false,
+        }
+    });
+
+    let mut place = place.clone();
+
+    if let Some(pos) = pos {
+        place.projections.truncate(pos);
+    }
+
+    place
+}
+
 struct InferBorrowKind<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
 
@@ -1391,8 +1437,15 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
             place_with_id, diag_expr_id, bk
         );
 
+        let place = restrict_repr_packed_field_ref_capture(
+            self.fcx.tcx,
+            self.fcx.param_env,
+            &place_with_id.place,
+        );
+        let place_with_id = PlaceWithHirId { place, ..*place_with_id };
+
         if !self.capture_information.contains_key(&place_with_id.place) {
-            self.init_capture_info_for_place(place_with_id, diag_expr_id);
+            self.init_capture_info_for_place(&place_with_id, diag_expr_id);
         }
 
         match bk {
@@ -1409,11 +1462,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
         debug!("mutate(assignee_place={:?}, diag_expr_id={:?})", assignee_place, diag_expr_id);
 
-        if !self.capture_information.contains_key(&assignee_place.place) {
-            self.init_capture_info_for_place(assignee_place, diag_expr_id);
-        }
-
-        self.adjust_upvar_borrow_kind_for_mut(assignee_place, diag_expr_id);
+        self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
     }
 }
 
