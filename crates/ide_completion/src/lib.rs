@@ -156,7 +156,7 @@ pub fn resolve_completion_edits(
         .find(|mod_path| mod_path.to_string() == full_import_path)?;
 
     ImportEdit { import_path, import_scope, import_for_trait_assoc_item }
-        .to_text_edit(config.insert_use.merge)
+        .to_text_edit(config.insert_use)
         .map(|edit| vec![edit])
 }
 

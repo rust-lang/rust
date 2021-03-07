@@ -1087,7 +1087,11 @@ mod tests {
                     add_call_parenthesis: true,
                     add_call_argument_snippets: true,
                     snippet_cap: SnippetCap::new(true),
-                    insert_use: InsertUseConfig { merge: None, prefix_kind: PrefixKind::Plain },
+                    insert_use: InsertUseConfig {
+                        merge: None,
+                        prefix_kind: PrefixKind::Plain,
+                        group: true,
+                    },
                 },
                 ide_db::base_db::FilePosition { file_id, offset },
             )

@@ -99,8 +99,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", &import),
             range,
             |builder| {
-                let rewriter =
-                    insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use.merge);
+                let rewriter = insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use);
                 builder.rewrite(rewriter);
             },
         );

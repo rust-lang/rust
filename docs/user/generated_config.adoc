@@ -2,6 +2,8 @@
  The strategy to use when inserting new imports or merging imports.
 [[rust-analyzer.assist.importPrefix]]rust-analyzer.assist.importPrefix (default: `"plain"`)::
  The path structure for newly inserted paths to use.
+[[rust-analyzer.assist.importGroup]]rust-analyzer.assist.importGroup (default: `true`)::
+ Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
 [[rust-analyzer.callInfo.full]]rust-analyzer.callInfo.full (default: `true`)::
  Show function name and docs in parameter hints.
 [[rust-analyzer.cargo.autoreload]]rust-analyzer.cargo.autoreload (default: `true`)::

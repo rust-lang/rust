@@ -44,7 +44,7 @@ pub(crate) fn replace_qualified_name_with_use(
             let mut rewriter = SyntaxRewriter::default();
             shorten_paths(&mut rewriter, syntax.clone(), &path);
             if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
-                rewriter += insert_use(import_scope, path, ctx.config.insert_use.merge);
+                rewriter += insert_use(import_scope, path, ctx.config.insert_use);
                 builder.rewrite(rewriter);
             }
         },

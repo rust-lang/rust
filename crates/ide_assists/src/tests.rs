@@ -23,6 +23,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     insert_use: InsertUseConfig {
         merge: Some(MergeBehavior::Full),
         prefix_kind: hir::PrefixKind::Plain,
+        group: true,
     },
 };
 

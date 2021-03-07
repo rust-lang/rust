@@ -25,6 +25,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     insert_use: InsertUseConfig {
         merge: Some(MergeBehavior::Full),
         prefix_kind: PrefixKind::Plain,
+        group: true,
     },
 };
 
@@ -119,7 +120,7 @@ pub(crate) fn check_edit_with_config(
 
     let mut combined_edit = completion.text_edit().to_owned();
     if let Some(import_text_edit) =
-        completion.import_to_add().and_then(|edit| edit.to_text_edit(config.insert_use.merge))
+        completion.import_to_add().and_then(|edit| edit.to_text_edit(config.insert_use))
     {
         combined_edit.union(import_text_edit).expect(
             "Failed to apply completion resolve changes: change ranges overlap, but should not",
