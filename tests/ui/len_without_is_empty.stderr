@@ -1,54 +1,64 @@
-error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_without_is_empty.rs:6:1
+error: struct `PubOne` has a public `len` method, but no `is_empty` method
+  --> $DIR/len_without_is_empty.rs:7:5
    |
-LL | / impl PubOne {
-LL | |     pub fn len(&self) -> isize {
-LL | |         1
-LL | |     }
-LL | | }
-   | |_^
+LL |     pub fn len(&self) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::len-without-is-empty` implied by `-D warnings`
 
 error: trait `PubTraitsToo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:37:1
+  --> $DIR/len_without_is_empty.rs:55:1
    |
 LL | / pub trait PubTraitsToo {
 LL | |     fn len(&self) -> isize;
 LL | | }
    | |_^
 
-error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> $DIR/len_without_is_empty.rs:49:1
+error: struct `HasIsEmpty` has a public `len` method, but a private `is_empty` method
+  --> $DIR/len_without_is_empty.rs:68:5
    |
-LL | / impl HasIsEmpty {
-LL | |     pub fn len(&self) -> isize {
-LL | |         1
-LL | |     }
-...  |
-LL | |     }
-LL | | }
-   | |_^
+LL |     pub fn len(&self) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `is_empty` defined here
+  --> $DIR/len_without_is_empty.rs:72:5
+   |
+LL |     fn is_empty(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_without_is_empty.rs:61:1
+error: struct `HasWrongIsEmpty` has a public `len` method, but the `is_empty` method has an unexpected signature
+  --> $DIR/len_without_is_empty.rs:80:5
    |
-LL | / impl HasWrongIsEmpty {
-LL | |     pub fn len(&self) -> isize {
-LL | |         1
-LL | |     }
-...  |
-LL | |     }
-LL | | }
-   | |_^
+LL |     pub fn len(&self) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `is_empty` defined here
+  --> $DIR/len_without_is_empty.rs:84:5
+   |
+LL |     pub fn is_empty(&self, x: u32) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature: `(&self) -> bool`
+
+error: struct `MismatchedSelf` has a public `len` method, but the `is_empty` method has an unexpected signature
+  --> $DIR/len_without_is_empty.rs:92:5
+   |
+LL |     pub fn len(self) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: `is_empty` defined here
+  --> $DIR/len_without_is_empty.rs:96:5
+   |
+LL |     pub fn is_empty(&self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature: `(self) -> bool`
 
 error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
-  --> $DIR/len_without_is_empty.rs:141:1
+  --> $DIR/len_without_is_empty.rs:171:1
    |
 LL | / pub trait DependsOnFoo: Foo {
 LL | |     fn len(&mut self) -> usize;
 LL | | }
    | |_^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
