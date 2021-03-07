@@ -1,7 +1,6 @@
 use crate::build;
 use crate::build::scope::DropKind;
-use crate::thir::cx::build_thir;
-use crate::thir::{Arena, BindingMode, Expr, LintLevel, Pat, PatKind};
+use crate::thir::{build_thir, Arena, BindingMode, Expr, LintLevel, Pat, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
