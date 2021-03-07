@@ -1,3 +1,4 @@
+use crate::crate_disambiguator::CrateDisambiguator;
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -105,14 +106,100 @@ impl ::std::fmt::Debug for CrateNum {
     }
 }
 
+/// A `DefPathHash` is a fixed-size representation of a `DefPath` that is
+/// stable across crate and compilation session boundaries. It consists of two
+/// separate 64-bit hashes. The first uniquely identifies the crate this
+/// `DefPathHash` originates from (see [StableCrateId]), and the second
+/// uniquely identifies the corresponding `DefPath` within that crate. Together
+/// they form a unique identifier within an entire crate graph.
+///
+/// There is a very small chance of hash collisions, which would mean that two
+/// different `DefPath`s map to the same `DefPathHash`. Proceeding compilation
+/// with such a hash collision would very probably lead to an ICE, and in the
+/// worst case lead to a silent mis-compilation. The compiler therefore actively
+/// and exhaustively checks for such hash collisions and aborts compilation if
+/// it finds one.
+///
+/// `DefPathHash` uses 64-bit hashes for both the crate-id part and the
+/// crate-internal part, even though it is likely that there are many more
+/// `LocalDefId`s in a single crate than there are individual crates in a crate
+/// graph. Since we use the same number of bits in both cases, the collision
+/// probability for the crate-local part will be quite a bit higher (though
+/// still very small).
+///
+/// This imbalance is not by accident: A hash collision in the
+/// crate-local part of a `DefPathHash` will be detected and reported while
+/// compiling the crate in question. Such a collision does not depend on
+/// outside factors and can be easily fixed by the crate maintainer (e.g. by
+/// renaming the item in question or by bumping the crate version in a harmless
+/// way).
+///
+/// A collision between crate-id hashes on the other hand is harder to fix
+/// because it depends on the set of crates in the entire crate graph of a
+/// compilation session. Again, using the same crate with a different version
+/// number would fix the issue with a high probability -- but that might be
+/// easier said then done if the crates in questions are dependencies of
+/// third-party crates.
+///
+/// That being said, given a high quality hash function, the collision
+/// probabilities in question are very small. For example, for a big crate like
+/// `rustc_middle` (with ~50000 `LocalDefId`s as of the time of writing) there
+/// is a probability of roughly 1 in 14,750,000,000 of a crate-internal
+/// collision occurring. For a big crate graph with 1000 crates in it, there is
+/// a probability of 1 in 36,890,000,000,000 of a `StableCrateId` collision.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct DefPathHash(pub Fingerprint);
+
+impl DefPathHash {
+    /// Returns the [StableCrateId] identifying the crate this [DefPathHash]
+    /// originates from.
+    #[inline]
+    pub fn stable_crate_id(&self) -> StableCrateId {
+        StableCrateId(self.0.as_value().0)
+    }
+
+    /// Returns the crate-local part of the [DefPathHash].
+    #[inline]
+    pub fn local_hash(&self) -> u64 {
+        self.0.as_value().1
+    }
+
+    /// Builds a new [DefPathHash] with the given [StableCrateId] and
+    /// `local_hash`, where `local_hash` must be unique within its crate.
+    pub fn new(stable_crate_id: StableCrateId, local_hash: u64) -> DefPathHash {
+        DefPathHash(Fingerprint::new(stable_crate_id.0, local_hash))
+    }
+}
 
 impl Borrow<Fingerprint> for DefPathHash {
     #[inline]
     fn borrow(&self) -> &Fingerprint {
         &self.0
+    }
+}
+
+/// A [StableCrateId] is a 64 bit hash of `(crate-name, crate-disambiguator)`. It
+/// is to [CrateNum] what [DefPathHash] is to [DefId]. It is stable across
+/// compilation sessions.
+///
+/// Since the ID is a hash value there is a (very small) chance that two crates
+/// end up with the same [StableCrateId]. The compiler will check for such
+/// collisions when loading crates and abort compilation in order to avoid
+/// further trouble.
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Encodable, Decodable)]
+pub struct StableCrateId(u64);
+
+impl StableCrateId {
+    /// Computes the stable ID for a crate with the given name and
+    /// disambiguator.
+    pub fn new(crate_name: &str, crate_disambiguator: CrateDisambiguator) -> StableCrateId {
+        use std::hash::Hash;
+
+        let mut hasher = StableHasher::new();
+        crate_name.hash(&mut hasher);
+        crate_disambiguator.hash(&mut hasher);
+        StableCrateId(hasher.finish())
     }
 }
 

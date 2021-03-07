@@ -30,6 +30,9 @@ mod stable_hash_impls;
 mod target;
 pub mod weak_lang_items;
 
+#[cfg(test)]
+mod tests;
+
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};
