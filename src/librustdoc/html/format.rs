@@ -105,6 +105,10 @@ impl Buffer {
     crate fn is_for_html(&self) -> bool {
         self.for_html
     }
+
+    crate fn reserve(&mut self, additional: usize) {
+        self.buffer.reserve(additional)
+    }
 }
 
 /// Wrapper struct for properly emitting a function or method declaration.
