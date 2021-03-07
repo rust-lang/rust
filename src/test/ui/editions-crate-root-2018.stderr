@@ -10,6 +10,19 @@ error[E0433]: failed to resolve: maybe a missing crate `nonexistant`?
 LL |     fn crate_inner(_: crate::nonexistant::Foo) {
    |                              ^^^^^^^^^^^ maybe a missing crate `nonexistant`?
 
-error: aborting due to 2 previous errors
+error[E0412]: cannot find crate `nonexistant` in the list of imported crates
+  --> $DIR/editions-crate-root-2018.rs:11:25
+   |
+LL |     fn bare_global(_: ::nonexistant) {
+   |                         ^^^^^^^^^^^ not found in the list of imported crates
 
-For more information about this error, try `rustc --explain E0433`.
+error[E0412]: cannot find type `nonexistant` in the crate root
+  --> $DIR/editions-crate-root-2018.rs:14:29
+   |
+LL |     fn bare_crate(_: crate::nonexistant) {
+   |                             ^^^^^^^^^^^ not found in the crate root
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.
