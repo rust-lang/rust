@@ -911,24 +911,23 @@ impl Attributes {
     }
 
     crate fn get_doc_aliases(&self) -> FxHashSet<String> {
-        self.other_attrs
-            .lists(sym::doc)
-            .filter(|a| a.has_name(sym::alias))
-            .map(|a| {
-                if let Some(values) = a.meta_item_list() {
-                    values
-                        .iter()
-                        .map(|l| match l.literal().unwrap().kind {
-                            ast::LitKind::Str(s, _) => s.as_str().to_string(),
-                            _ => unreachable!(),
-                        })
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![a.value_str().map(|s| s.to_string()).unwrap()]
+        let mut aliases = FxHashSet::default();
+
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            aliases.insert(s.as_str().to_string());
+                        }
+                        _ => unreachable!(),
+                    }
                 }
-            })
-            .flatten()
-            .collect::<FxHashSet<_>>()
+            } else {
+                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+        aliases
     }
 }
 

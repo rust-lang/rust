@@ -398,47 +398,42 @@ impl CheckAttrVisitor<'tcx> {
         target: Target,
         is_list: bool,
     ) -> bool {
+        let tcx = self.tcx;
+        let err_fn = move |span: Span, msg: &str| {
+            tcx.sess.span_err(
+                span,
+                &format!(
+                    "`#[doc(alias{})]` {}",
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                    msg,
+                ),
+            );
+            false
+        };
         if doc_alias.is_empty() {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!(
-                        "`#[doc(alias{})]` attribute cannot have empty value",
-                        if is_list { "(\"...\")" } else { " = \"...\"" },
-                    ),
-                )
-                .emit();
-            return false;
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "attribute cannot have empty value",
+            );
         }
         if let Some(c) =
             doc_alias.chars().find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
         {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!(
-                        "{:?} character isn't allowed in `#[doc(alias{})]`",
-                        c,
-                        if is_list { "(\"...\")" } else { " = \"...\"" },
-                    ),
-                )
-                .emit();
+            self.tcx.sess.span_err(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                &format!(
+                    "{:?} character isn't allowed in `#[doc(alias{})]`",
+                    c,
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                ),
+            );
             return false;
         }
         if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!(
-                        "`#[doc(alias{})]` cannot start or end with ' '",
-                        if is_list { "(\"...\")" } else { " = \"...\"" },
-                    ),
-                )
-                .emit();
-            return false;
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "cannot start or end with ' '",
+            );
         }
         if let Some(err) = match target {
             Target::Impl => Some("implementation block"),
@@ -464,32 +459,11 @@ impl CheckAttrVisitor<'tcx> {
             }
             _ => None,
         } {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    meta.span(),
-                    &format!(
-                        "`#[doc(alias{})]` isn't allowed on {}",
-                        if is_list { "(\"...\")" } else { " = \"...\"" },
-                        err,
-                    ),
-                )
-                .emit();
-            return false;
+            return err_fn(meta.span(), &format!("isn't allowed on {}", err));
         }
         let item_name = self.tcx.hir().name(hir_id);
         if &*item_name.as_str() == doc_alias {
-            self.tcx
-                .sess
-                .struct_span_err(
-                    meta.span(),
-                    &format!(
-                        "`#[doc(alias{})]` is the same as the item's name",
-                        if is_list { "(\"...\")" } else { " = \"...\"" },
-                    ),
-                )
-                .emit();
-            return false;
+            return err_fn(meta.span(), "is the same as the item's name");
         }
         true
     }
@@ -510,7 +484,7 @@ impl CheckAttrVisitor<'tcx> {
                                 .sess
                                 .struct_span_err(
                                     v.span(),
-                                    "`#[doc(alias(\"a\")]` expects string literals",
+                                    "`#[doc(alias(\"a\"))]` expects string literals",
                                 )
                                 .emit();
                             errors += 1;
@@ -521,7 +495,7 @@ impl CheckAttrVisitor<'tcx> {
                             .sess
                             .struct_span_err(
                                 v.span(),
-                                "`#[doc(alias(\"a\")]` expects string literals",
+                                "`#[doc(alias(\"a\"))]` expects string literals",
                             )
                             .emit();
                         errors += 1;
@@ -537,7 +511,7 @@ impl CheckAttrVisitor<'tcx> {
                 .struct_span_err(
                     meta.span(),
                     "doc alias attribute expects a string `#[doc(alias = \"a\")]` or a list of \
-                     strings: `#[doc(alias(\"a\", \"b\")]`",
+                     strings `#[doc(alias(\"a\", \"b\"))]`",
                 )
                 .emit();
             false
