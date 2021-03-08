@@ -10,6 +10,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
+use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -286,9 +287,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // MIR does not natively support FRU, so for each
                     // base-supplied field, generate an operand that
                     // reads it from the base.
-                    field_names
-                        .into_iter()
-                        .zip(field_types.into_iter())
+                    iter::zip(field_names, *field_types)
                         .map(|(n, ty)| match fields_map.get(&n) {
                             Some(v) => v.clone(),
                             None => {

@@ -27,6 +27,7 @@ use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
 use std::fmt::Debug;
+use std::iter;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -418,7 +419,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // In terms of our example above, we are iterating over pairs like:
         // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
-        for (original_value, result_value) in original_values.var_values.iter().zip(result_values) {
+        for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
+        {
             match result_value.unpack() {
                 GenericArgKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...

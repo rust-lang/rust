@@ -21,6 +21,7 @@ use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
 use tracing::debug;
@@ -1352,18 +1353,14 @@ impl Builder<'a, 'll, 'tcx> {
 
         let param_tys = self.cx.func_params_types(fn_ty);
 
-        let all_args_match = param_tys
-            .iter()
-            .zip(args.iter().map(|&v| self.val_ty(v)))
+        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
             return Cow::Borrowed(args);
         }
 
-        let casted_args: Vec<_> = param_tys
-            .into_iter()
-            .zip(args.iter())
+        let casted_args: Vec<_> = iter::zip(param_tys, args)
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
                 let actual_ty = self.val_ty(actual_val);

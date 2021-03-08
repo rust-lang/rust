@@ -103,6 +103,7 @@ use rustc_span::Span;
 use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
+use std::iter;
 use std::rc::Rc;
 
 mod rwu_table;
@@ -1093,7 +1094,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let ia = &asm.inner;
                 let outputs = asm.outputs_exprs;
                 let inputs = asm.inputs_exprs;
-                let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+                let succ = iter::zip(&ia.outputs, outputs).rev().fold(succ, |succ, (o, output)| {
                     // see comment on places
                     // in propagate_through_place_components()
                     if o.is_indirect {
@@ -1344,7 +1345,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
             }
 
             // Output operands must be places
-            for (o, output) in asm.inner.outputs.iter().zip(asm.outputs_exprs) {
+            for (o, output) in iter::zip(&asm.inner.outputs, asm.outputs_exprs) {
                 if !o.is_indirect {
                     this.check_place(output);
                 }

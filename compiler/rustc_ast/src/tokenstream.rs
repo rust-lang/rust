@@ -341,7 +341,7 @@ impl TokenStream {
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
         let mut t1 = self.trees();
         let mut t2 = other.trees();
-        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
+        for (t1, t2) in iter::zip(&mut t1, &mut t2) {
             if !t1.eq_unspanned(&t2) {
                 return false;
             }

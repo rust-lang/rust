@@ -1,7 +1,7 @@
 //! This pass finds basic blocks that are completely equal,
 //! and replaces all uses with just one of them.
 
-use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher};
+use std::{collections::hash_map::Entry, hash::Hash, hash::Hasher, iter};
 
 use crate::transform::MirPass;
 
@@ -115,11 +115,7 @@ impl<'tcx, 'a> PartialEq for BasicBlockHashable<'tcx, 'a> {
     fn eq(&self, other: &Self) -> bool {
         self.basic_block_data.statements.len() == other.basic_block_data.statements.len()
             && &self.basic_block_data.terminator().kind == &other.basic_block_data.terminator().kind
-            && self
-                .basic_block_data
-                .statements
-                .iter()
-                .zip(&other.basic_block_data.statements)
+            && iter::zip(&self.basic_block_data.statements, &other.basic_block_data.statements)
                 .all(|(x, y)| statement_eq(&x.kind, &y.kind))
     }
 }

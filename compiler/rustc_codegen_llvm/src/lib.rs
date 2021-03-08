@@ -11,6 +11,7 @@
 #![feature(extended_key_value_attributes)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
+#![feature(iter_zip)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]

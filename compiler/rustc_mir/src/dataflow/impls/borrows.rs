@@ -11,6 +11,7 @@ use crate::borrow_check::{
 use crate::dataflow::{self, fmt::DebugWithContext, GenKill};
 
 use std::fmt;
+use std::iter;
 
 rustc_index::newtype_index! {
     pub struct BorrowIndex {
@@ -292,7 +293,7 @@ impl<'tcx> dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
             }
 
             mir::StatementKind::LlvmInlineAsm(ref asm) => {
-                for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
+                for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
                         self.kill_borrows_on_place(trans, *output);
                     }

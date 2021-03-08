@@ -33,6 +33,7 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
+#![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]

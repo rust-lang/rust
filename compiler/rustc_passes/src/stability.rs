@@ -22,6 +22,7 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
+use std::iter;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
@@ -214,7 +215,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             {
                 // Explicit version of iter::order::lt to handle parse errors properly
                 for (dep_v, stab_v) in
-                    dep_since.as_str().split('.').zip(stab_since.as_str().split('.'))
+                    iter::zip(dep_since.as_str().split('.'), stab_since.as_str().split('.'))
                 {
                     match stab_v.parse::<u64>() {
                         Err(_) => {

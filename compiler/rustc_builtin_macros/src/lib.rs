@@ -7,6 +7,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(iter_zip)]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(proc_macro_internals)]

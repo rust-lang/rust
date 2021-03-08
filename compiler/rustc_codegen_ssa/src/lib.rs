@@ -8,6 +8,7 @@
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(associated_type_bounds)]
+#![feature(iter_zip)]
 #![recursion_limit = "256"]
 #![feature(box_syntax)]
 

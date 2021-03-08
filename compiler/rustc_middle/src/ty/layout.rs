@@ -1251,13 +1251,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
-                    for (field_layouts, layout_variant) in variants.iter().zip(&layout_variants) {
+                    for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
                         let offsets = match layout_variant.fields {
                             FieldsShape::Arbitrary { ref offsets, .. } => offsets,
                             _ => bug!(),
                         };
                         let mut fields =
-                            field_layouts.iter().zip(offsets).filter(|p| !p.0.is_zst());
+                            iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
                         let (field, offset) = match (fields.next(), fields.next()) {
                             (None, None) => continue,
                             (Some(pair), None) => pair,
@@ -1626,7 +1626,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 const INVALID_FIELD_IDX: u32 = !0;
                 let mut combined_inverse_memory_index =
                     vec![INVALID_FIELD_IDX; promoted_memory_index.len() + memory_index.len()];
-                let mut offsets_and_memory_index = offsets.into_iter().zip(memory_index);
+                let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
                 let combined_offsets = variant_fields
                     .iter()
                     .enumerate()
