@@ -49,7 +49,7 @@ config_data! {
         cargo_features: Vec<String>      = "[]",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_runBuildScripts |
-        cargo_loadOutDirsFromCheck: bool = "false",
+        cargo_loadOutDirsFromCheck: bool = "true",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
         /// Compilation target (target triple).

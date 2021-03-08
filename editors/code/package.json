@@ -416,7 +416,7 @@
                 },
                 "rust-analyzer.cargo.runBuildScripts": {
                     "markdownDescription": "Run build scripts (`build.rs`) for more precise code analysis.",
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.noDefaultFeatures": {
