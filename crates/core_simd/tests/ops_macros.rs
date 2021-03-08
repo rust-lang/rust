@@ -136,6 +136,83 @@ macro_rules! impl_binary_checked_op_test {
     };
 }
 
+#[macro_export]
+macro_rules! impl_common_integer_tests {
+    { $vector:ident, $scalar:ident } => {
+        test_helpers::test_lanes! {
+            fn wrapping_sum<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).wrapping_sum(),
+                        x.iter().copied().fold(0 as $scalar, $scalar::wrapping_add),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn wrapping_product<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).wrapping_product(),
+                        x.iter().copied().fold(1 as $scalar, $scalar::wrapping_mul),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn and_lanes<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).and_lanes(),
+                        x.iter().copied().fold(-1i8 as $scalar, <$scalar as core::ops::BitAnd>::bitand),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn or_lanes<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).or_lanes(),
+                        x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitOr>::bitor),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn xor_lanes<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).xor_lanes(),
+                        x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitXor>::bitxor),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn max_lane<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).max_lane(),
+                        x.iter().copied().max().unwrap(),
+                    );
+                    Ok(())
+                });
+            }
+
+            fn min_lane<const LANES: usize>() {
+                test_helpers::test_1(&|x| {
+                    test_helpers::prop_assert_biteq! (
+                        $vector::<LANES>::from_array(x).min_lane(),
+                        x.iter().copied().min().unwrap(),
+                    );
+                    Ok(())
+                });
+            }
+        }
+    }
+}
+
 /// Implement tests for signed integers.
 #[macro_export]
 macro_rules! impl_signed_tests {
@@ -143,6 +220,8 @@ macro_rules! impl_signed_tests {
         mod $scalar {
             type Vector<const LANES: usize> = core_simd::$vector<LANES>;
             type Scalar = $scalar;
+
+            impl_common_integer_tests! { Vector, Scalar }
 
             test_helpers::test_lanes! {
                 fn neg<const LANES: usize>() {
@@ -240,6 +319,8 @@ macro_rules! impl_unsigned_tests {
         mod $scalar {
             type Vector<const LANES: usize> = core_simd::$vector<LANES>;
             type Scalar = $scalar;
+
+            impl_common_integer_tests! { Vector, Scalar }
 
             test_helpers::test_lanes_panic! {
                 fn rem_zero_panic<const LANES: usize>() {
@@ -396,6 +477,46 @@ macro_rules! impl_float_tests {
                             Ok(())
                         },
                     ).unwrap();
+                }
+
+                fn sum<const LANES: usize>() {
+                    test_helpers::test_1(&|x| {
+                        test_helpers::prop_assert_biteq! (
+                            Vector::<LANES>::from_array(x).sum(),
+                            x.iter().copied().fold(0 as Scalar, <Scalar as core::ops::Add>::add),
+                        );
+                        Ok(())
+                    });
+                }
+
+                fn product<const LANES: usize>() {
+                    test_helpers::test_1(&|x| {
+                        test_helpers::prop_assert_biteq! (
+                            Vector::<LANES>::from_array(x).product(),
+                            x.iter().copied().fold(1. as Scalar, <Scalar as core::ops::Mul>::mul),
+                        );
+                        Ok(())
+                    });
+                }
+
+                fn max_lane<const LANES: usize>() {
+                    test_helpers::test_1(&|x| {
+                        test_helpers::prop_assert_biteq! (
+                            Vector::<LANES>::from_array(x).max_lane(),
+                            x.iter().copied().fold(Scalar::NAN, Scalar::max),
+                        );
+                        Ok(())
+                    });
+                }
+
+                fn min_lane<const LANES: usize>() {
+                    test_helpers::test_1(&|x| {
+                        test_helpers::prop_assert_biteq! (
+                            Vector::<LANES>::from_array(x).min_lane(),
+                            x.iter().copied().fold(Scalar::NAN, Scalar::min),
+                        );
+                        Ok(())
+                    });
                 }
             }
         }
