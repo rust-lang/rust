@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{AsName, Module, ModuleDef, Name, Variant};
+use hir::{Module, ModuleDef, Name, Variant};
 use ide_db::{
     defs::Definition,
     helpers::{
@@ -133,7 +133,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
             ),
             _ => false,
         })
-        .any(|(name, _)| name == variant_name.as_name())
+        .any(|(name, _)| name.to_string() == variant_name.to_string())
 }
 
 fn insert_import(

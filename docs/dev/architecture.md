@@ -46,7 +46,7 @@ This is *the* entry point, but it front-loads a lot of complexity, so its fine t
 
 `crates/rust-analyzer/src/handlers.rs` implements all LSP requests and is a great place to start if you are already familiar with LSP.
 
-`Analysis` and `AnalysisHost` types define the main API.
+`Analysis` and `AnalysisHost` types define the main API for consumers of IDE services.
 
 ## Code Map
 

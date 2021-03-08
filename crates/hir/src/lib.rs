@@ -96,7 +96,7 @@ pub use {
         visibility::Visibility,
     },
     hir_expand::{
-        name::{known, AsName, Name},
+        name::{known, Name},
         ExpandResult, HirFileId, InFile, MacroCallId, MacroCallLoc, /* FIXME */ MacroDefId,
         MacroFile, Origin,
     },
@@ -106,7 +106,10 @@ pub use {
 // These are negative re-exports: pub using these names is forbidden, they
 // should remain private to hir internals.
 #[allow(unused)]
-use {hir_def::path::Path, hir_expand::hygiene::Hygiene};
+use {
+    hir_def::path::Path,
+    hir_expand::{hygiene::Hygiene, name::AsName},
+};
 
 /// hir::Crate describes a single crate. It's the main interface with which
 /// a crate's dependencies interact. Mostly, it should be just a proxy for the

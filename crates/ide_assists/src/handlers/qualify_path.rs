@@ -1,6 +1,6 @@
 use std::iter;
 
-use hir::{AsAssocItem, AsName};
+use hir::AsAssocItem;
 use ide_db::helpers::{import_assets::ImportCandidate, mod_path_to_ast};
 use ide_db::RootDatabase;
 use syntax::{
@@ -160,7 +160,9 @@ fn find_trait_method(
 ) -> Option<hir::Function> {
     if let Some(hir::AssocItem::Function(method)) =
         trait_.items(db).into_iter().find(|item: &hir::AssocItem| {
-            item.name(db).map(|name| name == trait_method_name.as_name()).unwrap_or(false)
+            item.name(db)
+                .map(|name| name.to_string() == trait_method_name.to_string())
+                .unwrap_or(false)
         })
     {
         Some(method)
