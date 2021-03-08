@@ -689,7 +689,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let span = const_.span;
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
-            self.const_to_op(const_, None).map_err(|err| {
+            self.mir_const_to_op(&const_, None).map_err(|err| {
                 // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
                 self.frame_mut().loc = Err(span);

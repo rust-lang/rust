@@ -246,25 +246,27 @@ where
     };
 
     // Check the qualifs of the value of `const` items.
-    if let ty::ConstKind::Unevaluated(def, _, promoted) = constant.literal.val {
-        assert!(promoted.is_none());
-        // Don't peek inside trait associated constants.
-        if cx.tcx.trait_of_item(def.did).is_none() {
-            let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
-                cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
-            } else {
-                cx.tcx.at(constant.span).mir_const_qualif(def.did)
-            };
+    if let Some(ct) = constant.literal.const_for_ty() {
+        if let ty::ConstKind::Unevaluated(def, _, promoted) = ct.val {
+            assert!(promoted.is_none());
+            // Don't peek inside trait associated constants.
+            if cx.tcx.trait_of_item(def.did).is_none() {
+                let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
+                    cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
+                } else {
+                    cx.tcx.at(constant.span).mir_const_qualif(def.did)
+                };
 
-            if !Q::in_qualifs(&qualifs) {
-                return false;
+                if !Q::in_qualifs(&qualifs) {
+                    return false;
+                }
+
+                // Just in case the type is more specific than
+                // the definition, e.g., impl associated const
+                // with type parameters, take it into account.
             }
-
-            // Just in case the type is more specific than
-            // the definition, e.g., impl associated const
-            // with type parameters, take it into account.
         }
     }
     // Otherwise use the qualifs of the type.
-    Q::in_any_value_of_ty(cx, constant.literal.ty)
+    Q::in_any_value_of_ty(cx, constant.literal.ty())
 }

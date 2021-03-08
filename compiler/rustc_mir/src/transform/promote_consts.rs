@@ -921,7 +921,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(box Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit),
+                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
                         }));
                         mem::replace(rhs, unit)
                     },
@@ -998,20 +998,22 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx.mk_const(ty::Const {
-                        ty,
-                        val: ty::ConstKind::Unevaluated(
-                            def,
-                            InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                    tcx.lifetimes.re_erased.into()
-                                } else {
-                                    tcx.mk_param_from_def(param)
-                                }
-                            }),
-                            Some(promoted_id),
-                        ),
-                    }),
+                    literal: tcx
+                        .mk_const(ty::Const {
+                            ty,
+                            val: ty::ConstKind::Unevaluated(
+                                def,
+                                InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                        tcx.lifetimes.re_erased.into()
+                                    } else {
+                                        tcx.mk_param_from_def(param)
+                                    }
+                                }),
+                                Some(promoted_id),
+                            ),
+                        })
+                        .into(),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -1250,8 +1252,8 @@ crate fn is_const_fn_in_array_repeat_expression<'tcx>(
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {
-            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = *ty.kind() {
+            if let Operand::Constant(box Constant { literal, .. }) = func {
+                if let ty::FnDef(def_id, _) = *literal.ty().kind() {
                     if let Some((destination_place, _)) = destination {
                         if destination_place == place {
                             if is_const_fn(ccx.tcx, def_id) {

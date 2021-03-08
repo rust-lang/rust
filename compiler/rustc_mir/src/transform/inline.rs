@@ -416,7 +416,7 @@ impl Inliner<'tcx> {
 
                 TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
                     if let ty::FnDef(def_id, substs) =
-                        *callsite.callee.subst_mir(self.tcx, &f.literal.ty).kind()
+                        *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
                     {
                         let substs = self.tcx.normalize_erasing_regions(self.param_env, substs);
                         if let Ok(Some(instance)) =
@@ -637,8 +637,11 @@ impl Inliner<'tcx> {
                 // `required_consts`, here we may not only have `ConstKind::Unevaluated`
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&constant| {
-                        matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _))
+                    callee_body.required_consts.iter().copied().filter(|&ct| {
+                        match ct.literal.const_for_ty() {
+                            Some(ct) => matches!(ct.val, ConstKind::Unevaluated(_, _, _)),
+                            None => true,
+                        }
                     }),
                 );
             }

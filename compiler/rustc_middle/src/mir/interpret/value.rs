@@ -47,7 +47,25 @@ pub enum ConstValue<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
 
+impl From<Scalar> for ConstValue<'tcx> {
+    fn from(s: Scalar) -> Self {
+        Self::Scalar(s)
+    }
+}
+
 impl<'tcx> ConstValue<'tcx> {
+    pub fn lift<'lifted>(self, tcx: TyCtxt<'lifted>) -> Option<ConstValue<'lifted>> {
+        Some(match self {
+            ConstValue::Scalar(s) => ConstValue::Scalar(s),
+            ConstValue::Slice { data, start, end } => {
+                ConstValue::Slice { data: tcx.lift(data)?, start, end }
+            }
+            ConstValue::ByRef { alloc, offset } => {
+                ConstValue::ByRef { alloc: tcx.lift(alloc)?, offset }
+            }
+        })
+    }
+
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {

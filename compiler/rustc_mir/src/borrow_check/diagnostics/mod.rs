@@ -81,12 +81,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
+            func: Operand::Constant(box Constant { literal, .. }),
             args,
             ..
         } = &terminator.kind
         {
-            if let ty::FnDef(id, _) = *const_ty.kind() {
+            if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
