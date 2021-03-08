@@ -302,8 +302,10 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let extern_mod_loaded = |k: &ast::Crate, ident: Ident| {
-            pre_expansion_lint(sess, lint_store, k, &*ident.name.as_str())
+        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
+            let krate = ast::Crate { attrs, items, span, proc_macros: vec![] };
+            pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
+            (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
