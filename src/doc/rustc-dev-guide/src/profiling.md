@@ -21,6 +21,10 @@ Depending on what you're trying to measure, there are several different approach
   eg. `cargo -Z timings build`.
   You can use this flag on the compiler itself with `CARGOFLAGS="-Z timings" ./x.py build`
 
+- If you want to profile memory usage, you can use various tools depending on what operating system
+  you are using.
+  - For Windows, read our [WPA guide](profiling/wpa_profiling.html).
+
 ## Optimizing rustc's bootstrap times with `cargo-llvm-lines`
 
 Using [cargo-llvm-lines](https://github.com/dtolnay/cargo-llvm-lines) you can count the

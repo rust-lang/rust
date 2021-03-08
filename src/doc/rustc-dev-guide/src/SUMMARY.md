@@ -23,6 +23,7 @@
 - [Debugging the Compiler](./compiler-debugging.md)
 - [Profiling the compiler](./profiling.md)
     - [with the linux perf tool](./profiling/with_perf.md)
+    - [with Windows Performance Analyzer](./profiling/wpa_profiling.md)
 - [crates.io Dependencies](./crates-io.md)
 
 
