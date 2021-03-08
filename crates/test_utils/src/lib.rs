@@ -288,14 +288,14 @@ pub fn skip_slow_tests() -> bool {
     if should_skip {
         eprintln!("ignoring slow test")
     } else {
-        let path = project_dir().join("./target/.slow_tests_cookie");
+        let path = project_root().join("./target/.slow_tests_cookie");
         fs::write(&path, ".").unwrap();
     }
     should_skip
 }
 
 /// Returns the path to the root directory of `rust-analyzer` project.
-pub fn project_dir() -> PathBuf {
+pub fn project_root() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }
@@ -371,7 +371,7 @@ pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
         }
         _ => (),
     }
-    let display_path = file.strip_prefix(&project_dir()).unwrap_or(file);
+    let display_path = file.strip_prefix(&project_root()).unwrap_or(file);
     eprintln!(
         "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
         display_path.display()

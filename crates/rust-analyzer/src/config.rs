@@ -859,7 +859,7 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
 mod tests {
     use std::fs;
 
-    use test_utils::{ensure_file_contents, project_dir};
+    use test_utils::{ensure_file_contents, project_root};
 
     use super::*;
 
@@ -877,7 +877,7 @@ mod tests {
             .to_string();
         schema.push_str(",\n");
 
-        let package_json_path = project_dir().join("editors/code/package.json");
+        let package_json_path = project_root().join("editors/code/package.json");
         let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
         let start_marker = "                \"$generated-start\": false,\n";
@@ -896,7 +896,7 @@ mod tests {
 
     #[test]
     fn schema_in_sync_with_docs() {
-        let docs_path = project_dir().join("docs/user/generated_config.adoc");
+        let docs_path = project_root().join("docs/user/generated_config.adoc");
         let current = fs::read_to_string(&docs_path).unwrap();
         let expected = ConfigData::manual();
 
