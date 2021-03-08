@@ -16,7 +16,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
         let val = self.eval_mir_constant(constant)?;
-        let ty = self.monomorphize(constant.literal.ty);
+        let ty = self.monomorphize(constant.ty());
         Ok(OperandRef::from_const(bx, val, ty))
     }
 

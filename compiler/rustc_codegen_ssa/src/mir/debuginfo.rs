@@ -372,7 +372,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (var_ty, var_kind)
                     }
                     mir::VarDebugInfoContents::Const(c) => {
-                        let ty = self.monomorphize(c.literal.ty);
+                        let ty = self.monomorphize(c.ty());
                         (ty, VariableKind::LocalVariable)
                     }
                 };

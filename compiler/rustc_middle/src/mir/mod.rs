@@ -2421,6 +2421,9 @@ impl Constant<'tcx> {
             _ => None,
         }
     }
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.literal.ty
+    }
 }
 
 /// A collection of projections into user types.
