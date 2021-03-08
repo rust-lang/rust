@@ -1,4 +1,5 @@
 #![warn(clippy::if_then_some_else_none)]
+#![feature(custom_inner_attributes)]
 
 fn main() {
     // Should issue an error.
@@ -47,6 +48,27 @@ fn main() {
 
     // Should not issue an error since the `then` block doesn't use `Some` directly.
     let _ = if foo() { into_some("foo") } else { None };
+}
+
+fn _msrv_1_49() {
+    #![clippy::msrv = "1.49"]
+    // `bool::then` was stabilized in 1.50. Do not lint this
+    let _ = if foo() {
+        println!("true!");
+        Some("foo")
+    } else {
+        None
+    };
+}
+
+fn _msrv_1_50() {
+    #![clippy::msrv = "1.50"]
+    let _ = if foo() {
+        println!("true!");
+        Some("foo")
+    } else {
+        None
+    };
 }
 
 fn foo() -> bool {

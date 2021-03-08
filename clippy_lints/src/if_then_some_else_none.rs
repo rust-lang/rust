@@ -4,7 +4,10 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
+
+const IF_THEN_SOME_ELSE_NONE_MSRV: RustcVersion = RustcVersion::new(1, 50, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for if-else that could be written to `bool::then`.
@@ -39,10 +42,25 @@ declare_clippy_lint! {
     "Finds if-else that could be written using `bool::then`"
 }
 
-declare_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
+pub struct IfThenSomeElseNone {
+    msrv: Option<RustcVersion>,
+}
+
+impl IfThenSomeElseNone {
+    #[must_use]
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
+
+impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl LateLintPass<'_> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'_>) {
+        if !utils::meets_msrv(self.msrv.as_ref(), &IF_THEN_SOME_ELSE_NONE_MSRV) {
+            return;
+        }
+
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
@@ -85,4 +103,6 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
