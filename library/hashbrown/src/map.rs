@@ -1107,6 +1107,8 @@ where
     ///
     /// This method is available only if the `nightly` feature is enabled.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use hashbrown::{HashMap, UnavailableMutError};
     ///
@@ -1163,6 +1165,8 @@ where
     /// the returned array.
     ///
     /// This method is available only if the `nightly` feature is enabled.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use hashbrown::{HashMap, UnavailableMutError};
