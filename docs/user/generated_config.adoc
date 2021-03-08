@@ -12,7 +12,7 @@
  Activate all available features (`--all-features`).
 [[rust-analyzer.cargo.features]]rust-analyzer.cargo.features (default: `[]`)::
  List of features to activate.
-[[rust-analyzer.cargo.runBuildScripts]]rust-analyzer.cargo.runBuildScripts (default: `false`)::
+[[rust-analyzer.cargo.runBuildScripts]]rust-analyzer.cargo.runBuildScripts (default: `true`)::
  Run build scripts (`build.rs`) for more precise code analysis.
 [[rust-analyzer.cargo.noDefaultFeatures]]rust-analyzer.cargo.noDefaultFeatures (default: `false`)::
  Do not activate the `default` feature.
