@@ -3,7 +3,7 @@ use crate::LanesAtMost32;
 /// A mask where each lane is represented by a single bit.
 #[derive(Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct BitMask<const LANES: usize>(u64)
+pub struct BitMask<const LANES: usize>(pub(crate) u64)
 where
     BitMask<LANES>: LanesAtMost32;
 
