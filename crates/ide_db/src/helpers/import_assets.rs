@@ -1,7 +1,7 @@
 //! Look up accessible paths for items.
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics, Type,
+    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, Type,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -14,11 +14,16 @@ use crate::{
 
 use super::item_name;
 
+/// A candidate for import, derived during various IDE activities:
+/// * completion with imports on the fly proposals
+/// * completion edit resolve requests
+/// * assists
+/// * etc.
 #[derive(Debug)]
 pub enum ImportCandidate {
-    // A path, qualified (`std::collections::HashMap`) or not (`HashMap`).
+    /// A path, qualified (`std::collections::HashMap`) or not (`HashMap`).
     Path(PathImportCandidate),
-    /// A trait associated function (with no self parameter) or associated constant.
+    /// A trait associated function (with no self parameter) or an associated constant.
     /// For 'test_mod::TestEnum::test_function', `ty` is the `test_mod::TestEnum` expression type
     /// and `name` is the `test_function`
     TraitAssocItem(TraitImportCandidate),
@@ -28,27 +33,40 @@ pub enum ImportCandidate {
     TraitMethod(TraitImportCandidate),
 }
 
+/// A trait import needed for a given associated item access.
+/// For `some::path::SomeStruct::ASSOC_`, contains the
+/// type of `some::path::SomeStruct` and `ASSOC_` as the item name.
 #[derive(Debug)]
 pub struct TraitImportCandidate {
+    /// A type of the item that has the associated item accessed at.
     pub receiver_ty: Type,
-    pub name: NameToImport,
+    /// The associated item name that the trait to import should contain.
+    pub assoc_item_name: NameToImport,
 }
 
+/// Path import for a given name, qualified or not.
 #[derive(Debug)]
 pub struct PathImportCandidate {
-    pub qualifier: Qualifier,
+    /// Optional qualifier before name.
+    pub qualifier: Option<FirstSegmentUnresolved>,
+    /// The name the item (struct, trait, enum, etc.) should have.
     pub name: NameToImport,
 }
 
+/// A qualifier that has a first segment and it's unresolved.
 #[derive(Debug)]
-pub enum Qualifier {
-    Absent,
-    FirstSegmentUnresolved(ast::NameRef, ModPath),
+pub struct FirstSegmentUnresolved {
+    fist_segment: ast::NameRef,
+    full_qualifier: ModPath,
 }
 
+/// A name that will be used during item lookups.
 #[derive(Debug)]
 pub enum NameToImport {
+    /// Requires items with names that exactly match the given string, case-sensitive.
     Exact(String),
+    /// Requires items with names that case-insensitively contain all letters from the string,
+    /// in the same order, but not necessary adjacent.
     Fuzzy(String),
 }
 
@@ -61,6 +79,7 @@ impl NameToImport {
     }
 }
 
+/// A struct to find imports in the project, given a certain name (or its part) and the context.
 #[derive(Debug)]
 pub struct ImportAssets {
     import_candidate: ImportCandidate,
@@ -119,7 +138,7 @@ impl ImportAssets {
         Some(Self {
             import_candidate: ImportCandidate::TraitMethod(TraitImportCandidate {
                 receiver_ty,
-                name: NameToImport::Fuzzy(fuzzy_method_name),
+                assoc_item_name: NameToImport::Fuzzy(fuzzy_method_name),
             }),
             module_with_candidate: module_with_method_call,
             candidate_node,
@@ -127,11 +146,22 @@ impl ImportAssets {
     }
 }
 
+/// An import (not necessary the only one) that corresponds a certain given [`PathImportCandidate`].
+/// (the structure is not entirely correct, since there can be situations requiring two imports, see FIXME below for the details)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LocatedImport {
+    /// The path to use in the `use` statement for a given candidate to be imported.
     pub import_path: ModPath,
+    /// An item that will be imported with the import path given.
     pub item_to_import: ItemInNs,
+    /// The path import candidate, resolved.
+    ///
+    /// Not necessary matches the import:
+    /// For any associated constant from the trait, we try to access as `some::path::SomeStruct::ASSOC_`
+    /// the original item is the associated constant, but the import has to be a trait that
+    /// defines this constant.
     pub original_item: ItemInNs,
+    /// A path of the original item.
     pub original_path: Option<ModPath>,
 }
 
@@ -143,15 +173,6 @@ impl LocatedImport {
         original_path: Option<ModPath>,
     ) -> Self {
         Self { import_path, item_to_import, original_item, original_path }
-    }
-
-    pub fn original_item_name(&self, db: &RootDatabase) -> Option<Name> {
-        match self.original_item {
-            ItemInNs::Types(module_def_id) | ItemInNs::Values(module_def_id) => {
-                ModuleDef::from(module_def_id).name(db)
-            }
-            ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
-        }
     }
 }
 
@@ -229,7 +250,7 @@ impl ImportAssets {
         match &self.import_candidate {
             ImportCandidate::Path(candidate) => &candidate.name,
             ImportCandidate::TraitAssocItem(candidate)
-            | ImportCandidate::TraitMethod(candidate) => &candidate.name,
+            | ImportCandidate::TraitMethod(candidate) => &candidate.assoc_item_name,
         }
     }
 
@@ -279,7 +300,7 @@ fn path_applicable_imports(
     let _p = profile::span("import_assets::path_applicable_imports");
 
     let (unresolved_first_segment, unresolved_qualifier) = match &path_candidate.qualifier {
-        Qualifier::Absent => {
+        None => {
             return items_with_candidate_name
                 .into_iter()
                 .filter_map(|item| {
@@ -287,9 +308,10 @@ fn path_applicable_imports(
                 })
                 .collect();
         }
-        Qualifier::FirstSegmentUnresolved(first_segment, qualifier) => {
-            (first_segment.to_string(), qualifier.to_string())
-        }
+        Some(first_segment_unresolved) => (
+            first_segment_unresolved.fist_segment.to_string(),
+            first_segment_unresolved.full_qualifier.to_string(),
+        ),
     };
 
     items_with_candidate_name
@@ -516,7 +538,7 @@ impl ImportCandidate {
             Some(_) => None,
             None => Some(Self::TraitMethod(TraitImportCandidate {
                 receiver_ty: sema.type_of_expr(&method_call.receiver()?)?,
-                name: NameToImport::Exact(method_call.name_ref()?.to_string()),
+                assoc_item_name: NameToImport::Exact(method_call.name_ref()?.to_string()),
             })),
         }
     }
@@ -559,10 +581,10 @@ fn path_import_candidate(
                     qualifier_start.syntax().ancestors().find_map(ast::Path::cast)?;
                 if sema.resolve_path(&qualifier_start_path).is_none() {
                     ImportCandidate::Path(PathImportCandidate {
-                        qualifier: Qualifier::FirstSegmentUnresolved(
-                            qualifier_start,
-                            ModPath::from_src_unhygienic(qualifier)?,
-                        ),
+                        qualifier: Some(FirstSegmentUnresolved {
+                            fist_segment: qualifier_start,
+                            full_qualifier: ModPath::from_src_unhygienic(qualifier)?,
+                        }),
                         name,
                     })
                 } else {
@@ -572,12 +594,12 @@ fn path_import_candidate(
             Some(PathResolution::Def(ModuleDef::Adt(assoc_item_path))) => {
                 ImportCandidate::TraitAssocItem(TraitImportCandidate {
                     receiver_ty: assoc_item_path.ty(sema.db),
-                    name,
+                    assoc_item_name: name,
                 })
             }
             Some(_) => return None,
         },
-        None => ImportCandidate::Path(PathImportCandidate { qualifier: Qualifier::Absent, name }),
+        None => ImportCandidate::Path(PathImportCandidate { qualifier: None, name }),
     })
 }
 

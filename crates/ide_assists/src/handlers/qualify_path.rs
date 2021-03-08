@@ -2,8 +2,8 @@ use std::iter;
 
 use hir::AsAssocItem;
 use ide_db::helpers::{
-    import_assets::{ImportCandidate, LocatedImport, Qualifier},
-    mod_path_to_ast,
+    import_assets::{ImportCandidate, LocatedImport},
+    item_name, mod_path_to_ast,
 };
 use ide_db::RootDatabase;
 use syntax::{
@@ -48,7 +48,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) => {
-            if !matches!(candidate.qualifier, Qualifier::Absent) {
+            if candidate.qualifier.is_some() {
                 cov_mark::hit!(qualify_path_qualifier_start);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
@@ -191,20 +191,22 @@ fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
 fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     let name = match candidate {
         ImportCandidate::Path(it) => &it.name,
-        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
+        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => {
+            &it.assoc_item_name
+        }
     }
     .text();
     GroupLabel(format!("Qualify {}", name))
 }
 
 fn label(db: &RootDatabase, candidate: &ImportCandidate, import: &LocatedImport) -> String {
-    let display_path = match import.original_item_name(db) {
+    let display_path = match item_name(db, import.original_item) {
         Some(display_path) => display_path.to_string(),
         None => "{unknown}".to_string(),
     };
     match candidate {
         ImportCandidate::Path(candidate) => {
-            if !matches!(candidate.qualifier, Qualifier::Absent) {
+            if candidate.qualifier.is_some() {
                 format!("Qualify with `{}`", display_path)
             } else {
                 format!("Qualify as `{}`", display_path)

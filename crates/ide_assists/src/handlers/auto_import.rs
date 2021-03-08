@@ -1,7 +1,7 @@
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::{insert_use, ImportScope},
-    mod_path_to_ast,
+    item_name, mod_path_to_ast,
 };
 use syntax::{ast, AstNode, SyntaxNode};
 
@@ -93,7 +93,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let group = import_group_message(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
     for import in proposed_imports {
-        let name = match import.original_item_name(ctx.db()) {
+        let name = match item_name(ctx.db(), import.original_item) {
             Some(name) => name,
             None => continue,
         };
@@ -130,10 +130,10 @@ fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
         ImportCandidate::Path(candidate) => format!("Import {}", candidate.name.text()),
         ImportCandidate::TraitAssocItem(candidate) => {
-            format!("Import a trait for item {}", candidate.name.text())
+            format!("Import a trait for item {}", candidate.assoc_item_name.text())
         }
         ImportCandidate::TraitMethod(candidate) => {
-            format!("Import a trait for method {}", candidate.name.text())
+            format!("Import a trait for method {}", candidate.assoc_item_name.text())
         }
     };
     GroupLabel(name)
