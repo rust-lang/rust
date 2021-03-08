@@ -1129,6 +1129,14 @@ impl Expr {
         }
     }
 
+    pub fn peel_parens(&self) -> &Expr {
+        let mut expr = self;
+        while let ExprKind::Paren(inner) = &expr.kind {
+            expr = &inner;
+        }
+        expr
+    }
+
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
     pub fn to_ty(&self) -> Option<P<Ty>> {
         let kind = match &self.kind {
