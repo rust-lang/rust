@@ -297,6 +297,10 @@ extern "C" {
 #[cfg(target_arch = "arm")]
 #[allow(improper_ctypes)]
 extern "C" {
+    #[link_name = "llvm.arm.neon.vbsl.v8i8"]
+    fn vbsl_s8_(a: int8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t;
+    #[link_name = "llvm.arm.neon.vbsl.v16i8"]
+    fn vbslq_s8_(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
     #[link_name = "llvm.arm.neon.vpadals.v4i16.v8i8"]
     fn vpadal_s8_(a: int16x4_t, b: int8x8_t) -> int16x4_t;
     #[link_name = "llvm.arm.neon.vpadals.v2i32.v4i16"]
@@ -2811,6 +2815,120 @@ pub unsafe fn vbic_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub unsafe fn vbicq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     let c = int64x2_t(-1, -1);
     simd_and(simd_xor(b, transmute(c)), a)
+}
+
+/// Bitwise Select instructions. This instruction sets each bit in the destination SIMD&FP register
+/// to the corresponding bit from the first source SIMD&FP register when the original
+/// destination bit was 1, otherwise from the second source SIMD&FP register.
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_s8(a: uint8x8_t, b: int8x8_t, c: int8x8_t) -> int8x8_t {
+    simd_select(transmute::<_, int8x8_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_s16(a: uint16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
+    simd_select(transmute::<_, int16x4_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_s32(a: uint32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
+    simd_select(transmute::<_, int32x2_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_s64(a: uint64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
+    simd_select(transmute::<_, int64x1_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
+    simd_select(transmute::<_, int8x8_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
+    simd_select(transmute::<_, int16x4_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
+    simd_select(transmute::<_, int32x2_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_u64(a: uint64x1_t, b: uint64x1_t, c: uint64x1_t) -> uint64x1_t {
+    simd_select(transmute::<_, int64x1_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_f32(a: uint32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
+    simd_select(transmute::<_, int32x2_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_p8(a: uint8x8_t, b: poly8x8_t, c: poly8x8_t) -> poly8x8_t {
+    simd_select(transmute::<_, int8x8_t>(a), b, c)
+}
+
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vbsl))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(bsl))]
+pub unsafe fn vbsl_p16(a: uint16x4_t, b: poly16x4_t, c: poly16x4_t) -> poly16x4_t {
+    simd_select(transmute::<_, int16x4_t>(a), b, c)
 }
 
 /// Vector bitwise inclusive OR NOT
@@ -6558,6 +6676,187 @@ mod tests {
         let b = u64x2::new(1, 1);
         let e = u64x2::new(0, 0);
         let r: u64x2 = transmute(vbicq_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_s8() {
+        let a = u8x8::new(u8::MAX, 0, u8::MAX, 0, u8::MAX, 0, u8::MAX, 0);
+        let b = i8x8::new(
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+            i8::MAX,
+        );
+        let c = i8x8::new(
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+            i8::MIN,
+        );
+        let e = i8x8::new(
+            i8::MAX,
+            i8::MIN,
+            i8::MAX,
+            i8::MIN,
+            i8::MAX,
+            i8::MIN,
+            i8::MAX,
+            i8::MIN,
+        );
+        let r: i8x8 = transmute(vbsl_s8(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_s16() {
+        let a = u16x4::new(u16::MAX, 0, u16::MAX, 0);
+        let b = i16x4::new(i16::MAX, i16::MAX, i16::MAX, i16::MAX);
+        let c = i16x4::new(i16::MIN, i16::MIN, i16::MIN, i16::MIN);
+        let e = i16x4::new(i16::MAX, i16::MIN, i16::MAX, i16::MIN);
+        let r: i16x4 = transmute(vbsl_s16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_s32() {
+        let a = u32x2::new(u32::MAX, u32::MIN);
+        let b = i32x2::new(i32::MAX, i32::MAX);
+        let c = i32x2::new(i32::MIN, i32::MIN);
+        let e = i32x2::new(i32::MAX, i32::MIN);
+        let r: i32x2 = transmute(vbsl_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_s64() {
+        let a = u64x1::new(u64::MAX);
+        let b = i64x1::new(i64::MAX);
+        let c = i64x1::new(i64::MIN);
+        let e = i64x1::new(i64::MAX);
+        let r: i64x1 = transmute(vbsl_s64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_u8() {
+        let a = u8x8::new(u8::MAX, 0, u8::MAX, 0, u8::MAX, 0, u8::MAX, 0);
+        let b = u8x8::new(
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+        );
+        let c = u8x8::new(
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+        );
+        let e = u8x8::new(
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+        );
+        let r: u8x8 = transmute(vbsl_u8(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_u16() {
+        let a = u16x4::new(u16::MAX, 0, u16::MAX, 0);
+        let b = u16x4::new(u16::MAX, u16::MAX, u16::MAX, u16::MAX);
+        let c = u16x4::new(u16::MIN, u16::MIN, u16::MIN, u16::MIN);
+        let e = u16x4::new(u16::MAX, u16::MIN, u16::MAX, u16::MIN);
+        let r: u16x4 = transmute(vbsl_u16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_u32() {
+        let a = u32x2::new(u32::MAX, 0);
+        let b = u32x2::new(u32::MAX, u32::MAX);
+        let c = u32x2::new(u32::MIN, u32::MIN);
+        let e = u32x2::new(u32::MAX, u32::MIN);
+        let r: u32x2 = transmute(vbsl_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_u64() {
+        let a = u64x1::new(u64::MAX);
+        let b = u64x1::new(u64::MAX);
+        let c = u64x1::new(u64::MIN);
+        let e = u64x1::new(u64::MAX);
+        let r: u64x1 = transmute(vbsl_u64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_f32() {
+        let a = u32x2::new(u32::MAX, 0);
+        let b = f32x2::new(f32::MAX, f32::MAX);
+        let c = f32x2::new(f32::MIN, f32::MIN);
+        let e = f32x2::new(f32::MAX, f32::MIN);
+        let r: f32x2 = transmute(vbsl_f32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_p8() {
+        let a = u8x8::new(u8::MAX, 0, u8::MAX, 0, u8::MAX, 0, u8::MAX, 0);
+        let b = u8x8::new(
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+            u8::MAX,
+        );
+        let c = u8x8::new(
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+            u8::MIN,
+        );
+        let e = u8x8::new(
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+            u8::MAX,
+            u8::MIN,
+        );
+        let r: u8x8 = transmute(vbsl_p8(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_p16() {
+        let a = u16x4::new(u16::MAX, 0, u16::MAX, 0);
+        let b = u16x4::new(u16::MAX, u16::MAX, u16::MAX, u16::MAX);
+        let c = u16x4::new(u16::MIN, u16::MIN, u16::MIN, u16::MIN);
+        let e = u16x4::new(u16::MAX, u16::MIN, u16::MAX, u16::MIN);
+        let r: u16x4 = transmute(vbsl_p16(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

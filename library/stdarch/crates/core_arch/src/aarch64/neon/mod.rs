@@ -703,6 +703,23 @@ pub unsafe fn vabsq_s64(a: int64x2_t) -> int64x2_t {
     vabsq_s64_(a)
 }
 
+/// Bitwise Select instructions. This instruction sets each bit in the destination SIMD&FP register
+/// to the corresponding bit from the first source SIMD&FP register when the original
+/// destination bit was 1, otherwise from the second source SIMD&FP register.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(bsl))]
+pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    simd_select(transmute::<_, int64x1_t>(a), b, c)
+}
+/// Bitwise Select.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(bsl))]
+pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_t {
+    simd_select(transmute::<_, int64x1_t>(a), b, c)
+}
+
 /// Signed saturating Accumulate of Unsigned value.
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3910,6 +3927,25 @@ mod tests {
         let a = i64x2::new(i64::MIN, i64::MIN + 1);
         let r: i64x2 = transmute(vabsq_s64(transmute(a)));
         let e = i64x2::new(i64::MIN, i64::MAX);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_f64() {
+        let a = u64x1::new(u64::MAX);
+        let b = f64x1::new(f64::MAX);
+        let c = f64x1::new(f64::MIN);
+        let e = f64x1::new(f64::MAX);
+        let r: f64x1 = transmute(vbsl_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbsl_p64() {
+        let a = u64x1::new(u64::MAX);
+        let b = u64x1::new(u64::MAX);
+        let c = u64x1::new(u64::MIN);
+        let e = u64x1::new(u64::MAX);
+        let r: u64x1 = transmute(vbsl_p64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
