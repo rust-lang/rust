@@ -108,6 +108,7 @@
 // that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs
 // from other crates, but since this can only appear for lang items, it doesn't seem worth fixing.
 #![feature(intra_doc_pointers)]
+#![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
 #![feature(maybe_uninit_ref)]
