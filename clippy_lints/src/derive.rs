@@ -293,7 +293,12 @@ fn check_ord_partial_ord<'tcx>(
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
-    if cx.tcx.lang_items().clone_trait() == trait_ref.trait_def_id() {
+    if cx
+        .tcx
+        .lang_items()
+        .clone_trait()
+        .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+    {
         if !is_copy(cx, ty) {
             return;
         }
