@@ -49,6 +49,8 @@ config_data! {
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_runBuildScripts |
         cargo_loadOutDirsFromCheck: bool = "false",
+        /// Disable running build scripts (`build.rs`) for the `rustc_private` crates in `rustcSource`.
+        cargo_disableRustcBuildScripts: bool = "false",
         /// Do not activate the `default` feature.
         cargo_noDefaultFeatures: bool    = "false",
         /// Compilation target (target triple).
@@ -481,6 +483,9 @@ impl Config {
     }
     pub fn run_build_scripts(&self) -> bool {
         self.data.cargo_runBuildScripts || self.data.procMacro_enable
+    }
+    pub fn run_rustc_build_scripts(&self) -> bool {
+        self.run_build_scripts() && !self.data.cargo_disableRustcBuildScripts
     }
     pub fn cargo(&self) -> CargoConfig {
         let rustc_source = self.data.rustcSource.as_ref().map(|rustc_src| {

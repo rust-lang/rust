@@ -413,6 +413,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.cargo.disableRustcBuildScripts": {
+                    "markdownDescription": "Disable running build scripts (`build.rs`) for the `rustc_private` crates in `rustcSource`.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.noDefaultFeatures": {
                     "markdownDescription": "Do not activate the `default` feature.",
                     "default": false,

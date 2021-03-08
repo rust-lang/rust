@@ -34,7 +34,13 @@ pub fn diagnostics(
     with_proc_macro: bool,
 ) -> Result<()> {
     let cargo_config = Default::default();
-    let load_cargo_config = LoadCargoConfig { load_out_dirs_from_check, with_proc_macro };
+    let load_cargo_config = LoadCargoConfig {
+        load_out_dirs_from_check,
+        with_proc_macro,
+        // This will currently never have rustcSource set, however if in
+        // future it does this will handle that case
+        run_rustc_build_scripts: true,
+    };
     let (host, _vfs, _proc_macro) =
         load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {})?;
     let db = host.raw_database();

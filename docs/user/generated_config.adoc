@@ -12,6 +12,8 @@
  List of features to activate.
 [[rust-analyzer.cargo.runBuildScripts]]rust-analyzer.cargo.runBuildScripts (default: `false`)::
  Run build scripts (`build.rs`) for more precise code analysis.
+[[rust-analyzer.cargo.disableRustcBuildScripts]]rust-analyzer.cargo.disableRustcBuildScripts (default: `false`)::
+ Disable running build scripts (`build.rs`) for the `rustc_private` crates in `rustcSource`.
 [[rust-analyzer.cargo.noDefaultFeatures]]rust-analyzer.cargo.noDefaultFeatures (default: `false`)::
  Do not activate the `default` feature.
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
