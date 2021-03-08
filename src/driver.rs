@@ -73,11 +73,13 @@ fn track_clippy_args(sess: &Session, args_env_var: &Option<String>) {
 struct DefaultCallbacks;
 impl rustc_driver::Callbacks for DefaultCallbacks {}
 
-struct ClippyArgsCallbacks {
+/// This is different from `DefaultCallbacks` that it will inform Cargo to track the value of
+/// `CLIPPY_ARGS` environment variable.
+struct RustcCallbacks {
     clippy_args_var: Option<String>,
 }
 
-impl rustc_driver::Callbacks for ClippyArgsCallbacks {
+impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
@@ -351,7 +353,7 @@ pub fn main() {
         if clippy_enabled {
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var }).run()
         } else {
-            rustc_driver::RunCompiler::new(&args, &mut ClippyArgsCallbacks { clippy_args_var }).run()
+            rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var }).run()
         }
     }))
 }
