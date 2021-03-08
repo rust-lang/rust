@@ -388,7 +388,7 @@ pub fn search_dependencies<'a>(
     db: &'a dyn DefDatabase,
     krate: CrateId,
     query: Query,
-) -> Vec<ItemInNs> {
+) -> FxHashSet<ItemInNs> {
     let _p = profile::span("search_dependencies").detail(|| format!("{:?}", query));
 
     let graph = db.crate_graph();
@@ -403,41 +403,42 @@ pub fn search_dependencies<'a>(
     }
 
     let mut stream = op.union();
-    let mut res = Vec::new();
+
+    let mut all_indexed_values = FxHashSet::default();
     while let Some((_, indexed_values)) = stream.next() {
-        for indexed_value in indexed_values {
-            let import_map = &import_maps[indexed_value.index];
-            let importables = &import_map.importables[indexed_value.value as usize..];
+        all_indexed_values.extend(indexed_values.iter().copied());
+    }
 
-            let common_importable_data = &import_map.map[&importables[0]];
-            if !query.import_matches(common_importable_data, true) {
-                continue;
-            }
+    let mut res = FxHashSet::default();
+    for indexed_value in all_indexed_values {
+        let import_map = &import_maps[indexed_value.index];
+        let importables = &import_map.importables[indexed_value.value as usize..];
 
-            // Path shared by the importable items in this group.
-            let common_importables_path_fst = fst_path(&common_importable_data.path);
-            // Add the items from this `ModPath` group. Those are all subsequent items in
-            // `importables` whose paths match `path`.
-            let iter = importables
-                .iter()
-                .copied()
-                .take_while(|item| {
-                    common_importables_path_fst == fst_path(&import_map.map[item].path)
-                })
-                .filter(|&item| match item_import_kind(item) {
-                    Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
-                    None => true,
-                })
-                .filter(|item| {
-                    !query.case_sensitive // we've already checked the common importables path case-insensitively
+        let common_importable_data = &import_map.map[&importables[0]];
+        if !query.import_matches(common_importable_data, true) {
+            continue;
+        }
+
+        // Path shared by the importable items in this group.
+        let common_importables_path_fst = fst_path(&common_importable_data.path);
+        // Add the items from this `ModPath` group. Those are all subsequent items in
+        // `importables` whose paths match `path`.
+        let iter = importables
+            .iter()
+            .copied()
+            .take_while(|item| common_importables_path_fst == fst_path(&import_map.map[item].path))
+            .filter(|&item| match item_import_kind(item) {
+                Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
+                None => true,
+            })
+            .filter(|item| {
+                !query.case_sensitive // we've already checked the common importables path case-insensitively
                         || query.import_matches(&import_map.map[item], false)
-                });
-            res.extend(iter);
+            });
+        res.extend(iter);
 
-            if res.len() >= query.limit {
-                res.truncate(query.limit);
-                return res;
-            }
+        if res.len() >= query.limit {
+            return res;
         }
     }
 
@@ -821,10 +822,10 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
+                dep::fmt::Display::format_method (a)
                 dep::fmt::Display (t)
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
-                dep::fmt::Display::format_method (a)
             "#]],
         );
     }
@@ -850,9 +851,9 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy).assoc_items_only(),
             expect![[r#"
+            dep::fmt::Display::format_method (a)
             dep::fmt::Display::FMT_CONST (a)
             dep::fmt::Display::format_function (a)
-            dep::fmt::Display::format_method (a)
         "#]],
         );
 
@@ -911,12 +912,12 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
-                dep::Fmt (v)
-                dep::Fmt (m)
-                dep::fmt::Display (t)
-                dep::fmt::Display::fmt (a)
                 dep::format (f)
+                dep::Fmt (v)
+                dep::fmt::Display (t)
+                dep::Fmt (t)
+                dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -926,10 +927,10 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Equals),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -939,11 +940,11 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Contains),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
                 dep::fmt::Display (t)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
     }
@@ -980,11 +981,11 @@ mod tests {
             Query::new("fmt".to_string()),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
                 dep::fmt::Display (t)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -994,10 +995,10 @@ mod tests {
             Query::new("fmt".to_string()).name_only(),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
     }
@@ -1018,9 +1019,9 @@ mod tests {
             Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
+                dep::FMT (v)
                 dep::fmt (v)
                 dep::FMT (t)
-                dep::FMT (v)
             "#]],
         );
 
@@ -1060,6 +1061,8 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
+                dep::Fmt (m)
+                dep::Fmt (v)
             "#]],
         );
     }
@@ -1080,9 +1083,9 @@ mod tests {
             Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
+                dep::FMT (v)
                 dep::fmt (v)
                 dep::FMT (t)
-                dep::FMT (v)
             "#]],
         );
 
