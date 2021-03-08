@@ -2228,18 +2228,18 @@ impl ToString for char {
 impl ToString for u8 {
     #[inline]
     fn to_string(&self) -> String {
-        let mut result = String::with_capacity(3);
+        let mut buf = String::with_capacity(3);
         let mut n = *self;
-        if n >= 100 {
-            result.push((b'0' + n / 100) as char);
-            n %= 100;
-        }
-        if !result.is_empty() || n >= 10 {
-            result.push((b'0' + n / 10) as char);
+        if n >= 10 {
+            if n >= 100 {
+                buf.push((b'0' + n / 100) as char);
+                n %= 100;
+            }
+            buf.push((b'0' + n / 10) as char);
             n %= 10;
-        };
-        result.push((b'0' + n) as char);
-        result
+        }
+        buf.push((b'0' + n) as char);
+        buf
     }
 }
 
@@ -2247,31 +2247,21 @@ impl ToString for u8 {
 impl ToString for i8 {
     #[inline]
     fn to_string(&self) -> String {
-        let mut vec = vec![0; 4];
-        let mut free = 0;
+        let mut buf = String::with_capacity(4);
         if self.is_negative() {
-            vec[free] = b'-';
-            free += 1;
+            buf.push('-');
         }
         let mut n = self.unsigned_abs();
         if n >= 10 {
             if n >= 100 {
+                buf.push('1');
                 n -= 100;
-                vec[free] = b'1';
-                free += 1;
             }
-            debug_assert!(n < 100);
-            vec[free] = b'0' + n / 10;
-            free += 1;
+            buf.push((b'0' + n / 10) as char);
             n %= 10;
         }
-        debug_assert!(n < 10);
-        vec[free] = b'0' + n;
-        free += 1;
-        vec.truncate(free);
-
-        // SAFETY: Vec only contains ascii so valid utf8
-        unsafe { String::from_utf8_unchecked(vec) }
+        buf.push((b'0' + n) as char);
+        buf
     }
 }
 
