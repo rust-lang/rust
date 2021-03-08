@@ -18,7 +18,7 @@ use std::{
 };
 
 use profile::StopWatch;
-use stdx::lines_with_ends;
+use stdx::{is_ci, lines_with_ends};
 use text_size::{TextRange, TextSize};
 
 pub use dissimilar::diff as __diff;
@@ -376,6 +376,9 @@ pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
         "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
         display_path.display()
     );
+    if is_ci() {
+        eprintln!("\n    NOTE: run `cargo test` locally and commit the updated files\n");
+    }
     if let Some(parent) = file.parent() {
         let _ = std::fs::create_dir_all(parent);
     }

@@ -864,7 +864,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ensure_schema_in_package_json() {
+    fn generate_package_json_config() {
         let s = Config::json_schema();
         let schema = format!("{:#}", s);
         let mut schema = schema
@@ -895,7 +895,7 @@ mod tests {
     }
 
     #[test]
-    fn schema_in_sync_with_docs() {
+    fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
         let current = fs::read_to_string(&docs_path).unwrap();
         let expected = ConfigData::manual();

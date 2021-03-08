@@ -12,18 +12,26 @@ use crate::{
 };
 
 #[test]
-fn generated_grammar_is_fresh() {
+fn generate_grammar() {
     codegen::generate_syntax(Mode::Ensure).unwrap()
 }
 
 #[test]
-fn generated_tests_are_fresh() {
+fn generate_parser_tests() {
     codegen::generate_parser_tests(Mode::Ensure).unwrap()
 }
 
 #[test]
-fn generated_assists_are_fresh() {
+fn generate_assists_tests() {
     codegen::generate_assists_tests(Mode::Ensure).unwrap();
+}
+
+/// This clones rustc repo, and so is not worth to keep up-to-date. We update
+/// manually by un-ignoring the test from time to time.
+#[test]
+#[ignore]
+fn generate_lint_completions() {
+    codegen::generate_lint_completions(Mode::Overwrite).unwrap()
 }
 
 #[test]
@@ -32,11 +40,8 @@ fn check_code_formatting() {
 }
 
 #[test]
-fn smoke_test_docs_generation() {
-    // We don't commit docs to the repo, so we can just overwrite in tests.
-    codegen::generate_assists_docs(Mode::Overwrite).unwrap();
-    codegen::generate_feature_docs(Mode::Overwrite).unwrap();
-    codegen::generate_diagnostic_docs(Mode::Overwrite).unwrap();
+fn smoke_test_generate_documentation() {
+    codegen::docs().unwrap()
 }
 
 #[test]

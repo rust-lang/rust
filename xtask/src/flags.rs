@@ -27,10 +27,6 @@ xflags::xflags! {
             optional --jemalloc
         }
 
-        cmd codegen {
-            optional --features
-        }
-
         cmd lint {}
         cmd fuzz-tests {}
         cmd pre-cache {}
@@ -67,7 +63,6 @@ pub struct Xtask {
 pub enum XtaskCmd {
     Help(Help),
     Install(Install),
-    Codegen(Codegen),
     Lint(Lint),
     FuzzTests(FuzzTests),
     PreCache(PreCache),
@@ -90,11 +85,6 @@ pub struct Install {
     pub server: bool,
     pub mimalloc: bool,
     pub jemalloc: bool,
-}
-
-#[derive(Debug)]
-pub struct Codegen {
-    pub features: bool,
 }
 
 #[derive(Debug)]

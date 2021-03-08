@@ -308,9 +308,8 @@ This sections talks about the things which are everywhere and nowhere in particu
 ### Code generation
 
 Some of the components of this repository are generated through automatic processes.
-`cargo xtask codegen` runs all generation tasks.
+Generated code is updated automatically on `cargo test`.
 Generated code is generally committed to the git repository.
-There are tests to check that the generated code is fresh.
 
 In particular, we generate:
 

@@ -7,9 +7,9 @@
 
 mod gen_syntax;
 mod gen_parser_tests;
+mod gen_lint_completions;
 mod gen_assists_docs;
 mod gen_feature_docs;
-mod gen_lint_completions;
 mod gen_diagnostic_docs;
 
 use std::{
@@ -18,36 +18,33 @@ use std::{
 };
 use xshell::{cmd, pushenv, read_file, write_file};
 
-use crate::{ensure_rustfmt, flags, project_root, Result};
+use crate::{ensure_rustfmt, project_root, Result};
 
 pub(crate) use self::{
-    gen_assists_docs::{generate_assists_docs, generate_assists_tests},
-    gen_diagnostic_docs::generate_diagnostic_docs,
-    gen_feature_docs::generate_feature_docs,
-    gen_lint_completions::generate_lint_completions,
-    gen_parser_tests::generate_parser_tests,
-    gen_syntax::generate_syntax,
+    gen_assists_docs::generate_assists_tests, gen_lint_completions::generate_lint_completions,
+    gen_parser_tests::generate_parser_tests, gen_syntax::generate_syntax,
 };
+
+pub(crate) fn docs() -> Result<()> {
+    // We don't commit docs to the repo, so we can just overwrite them.
+    gen_assists_docs::generate_assists_docs(Mode::Overwrite)?;
+    gen_feature_docs::generate_feature_docs(Mode::Overwrite)?;
+    gen_diagnostic_docs::generate_diagnostic_docs(Mode::Overwrite)?;
+    Ok(())
+}
+
+#[allow(unused)]
+fn used() {
+    generate_parser_tests(Mode::Overwrite);
+    generate_assists_tests(Mode::Overwrite);
+    generate_syntax(Mode::Overwrite);
+    generate_lint_completions(Mode::Overwrite);
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Mode {
     Overwrite,
     Ensure,
-}
-
-impl flags::Codegen {
-    pub(crate) fn run(self) -> Result<()> {
-        if self.features {
-            generate_lint_completions(Mode::Overwrite)?;
-        }
-        generate_syntax(Mode::Overwrite)?;
-        generate_parser_tests(Mode::Overwrite)?;
-        generate_assists_tests(Mode::Overwrite)?;
-        generate_assists_docs(Mode::Overwrite)?;
-        generate_feature_docs(Mode::Overwrite)?;
-        generate_diagnostic_docs(Mode::Overwrite)?;
-        Ok(())
-    }
 }
 
 /// A helper to update file on disk if it has changed.

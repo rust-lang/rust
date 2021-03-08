@@ -40,7 +40,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
         flags::XtaskCmd::Install(cmd) => cmd.run(),
-        flags::XtaskCmd::Codegen(cmd) => cmd.run(),
         flags::XtaskCmd::Lint(_) => run_clippy(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
         flags::XtaskCmd::PreCache(cmd) => cmd.run(),
