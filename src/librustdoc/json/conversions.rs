@@ -23,7 +23,6 @@ use std::collections::HashSet;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
-        let item_type = ItemType::from(&item);
         let deprecation = item.deprecation(self.tcx);
         let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
         let inner = match *kind {
@@ -50,7 +49,6 @@ impl JsonRenderer<'_> {
                 .map(rustc_ast_pretty::pprust::attribute_to_string)
                 .collect(),
             deprecation: deprecation.map(from_deprecation),
-            kind: item_type.into(),
             inner,
         })
     }
@@ -154,30 +152,30 @@ crate fn from_def_id(did: DefId) -> Id {
 fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Symbol>) -> ItemEnum {
     use clean::ItemKind::*;
     match item {
-        ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
-        ImportItem(i) => ItemEnum::ImportItem(i.into()),
-        StructItem(s) => ItemEnum::StructItem(s.into()),
-        UnionItem(u) => ItemEnum::UnionItem(u.into()),
-        StructFieldItem(f) => ItemEnum::StructFieldItem(f.into()),
-        EnumItem(e) => ItemEnum::EnumItem(e.into()),
-        VariantItem(v) => ItemEnum::VariantItem(v.into()),
-        FunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-        ForeignFunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-        TraitItem(t) => ItemEnum::TraitItem(t.into()),
-        TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
-        MethodItem(m, _) => ItemEnum::MethodItem(from_function_method(m, true)),
-        TyMethodItem(m) => ItemEnum::MethodItem(from_function_method(m, false)),
-        ImplItem(i) => ItemEnum::ImplItem(i.into()),
-        StaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
-        ForeignStaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
-        ForeignTypeItem => ItemEnum::ForeignTypeItem,
-        TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
-        OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
-        ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
-        MacroItem(m) => ItemEnum::MacroItem(m.source),
-        ProcMacroItem(m) => ItemEnum::ProcMacroItem(m.into()),
-        AssocConstItem(t, s) => ItemEnum::AssocConstItem { type_: t.into(), default: s },
-        AssocTypeItem(g, t) => ItemEnum::AssocTypeItem {
+        ModuleItem(m) => ItemEnum::Module(m.into()),
+        ImportItem(i) => ItemEnum::Import(i.into()),
+        StructItem(s) => ItemEnum::Struct(s.into()),
+        UnionItem(u) => ItemEnum::Union(u.into()),
+        StructFieldItem(f) => ItemEnum::StructField(f.into()),
+        EnumItem(e) => ItemEnum::Enum(e.into()),
+        VariantItem(v) => ItemEnum::Variant(v.into()),
+        FunctionItem(f) => ItemEnum::Function(f.into()),
+        ForeignFunctionItem(f) => ItemEnum::Function(f.into()),
+        TraitItem(t) => ItemEnum::Trait(t.into()),
+        TraitAliasItem(t) => ItemEnum::TraitAlias(t.into()),
+        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true)),
+        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false)),
+        ImplItem(i) => ItemEnum::Impl(i.into()),
+        StaticItem(s) => ItemEnum::Static(from_clean_static(s, tcx)),
+        ForeignStaticItem(s) => ItemEnum::Static(from_clean_static(s, tcx)),
+        ForeignTypeItem => ItemEnum::ForeignType,
+        TypedefItem(t, _) => ItemEnum::Typedef(t.into()),
+        OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into()),
+        ConstantItem(c) => ItemEnum::Constant(c.into()),
+        MacroItem(m) => ItemEnum::Macro(m.source),
+        ProcMacroItem(m) => ItemEnum::ProcMacro(m.into()),
+        AssocConstItem(t, s) => ItemEnum::AssocConst { type_: t.into(), default: s },
+        AssocTypeItem(g, t) => ItemEnum::AssocType {
             bounds: g.into_iter().map(Into::into).collect(),
             default: t.map(Into::into),
         },
@@ -185,7 +183,7 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Sy
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
-        ExternCrateItem { ref src } => ItemEnum::ExternCrateItem {
+        ExternCrateItem { ref src } => ItemEnum::ExternCrate {
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
