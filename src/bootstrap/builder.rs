@@ -397,6 +397,7 @@ impl<'a> Builder<'a> {
                 test::Crate,
                 test::CrateLibrustc,
                 test::CrateRustdoc,
+                test::CrateRustdocJsonTypes,
                 test::Linkcheck,
                 test::TierCheck,
                 test::Cargotest,
