@@ -464,14 +464,14 @@ fn codegen_stmt<'tcx>(
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
                     lval.write_cvalue(fx, val);
                 }
-                Rvalue::BinaryOp(bin_op, ref lhs, ref rhs) => {
+                Rvalue::BinaryOp(bin_op, box (ref lhs, ref rhs)) => {
                     let lhs = codegen_operand(fx, lhs);
                     let rhs = codegen_operand(fx, rhs);
 
                     let res = crate::num::codegen_binop(fx, bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
-                Rvalue::CheckedBinaryOp(bin_op, ref lhs, ref rhs) => {
+                Rvalue::CheckedBinaryOp(bin_op, box (ref lhs, ref rhs)) => {
                     let lhs = codegen_operand(fx, lhs);
                     let rhs = codegen_operand(fx, rhs);
 
