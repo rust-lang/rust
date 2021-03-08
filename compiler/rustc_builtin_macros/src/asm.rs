@@ -12,7 +12,6 @@ use rustc_span::{
     BytePos,
 };
 use rustc_span::{InnerSpan, Span};
-use rustc_target::asm::InlineAsmArch;
 
 struct AsmArgs {
     templates: Vec<P<ast::Expr>>,
@@ -403,6 +402,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
     let mut line_spans = Vec::with_capacity(args.templates.len());
     let mut curarg = 0;
 
+    let default_dialect = ecx.sess.inline_asm_dialect();
+
     for template_expr in args.templates.into_iter() {
         if !template.is_empty() {
             template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
@@ -430,11 +431,6 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
         let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
 
         if let Some(snippet) = &template_snippet {
-            let default_dialect = match ecx.sess.asm_arch {
-                Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) => ast::LlvmAsmDialect::Intel,
-                _ => ast::LlvmAsmDialect::Att,
-            };
-
             let snippet = snippet.trim_matches('"');
             match default_dialect {
                 ast::LlvmAsmDialect::Intel => {
