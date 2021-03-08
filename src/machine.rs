@@ -179,8 +179,8 @@ impl MemoryExtra {
         this.memory
             .extra
             .extern_statics
-            .insert(Symbol::intern(name), ptr.alloc_id)
-            .unwrap_none();
+            .try_insert(Symbol::intern(name), ptr.alloc_id)
+            .unwrap();
     }
 
     /// Sets up the "extern statics" for this machine.

@@ -201,7 +201,7 @@ impl GlobalState {
         self.base_ptr_ids.get(&id).copied().unwrap_or_else(|| {
             let tag = Tag::Tagged(self.new_ptr());
             trace!("New allocation {:?} has base tag {:?}", id, tag);
-            self.base_ptr_ids.insert(id, tag).unwrap_none();
+            self.base_ptr_ids.try_insert(id, tag).unwrap();
             tag
         })
     }

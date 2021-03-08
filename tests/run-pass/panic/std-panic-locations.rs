@@ -1,4 +1,3 @@
-#![feature(option_expect_none, option_unwrap_none)]
 //! Test that panic locations for `#[track_caller]` functions in std have the correct
 //! location reported.
 
@@ -25,10 +24,6 @@ fn main() {
     assert_panicked(|| nope.unwrap());
     assert_panicked(|| nope.expect(""));
 
-    let yep: Option<()> = Some(());
-    assert_panicked(|| yep.unwrap_none());
-    assert_panicked(|| yep.expect_none(""));
-
     let oops: Result<(), ()> = Err(());
     assert_panicked(|| oops.unwrap());
     assert_panicked(|| oops.expect(""));
@@ -40,5 +35,5 @@ fn main() {
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
 
-    assert_eq!(HOOK_COUNT.load(Ordering::Relaxed), 8);
+    assert_eq!(HOOK_COUNT.load(Ordering::Relaxed), 6);
 }
