@@ -99,8 +99,8 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     cx,
                     REDUNDANT_CLOSURE,
                     expr.span,
-                    "redundant closure found",
-                    "remove closure as shown",
+                    "redundant closure",
+                    "replace the closure with `Vec::new`",
                     "std::vec::Vec::new".into(),
                     Applicability::MachineApplicable,
                 );
@@ -129,11 +129,11 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |diag| {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(snippet) = snippet_opt(cx, caller.span) {
                         diag.span_suggestion(
                             expr.span,
-                            "remove closure as shown",
+                            "replace the closure with the function itself",
                             snippet,
                             Applicability::MachineApplicable,
                         );
@@ -163,8 +163,8 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     cx,
                     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
                     expr.span,
-                    "redundant closure found",
-                    "remove closure as shown",
+                    "redundant closure",
+                    "replace the closure with the method itself",
                     format!("{}::{}", name, path.ident.name),
                     Applicability::MachineApplicable,
                 );
