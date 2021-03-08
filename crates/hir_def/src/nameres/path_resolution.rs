@@ -13,7 +13,6 @@
 use base_db::Edition;
 use hir_expand::name;
 use hir_expand::name::Name;
-use test_utils::mark;
 
 use crate::{
     db::DefDatabase,
@@ -63,7 +62,7 @@ impl ResolvePathResult {
 impl DefMap {
     pub(super) fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs {
         if name == &name!(self) {
-            mark::hit!(extern_crate_self_as);
+            cov_mark::hit!(extern_crate_self_as);
             return PerNs::types(self.module_id(self.root).into(), Visibility::Public);
         }
         self.extern_prelude
@@ -101,7 +100,7 @@ impl DefMap {
         // DefMap they're written in, so we restrict them when that happens.
         if let Visibility::Module(m) = vis {
             if self.block_id() != m.block {
-                mark::hit!(adjust_vis_in_block_def_map);
+                cov_mark::hit!(adjust_vis_in_block_def_map);
                 vis = Visibility::Module(self.module_id(self.root()));
                 log::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
@@ -169,12 +168,12 @@ impl DefMap {
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
-                    mark::hit!(macro_dollar_crate_self);
+                    cov_mark::hit!(macro_dollar_crate_self);
                     PerNs::types(self.crate_root(db).into(), Visibility::Public)
                 } else {
                     let def_map = db.crate_def_map(krate);
                     let module = def_map.module_id(def_map.root);
-                    mark::hit!(macro_dollar_crate_other);
+                    cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public)
                 }
             }
@@ -310,7 +309,7 @@ impl DefMap {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
-                    mark::hit!(can_import_enum_variant);
+                    cov_mark::hit!(can_import_enum_variant);
                     let enum_data = db.enum_data(e);
                     match enum_data.variant(&segment) {
                         Some(local_id) => {

@@ -10,7 +10,6 @@ use std::{
 use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
-use test_utils::mark;
 use text_edit::TextEditBuilder;
 
 use crate::{
@@ -184,7 +183,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
         let (lhs, rhs) = match lhs.as_node().zip(rhs.as_node()) {
             Some((lhs, rhs)) => (lhs, rhs),
             _ => {
-                mark::hit!(diff_node_token_replace);
+                cov_mark::hit!(diff_node_token_replace);
                 diff.replacements.insert(lhs, rhs);
                 return;
             }
@@ -202,19 +201,19 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                 (None, Some(element)) => {
                     let insert_pos = match last_lhs.clone() {
                         Some(prev) => {
-                            mark::hit!(diff_insert);
+                            cov_mark::hit!(diff_insert);
                             TreeDiffInsertPos::After(prev)
                         }
                         // first iteration, insert into out parent as the first child
                         None => {
-                            mark::hit!(diff_insert_as_first_child);
+                            cov_mark::hit!(diff_insert_as_first_child);
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
                         }
                     };
                     diff.insertions.entry(insert_pos).or_insert_with(Vec::new).push(element);
                 }
                 (Some(element), None) => {
-                    mark::hit!(diff_delete);
+                    cov_mark::hit!(diff_delete);
                     diff.deletions.push(element);
                 }
                 (Some(ref lhs_ele), Some(ref rhs_ele)) if syntax_element_eq(lhs_ele, rhs_ele) => {}
@@ -228,7 +227,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                     let mut insert = false;
                     while let Some(rhs_child) = rhs_children_clone.next() {
                         if syntax_element_eq(&lhs_ele, &rhs_child) {
-                            mark::hit!(diff_insertions);
+                            cov_mark::hit!(diff_insertions);
                             insert = true;
                             break;
                         } else {
@@ -240,7 +239,7 @@ pub fn diff(from: &SyntaxNode, to: &SyntaxNode) -> TreeDiff {
                         let insert_pos = if let Some(prev) = last_lhs.clone().filter(|_| insert) {
                             TreeDiffInsertPos::After(prev)
                         } else {
-                            mark::hit!(insert_first_child);
+                            cov_mark::hit!(insert_first_child);
                             TreeDiffInsertPos::AsFirstChild(lhs.clone().into())
                         };
 
@@ -635,14 +634,13 @@ mod tests {
     use expect_test::{expect, Expect};
     use itertools::Itertools;
     use parser::SyntaxKind;
-    use test_utils::mark;
     use text_edit::TextEdit;
 
     use crate::{AstNode, SyntaxElement};
 
     #[test]
     fn replace_node_token() {
-        mark::check!(diff_node_token_replace);
+        cov_mark::check!(diff_node_token_replace);
         check_diff(
             r#"use node;"#,
             r#"ident"#,
@@ -666,7 +664,7 @@ mod tests {
 
     #[test]
     fn replace_parent() {
-        mark::check!(diff_insert_as_first_child);
+        cov_mark::check!(diff_insert_as_first_child);
         check_diff(
             r#""#,
             r#"use foo::bar;"#,
@@ -689,7 +687,7 @@ mod tests {
 
     #[test]
     fn insert_last() {
-        mark::check!(diff_insert);
+        cov_mark::check!(diff_insert);
         check_diff(
             r#"
 use foo;
@@ -774,7 +772,7 @@ use baz;"#,
 
     #[test]
     fn first_child_insertion() {
-        mark::check!(insert_first_child);
+        cov_mark::check!(insert_first_child);
         check_diff(
             r#"fn main() {
         stdi
@@ -804,7 +802,7 @@ use baz;"#,
 
     #[test]
     fn delete_last() {
-        mark::check!(diff_delete);
+        cov_mark::check!(diff_delete);
         check_diff(
             r#"use foo;
             use bar;"#,
@@ -828,7 +826,7 @@ use baz;"#,
 
     #[test]
     fn delete_middle() {
-        mark::check!(diff_insertions);
+        cov_mark::check!(diff_insertions);
         check_diff(
             r#"
 use expect_test::{expect, Expect};

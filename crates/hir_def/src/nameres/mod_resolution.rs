@@ -2,7 +2,6 @@
 use base_db::{AnchoredPath, FileId};
 use hir_expand::name::Name;
 use syntax::SmolStr;
-use test_utils::mark;
 
 use crate::{db::DefDatabase, HirFileId};
 
@@ -28,7 +27,7 @@ impl ModDir {
         let depth = self.depth + 1;
         if depth > MOD_DEPTH_LIMIT {
             log::error!("MOD_DEPTH_LIMIT exceeded");
-            mark::hit!(circular_mods);
+            cov_mark::hit!(circular_mods);
             return None;
         }
         Some(ModDir { dir_path, root_non_dir_owner, depth })

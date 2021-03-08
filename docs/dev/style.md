@@ -145,7 +145,7 @@ Formatting ensures that you can use your editor's "number of selected characters
 ## Marked Tests
 
 Use
-[`mark::hit! / mark::check!`](https://github.com/rust-analyzer/rust-analyzer/blob/71fe719dd5247ed8615641d9303d7ca1aa201c2f/crates/test_utils/src/mark.rs)
+[`cov_mark::hit! / cov_mark::check!`](https://github.com/matklad/cov-mark)
 when testing specific conditions.
 Do not place several marks into a single test or condition.
 Do not reuse marks between several tests.

@@ -9,7 +9,7 @@ use syntax::{
     SyntaxKind::*,
     SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
-use test_utils::mark;
+
 use text_edit::TextEdit;
 
 // Feature: On Enter
@@ -55,7 +55,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
     // Continuing single-line non-doc comments (like this one :) ) is annoying
     if prefix == "//" && comment_range.end() == position.offset {
         if comment.text().ends_with(' ') {
-            mark::hit!(continues_end_of_line_comment_with_space);
+            cov_mark::hit!(continues_end_of_line_comment_with_space);
             remove_trailing_whitespace = true;
         } else if !followed_by_comment(&comment) {
             return None;
@@ -109,7 +109,7 @@ fn node_indent(file: &SourceFile, token: &SyntaxToken) -> Option<SmolStr> {
 #[cfg(test)]
 mod tests {
     use stdx::trim_indent;
-    use test_utils::{assert_eq_text, mark};
+    use test_utils::assert_eq_text;
 
     use crate::fixture;
 
@@ -238,7 +238,7 @@ fn main() {
 
     #[test]
     fn continues_end_of_line_comment_with_space() {
-        mark::check!(continues_end_of_line_comment_with_space);
+        cov_mark::check!(continues_end_of_line_comment_with_space);
         do_check(
             r#"
 fn main() {

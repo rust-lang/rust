@@ -14,7 +14,7 @@ use syntax::{
     ast::{self, NameOwner},
     lex_single_syntax_kind, AstNode, SyntaxKind, SyntaxNode, T,
 };
-use test_utils::mark;
+
 use text_edit::TextEdit;
 
 use crate::{display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, SourceChange, TextRange};
@@ -226,34 +226,36 @@ fn rename_reference(
         | (IdentifierKind::Ident, _)
             if def_is_lbl_or_lt =>
         {
-            mark::hit!(rename_not_a_lifetime_ident_ref);
+            cov_mark::hit!(rename_not_a_lifetime_ident_ref);
             bail!("Invalid name `{}`: not a lifetime identifier", new_name)
         }
-        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => mark::hit!(rename_lifetime),
+        (IdentifierKind::Lifetime, _) if def_is_lbl_or_lt => cov_mark::hit!(rename_lifetime),
         (IdentifierKind::Lifetime, _) => {
-            mark::hit!(rename_not_an_ident_ref);
+            cov_mark::hit!(rename_not_an_ident_ref);
             bail!("Invalid name `{}`: not an identifier", new_name)
         }
         (IdentifierKind::ToSelf, Definition::Local(local)) if local.is_self(sema.db) => {
             // no-op
-            mark::hit!(rename_self_to_self);
+            cov_mark::hit!(rename_self_to_self);
             return Ok(SourceChange::default());
         }
         (ident_kind, Definition::Local(local)) if local.is_self(sema.db) => {
-            mark::hit!(rename_self_to_param);
+            cov_mark::hit!(rename_self_to_param);
             return rename_self_to_param(sema, local, new_name, ident_kind);
         }
         (IdentifierKind::ToSelf, Definition::Local(local)) => {
-            mark::hit!(rename_to_self);
+            cov_mark::hit!(rename_to_self);
             return rename_to_self(sema, local);
         }
         (IdentifierKind::ToSelf, _) => bail!("Invalid name `{}`: not an identifier", new_name),
-        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => mark::hit!(rename_ident),
+        (IdentifierKind::Ident, _) | (IdentifierKind::Underscore, _) => {
+            cov_mark::hit!(rename_ident)
+        }
     }
 
     let usages = def.usages(sema).all();
     if !usages.is_empty() && ident_kind == IdentifierKind::Underscore {
-        mark::hit!(rename_underscore_multiple);
+        cov_mark::hit!(rename_underscore_multiple);
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
     let mut source_change = SourceChange::default();
@@ -444,7 +446,7 @@ fn source_edit_from_name_ref(
             (Some(field_name), Some(init)) => {
                 if field_name == *name_ref {
                     if init.text() == new_name {
-                        mark::hit!(test_rename_field_put_init_shorthand);
+                        cov_mark::hit!(test_rename_field_put_init_shorthand);
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
@@ -453,7 +455,7 @@ fn source_edit_from_name_ref(
                     }
                 } else if init == *name_ref {
                     if field_name.text() == new_name {
-                        mark::hit!(test_rename_local_put_init_shorthand);
+                        cov_mark::hit!(test_rename_local_put_init_shorthand);
                         // same names, we can use a shorthand here instead.
                         // we do not want to erase attributes hence this range start
                         let s = field_name.syntax().text_range().start();
@@ -467,12 +469,12 @@ fn source_edit_from_name_ref(
             // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
             // other name https://github.com/rust-analyzer/rust-analyzer/issues/6547
             (None, Some(_)) if matches!(def, Definition::Field(_)) => {
-                mark::hit!(test_rename_field_in_field_shorthand);
+                cov_mark::hit!(test_rename_field_in_field_shorthand);
                 let s = name_ref.syntax().text_range().start();
                 Some((TextRange::empty(s), format!("{}: ", new_name)))
             }
             (None, Some(_)) if matches!(def, Definition::Local(_)) => {
-                mark::hit!(test_rename_local_in_field_shorthand);
+                cov_mark::hit!(test_rename_local_in_field_shorthand);
                 let s = name_ref.syntax().text_range().end();
                 Some((TextRange::empty(s), format!(": {}", new_name)))
             }
@@ -486,7 +488,7 @@ fn source_edit_from_name_ref(
             (Some(field_name), Some(ast::Pat::IdentPat(pat))) if field_name == *name_ref => {
                 // field name is being renamed
                 if pat.name().map_or(false, |it| it.text() == new_name) {
-                    mark::hit!(test_rename_field_put_init_shorthand_pat);
+                    cov_mark::hit!(test_rename_field_put_init_shorthand_pat);
                     // same names, we can use a shorthand here instead/
                     // we do not want to erase attributes hence this range start
                     let s = field_name.syntax().text_range().start();
@@ -538,7 +540,7 @@ fn source_edit_from_def(
 mod tests {
     use expect_test::{expect, Expect};
     use stdx::trim_indent;
-    use test_utils::{assert_eq_text, mark};
+    use test_utils::assert_eq_text;
     use text_edit::TextEdit;
 
     use crate::{fixture, FileId};
@@ -627,7 +629,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime() {
-        mark::check!(rename_not_an_ident_ref);
+        cov_mark::check!(rename_not_an_ident_ref);
         check(
             "'foo",
             r#"fn main() { let i$0 = 1; }"#,
@@ -637,7 +639,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_invalid_identifier_lifetime2() {
-        mark::check!(rename_not_a_lifetime_ident_ref);
+        cov_mark::check!(rename_not_a_lifetime_ident_ref);
         check(
             "foo",
             r#"fn main<'a>(_: &'a$0 ()) {}"#,
@@ -647,7 +649,7 @@ mod tests {
 
     #[test]
     fn test_rename_to_underscore_invalid() {
-        mark::check!(rename_underscore_multiple);
+        cov_mark::check!(rename_underscore_multiple);
         check(
             "_",
             r#"fn main(foo$0: ()) {foo;}"#,
@@ -666,7 +668,7 @@ mod tests {
 
     #[test]
     fn test_rename_for_local() {
-        mark::check!(rename_ident);
+        cov_mark::check!(rename_ident);
         check(
             "k",
             r#"
@@ -829,7 +831,7 @@ impl Foo {
 
     #[test]
     fn test_rename_field_in_field_shorthand() {
-        mark::check!(test_rename_field_in_field_shorthand);
+        cov_mark::check!(test_rename_field_in_field_shorthand);
         check(
             "j",
             r#"
@@ -855,7 +857,7 @@ impl Foo {
 
     #[test]
     fn test_rename_local_in_field_shorthand() {
-        mark::check!(test_rename_local_in_field_shorthand);
+        cov_mark::check!(test_rename_local_in_field_shorthand);
         check(
             "j",
             r#"
@@ -1261,7 +1263,7 @@ fn foo(f: foo::Foo) {
 
     #[test]
     fn test_parameter_to_self() {
-        mark::check!(rename_to_self);
+        cov_mark::check!(rename_to_self);
         check(
             "self",
             r#"
@@ -1401,7 +1403,7 @@ impl Foo {
 
     #[test]
     fn test_owned_self_to_parameter() {
-        mark::check!(rename_self_to_param);
+        cov_mark::check!(rename_self_to_param);
         check(
             "foo",
             r#"
@@ -1454,7 +1456,7 @@ impl Foo {
 
     #[test]
     fn test_rename_field_put_init_shorthand() {
-        mark::check!(test_rename_field_put_init_shorthand);
+        cov_mark::check!(test_rename_field_put_init_shorthand);
         check(
             "bar",
             r#"
@@ -1476,7 +1478,7 @@ fn foo(bar: i32) -> Foo {
 
     #[test]
     fn test_rename_local_put_init_shorthand() {
-        mark::check!(test_rename_local_put_init_shorthand);
+        cov_mark::check!(test_rename_local_put_init_shorthand);
         check(
             "i",
             r#"
@@ -1498,7 +1500,7 @@ fn foo(i: i32) -> Foo {
 
     #[test]
     fn test_struct_field_pat_into_shorthand() {
-        mark::check!(test_rename_field_put_init_shorthand_pat);
+        cov_mark::check!(test_rename_field_put_init_shorthand_pat);
         check(
             "baz",
             r#"
@@ -1610,7 +1612,7 @@ fn foo(foo: Foo) {
 
     #[test]
     fn test_rename_lifetimes() {
-        mark::check!(rename_lifetime);
+        cov_mark::check!(rename_lifetime);
         check(
             "'yeeee",
             r#"
@@ -1698,7 +1700,7 @@ fn foo<'a>() -> &'a () {
 
     #[test]
     fn test_self_to_self() {
-        mark::check!(rename_self_to_self);
+        cov_mark::check!(rename_self_to_self);
         check(
             "self",
             r#"

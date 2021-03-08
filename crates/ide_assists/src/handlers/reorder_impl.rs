@@ -8,7 +8,6 @@ use syntax::{
     ast::{self, NameOwner},
     AstNode,
 };
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -71,7 +70,7 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
 
     // Don't edit already sorted methods:
     if methods == sorted {
-        mark::hit!(not_applicable_if_sorted);
+        cov_mark::hit!(not_applicable_if_sorted);
         return None;
     }
 
@@ -121,15 +120,13 @@ fn get_methods(items: &ast::AssocItemList) -> Vec<ast::Fn> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn not_applicable_if_sorted() {
-        mark::check!(not_applicable_if_sorted);
+        cov_mark::check!(not_applicable_if_sorted);
         check_assist_not_applicable(
             reorder_impl,
             r#"

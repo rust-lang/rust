@@ -2,7 +2,6 @@ mod block;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::Expect;
-use test_utils::mark;
 
 use crate::{test_db::TestDB, ModuleDefId};
 
@@ -48,7 +47,7 @@ fn check_at(ra_fixture: &str, expect: Expect) {
 
 #[test]
 fn your_stack_belongs_to_me() {
-    mark::check!(your_stack_belongs_to_me);
+    cov_mark::check!(your_stack_belongs_to_me);
     lower(
         "
 macro_rules! n_nuple {

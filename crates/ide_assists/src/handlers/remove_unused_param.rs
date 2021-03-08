@@ -4,7 +4,7 @@ use syntax::{
     ast::{self, ArgListOwner},
     AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, T,
 };
-use test_utils::mark;
+
 use SyntaxKind::WHITESPACE;
 
 use crate::{
@@ -49,7 +49,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext) -> Opt
         Definition::Local(local)
     };
     if param_def.usages(&ctx.sema).at_least_one() {
-        mark::hit!(keep_used);
+        cov_mark::hit!(keep_used);
         return None;
     }
     acc.add(
@@ -243,7 +243,7 @@ fn b2() { foo(9) }
 
     #[test]
     fn keep_used() {
-        mark::check!(keep_used);
+        cov_mark::check!(keep_used);
         check_assist_not_applicable(
             remove_unused_param,
             r#"

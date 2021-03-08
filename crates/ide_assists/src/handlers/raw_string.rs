@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use syntax::{ast, AstToken, TextRange, TextSize};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -149,7 +148,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let internal_text = &text[token.text_range_between_quotes()? - text_range.start()];
 
     if existing_hashes == required_hashes(internal_text) {
-        mark::hit!(cant_remove_required_hash);
+        cov_mark::hit!(cant_remove_required_hash);
         return None;
     }
 
@@ -182,8 +181,6 @@ fn test_required_hashes() {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
@@ -396,7 +393,7 @@ string"###;
 
     #[test]
     fn cant_remove_required_hash() {
-        mark::check!(cant_remove_required_hash);
+        cov_mark::check!(cant_remove_required_hash);
         check_assist_not_applicable(
             remove_hash,
             r##"

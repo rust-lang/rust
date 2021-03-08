@@ -1,7 +1,6 @@
 use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
 use syntax::ast::{self, AstNode, NameOwner};
-use test_utils::mark;
 
 use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind, Assists};
 
@@ -44,7 +43,7 @@ pub(crate) fn generate_from_impl_for_enum(acc: &mut Assists, ctx: &AssistContext
     };
 
     if existing_from_impl(&ctx.sema, &variant).is_some() {
-        mark::hit!(test_add_from_impl_already_exists);
+        cov_mark::hit!(test_add_from_impl_already_exists);
         return None;
     }
 
@@ -103,8 +102,6 @@ fn existing_from_impl(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
@@ -172,7 +169,7 @@ impl From<u32> for A {
 
     #[test]
     fn test_add_from_impl_already_exists() {
-        mark::check!(test_add_from_impl_already_exists);
+        cov_mark::check!(test_add_from_impl_already_exists);
         check_not_applicable(
             r#"
 enum A { $0One(u32), }

@@ -268,7 +268,7 @@ trait Mark {
     fn mark(unmarked: Self::Unmarked) -> Self;
 }
 
-/// Unwrap types wrapped by `Mark::mark` (see `Mark` for details).
+/// Unwrap types wrapped by `cov_mark::mark` (see `Mark` for details).
 trait Unmark {
     type Unmarked;
     fn unmark(self) -> Self::Unmarked;

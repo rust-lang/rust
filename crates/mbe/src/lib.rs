@@ -17,7 +17,6 @@ mod benchmark;
 
 use std::fmt;
 
-use test_utils::mark;
 pub use tt::{Delimiter, DelimiterKind, Punct};
 
 use crate::{
@@ -217,7 +216,7 @@ impl MacroDef {
         let mut rules = Vec::new();
 
         if Some(tt::DelimiterKind::Brace) == tt.delimiter_kind() {
-            mark::hit!(parse_macro_def_rules);
+            cov_mark::hit!(parse_macro_def_rules);
             while src.len() > 0 {
                 let rule = Rule::parse(&mut src, true)?;
                 rules.push(rule);
@@ -229,7 +228,7 @@ impl MacroDef {
                 }
             }
         } else {
-            mark::hit!(parse_macro_def_simple);
+            cov_mark::hit!(parse_macro_def_simple);
             let rule = Rule::parse(&mut src, false)?;
             if src.len() != 0 {
                 return Err(ParseError::Expected("remain tokens in macro def".to_string()));

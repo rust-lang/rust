@@ -1,7 +1,6 @@
 use ide_db::helpers::FamousDefs;
 use ide_db::RootDatabase;
 use syntax::ast::{self, AstNode, NameOwner};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -38,12 +37,12 @@ pub(crate) fn generate_default_from_enum_variant(
     let variant_name = variant.name()?;
     let enum_name = variant.parent_enum().name()?;
     if !matches!(variant.kind(), ast::StructKind::Unit) {
-        mark::hit!(test_gen_default_on_non_unit_variant_not_implemented);
+        cov_mark::hit!(test_gen_default_on_non_unit_variant_not_implemented);
         return None;
     }
 
     if existing_default_impl(&ctx.sema, &variant).is_some() {
-        mark::hit!(test_gen_default_impl_already_exists);
+        cov_mark::hit!(test_gen_default_impl_already_exists);
         return None;
     }
 
@@ -89,8 +88,6 @@ fn existing_default_impl(
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
@@ -127,7 +124,7 @@ impl Default for Variant {
 
     #[test]
     fn test_generate_default_already_implemented() {
-        mark::check!(test_gen_default_impl_already_exists);
+        cov_mark::check!(test_gen_default_impl_already_exists);
         check_not_applicable(
             r#"
 enum Variant {
@@ -146,7 +143,7 @@ impl Default for Variant {
 
     #[test]
     fn test_add_from_impl_no_element() {
-        mark::check!(test_gen_default_on_non_unit_variant_not_implemented);
+        cov_mark::check!(test_gen_default_on_non_unit_variant_not_implemented);
         check_not_applicable(
             r#"
 enum Variant {

@@ -913,7 +913,7 @@ fn test() { S2.into(); }
 
 #[test]
 fn method_resolution_overloaded_method() {
-    test_utils::mark::check!(impl_self_type_match_without_receiver);
+    cov_mark::check!(impl_self_type_match_without_receiver);
     check_types(
         r#"
 struct Wrapper<T>(T);

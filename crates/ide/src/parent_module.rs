@@ -5,7 +5,6 @@ use syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode},
 };
-use test_utils::mark;
 
 use crate::NavigationTarget;
 
@@ -33,7 +32,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
             .item_list()
             .map_or(false, |it| it.syntax().text_range().contains_inclusive(position.offset))
         {
-            mark::hit!(test_resolve_parent_module_on_module_decl);
+            cov_mark::hit!(test_resolve_parent_module_on_module_decl);
             module = m.syntax().ancestors().skip(1).find_map(ast::Module::cast);
         }
     }
@@ -64,7 +63,6 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 #[cfg(test)]
 mod tests {
     use ide_db::base_db::FileRange;
-    use test_utils::mark;
 
     use crate::fixture;
 
@@ -92,7 +90,7 @@ $0// empty
 
     #[test]
     fn test_resolve_parent_module_on_module_decl() {
-        mark::check!(test_resolve_parent_module_on_module_decl);
+        cov_mark::check!(test_resolve_parent_module_on_module_decl);
         check(
             r#"
 //- /lib.rs

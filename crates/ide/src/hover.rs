@@ -11,7 +11,6 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
-use test_utils::mark;
 
 use crate::{
     display::{macro_label, ShortLabel, TryToNav},
@@ -193,8 +192,8 @@ fn runnable_action(
             ModuleDef::Function(func) => {
                 let src = func.source(sema.db)?;
                 if src.file_id != file_id.into() {
-                    mark::hit!(hover_macro_generated_struct_fn_doc_comment);
-                    mark::hit!(hover_macro_generated_struct_fn_doc_attr);
+                    cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
+                    cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
                     return None;
                 }
 
@@ -2101,7 +2100,7 @@ pub fn fo$0o() {}
 
     #[test]
     fn test_hover_macro_generated_struct_fn_doc_comment() {
-        mark::check!(hover_macro_generated_struct_fn_doc_comment);
+        cov_mark::check!(hover_macro_generated_struct_fn_doc_comment);
 
         check(
             r#"
@@ -2139,7 +2138,7 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
 
     #[test]
     fn test_hover_macro_generated_struct_fn_doc_attr() {
-        mark::check!(hover_macro_generated_struct_fn_doc_attr);
+        cov_mark::check!(hover_macro_generated_struct_fn_doc_attr);
 
         check(
             r#"

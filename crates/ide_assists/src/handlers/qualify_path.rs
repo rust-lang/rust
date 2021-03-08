@@ -8,7 +8,6 @@ use syntax::{
     ast::{make, ArgListOwner},
     AstNode,
 };
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -47,25 +46,25 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     let qualify_candidate = match candidate {
         ImportCandidate::Path(candidate) => {
             if candidate.qualifier.is_some() {
-                mark::hit!(qualify_path_qualifier_start);
+                cov_mark::hit!(qualify_path_qualifier_start);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let (prev_segment, segment) = (path.qualifier()?.segment()?, path.segment()?);
                 QualifyCandidate::QualifierStart(segment, prev_segment.generic_arg_list())
             } else {
-                mark::hit!(qualify_path_unqualified_name);
+                cov_mark::hit!(qualify_path_unqualified_name);
                 let path = ast::Path::cast(syntax_under_caret)?;
                 let generics = path.segment()?.generic_arg_list();
                 QualifyCandidate::UnqualifiedName(generics)
             }
         }
         ImportCandidate::TraitAssocItem(_) => {
-            mark::hit!(qualify_path_trait_assoc_item);
+            cov_mark::hit!(qualify_path_trait_assoc_item);
             let path = ast::Path::cast(syntax_under_caret)?;
             let (qualifier, segment) = (path.qualifier()?, path.segment()?);
             QualifyCandidate::TraitAssocItem(qualifier, segment)
         }
         ImportCandidate::TraitMethod(_) => {
-            mark::hit!(qualify_path_trait_method);
+            cov_mark::hit!(qualify_path_trait_method);
             let mcall_expr = ast::MethodCallExpr::cast(syntax_under_caret)?;
             QualifyCandidate::TraitMethod(ctx.sema.db, mcall_expr)
         }
@@ -212,7 +211,7 @@ mod tests {
 
     #[test]
     fn applicable_when_found_an_import_partial() {
-        mark::check!(qualify_path_unqualified_name);
+        cov_mark::check!(qualify_path_unqualified_name);
         check_assist(
             qualify_path,
             r"
@@ -504,7 +503,7 @@ fn main() {
 
     #[test]
     fn associated_struct_const() {
-        mark::check!(qualify_path_qualifier_start);
+        cov_mark::check!(qualify_path_qualifier_start);
         check_assist(
             qualify_path,
             r"
@@ -605,7 +604,7 @@ fn main() {
 
     #[test]
     fn associated_trait_const() {
-        mark::check!(qualify_path_trait_assoc_item);
+        cov_mark::check!(qualify_path_trait_assoc_item);
         check_assist(
             qualify_path,
             r"
@@ -675,7 +674,7 @@ fn main() {
 
     #[test]
     fn trait_method() {
-        mark::check!(qualify_path_trait_method);
+        cov_mark::check!(qualify_path_trait_method);
         check_assist(
             qualify_path,
             r"

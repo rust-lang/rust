@@ -24,7 +24,6 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
-use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
@@ -760,7 +759,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 
 impl ReturnTypeImplTrait {
     fn from_hir(ctx: &TyLoweringContext, bounds: &[TypeBound]) -> Self {
-        mark::hit!(lower_rpit);
+        cov_mark::hit!(lower_rpit);
         let self_ty = Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0));
         let predicates = ctx.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             bounds
@@ -935,7 +934,7 @@ impl TraitEnvironment {
                 // add `Self: Trait<T1, T2, ...>` to the environment in trait
                 // function default implementations (and hypothetical code
                 // inside consts or type aliases)
-                test_utils::mark::hit!(trait_self_implements_self);
+                cov_mark::hit!(trait_self_implements_self);
                 let substs = Substs::type_params(db, trait_id);
                 let trait_ref = TraitRef { trait_: trait_id, substs };
                 let pred = GenericPredicate::Implemented(trait_ref);

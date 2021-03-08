@@ -3,7 +3,6 @@
 use hir::{HasAttrs, HirDisplay, ModPath, StructKind};
 use ide_db::SymbolKind;
 use itertools::Itertools;
-use test_utils::mark;
 
 use crate::{
     item::{CompletionItem, CompletionKind, ImportEdit},
@@ -68,7 +67,7 @@ impl<'a> EnumRender<'a> {
         .detail(self.detail());
 
         if self.variant_kind == StructKind::Tuple {
-            mark::hit!(inserts_parens_for_tuple_enums);
+            cov_mark::hit!(inserts_parens_for_tuple_enums);
             let params = Params::Anonymous(self.variant.fields(self.ctx.db()).len());
             builder =
                 builder.add_call_parens(self.ctx.completion, self.short_qualified_name, params);
@@ -103,13 +102,11 @@ impl<'a> EnumRender<'a> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::test_utils::check_edit;
 
     #[test]
     fn inserts_parens_for_tuple_enums() {
-        mark::check!(inserts_parens_for_tuple_enums);
+        cov_mark::check!(inserts_parens_for_tuple_enums);
         check_edit(
             "Some",
             r#"

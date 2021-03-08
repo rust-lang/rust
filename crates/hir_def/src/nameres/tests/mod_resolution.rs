@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn name_res_works_for_broken_modules() {
-    mark::check!(name_res_works_for_broken_modules);
+    cov_mark::check!(name_res_works_for_broken_modules);
     check(
         r"
 //- /lib.rs
@@ -774,7 +774,7 @@ struct X;
 
 #[test]
 fn circular_mods() {
-    mark::check!(circular_mods);
+    cov_mark::check!(circular_mods);
     compute_crate_def_map(
         r#"
 //- /lib.rs

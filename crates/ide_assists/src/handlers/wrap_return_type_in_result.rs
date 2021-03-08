@@ -4,7 +4,6 @@ use syntax::{
     ast::{self, make, BlockExpr, Expr, LoopBodyOwner},
     match_ast, AstNode, SyntaxNode,
 };
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -39,7 +38,7 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext)
     let first_part_ret_type = ret_type_str.splitn(2, '<').next();
     if let Some(ret_type_first_part) = first_part_ret_type {
         if ret_type_first_part.ends_with("Result") {
-            mark::hit!(wrap_return_type_in_result_simple_return_type_already_result);
+            cov_mark::hit!(wrap_return_type_in_result_simple_return_type_already_result);
             return None;
         }
     }
@@ -367,7 +366,7 @@ fn foo() -> std::result::Result<i32$0, String> {
 
     #[test]
     fn wrap_return_type_in_result_simple_return_type_already_result() {
-        mark::check!(wrap_return_type_in_result_simple_return_type_already_result);
+        cov_mark::check!(wrap_return_type_in_result_simple_return_type_already_result);
         check_assist_not_applicable(
             wrap_return_type_in_result,
             r#"

@@ -2,7 +2,6 @@ use syntax::{
     ast::{self, edit::AstNodeEdit, make},
     AstNode,
 };
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -104,7 +103,7 @@ fn exprify_if(
             ast::ElseBranch::Block(exprify_block(block, sema, name)?)
         }
         ast::ElseBranch::IfExpr(expr) => {
-            mark::hit!(test_pull_assignment_up_chained_if);
+            cov_mark::hit!(test_pull_assignment_up_chained_if);
             ast::ElseBranch::IfExpr(ast::IfExpr::cast(
                 exprify_if(&expr, sema, name)?.syntax().to_owned(),
             )?)
@@ -144,7 +143,7 @@ fn is_equivalent(
 ) -> bool {
     match (expr0, expr1) {
         (ast::Expr::FieldExpr(field_expr0), ast::Expr::FieldExpr(field_expr1)) => {
-            mark::hit!(test_pull_assignment_up_field_assignment);
+            cov_mark::hit!(test_pull_assignment_up_field_assignment);
             sema.resolve_field(field_expr0) == sema.resolve_field(field_expr1)
         }
         (ast::Expr::PathExpr(path0), ast::Expr::PathExpr(path1)) => {
@@ -160,7 +159,7 @@ fn is_equivalent(
             if prefix0.op_kind() == Some(ast::PrefixOp::Deref)
                 && prefix1.op_kind() == Some(ast::PrefixOp::Deref) =>
         {
-            mark::hit!(test_pull_assignment_up_deref);
+            cov_mark::hit!(test_pull_assignment_up_deref);
             if let (Some(prefix0), Some(prefix1)) = (prefix0.expr(), prefix1.expr()) {
                 is_equivalent(sema, &prefix0, &prefix1)
             } else {
@@ -263,7 +262,7 @@ fn foo() {
 
     #[test]
     fn test_pull_assignment_up_chained_if() {
-        mark::check!(test_pull_assignment_up_chained_if);
+        cov_mark::check!(test_pull_assignment_up_chained_if);
         check_assist(
             pull_assignment_up,
             r#"
@@ -379,7 +378,7 @@ fn foo() {
 
     #[test]
     fn test_pull_assignment_up_field_assignment() {
-        mark::check!(test_pull_assignment_up_field_assignment);
+        cov_mark::check!(test_pull_assignment_up_field_assignment);
         check_assist(
             pull_assignment_up,
             r#"
@@ -411,7 +410,7 @@ fn foo() {
 
     #[test]
     fn test_pull_assignment_up_deref() {
-        mark::check!(test_pull_assignment_up_deref);
+        cov_mark::check!(test_pull_assignment_up_deref);
         check_assist(
             pull_assignment_up,
             r#"

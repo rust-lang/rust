@@ -1,7 +1,6 @@
 //! Extensions for `Builder` structure required for item rendering.
 
 use itertools::Itertools;
-use test_utils::mark;
 
 use crate::{item::Builder, CompletionContext};
 
@@ -30,7 +29,7 @@ impl Builder {
             return false;
         }
         if ctx.use_item_syntax.is_some() {
-            mark::hit!(no_parens_in_use_item);
+            cov_mark::hit!(no_parens_in_use_item);
             return false;
         }
         if ctx.is_pattern_call {
@@ -43,7 +42,7 @@ impl Builder {
         // Don't add parentheses if the expected type is some function reference.
         if let Some(ty) = &ctx.expected_type {
             if ty.is_fn() {
-                mark::hit!(no_call_parens_if_fn_ptr_needed);
+                cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
                 return false;
             }
         }
@@ -67,7 +66,7 @@ impl Builder {
             None => return self,
         };
         // If not an import, add parenthesis automatically.
-        mark::hit!(inserts_parens_for_function_calls);
+        cov_mark::hit!(inserts_parens_for_function_calls);
 
         let (snippet, label) = if params.is_empty() {
             (format!("{}()$0", name), format!("{}()", name))
@@ -82,7 +81,7 @@ impl Builder {
                     format!("{}({})$0", name, function_params_snippet)
                 }
                 _ => {
-                    mark::hit!(suppress_arg_snippets);
+                    cov_mark::hit!(suppress_arg_snippets);
                     format!("{}($0)", name)
                 }
             };

@@ -2,7 +2,6 @@
 
 use hir::ScopeDef;
 use syntax::AstNode;
-use test_utils::mark;
 
 use crate::{CompletionContext, Completions};
 
@@ -30,13 +29,13 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
-            mark::hit!(skip_lifetime_completion);
+            cov_mark::hit!(skip_lifetime_completion);
             return;
         }
         if ctx.use_item_syntax.is_some() {
             if let (ScopeDef::Unknown, Some(name_ref)) = (&res, &ctx.name_ref_syntax) {
                 if name_ref.syntax().text() == name.to_string().as_str() {
-                    mark::hit!(self_fulfilling_completion);
+                    cov_mark::hit!(self_fulfilling_completion);
                     return;
                 }
             }
@@ -48,7 +47,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{
         test_utils::{check_edit, completion_list_with_config, TEST_CONFIG},
@@ -66,7 +64,7 @@ mod tests {
 
     #[test]
     fn self_fulfilling_completion() {
-        mark::check!(self_fulfilling_completion);
+        cov_mark::check!(self_fulfilling_completion);
         check(
             r#"
 use foo$0
@@ -185,7 +183,7 @@ fn quux() {
 
     #[test]
     fn completes_if_prefix_is_keyword() {
-        mark::check!(completes_if_prefix_is_keyword);
+        cov_mark::check!(completes_if_prefix_is_keyword);
         check_edit(
             "wherewolf",
             r#"
@@ -223,7 +221,7 @@ fn main() {
 
     #[test]
     fn does_not_complete_lifetimes() {
-        mark::check!(skip_lifetime_completion);
+        cov_mark::check!(skip_lifetime_completion);
         check(
             r#"fn quux<'a>() { $0 }"#,
             expect![[r#"

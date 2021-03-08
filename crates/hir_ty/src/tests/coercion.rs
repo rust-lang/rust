@@ -1,5 +1,4 @@
 use expect_test::expect;
-use test_utils::mark;
 
 use super::{check_infer, check_infer_with_mismatches};
 
@@ -381,7 +380,7 @@ fn infer_match_second_coerce() {
 
 #[test]
 fn coerce_merge_one_by_one1() {
-    mark::check!(coerce_merge_fail_fallback);
+    cov_mark::check!(coerce_merge_fail_fallback);
 
     check_infer(
         r"
@@ -589,7 +588,7 @@ fn coerce_fn_item_to_fn_ptr() {
 
 #[test]
 fn coerce_fn_items_in_match_arms() {
-    mark::check!(coerce_fn_reification);
+    cov_mark::check!(coerce_fn_reification);
 
     check_infer_with_mismatches(
         r"

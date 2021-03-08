@@ -1,6 +1,5 @@
 use ide_db::helpers::insert_use::{insert_use, ImportScope};
 use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -27,7 +26,7 @@ pub(crate) fn replace_qualified_name_with_use(
         return None;
     }
     if path.qualifier().is_none() {
-        mark::hit!(dont_import_trivial_paths);
+        cov_mark::hit!(dont_import_trivial_paths);
         return None;
     }
 
@@ -458,7 +457,7 @@ impl Debug for Foo {
 
     #[test]
     fn dont_import_trivial_paths() {
-        mark::check!(dont_import_trivial_paths);
+        cov_mark::check!(dont_import_trivial_paths);
         check_assist_not_applicable(
             replace_qualified_name_with_use,
             r"

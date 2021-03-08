@@ -3,7 +3,6 @@
 use hir::{Adt, HasVisibility, PathResolution, ScopeDef};
 use rustc_hash::FxHashSet;
 use syntax::AstNode;
-use test_utils::mark;
 
 use crate::{CompletionContext, Completions};
 
@@ -39,7 +38,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         if let Some(name_ref) = ctx.name_ref_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_string().as_str() {
                                 // for `use self::foo$0`, don't suggest `foo` as a completion
-                                mark::hit!(dont_complete_current_use);
+                                cov_mark::hit!(dont_complete_current_use);
                                 continue;
                             }
                         }
@@ -155,7 +154,6 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{
         test_utils::{check_edit, completion_list},
@@ -174,7 +172,7 @@ mod tests {
 
     #[test]
     fn dont_complete_current_use() {
-        mark::check!(dont_complete_current_use);
+        cov_mark::check!(dont_complete_current_use);
         check(r#"use self::foo$0;"#, expect![[""]]);
     }
 

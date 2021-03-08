@@ -7,7 +7,6 @@ use syntax::{
     ast::{self, Impl, NameOwner},
     AstNode,
 };
-use test_utils::mark;
 
 // Assist: generate_default_from_new
 //
@@ -43,19 +42,19 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     let fn_name = fn_node.name()?;
 
     if fn_name.text() != "new" {
-        mark::hit!(other_function_than_new);
+        cov_mark::hit!(other_function_than_new);
         return None;
     }
 
     if fn_node.param_list()?.params().next().is_some() {
-        mark::hit!(new_function_with_parameters);
+        cov_mark::hit!(new_function_with_parameters);
         return None;
     }
 
     let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
     if is_default_implemented(ctx, &impl_) {
-        mark::hit!(default_block_is_already_present);
-        mark::hit!(struct_in_module_with_default);
+        cov_mark::hit!(default_block_is_already_present);
+        cov_mark::hit!(struct_in_module_with_default);
         return None;
     }
 
@@ -178,7 +177,7 @@ impl Default for Test {
 
     #[test]
     fn new_function_with_parameters() {
-        mark::check!(new_function_with_parameters);
+        cov_mark::check!(new_function_with_parameters);
         check_not_applicable(
             r#"
 struct Example { _inner: () }
@@ -194,7 +193,7 @@ impl Example {
 
     #[test]
     fn other_function_than_new() {
-        mark::check!(other_function_than_new);
+        cov_mark::check!(other_function_than_new);
         check_not_applicable(
             r#"
 struct Example { _inner: () }
@@ -211,7 +210,7 @@ impl Example {
 
     #[test]
     fn default_block_is_already_present() {
-        mark::check!(default_block_is_already_present);
+        cov_mark::check!(default_block_is_already_present);
         check_not_applicable(
             r#"
 struct Example { _inner: () }
@@ -340,7 +339,7 @@ impl Default for Example {
 
     #[test]
     fn struct_in_module_with_default() {
-        mark::check!(struct_in_module_with_default);
+        cov_mark::check!(struct_in_module_with_default);
         check_not_applicable(
             r#"
 mod test {

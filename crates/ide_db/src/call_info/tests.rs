@@ -1,7 +1,7 @@
 use crate::RootDatabase;
 use base_db::{fixture::ChangeFixture, FilePosition};
 use expect_test::{expect, Expect};
-use test_utils::{mark, RangeOrOffset};
+use test_utils::RangeOrOffset;
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
 pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
@@ -347,7 +347,7 @@ pub fn foo(mut r: WriteHandler<()>) {
 
 #[test]
 fn call_info_bad_offset() {
-    mark::check!(call_info_bad_offset);
+    cov_mark::check!(call_info_bad_offset);
     check(
         r#"
 fn foo(x: u32, y: u32) -> u32 {x + y}

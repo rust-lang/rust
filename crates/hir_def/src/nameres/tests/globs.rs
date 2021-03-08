@@ -148,7 +148,7 @@ pub(crate) struct PubCrateStruct;
 
 #[test]
 fn glob_across_crates() {
-    mark::check!(glob_across_crates);
+    cov_mark::check!(glob_across_crates);
     check(
         r#"
 //- /main.rs crate:main deps:test_crate
@@ -184,7 +184,7 @@ struct Foo;
 
 #[test]
 fn glob_enum() {
-    mark::check!(glob_enum);
+    cov_mark::check!(glob_enum);
     check(
         r#"
 enum Foo { Bar, Baz }
@@ -201,7 +201,7 @@ use self::Foo::*;
 
 #[test]
 fn glob_enum_group() {
-    mark::check!(glob_enum_group);
+    cov_mark::check!(glob_enum_group);
     check(
         r#"
 enum Foo { Bar, Baz }
@@ -218,7 +218,7 @@ use self::Foo::{*};
 
 #[test]
 fn glob_shadowed_def() {
-    mark::check!(import_shadowed);
+    cov_mark::check!(import_shadowed);
     check(
         r#"
 //- /lib.rs

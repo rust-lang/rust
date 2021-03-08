@@ -2,7 +2,6 @@ use syntax::{
     ast::{self, AstNode},
     SourceFile, SyntaxKind, TextSize, T,
 };
-use test_utils::mark;
 
 // Feature: Matching Brace
 //
@@ -28,7 +27,7 @@ pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<Text
         .next()?;
     let parent = brace_token.parent();
     if brace_token.kind() == T![|] && !ast::ParamList::can_cast(parent.kind()) {
-        mark::hit!(pipes_not_braces);
+        cov_mark::hit!(pipes_not_braces);
         return None;
     }
     let matching_kind = BRACES[brace_idx ^ 1];
@@ -63,7 +62,7 @@ mod tests {
         do_check("fn main() { $0|x: i32| x * 2;}", "fn main() { |x: i32$0| x * 2;}");
 
         {
-            mark::check!(pipes_not_braces);
+            cov_mark::check!(pipes_not_braces);
             do_check(
                 "fn main() { match 92 { 1 | 2 |$0 3 => 92 } }",
                 "fn main() { match 92 { 1 | 2 |$0 3 => 92 } }",

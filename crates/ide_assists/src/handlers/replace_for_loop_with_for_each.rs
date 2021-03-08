@@ -3,7 +3,6 @@ use hir::known;
 use ide_db::helpers::FamousDefs;
 use stdx::format_to;
 use syntax::{ast, AstNode};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -34,7 +33,7 @@ pub(crate) fn replace_for_loop_with_for_each(acc: &mut Assists, ctx: &AssistCont
     let pat = for_loop.pat()?;
     let body = for_loop.loop_body()?;
     if body.syntax().text_range().start() < ctx.offset() {
-        mark::hit!(not_available_in_body);
+        cov_mark::hit!(not_available_in_body);
         return None;
     }
 
@@ -187,7 +186,7 @@ fn main() {
 
     #[test]
     fn not_available_in_body() {
-        mark::check!(not_available_in_body);
+        cov_mark::check!(not_available_in_body);
         check_assist_not_applicable(
             replace_for_loop_with_for_each,
             r"

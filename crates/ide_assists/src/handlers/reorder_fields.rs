@@ -4,7 +4,6 @@ use rustc_hash::FxHashMap;
 use hir::{Adt, ModuleDef, PathResolution, Semantics, Struct};
 use ide_db::RootDatabase;
 use syntax::{algo, ast, match_ast, AstNode, SyntaxKind, SyntaxKind::*, SyntaxNode};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -39,7 +38,7 @@ fn reorder<R: AstNode>(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     });
 
     if sorted_fields == fields {
-        mark::hit!(reorder_sorted_fields);
+        cov_mark::hit!(reorder_sorted_fields);
         return None;
     }
 
@@ -109,15 +108,13 @@ fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashM
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
     #[test]
     fn reorder_sorted_fields() {
-        mark::check!(reorder_sorted_fields);
+        cov_mark::check!(reorder_sorted_fields);
         check_assist_not_applicable(
             reorder_fields,
             r#"

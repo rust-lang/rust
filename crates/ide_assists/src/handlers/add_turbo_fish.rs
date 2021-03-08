@@ -1,6 +1,5 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{ast, AstNode, SyntaxKind, T};
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -30,13 +29,13 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         if arg_list.args().count() > 0 {
             return None;
         }
-        mark::hit!(add_turbo_fish_after_call);
-        mark::hit!(add_type_ascription_after_call);
+        cov_mark::hit!(add_turbo_fish_after_call);
+        cov_mark::hit!(add_type_ascription_after_call);
         arg_list.l_paren_token()?.prev_token().filter(|it| it.kind() == SyntaxKind::IDENT)
     })?;
     let next_token = ident.next_token()?;
     if next_token.kind() == T![::] {
-        mark::hit!(add_turbo_fish_one_fish_is_enough);
+        cov_mark::hit!(add_turbo_fish_one_fish_is_enough);
         return None;
     }
     let name_ref = ast::NameRef::cast(ident.parent())?;
@@ -50,7 +49,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     };
     let generics = hir::GenericDef::Function(fun).params(ctx.sema.db);
     if generics.is_empty() {
-        mark::hit!(add_turbo_fish_non_generic);
+        cov_mark::hit!(add_turbo_fish_non_generic);
         return None;
     }
 
@@ -67,7 +66,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 },
             )?
         } else {
-            mark::hit!(add_type_ascription_already_typed);
+            cov_mark::hit!(add_type_ascription_already_typed);
         }
     }
 
@@ -87,7 +86,6 @@ mod tests {
     use crate::tests::{check_assist, check_assist_by_label, check_assist_not_applicable};
 
     use super::*;
-    use test_utils::mark;
 
     #[test]
     fn add_turbo_fish_function() {
@@ -110,7 +108,7 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_after_call() {
-        mark::check!(add_turbo_fish_after_call);
+        cov_mark::check!(add_turbo_fish_after_call);
         check_assist(
             add_turbo_fish,
             r#"
@@ -155,7 +153,7 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_one_fish_is_enough() {
-        mark::check!(add_turbo_fish_one_fish_is_enough);
+        cov_mark::check!(add_turbo_fish_one_fish_is_enough);
         check_assist_not_applicable(
             add_turbo_fish,
             r#"
@@ -169,7 +167,7 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_non_generic() {
-        mark::check!(add_turbo_fish_non_generic);
+        cov_mark::check!(add_turbo_fish_non_generic);
         check_assist_not_applicable(
             add_turbo_fish,
             r#"
@@ -203,7 +201,7 @@ fn main() {
 
     #[test]
     fn add_type_ascription_after_call() {
-        mark::check!(add_type_ascription_after_call);
+        cov_mark::check!(add_type_ascription_after_call);
         check_assist_by_label(
             add_turbo_fish,
             r#"
@@ -250,7 +248,7 @@ fn main() {
 
     #[test]
     fn add_type_ascription_already_typed() {
-        mark::check!(add_type_ascription_already_typed);
+        cov_mark::check!(add_type_ascription_already_typed);
         check_assist(
             add_turbo_fish,
             r#"

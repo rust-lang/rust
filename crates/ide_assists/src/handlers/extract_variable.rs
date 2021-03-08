@@ -6,7 +6,6 @@ use syntax::{
     },
     SyntaxNode,
 };
-use test_utils::mark;
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
@@ -32,7 +31,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
     let node = ctx.covering_element();
     if node.kind() == COMMENT {
-        mark::hit!(extract_var_in_comment_is_not_applicable);
+        cov_mark::hit!(extract_var_in_comment_is_not_applicable);
         return None;
     }
     let to_extract = node.ancestors().find_map(valid_target_expr)?;
@@ -69,7 +68,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             format_to!(buf, "{}", to_extract.syntax());
 
             if let Anchor::Replace(stmt) = anchor {
-                mark::hit!(test_extract_var_expr_stmt);
+                cov_mark::hit!(test_extract_var_expr_stmt);
                 if stmt.semicolon_token().is_none() {
                     buf.push_str(";");
                 }
@@ -142,7 +141,7 @@ impl Anchor {
                 node.parent().and_then(ast::BlockExpr::cast).and_then(|it| it.tail_expr())
             {
                 if expr.syntax() == &node {
-                    mark::hit!(test_extract_var_last_expr);
+                    cov_mark::hit!(test_extract_var_last_expr);
                     return Some(Anchor::Before(node));
                 }
             }
@@ -175,8 +174,6 @@ impl Anchor {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
@@ -199,13 +196,13 @@ fn foo() {
 
     #[test]
     fn extract_var_in_comment_is_not_applicable() {
-        mark::check!(extract_var_in_comment_is_not_applicable);
+        cov_mark::check!(extract_var_in_comment_is_not_applicable);
         check_assist_not_applicable(extract_variable, "fn main() { 1 + /* $0comment$0 */ 1; }");
     }
 
     #[test]
     fn test_extract_var_expr_stmt() {
-        mark::check!(test_extract_var_expr_stmt);
+        cov_mark::check!(test_extract_var_expr_stmt);
         check_assist(
             extract_variable,
             r#"
@@ -250,7 +247,7 @@ fn foo() {
 
     #[test]
     fn test_extract_var_last_expr() {
-        mark::check!(test_extract_var_last_expr);
+        cov_mark::check!(test_extract_var_last_expr);
         check_assist(
             extract_variable,
             r#"

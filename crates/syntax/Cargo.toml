@@ -11,6 +11,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+cov-mark = "1.1"
 itertools = "0.10.0"
 rowan = "0.12.2"
 rustc_lexer = { version = "709.0.0", package = "rustc-ap-rustc_lexer" }

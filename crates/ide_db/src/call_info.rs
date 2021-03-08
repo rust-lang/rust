@@ -7,7 +7,6 @@ use syntax::{
     ast::{self, ArgListOwner},
     match_ast, AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use test_utils::mark;
 
 use crate::RootDatabase;
 
@@ -122,7 +121,7 @@ fn call_info_impl(
 
         let arg_list_range = arg_list.syntax().text_range();
         if !arg_list_range.contains_inclusive(token.text_range().start()) {
-            mark::hit!(call_info_bad_offset);
+            cov_mark::hit!(call_info_bad_offset);
             return None;
         }
         let param = std::cmp::min(
@@ -162,7 +161,7 @@ impl ActiveParameter {
         let idx = active_parameter?;
         let mut params = signature.params(sema.db);
         if !(idx < params.len()) {
-            mark::hit!(too_many_arguments);
+            cov_mark::hit!(too_many_arguments);
             return None;
         }
         let (pat, ty) = params.swap_remove(idx);

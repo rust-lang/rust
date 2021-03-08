@@ -4,7 +4,6 @@ use syntax::{
     SyntaxKind::{CONST, ENUM, FN, MODULE, STATIC, STRUCT, TRAIT, TYPE_ALIAS, VISIBILITY},
     T,
 };
-use test_utils::mark;
 
 use crate::{utils::vis_offset, AssistContext, AssistId, AssistKind, Assists};
 
@@ -56,7 +55,7 @@ fn add_vis(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     } else if let Some(field_name) = ctx.find_node_at_offset::<ast::Name>() {
         let field = field_name.syntax().ancestors().find_map(ast::RecordField::cast)?;
         if field.name()? != field_name {
-            mark::hit!(change_visibility_field_false_positive);
+            cov_mark::hit!(change_visibility_field_false_positive);
             return None;
         }
         if field.visibility().is_some() {
@@ -110,8 +109,6 @@ fn change_vis(acc: &mut Assists, vis: ast::Visibility) -> Option<()> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
@@ -139,7 +136,7 @@ mod tests {
 
     #[test]
     fn change_visibility_field_false_positive() {
-        mark::check!(change_visibility_field_false_positive);
+        cov_mark::check!(change_visibility_field_false_positive);
         check_assist_not_applicable(
             change_visibility,
             r"struct S { field: [(); { let $0x = ();}] }",

@@ -1,5 +1,4 @@
 use expect_test::expect;
-use test_utils::mark;
 
 use super::{check_infer, check_types};
 
@@ -87,8 +86,8 @@ fn bug_651() {
 
 #[test]
 fn recursive_vars() {
-    mark::check!(type_var_cycles_resolve_completely);
-    mark::check!(type_var_cycles_resolve_as_possible);
+    cov_mark::check!(type_var_cycles_resolve_completely);
+    cov_mark::check!(type_var_cycles_resolve_as_possible);
     check_infer(
         r#"
         fn test() {
@@ -166,7 +165,7 @@ fn infer_std_crash_1() {
 
 #[test]
 fn infer_std_crash_2() {
-    mark::check!(type_var_resolves_to_int_var);
+    cov_mark::check!(type_var_resolves_to_int_var);
     // caused "equating two type variables, ...", taken from std
     check_infer(
         r#"

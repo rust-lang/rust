@@ -165,16 +165,16 @@ fn macro_resolve() {
     check_at(
         r#"
 //- /lib.rs crate:lib deps:core
-use core::mark;
+use core::cov_mark;
 
 fn f() {
     fn nested() {
-        mark::hit!(Hit);
+        cov_mark::hit!(Hit);
         $0
     }
 }
 //- /core.rs crate:core
-pub mod mark {
+pub mod cov_mark {
     #[macro_export]
     macro_rules! _hit {
         ($name:ident) => {
@@ -193,8 +193,8 @@ pub mod mark {
             nested: v
 
             crate
+            cov_mark: t
             f: v
-            mark: t
         "#]],
     );
 }
@@ -264,7 +264,7 @@ fn main() {
 fn underscore_import() {
     // This used to panic, because the default (private) visibility inside block expressions would
     // point into the containing `DefMap`, which visibilities should never be able to do.
-    mark::check!(adjust_vis_in_block_def_map);
+    cov_mark::check!(adjust_vis_in_block_def_map);
     check_at(
         r#"
 mod m {

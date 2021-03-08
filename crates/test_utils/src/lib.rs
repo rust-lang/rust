@@ -6,8 +6,6 @@
 //! * Extracting markup (mainly, `$0` markers) out of fixture strings.
 //! * marks (see the eponymous module).
 
-#[macro_use]
-pub mod mark;
 pub mod bench_fixture;
 mod fixture;
 

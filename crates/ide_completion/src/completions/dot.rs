@@ -2,7 +2,6 @@
 
 use hir::{HasVisibility, Type};
 use rustc_hash::FxHashSet;
-use test_utils::mark;
 
 use crate::{context::CompletionContext, Completions};
 
@@ -19,7 +18,7 @@ pub(crate) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     };
 
     if ctx.is_call {
-        mark::hit!(test_no_struct_field_completion_for_method_call);
+        cov_mark::hit!(test_no_struct_field_completion_for_method_call);
     } else {
         complete_fields(acc, ctx, &receiver_ty);
     }
@@ -62,7 +61,6 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &T
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{test_utils::completion_list, CompletionKind};
 
@@ -122,7 +120,7 @@ impl A {
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        mark::check!(test_no_struct_field_completion_for_method_call);
+        cov_mark::check!(test_no_struct_field_completion_for_method_call);
         check(
             r#"
 struct A { the_field: u32 }

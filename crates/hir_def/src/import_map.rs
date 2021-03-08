@@ -8,7 +8,6 @@ use hir_expand::name::Name;
 use indexmap::{map::Entry, IndexMap};
 use itertools::Itertools;
 use rustc_hash::{FxHashSet, FxHasher};
-use test_utils::mark;
 
 use crate::{
     db::DefDatabase, item_scope::ItemInNs, visibility::Visibility, AssocItemId, ModuleDefId,
@@ -193,7 +192,7 @@ impl ImportMap {
                 // cannot use associated type aliases directly: need a `<Struct as Trait>::TypeAlias`
                 // qualifier, ergo no need to store it for imports in import_map
                 AssocItemId::TypeAliasId(_) => {
-                    mark::hit!(type_aliases_ignored);
+                    cov_mark::hit!(type_aliases_ignored);
                     continue;
                 }
             };
@@ -463,7 +462,6 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
 mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{test_db::TestDB, AssocContainerId, Lookup};
 
@@ -801,7 +799,7 @@ mod tests {
 
     #[test]
     fn fuzzy_import_trait_and_assoc_items() {
-        mark::check!(type_aliases_ignored);
+        cov_mark::check!(type_aliases_ignored);
         let ra_fixture = r#"
         //- /main.rs crate:main deps:dep
         //- /dep.rs crate:dep

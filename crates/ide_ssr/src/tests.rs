@@ -3,7 +3,7 @@ use expect_test::{expect, Expect};
 use ide_db::base_db::{salsa::Durability, FileId, FilePosition, FileRange, SourceDatabaseExt};
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
-use test_utils::{mark, RangeOrOffset};
+use test_utils::RangeOrOffset;
 
 fn parse_error_text(query: &str) -> String {
     format!("{}", query.parse::<SsrRule>().unwrap_err())
@@ -492,7 +492,7 @@ fn match_resolved_type_name() {
 
 #[test]
 fn type_arguments_within_path() {
-    mark::check!(type_arguments_within_path);
+    cov_mark::check!(type_arguments_within_path);
     let code = r#"
         mod foo {
             pub struct Bar<T> {t: T}
@@ -508,7 +508,7 @@ fn type_arguments_within_path() {
 
 #[test]
 fn literal_constraint() {
-    mark::check!(literal_constraint);
+    cov_mark::check!(literal_constraint);
     let code = r#"
         enum Option<T> { Some(T), None }
         use Option::Some;
@@ -641,7 +641,7 @@ fn replace_associated_function_call() {
 
 #[test]
 fn replace_associated_trait_default_function_call() {
-    mark::check!(replace_associated_trait_default_function_call);
+    cov_mark::check!(replace_associated_trait_default_function_call);
     assert_ssr_transform(
         "Bar2::foo() ==>> Bar2::foo2()",
         r#"
@@ -673,7 +673,7 @@ fn replace_associated_trait_default_function_call() {
 
 #[test]
 fn replace_associated_trait_constant() {
-    mark::check!(replace_associated_trait_constant);
+    cov_mark::check!(replace_associated_trait_constant);
     assert_ssr_transform(
         "Bar2::VALUE ==>> Bar2::VALUE_2222",
         r#"
@@ -998,7 +998,7 @@ fn use_declaration_with_braces() {
     // It would be OK for a path rule to match and alter a use declaration. We shouldn't mess it up
     // though. In particular, we must not change `use foo::{baz, bar}` to `use foo::{baz,
     // foo2::bar2}`.
-    mark::check!(use_declaration_with_braces);
+    cov_mark::check!(use_declaration_with_braces);
     assert_ssr_transform(
         "foo::bar ==>> foo2::bar2",
         r#"
@@ -1076,7 +1076,7 @@ fn ufcs_matches_method_call() {
 
 #[test]
 fn pattern_is_a_single_segment_path() {
-    mark::check!(pattern_is_a_single_segment_path);
+    cov_mark::check!(pattern_is_a_single_segment_path);
     // The first function should not be altered because the `foo` in scope at the cursor position is
     // a different `foo`. This case is special because "foo" can be parsed as a pattern (IDENT_PAT ->
     // NAME -> IDENT), which contains no path. If we're not careful we'll end up matching the `foo`
@@ -1118,7 +1118,7 @@ fn replace_local_variable_reference() {
     // The pattern references a local variable `foo` in the block containing the cursor. We should
     // only replace references to this variable `foo`, not other variables that just happen to have
     // the same name.
-    mark::check!(cursor_after_semicolon);
+    cov_mark::check!(cursor_after_semicolon);
     assert_ssr_transform(
         "foo + $a ==>> $a - foo",
         r#"
@@ -1179,7 +1179,7 @@ fn replace_path_within_selection() {
 
 #[test]
 fn replace_nonpath_within_selection() {
-    mark::check!(replace_nonpath_within_selection);
+    cov_mark::check!(replace_nonpath_within_selection);
     assert_ssr_transform(
         "$a + $b ==>> $b * $a",
         r#"
@@ -1269,7 +1269,7 @@ fn replace_autoref_autoderef_capture() {
     // second, we already have a reference, so it isn't. When $a is used in a context where autoref
     // doesn't apply, we need to prefix it with `&`. Finally, we have some cases where autoderef
     // needs to be applied.
-    mark::check!(replace_autoref_autoderef_capture);
+    cov_mark::check!(replace_autoref_autoderef_capture);
     let code = r#"
         struct Foo {}
         impl Foo {

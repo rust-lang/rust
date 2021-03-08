@@ -6,7 +6,6 @@ use ide_db::base_db::FilePosition;
 use parsing::Placeholder;
 use rustc_hash::FxHashMap;
 use syntax::{ast, SmolStr, SyntaxKind, SyntaxNode, SyntaxToken};
-use test_utils::mark;
 
 pub(crate) struct ResolutionScope<'db> {
     scope: hir::SemanticsScope<'db>,
@@ -170,13 +169,13 @@ impl Resolver<'_, '_> {
                     // calls. e.g. `Foo::bar($s)` should match `x.bar()`.
                     true
                 } else {
-                    mark::hit!(replace_associated_trait_default_function_call);
+                    cov_mark::hit!(replace_associated_trait_default_function_call);
                     false
                 }
             }
             hir::PathResolution::AssocItem(_) => {
                 // Not a function. Could be a constant or an associated type.
-                mark::hit!(replace_associated_trait_constant);
+                cov_mark::hit!(replace_associated_trait_constant);
                 false
             }
             _ => true,
@@ -267,7 +266,7 @@ fn pick_node_for_resolution(node: SyntaxNode) -> SyntaxNode {
     match node.kind() {
         SyntaxKind::EXPR_STMT => {
             if let Some(n) = node.first_child() {
-                mark::hit!(cursor_after_semicolon);
+                cov_mark::hit!(cursor_after_semicolon);
                 return n;
             }
         }
@@ -291,7 +290,7 @@ fn path_contains_type_arguments(path: Option<ast::Path>) -> bool {
     if let Some(path) = path {
         if let Some(segment) = path.segment() {
             if segment.generic_arg_list().is_some() {
-                mark::hit!(type_arguments_within_path);
+                cov_mark::hit!(type_arguments_within_path);
                 return true;
             }
         }

@@ -6,7 +6,7 @@ use syntax::{
     SyntaxKind::{ERROR, IDENT},
     SyntaxNode, WalkEvent, T,
 };
-use test_utils::{assert_eq_text, mark};
+use test_utils::assert_eq_text;
 
 use super::*;
 
@@ -687,7 +687,7 @@ fn test_match_literal() {
 
 #[test]
 fn test_parse_macro_def_simple() {
-    mark::check!(parse_macro_def_simple);
+    cov_mark::check!(parse_macro_def_simple);
 
     parse_macro2(
         r#"
@@ -701,7 +701,7 @@ macro foo($id:ident) {
 
 #[test]
 fn test_parse_macro_def_rules() {
-    mark::check!(parse_macro_def_rules);
+    cov_mark::check!(parse_macro_def_rules);
 
     parse_macro2(
         r#"
