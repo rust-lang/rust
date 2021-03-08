@@ -127,6 +127,11 @@ pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        //  FIXME(#79191, #82678)
+        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
+            return;
+        }
+
         // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
         if tcx.sess.mir_opt_level() < 3 {
