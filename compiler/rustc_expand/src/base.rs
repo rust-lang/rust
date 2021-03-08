@@ -3,10 +3,10 @@ use crate::module::DirectoryOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
+use rustc_ast::{self as ast, AstLike, Attribute, NodeId, PatKind};
+use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
@@ -44,7 +44,7 @@ pub enum Annotatable {
     Variant(ast::Variant),
 }
 
-impl HasAttrs for Annotatable {
+impl AstLike for Annotatable {
     fn attrs(&self) -> &[Attribute] {
         match *self {
             Annotatable::Item(ref item) => &item.attrs,
@@ -79,6 +79,10 @@ impl HasAttrs for Annotatable {
             Annotatable::StructField(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
         }
+    }
+
+    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
+        panic!("Called finalize_tokens on an Annotatable: {:?}", tokens);
     }
 }
 
@@ -141,7 +145,10 @@ impl Annotatable {
     }
 
     crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::No)
+        // Tokens of an attribute target may be invalidated by some outer `#[derive]` performing
+        // "full configuration" (attributes following derives on the same item should be the most
+        // common case), that's why synthesizing tokens is allowed.
+        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::Yes)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -232,25 +239,6 @@ impl Annotatable {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
-        }
-    }
-
-    pub fn derive_allowed(&self) -> bool {
-        match *self {
-            Annotatable::Stmt(ref stmt) => match stmt.kind {
-                ast::StmtKind::Item(ref item) => matches!(
-                    item.kind,
-                    ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..)
-                ),
-                _ => false,
-            },
-            Annotatable::Item(ref item) => match item.kind {
-                ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
-                    true
-                }
-                _ => false,
-            },
-            _ => false,
         }
     }
 }
@@ -772,8 +760,8 @@ impl SyntaxExtension {
         name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable = attr::allow_internal_unstable(sess, &attrs)
-            .map(|features| features.collect::<Vec<Symbol>>().into());
+        let allow_internal_unstable =
+            Some(attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>().into());
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
@@ -786,10 +774,16 @@ impl SyntaxExtension {
             .find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
-        if const_stability.is_some() {
+        if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
-                .span_err(span, "macros cannot have const stability attributes");
+                .struct_span_err(sp, "macros cannot have const stability attributes")
+                .span_label(sp, "invalid const stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "const stability attribute affects this macro",
+                )
+                .emit();
         }
 
         SyntaxExtension {
@@ -798,7 +792,7 @@ impl SyntaxExtension {
             allow_internal_unstable,
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability,
+            stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
@@ -854,12 +848,6 @@ impl SyntaxExtension {
     }
 }
 
-/// Result of resolving a macro invocation.
-pub enum InvocationRes {
-    Single(Lrc<SyntaxExtension>),
-    DeriveContainer(Vec<Lrc<SyntaxExtension>>),
-}
-
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
@@ -885,16 +873,29 @@ pub trait ResolverExpand {
         invoc: &Invocation,
         eager_expansion_root: ExpnId,
         force: bool,
-    ) -> Result<InvocationRes, Indeterminate>;
+    ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
 
     fn check_unused_macros(&mut self);
 
     /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
+    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId;
 
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
+    fn resolve_derives(
+        &mut self,
+        expn_id: ExpnId,
+        derives: Vec<ast::Path>,
+        force: bool,
+    ) -> Result<(), Indeterminate>;
+    /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
+    /// back from resolver.
+    fn take_derive_resolutions(
+        &mut self,
+        expn_id: ExpnId,
+    ) -> Option<Vec<(Lrc<SyntaxExtension>, ast::Path)>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
@@ -1051,6 +1052,10 @@ impl<'a> ExtCtxt<'a> {
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
+    }
+    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
+        components.iter().map(|&s| Ident::new(s, def_site)).collect()
     }
 
     pub fn check_unused_macros(&mut self) {

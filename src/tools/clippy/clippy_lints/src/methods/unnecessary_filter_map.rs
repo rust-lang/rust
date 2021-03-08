@@ -1,8 +1,6 @@
-use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
-use crate::utils::{match_qpath, match_trait_method, span_lint};
+use crate::utils::{match_qpath, match_trait_method, path_to_local_id, paths, span_lint};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -59,14 +57,8 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
                 if let hir::ExprKind::Path(ref path) = func.kind;
                 then {
                     if match_qpath(path, &paths::OPTION_SOME) {
-                        if_chain! {
-                            if let hir::ExprKind::Path(path) = &args[0].kind;
-                            if let Res::Local(ref local) = cx.qpath_res(path, args[0].hir_id);
-                            then {
-                                if arg_id == *local {
-                                    return (false, false)
-                                }
-                            }
+                        if path_to_local_id(&args[0], arg_id) {
+                            return (false, false)
                         }
                         return (true, false);
                     }

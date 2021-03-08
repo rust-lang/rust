@@ -603,6 +603,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         Ty: TyAndLayoutMethods<'a, C> + Copy,
         C: LayoutOf<Ty = Ty, TyAndLayout = TyAndLayout<'a, Ty>> + HasDataLayout + HasTargetSpec,
     {
+        if abi == spec::abi::Abi::X86Interrupt {
+            if let Some(arg) = self.args.first_mut() {
+                arg.make_indirect_byval();
+            }
+            return Ok(());
+        }
+
         match &cx.target_spec().arch[..] {
             "x86" => {
                 let flavor = if abi == spec::abi::Abi::Fastcall {

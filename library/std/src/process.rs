@@ -498,6 +498,10 @@ pub struct Command {
     inner: imp::Command,
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Command {}
+
 impl Command {
     /// Constructs a new `Command` for launching the program at
     /// path `program`, with the following default configuration:
@@ -1374,6 +1378,10 @@ impl From<fs::File> for Stdio {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatus {}
 
 impl ExitStatus {
     /// Was termination successful? Signal termination is not considered a

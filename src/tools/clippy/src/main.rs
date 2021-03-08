@@ -59,7 +59,6 @@ pub fn main() {
 }
 
 struct ClippyCmd {
-    unstable_options: bool,
     cargo_subcommand: &'static str,
     args: Vec<String>,
     clippy_args: Vec<String>,
@@ -105,18 +104,9 @@ impl ClippyCmd {
         }
 
         ClippyCmd {
-            unstable_options,
             cargo_subcommand,
             args,
             clippy_args,
-        }
-    }
-
-    fn path_env(&self) -> &'static str {
-        if self.unstable_options {
-            "RUSTC_WORKSPACE_WRAPPER"
-        } else {
-            "RUSTC_WRAPPER"
         }
     }
 
@@ -156,7 +146,7 @@ impl ClippyCmd {
             .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
             .collect();
 
-        cmd.env(self.path_env(), Self::path())
+        cmd.env("RUSTC_WORKSPACE_WRAPPER", Self::path())
             .envs(ClippyCmd::target_dir())
             .env("CLIPPY_ARGS", clippy_args)
             .arg(self.cargo_subcommand)
@@ -195,7 +185,7 @@ mod tests {
     #[should_panic]
     fn fix_without_unstable() {
         let args = "cargo clippy --fix".split_whitespace().map(ToString::to_string);
-        let _ = ClippyCmd::new(args);
+        ClippyCmd::new(args);
     }
 
     #[test]
@@ -205,7 +195,6 @@ mod tests {
             .map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
         assert_eq!("fix", cmd.cargo_subcommand);
-        assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
         assert!(cmd.args.iter().any(|arg| arg.ends_with("unstable-options")));
     }
 
@@ -232,16 +221,5 @@ mod tests {
         let args = "cargo clippy".split_whitespace().map(ToString::to_string);
         let cmd = ClippyCmd::new(args);
         assert_eq!("check", cmd.cargo_subcommand);
-        assert_eq!("RUSTC_WRAPPER", cmd.path_env());
-    }
-
-    #[test]
-    fn check_unstable() {
-        let args = "cargo clippy -Zunstable-options"
-            .split_whitespace()
-            .map(ToString::to_string);
-        let cmd = ClippyCmd::new(args);
-        assert_eq!("check", cmd.cargo_subcommand);
-        assert_eq!("RUSTC_WORKSPACE_WRAPPER", cmd.path_env());
     }
 }

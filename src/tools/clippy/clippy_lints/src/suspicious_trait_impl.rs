@@ -194,7 +194,7 @@ impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::UnNot | hir::UnOp::UnNeg, _)
+            | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
             | hir::ExprKind::AssignOp(..) => self.nb_binops += 1,
             _ => {},
         }

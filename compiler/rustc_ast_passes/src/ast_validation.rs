@@ -1054,12 +1054,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return;
             }
-            ItemKind::Mod(Mod { inline, unsafety, .. }) => {
+            ItemKind::Mod(unsafety, ref mod_kind) => {
                 if let Unsafe::Yes(span) = unsafety {
                     self.err_handler().span_err(span, "module cannot be declared unsafe");
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !inline && !self.session.contains_name(&item.attrs, sym::path) {
+                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
+                    && !self.session.contains_name(&item.attrs, sym::path)
+                {
                     self.check_mod_file_item_asciionly(item.ident);
                 }
             }

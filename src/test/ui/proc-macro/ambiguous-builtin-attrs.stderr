@@ -12,7 +12,7 @@ LL | #[repr(C)]
    |
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+  --> $DIR/ambiguous-builtin-attrs.rs:6:5
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #[cfg_attr(all(), repr(C))]
    |
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+  --> $DIR/ambiguous-builtin-attrs.rs:6:5
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL | fn non_macro_expanded_location<#[repr(C)] T>() {
    |
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+  --> $DIR/ambiguous-builtin-attrs.rs:6:5
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |         #[repr(C)]
    |
    = note: `repr` could refer to a built-in attribute
 note: `repr` could also refer to the attribute macro imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+  --> $DIR/ambiguous-builtin-attrs.rs:6:5
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL | #![feature(decl_macro)]
    |
    = note: `feature` could refer to a built-in attribute
 note: `feature` could also refer to the attribute macro imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+  --> $DIR/ambiguous-builtin-attrs.rs:6:5
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^

@@ -126,6 +126,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
         .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
+        .optopt("", "npm", "the name of npm", "PATH")
         .optopt("", "remote-test-client", "path to the remote test client", "PATH")
         .optopt(
             "",
@@ -194,11 +195,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
-    let has_tidy = Command::new("tidy")
-        .arg("--version")
-        .stdout(Stdio::null())
-        .status()
-        .map_or(false, |status| status.success());
+    let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
+    let has_tidy = if mode == Mode::Rustdoc {
+        Command::new("tidy")
+            .arg("--version")
+            .stdout(Stdio::null())
+            .status()
+            .map_or(false, |status| status.success())
+    } else {
+        // Avoid spawning an external command when we know tidy won't be used.
+        false
+    };
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -217,11 +224,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: matches.opt_str("mode").unwrap().parse().expect("invalid mode"),
+        mode,
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
-        filter: matches.free.first().cloned(),
+        filters: matches.free.clone(),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
@@ -264,6 +271,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
+        npm: matches.opt_str("npm"),
     }
 }
 
@@ -280,7 +288,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filter: {}", opt_str(&config.filter)));
+    logv(c, format!("filters: {:?}", config.filters));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
@@ -465,7 +473,7 @@ fn configure_lldb(config: &Config) -> Option<Config> {
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         exclude_should_panic: false,
-        filter: config.filter.clone(),
+        filters: config.filters.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
         format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },

@@ -1,5 +1,4 @@
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::Session;
@@ -44,7 +43,7 @@ pub fn inject(
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
         let ident = if rust_2018 { Ident::new(name, span) } else { Ident::new(name, call_site) };
-        krate.module.items.insert(
+        krate.items.insert(
             0,
             cx.item(
                 span,
@@ -72,14 +71,14 @@ pub fn inject(
         span,
         Ident::invalid(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
-        ast::ItemKind::Use(P(ast::UseTree {
+        ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),
             kind: ast::UseTreeKind::Glob,
             span,
-        })),
+        }),
     );
 
-    krate.module.items.insert(0, use_item);
+    krate.items.insert(0, use_item);
 
     krate
 }

@@ -7,10 +7,16 @@ use std::hash::{Hash, Hasher};
 use std::mem::{self, MaybeUninit};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
+#[repr(C)]
 pub struct Fingerprint(u64, u64);
 
 impl Fingerprint {
     pub const ZERO: Fingerprint = Fingerprint(0, 0);
+
+    #[inline]
+    pub fn new(_0: u64, _1: u64) -> Fingerprint {
+        Fingerprint(_0, _1)
+    }
 
     #[inline]
     pub fn from_smaller_hash(hash: u64) -> Fingerprint {
@@ -19,7 +25,12 @@ impl Fingerprint {
 
     #[inline]
     pub fn to_smaller_hash(&self) -> u64 {
-        self.0
+        // Even though both halves of the fingerprint are expected to be good
+        // quality hash values, let's still combine the two values because the
+        // Fingerprints in DefPathHash have the StableCrateId portion which is
+        // the same for all DefPathHashes from the same crate. Combining the
+        // two halfs makes sure we get a good quality hash in such cases too.
+        self.0.wrapping_mul(3).wrapping_add(self.1)
     }
 
     #[inline]
@@ -92,8 +103,19 @@ impl<H: Hasher> FingerprintHasher for H {
 impl FingerprintHasher for crate::unhash::Unhasher {
     #[inline]
     fn write_fingerprint(&mut self, fingerprint: &Fingerprint) {
-        // `Unhasher` only wants a single `u64`
-        self.write_u64(fingerprint.0);
+        // Even though both halves of the fingerprint are expected to be good
+        // quality hash values, let's still combine the two values because the
+        // Fingerprints in DefPathHash have the StableCrateId portion which is
+        // the same for all DefPathHashes from the same crate. Combining the
+        // two halfs makes sure we get a good quality hash in such cases too.
+        //
+        // Since `Unhasher` is used only in the context of HashMaps, it is OK
+        // to combine the two components in an order-independent way (which is
+        // cheaper than the more robust Fingerprint::to_smaller_hash()). For
+        // HashMaps we don't really care if Fingerprint(x,y) and
+        // Fingerprint(y, x) result in the same hash value. Collision
+        // probability will still be much better than with FxHash.
+        self.write_u64(fingerprint.0.wrapping_add(fingerprint.1));
     }
 }
 

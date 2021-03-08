@@ -319,9 +319,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             .collect::<Vec<_>>();
         let crate_def_id = DefId::local(CRATE_DEF_INDEX);
         if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
-            let enum_candidates =
-                self.r.lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant);
-
+            let mut enum_candidates: Vec<_> = self
+                .r
+                .lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant)
+                .into_iter()
+                .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
+                .filter(|(_, enum_ty_path)| enum_ty_path != "std::prelude::v1")
+                .collect();
             if !enum_candidates.is_empty() {
                 if let (PathSource::Type, Some(span)) =
                     (source, self.diagnostic_metadata.current_type_ascription.last())
@@ -340,10 +344,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
 
-                let mut enum_candidates = enum_candidates
-                    .iter()
-                    .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
-                    .collect::<Vec<_>>();
                 enum_candidates.sort();
 
                 // Contextualize for E0412 "cannot find type", but don't belabor the point
@@ -363,19 +363,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    enum_candidates
-                        .into_iter()
-                        .map(|(_variant_path, enum_ty_path)| enum_ty_path)
-                        // Variants re-exported in prelude doesn't mean `prelude::v1` is the
-                        // type name!
-                        // FIXME: is there a more principled way to do this that
-                        // would work for other re-exports?
-                        .filter(|enum_ty_path| enum_ty_path != "std::prelude::v1")
-                        // Also write `Option` rather than `std::prelude::v1::Option`.
-                        .map(|enum_ty_path| {
-                            // FIXME #56861: DRY-er prelude filtering.
-                            enum_ty_path.trim_start_matches("std::prelude::v1::").to_owned()
-                        }),
+                    enum_candidates.into_iter().map(|(_variant_path, enum_ty_path)| enum_ty_path),
                     Applicability::MachineApplicable,
                 );
             }
@@ -1105,7 +1093,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items {
-            for assoc_item in &items[..] {
+            for assoc_item in items {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
@@ -1212,8 +1200,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Add primitive types to the mix
             if filter_fn(Res::PrimTy(PrimTy::Bool)) {
                 names.extend(
-                    self.r.primitive_type_table.primitive_types.iter().map(|(name, prim_ty)| {
-                        TypoSuggestion::from_res(*name, Res::PrimTy(*prim_ty))
+                    PrimTy::ALL.iter().map(|prim_ty| {
+                        TypoSuggestion::from_res(prim_ty.name(), Res::PrimTy(*prim_ty))
                     }),
                 )
             }
@@ -1657,6 +1645,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         err.span_label(lifetime_ref.span, "undeclared lifetime");
         let mut suggests_in_band = false;
+        let mut suggest_note = true;
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
@@ -1676,12 +1665,24 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
                     };
-                    err.span_suggestion(
-                        span,
-                        &format!("consider introducing lifetime `{}` here", lifetime_ref),
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
+                    if !span.from_expansion() {
+                        err.span_suggestion(
+                            span,
+                            &format!("consider introducing lifetime `{}` here", lifetime_ref),
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else if suggest_note {
+                        suggest_note = false; // Avoid displaying the same help multiple times.
+                        err.span_label(
+                            span,
+                            &format!(
+                                "lifetime `{}` is missing in item created through this procedural \
+                                 macro",
+                                lifetime_ref,
+                            ),
+                        );
+                    }
                 }
                 MissingLifetimeSpot::HigherRanked { span, span_type } => {
                     err.span_suggestion(
@@ -1696,7 +1697,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                     err.note(
                         "for more information on higher-ranked polymorphism, visit \
-                            https://doc.rust-lang.org/nomicon/hrtb.html",
+                         https://doc.rust-lang.org/nomicon/hrtb.html",
                     );
                 }
                 _ => {}
@@ -1708,7 +1709,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         {
             err.help(
                 "if you want to experiment with in-band lifetime bindings, \
-                    add `#![feature(in_band_lifetimes)]` to the crate attributes",
+                 add `#![feature(in_band_lifetimes)]` to the crate attributes",
             );
         }
         err.emit();

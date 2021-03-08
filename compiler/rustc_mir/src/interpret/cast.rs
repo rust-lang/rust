@@ -17,10 +17,10 @@ use super::{
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         cast_kind: CastKind,
         cast_ty: Ty<'tcx>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
@@ -32,7 +32,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Misc => {
                 let src = self.read_immediate(src)?;
-                let res = self.misc_cast(src, cast_ty)?;
+                let res = self.misc_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
@@ -107,7 +107,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn misc_cast(
         &self,
-        src: ImmTy<'tcx, M::PointerTag>,
+        src: &ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Immediate<M::PointerTag>> {
         use rustc_middle::ty::TyKind::*;
@@ -158,13 +158,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let dest_layout = self.layout_of(cast_ty)?;
             if dest_layout.size == src.layout.size {
                 // Thin or fat pointer that just hast the ptr kind of target type changed.
-                return Ok(*src);
+                return Ok(**src);
             } else {
                 // Casting the metadata away from a fat ptr.
                 assert_eq!(src.layout.size, 2 * self.memory.pointer_size());
                 assert_eq!(dest_layout.size, self.memory.pointer_size());
                 assert!(src.layout.ty.is_unsafe_ptr());
-                return match *src {
+                return match **src {
                     Immediate::ScalarPair(data, _) => Ok(data.into()),
                     Immediate::Scalar(..) => span_bug!(
                         self.cur_span(),
@@ -259,8 +259,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into_ptr(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
         // The pointee types
         source_ty: Ty<'tcx>,
         cast_ty: Ty<'tcx>,
@@ -300,9 +300,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     fn unsize_into(
         &mut self,
-        src: OpTy<'tcx, M::PointerTag>,
+        src: &OpTy<'tcx, M::PointerTag>,
         cast_ty: TyAndLayout<'tcx>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         trace!("Unsizing {:?} of type {} into {:?}", *src, src.layout.ty, cast_ty.ty);
         match (&src.layout.ty.kind(), &cast_ty.ty.kind()) {
@@ -340,9 +340,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let src_field = self.operand_field(src, i)?;
                     let dst_field = self.place_field(dest, i)?;
                     if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(src_field, dst_field)?;
+                        self.copy_op(&src_field, &dst_field)?;
                     } else {
-                        self.unsize_into(src_field, cast_ty_field, dst_field)?;
+                        self.unsize_into(&src_field, cast_ty_field, &dst_field)?;
                     }
                 }
                 Ok(())

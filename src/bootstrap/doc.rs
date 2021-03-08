@@ -626,6 +626,7 @@ impl Step for Rustdoc {
         // Only include compiler crates, no dependencies of those, such as `libc`.
         cargo.arg("--no-deps");
         cargo.arg("-p").arg("rustdoc");
+        cargo.arg("-p").arg("rustdoc-json-types");
 
         cargo.rustdocflag("--document-private-items");
         cargo.rustdocflag("--enable-index-page");

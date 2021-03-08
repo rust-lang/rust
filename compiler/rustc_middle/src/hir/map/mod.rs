@@ -285,7 +285,7 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner_nodes(id.owner);
             owner.and_then(|owner| {
                 let node = owner.nodes[id.local_id].as_ref();
-                // FIXME(eddyb) use a single generic type insted of having both
+                // FIXME(eddyb) use a single generic type instead of having both
                 // `Entry` and `ParentedNode`, which are effectively the same.
                 // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
                 node.map(|node| Entry {
@@ -300,29 +300,29 @@ impl<'hir> Map<'hir> {
         self.find_entry(id).unwrap()
     }
 
-    pub fn item(&self, id: HirId) -> &'hir Item<'hir> {
-        match self.find(id).unwrap() {
+    pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
+        match self.find(id.hir_id()).unwrap() {
             Node::Item(item) => item,
             _ => bug!(),
         }
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        match self.find(id.hir_id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::TraitItem(item) => item,
             _ => bug!(),
         }
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        match self.find(id.hir_id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::ImplItem(item) => item,
             _ => bug!(),
         }
     }
 
     pub fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        match self.find(id.hir_id).unwrap() {
+        match self.find(id.hir_id()).unwrap() {
             Node::ForeignItem(item) => item,
             _ => bug!(),
         }
@@ -449,7 +449,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [HirId] {
+    pub fn trait_impls(&self, trait_did: DefId) -> &'hir [LocalDefId] {
         self.tcx.all_local_trait_impls(LOCAL_CRATE).get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
@@ -479,19 +479,19 @@ impl<'hir> Map<'hir> {
         let module = self.tcx.hir_module_items(module);
 
         for id in &module.items {
-            visitor.visit_item(self.expect_item(*id));
+            visitor.visit_item(self.item(*id));
         }
 
         for id in &module.trait_items {
-            visitor.visit_trait_item(self.expect_trait_item(id.hir_id));
+            visitor.visit_trait_item(self.trait_item(*id));
         }
 
         for id in &module.impl_items {
-            visitor.visit_impl_item(self.expect_impl_item(id.hir_id));
+            visitor.visit_impl_item(self.impl_item(*id));
         }
 
         for id in &module.foreign_items {
-            visitor.visit_foreign_item(self.expect_foreign_item(id.hir_id));
+            visitor.visit_foreign_item(self.foreign_item(*id));
         }
     }
 
@@ -500,7 +500,7 @@ impl<'hir> Map<'hir> {
         V: Visitor<'hir>,
     {
         for id in self.krate().exported_macros {
-            visitor.visit_macro_def(self.expect_macro_def(id.hir_id));
+            visitor.visit_macro_def(self.expect_macro_def(id.hir_id()));
         }
     }
 
@@ -854,22 +854,22 @@ impl<'hir> Map<'hir> {
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
         self.find_entry(id).map_or(&[], |entry| match entry.node {
-            Node::Param(a) => &a.attrs[..],
+            Node::Param(a) => a.attrs,
             Node::Local(l) => &l.attrs[..],
-            Node::Item(i) => &i.attrs[..],
-            Node::ForeignItem(fi) => &fi.attrs[..],
-            Node::TraitItem(ref ti) => &ti.attrs[..],
-            Node::ImplItem(ref ii) => &ii.attrs[..],
-            Node::Variant(ref v) => &v.attrs[..],
-            Node::Field(ref f) => &f.attrs[..],
+            Node::Item(i) => i.attrs,
+            Node::ForeignItem(fi) => fi.attrs,
+            Node::TraitItem(ref ti) => ti.attrs,
+            Node::ImplItem(ref ii) => ii.attrs,
+            Node::Variant(ref v) => v.attrs,
+            Node::Field(ref f) => f.attrs,
             Node::Expr(ref e) => &*e.attrs,
-            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id.id)),
+            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id)),
             Node::Arm(ref a) => &*a.attrs,
-            Node::GenericParam(param) => &param.attrs[..],
+            Node::GenericParam(param) => param.attrs,
             // Unit/tuple structs/variants take the attributes straight from
             // the struct/variant definition.
             Node::Ctor(..) => self.attrs(self.get_parent_item(id)),
-            Node::Crate(item) => &item.attrs[..],
+            Node::Crate(item) => item.attrs,
             Node::MacroDef(def) => def.attrs,
             Node::AnonConst(..)
             | Node::PathSegment(..)
@@ -977,7 +977,7 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
         self.body(id)
     }
 
-    fn item(&self, id: HirId) -> &'hir Item<'hir> {
+    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
         self.item(id)
     }
 
@@ -991,47 +991,6 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 
     fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
         self.foreign_item(id)
-    }
-}
-
-trait Named {
-    fn name(&self) -> Symbol;
-}
-
-impl<T: Named> Named for Spanned<T> {
-    fn name(&self) -> Symbol {
-        self.node.name()
-    }
-}
-
-impl Named for Item<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for ForeignItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for Variant<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for StructField<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for TraitItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
-    }
-}
-impl Named for ImplItem<'_> {
-    fn name(&self) -> Symbol {
-        self.ident.name
     }
 }
 

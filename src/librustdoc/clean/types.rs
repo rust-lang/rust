@@ -19,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Mutability;
+use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
@@ -50,16 +50,22 @@ thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> =
 #[derive(Clone, Debug)]
 crate struct Crate {
     crate name: Symbol,
-    crate version: Option<String>,
     crate src: FileName,
     crate module: Option<Item>,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
     crate primitives: Vec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
+    crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
     crate masked_crates: FxHashSet<CrateNum>,
     crate collapsed: bool,
+}
+
+/// This struct is used to wrap additional information added by rustdoc on a `trait` item.
+#[derive(Clone, Debug)]
+crate struct TraitWithExtraInfo {
+    crate trait_: Trait,
+    crate is_spotlight: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -130,7 +136,7 @@ impl Item {
         hir_id: hir::HirId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         Item::from_def_id_and_parts(cx.tcx.hir().local_def_id(hir_id).to_def_id(), name, kind, cx)
     }
@@ -139,7 +145,23 @@ impl Item {
         def_id: DefId,
         name: Option<Symbol>,
         kind: ItemKind,
-        cx: &DocContext<'_>,
+        cx: &mut DocContext<'_>,
+    ) -> Item {
+        Self::from_def_id_and_attrs_and_parts(
+            def_id,
+            name,
+            kind,
+            box cx.tcx.get_attrs(def_id).clean(cx),
+            cx,
+        )
+    }
+
+    pub fn from_def_id_and_attrs_and_parts(
+        def_id: DefId,
+        name: Option<Symbol>,
+        kind: ItemKind,
+        attrs: Box<Attributes>,
+        cx: &mut DocContext<'_>,
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
@@ -157,7 +179,7 @@ impl Item {
             kind: box kind,
             name,
             source: source.clean(cx),
-            attrs: box cx.tcx.get_attrs(def_id).clean(cx),
+            attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
     }
@@ -169,7 +191,7 @@ impl Item {
     }
 
     crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
-        self.attrs.links(&self.def_id.krate, cache)
+        self.attrs.links(self.def_id.krate, cache)
     }
 
     crate fn is_crate(&self) -> bool {
@@ -301,7 +323,10 @@ impl Item {
 
 #[derive(Clone, Debug)]
 crate enum ItemKind {
-    ExternCrateItem(Symbol, Option<Symbol>),
+    ExternCrateItem {
+        /// The crate's name, *not* the name it's imported as.
+        src: Option<Symbol>,
+    },
     ImportItem(Import),
     StructItem(Struct),
     UnionItem(Union),
@@ -354,7 +379,7 @@ impl ItemKind {
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
             ModuleItem(m) => m.items.iter(),
-            ExternCrateItem(_, _)
+            ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)
@@ -438,7 +463,7 @@ impl AttributesExt for [ast::Attribute] {
 crate trait NestedAttributesExt {
     /// Returns `true` if the attribute list contains a specific `Word`
     fn has_word(self, word: Symbol) -> bool;
-    fn get_word_attr(self, word: Symbol) -> (Option<ast::NestedMetaItem>, bool);
+    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
 }
 
 impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMetaItem>>
@@ -448,11 +473,8 @@ impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMe
         self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
     }
 
-    fn get_word_attr(mut self, word: Symbol) -> (Option<ast::NestedMetaItem>, bool) {
-        match self.find(|attr| attr.is_word() && attr.has_name(word)) {
-            Some(a) => (Some(a), true),
-            None => (None, false),
-        }
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+        self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
 
@@ -825,7 +847,7 @@ impl Attributes {
     /// Gets links as a vector
     ///
     /// Cache must be populated before call
-    crate fn links(&self, krate: &CrateNum, cache: &Cache) -> Vec<RenderedLink> {
+    crate fn links(&self, krate: CrateNum, cache: &Cache) -> Vec<RenderedLink> {
         use crate::html::format::href;
         use crate::html::render::CURRENT_DEPTH;
 
@@ -850,7 +872,7 @@ impl Attributes {
                     }
                     None => {
                         if let Some(ref fragment) = *fragment {
-                            let url = match cache.extern_locations.get(krate) {
+                            let url = match cache.extern_locations.get(&krate) {
                                 Some(&(_, _, ExternalLocation::Local)) => {
                                     let depth = CURRENT_DEPTH.with(|l| l.get());
                                     "../".repeat(depth)
@@ -939,7 +961,7 @@ crate enum GenericBound {
 }
 
 impl GenericBound {
-    crate fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
+    crate fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
@@ -1087,8 +1109,6 @@ crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
     crate header: hir::FnHeader,
-    crate all_types: Vec<(Type, TypeKind)>,
-    crate ret_types: Vec<(Type, TypeKind)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1190,7 +1210,6 @@ crate struct Trait {
     crate items: Vec<Item>,
     crate generics: Generics,
     crate bounds: Vec<GenericBound>,
-    crate is_spotlight: bool,
     crate is_auto: bool,
 }
 
@@ -1304,6 +1323,43 @@ crate enum TypeKind {
     Primitive,
 }
 
+impl From<hir::def::DefKind> for TypeKind {
+    fn from(other: hir::def::DefKind) -> Self {
+        match other {
+            hir::def::DefKind::Enum => Self::Enum,
+            hir::def::DefKind::Fn => Self::Function,
+            hir::def::DefKind::Mod => Self::Module,
+            hir::def::DefKind::Const => Self::Const,
+            hir::def::DefKind::Static => Self::Static,
+            hir::def::DefKind::Struct => Self::Struct,
+            hir::def::DefKind::Union => Self::Union,
+            hir::def::DefKind::Trait => Self::Trait,
+            hir::def::DefKind::TyAlias => Self::Typedef,
+            hir::def::DefKind::TraitAlias => Self::TraitAlias,
+            hir::def::DefKind::Macro(_) => Self::Macro,
+            hir::def::DefKind::ForeignTy
+            | hir::def::DefKind::Variant
+            | hir::def::DefKind::AssocTy
+            | hir::def::DefKind::TyParam
+            | hir::def::DefKind::ConstParam
+            | hir::def::DefKind::Ctor(..)
+            | hir::def::DefKind::AssocFn
+            | hir::def::DefKind::AssocConst
+            | hir::def::DefKind::ExternCrate
+            | hir::def::DefKind::Use
+            | hir::def::DefKind::ForeignMod
+            | hir::def::DefKind::AnonConst
+            | hir::def::DefKind::OpaqueTy
+            | hir::def::DefKind::Field
+            | hir::def::DefKind::LifetimeParam
+            | hir::def::DefKind::GlobalAsm
+            | hir::def::DefKind::Impl
+            | hir::def::DefKind::Closure
+            | hir::def::DefKind::Generator => Self::Foreign,
+        }
+    }
+}
+
 crate trait GetDefId {
     /// Use this method to get the [`DefId`] of a [`clean`] AST node.
     /// This will return [`None`] when called on a primitive [`clean::Type`].
@@ -1367,14 +1423,14 @@ impl Type {
         }
     }
 
-    crate fn generics(&self) -> Option<Vec<Type>> {
+    crate fn generics(&self) -> Option<Vec<&Type>> {
         match *self {
             ResolvedPath { ref path, .. } => path.segments.last().and_then(|seg| {
                 if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
                     Some(
                         args.iter()
                             .filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty.clone()),
+                                GenericArg::Type(ty) => Some(ty),
                                 _ => None,
                             })
                             .collect(),
@@ -1558,24 +1614,6 @@ impl PrimitiveType {
 
         CELL.get_or_init(move || {
             use self::PrimitiveType::*;
-
-            /// A macro to create a FxHashMap.
-            ///
-            /// Example:
-            ///
-            /// ```
-            /// let letters = map!{"a" => "b", "c" => "d"};
-            /// ```
-            ///
-            /// Trailing commas are allowed.
-            /// Commas between elements are required (even if the expression is a block).
-            macro_rules! map {
-                ($( $key: expr => $val: expr ),* $(,)*) => {{
-                    let mut map = ::rustc_data_structures::fx::FxHashMap::default();
-                    $( map.insert($key, $val); )*
-                    map
-                }}
-            }
 
             let single = |a: Option<DefId>| a.into_iter().collect();
             let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_> {
@@ -1820,6 +1858,10 @@ impl Span {
         self.0
     }
 
+    crate fn is_dummy(&self) -> bool {
+        self.0.is_dummy()
+    }
+
     crate fn filename(&self, sess: &Session) -> FileName {
         sess.source_map().span_to_filename(self.0)
     }
@@ -1920,10 +1962,7 @@ crate struct BareFunctionDecl {
 crate struct Static {
     crate type_: Type,
     crate mutability: Mutability,
-    /// It's useful to have the value of a static documented, but I have no
-    /// desire to represent expressions (that'd basically be all of the AST,
-    /// which is huge!). So, have a string.
-    crate expr: String,
+    crate expr: Option<BodyId>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

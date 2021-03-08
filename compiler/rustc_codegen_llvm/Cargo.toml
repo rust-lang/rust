@@ -10,8 +10,9 @@ doctest = false
 
 [dependencies]
 bitflags = "1.0"
+cstr = "0.2"
 libc = "0.2"
-measureme = "9.0.0"
+measureme = "9.1.0"
 snap = "1"
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }
@@ -29,6 +30,6 @@ rustc_llvm = { path = "../rustc_llvm" }
 rustc_session = { path = "../rustc_session" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_target = { path = "../rustc_target" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }

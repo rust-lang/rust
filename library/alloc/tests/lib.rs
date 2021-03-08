@@ -6,7 +6,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(new_uninit)]
 #![feature(pattern)]
-#![feature(str_split_once)]
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
@@ -17,9 +16,11 @@
 #![feature(binary_heap_retain)]
 #![feature(inplace_iteration)]
 #![feature(iter_map_while)]
+#![feature(int_bits_const)]
 #![feature(vecdeque_binary_search)]
 #![feature(slice_group_by)]
 #![feature(vec_extend_from_within)]
+#![feature(vec_spare_capacity)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

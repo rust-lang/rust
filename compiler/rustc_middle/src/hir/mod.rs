@@ -73,11 +73,7 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_crate = |tcx, _| tcx.untracked_crate;
     providers.index_hir = map::index_hir;
-    providers.hir_module_items = |tcx, id| {
-        let hir = tcx.hir();
-        let module = hir.local_def_id_to_hir_id(id);
-        &tcx.untracked_crate.modules[&module]
-    };
+    providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);

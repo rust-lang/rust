@@ -267,6 +267,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else if lang_items.discriminant_kind_trait() == Some(def_id) {
             // `DiscriminantKind` is automatically implemented for every type.
             candidates.vec.push(DiscriminantKindCandidate);
+        } else if lang_items.pointee_trait() == Some(def_id) {
+            // `Pointee` is automatically implemented for every type.
+            candidates.vec.push(PointeeCandidate);
         } else if lang_items.sized_trait() == Some(def_id) {
             // Sized is never implementable by end-users, it is
             // always automatically computed.

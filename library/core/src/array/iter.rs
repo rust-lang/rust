@@ -9,8 +9,6 @@ use crate::{
 };
 
 /// A by-value [array] iterator.
-///
-/// [array]: ../../std/primitive.array.html
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub struct IntoIter<T, const N: usize> {
     /// This is the array we are iterating over.

@@ -3,8 +3,8 @@
 #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
 
 extern crate builtin_attrs;
-use builtin_attrs::{test, bench};
 use builtin_attrs::*;
+use builtin_attrs::{bench, test};
 
 #[repr(C)] //~ ERROR `repr` is ambiguous
 struct S;

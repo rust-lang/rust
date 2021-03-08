@@ -14,6 +14,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::DiagnosticId;
+use crate::ToolMetadata;
 use crate::{CodeSuggestion, SubDiagnostic};
 use rustc_lint_defs::{Applicability, FutureBreakage};
 
@@ -26,6 +27,7 @@ use std::sync::{Arc, Mutex};
 use std::vec;
 
 use rustc_serialize::json::{as_json, as_pretty_json};
+use rustc_serialize::{Encodable, Encoder};
 
 #[cfg(test)]
 mod tests;
@@ -168,7 +170,8 @@ impl Emitter for JsonEmitter {
 
 // The following data types are provided just for serialisation.
 
-#[derive(Encodable)]
+// NOTE: this has a manual implementation of Encodable which needs to be updated in
+// parallel.
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -180,6 +183,65 @@ struct Diagnostic {
     children: Vec<Diagnostic>,
     /// The message as rustc would render it.
     rendered: Option<String>,
+    /// Extra tool metadata
+    tool_metadata: ToolMetadata,
+}
+
+macro_rules! encode_fields {
+    (
+        $enc:expr,                  // encoder
+        $idx:expr,                  // starting field index
+        $struct:expr,               // struct we're serializing
+        $struct_name:ident,         // struct name
+        [ $($name:ident),+$(,)? ],  // fields to encode
+        [ $($ignore:ident),+$(,)? ] // fields we're skipping
+    ) => {
+        {
+            // Pattern match to make sure all fields are accounted for
+            let $struct_name { $($name,)+ $($ignore: _,)+ } = $struct;
+            let mut idx = $idx;
+            $(
+                $enc.emit_struct_field(
+                    stringify!($name),
+                    idx,
+                    |enc| $name.encode(enc),
+                )?;
+                idx += 1;
+            )+
+            idx
+        }
+    };
+}
+
+// Special-case encoder to skip tool_metadata if not set
+impl<E: Encoder> Encodable<E> for Diagnostic {
+    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_struct("diagnostic", 7, |s| {
+            let mut idx = 0;
+
+            idx = encode_fields!(
+                s,
+                idx,
+                self,
+                Self,
+                [message, code, level, spans, children, rendered],
+                [tool_metadata]
+            );
+            if self.tool_metadata.is_set() {
+                idx = encode_fields!(
+                    s,
+                    idx,
+                    self,
+                    Self,
+                    [tool_metadata],
+                    [message, code, level, spans, children, rendered]
+                );
+            }
+
+            let _ = idx;
+            Ok(())
+        })
+    }
 }
 
 #[derive(Encodable)]
@@ -269,6 +331,7 @@ impl Diagnostic {
             spans: DiagnosticSpan::from_suggestion(sugg, je),
             children: vec![],
             rendered: None,
+            tool_metadata: sugg.tool_metadata.clone(),
         });
 
         // generate regular command line output and store it in the json
@@ -312,6 +375,7 @@ impl Diagnostic {
                 .chain(sugg)
                 .collect(),
             rendered: Some(output),
+            tool_metadata: ToolMetadata::default(),
         }
     }
 
@@ -327,6 +391,7 @@ impl Diagnostic {
                 .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, je)),
             children: vec![],
             rendered: None,
+            tool_metadata: ToolMetadata::default(),
         }
     }
 }

@@ -607,7 +607,7 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                return Ok(with_no_queries(|| {
+                return with_no_queries(|| {
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));
@@ -649,7 +649,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(" Sized");
                     }
                     Ok(self)
-                })?);
+                });
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {
@@ -1018,7 +1018,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{:?}", char::try_from(int).unwrap()))
             }
             // Raw pointers
-            (Scalar::Int(int), ty::RawPtr(_)) => {
+            (Scalar::Int(int), ty::RawPtr(_) | ty::FnPtr(_)) => {
                 let data = int.assert_bits(self.tcx().data_layout.pointer_size);
                 self = self.typed_value(
                     |mut this| {
@@ -1030,15 +1030,18 @@ pub trait PrettyPrinter<'tcx>:
                 )?;
             }
             (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
-                // FIXME: this can ICE when the ptr is dangling or points to a non-function.
-                // We should probably have a helper method to share code with the "Byte strings"
+                // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                let instance = self.tcx().global_alloc(ptr.alloc_id).unwrap_fn();
-                self = self.typed_value(
-                    |this| this.print_value_path(instance.def_id(), instance.substs),
-                    |this| this.print_type(ty),
-                    " as ",
-                )?;
+                match self.tcx().get_global_alloc(ptr.alloc_id) {
+                    Some(GlobalAlloc::Function(instance)) => {
+                        self = self.typed_value(
+                            |this| this.print_value_path(instance.def_id(), instance.substs),
+                            |this| this.print_type(ty),
+                            " as ",
+                        )?;
+                    }
+                    _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
+                }
             }
             // For function type zsts just printing the path is enough
             (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
@@ -2107,11 +2110,9 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
             continue;
         }
 
-        if let Some(local_def_id) = hir.definitions().opt_hir_id_to_local_def_id(item.hir_id) {
-            let def_id = local_def_id.to_def_id();
-            let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
-            collect_fn(&item.ident, ns, def_id);
-        }
+        let def_id = item.def_id.to_def_id();
+        let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
+        collect_fn(&item.ident, ns, def_id);
     }
 
     // Now take care of extern crate items.
@@ -2143,6 +2144,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
             match child.res {
                 def::Res::Def(DefKind::AssocTy, _) => {}
+                def::Res::Def(DefKind::TyAlias, _) => {}
                 def::Res::Def(defkind, def_id) => {
                     if let Some(ns) = defkind.ns() {
                         collect_fn(&child.ident, ns, def_id);

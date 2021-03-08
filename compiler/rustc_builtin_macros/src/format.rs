@@ -270,7 +270,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::ArgumentNamed(s) => Named(s),
                 };
 
-                let ty = Placeholder(match &arg.format.ty[..] {
+                let ty = Placeholder(match arg.format.ty {
                     "" => "Display",
                     "?" => "Debug",
                     "e" => "LowerExp",

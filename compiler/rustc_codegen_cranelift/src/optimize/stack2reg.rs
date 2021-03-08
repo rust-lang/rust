@@ -175,16 +175,14 @@ impl<'a> OptimizeContext<'a> {
             }
         }
 
-        OptimizeContext {
-            ctx,
-            stack_slot_usage_map,
-        }
+        OptimizeContext { ctx, stack_slot_usage_map }
     }
 }
 
 pub(super) fn optimize_function(
     ctx: &mut Context,
-    #[cfg_attr(not(debug_assertions), allow(unused_variables))] clif_comments: &mut crate::pretty_clif::CommentWriter,
+    #[cfg_attr(not(debug_assertions), allow(unused_variables))]
+    clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
     combine_stack_addr_with_load_store(&mut ctx.func);
 
@@ -296,12 +294,7 @@ fn combine_stack_addr_with_load_store(func: &mut Function) {
     while let Some(_block) = cursor.next_block() {
         while let Some(inst) = cursor.next_inst() {
             match cursor.func.dfg[inst] {
-                InstructionData::Load {
-                    opcode: Opcode::Load,
-                    arg: addr,
-                    flags: _,
-                    offset,
-                } => {
+                InstructionData::Load { opcode: Opcode::Load, arg: addr, flags: _, offset } => {
                     if cursor.func.dfg.ctrl_typevar(inst) == types::I128
                         || cursor.func.dfg.ctrl_typevar(inst).is_vector()
                     {
@@ -391,20 +384,14 @@ fn remove_unused_stack_addr_and_stack_load(opt_ctx: &mut OptimizeContext<'_>) {
         stack_slot_users
             .stack_addr
             .drain_filter(|inst| {
-                stack_addr_load_insts_users
-                    .get(inst)
-                    .map(|users| users.is_empty())
-                    .unwrap_or(true)
+                stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_stack_addr(&mut func, inst));
 
         stack_slot_users
             .stack_load
             .drain_filter(|inst| {
-                stack_addr_load_insts_users
-                    .get(inst)
-                    .map(|users| users.is_empty())
-                    .unwrap_or(true)
+                stack_addr_load_insts_users.get(inst).map(|users| users.is_empty()).unwrap_or(true)
             })
             .for_each(|inst| StackSlotUsage::remove_unused_load(&mut func, inst));
     }
@@ -415,11 +402,8 @@ fn try_get_stack_slot_and_offset_for_addr(
     addr: Value,
 ) -> Option<(StackSlot, Offset32)> {
     if let ValueDef::Result(addr_inst, 0) = func.dfg.value_def(addr) {
-        if let InstructionData::StackLoad {
-            opcode: Opcode::StackAddr,
-            stack_slot,
-            offset,
-        } = func.dfg[addr_inst]
+        if let InstructionData::StackLoad { opcode: Opcode::StackAddr, stack_slot, offset } =
+            func.dfg[addr_inst]
         {
             return Some((stack_slot, offset));
         }
@@ -437,16 +421,8 @@ enum SpatialOverlap {
 fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     fn inst_info(func: &Function, inst: Inst) -> (StackSlot, Offset32, u32) {
         match func.dfg[inst] {
-            InstructionData::StackLoad {
-                opcode: Opcode::StackAddr,
-                stack_slot,
-                offset,
-            }
-            | InstructionData::StackLoad {
-                opcode: Opcode::StackLoad,
-                stack_slot,
-                offset,
-            }
+            InstructionData::StackLoad { opcode: Opcode::StackAddr, stack_slot, offset }
+            | InstructionData::StackLoad { opcode: Opcode::StackLoad, stack_slot, offset }
             | InstructionData::StackStore {
                 opcode: Opcode::StackStore,
                 stack_slot,
@@ -471,10 +447,7 @@ fn spatial_overlap(func: &Function, src: Inst, dest: Inst) -> SpatialOverlap {
     }
 
     let src_end: i64 = src_offset.try_add_i64(i64::from(src_size)).unwrap().into();
-    let dest_end: i64 = dest_offset
-        .try_add_i64(i64::from(dest_size))
-        .unwrap()
-        .into();
+    let dest_end: i64 = dest_offset.try_add_i64(i64::from(dest_size)).unwrap().into();
     if src_end <= dest_offset.into() || dest_end <= src_offset.into() {
         return SpatialOverlap::No;
     }

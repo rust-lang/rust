@@ -5,13 +5,16 @@
 //! expressions) that are mostly just leftovers.
 
 pub use crate::def_id::DefPathHash;
-use crate::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::def_id::{
+    CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE,
+};
 use crate::hir;
 
-use rustc_ast::crate_disambiguator::CrateDisambiguator;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
+use rustc_span::crate_disambiguator::CrateDisambiguator;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -27,6 +30,7 @@ use tracing::debug;
 pub struct DefPathTable {
     index_to_key: IndexVec<DefIndex, DefKey>,
     def_path_hashes: IndexVec<DefIndex, DefPathHash>,
+    def_path_hash_to_index: UnhashMap<DefPathHash, DefIndex>,
 }
 
 impl DefPathTable {
@@ -39,6 +43,35 @@ impl DefPathTable {
         };
         self.def_path_hashes.push(def_path_hash);
         debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
+
+        // Check for hash collisions of DefPathHashes. These should be
+        // exceedingly rare.
+        if let Some(existing) = self.def_path_hash_to_index.insert(def_path_hash, index) {
+            let def_path1 = DefPath::make(LOCAL_CRATE, existing, |idx| self.def_key(idx));
+            let def_path2 = DefPath::make(LOCAL_CRATE, index, |idx| self.def_key(idx));
+
+            // Continuing with colliding DefPathHashes can lead to correctness
+            // issues. We must abort compilation.
+            //
+            // The likelyhood of such a collision is very small, so actually
+            // running into one could be indicative of a poor hash function
+            // being used.
+            //
+            // See the documentation for DefPathHash for more information.
+            panic!(
+                "found DefPathHash collsion between {:?} and {:?}. \
+                    Compilation cannot continue.",
+                def_path1, def_path2
+            );
+        }
+
+        // Assert that all DefPathHashes correctly contain the local crate's
+        // StableCrateId
+        #[cfg(debug_assertions)]
+        if let Some(root) = self.def_path_hashes.get(CRATE_DEF_INDEX) {
+            assert!(def_path_hash.stable_crate_id() == root.stable_crate_id());
+        }
+
         index
     }
 
@@ -108,13 +141,10 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    fn compute_stable_hash(&self, parent_hash: DefPathHash) -> DefPathHash {
+    pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
-        // We hash a `0u8` here to disambiguate between regular `DefPath` hashes,
-        // and the special "root_parent" below.
-        0u8.hash(&mut hasher);
-        parent_hash.hash(&mut hasher);
+        parent.hash(&mut hasher);
 
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
@@ -127,19 +157,13 @@ impl DefKey {
 
         disambiguator.hash(&mut hasher);
 
-        DefPathHash(hasher.finish())
-    }
+        let local_hash: u64 = hasher.finish();
 
-    fn root_parent_stable_hash(
-        crate_name: &str,
-        crate_disambiguator: CrateDisambiguator,
-    ) -> DefPathHash {
-        let mut hasher = StableHasher::new();
-        // Disambiguate this from a regular `DefPath` hash; see `compute_stable_hash()` above.
-        1u8.hash(&mut hasher);
-        crate_name.hash(&mut hasher);
-        crate_disambiguator.hash(&mut hasher);
-        DefPathHash(hasher.finish())
+        // Construct the new DefPathHash, making sure that the `crate_id`
+        // portion of the hash is properly copied from the parent. This way the
+        // `crate_id` part will be recursively propagated from the root to all
+        // DefPathHashes in this DefPathTable.
+        DefPathHash::new(parent.stable_crate_id(), local_hash)
     }
 }
 
@@ -295,6 +319,12 @@ impl Definitions {
         self.table.def_path_hash(id.local_def_index)
     }
 
+    #[inline]
+    pub fn def_path_hash_to_def_id(&self, def_path_hash: DefPathHash) -> LocalDefId {
+        let local_def_index = self.table.def_path_hash_to_index[&def_path_hash];
+        LocalDefId { local_def_index }
+    }
+
     /// Returns the path from the crate root to `index`. The root
     /// nodes are not included in the path (i.e., this will be an
     /// empty vector for the crate root). For an inlined item, this
@@ -332,7 +362,8 @@ impl Definitions {
             },
         };
 
-        let parent_hash = DefKey::root_parent_stable_hash(crate_name, crate_disambiguator);
+        let stable_crate_id = StableCrateId::new(crate_name, crate_disambiguator);
+        let parent_hash = DefPathHash::new(stable_crate_id, 0);
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         // Create the root definition.

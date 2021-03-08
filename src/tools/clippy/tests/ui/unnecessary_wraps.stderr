@@ -15,7 +15,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func1(a: bool, b: bool) -> i32 {
    |                               ^^^
-help: ...and change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         return 42;
 LL |     }
@@ -41,7 +41,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func2(a: bool, b: bool) -> i32 {
    |                               ^^^
-help: ...and change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         return 10;
 LL |     }
@@ -63,7 +63,7 @@ help: remove `Option` from the return type...
    |
 LL | fn func5() -> i32 {
    |               ^^^
-help: ...and change the returning expressions
+help: ...and then change returning expressions
    |
 LL |     1
    |
@@ -80,7 +80,7 @@ help: remove `Result` from the return type...
    |
 LL | fn func7() -> i32 {
    |               ^^^
-help: ...and change the returning expressions
+help: ...and then change returning expressions
    |
 LL |     1
    |
@@ -97,10 +97,62 @@ help: remove `Option` from the return type...
    |
 LL |     fn func12() -> i32 {
    |                    ^^^
-help: ...and change the returning expressions
+help: ...and then change returning expressions
    |
 LL |         1
    |
 
-error: aborting due to 5 previous errors
+error: this function's return value is unnecessary
+  --> $DIR/unnecessary_wraps.rs:120:1
+   |
+LL | / fn issue_6640_1(a: bool, b: bool) -> Option<()> {
+LL | |     if a && b {
+LL | |         return Some(());
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: remove the return type...
+   |
+LL | fn issue_6640_1(a: bool, b: bool) -> Option<()> {
+   |                                      ^^^^^^^^^^
+help: ...and then remove returned values
+   |
+LL |         return ;
+LL |     }
+LL |     if a {
+LL |         Some(());
+LL |         
+LL |     } else {
+ ...
+
+error: this function's return value is unnecessary
+  --> $DIR/unnecessary_wraps.rs:133:1
+   |
+LL | / fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
+LL | |     if a && b {
+LL | |         return Ok(());
+LL | |     }
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: remove the return type...
+   |
+LL | fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
+   |                                      ^^^^^^^^^^^^^^^
+help: ...and then remove returned values
+   |
+LL |         return ;
+LL |     }
+LL |     if a {
+LL |         
+LL |     } else {
+LL |         return ;
+   |
+
+error: aborting due to 7 previous errors
 

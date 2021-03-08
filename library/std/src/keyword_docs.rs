@@ -42,7 +42,7 @@
 /// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
 /// [`use`]: keyword.use.html
-/// [const-cast]: primitive.pointer.html#method.cast
+/// [const-cast]: pointer::cast
 /// [mut-cast]: primitive.pointer.html#method.cast-1
 mod as_keyword {}
 
@@ -181,9 +181,8 @@ mod break_keyword {}
 /// The `const` keyword is also used in raw pointers in combination with `mut`, as seen in `*const
 /// T` and `*mut T`. More about `const` as used in raw pointers can be read at the Rust docs for the [pointer primitive].
 ///
-/// [pointer primitive]: primitive.pointer.html
-/// [Rust Book]:
-/// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [pointer primitive]: pointer
+/// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
 /// [Reference]: ../reference/items/constant-items.html
 /// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
@@ -371,7 +370,6 @@ mod else_keyword {}
 /// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [Rust Book]: ../book/ch06-01-defining-an-enum.html
 /// [Reference]: ../reference/items/enumerations.html
-/// [`!`]: primitive.never.html
 mod enum_keyword {}
 
 #[doc(keyword = "extern")]

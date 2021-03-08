@@ -97,5 +97,29 @@ LL | | }
    = note: `-D clippy::pub-enum-variant-names` implied by `-D warnings`
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 10 previous errors
+error: all variants have the same postfix: `IData`
+  --> $DIR/enum_variants.rs:137:1
+   |
+LL | / enum IDataRequest {
+LL | |     PutIData(String),
+LL | |     GetIData(String),
+LL | |     DeleteUnpubIData(String),
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: all variants have the same postfix: `HIData`
+  --> $DIR/enum_variants.rs:143:1
+   |
+LL | / enum HIDataRequest {
+LL | |     PutHIData(String),
+LL | |     GetHIData(String),
+LL | |     DeleteUnpubHIData(String),
+LL | | }
+   | |_^
+   |
+   = help: remove the postfixes and use full paths to the variants instead of glob imports
+
+error: aborting due to 12 previous errors
 

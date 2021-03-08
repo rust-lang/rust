@@ -631,6 +631,19 @@ declare_features! (
 
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (active, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391), None),
+
+    /// Lessens the requirements for structs to implement `Unsize`.
+    (active, relaxed_struct_unsize, "1.51.0", Some(81793), None),
+
+    /// Allows macro attributes to observe output of `#[derive]`.
+    (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
+
+    /// Allows `pub` on `macro_rules` items.
+    (active, pub_macro_rules, "1.52.0", Some(78855), None),
+
+    /// Allows associated types in inherent impls.
+    (active, inherent_associated_types, "1.52.0", Some(8995), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -656,6 +669,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::unsized_locals,
     sym::capture_disjoint_fields,
     sym::const_generics_defaults,
+    sym::inherent_associated_types,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

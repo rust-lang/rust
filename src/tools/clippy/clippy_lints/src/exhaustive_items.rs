@@ -72,7 +72,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) | ItemKind::Struct(..) = item.kind;
-            if cx.access_levels.is_exported(item.hir_id);
+            if cx.access_levels.is_exported(item.hir_id());
             if !item.attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
             then {
                 let (lint, msg) = if let ItemKind::Struct(ref v, ..) = item.kind {

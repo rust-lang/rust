@@ -888,6 +888,7 @@ crate enum CrateError {
     MultipleMatchingCrates(Symbol, FxHashMap<Svh, Library>),
     SymbolConflictsCurrent(Symbol),
     SymbolConflictsOthers(Symbol),
+    StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String),
     DlSym(String),
     LocatorCombined(CombinedLocatorError),
@@ -970,6 +971,13 @@ impl CrateError {
                  `-C metadata`. This will result in symbol conflicts between the two.",
                 root_name,
             ),
+            CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
+                let msg = format!(
+                    "found crates (`{}` and `{}`) with colliding StableCrateId values.",
+                    crate_name0, crate_name1
+                );
+                sess.struct_span_err(span, &msg)
+            }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => sess.struct_span_err(span, &s),
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;

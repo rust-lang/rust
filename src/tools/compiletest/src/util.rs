@@ -110,6 +110,9 @@ pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
 ];
 
+pub const HWASAN_SUPPORTED_TARGETS: &[&str] =
+    &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
+
 const BIG_ENDIAN: &[&str] = &[
     "aarch64_be",
     "armebv7r",

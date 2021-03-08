@@ -239,17 +239,22 @@ where
     I: Iterator<Item = &'a CodegenUnit<'tcx>>,
     'tcx: 'a,
 {
-    if cfg!(debug_assertions) {
-        debug!("{}", label);
+    let dump = move || {
+        use std::fmt::Write;
+
+        let s = &mut String::new();
+        let _ = writeln!(s, "{}", label);
         for cgu in cgus {
-            debug!("CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
+            let _ =
+                writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
 
             for (mono_item, linkage) in cgu.items() {
                 let symbol_name = mono_item.symbol_name(tcx).name;
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map_or("<no hash>", |i| &symbol_name[i..]);
 
-                debug!(
+                let _ = writeln!(
+                    s,
                     " - {} [{:?}] [{}] estimated size {}",
                     mono_item,
                     linkage,
@@ -258,9 +263,13 @@ where
                 );
             }
 
-            debug!("");
+            let _ = writeln!(s, "");
         }
-    }
+
+        std::mem::take(s)
+    };
+
+    debug!("{}", dump());
 }
 
 #[inline(never)] // give this a place in the profiler

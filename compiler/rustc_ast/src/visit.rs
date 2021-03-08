@@ -74,7 +74,7 @@ impl<'a> FnKind<'a> {
 /// Each method of the `Visitor` trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;
-/// e.g., the `visit_mod` method by default calls `visit::walk_mod`.
+/// e.g., the `visit_item` method by default calls `visit::walk_item`.
 ///
 /// If you want to ensure that your code handles every variant
 /// explicitly, you need to override each method. (And you also need
@@ -86,9 +86,6 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_ident(&mut self, ident: Ident) {
         walk_ident(self, ident);
-    }
-    fn visit_mod(&mut self, m: &'ast Mod, _s: Span, _attrs: &[Attribute], _n: NodeId) {
-        walk_mod(self, m);
     }
     fn visit_foreign_item(&mut self, i: &'ast ForeignItem) {
         walk_foreign_item(self, i)
@@ -238,12 +235,8 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, ident: Ident) {
 }
 
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
-    visitor.visit_mod(&krate.module, krate.span, &krate.attrs, CRATE_NODE_ID);
+    walk_list!(visitor, visit_item, &krate.items);
     walk_list!(visitor, visit_attribute, &krate.attrs);
-}
-
-pub fn walk_mod<'a, V: Visitor<'a>>(visitor: &mut V, module: &'a Mod) {
-    walk_list!(visitor, visit_item, &module.items);
 }
 
 pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
@@ -297,7 +290,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             let kind = FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, body.as_deref());
             visitor.visit_fn(kind, item.span, item.id)
         }
-        ItemKind::Mod(ref module) => visitor.visit_mod(module, item.span, &item.attrs, item.id),
+        ItemKind::Mod(_unsafety, ref mod_kind) => match mod_kind {
+            ModKind::Loaded(items, _inline, _inner_span) => {
+                walk_list!(visitor, visit_item, items)
+            }
+            ModKind::Unloaded => {}
+        },
         ItemKind::ForeignMod(ref foreign_module) => {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }

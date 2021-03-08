@@ -11,6 +11,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
@@ -93,7 +94,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(LOCAL_CRATE)
-            .split_dwarf_filename(tcx.sess.split_debuginfo(), Some(mod_name))
+            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
     } else {
         None
     };
@@ -440,6 +441,8 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
+            sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
+            sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
         })
     } else {
         None
@@ -651,6 +654,10 @@ unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static 
     }
     if config.sanitizer.contains(SanitizerSet::THREAD) {
         passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
+    }
+    if config.sanitizer.contains(SanitizerSet::HWADDRESS) {
+        let recover = config.sanitizer_recover.contains(SanitizerSet::HWADDRESS);
+        passes.push(llvm::LLVMRustCreateHWAddressSanitizerPass(recover));
     }
 }
 
@@ -873,9 +880,7 @@ pub(crate) unsafe fn codegen(
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);
-                    if let Err(e) = fs::remove_file(&bc_out) {
-                        diag_handler.err(&format!("failed to remove bitcode: {}", e));
-                    }
+                    ensure_removed(diag_handler, &bc_out);
                 }
             }
 

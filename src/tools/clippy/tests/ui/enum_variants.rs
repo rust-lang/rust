@@ -133,4 +133,17 @@ pub enum NetworkLayer {
     Layer3,
 }
 
+// should lint suggesting `IData`, not only `Data` (see #4639)
+enum IDataRequest {
+    PutIData(String),
+    GetIData(String),
+    DeleteUnpubIData(String),
+}
+
+enum HIDataRequest {
+    PutHIData(String),
+    GetHIData(String),
+    DeleteUnpubHIData(String),
+}
+
 fn main() {}

@@ -1,6 +1,6 @@
 //! Constants for the 128-bit signed integer type.
 //!
-//! *[See also the `i128` primitive type](../../std/primitive.i128.html).*
+//! *[See also the `i128` primitive type][i128].*
 //!
 //! New code should use the associated constants directly on the primitive type.
 

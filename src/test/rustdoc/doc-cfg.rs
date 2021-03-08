@@ -5,6 +5,8 @@
 // @!has - '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' ''
 // @has - '//*[@id="method.unix_and_arm_only_function"]' 'fn unix_and_arm_only_function()'
 // @has - '//*[@class="stab portability"]' 'This is supported on Unix and ARM only.'
+// @has - '//*[@id="method.wasi_and_wasm32_only_function"]' 'fn wasi_and_wasm32_only_function()'
+// @has - '//*[@class="stab portability"]' 'This is supported on WASI and WebAssembly only.'
 pub struct Portable;
 
 // @has doc_cfg/unix_only/index.html \
@@ -34,6 +36,36 @@ pub mod unix_only {
     #[doc(cfg(target_arch = "arm"))]
     impl ArmOnly for super::Portable {
         fn unix_and_arm_only_function() {}
+    }
+}
+
+// @has doc_cfg/wasi_only/index.html \
+//  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
+//  'This is supported on WASI only.'
+// @matches - '//*[@class="module-item"]//*[@class="stab portability"]' '\AWebAssembly\Z'
+// @count - '//*[@class="stab portability"]' 2
+#[doc(cfg(target_os = "wasi"))]
+pub mod wasi_only {
+    // @has doc_cfg/wasi_only/fn.wasi_only_function.html \
+    //  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
+    //  'This is supported on WASI only.'
+    // @count - '//*[@class="stab portability"]' 1
+    pub fn wasi_only_function() {
+        content::should::be::irrelevant();
+    }
+
+    // @has doc_cfg/wasi_only/trait.Wasm32Only.html \
+    //  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
+    //  'This is supported on WASI and WebAssembly only.'
+    // @count - '//*[@class="stab portability"]' 1
+    #[doc(cfg(target_arch = "wasm32"))]
+    pub trait Wasm32Only {
+        fn wasi_and_wasm32_only_function();
+    }
+
+    #[doc(cfg(target_arch = "wasm32"))]
+    impl Wasm32Only for super::Portable {
+        fn wasi_and_wasm32_only_function() {}
     }
 }
 

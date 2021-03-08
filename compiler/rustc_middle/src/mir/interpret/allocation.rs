@@ -266,7 +266,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let range = self.check_bounds(ptr.offset, size);
 
         self.mark_init(ptr, size, true);
-        self.clear_relocations(cx, ptr, size)?;
+        self.clear_relocations(cx, ptr, size);
 
         AllocationExtra::memory_written(self, ptr, size)?;
 
@@ -484,18 +484,13 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// uninitialized. This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
-    fn clear_relocations(
-        &mut self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> InterpResult<'tcx> {
+    fn clear_relocations(&mut self, cx: &impl HasDataLayout, ptr: Pointer<Tag>, size: Size) {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
             let relocations = self.get_relocations(cx, ptr, size);
             if relocations.is_empty() {
-                return Ok(());
+                return;
             }
 
             (
@@ -517,8 +512,6 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
 
         // Forget all the relocations.
         self.relocations.remove_range(first..last);
-
-        Ok(())
     }
 
     /// Errors if there are relocations overlapping with the edges of the
@@ -550,12 +543,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// error which will report the first range of bytes which is uninitialized.
     fn check_init(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.is_init(ptr, size).or_else(|idx_range| {
-            throw_ub!(InvalidUninitBytes(Some(Box::new(UninitBytesAccess {
+            throw_ub!(InvalidUninitBytes(Some(UninitBytesAccess {
                 access_ptr: ptr.erase_tag(),
                 access_size: size,
                 uninit_ptr: Pointer::new(ptr.alloc_id, idx_range.start),
                 uninit_size: idx_range.end - idx_range.start, // `Size` subtraction
-            }))))
+            })))
         })
     }
 

@@ -2,6 +2,7 @@ use jsonpath_lib::select;
 use lazy_static::lazy_static;
 use regex::{Regex, RegexBuilder};
 use serde_json::Value;
+use std::borrow::Cow;
 use std::{env, fmt, fs};
 
 mod cache;
@@ -48,13 +49,16 @@ pub struct Command {
 pub enum CommandKind {
     Has,
     Count,
+    Is,
+    Set,
 }
 
 impl CommandKind {
     fn validate(&self, args: &[String], command_num: usize, lineno: usize) -> bool {
         let count = match self {
             CommandKind::Has => (1..=3).contains(&args.len()),
-            CommandKind::Count => 3 == args.len(),
+            CommandKind::Count | CommandKind::Is => 3 == args.len(),
+            CommandKind::Set => 4 == args.len(),
         };
 
         if !count {
@@ -83,6 +87,8 @@ impl fmt::Display for CommandKind {
         let text = match self {
             CommandKind::Has => "has",
             CommandKind::Count => "count",
+            CommandKind::Is => "is",
+            CommandKind::Set => "set",
         };
         write!(f, "{}", text)
     }
@@ -127,6 +133,8 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
         let cmd = match cmd {
             "has" => CommandKind::Has,
             "count" => CommandKind::Count,
+            "is" => CommandKind::Is,
+            "set" => CommandKind::Set,
             _ => {
                 print_err(&format!("Unrecognized command name `@{}`", cmd), lineno);
                 errors = true;
@@ -180,6 +188,7 @@ fn get_commands(template: &str) -> Result<Vec<Command>, ()> {
 /// Performs the actual work of ensuring a command passes. Generally assumes the command
 /// is syntactically valid.
 fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
+    // FIXME: Be more granular about why, (e.g. syntax error, count not equal)
     let result = match command.kind {
         CommandKind::Has => {
             match command.args.len() {
@@ -188,23 +197,15 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                 // @has <path> <jsonpath> = check path exists
                 2 => {
                     let val = cache.get_value(&command.args[0])?;
-
-                    match select(&val, &command.args[1]) {
-                        Ok(results) => !results.is_empty(),
-                        Err(_) => false,
-                    }
+                    let results = select(&val, &command.args[1]).unwrap();
+                    !results.is_empty()
                 }
                 // @has <path> <jsonpath> <value> = check *any* item matched by path equals value
                 3 => {
                     let val = cache.get_value(&command.args[0])?;
-                    match select(&val, &command.args[1]) {
-                        Ok(results) => {
-                            let pat: Value = serde_json::from_str(&command.args[2]).unwrap();
-
-                            !results.is_empty() && results.into_iter().any(|val| *val == pat)
-                        }
-                        Err(_) => false,
-                    }
+                    let results = select(&val, &command.args[1]).unwrap();
+                    let pat = string_to_value(&command.args[2], cache);
+                    results.contains(&pat.as_ref())
                 }
                 _ => unreachable!(),
             }
@@ -215,9 +216,37 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let expected: usize = command.args[2].parse().unwrap();
 
             let val = cache.get_value(&command.args[0])?;
-            match select(&val, &command.args[1]) {
-                Ok(results) => results.len() == expected,
-                Err(_) => false,
+            let results = select(&val, &command.args[1]).unwrap();
+            results.len() == expected
+        }
+        CommandKind::Is => {
+            // @has <path> <jsonpath> <value> = check *exactly one* item matched by path, and it equals value
+            assert_eq!(command.args.len(), 3);
+            let val = cache.get_value(&command.args[0])?;
+            let results = select(&val, &command.args[1]).unwrap();
+            let pat = string_to_value(&command.args[2], cache);
+            results.len() == 1 && results[0] == pat.as_ref()
+        }
+        CommandKind::Set => {
+            // @set <name> = <path> <jsonpath>
+            assert_eq!(command.args.len(), 4);
+            assert_eq!(command.args[1], "=", "Expected an `=`");
+            let val = cache.get_value(&command.args[2])?;
+            let results = select(&val, &command.args[3]).unwrap();
+            assert_eq!(results.len(), 1);
+            match results.len() {
+                0 => false,
+                1 => {
+                    let r = cache.variables.insert(command.args[0].clone(), results[0].clone());
+                    assert!(r.is_none(), "Name collision: {} is duplicated", command.args[0]);
+                    true
+                }
+                _ => {
+                    panic!(
+                        "Got multiple results in `@set` for `{}`: {:?}",
+                        &command.args[3], results
+                    );
+                }
             }
         }
     };
@@ -245,5 +274,13 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
         }
     } else {
         Ok(())
+    }
+}
+
+fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
+    if s.starts_with("$") {
+        Cow::Borrowed(&cache.variables[&s[1..]])
+    } else {
+        Cow::Owned(serde_json::from_str(s).unwrap())
     }
 }

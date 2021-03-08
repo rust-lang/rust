@@ -389,7 +389,7 @@ fn is_self_shadow(name: Symbol, expr: &Expr<'_>) -> bool {
         ExprKind::Block(ref block, _) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
         },
-        ExprKind::Unary(op, ref inner) => (UnOp::UnDeref == op) && is_self_shadow(name, inner),
+        ExprKind::Unary(op, ref inner) => (UnOp::Deref == op) && is_self_shadow(name, inner),
         ExprKind::Path(QPath::Resolved(_, ref path)) => path_eq_name(name, path),
         _ => false,
     }

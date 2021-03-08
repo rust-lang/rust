@@ -27,7 +27,6 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
-use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
@@ -55,7 +54,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
-mod args;
+pub mod args;
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
@@ -188,16 +187,8 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let mut args = Vec::new();
-    for arg in at_args {
-        match args::arg_expand(arg.clone()) {
-            Ok(arg) => args.extend(arg),
-            Err(err) => early_error(
-                ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
-            ),
-        }
-    }
+    let args = args::arg_expand_all(at_args);
+
     let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
@@ -821,7 +812,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_build {
+    let at_path = if verbose {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""
@@ -1240,7 +1231,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {

@@ -31,7 +31,6 @@
 //   since leaf edges are empty and need no data representation. In an internal node,
 //   an edge both identifies a position and contains a pointer to a child node.
 
-use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
@@ -67,17 +66,23 @@ struct LeafNode<K, V> {
 }
 
 impl<K, V> LeafNode<K, V> {
-    /// Creates a new `LeafNode`. Unsafe because all nodes should really be hidden behind
-    /// `BoxedNode`, preventing accidental dropping of uninitialized keys and values.
-    unsafe fn new() -> Self {
-        LeafNode {
-            // As a general policy, we leave fields uninitialized if they can be, as this should
-            // be both slightly faster and easier to track in Valgrind.
-            keys: MaybeUninit::uninit_array(),
-            vals: MaybeUninit::uninit_array(),
-            parent: None,
-            parent_idx: MaybeUninit::uninit(),
-            len: 0,
+    /// Initializes a new `LeafNode` in-place.
+    unsafe fn init(this: *mut Self) {
+        // As a general policy, we leave fields uninitialized if they can be, as this should
+        // be both slightly faster and easier to track in Valgrind.
+        unsafe {
+            // parent_idx, keys, and vals are all MaybeUninit
+            ptr::addr_of_mut!((*this).parent).write(None);
+            ptr::addr_of_mut!((*this).len).write(0);
+        }
+    }
+
+    /// Creates a new boxed `LeafNode`.
+    fn new() -> Box<Self> {
+        unsafe {
+            let mut leaf = Box::new_uninit();
+            LeafNode::init(leaf.as_mut_ptr());
+            leaf.assume_init()
         }
     }
 }
@@ -99,15 +104,19 @@ struct InternalNode<K, V> {
 }
 
 impl<K, V> InternalNode<K, V> {
-    /// Creates a new `InternalNode`.
+    /// Creates a new boxed `InternalNode`.
     ///
-    /// This is unsafe for two reasons. First, it returns an `InternalNode` by value, risking
-    /// dropping of uninitialized fields. Second, an invariant of internal nodes is that `len + 1`
-    /// edges are initialized and valid, meaning that even when the node is empty (having a
-    /// `len` of 0), there must be one initialized and valid edge. This function does not set up
+    /// # Safety
+    /// An invariant of internal nodes is that they have at least one
+    /// initialized and valid edge. This function does not set up
     /// such an edge.
-    unsafe fn new() -> Self {
-        InternalNode { data: unsafe { LeafNode::new() }, edges: MaybeUninit::uninit_array() }
+    unsafe fn new() -> Box<Self> {
+        unsafe {
+            let mut node = Box::<Self>::new_uninit();
+            // We only need to initialize the data; the edges are MaybeUninit.
+            LeafNode::init(ptr::addr_of_mut!((*node.as_mut_ptr()).data));
+            node.assume_init()
+        }
     }
 }
 
@@ -133,7 +142,7 @@ impl<K, V> Root<K, V> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     fn new_leaf() -> Self {
-        Self::from_new_leaf(Box::new(unsafe { LeafNode::new() }))
+        Self::from_new_leaf(LeafNode::new())
     }
 
     fn from_new_leaf(leaf: Box<LeafNode<K, V>>) -> Self {
@@ -143,12 +152,15 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     fn new_internal(child: Root<K, V>) -> Self {
-        let mut new_node = Box::new(unsafe { InternalNode::new() });
+        let mut new_node = unsafe { InternalNode::new() };
         new_node.edges[0].write(child.node);
-        NodeRef::from_new_internal(new_node, child.height + 1)
+        unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
     }
 
-    fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+    /// # Safety
+    /// `height` must not be zero.
+    unsafe fn from_new_internal(internal: Box<InternalNode<K, V>>, height: usize) -> Self {
+        debug_assert!(height > 0);
         let node = NonNull::from(Box::leak(internal)).cast();
         let mut this = NodeRef { height, node, _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
@@ -169,7 +181,7 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Irreversibly transistions to a reference that offers traversal,
+    /// Irreversibly transitions to a reference that permits traversal and offers
     /// destructive methods and little else.
     pub fn into_dying(self) -> NodeRef<marker::Dying, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
@@ -449,7 +461,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     }
 }
 
-impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
+impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Unsafely asserts to the compiler the static information that this node is a `Leaf`.
     unsafe fn cast_to_leaf_unchecked(self) -> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
         debug_assert!(self.height == 0);
@@ -461,7 +473,9 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         debug_assert!(self.height > 0);
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
+}
 
+impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     /// Temporarily takes out another, mutable reference to the same node. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
@@ -730,15 +744,6 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     }
 }
 
-impl<BorrowType, K, V, NodeType, HandleType> PartialOrd
-    for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
-{
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let Self { node, idx, _marker } = self;
-        if node.eq(&other.node) { Some(idx.cmp(&other.idx)) } else { None }
-    }
-}
-
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
@@ -749,15 +754,17 @@ impl<BorrowType, K, V, NodeType, HandleType>
     }
 }
 
-impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
+impl<'a, K, V, Type> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, Type> {
     /// Unsafely asserts to the compiler the static information that the handle's node is a `Leaf`.
     pub unsafe fn cast_to_leaf_unchecked(
         self,
-    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, HandleType> {
+    ) -> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, Type> {
         let node = unsafe { self.node.cast_to_leaf_unchecked() };
         Handle { node, idx: self.idx, _marker: PhantomData }
     }
+}
 
+impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
     /// Temporarily takes out another, mutable handle on the same location. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
@@ -1074,14 +1081,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// - All the key-value pairs to the right of this handle are put into a newly
     ///   allocated node.
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Leaf> {
-        unsafe {
-            let mut new_node = Box::new(LeafNode::new());
+        let mut new_node = LeafNode::new();
 
-            let kv = self.split_leaf_data(&mut new_node);
+        let kv = self.split_leaf_data(&mut new_node);
 
-            let right = NodeRef::from_new_leaf(new_node);
-            SplitResult { left: self.node, kv, right }
-        }
+        let right = NodeRef::from_new_leaf(new_node);
+        SplitResult { left: self.node, kv, right }
     }
 
     /// Removes the key-value pair pointed to by this handle and returns it, along with the edge
@@ -1110,7 +1115,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     pub fn split(mut self) -> SplitResult<'a, K, V, marker::Internal> {
         let old_len = self.node.len();
         unsafe {
-            let mut new_node = Box::new(InternalNode::new());
+            let mut new_node = InternalNode::new();
             let kv = self.split_leaf_data(&mut new_node.data);
             let new_len = usize::from(new_node.data.len);
             move_to_slice(
@@ -1507,15 +1512,13 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marke
     }
 }
 
-impl<BorrowType, K, V, HandleType>
-    Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, HandleType>
-{
+impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, Type> {
     /// Checks whether the underlying node is an `Internal` node or a `Leaf` node.
     pub fn force(
         self,
     ) -> ForceResult<
-        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, HandleType>,
-        Handle<NodeRef<BorrowType, K, V, marker::Internal>, HandleType>,
+        Handle<NodeRef<BorrowType, K, V, marker::Leaf>, Type>,
+        Handle<NodeRef<BorrowType, K, V, marker::Internal>, Type>,
     > {
         match self.node.force() {
             ForceResult::Leaf(node) => {

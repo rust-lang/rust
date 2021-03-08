@@ -111,6 +111,7 @@ macro_rules! newtype_index {
         }
 
         impl Clone for $type {
+            #[inline]
             fn clone(&self) -> Self {
                 *self
             }

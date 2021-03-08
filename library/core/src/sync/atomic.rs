@@ -1307,7 +1307,7 @@ macro_rules! atomic_int {
      $stable_nand:meta,
      $const_stable:meta,
      $stable_init_const:meta,
-     $s_int_type:literal, $int_ref:expr,
+     $s_int_type:literal,
      $extra_feature:expr,
      $min_fn:ident, $max_fn:ident,
      $align:expr,
@@ -1318,18 +1318,14 @@ macro_rules! atomic_int {
         /// This type has the same in-memory representation as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
-        /// `](
-        #[doc = $int_ref]
-        /// ). For more about the differences between atomic types and
+        /// `]. For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
         ///
         /// **Note:** This type is only available on platforms that support
         /// atomic loads and stores of [`
         #[doc = $s_int_type]
-        /// `](
-        #[doc = $int_ref]
-        /// ).
+        /// `].
         ///
         /// [module-level documentation]: crate::sync::atomic
         #[$stable]
@@ -1525,7 +1521,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1557,7 +1553,7 @@ macro_rules! atomic_int {
             /// happens, and using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Migrating to `compare_exchange` and `compare_exchange_weak`
             ///
@@ -1626,7 +1622,7 @@ macro_rules! atomic_int {
             /// and must be equivalent to or weaker than the success ordering.
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1678,7 +1674,7 @@ macro_rules! atomic_int {
             /// and must be equivalent to or weaker than the success ordering.
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1720,7 +1716,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1749,7 +1745,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1781,7 +1777,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1813,7 +1809,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1845,7 +1841,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1877,7 +1873,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1916,7 +1912,7 @@ macro_rules! atomic_int {
             /// and must be equivalent to or weaker than the success ordering.
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -1960,7 +1956,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -2003,7 +1999,7 @@ macro_rules! atomic_int {
             /// using [`Release`] makes the load part [`Relaxed`].
             ///
             /// **Note**: This method is only available on platforms that support atomic operations on
-            #[doc = concat!("[`", $s_int_type, "`](", $int_ref, ").")]
+            #[doc = concat!("[`", $s_int_type, "`].")]
             ///
             /// # Examples
             ///
@@ -2088,7 +2084,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i8", "../../../std/primitive.i8.html",
+    "i8",
     "",
     atomic_min, atomic_max,
     1,
@@ -2107,7 +2103,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u8", "../../../std/primitive.u8.html",
+    "u8",
     "",
     atomic_umin, atomic_umax,
     1,
@@ -2126,7 +2122,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i16", "../../../std/primitive.i16.html",
+    "i16",
     "",
     atomic_min, atomic_max,
     2,
@@ -2145,7 +2141,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u16", "../../../std/primitive.u16.html",
+    "u16",
     "",
     atomic_umin, atomic_umax,
     2,
@@ -2164,7 +2160,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i32", "../../../std/primitive.i32.html",
+    "i32",
     "",
     atomic_min, atomic_max,
     4,
@@ -2183,7 +2179,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u32", "../../../std/primitive.u32.html",
+    "u32",
     "",
     atomic_umin, atomic_umax,
     4,
@@ -2202,7 +2198,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i64", "../../../std/primitive.i64.html",
+    "i64",
     "",
     atomic_min, atomic_max,
     8,
@@ -2221,7 +2217,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u64", "../../../std/primitive.u64.html",
+    "u64",
     "",
     atomic_umin, atomic_umax,
     8,
@@ -2240,7 +2236,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "i128", "../../../std/primitive.i128.html",
+    "i128",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
     16,
@@ -2259,7 +2255,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    "u128", "../../../std/primitive.u128.html",
+    "u128",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
     16,
@@ -2282,7 +2278,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
             stable(feature = "rust1", since = "1.0.0"),
-            "isize", "../../../std/primitive.isize.html",
+            "isize",
             "",
             atomic_min, atomic_max,
             $align,
@@ -2302,7 +2298,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_nand", since = "1.27.0"),
             rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
             stable(feature = "rust1", since = "1.0.0"),
-            "usize", "../../../std/primitive.usize.html",
+            "usize",
             "",
             atomic_umin, atomic_umax,
             $align,

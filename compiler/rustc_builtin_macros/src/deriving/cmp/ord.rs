@@ -47,9 +47,10 @@ pub fn ordering_collapsed(
     span: Span,
     self_arg_tags: &[Ident],
 ) -> P<ast::Expr> {
-    let lft = cx.expr_ident(span, self_arg_tags[0]);
+    let lft = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[0]));
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
-    cx.expr_method_call(span, lft, Ident::new(sym::cmp, span), vec![rgt])
+    let fn_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    cx.expr_call_global(span, fn_cmp_path, vec![lft, rgt])
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {

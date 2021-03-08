@@ -63,5 +63,24 @@ LL |             panic!()
    |             ^^^^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error: docs for function which may panic missing `# Panics` section
+  --> $DIR/doc_panics.rs:32:1
+   |
+LL | / pub fn unreachable_and_panic() {
+LL | |     if true {
+LL | |         unreachable!()
+LL | |     } else {
+LL | |         panic!()
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: first possible panic found here
+  --> $DIR/doc_panics.rs:36:9
+   |
+LL |         panic!()
+   |         ^^^^^^^^
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
 

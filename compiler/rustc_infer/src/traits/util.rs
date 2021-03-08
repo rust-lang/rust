@@ -1,9 +1,10 @@
 use smallvec::smallvec;
 
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_middle::ty::outlives::Component;
 use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_span::symbol::Ident;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -280,6 +281,44 @@ pub fn transitive_bounds<'tcx>(
     bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
 ) -> Supertraits<'tcx> {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
+}
+
+/// A specialized variant of `elaborate_trait_refs` that only elaborates trait references that may
+/// define the given associated type `assoc_name`. It uses the
+/// `super_predicates_that_define_assoc_type` query to avoid enumerating super-predicates that
+/// aren't related to `assoc_item`.  This is used when resolving types like `Self::Item` or
+/// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
+pub fn transitive_bounds_that_define_assoc_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    assoc_name: Ident,
+) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+    let mut stack: Vec<_> = bounds.collect();
+    let mut visited = FxIndexSet::default();
+
+    std::iter::from_fn(move || {
+        while let Some(trait_ref) = stack.pop() {
+            let anon_trait_ref = tcx.anonymize_late_bound_regions(trait_ref);
+            if visited.insert(anon_trait_ref) {
+                let super_predicates = tcx.super_predicates_that_define_assoc_type((
+                    trait_ref.def_id(),
+                    Some(assoc_name),
+                ));
+                for (super_predicate, _) in super_predicates.predicates {
+                    let bound_predicate = super_predicate.kind();
+                    let subst_predicate = super_predicate
+                        .subst_supertrait(tcx, &bound_predicate.rebind(trait_ref.skip_binder()));
+                    if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
+                        stack.push(binder.value);
+                    }
+                }
+
+                return Some(trait_ref);
+            }
+        }
+
+        return None;
+    })
 }
 
 ///////////////////////////////////////////////////////////////////////////

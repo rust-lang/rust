@@ -637,6 +637,10 @@ impl Build {
         self.out.join(&*target.triple).join("doc")
     }
 
+    fn test_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("test")
+    }
+
     /// Output directory for all documentation for a target
     fn compiler_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("compiler-doc")

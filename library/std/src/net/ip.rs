@@ -150,6 +150,7 @@ impl IpAddr {
     /// ```
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[inline]
     pub const fn is_unspecified(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_unspecified(),
@@ -172,6 +173,7 @@ impl IpAddr {
     /// ```
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[inline]
     pub const fn is_loopback(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_loopback(),
@@ -195,6 +197,7 @@ impl IpAddr {
     /// assert_eq!(IpAddr::V6(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1)).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[inline]
     pub const fn is_global(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_global(),
@@ -217,6 +220,7 @@ impl IpAddr {
     /// ```
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[inline]
     pub const fn is_multicast(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_multicast(),
@@ -243,6 +247,7 @@ impl IpAddr {
     /// );
     /// ```
     #[rustc_const_unstable(feature = "const_ip", issue = "76205")]
+    #[inline]
     pub const fn is_documentation(&self) -> bool {
         match self {
             IpAddr::V4(ip) => ip.is_documentation(),
@@ -265,6 +270,7 @@ impl IpAddr {
     /// ```
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
+    #[inline]
     pub const fn is_ipv4(&self) -> bool {
         matches!(self, IpAddr::V4(_))
     }
@@ -284,6 +290,7 @@ impl IpAddr {
     /// ```
     #[rustc_const_stable(feature = "const_ip", since = "1.50.0")]
     #[stable(feature = "ipaddr_checker", since = "1.16.0")]
+    #[inline]
     pub const fn is_ipv6(&self) -> bool {
         matches!(self, IpAddr::V6(_))
     }
@@ -303,6 +310,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         // `s_addr` is stored as BE on all machine and the array is in BE order.
         // So the native endian conversion method is used so that it's never swapped.
@@ -360,6 +368,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn octets(&self) -> [u8; 4] {
         // This returns the order we want because s_addr is stored in big-endian.
         self.inner.s_addr.to_ne_bytes()
@@ -382,6 +391,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.32.0")]
     #[stable(feature = "ip_shared", since = "1.12.0")]
+    #[inline]
     pub const fn is_unspecified(&self) -> bool {
         self.inner.s_addr == 0
     }
@@ -402,6 +412,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_loopback(&self) -> bool {
         self.octets()[0] == 127
     }
@@ -431,6 +442,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_private(&self) -> bool {
         match self.octets() {
             [10, ..] => true,
@@ -457,6 +469,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_link_local(&self) -> bool {
         matches!(self.octets(), [169, 254, ..])
     }
@@ -531,6 +544,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[inline]
     pub const fn is_global(&self) -> bool {
         // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
         // globally routable addresses in the 192.0.0.0/24 range.
@@ -568,6 +582,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[inline]
     pub const fn is_shared(&self) -> bool {
         self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
     }
@@ -600,6 +615,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[inline]
     pub const fn is_ietf_protocol_assignment(&self) -> bool {
         self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
     }
@@ -623,6 +639,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(198, 20, 0, 0).is_benchmarking(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[inline]
     pub const fn is_benchmarking(&self) -> bool {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
@@ -655,6 +672,7 @@ impl Ipv4Addr {
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_reserved(), false);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv4", issue = "76205")]
+    #[inline]
     pub const fn is_reserved(&self) -> bool {
         self.octets()[0] & 240 == 240 && !self.is_broadcast()
     }
@@ -677,6 +695,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
@@ -697,6 +716,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_broadcast(&self) -> bool {
         u32::from_be_bytes(self.octets()) == u32::from_be_bytes(Self::BROADCAST.octets())
     }
@@ -723,6 +743,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_documentation(&self) -> bool {
         match self.octets() {
             [192, 0, 2, _] => true,
@@ -753,6 +774,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn to_ipv6_compatible(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
         Ipv6Addr {
@@ -776,6 +798,7 @@ impl Ipv4Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn to_ipv6_mapped(&self) -> Ipv6Addr {
         let [a, b, c, d] = self.octets();
         Ipv6Addr {
@@ -817,6 +840,7 @@ impl From<Ipv4Addr> for IpAddr {
     ///     IpAddr::from(addr)
     /// )
     /// ```
+    #[inline]
     fn from(ipv4: Ipv4Addr) -> IpAddr {
         IpAddr::V4(ipv4)
     }
@@ -838,6 +862,7 @@ impl From<Ipv6Addr> for IpAddr {
     ///     IpAddr::from(addr)
     /// );
     /// ```
+    #[inline]
     fn from(ipv6: Ipv6Addr) -> IpAddr {
         IpAddr::V6(ipv6)
     }
@@ -875,6 +900,7 @@ impl fmt::Debug for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv4Addr {
+    #[inline]
     fn clone(&self) -> Ipv4Addr {
         *self
     }
@@ -882,6 +908,7 @@ impl Clone for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv4Addr {
+    #[inline]
     fn eq(&self, other: &Ipv4Addr) -> bool {
         self.inner.s_addr == other.inner.s_addr
     }
@@ -889,6 +916,7 @@ impl PartialEq for Ipv4Addr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv4Addr> for IpAddr {
+    #[inline]
     fn eq(&self, other: &Ipv4Addr) -> bool {
         match self {
             IpAddr::V4(v4) => v4 == other,
@@ -899,6 +927,7 @@ impl PartialEq<Ipv4Addr> for IpAddr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv4Addr {
+    #[inline]
     fn eq(&self, other: &IpAddr) -> bool {
         match other {
             IpAddr::V4(v4) => self == v4,
@@ -912,6 +941,7 @@ impl Eq for Ipv4Addr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv4Addr {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
         // NOTE:
         // * hash in big endian order
@@ -923,6 +953,7 @@ impl hash::Hash for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ipv4Addr {
+    #[inline]
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -930,6 +961,7 @@ impl PartialOrd for Ipv4Addr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv4Addr> for IpAddr {
+    #[inline]
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         match self {
             IpAddr::V4(v4) => v4.partial_cmp(other),
@@ -940,6 +972,7 @@ impl PartialOrd<Ipv4Addr> for IpAddr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv4Addr {
+    #[inline]
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match other {
             IpAddr::V4(v4) => self.partial_cmp(v4),
@@ -950,6 +983,7 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
+    #[inline]
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
         // Compare as native endian
         u32::from_be(self.inner.s_addr).cmp(&u32::from_be(other.inner.s_addr))
@@ -974,6 +1008,7 @@ impl From<Ipv4Addr> for u32 {
     /// let addr = Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe);
     /// assert_eq!(0xcafebabe, u32::from(addr));
     /// ```
+    #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
         u32::from_be_bytes(ip)
@@ -992,6 +1027,7 @@ impl From<u32> for Ipv4Addr {
     /// let addr = Ipv4Addr::from(0xcafebabe);
     /// assert_eq!(Ipv4Addr::new(0xca, 0xfe, 0xba, 0xbe), addr);
     /// ```
+    #[inline]
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::from(ip.to_be_bytes())
     }
@@ -1009,6 +1045,7 @@ impl From<[u8; 4]> for Ipv4Addr {
     /// let addr = Ipv4Addr::from([13u8, 12u8, 11u8, 10u8]);
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
+    #[inline]
     fn from(octets: [u8; 4]) -> Ipv4Addr {
         Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
     }
@@ -1026,6 +1063,7 @@ impl From<[u8; 4]> for IpAddr {
     /// let addr = IpAddr::from([13u8, 12u8, 11u8, 10u8]);
     /// assert_eq!(IpAddr::V4(Ipv4Addr::new(13, 12, 11, 10)), addr);
     /// ```
+    #[inline]
     fn from(octets: [u8; 4]) -> IpAddr {
         IpAddr::V4(Ipv4Addr::from(octets))
     }
@@ -1046,6 +1084,7 @@ impl Ipv6Addr {
     #[rustc_allow_const_fn_unstable(const_fn_transmute)]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr {
         let addr16 = [
             a.to_be(),
@@ -1107,6 +1146,7 @@ impl Ipv6Addr {
     #[rustc_allow_const_fn_unstable(const_fn_transmute)]
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn segments(&self) -> [u16; 8] {
         // All elements in `s6_addr` must be big endian.
         // SAFETY: `[u8; 16]` is always safe to transmute to `[u16; 8]`.
@@ -1142,6 +1182,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_unspecified(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
@@ -1162,6 +1203,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_loopback(&self) -> bool {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
     }
@@ -1186,6 +1228,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0x1c9, 0, 0, 0xafc8, 0, 0x1).is_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_global(&self) -> bool {
         match self.multicast_scope() {
             Some(Ipv6MulticastScope::Global) => true,
@@ -1211,6 +1254,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0xfc02, 0, 0, 0, 0, 0, 0, 0).is_unique_local(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_unique_local(&self) -> bool {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
@@ -1265,6 +1309,7 @@ impl Ipv6Addr {
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_unicast_link_local_strict(&self) -> bool {
         matches!(self.segments(), [0xfe80, 0, 0, 0, ..])
     }
@@ -1318,6 +1363,7 @@ impl Ipv6Addr {
     /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
@@ -1357,6 +1403,7 @@ impl Ipv6Addr {
     ///
     /// [RFC 3879]: https://tools.ietf.org/html/rfc3879
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
@@ -1379,6 +1426,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_documentation(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
@@ -1414,6 +1462,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_global(), true);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback()
@@ -1439,6 +1488,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).multicast_scope(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn multicast_scope(&self) -> Option<Ipv6MulticastScope> {
         if self.is_multicast() {
             match self.segments()[0] & 0x000f {
@@ -1472,6 +1522,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[inline]
     pub const fn is_multicast(&self) -> bool {
         (self.segments()[0] & 0xff00) == 0xff00
     }
@@ -1498,6 +1549,7 @@ impl Ipv6Addr {
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[inline]
     pub const fn to_ipv4_mapped(&self) -> Option<Ipv4Addr> {
         match self.octets() {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, a, b, c, d] => {
@@ -1527,6 +1579,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub const fn to_ipv4(&self) -> Option<Ipv4Addr> {
         if let [0, 0, 0, 0, 0, 0 | 0xffff, ab, cd] = self.segments() {
             let [a, b] = ab.to_be_bytes();
@@ -1547,6 +1600,7 @@ impl Ipv6Addr {
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.32.0")]
     #[stable(feature = "ipv6_to_octets", since = "1.12.0")]
+    #[inline]
     pub const fn octets(&self) -> [u8; 16] {
         self.inner.s6_addr
     }
@@ -1658,6 +1712,7 @@ impl fmt::Debug for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv6Addr {
+    #[inline]
     fn clone(&self) -> Ipv6Addr {
         *self
     }
@@ -1665,6 +1720,7 @@ impl Clone for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv6Addr {
+    #[inline]
     fn eq(&self, other: &Ipv6Addr) -> bool {
         self.inner.s6_addr == other.inner.s6_addr
     }
@@ -1672,6 +1728,7 @@ impl PartialEq for Ipv6Addr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<IpAddr> for Ipv6Addr {
+    #[inline]
     fn eq(&self, other: &IpAddr) -> bool {
         match other {
             IpAddr::V4(_) => false,
@@ -1682,6 +1739,7 @@ impl PartialEq<IpAddr> for Ipv6Addr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialEq<Ipv6Addr> for IpAddr {
+    #[inline]
     fn eq(&self, other: &Ipv6Addr) -> bool {
         match self {
             IpAddr::V4(_) => false,
@@ -1695,6 +1753,7 @@ impl Eq for Ipv6Addr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Ipv6Addr {
+    #[inline]
     fn hash<H: hash::Hasher>(&self, s: &mut H) {
         self.inner.s6_addr.hash(s)
     }
@@ -1702,6 +1761,7 @@ impl hash::Hash for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ipv6Addr {
+    #[inline]
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         Some(self.cmp(other))
     }
@@ -1709,6 +1769,7 @@ impl PartialOrd for Ipv6Addr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<Ipv6Addr> for IpAddr {
+    #[inline]
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         match self {
             IpAddr::V4(_) => Some(Ordering::Less),
@@ -1719,6 +1780,7 @@ impl PartialOrd<Ipv6Addr> for IpAddr {
 
 #[stable(feature = "ip_cmp", since = "1.16.0")]
 impl PartialOrd<IpAddr> for Ipv6Addr {
+    #[inline]
     fn partial_cmp(&self, other: &IpAddr) -> Option<Ordering> {
         match other {
             IpAddr::V4(_) => Some(Ordering::Greater),
@@ -1729,6 +1791,7 @@ impl PartialOrd<IpAddr> for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv6Addr {
+    #[inline]
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
         self.segments().cmp(&other.segments())
     }
@@ -1760,6 +1823,7 @@ impl From<Ipv6Addr> for u128 {
     /// );
     /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
     /// ```
+    #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
         let ip = ip.octets();
         u128::from_be_bytes(ip)
@@ -1782,6 +1846,7 @@ impl From<u128> for Ipv6Addr {
     ///     ),
     ///     addr);
     /// ```
+    #[inline]
     fn from(ip: u128) -> Ipv6Addr {
         Ipv6Addr::from(ip.to_be_bytes())
     }
@@ -1810,6 +1875,7 @@ impl From<[u8; 16]> for Ipv6Addr {
     ///     addr
     /// );
     /// ```
+    #[inline]
     fn from(octets: [u8; 16]) -> Ipv6Addr {
         let inner = c::in6_addr { s6_addr: octets };
         Ipv6Addr::from_inner(inner)
@@ -1839,6 +1905,7 @@ impl From<[u16; 8]> for Ipv6Addr {
     ///     addr
     /// );
     /// ```
+    #[inline]
     fn from(segments: [u16; 8]) -> Ipv6Addr {
         let [a, b, c, d, e, f, g, h] = segments;
         Ipv6Addr::new(a, b, c, d, e, f, g, h)
@@ -1868,6 +1935,7 @@ impl From<[u8; 16]> for IpAddr {
     ///     addr
     /// );
     /// ```
+    #[inline]
     fn from(octets: [u8; 16]) -> IpAddr {
         IpAddr::V6(Ipv6Addr::from(octets))
     }
@@ -1896,6 +1964,7 @@ impl From<[u16; 8]> for IpAddr {
     ///     addr
     /// );
     /// ```
+    #[inline]
     fn from(segments: [u16; 8]) -> IpAddr {
         IpAddr::V6(Ipv6Addr::from(segments))
     }

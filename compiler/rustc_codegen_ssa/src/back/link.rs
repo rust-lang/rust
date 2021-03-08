@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
@@ -34,9 +35,11 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
 
-pub fn remove(sess: &Session, path: &Path) {
+pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
-        sess.err(&format!("failed to remove {}: {}", path.display(), e));
+        if e.kind() != io::ErrorKind::NotFound {
+            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+        }
     }
 }
 
@@ -112,11 +115,11 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         if !sess.opts.cg.save_temps {
             let remove_temps_from_module = |module: &CompiledModule| {
                 if let Some(ref obj) = module.object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
 
                 if let Some(ref obj) = module.dwarf_object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
             };
 
@@ -178,16 +181,16 @@ fn get_linker(
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
-                    "x86_64" => Some("x64".to_string()),
-                    "x86" => Some("x86".to_string()),
-                    "aarch64" => Some("arm64".to_string()),
-                    "arm" => Some("arm".to_string()),
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
                     // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");
@@ -892,6 +895,9 @@ fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linke
     }
     if sanitizer.contains(SanitizerSet::THREAD) {
         link_sanitizer_runtime(sess, linker, "tsan");
+    }
+    if sanitizer.contains(SanitizerSet::HWADDRESS) {
+        link_sanitizer_runtime(sess, linker, "hwasan");
     }
 }
 
@@ -2076,7 +2082,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or(Path::new("")),
+            parent.unwrap_or_else(|| Path::new("")),
         );
     }
 }
@@ -2187,6 +2193,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
         ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",

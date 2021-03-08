@@ -1,0 +1,52 @@
+- // MIR for `issue_77355_opt` before ConstGoto
++ // MIR for `issue_77355_opt` after ConstGoto
+  
+  fn issue_77355_opt(_1: Foo) -> u64 {
+      debug num => _1;                     // in scope 0 at $DIR/const_goto.rs:11:20: 11:23
+      let mut _0: u64;                     // return place in scope 0 at $DIR/const_goto.rs:11:33: 11:36
+-     let mut _2: bool;                    // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-     let mut _3: isize;                   // in scope 0 at $DIR/const_goto.rs:12:22: 12:28
++     let mut _2: isize;                   // in scope 0 at $DIR/const_goto.rs:12:22: 12:28
+  
+      bb0: {
+-         StorageLive(_2);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         _3 = discriminant(_1);           // scope 0 at $DIR/const_goto.rs:12:22: 12:28
+-         switchInt(move _3) -> [1_isize: bb2, 2_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto.rs:12:22: 12:28
++         _2 = discriminant(_1);           // scope 0 at $DIR/const_goto.rs:12:22: 12:28
++         switchInt(move _2) -> [1_isize: bb2, 2_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto.rs:12:22: 12:28
+      }
+  
+      bb1: {
+-         _2 = const false;                // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
++         _0 = const 42_u64;               // scope 0 at $DIR/const_goto.rs:12:53: 12:55
++         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:12:5: 12:57
+      }
+  
+      bb2: {
+-         _2 = const true;                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-     }
+- 
+-     bb3: {
+-         switchInt(move _2) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto.rs:12:5: 12:57
+-     }
+- 
+-     bb4: {
+          _0 = const 23_u64;               // scope 0 at $DIR/const_goto.rs:12:41: 12:43
+-         goto -> bb6;                     // scope 0 at $DIR/const_goto.rs:12:5: 12:57
++         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:12:5: 12:57
+      }
+  
+-     bb5: {
+-         _0 = const 42_u64;               // scope 0 at $DIR/const_goto.rs:12:53: 12:55
+-         goto -> bb6;                     // scope 0 at $DIR/const_goto.rs:12:5: 12:57
+-     }
+- 
+-     bb6: {
+-         StorageDead(_2);                 // scope 0 at $DIR/const_goto.rs:12:56: 12:57
++     bb3: {
+          return;                          // scope 0 at $DIR/const_goto.rs:13:2: 13:2
+      }
+  }
+  

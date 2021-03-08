@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed for `std::result::Result<(), E>`
+error[E0282]: type annotations needed for `Result<(), E>`
   --> $DIR/cannot-infer-closure-circular.rs:7:14
    |
 LL |     let x = |r| {
-   |              ^ consider giving this closure parameter the explicit type `std::result::Result<(), E>`, with the type parameters specified
+   |              ^ consider giving this closure parameter the explicit type `Result<(), E>`, with the type parameters specified
 
 error: aborting due to previous error
 

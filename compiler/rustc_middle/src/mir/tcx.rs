@@ -21,6 +21,7 @@ pub struct PlaceTy<'tcx> {
 static_assert_size!(PlaceTy<'_>, 16);
 
 impl<'tcx> PlaceTy<'tcx> {
+    #[inline]
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
         PlaceTy { ty, variant_index: None }
     }

@@ -11,10 +11,8 @@
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_interface;
-extern crate rustc_middle;
 
 use rustc_interface::interface;
-use rustc_middle::ty::TyCtxt;
 use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
@@ -85,7 +83,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If
         // MIR passes can be enabled / disabled separately, we should figure out, what passes to
         // use for Clippy.
-        config.opts.debugging_opts.mir_opt_level = 0;
+        config.opts.debugging_opts.mir_opt_level = Some(0);
     }
 }
 
@@ -168,7 +166,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 }
 
 fn toolchain_path(home: Option<String>, toolchain: Option<String>) -> Option<PathBuf> {

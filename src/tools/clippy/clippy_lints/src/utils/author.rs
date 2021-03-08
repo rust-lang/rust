@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id.id))) {
+        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id))) {
             return;
         }
         prelude();

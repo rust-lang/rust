@@ -42,9 +42,10 @@ pub fn bless(ignore_timestamp: bool) {
             .for_each(|f| {
                 let test_name = f.path().strip_prefix(test_suite_dir).unwrap();
                 for &ext in &["stdout", "stderr", "fixed"] {
+                    let test_name_ext = format!("stage-id.{}", ext);
                     update_reference_file(
                         f.path().with_extension(ext),
-                        test_name.with_extension(ext),
+                        test_name.with_extension(test_name_ext),
                         ignore_timestamp,
                     );
                 }

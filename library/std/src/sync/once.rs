@@ -125,7 +125,7 @@ unsafe impl Send for Once {}
 
 /// State yielded to [`Once::call_once_force()`]’s closure parameter. The state
 /// can be used to query the poison status of the [`Once`].
-#[unstable(feature = "once_poison", issue = "33577")]
+#[stable(feature = "once_poison", since = "1.51.0")]
 #[derive(Debug)]
 pub struct OnceState {
     poisoned: bool,
@@ -280,8 +280,6 @@ impl Once {
     /// # Examples
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -301,13 +299,13 @@ impl Once {
     ///
     /// // call_once_force will still run and reset the poisoned state
     /// INIT.call_once_force(|state| {
-    ///     assert!(state.poisoned());
+    ///     assert!(state.is_poisoned());
     /// });
     ///
     /// // once any success happens, we stop propagating the poison
     /// INIT.call_once(|| {});
     /// ```
-    #[unstable(feature = "once_poison", issue = "33577")]
+    #[stable(feature = "once_poison", since = "1.51.0")]
     pub fn call_once_force<F>(&self, f: F)
     where
         F: FnOnce(&OnceState),
@@ -526,8 +524,6 @@ impl OnceState {
     /// A poisoned [`Once`]:
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     /// use std::thread;
     ///
@@ -540,24 +536,22 @@ impl OnceState {
     /// assert!(handle.join().is_err());
     ///
     /// INIT.call_once_force(|state| {
-    ///     assert!(state.poisoned());
+    ///     assert!(state.is_poisoned());
     /// });
     /// ```
     ///
     /// An unpoisoned [`Once`]:
     ///
     /// ```
-    /// #![feature(once_poison)]
-    ///
     /// use std::sync::Once;
     ///
     /// static INIT: Once = Once::new();
     ///
     /// INIT.call_once_force(|state| {
-    ///     assert!(!state.poisoned());
+    ///     assert!(!state.is_poisoned());
     /// });
-    #[unstable(feature = "once_poison", issue = "33577")]
-    pub fn poisoned(&self) -> bool {
+    #[stable(feature = "once_poison", since = "1.51.0")]
+    pub fn is_poisoned(&self) -> bool {
         self.poisoned
     }
 

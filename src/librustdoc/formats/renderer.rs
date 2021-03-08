@@ -2,7 +2,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 
@@ -18,7 +18,6 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        render_info: RenderInfo,
         edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
@@ -49,25 +48,16 @@ crate trait FormatRenderer<'tcx>: Clone {
 crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
-    render_info: RenderInfo,
+    cache: Cache,
     diag: &rustc_errors::Handler,
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, cache) = tcx.sess.time("create_format_cache", || {
-        Cache::from_krate(
-            render_info.clone(),
-            options.document_private,
-            &options.extern_html_root_urls,
-            &options.output,
-            krate,
-        )
-    });
     let prof = &tcx.sess.prof;
 
     let (mut format_renderer, mut krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, render_info, edition, cache, tcx))?;
+        .run(|| T::init(krate, options, edition, cache, tcx))?;
 
     let mut item = match krate.module.take() {
         Some(i) => i,
@@ -101,7 +91,9 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             }
 
             cx.mod_item_out(&name)?;
-        } else if item.name.is_some() {
+        // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
+        // cases. Use an explicit match instead.
+        } else if item.name.is_some() && !item.is_extern_crate() {
             prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
                 .run(|| cx.item(item))?;
         }

@@ -158,7 +158,7 @@ LL | fn test11(x: &usize) -> &_ {
    |                         -^
    |                         ||
    |                         |not allowed in type signatures
-   |                         help: replace with the correct return type: `&&usize`
+   |                         help: replace with the correct return type: `&'static &'static usize`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:52:52
@@ -411,6 +411,24 @@ LL | type Y = impl Trait<_>;
    |                     ^ not allowed in type signatures
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:216:31
+   |
+LL | fn value() -> Option<&'static _> {
+   |               ----------------^-
+   |               |               |
+   |               |               not allowed in type signatures
+   |               help: replace with the correct return type: `Option<&'static u8>`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
+  --> $DIR/typeck_type_placeholder_item.rs:221:10
+   |
+LL | const _: Option<_> = map(value);
+   |          ^^^^^^^^^
+   |          |
+   |          not allowed in type signatures
+   |          help: replace `_` with the correct type: `Option<u8>`
+
+error[E0121]: the type placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:140:31
    |
 LL |     fn method_test1(&self, x: _);
@@ -614,7 +632,7 @@ LL |     const D: _ = 42;
    |              not allowed in type signatures
    |              help: replace `_` with the correct type: `i32`
 
-error: aborting due to 67 previous errors
+error: aborting due to 69 previous errors
 
 Some errors have detailed explanations: E0121, E0282, E0403.
 For more information about an error, try `rustc --explain E0121`.

@@ -109,7 +109,7 @@ fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &
     debug!("read_file: {}", message);
 
     if report_incremental_info {
-        println!(
+        eprintln!(
             "[incremental] ignoring cache artifact `{}`: {}",
             file.file_name().unwrap().to_string_lossy(),
             message

@@ -241,11 +241,13 @@ macro_rules! make_mir_visitor {
                 body: &$($mutability)? Body<'tcx>,
             ) {
                 let span = body.span;
-                if let Some(yield_ty) = &$($mutability)? body.yield_ty {
-                    self.visit_ty(
-                        yield_ty,
-                        TyContext::YieldTy(SourceInfo::outermost(span))
-                    );
+                if let Some(gen) = &$($mutability)? body.generator {
+                    if let Some(yield_ty) = &$($mutability)? gen.yield_ty {
+                        self.visit_ty(
+                            yield_ty,
+                            TyContext::YieldTy(SourceInfo::outermost(span))
+                        );
+                    }
                 }
 
                 // for best performance, we want to use an iterator rather
@@ -998,12 +1000,11 @@ macro_rules! visit_place_fns {
     () => {
         fn visit_projection(
             &mut self,
-            local: Local,
-            projection: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection(local, projection, context, location);
+            self.super_projection(place_ref, context, location);
         }
 
         fn visit_projection_elem(
@@ -1033,20 +1034,20 @@ macro_rules! visit_place_fns {
 
             self.visit_local(&place.local, context, location);
 
-            self.visit_projection(place.local, &place.projection, context, location);
+            self.visit_projection(place.as_ref(), context, location);
         }
 
         fn super_projection(
             &mut self,
-            local: Local,
-            projection: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            let mut cursor = projection;
+            // FIXME: Use PlaceRef::iter_projections, once that exists.
+            let mut cursor = place_ref.projection;
             while let &[ref proj_base @ .., elem] = cursor {
                 cursor = proj_base;
-                self.visit_projection_elem(local, cursor, elem, context, location);
+                self.visit_projection_elem(place_ref.local, cursor, elem, context, location);
             }
         }
 
@@ -1202,6 +1203,7 @@ pub enum PlaceContext {
 
 impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
+    #[inline]
     pub fn is_drop(&self) -> bool {
         matches!(self, PlaceContext::MutatingUse(MutatingUseContext::Drop))
     }
@@ -1219,6 +1221,7 @@ impl PlaceContext {
     }
 
     /// Returns `true` if this place context represents a storage live or storage dead marker.
+    #[inline]
     pub fn is_storage_marker(&self) -> bool {
         matches!(
             self,
@@ -1227,16 +1230,19 @@ impl PlaceContext {
     }
 
     /// Returns `true` if this place context represents a use that potentially changes the value.
+    #[inline]
     pub fn is_mutating_use(&self) -> bool {
         matches!(self, PlaceContext::MutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use that does not change the value.
+    #[inline]
     pub fn is_nonmutating_use(&self) -> bool {
         matches!(self, PlaceContext::NonMutatingUse(..))
     }
 
     /// Returns `true` if this place context represents a use.
+    #[inline]
     pub fn is_use(&self) -> bool {
         !matches!(self, PlaceContext::NonUse(..))
     }

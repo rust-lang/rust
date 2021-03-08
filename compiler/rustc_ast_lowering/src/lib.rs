@@ -48,7 +48,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
 use rustc_hir::{ConstArg, GenericArg, ParamName};
@@ -99,7 +99,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<hir::HirId, hir::Item<'hir>>,
+    items: BTreeMap<hir::ItemId, hir::Item<'hir>>,
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
@@ -108,9 +108,9 @@ struct LoweringContext<'a, 'hir: 'a> {
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
-    trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
+    trait_impls: BTreeMap<DefId, Vec<LocalDefId>>,
 
-    modules: BTreeMap<hir::HirId, hir::ModuleItems>,
+    modules: BTreeMap<LocalDefId, hir::ModuleItems>,
 
     generator_kind: Option<hir::GeneratorKind>,
 
@@ -158,7 +158,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
-    current_module: hir::HirId,
+    current_module: LocalDefId,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -174,6 +174,8 @@ pub trait ResolverAstLowering {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
     fn item_generics_num_lifetimes(&self, def: DefId, sess: &Session) -> usize;
+
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
 
     /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
@@ -314,8 +316,8 @@ pub fn lower_crate<'a, 'hir>(
         is_in_dyn_type: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
-        current_module: hir::CRATE_HIR_ID,
-        current_hir_id_owner: vec![(LocalDefId { local_def_index: CRATE_DEF_INDEX }, 0)],
+        current_module: CRATE_DEF_ID,
+        current_hir_id_owner: vec![(CRATE_DEF_ID, 0)],
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
@@ -560,7 +562,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
-        let module = self.lower_mod(&c.module);
+        let module = self.lower_mod(&c.items, c.span);
         let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
         let proc_macros =
@@ -605,12 +607,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn insert_item(&mut self, item: hir::Item<'hir>) {
-        let id = item.hir_id;
-        // FIXME: Use `debug_asset-rt`.
-        assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
+    fn insert_item(&mut self, item: hir::Item<'hir>) -> hir::ItemId {
+        let id = hir::ItemId { def_id: item.def_id };
         self.items.insert(id, item);
-        self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
+        self.modules.entry(self.current_module).or_default().items.insert(id);
+        id
     }
 
     fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {
@@ -1076,16 +1077,40 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_assoc_ty_constraint(
         &mut self,
         constraint: &AssocTyConstraint,
-        itctx: ImplTraitContext<'_, 'hir>,
+        mut itctx: ImplTraitContext<'_, 'hir>,
     ) -> hir::TypeBinding<'hir> {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
 
-        if let Some(ref gen_args) = constraint.gen_args {
-            self.sess.span_fatal(
-                gen_args.span(),
-                "generic associated types in trait paths are currently not implemented",
-            );
-        }
+        // lower generic arguments of identifier in constraint
+        let gen_args = if let Some(ref gen_args) = constraint.gen_args {
+            let gen_args_ctor = match gen_args {
+                GenericArgs::AngleBracketed(ref data) => {
+                    self.lower_angle_bracketed_parameter_data(
+                        data,
+                        ParamMode::Explicit,
+                        itctx.reborrow(),
+                    )
+                    .0
+                }
+                GenericArgs::Parenthesized(ref data) => {
+                    let mut err = self.sess.struct_span_err(
+                        gen_args.span(),
+                        "parenthesized generic arguments cannot be used in associated type constraints"
+                    );
+                    // FIXME: try to write a suggestion here
+                    err.emit();
+                    self.lower_angle_bracketed_parameter_data(
+                        &data.as_angle_bracketed_args(),
+                        ParamMode::Explicit,
+                        itctx.reborrow(),
+                    )
+                    .0
+                }
+            };
+            self.arena.alloc(gen_args_ctor.into_generic_args(&self.arena))
+        } else {
+            self.arena.alloc(hir::GenericArgs::none())
+        };
 
         let kind = match constraint.kind {
             AssocTyConstraintKind::Equality { ref ty } => {
@@ -1182,6 +1207,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::TypeBinding {
             hir_id: self.lower_node_id(constraint.id),
             ident: constraint.ident,
+            gen_args,
             kind,
             span: constraint.span,
         }
@@ -1522,11 +1548,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
-            let opaque_ty_id =
-                lctx.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
+            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::OpaqueDef(hir::ItemId { id: opaque_ty_id }, lifetimes)
+            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
         })
     }
 
@@ -1534,17 +1559,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// returns the lowered node-ID for the opaque type.
     fn generate_opaque_type(
         &mut self,
-        opaque_ty_node_id: NodeId,
+        opaque_ty_id: LocalDefId,
         opaque_ty_item: hir::OpaqueTy<'hir>,
         span: Span,
         opaque_ty_span: Span,
-    ) -> hir::HirId {
+    ) {
         let opaque_ty_item_kind = hir::ItemKind::OpaqueTy(opaque_ty_item);
-        let opaque_ty_id = self.lower_node_id(opaque_ty_node_id);
         // Generate an `type Foo = impl Trait;` declaration.
         trace!("registering opaque type with id {:#?}", opaque_ty_id);
         let opaque_ty_item = hir::Item {
-            hir_id: opaque_ty_id,
+            def_id: opaque_ty_id,
             ident: Ident::invalid(),
             attrs: Default::default(),
             kind: opaque_ty_item_kind,
@@ -1556,7 +1580,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // automatically for all AST items. But this opaque type item
         // does not actually exist in the AST.
         self.insert_item(opaque_ty_item);
-        opaque_ty_id
     }
 
     fn lifetimes_from_impl_trait_bounds(
@@ -1985,7 +2008,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // grow.
         let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
 
-        let (opaque_ty_id, lifetime_params) = self.with_hir_id_owner(opaque_ty_node_id, |this| {
+        let lifetime_params = self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
             // lifetime in the return type.  So, given a return type
@@ -2036,10 +2059,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
-            let opaque_ty_id =
-                this.generate_opaque_type(opaque_ty_node_id, opaque_ty_item, span, opaque_ty_span);
+            this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
 
-            (opaque_ty_id, lifetime_params)
+            lifetime_params
         });
 
         // As documented above on the variable
@@ -2082,7 +2104,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
-        let opaque_ty_ref = hir::TyKind::OpaqueDef(hir::ItemId { id: opaque_ty_id }, generic_args);
+        let opaque_ty_ref =
+            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
@@ -2407,7 +2430,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
-                        let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
+                        let item_id = hir::ItemId {
+                            // All the items that `lower_local` finds are `impl Trait` types.
+                            def_id: self.lower_node_id(item_id).expect_owner(),
+                        };
                         self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();

@@ -4,7 +4,7 @@ fn main() {
     // Note that we're pulling in a static copy of mimalloc which means that to
     // pull it in we need to actually reference its symbols for it to get
     // linked. The two crates we link to here, std and rustc_driver, are both
-    // dynamic libraries. That means to pull in mimalloc we need to actually
+    // dynamic libraries. That means to pull in mimalloc we actually need to
     // reference allocation symbols one way or another (as this file is the only
     // object code in the rustc executable).
     #[cfg(feature = "libmimalloc-sys")]

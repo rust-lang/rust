@@ -108,7 +108,7 @@ fn collect_unwrap_info<'tcx>(
             },
             _ => (),
         }
-    } else if let ExprKind::Unary(UnOp::UnNot, expr) = &expr.kind {
+    } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
         return collect_unwrap_info(cx, expr, branch, !invert);
     } else {
         if_chain! {

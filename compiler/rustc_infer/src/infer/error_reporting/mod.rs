@@ -50,6 +50,7 @@ use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
 
 use crate::infer;
+use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -179,7 +180,14 @@ fn msg_span_from_early_bound_and_free_regions(
         }
         ty::ReFree(ref fr) => match fr.bound_region {
             ty::BrAnon(idx) => {
-                (format!("the anonymous lifetime #{} defined on", idx + 1), tcx.hir().span(node))
+                if let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region) {
+                    ("the anonymous lifetime defined on".to_string(), ty.span)
+                } else {
+                    (
+                        format!("the anonymous lifetime #{} defined on", idx + 1),
+                        tcx.hir().span(node),
+                    )
+                }
             }
             _ => (
                 format!("the lifetime `{}` as defined on", region),
@@ -1484,13 +1492,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 for (key, values) in types.iter() {
                     let count = values.len();
                     let kind = key.descr();
+                    let mut returned_async_output_error = false;
                     for sp in values {
                         err.span_label(
                             *sp,
                             format!(
                                 "{}{}{} {}{}",
-                                if sp.is_desugaring(DesugaringKind::Async) {
-                                    "the `Output` of this `async fn`'s "
+                                if sp.is_desugaring(DesugaringKind::Async)
+                                    && !returned_async_output_error
+                                {
+                                    "checked the `Output` of this `async fn`, "
                                 } else if count == 1 {
                                     "the "
                                 } else {
@@ -1502,6 +1513,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 pluralize!(count),
                             ),
                         );
+                        if sp.is_desugaring(DesugaringKind::Async)
+                            && returned_async_output_error == false
+                        {
+                            err.note("while checking the return type of the `async fn`");
+                            returned_async_output_error = true;
+                        }
                     }
                 }
             }
@@ -1509,7 +1526,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let Some((kind, def_id)) = TyCategory::from_ty(t) {
+                if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
                     // Avoid cluttering the output when the "found" and error span overlap:
                     //
@@ -1582,11 +1599,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         if let Some((expected, found)) = expected_found {
             let expected_label = match exp_found {
-                Mismatch::Variable(ef) => ef.expected.prefix_string(),
+                Mismatch::Variable(ef) => ef.expected.prefix_string(self.tcx),
                 Mismatch::Fixed(s) => s.into(),
             };
             let found_label = match exp_found {
-                Mismatch::Variable(ef) => ef.found.prefix_string(),
+                Mismatch::Variable(ef) => ef.found.prefix_string(self.tcx),
                 Mismatch::Fixed(s) => s.into(),
             };
             let exp_found = match exp_found {
@@ -2248,13 +2265,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     "...",
                 );
                 if let Some(infer::RelateParamBound(_, t)) = origin {
+                    let return_impl_trait = self
+                        .in_progress_typeck_results
+                        .map(|typeck_results| typeck_results.borrow().hir_owner)
+                        .and_then(|owner| self.tcx.return_type_impl_trait(owner))
+                        .is_some();
                     let t = self.resolve_vars_if_possible(t);
                     match t.kind() {
                         // We've got:
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) => {
+                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
                             new_binding_suggestion(&mut err, type_param_span, bound_kind);
                         }
                         _ => {
@@ -2484,7 +2506,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
 pub enum TyCategory {
     Closure,
     Opaque,
-    Generator,
+    Generator(hir::GeneratorKind),
     Foreign,
 }
 
@@ -2493,16 +2515,18 @@ impl TyCategory {
         match self {
             Self::Closure => "closure",
             Self::Opaque => "opaque type",
-            Self::Generator => "generator",
+            Self::Generator(gk) => gk.descr(),
             Self::Foreign => "foreign type",
         }
     }
 
-    pub fn from_ty(ty: Ty<'_>) -> Option<(Self, DefId)> {
+    pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
             ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
-            ty::Generator(def_id, ..) => Some((Self::Generator, def_id)),
+            ty::Generator(def_id, ..) => {
+                Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
+            }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
         }

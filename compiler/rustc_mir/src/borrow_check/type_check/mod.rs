@@ -43,6 +43,9 @@ use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligations}
 use crate::dataflow::impls::MaybeInitializedPlaces;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::ResultsCursor;
+use crate::transform::{
+    check_consts::ConstCx, promote_consts::is_const_fn_in_array_repeat_expression,
+};
 
 use crate::borrow_check::{
     borrow_set::BorrowSet,
@@ -1098,6 +1101,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Fallible<()> {
         relate_tys::relate_types(
             self.infcx,
+            self.param_env,
             a,
             v,
             b,
@@ -1647,7 +1651,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::Yield { ref value, .. } => {
                 let value_ty = value.ty(body, tcx);
-                match body.yield_ty {
+                match body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
                         if let Err(terr) = self.sub_types(
@@ -1730,7 +1734,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             None => {
-                if !sig.output().conservative_is_privately_uninhabited(self.tcx()) {
+                if !self
+                    .tcx()
+                    .conservative_is_privately_uninhabited(self.param_env.and(sig.output()))
+                {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
             }
@@ -1988,18 +1995,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         Operand::Copy(..) | Operand::Constant(..) => {
                             // These are always okay: direct use of a const, or a value that can evidently be copied.
                         }
-                        Operand::Move(_) => {
+                        Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
                             let span = body.source_info(location).span;
                             let ty = operand.ty(body, tcx);
                             if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                                let ccx = ConstCx::new_with_param_env(tcx, body, self.param_env);
+                                let is_const_fn =
+                                    is_const_fn_in_array_repeat_expression(&ccx, &place, &body);
+
+                                debug!("check_rvalue: is_const_fn={:?}", is_const_fn);
+
                                 let def_id = body.source.def_id().expect_local();
                                 self.infcx.report_selection_error(
                                     &traits::Obligation::new(
                                         ObligationCause::new(
                                             span,
                                             self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                            traits::ObligationCauseCode::RepeatVec,
+                                            traits::ObligationCauseCode::RepeatVec(is_const_fn),
                                         ),
                                         self.param_env,
                                         ty::Binder::bind(ty::TraitRef::new(
@@ -2191,19 +2204,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Pointer(PointerCast::ArrayToPointer) => {
                         let ty_from = op.ty(body, tcx);
 
-                        let opt_ty_elem = match ty_from.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
-                                ty: array_ty,
-                            }) => match array_ty.kind() {
-                                ty::Array(ty_elem, _) => Some(ty_elem),
-                                _ => None,
-                            },
+                        let opt_ty_elem_mut = match ty_from.kind() {
+                            ty::RawPtr(ty::TypeAndMut { mutbl: array_mut, ty: array_ty }) => {
+                                match array_ty.kind() {
+                                    ty::Array(ty_elem, _) => Some((ty_elem, *array_mut)),
+                                    _ => None,
+                                }
+                            }
                             _ => None,
                         };
 
-                        let ty_elem = match opt_ty_elem {
-                            Some(ty_elem) => ty_elem,
+                        let (ty_elem, ty_mut) = match opt_ty_elem_mut {
+                            Some(ty_elem_mut) => ty_elem_mut,
                             None => {
                                 span_mirbug!(
                                     self,
@@ -2215,11 +2227,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             }
                         };
 
-                        let ty_to = match ty.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                mutbl: hir::Mutability::Not,
-                                ty: ty_to,
-                            }) => ty_to,
+                        let (ty_to, ty_to_mut) = match ty.kind() {
+                            ty::RawPtr(ty::TypeAndMut { mutbl: ty_to_mut, ty: ty_to }) => {
+                                (ty_to, *ty_to_mut)
+                            }
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2230,6 +2241,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 return;
                             }
                         };
+
+                        if ty_to_mut == Mutability::Mut && ty_mut == Mutability::Not {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "ArrayToPointer cast from const {:?} to mut {:?}",
+                                ty,
+                                ty_to
+                            );
+                            return;
+                        }
 
                         if let Err(terr) = self.sub_types(
                             ty_elem,

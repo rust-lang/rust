@@ -18,7 +18,7 @@ use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 use rustc_ast as ast;
 use rustc_ast::visit as ast_visit;
-use rustc_attr::HasAttrs;
+use rustc_ast::AstLike;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -186,13 +186,6 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_ident(&mut self, ident: Ident) {
         run_early_pass!(self, check_ident, ident);
-    }
-
-    fn visit_mod(&mut self, m: &'a ast::Mod, s: Span, _a: &[ast::Attribute], n: ast::NodeId) {
-        run_early_pass!(self, check_mod, m, s, n);
-        self.check_id(n);
-        ast_visit::walk_mod(self, m);
-        run_early_pass!(self, check_mod_post, m, s, n);
     }
 
     fn visit_local(&mut self, l: &'a ast::Local) {

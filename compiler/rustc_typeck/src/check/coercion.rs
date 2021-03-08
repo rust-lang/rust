@@ -42,6 +42,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
@@ -1236,7 +1237,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     /// The inner coercion "engine". If `expression` is `None`, this
     /// is a forced-unit case, and hence `expression_ty` must be
     /// `Nil`.
-    fn coerce_inner<'a>(
+    crate fn coerce_inner<'a>(
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -1448,9 +1449,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 expected.is_unit(),
                 pointing_at_return_type,
             ) {
-                if cond_expr.span.desugaring_kind().is_none() {
+                // If the block is from an external macro, then do not suggest
+                // adding a semicolon, because there's nowhere to put it.
+                // See issue #81943.
+                if cond_expr.span.desugaring_kind().is_none()
+                    && !in_external_macro(fcx.tcx.sess, cond_expr.span)
+                {
                     err.span_label(cond_expr.span, "expected this to be `()`");
-                    fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    if expr.can_have_side_effects() {
+                        fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
+                    }
                 }
             }
             fcx.get_node_fn_decl(parent).map(|(fn_decl, _, is_main)| (fn_decl, is_main))
@@ -1458,7 +1466,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             fcx.get_fn_decl(parent_id)
         };
 
-        if let (Some((fn_decl, can_suggest)), _) = (fn_decl, pointing_at_return_type) {
+        if let Some((fn_decl, can_suggest)) = fn_decl {
             if expression.is_none() {
                 pointing_at_return_type |= fcx.suggest_missing_return_type(
                     &mut err,
@@ -1472,6 +1480,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 fn_output = Some(&fn_decl.output); // `impl Trait` return type
             }
         }
+
+        let parent_id = fcx.tcx.hir().get_parent_item(id);
+        let parent_item = fcx.tcx.hir().get(parent_id);
+
+        if let (Some((expr, _)), Some((fn_decl, _, _))) =
+            (expression, fcx.get_node_fn_decl(parent_item))
+        {
+            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found);
+        }
+
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {
             self.add_impl_trait_explanation(&mut err, cause, fcx, expected, sp, fn_output);
         }

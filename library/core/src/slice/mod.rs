@@ -8,7 +8,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cmp::Ordering::{self, Equal, Greater, Less};
+use crate::cmp::Ordering::{self, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -18,6 +18,7 @@ use crate::option::Option::{None, Some};
 use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
+use crate::slice;
 
 #[unstable(
     feature = "slice_internals",
@@ -29,11 +30,12 @@ pub mod memchr;
 
 mod ascii;
 mod cmp;
-pub(crate) mod index;
+mod index;
 mod iter;
 mod raw;
 mod rotate;
 mod sort;
+mod specialize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{Chunks, ChunksMut, Windows};
@@ -76,6 +78,9 @@ pub use sort::heapsort;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 
+#[unstable(feature = "slice_range", issue = "76393")]
+pub use index::range;
+
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
@@ -94,9 +99,23 @@ impl<T> [T] {
     // SAFETY: const sound because we transmute out the length field as a usize (which it must be)
     #[rustc_allow_const_fn_unstable(const_fn_union)]
     pub const fn len(&self) -> usize {
-        // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { crate::ptr::Repr { rust: self }.raw.len }
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `&[T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { crate::ptr::Repr { rust: self }.raw.len }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            // FIXME: Replace with `crate::ptr::metadata(self)` when that is const-stable.
+            // As of this writing this causes a "Const-stable functions can only call other
+            // const-stable functions" error.
+
+            // SAFETY: Accessing the value from the `PtrRepr` union is safe since *const T
+            // and PtrComponents<T> have the same memory layouts. Only std can make this
+            // guarantee.
+            unsafe { crate::ptr::PtrRepr { const_ptr: self }.components.metadata }
+        }
     }
 
     /// Returns `true` if the slice has a length of 0.
@@ -2082,6 +2101,12 @@ impl<T> [T] {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    /// [`partition_point`]: #method.partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2129,6 +2154,12 @@ impl<T> [T] {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    /// [`partition_point`]: #method.partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2154,25 +2185,31 @@ impl<T> [T] {
     where
         F: FnMut(&'a T) -> Ordering,
     {
-        let s = self;
-        let mut size = s.len();
-        if size == 0 {
-            return Err(0);
+        let mut size = self.len();
+        let mut left = 0;
+        let mut right = size;
+        while left < right {
+            let mid = left + size / 2;
+
+            // SAFETY: the call is made safe by the following invariants:
+            // - `mid >= 0`
+            // - `mid < size`: `mid` is limited by `[left; right)` bound.
+            let cmp = f(unsafe { self.get_unchecked(mid) });
+
+            // The reason why we use if/else control flow rather than match
+            // is because match reorders comparison operations, which is perf sensitive.
+            // This is x86 asm for u8: https://rust.godbolt.org/z/8Y8Pra.
+            if cmp == Less {
+                left = mid + 1;
+            } else if cmp == Greater {
+                right = mid;
+            } else {
+                return Ok(mid);
+            }
+
+            size = right - left;
         }
-        let mut base = 0usize;
-        while size > 1 {
-            let half = size / 2;
-            let mid = base + half;
-            // SAFETY: the call is made safe by the following inconstants:
-            // - `mid >= 0`: by definition
-            // - `mid < size`: `mid = size / 2 + size / 4 + size / 8 ...`
-            let cmp = f(unsafe { s.get_unchecked(mid) });
-            base = if cmp == Greater { base } else { mid };
-            size -= half;
-        }
-        // SAFETY: base is always in [0, size) because base <= mid.
-        let cmp = f(unsafe { s.get_unchecked(base) });
-        if cmp == Equal { Ok(base) } else { Err(base + (cmp == Less) as usize) }
+        Err(left)
     }
 
     /// Binary searches this sorted slice with a key extraction function.
@@ -2186,7 +2223,12 @@ impl<T> [T] {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
+    ///
     /// [`sort_by_key`]: #method.sort_by_key
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`partition_point`]: #method.partition_point
     ///
     /// # Examples
     ///
@@ -2831,13 +2873,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        if let Some((last, elems)) = self.split_last_mut() {
-            for el in elems {
-                el.clone_from(&value);
-            }
-
-            *last = value
-        }
+        specialize::SpecFill::spec_fill(self, value);
     }
 
     /// Fills `self` with elements returned by calling a closure repeatedly.
@@ -2927,15 +2963,7 @@ impl<T> [T] {
     where
         T: Clone,
     {
-        assert!(self.len() == src.len(), "destination and source slices have different lengths");
-        // NOTE: We need to explicitly slice them to the same length
-        // for bounds checking to be elided, and the optimizer will
-        // generate memcpy for simple cases (for example T = u8).
-        let len = self.len();
-        let src = &src[..len];
-        for i in 0..len {
-            self[i].clone_from(&src[i]);
-        }
+        self.spec_clone_from(src);
     }
 
     /// Copies all elements from `src` into `self`, using a memcpy.
@@ -3052,7 +3080,7 @@ impl<T> [T] {
     where
         T: Copy,
     {
-        let Range { start: src_start, end: src_end } = src.assert_len(self.len());
+        let Range { start: src_start, end: src_end } = slice::range(src, ..self.len());
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
@@ -3399,11 +3427,15 @@ impl<T> [T] {
     /// If this slice is not partitioned, the returned result is unspecified and meaningless,
     /// as this method performs a kind of binary search.
     ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
+    ///
+    /// [`binary_search`]: #method.binary_search
+    /// [`binary_search_by`]: #method.binary_search_by
+    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(partition_point)]
-    ///
     /// let v = [1, 2, 3, 3, 5, 6, 7];
     /// let i = v.partition_point(|&x| x < 5);
     ///
@@ -3411,7 +3443,7 @@ impl<T> [T] {
     /// assert!(v[..i].iter().all(|&x| x < 5));
     /// assert!(v[i..].iter().all(|&x| !(x < 5)));
     /// ```
-    #[unstable(feature = "partition_point", reason = "new API", issue = "73831")]
+    #[stable(feature = "partition_point", since = "1.52.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
     where
         P: FnMut(&T) -> bool,
@@ -3437,6 +3469,36 @@ impl<T> [T] {
         }
 
         left
+    }
+}
+
+trait CloneFromSpec<T> {
+    fn spec_clone_from(&mut self, src: &[T]);
+}
+
+impl<T> CloneFromSpec<T> for [T]
+where
+    T: Clone,
+{
+    default fn spec_clone_from(&mut self, src: &[T]) {
+        assert!(self.len() == src.len(), "destination and source slices have different lengths");
+        // NOTE: We need to explicitly slice them to the same length
+        // to make it easier for the optimizer to elide bounds checking.
+        // But since it can't be relied on we also have an explicit specialization for T: Copy.
+        let len = self.len();
+        let src = &src[..len];
+        for i in 0..len {
+            self[i].clone_from(&src[i]);
+        }
+    }
+}
+
+impl<T> CloneFromSpec<T> for [T]
+where
+    T: Copy,
+{
+    fn spec_clone_from(&mut self, src: &[T]) {
+        self.copy_from_slice(src);
     }
 }
 

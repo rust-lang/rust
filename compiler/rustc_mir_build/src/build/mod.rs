@@ -188,7 +188,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 body,
                 span_with_body,
             );
-            mir.yield_ty = yield_ty;
+            if yield_ty.is_some() {
+                mir.generator.as_mut().unwrap().yield_ty = yield_ty;
+            }
             mir
         } else {
             // Get the revealed type of this const. This is *not* the adjusted
@@ -218,7 +220,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             !(body.local_decls.has_free_regions()
                 || body.basic_blocks().has_free_regions()
                 || body.var_debug_info.has_free_regions()
-                || body.yield_ty.has_free_regions()),
+                || body.yield_ty().has_free_regions()),
             "Unexpected free regions in MIR: {:?}",
             body,
         );
@@ -618,12 +620,8 @@ where
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span_with_body.shrink_to_hi();
-        let return_block = unpack!(builder.in_breakable_scope(
-            None,
-            Place::return_place(),
-            Some(call_site_scope),
-            fn_end,
-            |builder| {
+        let return_block =
+            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
@@ -633,13 +631,11 @@ where
                         &body.value,
                     )
                 }))
-            },
-        ));
+            }));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
         builder.build_drop_trees(should_abort);
-        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
 
@@ -672,9 +668,7 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    // We don't provide a scope because we can't unwind in constants, so won't
-    // need to drop the return place.
-    unpack!(block = builder.into_expr(Place::return_place(), None, block, expr));
+    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -694,10 +688,11 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     let def_id = tcx.hir().local_def_id(owner_id);
     let span = tcx.hir().span(owner_id);
     let ty = tcx.ty_error();
+    let generator_kind = tcx.hir().body(body_id).generator_kind;
     let num_params = match hir.body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
         hir::BodyOwnerKind::Closure => {
-            if tcx.hir().body(body_id).generator_kind().is_some() {
+            if generator_kind.is_some() {
                 // Generators have an implicit `self` parameter *and* a possibly
                 // implicit resume parameter.
                 2
@@ -709,8 +704,16 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder =
-        Builder::new(hir, def_id.to_def_id(), span, num_params, Safety::Safe, ty, span, None);
+    let mut builder = Builder::new(
+        hir,
+        def_id.to_def_id(),
+        span,
+        num_params,
+        Safety::Safe,
+        ty,
+        span,
+        generator_kind,
+    );
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
@@ -719,9 +722,7 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
     }
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     let mut body = builder.finish();
-    if tcx.hir().body(body_id).generator_kind.is_some() {
-        body.yield_ty = Some(ty);
-    }
+    body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
 }
 
@@ -953,9 +954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        let call_site =
-            region::Scope { id: ast_body.hir_id.local_id, data: region::ScopeData::CallSite };
-        self.into(Place::return_place(), Some(call_site), block, body)
+        self.into(Place::return_place(), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

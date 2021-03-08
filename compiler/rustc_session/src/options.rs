@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::str;
 
@@ -112,6 +113,7 @@ top_level_options!(
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [TRACKED],
         externs: Externs [UNTRACKED],
+        extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
         // written `extern crate name as std`. Defaults to `std`. Used by
@@ -252,7 +254,7 @@ macro_rules! options {
         pub const parse_passes: &str = "a space-separated list of passes, or `all`";
         pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-        pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `leak`, `memory` or `thread`";
+        pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `hwaddress`, `leak`, `memory` or `thread`";
         pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
         pub const parse_cfguard: &str =
             "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -475,6 +477,7 @@ macro_rules! options {
                         "leak" => SanitizerSet::LEAK,
                         "memory" => SanitizerSet::MEMORY,
                         "thread" => SanitizerSet::THREAD,
+                        "hwaddress" => SanitizerSet::HWADDRESS,
                         _ => return false,
                     }
                 }
@@ -589,10 +592,10 @@ macro_rules! options {
             true
         }
 
-        fn parse_treat_err_as_bug(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+        fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = s.parse().ok().filter(|&x| x != 0); slot.unwrap_or(0) != 0 }
-                None => { *slot = Some(1); true }
+                Some(s) => { *slot = s.parse().ok(); slot.is_some() }
+                None => { *slot = NonZeroUsize::new(1); true }
             }
         }
 
@@ -954,9 +957,11 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify incr. comp. hashes of green query instances (default: no)"),
-    inline_mir_threshold: usize = (50, parse_uint, [TRACKED],
+    inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable MIR inlining (default: no)"),
+    inline_mir_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
-    inline_mir_hint_threshold: usize = (100, parse_uint, [TRACKED],
+    inline_mir_hint_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
@@ -994,8 +999,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
-    mir_opt_level: usize = (1, parse_uint, [TRACKED],
-        "MIR optimization level (0-3; default: 1)"),
+    mir_opt_level: Option<usize> = (None, parse_opt_uint, [TRACKED],
+        "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
     mutable_noalias: bool = (false, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: no)"),
     new_llvm_pass_manager: bool = (false, parse_bool, [TRACKED],
@@ -1139,7 +1144,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "for every macro invocation, print its name and arguments (default: no)"),
     trap_unreachable: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "generate trap instructions for unreachable intrinsics (default: use target setting, usually yes)"),
-    treat_err_as_bug: Option<usize> = (None, parse_treat_err_as_bug, [TRACKED],
+    treat_err_as_bug: Option<NonZeroUsize> = (None, parse_treat_err_as_bug, [TRACKED],
         "treat error number `val` that occurs as bug"),
     trim_diagnostic_paths: bool = (true, parse_bool, [UNTRACKED],
         "in diagnostics, use heuristics to shorten paths referring to items"),
@@ -1153,6 +1158,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
         `everybody_loops` (all function bodies replaced with `loop {}`),
+        `ast-tree` (raw AST before expansion),
+        `ast-tree,expanded` (raw AST after expansion),
         `hir` (the HIR), `hir,identified`,
         `hir,typed` (HIR with types for each node),
         `hir-tree` (dump the raw HIR),

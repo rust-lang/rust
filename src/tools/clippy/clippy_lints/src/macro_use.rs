@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             let found_idx = self.mac_refs.iter().position(|mac| import.ends_with(&mac.name));
 
             if let Some(idx) = found_idx {
-                let _ = self.mac_refs.remove(idx);
+                self.mac_refs.remove(idx);
                 let seg = import.split("::").collect::<Vec<_>>();
 
                 match seg.as_slice() {

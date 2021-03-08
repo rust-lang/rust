@@ -35,3 +35,13 @@ fn bench_to_digit_radix_var(b: &mut Bencher) {
             .min()
     })
 }
+
+#[bench]
+fn bench_to_ascii_uppercase(b: &mut Bencher) {
+    b.iter(|| CHARS.iter().cycle().take(10_000).map(|c| c.to_ascii_uppercase()).min())
+}
+
+#[bench]
+fn bench_to_ascii_lowercase(b: &mut Bencher) {
+    b.iter(|| CHARS.iter().cycle().take(10_000).map(|c| c.to_ascii_lowercase()).min())
+}

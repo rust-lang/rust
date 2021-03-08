@@ -502,7 +502,7 @@ fn is_allowed<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
 // Return true if `expr` is the result of `signum()` invoked on a float value.
 fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     // The negation of a signum is still a signum
-    if let ExprKind::Unary(UnOp::UnNeg, ref child_expr) = expr.kind {
+    if let ExprKind::Unary(UnOp::Neg, ref child_expr) = expr.kind {
         return is_signum(cx, &child_expr);
     }
 
@@ -586,7 +586,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
         return;
     }
 
-    let other_gets_derefed = matches!(other.kind, ExprKind::Unary(UnOp::UnDeref, _));
+    let other_gets_derefed = matches!(other.kind, ExprKind::Unary(UnOp::Deref, _));
 
     let lint_span = if other_gets_derefed {
         expr.span.to(other.span)

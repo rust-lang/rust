@@ -4,7 +4,6 @@
 //! types, initializing and manipulating memory.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![cfg_attr(bootstrap, allow(unused_unsafe))]
 
 use crate::clone;
 use crate::cmp;
@@ -152,13 +151,6 @@ pub const fn forget<T>(t: T) {
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "none")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
-    #[cfg(bootstrap)]
-    // SAFETY: the forget intrinsic could be safe, but there's no point in making it safe since
-    // we'll be implementing this function soon via `ManuallyDrop`
-    unsafe {
-        intrinsics::forget(t)
-    }
-    #[cfg(not(bootstrap))]
     intrinsics::forget(t)
 }
 
@@ -316,7 +308,6 @@ pub const fn size_of<T>() -> usize {
 /// statically-known size, e.g., a slice [`[T]`][slice] or a [trait object],
 /// then `size_of_val` can be used to get the dynamically-known size.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 ///
 /// # Examples
@@ -363,7 +354,6 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///       [`size_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
 ///
@@ -502,7 +492,6 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///       [`align_of_val`] on a reference to a type with an extern type tail.
 ///     - otherwise, it is conservatively not allowed to call this function.
 ///
-/// [slice]: ../../std/primitive.slice.html
 /// [trait object]: ../../book/ch17-02-trait-objects.html
 /// [extern type]: ../../unstable-book/language-features/extern-types.html
 ///

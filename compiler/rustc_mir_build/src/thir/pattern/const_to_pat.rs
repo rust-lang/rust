@@ -18,7 +18,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
-    #[instrument(skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub(super) fn const_to_pat(
         &self,
         cv: &'tcx ty::Const<'tcx>,

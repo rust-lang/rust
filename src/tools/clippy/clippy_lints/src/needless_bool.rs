@@ -195,7 +195,7 @@ struct ExpressionInfoWithSpan {
 }
 
 fn is_unary_not(e: &Expr<'_>) -> (bool, Span) {
-    if let ExprKind::Unary(UnOp::UnNot, operand) = e.kind {
+    if let ExprKind::Unary(UnOp::Not, operand) = e.kind {
         return (true, operand.span);
     }
     (false, e.span)

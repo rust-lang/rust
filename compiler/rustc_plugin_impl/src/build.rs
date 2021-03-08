@@ -1,7 +1,7 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -10,14 +10,14 @@ use rustc_span::Span;
 
 struct RegistrarFinder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    registrars: Vec<(hir::HirId, Span)>,
+    registrars: Vec<(LocalDefId, Span)>,
 }
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Fn(..) = item.kind {
             if self.tcx.sess.contains_name(&item.attrs, sym::plugin_registrar) {
-                self.registrars.push((item.hir_id, item.span));
+                self.registrars.push((item.def_id, item.span));
             }
         }
     }
@@ -43,8 +43,8 @@ fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     match finder.registrars.len() {
         0 => None,
         1 => {
-            let (hir_id, _) = finder.registrars.pop().unwrap();
-            Some(tcx.hir().local_def_id(hir_id).to_def_id())
+            let (def_id, _) = finder.registrars.pop().unwrap();
+            Some(def_id.to_def_id())
         }
         _ => {
             let diagnostic = tcx.sess.diagnostic();

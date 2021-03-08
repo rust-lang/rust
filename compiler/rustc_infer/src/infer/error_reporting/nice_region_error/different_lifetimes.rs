@@ -1,6 +1,7 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where both the regions are anonymous.
 
+use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
@@ -66,9 +67,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let scope_def_id_sub = anon_reg_sub.def_id;
         let bregion_sub = anon_reg_sub.boundregion;
 
-        let ty_sup = self.find_anon_type(sup, &bregion_sup)?;
+        let ty_sup = find_anon_type(self.tcx(), sup, &bregion_sup)?;
 
-        let ty_sub = self.find_anon_type(sub, &bregion_sub)?;
+        let ty_sub = find_anon_type(self.tcx(), sub, &bregion_sub)?;
 
         debug!(
             "try_report_anon_anon_conflict: found_param1={:?} sup={:?} br1={:?}",

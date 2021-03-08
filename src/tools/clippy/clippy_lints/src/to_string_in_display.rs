@@ -1,6 +1,5 @@
-use crate::utils::{match_def_path, match_trait_method, paths, span_lint};
+use crate::utils::{match_def_path, match_trait_method, path_to_local_id, paths, span_lint};
 use if_chain::if_chain;
-use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -89,14 +88,12 @@ impl LateLintPass<'_> for ToStringInDisplay {
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
+            if self.in_display_impl;
+            if let Some(self_hir_id) = self.self_hir_id;
             if let ExprKind::MethodCall(ref path, _, args, _) = expr.kind;
             if path.ident.name == sym!(to_string);
             if match_trait_method(cx, expr, &paths::TO_STRING);
-            if self.in_display_impl;
-            if let ExprKind::Path(ref qpath) = args[0].kind;
-            if let Res::Local(hir_id) = cx.qpath_res(qpath, args[0].hir_id);
-            if let Some(self_hir_id) = self.self_hir_id;
-            if hir_id == self_hir_id;
+            if path_to_local_id(&args[0], self_hir_id);
             then {
                 span_lint(
                     cx,

@@ -4,7 +4,7 @@ use crate::type_error_struct;
 
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::{infer, traits};
@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if call_is_multiline {
                                 err.span_suggestion(
                                     callee.span.shrink_to_hi(),
-                                    "try adding a semicolon",
+                                    "consider using a semicolon here",
                                     ";".to_owned(),
                                     Applicability::MaybeIncorrect,
                                 );
@@ -374,7 +374,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     |p| format!("`{}` defined here returns `{}`", p, callee_ty),
                                 )
                             }
-                            _ => Some(format!("`{}` defined here", callee_ty)),
+                            _ => {
+                                match def {
+                                    // Emit a different diagnostic for local variables, as they are not
+                                    // type definitions themselves, but rather variables *of* that type.
+                                    Res::Local(hir_id) => Some(format!(
+                                        "`{}` has type `{}`",
+                                        self.tcx.hir().name(hir_id),
+                                        callee_ty
+                                    )),
+                                    Res::Def(kind, def_id)
+                                        if kind.ns() == Some(Namespace::ValueNS) =>
+                                    {
+                                        Some(format!(
+                                            "`{}` defined here",
+                                            self.tcx.def_path_str(def_id),
+                                        ))
+                                    }
+                                    _ => Some(format!("`{}` defined here", callee_ty)),
+                                }
+                            }
                         };
                         if let Some(label) = label {
                             err.span_label(span, label);
@@ -446,7 +465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_arg_tys = self.expected_inputs_for_expected_output(
             call_expr.span,
             expected,
-            fn_sig.output().clone(),
+            fn_sig.output(),
             fn_sig.inputs(),
         );
 

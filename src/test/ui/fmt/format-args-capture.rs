@@ -5,6 +5,7 @@
 fn main() {
     named_argument_takes_precedence_to_captured();
     formatting_parameters_can_be_captured();
+    capture_raw_strings_and_idents();
 
     #[cfg(panic = "unwind")]
     {
@@ -25,13 +26,23 @@ fn named_argument_takes_precedence_to_captured() {
     assert_eq!(&s, "positional-named-captured");
 }
 
+fn capture_raw_strings_and_idents() {
+    let r#type = "apple";
+    let s = format!(r#"The fruit is an {type}"#);
+    assert_eq!(&s, "The fruit is an apple");
+
+    let r#type = "orange";
+    let s = format!(r"The fruit is an {type}");
+    assert_eq!(&s, "The fruit is an orange");
+}
+
 #[cfg(panic = "unwind")]
 fn panic_with_single_argument_does_not_get_formatted() {
     // panic! with a single argument does not perform string formatting.
     // RFC #2795 suggests that this may need to change so that captured arguments are formatted.
     // For stability reasons this will need to part of an edition change.
 
-    #[allow(panic_fmt)]
+    #[allow(non_fmt_panic)]
     let msg = std::panic::catch_unwind(|| {
         panic!("{foo}");
     }).unwrap_err();

@@ -17,8 +17,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
-    TyCtxt, TypeFoldable, WithConstness,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -334,7 +334,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
-            _ => return,
+            _ => (false, None),
         };
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
@@ -453,6 +453,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Union(_, generics)
+                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Impl(hir::Impl { generics, .. })
+                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::TraitAlias(generics, _)
+                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                    ..
+                }) if !param_ty => {
+                    // Missing generic type parameter bound.
+                    let param_name = self_ty.to_string();
+                    let constraint = trait_ref.print_only_trait_path().to_string();
+                    if suggest_arbitrary_trait_bound(generics, &mut err, &param_name, &constraint) {
+                        return;
+                    }
+                }
                 hir::Node::Crate(..) => return,
 
                 _ => {}
@@ -1103,7 +1123,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // This is currently not possible to trigger because E0038 takes precedence, but
                 // leave it in for completeness in case anything changes in an earlier stage.
                 err.note(&format!(
-                    "if trait `{}` was object safe, you could return a trait object",
+                    "if trait `{}` were object-safe, you could return a trait object",
                     trait_obj,
                 ));
             }
@@ -1881,10 +1901,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec => {
+            ObligationCauseCode::RepeatVec(is_const_fn) => {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
+
+                if is_const_fn {
+                    err.help(
+                        "consider creating a new `const` item and initializing with the result \
+                        of the function call to be used in the repeat position, like \
+                        `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
+                    );
+                }
+
+                if self.tcx.sess.is_nightly_build() && is_const_fn {
+                    err.help(
+                        "create an inline `const` block, see PR \
+                        #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
+                        for more information",
+                    );
+                }
             }
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);

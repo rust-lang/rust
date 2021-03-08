@@ -122,7 +122,7 @@ pub unsafe trait GlobalAlloc {
     ///   this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocate that block of memory,
+    ///   to allocate that block of memory.
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -167,7 +167,10 @@ pub unsafe trait GlobalAlloc {
     /// and should be considered unusable (unless of course it was
     /// transferred back to the caller again via the return value of
     /// this method). The new memory block is allocated with `layout`, but
-    /// with the `size` updated to `new_size`.
+    /// with the `size` updated to `new_size`. This new layout should be
+    /// used when deallocating the new memory block with `dealloc`. The range
+    /// `0..min(layout.size(), new_size)` of the new memory block is
+    /// guaranteed to have the same values as the original block.
     ///
     /// If this method returns null, then ownership of the memory
     /// block has not been transferred to this allocator, and the

@@ -24,7 +24,7 @@ LL | |     cap_err.push(2);
    | |____________________^ help: consider using the `vec![]` macro: `let mut cap_err = vec![..];`
 
 error: calls to `push` immediately after creation
-  --> $DIR/vec_init_then_push.rs:19:5
+  --> $DIR/vec_init_then_push.rs:23:5
    |
 LL | /     new_err = Vec::new();
 LL | |     new_err.push(0);

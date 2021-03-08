@@ -1,0 +1,68 @@
+error: lifetime in trait object type must be followed by `+`
+  --> $DIR/gat-trait-path-parenthesised-args.rs:10:29
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   |                             ^^
+
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/gat-trait-path-parenthesised-args.rs:10:27
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   |                           ^^^^^
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/gat-trait-path-parenthesised-args.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/gat-trait-path-parenthesised-args.rs:10:29
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   |                             ^^ help: use `dyn`: `dyn 'a`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+   |
+LL |   type Y<'a>;
+   |        ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+   |
+LL |   type Y<'a>;
+   |        ^ --
+help: add missing lifetime argument
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a'a) = &'a ()>>) {}
+   |                             ^^
+
+error[E0107]: this associated type takes 0 type arguments but 1 type argument was supplied
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+   |
+LL |     type Y<'a>;
+   |  ________^-
+   | |        |
+   | |        expected 0 type arguments
+LL | |
+LL | |
+LL | | }
+LL | |
+LL | | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+   | |_________________________________________- help: remove these generics
+   |
+note: associated type defined here, with 0 type parameters
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:8
+   |
+LL |   type Y<'a>;
+   |        ^
+
+error: aborting due to 4 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0107`.

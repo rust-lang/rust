@@ -164,7 +164,6 @@ impl Layout {
     ///       [`Layout::for_value`] on a reference to an extern type tail.
     ///     - otherwise, it is conservatively not allowed to call this function.
     ///
-    /// [slice]: ../../std/primitive.slice.html
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
@@ -400,7 +399,7 @@ impl Layout {
 
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 #[rustc_deprecated(
-    since = "1.51.0",
+    since = "1.52.0",
     reason = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
@@ -409,7 +408,7 @@ pub type LayoutErr = LayoutError;
 /// The parameters given to `Layout::from_size_align`
 /// or some other `Layout` constructor
 /// do not satisfy its documented constraints.
-#[stable(feature = "alloc_layout_error", since = "1.49.0")]
+#[stable(feature = "alloc_layout_error", since = "1.50.0")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutError {
     private: (),

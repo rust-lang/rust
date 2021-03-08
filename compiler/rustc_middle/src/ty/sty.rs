@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable;
-use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::symbol::{kw, Symbol};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
@@ -1112,27 +1112,34 @@ pub struct ProjectionTy<'tcx> {
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
-    /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
-    /// associated item named `item_name`.
-    pub fn from_ref_and_name(
-        tcx: TyCtxt<'_>,
-        trait_ref: ty::TraitRef<'tcx>,
-        item_name: Ident,
-    ) -> ProjectionTy<'tcx> {
-        let item_def_id = tcx
-            .associated_items(trait_ref.def_id)
-            .find_by_name_and_kind(tcx, item_name, ty::AssocKind::Type, trait_ref.def_id)
-            .unwrap()
-            .def_id;
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        tcx.associated_item(self.item_def_id).container.id()
+    }
 
-        ProjectionTy { substs: trait_ref.substs, item_def_id }
+    /// Extracts the underlying trait reference and own substs from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return a `T: Iterator` trait reference and `['a]` as the own substs
+    pub fn trait_ref_and_own_substs(
+        &self,
+        tcx: TyCtxt<'tcx>,
+    ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
+        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let trait_generics = tcx.generics_of(def_id);
+        (
+            ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
+            &self.substs[trait_generics.count()..],
+        )
     }
 
     /// Extracts the underlying trait reference from this projection.
     /// For example, if this is a projection of `<T as Iterator>::Item`,
     /// then this function would return a `T: Iterator` trait reference.
+    ///
+    /// WARNING: This will drop the substs for generic associated types
+    /// consider calling [Self::trait_ref_and_own_substs] to get those
+    /// as well.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
-        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        let def_id = self.trait_def_id(tcx);
         ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
     }
 
@@ -1249,6 +1256,7 @@ impl<'tcx> ParamTy {
         ParamTy::new(def.index, def.name)
     }
 
+    #[inline]
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.index, self.name)
     }
@@ -1485,12 +1493,11 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
     /// then this function would return a `exists T. T: Iterator` existential trait
     /// reference.
-    pub fn trait_ref(&self, tcx: TyCtxt<'_>) -> ty::ExistentialTraitRef<'tcx> {
-        // FIXME(generic_associated_types): substs is the substs of the
-        // associated type, which should be truncated to get the correct substs
-        // for the trait.
+    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
-        ty::ExistentialTraitRef { def_id, substs: self.substs }
+        let subst_count = tcx.generics_of(def_id).count() - 1;
+        let substs = tcx.intern_substs(&self.substs[..subst_count]);
+        ty::ExistentialTraitRef { def_id, substs }
     }
 
     pub fn with_self_ty(
@@ -1507,6 +1514,20 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
+        }
+    }
+
+    pub fn erase_self_ty(
+        tcx: TyCtxt<'tcx>,
+        projection_predicate: ty::ProjectionPredicate<'tcx>,
+    ) -> Self {
+        // Assert there is a Self.
+        projection_predicate.projection_ty.substs.type_at(0);
+
+        Self {
+            item_def_id: projection_predicate.projection_ty.item_def_id,
+            substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
+            ty: projection_predicate.ty,
         }
     }
 }
@@ -1541,14 +1562,17 @@ impl RegionKind {
         }
     }
 
+    #[inline]
     pub fn is_late_bound(&self) -> bool {
         matches!(*self, ty::ReLateBound(..))
     }
 
+    #[inline]
     pub fn is_placeholder(&self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
     }
 
+    #[inline]
     pub fn bound_at_or_above_binder(&self, index: ty::DebruijnIndex) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn >= index,
@@ -1677,53 +1701,6 @@ impl<'tcx> TyS<'tcx> {
         matches!(self.kind(), Never)
     }
 
-    /// Checks whether a type is definitely uninhabited. This is
-    /// conservative: for some types that are uninhabited we return `false`,
-    /// but we only return `true` for types that are definitely uninhabited.
-    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
-    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
-    /// size, to account for partial initialisation. See #49298 for details.)
-    pub fn conservative_is_privately_uninhabited(&self, tcx: TyCtxt<'tcx>) -> bool {
-        // FIXME(varkor): we can make this less conversative by substituting concrete
-        // type arguments.
-        match self.kind() {
-            ty::Never => true,
-            ty::Adt(def, _) if def.is_union() => {
-                // For now, `union`s are never considered uninhabited.
-                false
-            }
-            ty::Adt(def, _) => {
-                // Any ADT is uninhabited if either:
-                // (a) It has no variants (i.e. an empty `enum`);
-                // (b) Each of its variants (a single one in the case of a `struct`) has at least
-                //     one uninhabited field.
-                def.variants.iter().all(|var| {
-                    var.fields.iter().any(|field| {
-                        tcx.type_of(field.did).conservative_is_privately_uninhabited(tcx)
-                    })
-                })
-            }
-            ty::Tuple(..) => {
-                self.tuple_fields().any(|ty| ty.conservative_is_privately_uninhabited(tcx))
-            }
-            ty::Array(ty, len) => {
-                match len.try_eval_usize(tcx, ParamEnv::empty()) {
-                    Some(0) | None => false,
-                    // If the array is definitely non-empty, it's uninhabited if
-                    // the type of its elements is uninhabited.
-                    Some(1..) => ty.conservative_is_privately_uninhabited(tcx),
-                }
-            }
-            ty::Ref(..) => {
-                // References to uninitialised memory is valid for any type, including
-                // uninhabited types, in unsafe code, so we treat all references as
-                // inhabited.
-                false
-            }
-            _ => false,
-        }
-    }
-
     #[inline]
     pub fn is_primitive(&self) -> bool {
         self.kind().is_primitive()
@@ -1835,6 +1812,15 @@ impl<'tcx> TyS<'tcx> {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::Mut, .. })
                 | Ref(_, _, hir::Mutability::Mut)
         )
+    }
+
+    /// Get the mutability of the reference or `None` when not a reference
+    #[inline]
+    pub fn ref_mutability(&self) -> Option<hir::Mutability> {
+        match self.kind() {
+            Ref(_, _, mutability) => Some(*mutability),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -2112,6 +2098,54 @@ impl<'tcx> TyS<'tcx> {
             | ty::Placeholder(_)
             | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
+            }
+        }
+    }
+
+    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    pub fn ptr_metadata_ty(&'tcx self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        // FIXME: should this normalize?
+        let tail = tcx.struct_tail_without_normalization(self);
+        match tail.kind() {
+            // Sized types
+            ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+            | ty::Uint(_)
+            | ty::Int(_)
+            | ty::Bool
+            | ty::Float(_)
+            | ty::FnDef(..)
+            | ty::FnPtr(_)
+            | ty::RawPtr(..)
+            | ty::Char
+            | ty::Ref(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Array(..)
+            | ty::Closure(..)
+            | ty::Never
+            | ty::Error(_)
+            | ty::Foreign(..)
+            // If returned by `struct_tail_without_normalization` this is a unit struct
+            // without any fields, or not a struct, and therefore is Sized.
+            | ty::Adt(..)
+            // If returned by `struct_tail_without_normalization` this is the empty tuple,
+            // a.k.a. unit type, which is Sized
+            | ty::Tuple(..) => tcx.types.unit,
+
+            ty::Str | ty::Slice(_) => tcx.types.usize,
+            ty::Dynamic(..) => {
+                let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
+                tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()])
+            },
+
+            ty::Projection(_)
+            | ty::Param(_)
+            | ty::Opaque(..)
+            | ty::Infer(ty::TyVar(_))
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`ptr_metadata_ty` applied to unexpected type: {:?}", tail)
             }
         }
     }

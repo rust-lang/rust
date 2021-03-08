@@ -100,8 +100,6 @@ pub use self::list::List;
 
 pub use self::trait_def::TraitDef;
 
-pub use self::query::queries;
-
 pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt};
 
 pub mod _match;
@@ -1057,6 +1055,7 @@ impl<'tcx> Eq for Predicate<'tcx> {}
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<PredicateKind<'tcx>>`.
+    #[inline]
     pub fn kind(self) -> Binder<PredicateKind<'tcx>> {
         self.inner.kind
     }
@@ -1289,8 +1288,22 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.skip_binder().projection_ty.item_def_id
     }
 
+    /// Returns the `DefId` of the trait of the associated item being projected.
     #[inline]
-    pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
+    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.skip_binder().projection_ty.trait_def_id(tcx)
+    }
+
+    #[inline]
+    pub fn projection_self_ty(&self) -> Binder<Ty<'tcx>> {
+        self.map_bound(|predicate| predicate.projection_ty.self_ty())
+    }
+
+    /// Get the [PolyTraitRef] required for this projection to be well formed.
+    /// Note that for generic associated types the predicates of the associated
+    /// type also need to be checked.
+    #[inline]
+    pub fn required_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
         // Note: unlike with `TraitRef::to_poly_trait_ref()`,
         // `self.0.trait_ref` is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our
@@ -2950,7 +2963,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 | DefKind::AnonConst => self.mir_for_ctfe_opt_const_arg(def),
                 // If the caller wants `mir_for_ctfe` of a function they should not be using
                 // `instance_mir`, so we'll assume const fn also wants the optimized version.
-                _ => self.optimized_mir_or_const_arg_mir(def),
+                _ => {
+                    assert_eq!(def.const_param_did, None);
+                    self.optimized_mir(def.did)
+                }
             },
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
@@ -2985,7 +3001,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns layout of a generator. Layout might be unavailable if the
     /// generator is tainted by errors.
     pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx GeneratorLayout<'tcx>> {
-        self.optimized_mir(def_id).generator_layout.as_ref()
+        self.optimized_mir(def_id).generator_layout()
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

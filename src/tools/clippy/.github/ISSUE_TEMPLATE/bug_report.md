@@ -1,7 +1,7 @@
 ---
 name: Bug Report
 about: Create a bug report for Clippy
-labels: L-bug
+labels: C-bug
 ---
 <!--
 Thank you for filing a bug report! 🐛 Please provide a short summary of the bug,

@@ -15,8 +15,8 @@ For example, `Box` pointers require two lang items, one for allocation
 and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
-```rust,ignore
-#![feature(lang_items, box_syntax, start, libc, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, box_syntax, start, libc, core_intrinsics, rustc_private)]
 #![no_std]
 use core::intrinsics;
 use core::panic::PanicInfo;
@@ -66,7 +66,7 @@ Other features provided by lang items include:
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
 - stack unwinding and general failure; the `eh_personality`,
-  `panic` and `panic_bounds_checks` lang items.
+  `panic` and `panic_bounds_check` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in
@@ -105,8 +105,8 @@ or overriding the default shim for the C `main` function with your own.
 The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
-```rust,ignore
-#![feature(lang_items, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
 #![no_std]
 use core::intrinsics;
@@ -141,8 +141,8 @@ with `#![no_main]` and then create the appropriate symbol with the
 correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
-```rust,ignore
-#![feature(lang_items, core_intrinsics)]
+```rust,ignore (libc-is-finicky)
+#![feature(lang_items, core_intrinsics, rustc_private)]
 #![feature(start)]
 #![no_std]
 #![no_main]

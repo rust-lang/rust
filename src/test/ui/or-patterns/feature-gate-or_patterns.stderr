@@ -8,10 +8,10 @@ LL |         Some(0 | 1 | 2) => {}
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:28:11
+  --> $DIR/feature-gate-or_patterns.rs:28:9
    |
 LL |     let | A | B;
-   |           ^^^^^
+   |         ^^^^^^^
    |
    = note: see issue #54883 <https://github.com/rust-lang/rust/issues/54883> for more information
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
@@ -26,10 +26,10 @@ LL |     let A | B;
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:30:11
+  --> $DIR/feature-gate-or_patterns.rs:30:9
    |
 LL |     for | A | B in 0 {}
-   |           ^^^^^
+   |         ^^^^^^^
    |
    = note: see issue #54883 <https://github.com/rust-lang/rust/issues/54883> for more information
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable

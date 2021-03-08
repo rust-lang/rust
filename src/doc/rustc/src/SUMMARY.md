@@ -11,6 +11,7 @@
         - [Deny-by-default lints](lints/listing/deny-by-default.md)
 - [Codegen options](codegen-options/index.md)
 - [JSON Output](json.md)
+- [Tests](tests/index.md)
 - [Platform Support](platform-support.md)
 - [Targets](targets/index.md)
     - [Built-in Targets](targets/built-in.md)

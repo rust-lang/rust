@@ -215,7 +215,7 @@ impl<'a> FnLikeNode<'a> {
         match self.node {
             Node::Item(i) => match i.kind {
                 hir::ItemKind::Fn(ref sig, ref generics, block) => item_fn(ItemFnParts {
-                    id: i.hir_id,
+                    id: i.hir_id(),
                     ident: i.ident,
                     decl: &sig.decl,
                     body: block,
@@ -229,13 +229,13 @@ impl<'a> FnLikeNode<'a> {
             },
             Node::TraitItem(ti) => match ti.kind {
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    method(ti.hir_id, ti.ident, sig, None, body, ti.span, &ti.attrs)
+                    method(ti.hir_id(), ti.ident, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
             },
             Node::ImplItem(ii) => match ii.kind {
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    method(ii.hir_id, ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
+                    method(ii.hir_id(), ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                 }
                 _ => bug!("impl method FnLikeNode that is not fn-like"),
             },

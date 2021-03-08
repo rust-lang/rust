@@ -20,6 +20,7 @@ use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy}
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
@@ -556,15 +557,16 @@ fn test_debugging_options_tracking_hash() {
     tracked!(function_sections, Some(false));
     tracked!(human_readable_cgu_names, true);
     tracked!(inline_in_all_cgus, Some(true));
-    tracked!(inline_mir_threshold, 123);
-    tracked!(inline_mir_hint_threshold, 123);
+    tracked!(inline_mir, Some(true));
+    tracked!(inline_mir_threshold, Some(123));
+    tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(insert_sideeffect, true);
     tracked!(instrument_coverage, true);
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
-    tracked!(mir_opt_level, 3);
+    tracked!(mir_opt_level, Some(4));
     tracked!(mutable_noalias, true);
     tracked!(new_llvm_pass_manager, true);
     tracked!(no_codegen, true);
@@ -595,7 +597,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(tune_cpu, Some(String::from("abc")));
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(trap_unreachable, Some(false));
-    tracked!(treat_err_as_bug, Some(1));
+    tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);

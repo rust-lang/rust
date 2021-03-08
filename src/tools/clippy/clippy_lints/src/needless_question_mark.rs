@@ -1,8 +1,6 @@
 use rustc_errors::Applicability;
-use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::DefIdTree;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
@@ -160,7 +158,7 @@ fn is_some_or_ok_call<'a>(
         // Check outer expression matches CALL_IDENT(ARGUMENT) format
         if let ExprKind::Call(path, args) = &expr.kind;
         if let ExprKind::Path(QPath::Resolved(None, path)) = &path.kind;
-        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
+        if utils::is_some_ctor(cx, path.res) || utils::is_ok_ctor(cx, path.res);
 
         // Extract inner expression from ARGUMENT
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &args[0].kind;
@@ -207,26 +205,4 @@ fn is_some_or_ok_call<'a>(
 
 fn has_implicit_error_from(cx: &LateContext<'_>, entire_expr: &Expr<'_>, inner_result_expr: &Expr<'_>) -> bool {
     return cx.typeck_results().expr_ty(entire_expr) != cx.typeck_results().expr_ty(inner_result_expr);
-}
-
-fn is_ok_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(ok_id) = cx.tcx.lang_items().result_ok_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == ok_id;
-            }
-        }
-    }
-    false
-}
-
-fn is_some_ctor(cx: &LateContext<'_>, res: Res) -> bool {
-    if let Some(some_id) = cx.tcx.lang_items().option_some_variant() {
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), id) = res {
-            if let Some(variant_id) = cx.tcx.parent(id) {
-                return variant_id == some_id;
-            }
-        }
-    }
-    false
 }

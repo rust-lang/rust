@@ -10,7 +10,7 @@ error: invalid trailing slash in literal
   --> $DIR/issue-62913.rs:1:5
    |
 LL | "\u\"
-   |     ^
+   |     ^ invalid trailing slash in literal
 
 error: expected item, found `"\u\"`
   --> $DIR/issue-62913.rs:1:1

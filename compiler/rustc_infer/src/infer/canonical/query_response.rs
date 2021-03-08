@@ -507,12 +507,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         // Unify the original value for each variable with the value
         // taken from `query_response` (after applying `result_subst`).
-        Ok(self.unify_canonical_vars(
-            cause,
-            param_env,
-            original_values,
-            substituted_query_response,
-        )?)
+        self.unify_canonical_vars(cause, param_env, original_values, substituted_query_response)
     }
 
     /// Converts the region constraints resulting from a query into an
@@ -639,6 +634,10 @@ struct QueryTypeRelatingDelegate<'a, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+
     fn create_next_universe(&mut self) -> ty::UniverseIndex {
         self.infcx.create_next_universe()
     }

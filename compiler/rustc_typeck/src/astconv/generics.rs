@@ -6,8 +6,9 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_middle::ty::{
@@ -43,23 +44,57 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut DiagnosticBuilder<'_>| {
+            let suggestions = vec![
+                (arg.span().shrink_to_lo(), String::from("{ ")),
+                (arg.span().shrink_to_hi(), String::from(" }")),
+            ];
+            err.multipart_suggestion(
+                "if this generic argument was intended as a const parameter, \
+                 surround it with braces",
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+        };
+
         // Specific suggestion set for diagnostics
         match (arg, &param.kind) {
             (
-                GenericArg::Type(hir::Ty { kind: hir::TyKind::Path { .. }, .. }),
-                GenericParamDefKind::Const { .. },
-            ) => {
-                let suggestions = vec![
-                    (arg.span().shrink_to_lo(), String::from("{ ")),
-                    (arg.span().shrink_to_hi(), String::from(" }")),
-                ];
-                err.multipart_suggestion(
-                    "if this generic argument was intended as a const parameter, \
-                try surrounding it with braces:",
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+                GenericArg::Type(hir::Ty {
+                    kind: hir::TyKind::Path(rustc_hir::QPath::Resolved(_, path)),
+                    ..
+                }),
+                GenericParamDefKind::Const,
+            ) => match path.res {
+                Res::Err => {
+                    add_braces_suggestion(arg, &mut err);
+                    err.set_primary_message(
+                        "unresolved item provided when a constant was expected",
+                    )
+                    .emit();
+                    return;
+                }
+                Res::Def(DefKind::TyParam, src_def_id) => {
+                    if let Some(param_local_id) = param.def_id.as_local() {
+                        let param_hir_id = tcx.hir().local_def_id_to_hir_id(param_local_id);
+                        let param_name = tcx.hir().ty_param_name(param_hir_id);
+                        let param_type = tcx.type_of(param.def_id);
+                        if param_type.is_suggestable() {
+                            err.span_suggestion(
+                                tcx.def_span(src_def_id),
+                                "consider changing this type paramater to a `const`-generic",
+                                format!("const {}: {}", param_name, param_type),
+                                Applicability::MaybeIncorrect,
+                            );
+                        };
+                    }
+                }
+                _ => add_braces_suggestion(arg, &mut err),
+            },
+            (
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Path(_), .. }),
+                GenericParamDefKind::Const,
+            ) => add_braces_suggestion(arg, &mut err),
             (
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
                 GenericParamDefKind::Const { .. },

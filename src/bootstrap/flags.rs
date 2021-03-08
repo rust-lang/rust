@@ -347,7 +347,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         };
 
         // Done specifying what options are possible, so do the getopts parsing
-        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
+        let matches = opts.parse(args).unwrap_or_else(|e| {
             // Invalid argument/option format
             println!("\n{}\n", e);
             usage(1, &opts, false, &subcommand_help);

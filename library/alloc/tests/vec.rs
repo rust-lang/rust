@@ -288,6 +288,67 @@ fn test_retain() {
 }
 
 #[test]
+fn test_retain_pred_panic_with_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 => true,
+            1 => false,
+            2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_pred_panic_no_hole() {
+    let v = (0..5).map(Rc::new).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.clone();
+        v.retain(|r| match **r {
+            0 | 1 | 2 => true,
+            _ => panic!(),
+        });
+    }))
+    .unwrap_err();
+    // Everything is dropped when predicate panicked.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
+fn test_retain_drop_panic() {
+    struct Wrap(Rc<i32>);
+
+    impl Drop for Wrap {
+        fn drop(&mut self) {
+            if *self.0 == 3 {
+                panic!();
+            }
+        }
+    }
+
+    let v = (0..5).map(|x| Rc::new(x)).collect::<Vec<_>>();
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut v = v.iter().map(|r| Wrap(r.clone())).collect::<Vec<_>>();
+        v.retain(|w| match *w.0 {
+            0 => true,
+            1 => false,
+            2 => true,
+            3 => false, // Drop panic.
+            _ => true,
+        });
+    }))
+    .unwrap_err();
+    // Other elements are dropped when `drop` of one element panicked.
+    // The panicked wrapper also has its Rc dropped.
+    assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
+}
+
+#[test]
 fn test_dedup() {
     fn case(a: Vec<i32>, b: Vec<i32>) {
         let mut v = a;
@@ -546,6 +607,17 @@ fn test_move_items_zero_sized() {
         vec2.push(i);
     }
     assert_eq!(vec2, [(), (), ()]);
+}
+
+#[test]
+fn test_drain_empty_vec() {
+    let mut vec: Vec<i32> = vec![];
+    let mut vec2: Vec<i32> = vec![];
+    for i in vec.drain(..) {
+        vec2.push(i);
+    }
+    assert!(vec.is_empty());
+    assert!(vec2.is_empty());
 }
 
 #[test]
@@ -1617,6 +1689,10 @@ fn test_stable_pointers() {
     next_then_drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
     assert_eq!(*v0, 13);
     next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
+    assert_eq!(*v0, 13);
+
+    // spare_capacity_mut
+    v.spare_capacity_mut();
     assert_eq!(*v0, 13);
 
     // Smoke test that would fire even outside Miri if an actual relocation happened.

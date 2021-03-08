@@ -1,10 +1,10 @@
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:6:15
+  --> $DIR/const_panic.rs:7:15
    |
 LL | const Z: () = std::panic!("cheese");
    | --------------^^^^^^^^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'cheese', $DIR/const_panic.rs:6:15
+   |               the evaluated program panicked at 'cheese', $DIR/const_panic.rs:7:15
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -12,108 +12,108 @@ LL | const Z: () = std::panic!("cheese");
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:10:16
+  --> $DIR/const_panic.rs:11:16
    |
 LL | const Z2: () = std::panic!();
    | ---------------^^^^^^^^^^^^^-
    |                |
-   |                the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:10:16
+   |                the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:11:16
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:14:15
+  --> $DIR/const_panic.rs:15:15
    |
 LL | const Y: () = std::unreachable!();
    | --------------^^^^^^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:14:15
+   |               the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:15:15
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:18:15
+  --> $DIR/const_panic.rs:19:15
    |
 LL | const X: () = std::unimplemented!();
    | --------------^^^^^^^^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:18:15
+   |               the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:19:15
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:22:15
+  --> $DIR/const_panic.rs:23:15
    |
 LL | const W: () = std::panic!(MSG);
    | --------------^^^^^^^^^^^^^^^^-
    |               |
-   |               the evaluated program panicked at 'hello', $DIR/const_panic.rs:22:15
+   |               the evaluated program panicked at 'hello', $DIR/const_panic.rs:23:15
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:26:20
+  --> $DIR/const_panic.rs:27:20
    |
 LL | const Z_CORE: () = core::panic!("cheese");
    | -------------------^^^^^^^^^^^^^^^^^^^^^^-
    |                    |
-   |                    the evaluated program panicked at 'cheese', $DIR/const_panic.rs:26:20
+   |                    the evaluated program panicked at 'cheese', $DIR/const_panic.rs:27:20
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:30:21
+  --> $DIR/const_panic.rs:31:21
    |
 LL | const Z2_CORE: () = core::panic!();
    | --------------------^^^^^^^^^^^^^^-
    |                     |
-   |                     the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:30:21
+   |                     the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:31:21
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:34:20
+  --> $DIR/const_panic.rs:35:20
    |
 LL | const Y_CORE: () = core::unreachable!();
    | -------------------^^^^^^^^^^^^^^^^^^^^-
    |                    |
-   |                    the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:34:20
+   |                    the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:35:20
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:38:20
+  --> $DIR/const_panic.rs:39:20
    |
 LL | const X_CORE: () = core::unimplemented!();
    | -------------------^^^^^^^^^^^^^^^^^^^^^^-
    |                    |
-   |                    the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:38:20
+   |                    the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:39:20
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: any use of this value will cause an error
-  --> $DIR/const_panic.rs:42:20
+  --> $DIR/const_panic.rs:43:20
    |
 LL | const W_CORE: () = core::panic!(MSG);
    | -------------------^^^^^^^^^^^^^^^^^-
    |                    |
-   |                    the evaluated program panicked at 'hello', $DIR/const_panic.rs:42:20
+   |                    the evaluated program panicked at 'hello', $DIR/const_panic.rs:43:20
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>

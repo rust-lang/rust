@@ -1,7 +1,7 @@
 - // MIR for `try_sum` before EarlyOtherwiseBranch
 + // MIR for `try_sum` after EarlyOtherwiseBranch
   
-  fn try_sum(_1: &ViewportPercentageLength, _2: &ViewportPercentageLength) -> std::result::Result<ViewportPercentageLength, ()> {
+  fn try_sum(_1: &ViewportPercentageLength, _2: &ViewportPercentageLength) -> Result<ViewportPercentageLength, ()> {
       debug x => _1;                       // in scope 0 at $DIR/early_otherwise_branch_68867.rs:18:5: 18:6
       debug other => _2;                   // in scope 0 at $DIR/early_otherwise_branch_68867.rs:19:5: 19:10
       let mut _0: std::result::Result<ViewportPercentageLength, ()>; // return place in scope 0 at $DIR/early_otherwise_branch_68867.rs:20:6: 20:42

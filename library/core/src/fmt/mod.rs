@@ -401,8 +401,6 @@ impl<'a> Arguments<'a> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(fmt_as_str)]
-    ///
     /// use std::fmt::Arguments;
     ///
     /// fn write_str(_: &str) { /* ... */ }
@@ -417,13 +415,11 @@ impl<'a> Arguments<'a> {
     /// ```
     ///
     /// ```rust
-    /// #![feature(fmt_as_str)]
-    ///
     /// assert_eq!(format_args!("hello").as_str(), Some("hello"));
     /// assert_eq!(format_args!("").as_str(), Some(""));
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
-    #[unstable(feature = "fmt_as_str", issue = "74442")]
+    #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[inline]
     pub fn as_str(&self) -> Option<&'static str> {
         match (self.pieces, self.args) {

@@ -9,7 +9,7 @@ most widely used part of the `test` crate are benchmark tests, which can test
 the performance of your code.  Let's make our `src/lib.rs` look like this
 (comments elided):
 
-```rust,ignore
+```rust,no_run
 #![feature(test)]
 
 extern crate test;
@@ -83,7 +83,7 @@ the benchmark is no longer benchmarking what one expects. For example, the
 compiler might recognize that some calculation has no external effects and
 remove it entirely.
 
-```rust,ignore
+```rust,no_run
 #![feature(test)]
 
 extern crate test;

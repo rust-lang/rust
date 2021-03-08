@@ -47,7 +47,7 @@ impl Step for ToolBuild {
     fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
         let compiler = self.compiler;
         let target = self.target;
-        let tool = self.tool;
+        let mut tool = self.tool;
         let path = self.path;
         let is_optional_tool = self.is_optional_tool;
 
@@ -208,6 +208,12 @@ impl Step for ToolBuild {
                 None
             }
         } else {
+            // HACK(#82501): on Windows, the tools directory gets added to PATH when running tests, and
+            // compiletest confuses HTML tidy with the in-tree tidy. Name the in-tree tidy something
+            // different so the problem doesn't come up.
+            if tool == "tidy" {
+                tool = "rust-tidy";
+            }
             let cargo_out =
                 builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
             let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));

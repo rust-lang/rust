@@ -17,7 +17,7 @@ use rustc_ast::{self as ast, Attribute, NestedMetaItem};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
@@ -179,7 +179,7 @@ pub struct DirtyCleanVisitor<'tcx> {
 
 impl DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute) -> Option<Assertion> {
+    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
         let is_clean = if self.tcx.sess.check_name(attr, sym::rustc_dirty) {
             false
         } else if self.tcx.sess.check_name(attr, sym::rustc_clean) {
@@ -207,7 +207,7 @@ impl DirtyCleanVisitor<'tcx> {
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
     fn assertion_auto(
         &mut self,
-        item_id: hir::HirId,
+        item_id: LocalDefId,
         attr: &Attribute,
         is_clean: bool,
     ) -> Assertion {
@@ -253,8 +253,9 @@ impl DirtyCleanVisitor<'tcx> {
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: hir::HirId, attr: &Attribute) -> (&'static str, Labels) {
-        let node = self.tcx.hir().get(item_id);
+    fn auto_labels(&mut self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
+        let hir_id = self.tcx.hir().local_def_id_to_hir_id(item_id);
+        let node = self.tcx.hir().get(hir_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.kind {
@@ -430,18 +431,17 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: hir::HirId, item_span: Span) {
-        let def_id = self.tcx.hir().local_def_id(item_id);
-        for attr in self.tcx.get_attrs(def_id.to_def_id()).iter() {
+    fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
+        for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
             let assertion = match self.assertion_maybe(item_id, attr) {
                 Some(a) => a,
                 None => continue,
             };
             self.checked_attrs.insert(attr.id);
-            for dep_node in self.dep_nodes(&assertion.clean, def_id.to_def_id()) {
+            for dep_node in self.dep_nodes(&assertion.clean, item_id.to_def_id()) {
                 self.assert_clean(item_span, dep_node);
             }
-            for dep_node in self.dep_nodes(&assertion.dirty, def_id.to_def_id()) {
+            for dep_node in self.dep_nodes(&assertion.dirty, item_id.to_def_id()) {
                 self.assert_dirty(item_span, dep_node);
             }
         }
@@ -450,19 +450,19 @@ impl DirtyCleanVisitor<'tcx> {
 
 impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.def_id, item.span);
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.def_id, item.span);
     }
 
     fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.def_id, item.span);
     }
 
     fn visit_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
-        self.check_item(item.hir_id, item.span);
+        self.check_item(item.def_id, item.span);
     }
 }
 

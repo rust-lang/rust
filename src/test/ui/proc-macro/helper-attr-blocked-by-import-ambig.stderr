@@ -1,11 +1,11 @@
 error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
-  --> $DIR/helper-attr-blocked-by-import-ambig.rs:8:3
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^ ambiguous name
    |
 note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:10
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:10
    |
 LL | #[derive(Empty)]
    |          ^^^^^
@@ -16,6 +16,19 @@ LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
-error: aborting due to previous error
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+   |
+   = note: `#[warn(legacy_derive_helpers)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0659`.

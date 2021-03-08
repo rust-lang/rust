@@ -4,7 +4,7 @@ use crate::utils::{
     span_lint, span_lint_and_help, span_lint_and_sugg, SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, NodeId};
+use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -301,17 +301,12 @@ declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
-        if let Some(utils) = krate
-            .module
-            .items
-            .iter()
-            .find(|item| item.ident.name.as_str() == "utils")
-        {
-            if let ItemKind::Mod(ref utils_mod) = utils.kind {
-                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name.as_str() == "paths") {
-                    if let ItemKind::Mod(ref paths_mod) = paths.kind {
+        if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils") {
+            if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
+                if let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths") {
+                    if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind {
                         let mut last_name: Option<SymbolStr> = None;
-                        for item in &*paths_mod.items {
+                        for item in items {
                             let name = item.ident.as_str();
                             if let Some(ref last_name) = last_name {
                                 if **last_name > *name {
@@ -343,7 +338,7 @@ impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id) {
+        if !run_lints(cx, &[DEFAULT_LINT], item.hir_id()) {
             return;
         }
 
@@ -393,7 +388,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                         .find(|iiref| iiref.ident.as_str() == "get_lints")
                         .expect("LintPass needs to implement get_lints")
                         .id
-                        .hir_id,
+                        .hir_id(),
                 );
                 collector.visit_expr(&cx.tcx.hir().body(body_id).value);
             }
@@ -841,15 +836,13 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
     // implementations of native types. Check lang items.
     let path_syms: Vec<_> = path.iter().map(|p| Symbol::intern(p)).collect();
     let lang_items = cx.tcx.lang_items();
-    for lang_item in lang_items.items() {
-        if let Some(def_id) = lang_item {
-            let lang_item_path = cx.get_def_path(*def_id);
-            if path_syms.starts_with(&lang_item_path) {
-                if let [item] = &path_syms[lang_item_path.len()..] {
-                    for child in cx.tcx.item_children(*def_id) {
-                        if child.ident.name == *item {
-                            return true;
-                        }
+    for item_def_id in lang_items.items().iter().flatten() {
+        let lang_item_path = cx.get_def_path(*item_def_id);
+        if path_syms.starts_with(&lang_item_path) {
+            if let [item] = &path_syms[lang_item_path.len()..] {
+                for child in cx.tcx.item_children(*item_def_id) {
+                    if child.ident.name == *item {
+                        return true;
                     }
                 }
             }
@@ -863,7 +856,7 @@ declare_lint_pass!(InvalidPaths => [INVALID_PATHS]);
 
 impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let local_def_id = &cx.tcx.parent_module(item.hir_id);
+        let local_def_id = &cx.tcx.parent_module(item.hir_id());
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if_chain! {
             if mod_name.as_str() == "paths";
@@ -1001,7 +994,7 @@ impl InterningDefinedSymbol {
         // SymbolStr might be de-referenced: `&*symbol.as_str()`
         let call = if_chain! {
             if let ExprKind::AddrOf(_, _, e) = expr.kind;
-            if let ExprKind::Unary(UnOp::UnDeref, e) = e.kind;
+            if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
             then { e } else { expr }
         };
         if_chain! {

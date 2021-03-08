@@ -44,9 +44,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
 
 WORKDIR /build
 
-COPY host-x86_64/dist-various-1/build-rumprun.sh /build
-RUN ./build-rumprun.sh
-
 COPY host-x86_64/dist-various-1/install-x86_64-redox.sh /build
 RUN ./install-x86_64-redox.sh
 
@@ -112,7 +109,6 @@ ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
-ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
 ENV TARGETS=$TARGETS,mips-unknown-linux-musl
 ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
 ENV TARGETS=$TARGETS,mips64-unknown-linux-muslabi64

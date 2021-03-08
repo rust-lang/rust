@@ -19,7 +19,7 @@ use rustc_span::edition::Edition;
 use rustdoc_json_types as types;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
@@ -37,8 +37,8 @@ crate struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
 }
 
-impl JsonRenderer<'_> {
-    fn sess(&self) -> &Session {
+impl JsonRenderer<'tcx> {
+    fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }
 
@@ -87,6 +87,7 @@ impl JsonRenderer<'_> {
             .filter_map(|(&id, trait_item)| {
                 // only need to synthesize items for external traits
                 if !id.is_local() {
+                    let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
                         from_def_id(id),
@@ -132,7 +133,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        _render_info: RenderInfo,
         _edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
@@ -183,7 +183,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 match &*item.kind {
                     // These don't have names so they don't get added to the output by default
                     ImportItem(_) => self.item(item.clone()).unwrap(),
-                    ExternCrateItem(_, _) => self.item(item.clone()).unwrap(),
+                    ExternCrateItem { .. } => self.item(item.clone()).unwrap(),
                     ImplItem(i) => i.items.iter().for_each(|i| self.item(i.clone()).unwrap()),
                     _ => {}
                 }
@@ -199,7 +199,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
     fn after_krate(
         &mut self,
-        krate: &clean::Crate,
+        _krate: &clean::Crate,
         _diag: &rustc_errors::Handler,
     ) -> Result<(), Error> {
         debug!("Done with crate");
@@ -210,7 +210,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
-            crate_version: krate.version.clone(),
+            crate_version: self.cache.crate_version.clone(),
             includes_private: self.cache.document_private,
             index: index.into_iter().collect(),
             paths: self
@@ -243,7 +243,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                     )
                 })
                 .collect(),
-            format_version: 2,
+            format_version: 4,
         };
         let mut p = self.out_path.clone();
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());

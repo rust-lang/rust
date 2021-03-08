@@ -8,7 +8,7 @@ fn main() {
  a test";
     // \r only
     let bad = "This is \ a test";
-    //~^ ERROR unknown character escape: \r
-    //~^^ HELP this is an isolated carriage return
+    //~^ ERROR unknown character escape: `\r`
+    //~| HELP this is an isolated carriage return
 
 }

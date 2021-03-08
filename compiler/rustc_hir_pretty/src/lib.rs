@@ -54,7 +54,7 @@ pub const NO_ANN: &dyn PpAnn = &NoAnn;
 impl PpAnn for hir::Crate<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::Item(id) => state.print_item(self.item(id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
@@ -69,7 +69,7 @@ impl PpAnn for hir::Crate<'_> {
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.item(id.id)),
+            Nested::Item(id) => state.print_item(self.item(id)),
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
@@ -392,7 +392,7 @@ impl<'a> State<'a> {
                     &f.decl,
                     None,
                     &f.generic_params,
-                    &f.param_names[..],
+                    f.param_names,
                 );
             }
             hir::TyKind::OpaqueDef(..) => self.s.word("/*impl Trait*/"),
@@ -934,7 +934,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
@@ -969,11 +969,11 @@ impl<'a> State<'a> {
                 );
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ti.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ti.hir_id()))
     }
 
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
-        self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
+        self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(&ii.attrs);
@@ -995,7 +995,7 @@ impl<'a> State<'a> {
                 self.print_associated_type(ii.ident, &ii.generics, None, Some(ty));
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ii.hir_id))
+        self.ann.post(self, AnnNode::SubItem(ii.hir_id()))
     }
 
     pub fn print_local(&mut self, init: Option<&hir::Expr<'_>>, decl: impl Fn(&mut Self)) {
@@ -1200,7 +1200,7 @@ impl<'a> State<'a> {
         self.s.word("{");
         self.commasep_cmnt(
             Consistent,
-            &fields[..],
+            fields,
             |s, field| {
                 s.ibox(INDENT_UNIT);
                 if !field.is_shorthand {
@@ -1840,6 +1840,7 @@ impl<'a> State<'a> {
             for binding in generic_args.bindings.iter() {
                 start_or_comma(self);
                 self.print_ident(binding.ident);
+                self.print_generic_args(binding.gen_args, false, false);
                 self.s.space();
                 match generic_args.bindings[0].kind {
                     hir::TypeBindingKind::Equality { ref ty } => {

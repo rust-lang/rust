@@ -442,7 +442,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let mut cur_expr = expr;
         while let Some(parent_expr) = get_parent_expr(cx, cur_expr) {
             match higher::for_loop(parent_expr) {
-                Some((_, args, _)) if args.hir_id == expr.hir_id => return true,
+                Some((_, args, _, _)) if args.hir_id == expr.hir_id => return true,
                 _ => cur_expr = parent_expr,
             }
         }

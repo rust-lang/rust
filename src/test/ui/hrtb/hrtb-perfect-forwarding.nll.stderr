@@ -1,11 +1,11 @@
 warning: function cannot return without recursing
-  --> $DIR/hrtb-perfect-forwarding.rs:22:1
+  --> $DIR/hrtb-perfect-forwarding.rs:16:1
    |
-LL | / fn no_hrtb<'b,T>(mut t: T)
-LL | |     where T : Bar<&'b isize>
+LL | / fn no_hrtb<'b, T>(mut t: T)
+LL | | where
+LL | |     T: Bar<&'b isize>,
 LL | | {
-LL | |     // OK -- `T : Bar<&'b isize>`, and thus the impl above ensures that
-LL | |     // `&mut T : Bar<&'b isize>`.
+...  |
 LL | |     no_hrtb(&mut t);
    | |     --------------- recursive call site
 LL | | }
@@ -15,12 +15,12 @@ LL | | }
    = help: a `loop` may express intention better if this is on purpose
 
 warning: function cannot return without recursing
-  --> $DIR/hrtb-perfect-forwarding.rs:30:1
+  --> $DIR/hrtb-perfect-forwarding.rs:25:1
    |
 LL | / fn bar_hrtb<T>(mut t: T)
-LL | |     where T : for<'b> Bar<&'b isize>
+LL | | where
+LL | |     T: for<'b> Bar<&'b isize>,
 LL | | {
-LL | |     // OK -- `T : for<'b> Bar<&'b isize>`, and thus the impl above
 ...  |
 LL | |     bar_hrtb(&mut t);
    | |     ---------------- recursive call site
@@ -30,15 +30,16 @@ LL | | }
    = help: a `loop` may express intention better if this is on purpose
 
 warning: function cannot return without recursing
-  --> $DIR/hrtb-perfect-forwarding.rs:39:1
+  --> $DIR/hrtb-perfect-forwarding.rs:35:1
    |
-LL | / fn foo_hrtb_bar_not<'b,T>(mut t: T)
-LL | |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
+LL | / fn foo_hrtb_bar_not<'b, T>(mut t: T)
+LL | | where
+LL | |     T: for<'a> Foo<&'a isize> + Bar<&'b isize>,
 LL | | {
-LL | |     // Not OK -- The forwarding impl for `Foo` requires that `Bar` also
 ...  |
 LL | |     foo_hrtb_bar_not(&mut t);
    | |     ------------------------ recursive call site
+LL | |
 LL | |
 LL | | }
    | |_^ cannot return without recursing
@@ -46,9 +47,9 @@ LL | | }
    = help: a `loop` may express intention better if this is on purpose
 
 error: lifetime may not live long enough
-  --> $DIR/hrtb-perfect-forwarding.rs:46:5
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
    |
-LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
+LL | fn foo_hrtb_bar_not<'b, T>(mut t: T)
    |                     -- lifetime `'b` defined here
 ...
 LL |     foo_hrtb_bar_not(&mut t);
@@ -57,18 +58,19 @@ LL |     foo_hrtb_bar_not(&mut t);
    = help: consider replacing `'b` with `'static`
 
 error: higher-ranked subtype error
-  --> $DIR/hrtb-perfect-forwarding.rs:46:5
+  --> $DIR/hrtb-perfect-forwarding.rs:43:5
    |
 LL |     foo_hrtb_bar_not(&mut t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function cannot return without recursing
-  --> $DIR/hrtb-perfect-forwarding.rs:50:1
+  --> $DIR/hrtb-perfect-forwarding.rs:48:1
    |
 LL | / fn foo_hrtb_bar_hrtb<T>(mut t: T)
-LL | |     where T : for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>
+LL | | where
+LL | |     T: for<'a> Foo<&'a isize> + for<'b> Bar<&'b isize>,
 LL | | {
-LL | |     // OK -- now we have `T : for<'b> Bar&'b isize>`.
+LL | |     // OK -- now we have `T : for<'b> Bar<&'b isize>`.
 LL | |     foo_hrtb_bar_hrtb(&mut t);
    | |     ------------------------- recursive call site
 LL | | }

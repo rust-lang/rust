@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL | const Y2: usize = unsafe { &1 as *const i32 as usize + 1 };
    | ---------------------------^^^^^^^^^^^^^^^^^^^^^^^^^-------
    |                            |
-   |                            "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |                            cannot cast pointer to integer because it was not created by cast from integer
    |
    = note: `#[deny(const_err)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

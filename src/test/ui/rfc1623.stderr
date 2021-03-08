@@ -1,12 +1,11 @@
-error[E0308]: mismatched types
+error: implementation of `FnOnce` is not general enough
   --> $DIR/rfc1623.rs:24:8
    |
 LL |     f: &id,
-   |        ^^^ one type is more general than the other
+   |        ^^^ implementation of `FnOnce` is not general enough
    |
-   = note: expected type `FnOnce<(&'a Foo<'b>,)>`
-              found type `FnOnce<(&Foo<'_>,)>`
+   = note: `fn(&'2 Foo<'_>) -> &'2 Foo<'_> {id::<&'2 Foo<'_>>}` must implement `FnOnce<(&'1 Foo<'b>,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0308`.

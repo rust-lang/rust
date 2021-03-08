@@ -765,9 +765,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_expr: ty::TypeAndMut<'tcx>,
         m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        // array-ptr-cast.
-
-        if m_expr.mutbl == hir::Mutability::Not && m_cast.mutbl == hir::Mutability::Not {
+        // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
+        if m_expr.mutbl == hir::Mutability::Mut || m_cast.mutbl == hir::Mutability::Not {
             if let ty::Array(ety, _) = m_expr.ty.kind() {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of

@@ -8,7 +8,9 @@ mod tests;
 pub const MAIN_SEP_STR: &str = "\\";
 pub const MAIN_SEP: char = '\\';
 
-// Safety: `bytes` must be a valid wtf8 encoded slice
+/// # Safety
+///
+/// `bytes` must be a valid wtf8 encoded slice
 #[inline]
 unsafe fn bytes_as_os_str(bytes: &[u8]) -> &OsStr {
     // &OsStr is layout compatible with &Slice, which is compatible with &Wtf8,
@@ -130,7 +132,7 @@ fn parse_next_component(path: &OsStr, verbatim: bool) -> (&OsStr, &OsStr) {
             // The max `separator_end` is `bytes.len()` and `bytes[bytes.len()..]` is a valid index.
             let path = &path.bytes()[separator_end..];
 
-            // Safety: `path` is a valid wtf8 encoded slice and each of the separators ('/', '\')
+            // SAFETY: `path` is a valid wtf8 encoded slice and each of the separators ('/', '\')
             // is encoded in a single byte, therefore `bytes[separator_start]` and
             // `bytes[separator_end]` must be code point boundaries and thus
             // `bytes[..separator_start]` and `bytes[separator_end..]` are valid wtf8 slices.

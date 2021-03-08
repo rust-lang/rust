@@ -486,8 +486,8 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub module: Mod,
     pub attrs: Vec<Attribute>,
+    pub items: Vec<P<Item>>,
     pub span: Span,
     /// The order of items in the HIR is unrelated to the order of
     /// items in the AST. However, we generate proc macro harnesses
@@ -1979,7 +1979,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, PartialOrd, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2067,7 +2067,7 @@ pub struct InlineAsm {
 /// Inline assembly dialect.
 ///
 /// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Hash, HashStable_Generic)]
 pub enum LlvmAsmDialect {
     Att,
     Intel,
@@ -2299,21 +2299,22 @@ impl FnRetTy {
     }
 }
 
-/// Module declaration.
-///
-/// E.g., `mod foo;` or `mod foo { .. }`.
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+pub enum Inline {
+    Yes,
+    No,
+}
+
+/// Module item kind.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Mod {
-    /// A span from the first token past `{` to the last token until `}`.
-    /// For `mod foo;`, the inner span ranges from the first token
-    /// to the last token in the external file.
-    pub inner: Span,
-    /// `unsafe` keyword accepted syntactically for macro DSLs, but not
-    /// semantically by Rust.
-    pub unsafety: Unsafe,
-    pub items: Vec<P<Item>>,
-    /// `true` for `mod foo { .. }`; `false` for `mod foo;`.
-    pub inline: bool,
+pub enum ModKind {
+    /// Module with inlined definition `mod foo { ... }`,
+    /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
+    /// The inner span is from the first token past `{` to the last token until `}`,
+    /// or from the first to the last token in the loaded file.
+    Loaded(Vec<P<Item>>, Inline, Span),
+    /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
+    Unloaded,
 }
 
 /// Foreign module declaration.
@@ -2694,7 +2695,7 @@ pub enum ItemKind {
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
-    Use(P<UseTree>),
+    Use(UseTree),
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
@@ -2710,13 +2711,15 @@ pub enum ItemKind {
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
-    Mod(Mod),
+    /// `unsafe` keyword on modules is accepted syntactically for macro DSLs, but not
+    /// semantically by Rust.
+    Mod(Unsafe, ModKind),
     /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
-    GlobalAsm(P<GlobalAsm>),
+    GlobalAsm(GlobalAsm),
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
@@ -2909,69 +2912,3 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
-
-pub trait HasTokens {
-    /// Called by `Parser::collect_tokens` to store the collected
-    /// tokens inside an AST node
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream);
-}
-
-impl<T: HasTokens + 'static> HasTokens for P<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        (**self).finalize_tokens(tokens);
-    }
-}
-
-impl<T: HasTokens> HasTokens for Option<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        if let Some(inner) = self {
-            inner.finalize_tokens(tokens);
-        }
-    }
-}
-
-impl HasTokens for Attribute {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        match &mut self.kind {
-            AttrKind::Normal(_, attr_tokens) => {
-                if attr_tokens.is_none() {
-                    *attr_tokens = Some(tokens);
-                }
-            }
-            AttrKind::DocComment(..) => {
-                panic!("Called finalize_tokens on doc comment attr {:?}", self)
-            }
-        }
-    }
-}
-
-impl HasTokens for Stmt {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        let stmt_tokens = match self.kind {
-            StmtKind::Local(ref mut local) => &mut local.tokens,
-            StmtKind::Item(ref mut item) => &mut item.tokens,
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => &mut expr.tokens,
-            StmtKind::Empty => return,
-            StmtKind::MacCall(ref mut mac) => &mut mac.tokens,
-        };
-        if stmt_tokens.is_none() {
-            *stmt_tokens = Some(tokens);
-        }
-    }
-}
-
-macro_rules! derive_has_tokens {
-    ($($ty:path),*) => { $(
-        impl HasTokens for $ty {
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-            }
-        }
-    )* }
-}
-
-derive_has_tokens! {
-    Item, Expr, Ty, AttrItem, Visibility, Path, Block, Pat
-}

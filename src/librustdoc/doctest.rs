@@ -26,8 +26,8 @@ use std::str;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
@@ -44,11 +44,14 @@ crate struct TestOptions {
 crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
+    // See core::create_config for what's going on here.
+    let allowed_lints = vec![
+        invalid_codeblock_attributes_name.to_owned(),
+        lint::builtin::UNKNOWN_LINTS.name.to_owned(),
+        lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_owned(),
+    ];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
         if lint.name == invalid_codeblock_attributes_name {
@@ -92,7 +95,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -296,7 +299,12 @@ fn run_test(
         }
     });
     if let ErrorOutputType::HumanReadable(kind) = options.error_format {
-        let (_, color_config) = kind.unzip();
+        let (short, color_config) = kind.unzip();
+
+        if short {
+            compiler.arg("--error-format").arg("short");
+        }
+
         match color_config {
             ColorConfig::Never => {
                 compiler.arg("--color").arg("never");
@@ -541,9 +549,12 @@ crate fn make_test(
     // compiler.
     if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
-            // Make sure its actually used if not included.
+            // Don't inject `extern crate` if the crate is never used.
+            // NOTE: this is terribly inaccurate because it doesn't actually
+            // parse the source, but only has false positives, not false
+            // negatives.
             if s.contains(cratename) {
-                prog.push_str(&format!("extern crate {};\n", cratename));
+                prog.push_str(&format!("extern crate r#{};\n", cratename));
                 line_offset += 1;
             }
         }
@@ -1042,27 +1053,45 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(name, &item.attrs, item.hir_id(), item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_trait_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_trait_item(this, item);
+            },
+        );
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_impl_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_impl_item(this, item);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
-            intravisit::walk_foreign_item(this, item);
-        });
+        self.visit_testable(
+            item.ident.to_string(),
+            &item.attrs,
+            item.hir_id(),
+            item.span,
+            |this| {
+                intravisit::walk_foreign_item(this, item);
+            },
+        );
     }
 
     fn visit_variant(
@@ -1086,7 +1115,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         self.visit_testable(
             macro_def.ident.to_string(),
             &macro_def.attrs,
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.span,
             |_| (),
         );

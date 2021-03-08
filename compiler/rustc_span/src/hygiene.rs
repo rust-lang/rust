@@ -1405,8 +1405,8 @@ fn update_disambiguator(expn_id: ExpnId) {
     });
 
     if modified {
-        info!("Set disambiguator for {:?} (hash {:?})", expn_id, first_hash);
-        info!("expn_data = {:?}", expn_id.expn_data());
+        debug!("Set disambiguator for {:?} (hash {:?})", expn_id, first_hash);
+        debug!("expn_data = {:?}", expn_id.expn_data());
 
         // Verify that the new disambiguator makes the hash unique
         #[cfg(debug_assertions)]

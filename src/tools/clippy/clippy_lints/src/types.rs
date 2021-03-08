@@ -1106,7 +1106,9 @@ fn is_empty_block(expr: &Expr<'_>) -> bool {
         expr.kind,
         ExprKind::Block(
             Block {
-                stmts: &[], expr: None, ..
+                stmts: &[],
+                expr: None,
+                ..
             },
             _,
         )
@@ -1706,13 +1708,13 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
 }
 
 fn is_unary_neg(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Unary(UnOp::UnNeg, _))
+    matches!(expr.kind, ExprKind::Unary(UnOp::Neg, _))
 }
 
 fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
     match expr.kind {
         ExprKind::Lit(ref lit) => Some(lit),
-        ExprKind::Unary(UnOp::UnNeg, e) => {
+        ExprKind::Unary(UnOp::Neg, e) => {
             if let ExprKind::Lit(ref lit) = e.kind {
                 Some(lit)
             } else {
@@ -2565,7 +2567,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
             }
         }
 
-        if !cx.access_levels.is_exported(item.hir_id) {
+        if !cx.access_levels.is_exported(item.hir_id()) {
             return;
         }
 
@@ -2678,14 +2680,14 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
-            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) && params_len == 2 {
+            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
                     snippet(cx, params[0].span, "K"),
                     snippet(cx, params[1].span, "V"),
                 ))
-            } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) && params_len == 1 {
+            } else if is_type_diagnostic_item(cx, ty, sym::hashset_type) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
                     hir_ty.span,
                     ty,
@@ -2868,7 +2870,7 @@ declare_lint_pass!(RefToMut => [CAST_REF_TO_MUT]);
 impl<'tcx> LateLintPass<'tcx> for RefToMut {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Unary(UnOp::UnDeref, e) = &expr.kind;
+            if let ExprKind::Unary(UnOp::Deref, e) = &expr.kind;
             if let ExprKind::Cast(e, t) = &e.kind;
             if let TyKind::Ptr(MutTy { mutbl: Mutability::Mut, .. }) = t.kind;
             if let ExprKind::Cast(e, t) = &e.kind;

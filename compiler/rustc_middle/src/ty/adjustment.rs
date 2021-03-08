@@ -6,7 +6,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
 use rustc_span::Span;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCast {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,

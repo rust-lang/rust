@@ -73,12 +73,12 @@ For revisions in Pull Requests (PR):
 24:38-24:74: @1[5]: FakeRead(ForMatchedPlace, _13)
 24:38-24:74: @1[7]: _25 = (_13.0: &amp;std::fmt::Arguments)
 24:38-24:74: @1[10]: _27 = &amp;(*_25)
-24:38-24:74: @1[12]: _28 = &lt;Arguments as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r std::fmt::Arguments, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
-24:38-24:74: @1.Call: _26 = ArgumentV1::new::&lt;Arguments&gt;(move _27, move _28) -&gt; [return: bb2, unwind: bb4]
+24:38-24:74: @1[12]: _28 = &lt;std::fmt::Arguments as std::fmt::Display&gt;::fmt as for&lt;&#39;r, &#39;s, &#39;t0&gt; fn(&amp;&#39;r std::fmt::Arguments, &amp;&#39;s mut std::fmt::Formatter&lt;&#39;t0&gt;) -&gt; std::result::Result&lt;(), std::fmt::Error&gt; (Pointer(ReifyFnPointer))
+24:38-24:74: @1.Call: _26 = std::fmt::ArgumentV1::new::&lt;std::fmt::Arguments&gt;(move _27, move _28) -&gt; [return: bb2, unwind: bb4]
 24:38-24:74: @2[2]: _12 = [move _26]
 24:38-24:74: @2[5]: _11 = &amp;_12
 24:38-24:74: @2[6]: _10 = &amp;(*_11)
 24:38-24:74: @2[7]: _9 = move _10 as &amp;[std::fmt::ArgumentV1] (Pointer(Unsize))
-24:38-24:74: @2.Call: _4 = Arguments::new_v1(move _5, move _9) -&gt; [return: bb3, unwind: bb4]"><span class="annotation">@0,1,2,3⦊</span>‸<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0">$crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))</span></span></div>
+24:38-24:74: @2.Call: _4 = std::fmt::Arguments::new_v1(move _5, move _9) -&gt; [return: bb3, unwind: bb4]"><span class="annotation">@0,1,2,3⦊</span>‸<span class="annotation">⦉@0,1,2,3</span></span></span><span class="code" style="--layer: 0">$crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))</span></span></div>
 </body>
 </html>

@@ -866,7 +866,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
                 }
                 hir::ExprKind::Lit(ref lit) => (lit, false),
-                hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
+                hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
                     let lit = match expr.kind {
                         hir::ExprKind::Lit(ref lit) => lit,
                         _ => span_bug!(expr.span, "not a literal: {:?}", expr),

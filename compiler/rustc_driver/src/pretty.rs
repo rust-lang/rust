@@ -9,14 +9,12 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
-use rustc_session::config::{Input, PpMode, PpSourceMode};
+use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
-use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
 pub use self::PpMode::*;
@@ -44,43 +42,41 @@ where
     F: FnOnce(&dyn PrinterSupport) -> A,
 {
     match *ppmode {
-        PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
+        Normal | EveryBodyLoops | Expanded => {
             let annotation = NoAnn { sess, tcx };
             f(&annotation)
         }
 
-        PpmIdentified | PpmExpandedIdentified => {
+        Identified | ExpandedIdentified => {
             let annotation = IdentifiedAnnotation { sess, tcx };
             f(&annotation)
         }
-        PpmExpandedHygiene => {
+        ExpandedHygiene => {
             let annotation = HygieneAnnotation { sess };
             f(&annotation)
         }
-        _ => panic!("Should use call_with_pp_support_hir"),
     }
 }
-fn call_with_pp_support_hir<A, F>(ppmode: &PpSourceMode, tcx: TyCtxt<'_>, f: F) -> A
+fn call_with_pp_support_hir<A, F>(ppmode: &PpHirMode, tcx: TyCtxt<'_>, f: F) -> A
 where
     F: FnOnce(&dyn HirPrinterSupport<'_>, &hir::Crate<'_>) -> A,
 {
     match *ppmode {
-        PpmNormal => {
+        PpHirMode::Normal => {
             let annotation = NoAnn { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir().krate())
         }
 
-        PpmIdentified => {
+        PpHirMode::Identified => {
             let annotation = IdentifiedAnnotation { sess: tcx.sess, tcx: Some(tcx) };
             f(&annotation, tcx.hir().krate())
         }
-        PpmTyped => {
+        PpHirMode::Typed => {
             abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
         }
-        _ => panic!("Should use call_with_pp_support"),
     }
 }
 
@@ -237,7 +233,7 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Name(_) => {}
             pprust_hir::AnnNode::Item(item) => {
                 s.s.space();
-                s.synth_comment(format!("hir_id: {}", item.hir_id));
+                s.synth_comment(format!("hir_id: {}", item.hir_id()));
             }
             pprust_hir::AnnNode::SubItem(id) => {
                 s.s.space();
@@ -375,13 +371,14 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
     (src, src_name)
 }
 
-fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
+fn write_or_print(out: &str, ofile: Option<&Path>) {
     match ofile {
-        None => print!("{}", String::from_utf8(out).unwrap()),
-        Some(p) => match File::create(p) {
-            Ok(mut w) => w.write_all(&out).unwrap(),
-            Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
-        },
+        None => print!("{}", out),
+        Some(p) => {
+            if let Err(e) = std::fs::write(p, out) {
+                panic!("print-print failed to write {} due to {}", p.display(), e);
+            }
+        }
     }
 }
 
@@ -394,30 +391,32 @@ pub fn print_after_parsing(
 ) {
     let (src, src_name) = get_source(input, sess);
 
-    let mut out = String::new();
-
-    if let PpmSource(s) = ppm {
-        // Silently ignores an identified node.
-        let out = &mut out;
-        call_with_pp_support(&s, sess, None, move |annotation| {
-            debug!("pretty printing source code {:?}", s);
-            let sess = annotation.sess();
-            let parse = &sess.parse_sess;
-            *out = pprust::print_crate(
-                sess.source_map(),
-                krate,
-                src_name,
-                src,
-                annotation.pp_ann(),
-                false,
-                parse.edition,
-            )
-        })
-    } else {
-        unreachable!();
+    let out = match ppm {
+        Source(s) => {
+            // Silently ignores an identified node.
+            call_with_pp_support(&s, sess, None, move |annotation| {
+                debug!("pretty printing source code {:?}", s);
+                let sess = annotation.sess();
+                let parse = &sess.parse_sess;
+                pprust::print_crate(
+                    sess.source_map(),
+                    krate,
+                    src_name,
+                    src,
+                    annotation.pp_ann(),
+                    false,
+                    parse.edition,
+                )
+            })
+        }
+        AstTree(PpAstTreeMode::Normal) => {
+            debug!("pretty printing AST tree");
+            format!("{:#?}", krate)
+        }
+        _ => unreachable!(),
     };
 
-    write_output(out.into_bytes(), ofile);
+    write_or_print(&out, ofile);
 }
 
 pub fn print_after_hir_lowering<'tcx>(
@@ -434,17 +433,14 @@ pub fn print_after_hir_lowering<'tcx>(
 
     let (src, src_name) = get_source(input, tcx.sess);
 
-    let mut out = String::new();
-
-    match ppm {
-        PpmSource(s) => {
+    let out = match ppm {
+        Source(s) => {
             // Silently ignores an identified node.
-            let out = &mut out;
             call_with_pp_support(&s, tcx.sess, Some(tcx), move |annotation| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 let parse = &sess.parse_sess;
-                *out = pprust::print_crate(
+                pprust::print_crate(
                     sess.source_map(),
                     krate,
                     src_name,
@@ -456,28 +452,27 @@ pub fn print_after_hir_lowering<'tcx>(
             })
         }
 
-        PpmHir(s) => {
-            let out = &mut out;
-            call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                let sm = sess.source_map();
-                *out = pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
-            })
+        AstTree(PpAstTreeMode::Expanded) => {
+            debug!("pretty-printing expanded AST");
+            format!("{:#?}", krate)
         }
 
-        PpmHirTree(s) => {
-            let out = &mut out;
-            call_with_pp_support_hir(&s, tcx, move |_annotation, krate| {
-                debug!("pretty printing source code {:?}", s);
-                *out = format!("{:#?}", krate);
-            });
-        }
+        Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
+            debug!("pretty printing HIR {:?}", s);
+            let sess = annotation.sess();
+            let sm = sess.source_map();
+            pprust_hir::print_crate(sm, krate, src_name, src, annotation.pp_ann())
+        }),
+
+        HirTree => call_with_pp_support_hir(&PpHirMode::Normal, tcx, move |_annotation, krate| {
+            debug!("pretty printing HIR tree");
+            format!("{:#?}", krate)
+        }),
 
         _ => unreachable!(),
-    }
+    };
 
-    write_output(out.into_bytes(), ofile);
+    write_or_print(&out, ofile);
 }
 
 // In an ideal world, this would be a public function called by the driver after
@@ -494,16 +489,13 @@ fn print_with_analysis(
     tcx.analysis(LOCAL_CRATE)?;
 
     match ppm {
-        PpmMir | PpmMirCFG => match ppm {
-            PpmMir => write_mir_pretty(tcx, None, &mut out),
-            PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
-            _ => unreachable!(),
-        },
+        Mir => write_mir_pretty(tcx, None, &mut out).unwrap(),
+        MirCFG => write_mir_graphviz(tcx, None, &mut out).unwrap(),
         _ => unreachable!(),
     }
-    .unwrap();
 
-    write_output(out, ofile);
+    let out = std::str::from_utf8(&out).unwrap();
+    write_or_print(out, ofile);
 
     Ok(())
 }

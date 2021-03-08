@@ -17,7 +17,9 @@ use rustc_hir::{
     self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
 };
 use rustc_hir::{MethodKind, Target};
-use rustc_session::lint::builtin::{CONFLICTING_REPR_HINTS, UNUSED_ATTRIBUTES};
+use rustc_session::lint::builtin::{
+    CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -29,7 +31,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id);
+            let parent_hir_id = tcx.hir().get_parent_item(impl_item.hir_id());
             let containing_item = tcx.hir().expect_item(parent_hir_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
@@ -91,6 +93,8 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::naked) {
                 self.check_naked(hir_id, attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_legacy_const_generics) {
+                self.check_rustc_legacy_const_generics(&attr, span, target, item)
             } else {
                 // lint-only checks
                 if self.tcx.sess.check_name(attr, sym::cold) {
@@ -542,6 +546,59 @@ impl CheckAttrVisitor<'tcx> {
                         {
                             return false;
                         }
+                    } else if meta.has_name(sym::test) {
+                        if CRATE_HIR_ID != hir_id {
+                            self.tcx.struct_span_lint_hir(
+                                INVALID_DOC_ATTRIBUTES,
+                                hir_id,
+                                meta.span(),
+                                |lint| {
+                                    lint.build(
+                                        "`#![doc(test(...)]` is only allowed as a crate level attribute"
+                                    )
+                                    .emit();
+                                },
+                            );
+                            return false;
+                        }
+                    } else if let Some(i_meta) = meta.meta_item() {
+                        if ![
+                            sym::cfg,
+                            sym::hidden,
+                            sym::html_favicon_url,
+                            sym::html_logo_url,
+                            sym::html_no_source,
+                            sym::html_playground_url,
+                            sym::html_root_url,
+                            sym::include,
+                            sym::inline,
+                            sym::issue_tracker_base_url,
+                            sym::masked,
+                            sym::no_default_passes, // deprecated
+                            sym::no_inline,
+                            sym::passes,  // deprecated
+                            sym::plugins, // removed, but rustdoc warns about it itself
+                            sym::primitive,
+                            sym::spotlight,
+                            sym::test,
+                        ]
+                        .iter()
+                        .any(|m| i_meta.has_name(*m))
+                        {
+                            self.tcx.struct_span_lint_hir(
+                                INVALID_DOC_ATTRIBUTES,
+                                hir_id,
+                                i_meta.span,
+                                |lint| {
+                                    lint.build(&format!(
+                                        "unknown `doc` attribute `{}`",
+                                        i_meta.name_or_empty()
+                                    ))
+                                    .emit();
+                                },
+                            );
+                            return false;
+                        }
                     }
                 }
             }
@@ -733,6 +790,105 @@ impl CheckAttrVisitor<'tcx> {
                     }
                 } else {
                     bug!("should be a function item");
+                }
+            } else {
+                invalid_args.push(meta.span());
+            }
+        }
+
+        if !invalid_args.is_empty() {
+            self.tcx
+                .sess
+                .struct_span_err(invalid_args, "arguments should be non-negative integers")
+                .emit();
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Checks if `#[rustc_legacy_const_generics]` is applied to a function and has a valid argument.
+    fn check_rustc_legacy_const_generics(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) -> bool {
+        let is_function = matches!(target, Target::Fn | Target::Method(..));
+        if !is_function {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a function")
+                .span_label(*span, "not a function")
+                .emit();
+            return false;
+        }
+
+        let list = match attr.meta_item_list() {
+            // The attribute form is validated on AST.
+            None => return false,
+            Some(it) => it,
+        };
+
+        let (decl, generics) = match item {
+            Some(ItemLike::Item(Item {
+                kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
+                ..
+            })) => (decl, generics),
+            _ => bug!("should be a function item"),
+        };
+
+        for param in generics.params {
+            match param.kind {
+                hir::GenericParamKind::Const { .. } => {}
+                _ => {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            attr.span,
+                            "#[rustc_legacy_const_generics] functions must \
+                             only have const generics",
+                        )
+                        .span_label(param.span, "non-const generic parameter")
+                        .emit();
+                    return false;
+                }
+            }
+        }
+
+        if list.len() != generics.params.len() {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    attr.span,
+                    "#[rustc_legacy_const_generics] must have one index for each generic parameter",
+                )
+                .span_label(generics.span, "generic parameters")
+                .emit();
+            return false;
+        }
+
+        let arg_count = decl.inputs.len() as u128 + generics.params.len() as u128;
+        let mut invalid_args = vec![];
+        for meta in list {
+            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
+                if *val >= arg_count {
+                    let span = meta.span();
+                    self.tcx
+                        .sess
+                        .struct_span_err(span, "index exceeds number of arguments")
+                        .span_label(
+                            span,
+                            format!(
+                                "there {} only {} argument{}",
+                                if arg_count != 1 { "are" } else { "is" },
+                                arg_count,
+                                pluralize!(arg_count)
+                            ),
+                        )
+                        .emit();
+                    return false;
                 }
             } else {
                 invalid_args.push(meta.span());
@@ -1058,7 +1214,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
         self.check_attributes(
-            item.hir_id,
+            item.hir_id(),
             item.attrs,
             &item.span,
             target,
@@ -1081,7 +1237,13 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
-        self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
+        self.check_attributes(
+            trait_item.hir_id(),
+            &trait_item.attrs,
+            &trait_item.span,
+            target,
+            None,
+        );
         intravisit::walk_trait_item(self, trait_item)
     }
 
@@ -1101,21 +1263,10 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_arm(self, arm);
     }
 
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
-        self.check_attributes(
-            macro_def.hir_id,
-            &macro_def.attrs,
-            &macro_def.span,
-            Target::MacroDef,
-            None,
-        );
-        intravisit::walk_macro_def(self, macro_def);
-    }
-
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
-            f_item.hir_id,
+            f_item.hir_id(),
             &f_item.attrs,
             &f_item.span,
             target,
@@ -1126,7 +1277,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = target_from_impl_item(self.tcx, impl_item);
-        self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
+        self.check_attributes(impl_item.hir_id(), &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 
@@ -1156,6 +1307,23 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     ) {
         self.check_attributes(variant.id, variant.attrs, &variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant, generics, item_id)
+    }
+
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
+        self.check_attributes(
+            macro_def.hir_id(),
+            macro_def.attrs,
+            &macro_def.span,
+            Target::MacroDef,
+            None,
+        );
+        intravisit::walk_macro_def(self, macro_def);
+    }
+
+    fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
+        self.check_attributes(param.hir_id, param.attrs, &param.span, Target::Param, None);
+
+        intravisit::walk_param(self, param);
     }
 }
 

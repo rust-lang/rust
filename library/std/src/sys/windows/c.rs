@@ -1023,7 +1023,7 @@ extern "system" {
     pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
 
     // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinka
+    // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw
     pub fn CreateSymbolicLinkW(
         lpSymlinkFileName: LPCWSTR,
         lpTargetFileName: LPCWSTR,

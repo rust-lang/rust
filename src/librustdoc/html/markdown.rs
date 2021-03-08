@@ -21,7 +21,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint;
 use rustc_span::edition::Edition;
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -48,12 +47,16 @@ mod tests;
 
 /// Options for rendering Markdown in the main body of documentation.
 pub(crate) fn opts() -> Options {
-    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES | Options::ENABLE_STRIKETHROUGH
+    Options::ENABLE_TABLES
+        | Options::ENABLE_FOOTNOTES
+        | Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_TASKLISTS
+        | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// A subset of [`opts()`] used for rendering summaries.
 pub(crate) fn summary_opts() -> Options {
-    Options::ENABLE_STRIKETHROUGH
+    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_SMART_PUNCTUATION
 }
 
 /// When `to_string` is called, this struct will emit the HTML corresponding to
@@ -717,7 +720,7 @@ impl<'tcx> ExtraInfo<'tcx> {
             (None, None) => return,
         };
         self.tcx.struct_span_lint_hir(
-            lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES,
+            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             hir_id,
             self.sp,
             |lint| {
@@ -776,6 +779,31 @@ impl LangString {
         Self::parse(string, allow_error_code_check, enable_per_target_ignores, None)
     }
 
+    fn tokens(string: &str) -> impl Iterator<Item = &str> {
+        // Pandoc, which Rust once used for generating documentation,
+        // expects lang strings to be surrounded by `{}` and for each token
+        // to be proceeded by a `.`. Since some of these lang strings are still
+        // loose in the wild, we strip a pair of surrounding `{}` from the lang
+        // string and a leading `.` from each token.
+
+        let string = string.trim();
+
+        let first = string.chars().next();
+        let last = string.chars().last();
+
+        let string = if first == Some('{') && last == Some('}') {
+            &string[1..string.len() - 1]
+        } else {
+            string
+        };
+
+        string
+            .split(|c| c == ',' || c == ' ' || c == '\t')
+            .map(str::trim)
+            .map(|token| if token.chars().next() == Some('.') { &token[1..] } else { token })
+            .filter(|token| !token.is_empty())
+    }
+
     fn parse(
         string: &str,
         allow_error_code_check: ErrorCodes,
@@ -789,11 +817,11 @@ impl LangString {
         let mut ignores = vec![];
 
         data.original = string.to_owned();
-        let tokens = string.split(|c: char| !(c == '_' || c == '-' || c.is_alphanumeric()));
+
+        let tokens = Self::tokens(string).collect::<Vec<&str>>();
 
         for token in tokens {
-            match token.trim() {
-                "" => {}
+            match token {
                 "should_panic" => {
                     data.should_panic = true;
                     seen_rust_tags = !seen_other_tags;
@@ -890,6 +918,7 @@ impl LangString {
                 _ => seen_other_tags = true,
             }
         }
+
         // ignore-foo overrides ignore
         if !ignores.is_empty() {
             data.ignore = Ignore::Some(ignores);
@@ -1121,6 +1150,7 @@ crate fn plain_text_summary(md: &str) -> String {
             Event::HardBreak | Event::SoftBreak => s.push(' '),
             Event::Start(Tag::CodeBlock(..)) => break,
             Event::End(Tag::Paragraph) => break,
+            Event::End(Tag::Heading(..)) => break,
             _ => (),
         }
     }

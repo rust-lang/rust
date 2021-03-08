@@ -26,4 +26,4 @@ rustc_index = { path = "../rustc_index" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
