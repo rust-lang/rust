@@ -96,4 +96,16 @@ fn main() {
         Some(_) => 1,
         _ => 2,
     };
+
+    #[non_exhaustive]
+    enum Bar {
+        A,
+        B,
+        C,
+    }
+    match Bar::A {
+        Bar::A => (),
+        Bar::B => (),
+        _ => (),
+    };
 }
