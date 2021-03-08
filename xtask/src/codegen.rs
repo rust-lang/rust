@@ -16,7 +16,7 @@ use std::{
     fmt, mem,
     path::{Path, PathBuf},
 };
-use xshell::{cmd, pushenv, read_file, write_file};
+use xshell::{cmd, pushenv};
 
 use crate::{ensure_rustfmt, project_root, Result};
 
@@ -35,44 +35,38 @@ pub(crate) fn docs() -> Result<()> {
 
 #[allow(unused)]
 fn used() {
-    generate_parser_tests(Mode::Overwrite);
-    generate_assists_tests(Mode::Overwrite);
-    generate_syntax(Mode::Overwrite);
-    generate_lint_completions(Mode::Overwrite);
+    generate_parser_tests();
+    generate_assists_tests();
+    generate_syntax();
+    generate_lint_completions();
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub(crate) enum Mode {
-    Overwrite,
-    Ensure,
-}
-
-/// A helper to update file on disk if it has changed.
-/// With verify = false,
-fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
-    match read_file(path) {
-        Ok(old_contents) if normalize(&old_contents) == normalize(contents) => {
-            return Ok(());
+/// Checks that the `file` has the specified `contents`. If that is not the
+/// case, updates the file and then fails the test.
+pub(crate) fn ensure_file_contents(file: &Path, contents: &str) -> Result<()> {
+    match std::fs::read_to_string(file) {
+        Ok(old_contents) if normalize_newlines(&old_contents) == normalize_newlines(contents) => {
+            return Ok(())
         }
         _ => (),
     }
-    let return_error = match mode {
-        Mode::Overwrite => false,
-        Mode::Ensure => true,
-    };
-    eprintln!("updating {}", path.display());
-    write_file(path, contents)?;
-
-    return if return_error {
-        let path = path.strip_prefix(&project_root()).unwrap_or(path);
-        anyhow::bail!("`{}` was not up-to-date, updating", path.display());
-    } else {
-        Ok(())
-    };
-
-    fn normalize(s: &str) -> String {
-        s.replace("\r\n", "\n")
+    let display_path = file.strip_prefix(&project_root()).unwrap_or(file);
+    eprintln!(
+        "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
+        display_path.display()
+    );
+    if std::env::var("CI").is_ok() {
+        eprintln!("\n    NOTE: run `cargo test` locally and commit the updated files\n");
     }
+    if let Some(parent) = file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(file, contents).unwrap();
+    anyhow::bail!("some file were not up to date")
+}
+
+fn normalize_newlines(s: &str) -> String {
+    s.replace("\r\n", "\n")
 }
 
 const PREAMBLE: &str = "Generated file, do not edit by hand, see `xtask/src/codegen`";

@@ -8,13 +8,13 @@ use std::{
 };
 
 use crate::{
-    codegen::{extract_comment_blocks, update, Mode},
+    codegen::{ensure_file_contents, extract_comment_blocks},
     project_root, Result,
 };
 
-pub(crate) fn generate_parser_tests(mode: Mode) -> Result<()> {
+pub(crate) fn generate_parser_tests() -> Result<()> {
     let tests = tests_from_dir(&project_root().join(Path::new("crates/parser/src/grammar")))?;
-    fn install_tests(tests: &HashMap<String, Test>, into: &str, mode: Mode) -> Result<()> {
+    fn install_tests(tests: &HashMap<String, Test>, into: &str) -> Result<()> {
         let tests_dir = project_root().join(into);
         if !tests_dir.is_dir() {
             fs::create_dir_all(&tests_dir)?;
@@ -35,12 +35,12 @@ pub(crate) fn generate_parser_tests(mode: Mode) -> Result<()> {
                     tests_dir.join(file_name)
                 }
             };
-            update(&path, &test.text, mode)?;
+            ensure_file_contents(&path, &test.text)?;
         }
         Ok(())
     }
-    install_tests(&tests.ok, "crates/syntax/test_data/parser/inline/ok", mode)?;
-    install_tests(&tests.err, "crates/syntax/test_data/parser/inline/err", mode)
+    install_tests(&tests.ok, "crates/syntax/test_data/parser/inline/ok")?;
+    install_tests(&tests.err, "crates/syntax/test_data/parser/inline/err")
 }
 
 #[derive(Debug)]

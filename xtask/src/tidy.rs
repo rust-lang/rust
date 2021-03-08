@@ -3,27 +3,23 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, read_file};
+use xshell::{cmd, pushd, pushenv, read_file};
 
-use crate::{
-    cargo_files,
-    codegen::{self, Mode},
-    project_root, run_rustfmt, rust_files,
-};
+use crate::{cargo_files, codegen, project_root, rust_files};
 
 #[test]
 fn generate_grammar() {
-    codegen::generate_syntax(Mode::Ensure).unwrap()
+    codegen::generate_syntax().unwrap()
 }
 
 #[test]
 fn generate_parser_tests() {
-    codegen::generate_parser_tests(Mode::Ensure).unwrap()
+    codegen::generate_parser_tests().unwrap()
 }
 
 #[test]
 fn generate_assists_tests() {
-    codegen::generate_assists_tests(Mode::Ensure).unwrap();
+    codegen::generate_assists_tests().unwrap();
 }
 
 /// This clones rustc repo, and so is not worth to keep up-to-date. We update
@@ -31,12 +27,19 @@ fn generate_assists_tests() {
 #[test]
 #[ignore]
 fn generate_lint_completions() {
-    codegen::generate_lint_completions(Mode::Ensure).unwrap()
+    codegen::generate_lint_completions().unwrap()
 }
 
 #[test]
 fn check_code_formatting() {
-    run_rustfmt(Mode::Ensure).unwrap()
+    let _dir = pushd(project_root()).unwrap();
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+    crate::ensure_rustfmt().unwrap();
+    let res = cmd!("cargo fmt -- --check").run();
+    if !res.is_ok() {
+        let _ = cmd!("cargo fmt").run();
+    }
+    res.unwrap()
 }
 
 #[test]

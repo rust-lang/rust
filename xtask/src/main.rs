@@ -28,7 +28,7 @@ use std::{
 use walkdir::{DirEntry, WalkDir};
 use xshell::{cmd, cp, pushd, pushenv};
 
-use crate::{codegen::Mode, dist::DistCmd};
+use crate::dist::DistCmd;
 
 fn main() -> Result<()> {
     let _d = pushd(project_root())?;
@@ -82,23 +82,6 @@ fn cargo_files() -> impl Iterator<Item = PathBuf> {
 
 fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
     files_in(path, "rs")
-}
-
-fn run_rustfmt(mode: Mode) -> Result<()> {
-    let _dir = pushd(project_root())?;
-    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
-    ensure_rustfmt()?;
-    match mode {
-        Mode::Overwrite => cmd!("cargo fmt").run()?,
-        Mode::Ensure => {
-            let res = cmd!("cargo fmt -- --check").run();
-            if !res.is_ok() {
-                let _ = cmd!("cargo fmt").run();
-            }
-            res?;
-        }
-    };
-    Ok(())
 }
 
 fn ensure_rustfmt() -> Result<()> {

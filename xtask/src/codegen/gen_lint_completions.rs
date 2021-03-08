@@ -5,12 +5,9 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 use xshell::{cmd, read_file};
 
-use crate::{
-    codegen::{project_root, reformat, update, Mode, Result},
-    run_rustfmt,
-};
+use crate::codegen::{ensure_file_contents, project_root, reformat, Result};
 
-pub(crate) fn generate_lint_completions(mode: Mode) -> Result<()> {
+pub(crate) fn generate_lint_completions() -> Result<()> {
     if !Path::new("./target/rust").exists() {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run()?;
     }
@@ -25,8 +22,7 @@ pub(crate) fn generate_lint_completions(mode: Mode) -> Result<()> {
 
     let destination =
         project_root().join("crates/ide_completion/src/generated_lint_completions.rs");
-    update(destination.as_path(), &contents, mode)?;
-    run_rustfmt(mode)?;
+    ensure_file_contents(destination.as_path(), &contents)?;
 
     Ok(())
 }
