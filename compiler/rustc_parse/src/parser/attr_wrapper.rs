@@ -72,6 +72,10 @@ impl<'a> Parser<'a> {
         let cursor_snapshot = self.token_cursor.clone();
 
         let (mut ret, trailing_token) = f(self, attrs.attrs)?;
+        let tokens = match ret.tokens_mut() {
+            Some(tokens) if tokens.is_none() => tokens,
+            _ => return Ok(ret),
+        };
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
@@ -128,14 +132,14 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let lazy_impl = LazyTokenStreamImpl {
+        *tokens = Some(LazyTokenStream::new(LazyTokenStreamImpl {
             start_token,
             num_calls,
             cursor_snapshot,
             desugar_doc_comments: self.desugar_doc_comments,
             append_unglued_token: self.token_cursor.append_unglued_token.clone(),
-        };
-        ret.finalize_tokens(LazyTokenStream::new(lazy_impl));
+        }));
+
         Ok(ret)
     }
 }

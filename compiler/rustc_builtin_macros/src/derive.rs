@@ -1,7 +1,8 @@
+use crate::cfg_eval::cfg_eval;
+
 use rustc_ast::{self as ast, token, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
-use rustc_expand::config::StripUnconfigured;
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
@@ -51,26 +52,7 @@ impl MultiItemModifier for Expander {
 
         // FIXME: Try to cache intermediate results to avoid collecting same paths multiple times.
         match ecx.resolver.resolve_derives(ecx.current_expansion.id, derives, ecx.force_mode) {
-            Ok(()) => {
-                let mut visitor =
-                    StripUnconfigured { sess, features: ecx.ecfg.features, modified: false };
-                let mut item = visitor.fully_configure(item);
-                if visitor.modified {
-                    // Erase the tokens if cfg-stripping modified the item
-                    // This will cause us to synthesize fake tokens
-                    // when `nt_to_tokenstream` is called on this item.
-                    match &mut item {
-                        Annotatable::Item(item) => item,
-                        Annotatable::Stmt(stmt) => match &mut stmt.kind {
-                            StmtKind::Item(item) => item,
-                            _ => unreachable!(),
-                        },
-                        _ => unreachable!(),
-                    }
-                    .tokens = None;
-                }
-                ExpandResult::Ready(vec![item])
-            }
+            Ok(()) => ExpandResult::Ready(cfg_eval(ecx, item)),
             Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }

@@ -67,6 +67,15 @@ pub use core::prelude::v1::derive;
 #[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
 
+#[cfg(not(bootstrap))]
+#[unstable(
+    feature = "cfg_eval",
+    issue = "82679",
+    reason = "`cfg_eval` is a recently implemented feature"
+)]
+#[doc(hidden)]
+pub use core::prelude::v1::cfg_eval;
+
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.
 // Those files are duplicated rather than using glob imports
