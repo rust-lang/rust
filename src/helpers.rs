@@ -179,7 +179,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             )?;
             this.write_immediate(*arg, &callee_arg)?;
         }
-        callee_args.next().expect_none("callee has more arguments than expected");
+        assert_eq!(callee_args.next(), None, "callee has more arguments than expected");
 
         Ok(())
     }

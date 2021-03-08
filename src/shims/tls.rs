@@ -65,7 +65,7 @@ impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>, max_size: Size) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
-        self.keys.insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap_none();
+        self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
 
         if max_size.bits() < 128 && new_key >= (1u128 << max_size.bits() as u128) {

@@ -257,8 +257,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn set_thread_local_alloc_id(&self, def_id: DefId, new_alloc_id: AllocId) {
         self.thread_local_alloc_ids
             .borrow_mut()
-            .insert((def_id, self.active_thread), new_alloc_id)
-            .unwrap_none();
+            .try_insert((def_id, self.active_thread), new_alloc_id)
+            .unwrap();
     }
 
     /// Borrow the stack of the active thread.
@@ -404,8 +404,8 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         callback: TimeoutCallback<'mir, 'tcx>,
     ) {
         self.timeout_callbacks
-            .insert(thread, TimeoutCallbackInfo { call_time, callback })
-            .unwrap_none();
+            .try_insert(thread, TimeoutCallbackInfo { call_time, callback })
+            .unwrap();
     }
 
     /// Unregister the callback for the `thread`.

@@ -223,7 +223,7 @@ impl<'tcx> FileHandler {
             self.handles.last_key_value().map(|(fd, _)| fd.checked_add(1).unwrap()).unwrap_or(min_fd)
         });
 
-        self.handles.insert(new_fd, file_handle).unwrap_none();
+        self.handles.try_insert(new_fd, file_handle).unwrap();
         new_fd
     }
 }
@@ -381,7 +381,7 @@ impl DirHandler {
     fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        self.streams.insert(id, read_dir).unwrap_none();
+        self.streams.try_insert(id, read_dir).unwrap();
         id
     }
 }

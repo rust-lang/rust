@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
-#![feature(option_expect_none, option_unwrap_none)]
 #![feature(map_first_last)]
+#![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(or_patterns)]
 #![feature(try_blocks)]
