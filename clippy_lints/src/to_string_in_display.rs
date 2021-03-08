@@ -1,8 +1,9 @@
-use crate::utils::{match_def_path, match_trait_method, path_to_local_id, paths, span_lint};
+use crate::utils::{is_diagnostic_assoc_item, match_def_path, path_to_local_id, paths, span_lint};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for uses of `to_string()` in `Display` traits.
@@ -92,7 +93,8 @@ impl LateLintPass<'_> for ToStringInDisplay {
             if let Some(self_hir_id) = self.self_hir_id;
             if let ExprKind::MethodCall(ref path, _, args, _) = expr.kind;
             if path.ident.name == sym!(to_string);
-            if match_trait_method(cx, expr, &paths::TO_STRING);
+            if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+            if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString);
             if path_to_local_id(&args[0], self_hir_id);
             then {
                 span_lint(

@@ -64,8 +64,8 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
     def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
-    Item, ItemKind, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
-    TyKind, Unsafety,
+    Item, ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind,
+    TraitRef, TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -229,6 +229,36 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangI
     match ty.kind() {
         ty::Adt(adt, _) => cx.tcx.lang_items().require(lang_item).unwrap() == adt.did,
         _ => false,
+    }
+}
+
+/// Checks if the first type parameter is a lang item.
+pub fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangItem) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .and_then(|id| (cx.tcx.lang_items().require(item) == Ok(id)).then(|| ty))
+    } else {
+        None
+    }
+}
+
+/// Checks if the first type parameter is a diagnostic item.
+pub fn is_ty_param_diagnostic_item(
+    cx: &LateContext<'_>,
+    qpath: &QPath<'tcx>,
+    item: Symbol,
+) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .and_then(|id| cx.tcx.is_diagnostic_item(item, id).then(|| ty))
+    } else {
+        None
     }
 }
 

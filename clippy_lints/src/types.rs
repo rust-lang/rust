@@ -23,7 +23,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
@@ -33,10 +33,10 @@ use crate::utils::paths;
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, get_qpath_generic_tys, higher, in_constant, indent_of, int_bits,
-    is_hir_ty_cfg_dependant, is_type_diagnostic_item, last_path_segment, match_def_path, match_path, meets_msrv,
-    method_chain_args, multispan_sugg, numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg,
-    span_lint_and_then, unsext,
+    is_hir_ty_cfg_dependant, is_ty_param_diagnostic_item, is_ty_param_lang_item, is_type_diagnostic_item,
+    last_path_segment, match_def_path, match_path, meets_msrv, method_chain_args, multispan_sugg,
+    numeric_literal::NumericLiteral, reindent_multiline, sext, snippet, snippet_opt, snippet_with_applicability,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -287,51 +287,12 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 }
 
-/// Checks if the first type parameter is a lang item.
-fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangItem) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .and_then(|id| (cx.tcx.lang_items().require(item) == Ok(id)).then(|| ty))
-    } else {
-        None
-    }
-}
-
-/// Checks if the first type parameter is a diagnostic item.
-fn is_ty_param_diagnostic_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: Symbol) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .and_then(|id| cx.tcx.is_diagnostic_item(item, id).then(|| ty))
-    } else {
-        None
-    }
-}
-
-/// Checks if the first type parameter is a given item.
-fn is_ty_param_path(cx: &LateContext<'_>, qpath: &QPath<'tcx>, path: &[&str]) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .and_then(|id| match_def_path(cx, id, path).then(|| ty))
-    } else {
-        None
-    }
-}
-
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
     if is_ty_param_diagnostic_item(cx, qpath, sym::string_type).is_some() {
         Some("str")
-    } else if is_ty_param_path(cx, qpath, &paths::OS_STRING).is_some() {
+    } else if is_ty_param_diagnostic_item(cx, qpath, sym::OsString).is_some() {
         Some("std::ffi::OsStr")
-    } else if is_ty_param_path(cx, qpath, &paths::PATH_BUF).is_some() {
+    } else if is_ty_param_diagnostic_item(cx, qpath, sym::PathBuf).is_some() {
         Some("std::path::Path")
     } else {
         None
