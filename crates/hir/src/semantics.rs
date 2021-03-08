@@ -20,12 +20,11 @@ use syntax::{
 };
 
 use crate::{
-    code_model::Access,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    AssocItem, Callable, ConstParam, Crate, Field, Function, HirFileId, Impl, InFile, Label,
-    LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type,
+    Access, AssocItem, Callable, ConstParam, Crate, Field, Function, HirFileId, Impl, InFile,
+    Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait, Type,
     TypeAlias, TypeParam, VariantDef,
 };
 
