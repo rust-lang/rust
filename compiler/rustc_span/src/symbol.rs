@@ -344,6 +344,7 @@ symbols! {
         cfg_attr,
         cfg_attr_multi,
         cfg_doctest,
+        cfg_eval,
         cfg_panic,
         cfg_sanitize,
         cfg_target_feature,
