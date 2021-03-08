@@ -713,7 +713,7 @@
                     }
                 },
                 "rust-analyzer.rustcSource": {
-                    "markdownDescription": "Path to the rust compiler sources, for usage in rustc_private projects, or \"discover\" to try to automatically find it. Any project which uses rust-analyzer with the rustcPrivate crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.",
+                    "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private projects, or \"discover\" to try to automatically find it.    Any project which uses rust-analyzer with the rustcPrivate crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.    This option is not reloaded automatically; you must restart rust-analyzer for it to take effect.",
                     "default": null,
                     "type": [
                         "null",
