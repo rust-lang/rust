@@ -8,7 +8,7 @@ use xshell::{cmd, read_file};
 use crate::codegen::{ensure_file_contents, project_root, reformat, Result};
 
 pub(crate) fn generate_lint_completions() -> Result<()> {
-    if !Path::new("./target/rust").exists() {
+    if !project_root().join("./target/rust").exists() {
         cmd!("git clone --depth=1 https://github.com/rust-lang/rust ./target/rust").run()?;
     }
 
