@@ -25,7 +25,6 @@ use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use syntax::{ast, match_ast, SyntaxKind};
-use test_utils::mark;
 
 use crate::{
     attr::{Attrs, RawAttrs},

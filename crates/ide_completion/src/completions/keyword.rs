@@ -3,7 +3,6 @@
 use std::iter;
 
 use syntax::SyntaxKind;
-use test_utils::mark;
 
 use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
@@ -47,11 +46,11 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 
 pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.token.kind() == SyntaxKind::COMMENT {
-        mark::hit!(no_keyword_completion_in_comments);
+        cov_mark::hit!(no_keyword_completion_in_comments);
         return;
     }
     if ctx.record_lit_syntax.is_some() {
-        mark::hit!(no_keyword_completion_in_record_lit);
+        cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }
 
@@ -172,7 +171,7 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
         Some(cap) => {
             let tmp;
             let snippet = if snippet.ends_with('}') && ctx.incomplete_let {
-                mark::hit!(let_semi);
+                cov_mark::hit!(let_semi);
                 tmp = format!("{};", snippet);
                 &tmp
             } else {
@@ -188,7 +187,6 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{
         test_utils::{check_edit, completion_list},
@@ -494,7 +492,7 @@ fn quux() -> i32 {
 
     #[test]
     fn no_keyword_completion_in_comments() {
-        mark::check!(no_keyword_completion_in_comments);
+        cov_mark::check!(no_keyword_completion_in_comments);
         check(
             r#"
 fn test() {
@@ -599,7 +597,7 @@ struct Foo {
 
     #[test]
     fn skip_struct_initializer() {
-        mark::check!(no_keyword_completion_in_record_lit);
+        cov_mark::check!(no_keyword_completion_in_record_lit);
         check(
             r#"
 struct Foo {
@@ -643,7 +641,7 @@ fn foo() {
 
     #[test]
     fn let_semi() {
-        mark::check!(let_semi);
+        cov_mark::check!(let_semi);
         check_edit(
             "match",
             r#"

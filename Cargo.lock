@@ -243,6 +243,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cov-mark"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ffa3d3e0138386cd4361f63537765cac7ee40698028844635a54495a92f67f3"
+
+[[package]]
 name = "crc32fast"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -492,6 +498,7 @@ dependencies = [
  "anymap",
  "base_db",
  "cfg",
+ "cov-mark",
  "drop_bomb",
  "either",
  "expect-test",
@@ -538,6 +545,7 @@ dependencies = [
  "chalk-ir",
  "chalk-recursive",
  "chalk-solve",
+ "cov-mark",
  "ena",
  "expect-test",
  "hir_def",
@@ -572,6 +580,7 @@ name = "ide"
 version = "0.0.0"
 dependencies = [
  "cfg",
+ "cov-mark",
  "either",
  "expect-test",
  "hir",
@@ -598,6 +607,7 @@ dependencies = [
 name = "ide_assists"
 version = "0.0.0"
 dependencies = [
+ "cov-mark",
  "either",
  "expect-test",
  "hir",
@@ -616,6 +626,7 @@ name = "ide_completion"
 version = "0.0.0"
 dependencies = [
  "base_db",
+ "cov-mark",
  "either",
  "expect-test",
  "hir",
@@ -635,6 +646,7 @@ name = "ide_db"
 version = "0.0.0"
 dependencies = [
  "base_db",
+ "cov-mark",
  "either",
  "expect-test",
  "fst",
@@ -655,6 +667,7 @@ dependencies = [
 name = "ide_ssr"
 version = "0.0.0"
 dependencies = [
+ "cov-mark",
  "expect-test",
  "hir",
  "ide_db",
@@ -865,6 +878,7 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 name = "mbe"
 version = "0.0.0"
 dependencies = [
+ "cov-mark",
  "log",
  "parser",
  "profile",
@@ -1578,6 +1592,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "cov-mark",
  "expect-test",
  "indexmap",
  "itertools",

@@ -3,7 +3,6 @@
 use hir::{HasSource, HirDisplay, Type};
 use ide_db::SymbolKind;
 use syntax::ast::Fn;
-use test_utils::mark;
 
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
@@ -82,7 +81,7 @@ impl<'a> FunctionRender<'a> {
             self.func.method_params(self.ctx.db()).unwrap_or_default()
         } else {
             if let Some(s) = ast_params.self_param() {
-                mark::hit!(parens_for_method_call_as_assoc_fn);
+                cov_mark::hit!(parens_for_method_call_as_assoc_fn);
                 params_pats.push(Some(s.to_string()));
             }
             self.func.assoc_fn_params(self.ctx.db())
@@ -114,8 +113,6 @@ impl<'a> FunctionRender<'a> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::{
         test_utils::{check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig,
@@ -123,7 +120,7 @@ mod tests {
 
     #[test]
     fn inserts_parens_for_function_calls() {
-        mark::check!(inserts_parens_for_function_calls);
+        cov_mark::check!(inserts_parens_for_function_calls);
         check_edit(
             "no_args",
             r#"
@@ -191,7 +188,7 @@ fn bar(s: &S) {
 
     #[test]
     fn parens_for_method_call_as_assoc_fn() {
-        mark::check!(parens_for_method_call_as_assoc_fn);
+        cov_mark::check!(parens_for_method_call_as_assoc_fn);
         check_edit(
             "foo",
             r#"
@@ -213,7 +210,7 @@ fn main() { S::foo(${1:&self})$0 }
 
     #[test]
     fn suppress_arg_snippets() {
-        mark::check!(suppress_arg_snippets);
+        cov_mark::check!(suppress_arg_snippets);
         check_edit_with_config(
             CompletionConfig { add_call_argument_snippets: false, ..TEST_CONFIG },
             "with_args",

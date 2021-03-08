@@ -51,7 +51,7 @@ use std::bar::G;",
 
 #[test]
 fn insert_start_indent() {
-    mark::check!(insert_use_indent_after);
+    cov_mark::check!(insert_use_indent_after);
     check_none(
         "std::bar::AA",
         r"
@@ -120,7 +120,7 @@ use std::bar::ZZ;",
 
 #[test]
 fn insert_end_indent() {
-    mark::check!(insert_use_indent_before);
+    cov_mark::check!(insert_use_indent_before);
     check_none(
         "std::bar::ZZ",
         r"
@@ -255,7 +255,7 @@ fn insert_empty_file() {
 
 #[test]
 fn insert_empty_module() {
-    mark::check!(insert_use_no_indent_after);
+    cov_mark::check!(insert_use_no_indent_after);
     check(
         "foo::bar",
         "mod x {}",

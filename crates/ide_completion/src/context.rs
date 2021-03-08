@@ -7,7 +7,7 @@ use syntax::{
     algo::find_node_at_offset, ast, match_ast, AstNode, NodeOrToken, SyntaxKind::*, SyntaxNode,
     SyntaxToken, TextRange, TextSize,
 };
-use test_utils::mark;
+
 use text_edit::Indel;
 
 use crate::{
@@ -240,7 +240,7 @@ impl<'a> CompletionContext<'a> {
         // check kind of macro-expanded token, but use range of original token
         let kind = self.token.kind();
         if kind == IDENT || kind == UNDERSCORE || kind.is_keyword() {
-            mark::hit!(completes_if_prefix_is_keyword);
+            cov_mark::hit!(completes_if_prefix_is_keyword);
             self.original_token.text_range()
         } else {
             TextRange::empty(self.position.offset)

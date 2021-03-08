@@ -1,6 +1,5 @@
 use hir::HirDisplay;
 use syntax::{ast, AstNode, TextRange, TextSize};
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -42,7 +41,7 @@ pub(crate) fn infer_function_return_type(acc: &mut Assists, ctx: &AssistContext)
                 }
             }
             if let FnType::Closure { wrap_expr: true } = fn_type {
-                mark::hit!(wrap_closure_non_block_expr);
+                cov_mark::hit!(wrap_closure_non_block_expr);
                 // `|x| x` becomes `|x| -> T x` which is invalid, so wrap it in a block
                 builder.replace(tail_expr.syntax().text_range(), &format!("{{{}}}", tail_expr));
             }
@@ -61,13 +60,13 @@ fn ret_ty_to_action(ret_ty: Option<ast::RetType>, insert_pos: TextSize) -> Optio
     match ret_ty {
         Some(ret_ty) => match ret_ty.ty() {
             Some(ast::Type::InferType(_)) | None => {
-                mark::hit!(existing_infer_ret_type);
-                mark::hit!(existing_infer_ret_type_closure);
+                cov_mark::hit!(existing_infer_ret_type);
+                cov_mark::hit!(existing_infer_ret_type_closure);
                 Some(InsertOrReplace::Replace(ret_ty.syntax().text_range()))
             }
             _ => {
-                mark::hit!(existing_ret_type);
-                mark::hit!(existing_ret_type_closure);
+                cov_mark::hit!(existing_ret_type);
+                cov_mark::hit!(existing_ret_type_closure);
                 None
             }
         },
@@ -109,11 +108,11 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
         };
     let frange = ctx.frange.range;
     if return_type_range.contains_range(frange) {
-        mark::hit!(cursor_in_ret_position);
-        mark::hit!(cursor_in_ret_position_closure);
+        cov_mark::hit!(cursor_in_ret_position);
+        cov_mark::hit!(cursor_in_ret_position_closure);
     } else if tail_expr.syntax().text_range().contains_range(frange) {
-        mark::hit!(cursor_on_tail);
-        mark::hit!(cursor_on_tail_closure);
+        cov_mark::hit!(cursor_on_tail);
+        cov_mark::hit!(cursor_on_tail_closure);
     } else {
         return None;
     }
@@ -128,7 +127,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_specified_inferred() {
-        mark::check!(existing_infer_ret_type);
+        cov_mark::check!(existing_infer_ret_type);
         check_assist(
             infer_function_return_type,
             r#"fn foo() -> $0_ {
@@ -142,7 +141,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_specified_inferred_closure() {
-        mark::check!(existing_infer_ret_type_closure);
+        cov_mark::check!(existing_infer_ret_type_closure);
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
@@ -156,7 +155,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_cursor_at_return_type_pos() {
-        mark::check!(cursor_in_ret_position);
+        cov_mark::check!(cursor_in_ret_position);
         check_assist(
             infer_function_return_type,
             r#"fn foo() $0{
@@ -170,7 +169,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_cursor_at_return_type_pos_closure() {
-        mark::check!(cursor_in_ret_position_closure);
+        cov_mark::check!(cursor_in_ret_position_closure);
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
@@ -184,7 +183,7 @@ mod tests {
 
     #[test]
     fn infer_return_type() {
-        mark::check!(cursor_on_tail);
+        cov_mark::check!(cursor_on_tail);
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
@@ -219,7 +218,7 @@ mod tests {
 
     #[test]
     fn not_applicable_ret_type_specified() {
-        mark::check!(existing_ret_type);
+        cov_mark::check!(existing_ret_type);
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() -> i32 {
@@ -251,7 +250,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_closure_block() {
-        mark::check!(cursor_on_tail_closure);
+        cov_mark::check!(cursor_on_tail_closure);
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
@@ -282,7 +281,7 @@ mod tests {
 
     #[test]
     fn infer_return_type_closure_wrap() {
-        mark::check!(wrap_closure_non_block_expr);
+        cov_mark::check!(wrap_closure_non_block_expr);
         check_assist(
             infer_function_return_type,
             r#"fn foo() {
@@ -321,7 +320,7 @@ mod tests {
 
     #[test]
     fn not_applicable_ret_type_specified_closure() {
-        mark::check!(existing_ret_type_closure);
+        cov_mark::check!(existing_ret_type_closure);
         check_assist_not_applicable(
             infer_function_return_type,
             r#"fn foo() {

@@ -15,7 +15,6 @@ use syntax::{
     ast::{AstNode, AstToken},
     SmolStr,
 };
-use test_utils::mark;
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were
 // going to match, as indicated by the --debug-snippet flag, then populate the reason field.
@@ -731,7 +730,7 @@ impl NodeKind {
     fn matches(&self, node: &SyntaxNode) -> Result<(), MatchFailed> {
         let ok = match self {
             Self::Literal => {
-                mark::hit!(literal_constraint);
+                cov_mark::hit!(literal_constraint);
                 ast::Literal::can_cast(node.kind())
             }
         };

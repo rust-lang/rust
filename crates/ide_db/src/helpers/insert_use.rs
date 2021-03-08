@@ -13,7 +13,6 @@ use syntax::{
     },
     AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
 };
-use test_utils::mark;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
@@ -138,7 +137,7 @@ pub fn insert_use<'a>(
 
         if add_blank.has_before() {
             if let Some(indent) = indent.clone() {
-                mark::hit!(insert_use_indent_before);
+                cov_mark::hit!(insert_use_indent_before);
                 buf.push(indent);
             }
         }
@@ -156,11 +155,11 @@ pub fn insert_use<'a>(
         // only add indentation *after* our stuff if there's another node directly after it
         if add_blank.has_after() && matches!(insert_position, InsertPosition::Before(_)) {
             if let Some(indent) = indent {
-                mark::hit!(insert_use_indent_after);
+                cov_mark::hit!(insert_use_indent_after);
                 buf.push(indent);
             }
         } else if add_blank.has_after() && matches!(insert_position, InsertPosition::After(_)) {
-            mark::hit!(insert_use_no_indent_after);
+            cov_mark::hit!(insert_use_no_indent_after);
         }
 
         buf

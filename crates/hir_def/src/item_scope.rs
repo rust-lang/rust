@@ -9,7 +9,6 @@ use hir_expand::MacroDefKind;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::format_to;
-use test_utils::mark;
 
 use crate::{
     db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ImplId,
@@ -237,7 +236,7 @@ impl ItemScope {
                         if $glob_imports.$field.contains(&$lookup)
                             && matches!($def_import_type, ImportType::Named) =>
                     {
-                        mark::hit!(import_shadowed);
+                        cov_mark::hit!(import_shadowed);
                         $glob_imports.$field.remove(&$lookup);
                         if let Some(fld) = $def.$field {
                             entry.insert(fld);

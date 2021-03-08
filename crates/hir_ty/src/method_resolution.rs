@@ -588,7 +588,7 @@ fn iterate_inherent_methods(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none() && inherent_impl_substs(db, impl_def, self_ty).is_none() {
-                    test_utils::mark::hit!(impl_self_type_match_without_receiver);
+                    cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
                 if callback(&self_ty.value, item) {

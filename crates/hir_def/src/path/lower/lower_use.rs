@@ -6,7 +6,6 @@ use std::iter;
 use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName};
 use syntax::ast::{self, NameOwner};
-use test_utils::mark;
 
 use crate::path::{ImportAlias, ModPath, PathKind};
 
@@ -54,7 +53,7 @@ pub(crate) fn lower_use_tree(
         // FIXME: report errors somewhere
         // We get here if we do
         } else if is_glob {
-            mark::hit!(glob_enum_group);
+            cov_mark::hit!(glob_enum_group);
             if let Some(prefix) = prefix {
                 cb(prefix, &tree, is_glob, None)
             }

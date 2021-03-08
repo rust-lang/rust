@@ -15,7 +15,6 @@ use hir::{
 };
 use ide_db::{helpers::SnippetCap, RootDatabase, SymbolKind};
 use syntax::TextRange;
-use test_utils::mark;
 
 use crate::{
     item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
@@ -115,11 +114,11 @@ impl<'a> RenderContext<'a> {
 
     fn active_name_and_type(&self) -> Option<(String, Type)> {
         if let Some(record_field) = &self.completion.record_field_syntax {
-            mark::hit!(record_field_type_match);
+            cov_mark::hit!(record_field_type_match);
             let (struct_field, _local) = self.completion.sema.resolve_record_field(record_field)?;
             Some((struct_field.name(self.db()).to_string(), struct_field.signature_ty(self.db())))
         } else if let Some(active_parameter) = &self.completion.active_parameter {
-            mark::hit!(active_param_type_match);
+            cov_mark::hit!(active_param_type_match);
             Some((active_parameter.name.clone(), active_parameter.ty.clone()))
         } else {
             None
@@ -269,7 +268,7 @@ impl<'a> Render<'a> {
                     _ => false,
                 };
                 if has_non_default_type_params {
-                    mark::hit!(inserts_angle_brackets_for_generics);
+                    cov_mark::hit!(inserts_angle_brackets_for_generics);
                     item = item
                         .lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
@@ -358,7 +357,6 @@ mod tests {
     use std::cmp::Reverse;
 
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
@@ -734,7 +732,7 @@ fn foo(s: S) { s.$0 }
 
     #[test]
     fn no_call_parens_if_fn_ptr_needed() {
-        mark::check!(no_call_parens_if_fn_ptr_needed);
+        cov_mark::check!(no_call_parens_if_fn_ptr_needed);
         check_edit(
             "foo",
             r#"
@@ -758,7 +756,7 @@ fn main() -> ManualVtable {
 
     #[test]
     fn no_parens_in_use_item() {
-        mark::check!(no_parens_in_use_item);
+        cov_mark::check!(no_parens_in_use_item);
         check_edit(
             "foo",
             r#"
@@ -802,7 +800,7 @@ fn f(foo: &Foo) { foo.foo(); }
 
     #[test]
     fn inserts_angle_brackets_for_generics() {
-        mark::check!(inserts_angle_brackets_for_generics);
+        cov_mark::check!(inserts_angle_brackets_for_generics);
         check_edit(
             "Vec",
             r#"
@@ -851,7 +849,7 @@ fn foo(xs: Vec<i128>)
 
     #[test]
     fn active_param_score() {
-        mark::check!(active_param_type_match);
+        cov_mark::check!(active_param_type_match);
         check_scores(
             r#"
 struct S { foo: i64, bar: u32, baz: u32 }
@@ -868,7 +866,7 @@ fn foo(s: S) { test(s.$0) }
 
     #[test]
     fn record_field_scores() {
-        mark::check!(record_field_type_match);
+        cov_mark::check!(record_field_type_match);
         check_scores(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }

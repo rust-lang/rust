@@ -20,7 +20,6 @@ use la_arena::{Arena, ArenaMap};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
-use test_utils::mark;
 
 pub(crate) use lower::LowerCtx;
 
@@ -105,7 +104,7 @@ impl Expander {
         macro_call: ast::MacroCall,
     ) -> ExpandResult<Option<(Mark, T)>> {
         if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
-            mark::hit!(your_stack_belongs_to_me);
+            cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::str_err("reached recursion limit during macro expansion".into());
         }
 

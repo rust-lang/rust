@@ -5,7 +5,6 @@ use syntax::{
     ast::{self, edit::AstNodeEdit, NameOwner},
     AstNode, TextRange,
 };
-use test_utils::mark;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -28,7 +27,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
 
     let l_curly_offset = module_items.syntax().text_range().start();
     if l_curly_offset <= ctx.offset() {
-        mark::hit!(available_before_curly);
+        cov_mark::hit!(available_before_curly);
         return None;
     }
     let target = TextRange::new(module_ast.syntax().text_range().start(), l_curly_offset);
@@ -182,7 +181,7 @@ pub(crate) mod tests;
 
     #[test]
     fn available_before_curly() {
-        mark::check!(available_before_curly);
+        cov_mark::check!(available_before_curly);
         check_assist_not_applicable(move_module_to_file, r#"mod m { $0 }"#);
     }
 }

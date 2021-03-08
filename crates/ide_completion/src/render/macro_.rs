@@ -3,7 +3,6 @@
 use hir::{Documentation, HasSource};
 use ide_db::SymbolKind;
 use syntax::display::macro_label;
-use test_utils::mark;
 
 use crate::{
     item::{CompletionItem, CompletionKind, ImportEdit},
@@ -57,7 +56,7 @@ impl<'a> MacroRender<'a> {
             }
             None if needs_bang => builder.insert_text(self.banged_name()),
             _ => {
-                mark::hit!(dont_insert_macro_call_parens_unncessary);
+                cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
                 builder.insert_text(&self.name)
             }
         };
@@ -125,13 +124,11 @@ fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static s
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::test_utils::check_edit;
 
     #[test]
     fn dont_insert_macro_call_parens_unncessary() {
-        mark::check!(dont_insert_macro_call_parens_unncessary);
+        cov_mark::check!(dont_insert_macro_call_parens_unncessary);
         check_edit(
             "frobnicate!",
             r#"

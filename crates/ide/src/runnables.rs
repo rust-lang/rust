@@ -9,7 +9,6 @@ use syntax::{
     ast::{self, AstNode, AttrsOwner},
     match_ast, SyntaxNode,
 };
-use test_utils::mark;
 
 use crate::{
     display::{ToNav, TryToNav},
@@ -130,7 +129,9 @@ fn runnables_mod(sema: &Semantics<RootDatabase>, acc: &mut Vec<Runnable>, module
         if let hir::ModuleDef::Module(submodule) = def {
             match submodule.definition_source(sema.db).value {
                 hir::ModuleSource::Module(_) => runnables_mod(sema, acc, submodule),
-                hir::ModuleSource::SourceFile(_) => mark::hit!(dont_recurse_in_outline_submodules),
+                hir::ModuleSource::SourceFile(_) => {
+                    cov_mark::hit!(dont_recurse_in_outline_submodules)
+                }
                 hir::ModuleSource::BlockExpr(_) => {} // inner items aren't runnable
             }
         }
@@ -328,7 +329,6 @@ fn has_test_function_or_multiple_test_submodules(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::fixture;
 
@@ -1056,7 +1056,7 @@ mod tests {
 
     #[test]
     fn dont_recurse_in_outline_submodules() {
-        mark::check!(dont_recurse_in_outline_submodules);
+        cov_mark::check!(dont_recurse_in_outline_submodules);
         check(
             r#"
 //- /lib.rs

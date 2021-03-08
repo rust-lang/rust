@@ -210,7 +210,7 @@ macro_rules! bar {
 
 #[test]
 fn macro_rules_from_other_crates_are_visible_with_macro_use() {
-    mark::check!(macro_rules_from_other_crates_are_visible_with_macro_use);
+    cov_mark::check!(macro_rules_from_other_crates_are_visible_with_macro_use);
     check(
         r#"
 //- /main.rs crate:main deps:foo
@@ -260,7 +260,7 @@ mod priv_mod {
 
 #[test]
 fn prelude_is_macro_use() {
-    mark::check!(prelude_is_macro_use);
+    cov_mark::check!(prelude_is_macro_use);
     check(
         r#"
 //- /main.rs crate:main deps:foo
@@ -550,7 +550,7 @@ mod m {
 
 #[test]
 fn macro_dollar_crate_is_correct_in_item() {
-    mark::check!(macro_dollar_crate_self);
+    cov_mark::check!(macro_dollar_crate_self);
     check(
         r#"
 //- /main.rs crate:main deps:foo
@@ -608,7 +608,7 @@ struct Baz;
 
 #[test]
 fn macro_dollar_crate_is_correct_in_indirect_deps() {
-    mark::check!(macro_dollar_crate_other);
+    cov_mark::check!(macro_dollar_crate_other);
     // From std
     check(
         r#"
@@ -686,7 +686,7 @@ pub trait Clone {}
 
 #[test]
 fn macro_expansion_overflow() {
-    mark::check!(macro_expansion_overflow);
+    cov_mark::check!(macro_expansion_overflow);
     check(
         r#"
 macro_rules! a {

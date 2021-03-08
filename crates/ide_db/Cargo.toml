@@ -10,6 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+cov-mark = "1.1"
 log = "0.4.8"
 rayon = "1.5.0"
 fst = { version = "0.4", default-features = false }

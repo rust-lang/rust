@@ -4,7 +4,6 @@ use std::iter;
 
 use hir_expand::name::{known, AsName, Name};
 use rustc_hash::FxHashSet;
-use test_utils::mark;
 
 use crate::nameres::DefMap;
 use crate::{
@@ -215,7 +214,7 @@ fn find_path_inner(
                     best_path_len - 1,
                     prefixed,
                 )?;
-                mark::hit!(partially_imported);
+                cov_mark::hit!(partially_imported);
                 path.push_segment(info.path.segments.last().unwrap().clone());
                 Some(path)
             })
@@ -235,7 +234,7 @@ fn find_path_inner(
     // that correctly (FIXME).
     if let Some(item_module) = item.as_module_def_id().and_then(|did| did.module(db)) {
         if item_module.def_map(db).block_id().is_some() && prefixed.is_some() {
-            mark::hit!(prefixed_in_block_expression);
+            cov_mark::hit!(prefixed_in_block_expression);
             prefixed = Some(PrefixKind::Plain);
         }
     }
@@ -252,18 +251,18 @@ fn find_path_inner(
 fn select_best_path(old_path: ModPath, new_path: ModPath, prefer_no_std: bool) -> ModPath {
     if old_path.starts_with_std() && new_path.can_start_with_std() {
         if prefer_no_std {
-            mark::hit!(prefer_no_std_paths);
+            cov_mark::hit!(prefer_no_std_paths);
             new_path
         } else {
-            mark::hit!(prefer_std_paths);
+            cov_mark::hit!(prefer_std_paths);
             old_path
         }
     } else if new_path.starts_with_std() && old_path.can_start_with_std() {
         if prefer_no_std {
-            mark::hit!(prefer_no_std_paths);
+            cov_mark::hit!(prefer_no_std_paths);
             old_path
         } else {
-            mark::hit!(prefer_std_paths);
+            cov_mark::hit!(prefer_std_paths);
             new_path
         }
     } else if new_path.len() < old_path.len() {
@@ -364,7 +363,6 @@ mod tests {
     use base_db::fixture::WithFixture;
     use hir_expand::hygiene::Hygiene;
     use syntax::ast::AstNode;
-    use test_utils::mark;
 
     use crate::test_db::TestDB;
 
@@ -522,7 +520,7 @@ mod tests {
 
     #[test]
     fn partially_imported() {
-        mark::check!(partially_imported);
+        cov_mark::check!(partially_imported);
         // Tests that short paths are used even for external items, when parts of the path are
         // already in scope.
         let code = r#"
@@ -686,7 +684,7 @@ mod tests {
 
     #[test]
     fn prefer_std_paths_over_alloc() {
-        mark::check!(prefer_std_paths);
+        cov_mark::check!(prefer_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:alloc,std
         $0
@@ -712,7 +710,7 @@ mod tests {
 
     #[test]
     fn prefer_core_paths_over_std() {
-        mark::check!(prefer_no_std_paths);
+        cov_mark::check!(prefer_no_std_paths);
         let code = r#"
         //- /main.rs crate:main deps:core,std
         #![no_std]
@@ -842,7 +840,7 @@ mod tests {
 
     #[test]
     fn inner_items_from_inner_module() {
-        mark::check!(prefixed_in_block_expression);
+        cov_mark::check!(prefixed_in_block_expression);
         check_found_path(
             r#"
             fn main() {

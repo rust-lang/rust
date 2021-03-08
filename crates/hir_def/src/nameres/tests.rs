@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::{expect, Expect};
-use test_utils::mark;
 
 use crate::{db::DefDatabase, test_db::TestDB};
 
@@ -136,7 +135,7 @@ mod m {
 
 #[test]
 fn bogus_paths() {
-    mark::check!(bogus_paths);
+    cov_mark::check!(bogus_paths);
     check(
         r#"
 //- /lib.rs
@@ -243,7 +242,7 @@ pub struct Baz;
 
 #[test]
 fn std_prelude() {
-    mark::check!(std_prelude);
+    cov_mark::check!(std_prelude);
     check(
         r#"
 //- /main.rs crate:main deps:test_crate
@@ -267,7 +266,7 @@ pub enum Foo { Bar, Baz };
 
 #[test]
 fn can_import_enum_variant() {
-    mark::check!(can_import_enum_variant);
+    cov_mark::check!(can_import_enum_variant);
     check(
         r#"
 enum E { V }
@@ -628,7 +627,7 @@ use crate::reex::*;
 
 #[test]
 fn underscore_pub_crate_reexport() {
-    mark::check!(upgrade_underscore_visibility);
+    cov_mark::check!(upgrade_underscore_visibility);
     check(
         r#"
 //- /main.rs crate:main deps:lib

@@ -13,7 +13,6 @@ use syntax::{
     ast::{self, AstNode, AttrsOwner},
     match_ast, AstToken, SmolStr, SyntaxNode,
 };
-use test_utils::mark;
 use tt::Subtree;
 
 use crate::{
@@ -177,7 +176,7 @@ impl RawAttrs {
                 if cfg_options.check(&cfg) == Some(false) {
                     None
                 } else {
-                    mark::hit!(cfg_attr_active);
+                    cov_mark::hit!(cfg_attr_active);
 
                     let attr = ast::Attr::parse(&format!("#[{}]", attr)).ok()?;
                     let hygiene = Hygiene::new_unhygienic(); // FIXME

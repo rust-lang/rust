@@ -12,7 +12,6 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
-use test_utils::mark;
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the
 /// same path. e.g. if the pattern was `foo::Bar` that can parse as a path, an expression, a type
@@ -61,7 +60,7 @@ impl<'db> MatchFinder<'db> {
             for file_range in self.find_usages(usage_cache, definition).file_ranges() {
                 if let Some(node_to_match) = self.find_node_to_match(resolved_path, file_range) {
                     if !is_search_permitted_ancestors(&node_to_match) {
-                        mark::hit!(use_declaration_with_braces);
+                        cov_mark::hit!(use_declaration_with_braces);
                         continue;
                     }
                     self.try_add_match(rule, &node_to_match, &None, matches_out);
@@ -205,7 +204,7 @@ impl<'db> MatchFinder<'db> {
         matches_out: &mut Vec<Match>,
     ) {
         if !self.within_range_restrictions(code) {
-            mark::hit!(replace_nonpath_within_selection);
+            cov_mark::hit!(replace_nonpath_within_selection);
             return;
         }
         if let Ok(m) = matching::get_match(false, rule, code, restrict_range, &self.sema) {

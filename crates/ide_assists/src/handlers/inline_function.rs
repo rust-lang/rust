@@ -4,7 +4,6 @@ use syntax::{
     ast::{self, edit::AstNodeEdit, ArgListOwner},
     AstNode,
 };
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -49,7 +48,7 @@ pub(crate) fn inline_function(acc: &mut Assists, ctx: &AssistContext) -> Option<
     if arguments.len() != parameters.len() {
         // Can't inline the function because they've passed the wrong number of
         // arguments to this function
-        mark::hit!(inline_function_incorrect_number_of_arguments);
+        cov_mark::hit!(inline_function_incorrect_number_of_arguments);
         return None;
     }
 
@@ -155,7 +154,7 @@ fn main() { Foo.bar$0(); }
 
     #[test]
     fn not_applicable_when_incorrect_number_of_parameters_are_provided() {
-        mark::check!(inline_function_incorrect_number_of_arguments);
+        cov_mark::check!(inline_function_incorrect_number_of_arguments);
         check_assist_not_applicable(
             inline_function,
             r#"

@@ -5,8 +5,6 @@ use std::borrow::Cow;
 use chalk_ir::{FloatTy, IntTy, TyVariableKind};
 use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
-use test_utils::mark;
-
 use super::{InferenceContext, Obligation};
 use crate::{
     BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferenceVar, Scalar,
@@ -387,7 +385,7 @@ impl InferenceTable {
         // more than once
         for i in 0..3 {
             if i > 0 {
-                mark::hit!(type_var_resolves_to_int_var);
+                cov_mark::hit!(type_var_resolves_to_int_var);
             }
             match &*ty {
                 Ty::InferenceVar(tv, _) => {
@@ -416,7 +414,7 @@ impl InferenceTable {
             Ty::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
-                    mark::hit!(type_var_cycles_resolve_as_possible);
+                    cov_mark::hit!(type_var_cycles_resolve_as_possible);
                     // recursive type
                     return self.type_variable_table.fallback_value(tv, kind);
                 }
@@ -443,7 +441,7 @@ impl InferenceTable {
             Ty::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
-                    mark::hit!(type_var_cycles_resolve_completely);
+                    cov_mark::hit!(type_var_cycles_resolve_completely);
                     // recursive type
                     return self.type_variable_table.fallback_value(tv, kind);
                 }

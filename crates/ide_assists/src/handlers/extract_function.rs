@@ -20,7 +20,6 @@ use syntax::{
     SyntaxKind::{self, BLOCK_EXPR, BREAK_EXPR, COMMENT, PATH_EXPR, RETURN_EXPR},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -59,7 +58,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let node = ctx.covering_element();
     if node.kind() == COMMENT {
-        mark::hit!(extract_function_in_comment_is_not_applicable);
+        cov_mark::hit!(extract_function_in_comment_is_not_applicable);
         return None;
     }
 
@@ -197,14 +196,14 @@ fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<Con
                 if let Some(kind) = expr_err_kind(&expr, ctx) {
                     Some(FlowKind::TryReturn { expr, kind })
                 } else {
-                    mark::hit!(external_control_flow_try_and_return_non_err);
+                    cov_mark::hit!(external_control_flow_try_and_return_non_err);
                     return None;
                 }
             }
             None => return None,
         },
         (Some(_), _, _, _) => {
-            mark::hit!(external_control_flow_try_and_bc);
+            cov_mark::hit!(external_control_flow_try_and_bc);
             return None;
         }
         (None, Some(r), None, None) => match r.expr() {
@@ -212,11 +211,11 @@ fn external_control_flow(ctx: &AssistContext, body: &FunctionBody) -> Option<Con
             None => Some(FlowKind::Return),
         },
         (None, Some(_), _, _) => {
-            mark::hit!(external_control_flow_return_and_bc);
+            cov_mark::hit!(external_control_flow_return_and_bc);
             return None;
         }
         (None, None, Some(_), Some(_)) => {
-            mark::hit!(external_control_flow_break_and_continue);
+            cov_mark::hit!(external_control_flow_break_and_continue);
             return None;
         }
         (None, None, Some(b), None) => match b.expr() {
@@ -1837,7 +1836,7 @@ fn $0fun_name(n: u32) -> u32 {
 
     #[test]
     fn in_comment_is_not_applicable() {
-        mark::check!(extract_function_in_comment_is_not_applicable);
+        cov_mark::check!(extract_function_in_comment_is_not_applicable);
         check_assist_not_applicable(extract_function, r"fn main() { 1 + /* $0comment$0 */ 1; }");
     }
 
@@ -2822,7 +2821,7 @@ fn $0fun_name(n: i32) -> Result<i32, i64> {
 
     #[test]
     fn break_and_continue() {
-        mark::check!(external_control_flow_break_and_continue);
+        cov_mark::check!(external_control_flow_break_and_continue);
         check_assist_not_applicable(
             extract_function,
             r##"
@@ -2842,7 +2841,7 @@ fn foo() {
 
     #[test]
     fn return_and_break() {
-        mark::check!(external_control_flow_return_and_bc);
+        cov_mark::check!(external_control_flow_return_and_bc);
         check_assist_not_applicable(
             extract_function,
             r##"
@@ -3341,7 +3340,7 @@ fn $0fun_name() -> Result<i32, i64> {
 
     #[test]
     fn try_and_break() {
-        mark::check!(external_control_flow_try_and_bc);
+        cov_mark::check!(external_control_flow_try_and_bc);
         check_assist_not_applicable(
             extract_function,
             r##"
@@ -3363,7 +3362,7 @@ fn foo() -> Option<()> {
 
     #[test]
     fn try_and_return_ok() {
-        mark::check!(external_control_flow_try_and_return_non_err);
+        cov_mark::check!(external_control_flow_try_and_return_non_err);
         check_assist_not_applicable(
             extract_function,
             r##"

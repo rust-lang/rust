@@ -5,7 +5,7 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{self, AstNode, AstToken};
 use syntax::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize};
-use test_utils::mark;
+
 use text_edit::TextEdit;
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
@@ -128,7 +128,7 @@ impl ReplacementRenderer<'_> {
                     && (placeholder_value.autoderef_count > 0
                         || placeholder_value.autoref_kind != ast::SelfParamKind::Owned)
                 {
-                    mark::hit!(replace_autoref_autoderef_capture);
+                    cov_mark::hit!(replace_autoref_autoderef_capture);
                     let ref_kind = match placeholder_value.autoref_kind {
                         ast::SelfParamKind::Owned => "",
                         ast::SelfParamKind::Ref => "&",

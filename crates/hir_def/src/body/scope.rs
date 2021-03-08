@@ -186,7 +186,7 @@ mod tests {
     use base_db::{fixture::WithFixture, FileId, SourceDatabase};
     use hir_expand::{name::AsName, InFile};
     use syntax::{algo::find_node_at_offset, ast, AstNode};
-    use test_utils::{assert_eq_text, extract_offset, mark};
+    use test_utils::{assert_eq_text, extract_offset};
 
     use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};
 
@@ -454,7 +454,7 @@ fn foo() {
 
     #[test]
     fn while_let_desugaring() {
-        mark::check!(infer_resolve_while_let);
+        cov_mark::check!(infer_resolve_while_let);
         do_check_local_name(
             r#"
 fn test() {

@@ -4,7 +4,6 @@ use syntax::{
     ast::{self, AstNode, AstToken},
     TextRange,
 };
-use test_utils::mark;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -34,11 +33,11 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
         _ => return None,
     };
     if bind_pat.mut_token().is_some() {
-        mark::hit!(test_not_inline_mut_variable);
+        cov_mark::hit!(test_not_inline_mut_variable);
         return None;
     }
     if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
-        mark::hit!(not_applicable_outside_of_bind_pat);
+        cov_mark::hit!(not_applicable_outside_of_bind_pat);
         return None;
     }
     let initializer_expr = let_stmt.initializer()?;
@@ -47,7 +46,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let def = Definition::Local(def);
     let usages = def.usages(&ctx.sema).all();
     if usages.is_empty() {
-        mark::hit!(test_not_applicable_if_variable_unused);
+        cov_mark::hit!(test_not_applicable_if_variable_unused);
         return None;
     };
 
@@ -130,7 +129,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
                         Some(name_ref)
                             if ast::RecordExprField::for_field_name(name_ref).is_some() =>
                         {
-                            mark::hit!(inline_field_shorthand);
+                            cov_mark::hit!(inline_field_shorthand);
                             builder.insert(reference.range.end(), format!(": {}", replacement));
                         }
                         _ => builder.replace(reference.range, replacement),
@@ -143,8 +142,6 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
@@ -351,7 +348,7 @@ fn foo() {
 
     #[test]
     fn test_not_inline_mut_variable() {
-        mark::check!(test_not_inline_mut_variable);
+        cov_mark::check!(test_not_inline_mut_variable);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -684,7 +681,7 @@ fn foo() {
 
     #[test]
     fn inline_field_shorthand() {
-        mark::check!(inline_field_shorthand);
+        cov_mark::check!(inline_field_shorthand);
         check_assist(
             inline_local_variable,
             r"
@@ -705,7 +702,7 @@ fn main() {
 
     #[test]
     fn test_not_applicable_if_variable_unused() {
-        mark::check!(test_not_applicable_if_variable_unused);
+        cov_mark::check!(test_not_applicable_if_variable_unused);
         check_assist_not_applicable(
             inline_local_variable,
             r"
@@ -718,7 +715,7 @@ fn foo() {
 
     #[test]
     fn not_applicable_outside_of_bind_pat() {
-        mark::check!(not_applicable_outside_of_bind_pat);
+        cov_mark::check!(not_applicable_outside_of_bind_pat);
         check_assist_not_applicable(
             inline_local_variable,
             r"

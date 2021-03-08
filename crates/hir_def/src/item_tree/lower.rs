@@ -466,7 +466,7 @@ impl Ctx {
                             .collect()
                     })
                     .unwrap_or_else(|| {
-                        mark::hit!(name_res_works_for_broken_modules);
+                        cov_mark::hit!(name_res_works_for_broken_modules);
                         Box::new([]) as Box<[_]>
                     }),
             }

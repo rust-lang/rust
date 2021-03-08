@@ -10,6 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+cov-mark = "1.1"
 log = "0.4.8"
 once_cell = "1.3.1"
 rustc-hash = "1.1.0"

@@ -7,7 +7,7 @@ use syntax::{
     SyntaxKind::{self, USE_TREE, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
-use test_utils::mark;
+
 use text_edit::{TextEdit, TextEditBuilder};
 
 // Feature: Join Lines
@@ -60,7 +60,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
         let mut string_open_quote = false;
         if let Some(string) = ast::String::cast(token.clone()) {
             if let Some(range) = string.open_quote_text_range() {
-                mark::hit!(join_string_literal);
+                cov_mark::hit!(join_string_literal);
                 string_open_quote = range.end() == offset;
             }
         }
@@ -206,7 +206,7 @@ fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use syntax::SourceFile;
-    use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range, mark};
+    use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
     use super::*;
 
@@ -786,7 +786,7 @@ fn foo() {
 
     #[test]
     fn join_string_literal() {
-        mark::check!(join_string_literal);
+        cov_mark::check!(join_string_literal);
         check_join_lines(
             r#"
 fn main() {

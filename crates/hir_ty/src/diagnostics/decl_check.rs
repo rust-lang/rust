@@ -28,7 +28,6 @@ use syntax::{
     ast::{self, NameOwner},
     AstNode, AstPtr,
 };
-use test_utils::mark;
 
 use crate::{
     db::HirDatabase,
@@ -93,7 +92,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn validate_func(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
         if data.is_extern {
-            mark::hit!(extern_func_incorrect_case_ignored);
+            cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }
 
@@ -625,7 +624,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
     fn validate_static(&mut self, static_id: StaticId) {
         let data = self.db.static_data(static_id);
         if data.is_extern {
-            mark::hit!(extern_static_incorrect_case_ignored);
+            cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
         }
 
@@ -673,8 +672,6 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
 #[cfg(test)]
 mod tests {
-    use test_utils::mark;
-
     use crate::diagnostics::tests::check_diagnostics;
 
     #[test]
@@ -889,8 +886,8 @@ fn main() {
 
     #[test]
     fn ignores_extern_items() {
-        mark::check!(extern_func_incorrect_case_ignored);
-        mark::check!(extern_static_incorrect_case_ignored);
+        cov_mark::check!(extern_func_incorrect_case_ignored);
+        cov_mark::check!(extern_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
 extern {

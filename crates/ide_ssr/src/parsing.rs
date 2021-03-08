@@ -10,7 +10,6 @@ use crate::{SsrError, SsrPattern, SsrRule};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::{fmt::Display, str::FromStr};
 use syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
-use test_utils::mark;
 
 #[derive(Debug)]
 pub(crate) struct ParsedRule {
@@ -131,7 +130,7 @@ impl RuleBuilder {
             let old_len = self.rules.len();
             self.rules.retain(|rule| contains_path(&rule.pattern));
             if self.rules.len() < old_len {
-                mark::hit!(pattern_is_a_single_segment_path);
+                cov_mark::hit!(pattern_is_a_single_segment_path);
             }
         }
         Ok(self.rules)

@@ -55,7 +55,6 @@ use ide_db::helpers::{
 };
 use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxNode, T};
-use test_utils::mark;
 
 use crate::{
     context::CompletionContext,
@@ -174,7 +173,7 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
         if matches!(assets_for_path.as_ref()?.import_candidate(), ImportCandidate::Path(_))
             && fuzzy_name_length < 2
         {
-            mark::hit!(ignore_short_input_for_path);
+            cov_mark::hit!(ignore_short_input_for_path);
             None
         } else {
             assets_for_path
@@ -186,7 +185,7 @@ fn compute_fuzzy_completion_order_key(
     proposed_mod_path: &ModPath,
     user_input_lowercased: &str,
 ) -> usize {
-    mark::hit!(certain_fuzzy_order_test);
+    cov_mark::hit!(certain_fuzzy_order_test);
     let proposed_import_name = match proposed_mod_path.segments().last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
@@ -200,7 +199,6 @@ fn compute_fuzzy_completion_order_key(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use test_utils::mark;
 
     use crate::{
         item::CompletionKind,
@@ -295,7 +293,7 @@ fn main() {
 
     #[test]
     fn short_paths_are_ignored() {
-        mark::check!(ignore_short_input_for_path);
+        cov_mark::check!(ignore_short_input_for_path);
 
         check(
             r#"
@@ -319,7 +317,7 @@ fn main() {
 
     #[test]
     fn fuzzy_completions_come_in_specific_order() {
-        mark::check!(certain_fuzzy_order_test);
+        cov_mark::check!(certain_fuzzy_order_test);
         check(
             r#"
 //- /lib.rs crate:dep

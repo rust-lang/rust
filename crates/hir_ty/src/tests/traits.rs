@@ -1,5 +1,4 @@
 use expect_test::expect;
-use test_utils::mark;
 
 use super::{check_infer, check_infer_with_mismatches, check_types};
 
@@ -319,7 +318,7 @@ fn infer_from_bound_2() {
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
-    mark::check!(trait_self_implements_self);
+    cov_mark::check!(trait_self_implements_self);
     check_infer(
         r#"
         trait Trait {
@@ -1189,7 +1188,7 @@ fn impl_trait() {
 
 #[test]
 fn simple_return_pos_impl_trait() {
-    mark::check!(lower_rpit);
+    cov_mark::check!(lower_rpit);
     check_infer(
         r#"
         trait Trait<T> {

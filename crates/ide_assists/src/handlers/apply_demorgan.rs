@@ -1,5 +1,4 @@
 use syntax::ast::{self, AstNode};
-use test_utils::mark;
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
 
@@ -64,10 +63,10 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 edit.replace(lhs_range, not_lhs.syntax().text());
                 edit.replace(rhs_range, not_rhs.syntax().text());
                 if let Some(neg_expr) = neg_expr {
-                    mark::hit!(demorgan_double_negation);
+                    cov_mark::hit!(demorgan_double_negation);
                     edit.replace(neg_expr.op_token().unwrap().text_range(), "");
                 } else {
-                    mark::hit!(demorgan_double_parens);
+                    cov_mark::hit!(demorgan_double_parens);
                     edit.replace(paren_expr.l_paren_token().unwrap().text_range(), "!(");
                 }
             } else {
@@ -90,7 +89,6 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use ide_db::helpers::FamousDefs;
-    use test_utils::mark;
 
     use super::*;
 
@@ -188,13 +186,13 @@ fn f() {
 
     #[test]
     fn demorgan_doesnt_double_negation() {
-        mark::check!(demorgan_double_negation);
+        cov_mark::check!(demorgan_double_negation);
         check_assist(apply_demorgan, "fn f() { !(x ||$0 x) }", "fn f() { (!x && !x) }")
     }
 
     #[test]
     fn demorgan_doesnt_double_parens() {
-        mark::check!(demorgan_double_parens);
+        cov_mark::check!(demorgan_double_parens);
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
     }
 }

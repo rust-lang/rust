@@ -1,5 +1,4 @@
 use expect_test::expect;
-use test_utils::mark;
 
 use super::{check_infer, check_infer_with_mismatches};
 
@@ -197,7 +196,7 @@ fn infer_pattern_match_ergonomics() {
 
 #[test]
 fn infer_pattern_match_ergonomics_ref() {
-    mark::check!(match_ergonomics_ref);
+    cov_mark::check!(match_ergonomics_ref);
     check_infer(
         r#"
         fn test() {

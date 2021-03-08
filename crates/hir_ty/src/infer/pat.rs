@@ -10,7 +10,6 @@ use hir_def::{
     FieldId,
 };
 use hir_expand::name::Name;
-use test_utils::mark;
 
 use super::{BindingMode, Expectation, InferenceContext};
 use crate::{lower::lower_to_chalk_mutability, utils::variant_data, Substs, Ty};
@@ -108,7 +107,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
         } else if let Pat::Ref { .. } = &body[pat] {
-            mark::hit!(match_ergonomics_ref);
+            cov_mark::hit!(match_ergonomics_ref);
             // When you encounter a `&pat` pattern, reset to Move.
             // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
             default_bm = BindingMode::Move;
