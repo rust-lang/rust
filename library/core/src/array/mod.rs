@@ -382,7 +382,7 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
 
 // The Default impls cannot be done with const generics because `[T; 0]` doesn't
 // require Default to be implemented, and having different impl blocks for
-// different numbers aren't supported yet.
+// different numbers isn't supported yet.
 
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
