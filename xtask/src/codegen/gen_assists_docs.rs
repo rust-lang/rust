@@ -12,12 +12,12 @@ pub(crate) fn generate_assists_tests(mode: Mode) -> Result<()> {
     generate_tests(&assists, mode)
 }
 
-pub(crate) fn generate_assists_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_assists_docs() -> Result<()> {
     let assists = Assist::collect()?;
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_assists.adoc");
-    codegen::update(&dst, &contents, mode)
+    codegen::update(&dst, &contents, Mode::Overwrite)
 }
 
 #[derive(Debug)]

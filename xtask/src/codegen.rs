@@ -27,9 +27,9 @@ pub(crate) use self::{
 
 pub(crate) fn docs() -> Result<()> {
     // We don't commit docs to the repo, so we can just overwrite them.
-    gen_assists_docs::generate_assists_docs(Mode::Overwrite)?;
-    gen_feature_docs::generate_feature_docs(Mode::Overwrite)?;
-    gen_diagnostic_docs::generate_diagnostic_docs(Mode::Overwrite)?;
+    gen_assists_docs::generate_assists_docs()?;
+    gen_feature_docs::generate_feature_docs()?;
+    gen_diagnostic_docs::generate_diagnostic_docs()?;
     Ok(())
 }
 

@@ -31,7 +31,7 @@ fn generate_assists_tests() {
 #[test]
 #[ignore]
 fn generate_lint_completions() {
-    codegen::generate_lint_completions(Mode::Overwrite).unwrap()
+    codegen::generate_lint_completions(Mode::Ensure).unwrap()
 }
 
 #[test]

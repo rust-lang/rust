@@ -7,12 +7,12 @@ use crate::{
     project_root, rust_files, Result,
 };
 
-pub(crate) fn generate_feature_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_feature_docs() -> Result<()> {
     let features = Feature::collect()?;
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_features.adoc");
-    codegen::update(&dst, &contents, mode)?;
+    codegen::update(&dst, &contents, Mode::Overwrite)?;
     Ok(())
 }
 
