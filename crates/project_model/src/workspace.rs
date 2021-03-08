@@ -56,7 +56,7 @@ impl fmt::Debug for ProjectWorkspace {
         match self {
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg } => f
                 .debug_struct("Cargo")
-                .field("root", &cargo.workspace_root())
+                .field("root", &cargo.workspace_root().file_name())
                 .field("n_packages", &cargo.packages().len())
                 .field("n_sysroot_crates", &sysroot.crates().len())
                 .field(
