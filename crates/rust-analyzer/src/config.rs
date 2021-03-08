@@ -859,12 +859,12 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
 mod tests {
     use std::fs;
 
-    use test_utils::project_dir;
+    use test_utils::{ensure_file_contents, project_dir};
 
     use super::*;
 
     #[test]
-    fn schema_in_sync_with_package_json() {
+    fn ensure_schema_in_package_json() {
         let s = Config::json_schema();
         let schema = format!("{:#}", s);
         let mut schema = schema
@@ -885,13 +885,12 @@ mod tests {
 
         let start = package_json.find(start_marker).unwrap() + start_marker.len();
         let end = package_json.find(end_marker).unwrap();
+
         let p = remove_ws(&package_json[start..end]);
         let s = remove_ws(&schema);
-
         if !p.contains(&s) {
             package_json.replace_range(start..end, &schema);
-            fs::write(&package_json_path, &mut package_json).unwrap();
-            panic!("new config, updating package.json")
+            ensure_file_contents(&package_json_path, &package_json)
         }
     }
 

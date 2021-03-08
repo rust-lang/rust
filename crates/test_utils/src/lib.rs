@@ -14,7 +14,7 @@ mod fixture;
 use std::{
     convert::{TryFrom, TryInto},
     env, fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use profile::StopWatch;
@@ -352,4 +352,37 @@ pub fn bench(label: &'static str) -> impl Drop {
     }
 
     Bencher { sw: StopWatch::start(), label }
+}
+
+/// Checks that the `file` has the specified `contents`. If that is not the
+/// case, updates the file and then fails the test.
+pub fn ensure_file_contents(file: &Path, contents: &str) {
+    if let Err(()) = try_ensure_file_contents(file, contents) {
+        panic!("Some files were not up-to-date");
+    }
+}
+
+/// Checks that the `file` has the specified `contents`. If that is not the
+/// case, updates the file and return an Error.
+pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
+    match std::fs::read_to_string(file) {
+        Ok(old_contents) if normalize_newlines(&old_contents) == normalize_newlines(contents) => {
+            return Ok(())
+        }
+        _ => (),
+    }
+    let display_path = file.strip_prefix(&project_dir()).unwrap_or(file);
+    eprintln!(
+        "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
+        display_path.display()
+    );
+    if let Some(parent) = file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(file, contents).unwrap();
+    Err(())
+}
+
+fn normalize_newlines(s: &str) -> String {
+    s.replace("\r\n", "\n")
 }
