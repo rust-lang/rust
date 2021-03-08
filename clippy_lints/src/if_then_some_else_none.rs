@@ -1,6 +1,5 @@
 use crate::utils;
 use if_chain::if_chain;
-use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -83,22 +82,20 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
             if utils::match_qpath(els_call_qpath, &utils::paths::OPTION_NONE);
             then {
-                let mut applicability = Applicability::MachineApplicable;
-                let cond_snip = utils::snippet_with_applicability(cx, cond.span, "[condition]", &mut applicability);
-                let arg_snip = utils::snippet_with_applicability(cx, then_arg.span, "", &mut applicability);
-                let sugg = format!(
-                    "{}.then(|| {{ /* snippet */ {} }})",
+                let cond_snip = utils::snippet(cx, cond.span, "[condition]");
+                let arg_snip = utils::snippet(cx, then_arg.span, "");
+                let help = format!(
+                    "consider using `bool::then` like: `{}.then(|| {{ /* snippet */ {} }})`",
                     cond_snip,
                     arg_snip,
                 );
-                utils::span_lint_and_sugg(
+                utils::span_lint_and_help(
                     cx,
                     IF_THEN_SOME_ELSE_NONE,
                     expr.span,
                     "this could be simplified with `bool::then`",
-                    "try this",
-                    sugg,
-                    applicability,
+                    None,
+                    &help,
                 );
             }
         }

@@ -55,7 +55,7 @@ fn _msrv_1_49() {
     // `bool::then` was stabilized in 1.50. Do not lint this
     let _ = if foo() {
         println!("true!");
-        Some("foo")
+        Some(149)
     } else {
         None
     };
@@ -65,7 +65,7 @@ fn _msrv_1_50() {
     #![clippy::msrv = "1.50"]
     let _ = if foo() {
         println!("true!");
-        Some("foo")
+        Some(150)
     } else {
         None
     };

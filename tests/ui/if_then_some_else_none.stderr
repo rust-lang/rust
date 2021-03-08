@@ -8,9 +8,10 @@ LL | |         Some("foo")
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: try this: `foo().then(|| { /* snippet */ "foo" })`
+   | |_____^
    |
    = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ "foo" })`
 
 error: this could be simplified with `bool::then`
   --> $DIR/if_then_some_else_none.rs:66:13
@@ -18,11 +19,13 @@ error: this could be simplified with `bool::then`
 LL |       let _ = if foo() {
    |  _____________^
 LL | |         println!("true!");
-LL | |         Some("foo")
+LL | |         Some(150)
 LL | |     } else {
 LL | |         None
 LL | |     };
-   | |_____^ help: try this: `foo().then(|| { /* snippet */ "foo" })`
+   | |_____^
+   |
+   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ 150 })`
 
 error: aborting due to 2 previous errors
 
