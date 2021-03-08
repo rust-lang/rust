@@ -18,7 +18,7 @@ impl char {
     ///
     /// [Unicode Scalar Value]: http://www.unicode.org/glossary/#unicode_scalar_value
     /// [Code Point]: http://www.unicode.org/glossary/#code_point
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10ffff}';
 
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
@@ -26,7 +26,7 @@ impl char {
     ///
     /// It can occur, for example, when giving ill-formed UTF-8 bytes to
     /// [`String::from_utf8_lossy`](string/struct.String.html#method.from_utf8_lossy).
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
     /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
@@ -39,7 +39,7 @@ impl char {
     ///
     /// The version numbering scheme is explained in
     /// [Unicode 11.0 or later, Section 3.1 Versions of the Unicode Standard](https://www.unicode.org/versions/Unicode11.0.0/ch03.pdf#page=4).
-    #[unstable(feature = "assoc_char_consts", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
     /// Creates an iterator over the UTF-16 encoded code points in `iter`,
@@ -88,7 +88,7 @@ impl char {
     ///     "𝄞mus�ic�"
     /// );
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
         super::decode::decode_utf16(iter)
@@ -136,7 +136,7 @@ impl char {
     ///
     /// assert_eq!(None, c);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn from_u32(i: u32) -> Option<char> {
         super::convert::from_u32(i)
@@ -177,7 +177,7 @@ impl char {
     ///
     /// assert_eq!('❤', c);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub unsafe fn from_u32_unchecked(i: u32) -> char {
         // SAFETY: the safety contract must be upheld by the caller.
@@ -233,7 +233,7 @@ impl char {
     /// // this panics
     /// char::from_digit(1, 37);
     /// ```
-    #[unstable(feature = "assoc_char_funcs", reason = "recently added", issue = "71763")]
+    #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
     #[inline]
     pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         super::convert::from_digit(num, radix)

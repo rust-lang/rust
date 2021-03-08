@@ -25,7 +25,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(assert_matches)]
-#![feature(assoc_char_funcs)]
 #![feature(backtrace)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
