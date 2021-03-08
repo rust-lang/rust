@@ -89,11 +89,16 @@ fn run_rustfmt(mode: Mode) -> Result<()> {
     let _dir = pushd(project_root())?;
     let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
     ensure_rustfmt()?;
-    let check = match mode {
-        Mode::Overwrite => &[][..],
-        Mode::Verify => &["--", "--check"],
+    match mode {
+        Mode::Overwrite => cmd!("cargo fmt").run()?,
+        Mode::Ensure => {
+            let res = cmd!("cargo fmt -- --check").run();
+            if !res.is_ok() {
+                let _ = cmd!("cargo fmt").run();
+            }
+            res?;
+        }
     };
-    cmd!("cargo fmt {check...}").run()?;
     Ok(())
 }
 

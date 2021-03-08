@@ -32,7 +32,7 @@ pub(crate) use self::{
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum Mode {
     Overwrite,
-    Verify,
+    Ensure,
 }
 
 impl flags::Codegen {
@@ -59,12 +59,19 @@ fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
         }
         _ => (),
     }
-    if mode == Mode::Verify {
-        anyhow::bail!("`{}` is not up-to-date", path.display());
-    }
+    let return_error = match mode {
+        Mode::Overwrite => false,
+        Mode::Ensure => true,
+    };
     eprintln!("updating {}", path.display());
     write_file(path, contents)?;
-    return Ok(());
+
+    return if return_error {
+        let path = path.strip_prefix(&project_root()).unwrap_or(path);
+        anyhow::bail!("`{}` was not up-to-date, updating", path.display());
+    } else {
+        Ok(())
+    };
 
     fn normalize(s: &str) -> String {
         s.replace("\r\n", "\n")
