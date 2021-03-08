@@ -44,10 +44,6 @@ pub enum ImportAlias {
 }
 
 impl ModPath {
-    pub fn from_src_unhygienic(path: ast::Path) -> Option<ModPath> {
-        lower::lower_path(path, &Hygiene::new_unhygienic()).map(|it| it.mod_path)
-    }
-
     pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
         lower::lower_path(path, hygiene).map(|it| it.mod_path)
     }

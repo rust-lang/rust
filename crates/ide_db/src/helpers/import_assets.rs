@@ -5,7 +5,7 @@ use hir::{
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{ast, utils::path_to_string_stripping_turbo_fish, AstNode, SyntaxNode};
 
 use crate::{
     items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
@@ -57,7 +57,7 @@ pub struct PathImportCandidate {
 #[derive(Debug)]
 pub struct FirstSegmentUnresolved {
     fist_segment: ast::NameRef,
-    full_qualifier: ModPath,
+    full_qualifier: ast::Path,
 }
 
 /// A name that will be used during item lookups.
@@ -310,7 +310,7 @@ fn path_applicable_imports(
         }
         Some(first_segment_unresolved) => (
             first_segment_unresolved.fist_segment.to_string(),
-            first_segment_unresolved.full_qualifier.to_string(),
+            path_to_string_stripping_turbo_fish(&first_segment_unresolved.full_qualifier),
         ),
     };
 
@@ -583,7 +583,7 @@ fn path_import_candidate(
                     ImportCandidate::Path(PathImportCandidate {
                         qualifier: Some(FirstSegmentUnresolved {
                             fist_segment: qualifier_start,
-                            full_qualifier: ModPath::from_src_unhygienic(qualifier)?,
+                            full_qualifier: qualifier,
                         }),
                         name,
                     })

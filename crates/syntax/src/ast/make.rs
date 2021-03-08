@@ -91,6 +91,10 @@ pub fn path_from_segments(
     })
 }
 
+pub fn path_from_text(text: &str) -> ast::Path {
+    ast_from_text(&format!("fn main() {{ let test = {}; }}", text))
+}
+
 pub fn glob_use_tree() -> ast::UseTree {
     ast_from_text("use *;")
 }
