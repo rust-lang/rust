@@ -5,25 +5,33 @@ LL |     pub struct S(u8);
    |     ----------------- similarly named tuple struct `S` defined here
 ...
 LL |         Z;
-   |         ^ help: a tuple struct with a similar name exists: `S`
+   |         ^
+   |         |
+   |         constructor is not visible here due to private fields
+   |         help: a tuple struct with a similar name exists: `S`
 
 error[E0423]: expected value, found struct `S`
   --> $DIR/privacy-struct-ctor.rs:33:5
    |
 LL |     S;
-   |     ^ not a value
+   |     ^ constructor is not visible here due to private fields
 
 error[E0423]: expected value, found struct `S2`
   --> $DIR/privacy-struct-ctor.rs:38:5
    |
-LL |     S2;
-   |     ^^ not a value
+LL | /     pub struct S2 {
+LL | |         s: u8
+LL | |     }
+   | |_____- `S2` defined here
+...
+LL |       S2;
+   |       ^^ help: use struct literal syntax instead: `S2 { s: val }`
 
 error[E0423]: expected value, found struct `xcrate::S`
   --> $DIR/privacy-struct-ctor.rs:43:5
    |
 LL |     xcrate::S;
-   |     ^^^^^^^^^ not a value
+   |     ^^^^^^^^^ constructor is not visible here due to private fields
    |
 help: consider importing this tuple struct instead
    |
