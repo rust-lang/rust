@@ -29,6 +29,31 @@ pub enum LLVMRustResult {
     Success,
     Failure,
 }
+
+// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
+#[repr(C)]
+pub struct LLVMRustCOFFShortExport {
+    pub name: *const c_char,
+}
+
+impl LLVMRustCOFFShortExport {
+    pub fn from_name(name: *const c_char) -> LLVMRustCOFFShortExport {
+        LLVMRustCOFFShortExport { name }
+    }
+}
+
+/// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
+///
+/// We include only architectures supported on Windows.
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum LLVMMachineType {
+    AMD64 = 0x8664,
+    I386 = 0x14c,
+    ARM64 = 0xaa64,
+    ARM = 0x01c0,
+}
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
@@ -2264,6 +2289,15 @@ extern "C" {
         Child: Option<&ArchiveChild<'a>>,
     ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree(Member: &'a mut RustArchiveMember<'a>);
+
+    pub fn LLVMRustWriteImportLibrary(
+        ImportName: *const c_char,
+        Path: *const c_char,
+        Exports: *const LLVMRustCOFFShortExport,
+        NumExports: usize,
+        Machine: u16,
+        MinGW: bool,
+    ) -> LLVMRustResult;
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &'a Module, TM: &'a TargetMachine);
 

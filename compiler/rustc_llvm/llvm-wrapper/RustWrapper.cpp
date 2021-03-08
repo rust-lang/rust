@@ -6,6 +6,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Object/Archive.h"
+#include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
@@ -1721,4 +1722,55 @@ LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
 extern "C" LLVMValueRef
 LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
     return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
+}
+
+// This struct contains all necessary info about a symbol exported from a DLL.
+// At the moment, it's just the symbol's name, but we use a separate struct to
+// make it easier to add other information like ordinal later.
+struct LLVMRustCOFFShortExport {
+  const char* name;
+};
+
+// Machine must be a COFF machine type, as defined in PE specs.
+extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
+  const char* ImportName,
+  const char* Path,
+  const LLVMRustCOFFShortExport* Exports,
+  size_t NumExports,
+  uint16_t Machine,
+  bool MinGW)
+{
+  std::vector<llvm::object::COFFShortExport> ConvertedExports;
+  ConvertedExports.reserve(NumExports);
+
+  for (size_t i = 0; i < NumExports; ++i) {
+    ConvertedExports.push_back(llvm::object::COFFShortExport{
+      Exports[i].name,  // Name
+      std::string{},    // ExtName
+      std::string{},    // SymbolName
+      std::string{},    // AliasTarget
+      0,                // Ordinal
+      false,            // Noname
+      false,            // Data
+      false,            // Private
+      false             // Constant
+    });
+  }
+
+  auto Error = llvm::object::writeImportLibrary(
+    ImportName,
+    Path,
+    ConvertedExports,
+    static_cast<llvm::COFF::MachineTypes>(Machine),
+    MinGW);
+  if (Error) {
+    std::string errorString;
+    llvm::raw_string_ostream stream(errorString);
+    stream << Error;
+    stream.flush();
+    LLVMRustSetLastError(errorString.c_str());
+    return LLVMRustResult::Failure;
+  } else {
+    return LLVMRustResult::Success;
+  }
 }
