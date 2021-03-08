@@ -403,40 +403,42 @@ pub fn search_dependencies<'a>(
     }
 
     let mut stream = op.union();
-    let mut res = FxHashSet::default();
+
+    let mut all_indexed_values = FxHashSet::default();
     while let Some((_, indexed_values)) = stream.next() {
-        for indexed_value in indexed_values {
-            let import_map = &import_maps[indexed_value.index];
-            let importables = &import_map.importables[indexed_value.value as usize..];
+        all_indexed_values.extend(indexed_values.iter().copied());
+    }
 
-            let common_importable_data = &import_map.map[&importables[0]];
-            if !query.import_matches(common_importable_data, true) {
-                continue;
-            }
+    let mut res = FxHashSet::default();
+    for indexed_value in all_indexed_values {
+        let import_map = &import_maps[indexed_value.index];
+        let importables = &import_map.importables[indexed_value.value as usize..];
 
-            // Path shared by the importable items in this group.
-            let common_importables_path_fst = fst_path(&common_importable_data.path);
-            // Add the items from this `ModPath` group. Those are all subsequent items in
-            // `importables` whose paths match `path`.
-            let iter = importables
-                .iter()
-                .copied()
-                .take_while(|item| {
-                    common_importables_path_fst == fst_path(&import_map.map[item].path)
-                })
-                .filter(|&item| match item_import_kind(item) {
-                    Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
-                    None => true,
-                })
-                .filter(|item| {
-                    !query.case_sensitive // we've already checked the common importables path case-insensitively
+        let common_importable_data = &import_map.map[&importables[0]];
+        if !query.import_matches(common_importable_data, true) {
+            continue;
+        }
+
+        // Path shared by the importable items in this group.
+        let common_importables_path_fst = fst_path(&common_importable_data.path);
+        // Add the items from this `ModPath` group. Those are all subsequent items in
+        // `importables` whose paths match `path`.
+        let iter = importables
+            .iter()
+            .copied()
+            .take_while(|item| common_importables_path_fst == fst_path(&import_map.map[item].path))
+            .filter(|&item| match item_import_kind(item) {
+                Some(import_kind) => !query.exclude_import_kinds.contains(&import_kind),
+                None => true,
+            })
+            .filter(|item| {
+                !query.case_sensitive // we've already checked the common importables path case-insensitively
                         || query.import_matches(&import_map.map[item], false)
-                });
-            res.extend(iter);
+            });
+        res.extend(iter);
 
-            if res.len() >= query.limit {
-                return res;
-            }
+        if res.len() >= query.limit {
+            return res;
         }
     }
 
