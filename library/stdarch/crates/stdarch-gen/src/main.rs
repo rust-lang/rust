@@ -301,17 +301,32 @@ fn gen_aarch64(
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     para_num: i32,
     fixed: &Vec<String>,
+    multi_fn: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
-            panic!("[{}] Can't specify link and fn at the same time.", name)
+            panic!(
+                "[{}] Can't specify link and (multi) fn at the same time.",
+                name
+            )
         }
         current_fn
+    } else if !multi_fn.is_empty() {
+        if link_aarch64.is_some() {
+            panic!(
+                "[{}] Can't specify link and (multi) fn at the same time.",
+                name
+            )
+        }
+        String::new()
     } else {
         if link_aarch64.is_none() {
-            panic!("[{}] Either fn or link-aarch have to be specified.", name)
+            panic!(
+                "[{}] Either (multi) fn or link-aarch have to be specified.",
+                name
+            )
         }
         format!("{}_", name)
     };
@@ -335,15 +350,32 @@ fn gen_aarch64(
     } else {
         String::new()
     };
-    let call = if para_num == 2 {
-        format!(
+    let multi_calls = if !multi_fn.is_empty() {
+        let mut calls = String::new();
+        for i in 0..multi_fn.len() {
+            if i > 0 {
+                calls.push_str("\n    ");
+            }
+            calls.push_str(&get_call(&multi_fn[i], in_t, out_t, fixed));
+        }
+        calls
+    } else {
+        String::new()
+    };
+    let call = match (multi_calls.len(), para_num, fixed.len()) {
+        (0, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
-        )
-    } else if para_num == 1 {
-        if fixed.len() != 0 {
+        ),
+        (0, 1, 0) => format!(
+            r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a)
+}}"#,
+            name, in_t, out_t, ext_c, current_fn,
+        ),
+        (0, 1, _) => {
             let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
             format!(
                 r#"pub unsafe fn {}(a: {}) -> {} {{
@@ -357,16 +389,14 @@ fn gen_aarch64(
                 ext_c,
                 current_fn,
             )
-        } else {
-            format!(
-                r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a)
-}}"#,
-                name, in_t, out_t, ext_c, current_fn,
-            )
         }
-    } else {
-        String::new()
+        (_, 2, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t, in_t, out_t, ext_c, multi_calls,
+        ),
+        (_, _, _) => String::new(),
     };
     let function = format!(
         r#"
@@ -459,6 +489,7 @@ fn gen_arm(
     current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
     para_num: i32,
     fixed: &Vec<String>,
+    multi_fn: &Vec<String>,
 ) -> (String, String) {
     let _global_t = type_to_global_type(in_t);
     let _global_ret_t = type_to_global_type(out_t);
@@ -474,6 +505,14 @@ fn gen_arm(
             )
         }
         current_fn
+    } else if !multi_fn.is_empty() {
+        if link_aarch64.is_some() || link_arm.is_some() {
+            panic!(
+                "[{}] Can't specify link and function at the same time. multi_fn / {:?} / {:?}",
+                name, link_aarch64, link_arm
+            )
+        }
+        String::new()
     } else {
         if link_aarch64.is_none() || link_arm.is_none() {
             panic!(
@@ -505,15 +544,32 @@ fn gen_arm(
         } else {
             String::new()
         };
-    let call = if para_num == 2 {
-        format!(
+    let multi_calls = if !multi_fn.is_empty() {
+        let mut calls = String::new();
+        for i in 0..multi_fn.len() {
+            if i > 0 {
+                calls.push_str("\n    ");
+            }
+            calls.push_str(&get_call(&multi_fn[i], in_t, out_t, fixed));
+        }
+        calls
+    } else {
+        String::new()
+    };
+    let call = match (multi_calls.len(), para_num, fixed.len()) {
+        (0, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}(a, b)
 }}"#,
             name, in_t, in_t, out_t, ext_c, current_fn,
-        )
-    } else if para_num == 1 {
-        if fixed.len() != 0 {
+        ),
+        (0, 1, 0) => format!(
+            r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}(a)
+}}"#,
+            name, in_t, out_t, ext_c, current_fn,
+        ),
+        (0, 1, _) => {
             let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
             format!(
                 r#"pub unsafe fn {}(a: {}) -> {} {{
@@ -527,16 +583,14 @@ fn gen_arm(
                 ext_c,
                 current_fn,
             )
-        } else {
-            format!(
-                r#"pub unsafe fn {}(a: {}) -> {} {{
-    {}{}(a)
-}}"#,
-                name, in_t, out_t, ext_c, current_fn,
-            )
         }
-    } else {
-        String::new()
+        (_, 2, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t, in_t, out_t, ext_c, multi_calls,
+        ),
+        (_, _, _) => String::new(),
     };
     let function = format!(
         r#"
@@ -626,6 +680,51 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
     }
 }
 
+fn get_call(in_str: &str, in_t: &str, out_t: &str, fixed: &Vec<String>) -> String {
+    let params: Vec<_> = in_str.split(',').map(|v| v.trim().to_string()).collect();
+    assert!(params.len() > 0);
+    let fn_name = &params[0];
+    let mut re: Option<(String, String)> = None;
+    let mut param_str = String::new();
+    for i in 1..params.len() {
+        let s = &params[i];
+        if s.contains(':') {
+            let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
+            if re_params.len() == 1 {
+                re = Some((re_params[0].clone(), in_t.to_string()));
+            } else if re_params.len() == 2 {
+                if re_params[1] == "in_t" {
+                    re = Some((re_params[0].clone(), in_t.to_string()));
+                } else if re_params[1] == "out_t" {
+                    re = Some((re_params[0].clone(), out_t.to_string()));
+                }
+            }
+        } else {
+            if !param_str.is_empty() {
+                param_str.push_str(", ");
+            }
+            param_str.push_str(s);
+        }
+    }
+    if fn_name == "fixed" {
+        let (re_name, re_type) = re.unwrap();
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+        return format!(r#"let {}{};"#, re_name, values(&re_type, &fixed));
+    }
+    if param_str.is_empty() {
+        param_str.push_str("a, b");
+    }
+    let fn_str = if let Some((re_name, re_type)) = re.clone() {
+        format!(
+            r#"let {}: {} = {}({});"#,
+            re_name, re_type, fn_name, param_str
+        )
+    } else {
+        format!(r#"{}({})"#, fn_name, param_str)
+    };
+    return fn_str;
+}
+
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let in_file = args.get(1).cloned().unwrap_or_else(|| IN.to_string());
@@ -645,6 +744,7 @@ fn main() -> io::Result<()> {
     let mut b: Vec<String> = Vec::new();
     let mut fixed: Vec<String> = Vec::new();
     let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
+    let mut multi_fn: Vec<String> = Vec::new();
 
     //
     // THIS FILE IS GENERATED FORM neon.spec DO NOT CHANGE IT MANUALLY
@@ -715,14 +815,17 @@ mod test {
             link_arm = None;
             current_tests = Vec::new();
             para_num = 2;
-            a = vec![];
-            b = vec![];
-            fixed = vec![];
+            a = Vec::new();
+            b = Vec::new();
+            fixed = Vec::new();
+            multi_fn = Vec::new();
         } else if line.starts_with("//") {
         } else if line.starts_with("name = ") {
             current_name = Some(String::from(&line[7..]));
         } else if line.starts_with("fn = ") {
             current_fn = Some(String::from(&line[5..]));
+        } else if line.starts_with("multi_fn = ") {
+            multi_fn.push(String::from(&line[11..]));
         } else if line.starts_with("arm = ") {
             current_arm = Some(String::from(&line[6..]));
         } else if line.starts_with("aarch64 = ") {
@@ -788,6 +891,7 @@ mod test {
                         &current_tests,
                         para_num,
                         &fixed,
+                        &multi_fn,
                     );
                     out_arm.push_str(&function);
                     tests_arm.push_str(&test);
@@ -803,6 +907,7 @@ mod test {
                         &current_tests,
                         para_num,
                         &fixed,
+                        &multi_fn,
                     );
                     out_aarch64.push_str(&function);
                     tests_aarch64.push_str(&test);

@@ -297,6 +297,66 @@ pub unsafe fn vceqzq_f64(a: float64x2_t) -> uint64x2_t {
     simd_eq(a, transmute(b))
 }
 
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtst_s64(a: int64x1_t, b: int64x1_t) -> uint64x1_t {
+    let c: int64x1_t = simd_and(a, b);
+    let d: i64x1 = i64x1::new(0);
+    simd_ne(c, transmute(d))
+}
+
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtstq_s64(a: int64x2_t, b: int64x2_t) -> uint64x2_t {
+    let c: int64x2_t = simd_and(a, b);
+    let d: i64x2 = i64x2::new(0, 0);
+    simd_ne(c, transmute(d))
+}
+
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtst_p64(a: poly64x1_t, b: poly64x1_t) -> uint64x1_t {
+    let c: poly64x1_t = simd_and(a, b);
+    let d: i64x1 = i64x1::new(0);
+    simd_ne(c, transmute(d))
+}
+
+/// Signed compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtstq_p64(a: poly64x2_t, b: poly64x2_t) -> uint64x2_t {
+    let c: poly64x2_t = simd_and(a, b);
+    let d: i64x2 = i64x2::new(0, 0);
+    simd_ne(c, transmute(d))
+}
+
+/// Unsigned compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtst_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
+    let c: uint64x1_t = simd_and(a, b);
+    let d: u64x1 = u64x1::new(0);
+    simd_ne(c, transmute(d))
+}
+
+/// Unsigned compare bitwise Test bits nonzero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmtst))]
+pub unsafe fn vtstq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    let c: uint64x2_t = simd_and(a, b);
+    let d: u64x2 = u64x2::new(0, 0);
+    simd_ne(c, transmute(d))
+}
+
 /// Floating-point absolute value
 #[inline]
 #[target_feature(enable = "neon")]
@@ -895,6 +955,60 @@ mod test {
         let a: f64x2 = f64x2::new(0.0, 1.2);
         let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
         let r: u64x2 = transmute(vceqzq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtst_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let b: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vtst_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtstq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, 0x00);
+        let b: i64x2 = i64x2::new(-9223372036854775808, 0x00);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
+        let r: u64x2 = transmute(vtstq_s64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtst_p64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let b: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vtst_p64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtstq_p64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, 0x00);
+        let b: i64x2 = i64x2::new(-9223372036854775808, 0x00);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
+        let r: u64x2 = transmute(vtstq_p64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtst_u64() {
+        let a: u64x1 = u64x1::new(0);
+        let b: u64x1 = u64x1::new(0);
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vtst_u64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vtstq_u64() {
+        let a: u64x2 = u64x2::new(0, 0x00);
+        let b: u64x2 = u64x2::new(0, 0x00);
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vtstq_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
