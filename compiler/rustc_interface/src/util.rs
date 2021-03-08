@@ -694,6 +694,24 @@ pub fn build_output_filenames(
     }
 }
 
+#[cfg(not(target_os = "linux"))]
+pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::rename(src, dst)
+}
+
+/// This function attempts to bypass the auto_da_alloc heuristic implemented by some filesystems
+/// such as btrfs and ext4. When renaming over a file that already exists then they will "helpfully"
+/// write back the source file before committing the rename in case a developer forgot some of
+/// the fsyncs in the open/write/fsync(file)/rename/fsync(dir) dance for atomic file updates.
+///
+/// To avoid triggering this heuristic we delete the destination first, if it exists.
+/// The cost of an extra syscall is much lower than getting descheduled for the sync IO.
+#[cfg(target_os = "linux")]
+pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+    let _ = std::fs::remove_file(dst);
+    std::fs::rename(src, dst)
+}
+
 // Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
 //
 // FIXME: Currently the `everybody_loops` transformation is not applied to:
