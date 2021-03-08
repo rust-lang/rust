@@ -28,9 +28,8 @@ use syntax::{
 };
 
 use crate::{
-    code_model::BuiltinType, db::HirDatabase, semantics::PathResolution, Adt, Const, Field,
-    Function, Local, MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
-    Variant,
+    db::HirDatabase, semantics::PathResolution, Adt, BuiltinType, Const, Field, Function, Local,
+    MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Variant,
 };
 use base_db::CrateId;
 

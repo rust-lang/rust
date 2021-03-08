@@ -11,9 +11,8 @@ use hir_def::{
 };
 
 use crate::{
-    code_model::{BuiltinType, GenericParam},
-    Adt, AssocItem, DefWithBody, Field, GenericDef, Label, Local, MacroDef, ModuleDef, Variant,
-    VariantDef,
+    Adt, AssocItem, BuiltinType, DefWithBody, Field, GenericDef, GenericParam, Label, Local,
+    MacroDef, ModuleDef, Variant, VariantDef,
 };
 
 macro_rules! from_id {
