@@ -1,4 +1,4 @@
-# THIR and MIR construction
+# MIR construction
 
 <!-- toc -->
 
@@ -13,23 +13,9 @@ list of items:
     * Drop code (the `Drop::drop` function is not called directly)
     * Drop implementations of types without an explicit `Drop` implementation
 
-The lowering is triggered by calling the [`mir_built`] query.
-There is an intermediate representation
-between [HIR] and [MIR] called the [THIR] that is only used during lowering.
-[THIR] means "Typed HIR" and used to be called "HAIR (High-level Abstract IR)".
-The [THIR]'s most important feature is that the various adjustments (which happen
-without explicit syntax) like coercions, autoderef, autoref and overloaded method
-calls have become explicit casts, deref operations, reference expressions or
-concrete function calls.
-
-The [THIR] is a shallow wrapper around [HIR], with datatypes that mirror the [HIR] datatypes.
-For example, instead of `-x` being a `thir::ExprKind::Neg(thir::Expr)`
-(a deep copy), it is a `thir::ExprKind::Neg(hir::Expr)` (a shallow copy).
-This shallowness enables the [THIR] to represent all datatypes that [HIR] has, but
-without having to create an in-memory copy of the entire [HIR].
-[MIR] lowering will first convert the topmost expression from
-[HIR] to [THIR] (in [`rustc_mir_build::thir::cx::expr`]) and then process
-the [THIR] expressions recursively.
+The lowering is triggered by calling the [`mir_built`] query. The MIR builder does
+not actually use the HIR but operates on the [THIR] instead, processing THIR
+expressions recursively.
 
 The lowering creates local variables for every argument as specified in the signature.
 Next, it creates local variables for every binding specified (e.g. `(a, b): (i32, String)`)
