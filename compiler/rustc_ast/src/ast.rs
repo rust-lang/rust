@@ -915,16 +915,6 @@ impl Stmt {
         }
     }
 
-    pub fn tokens_mut(&mut self) -> Option<&mut LazyTokenStream> {
-        match self.kind {
-            StmtKind::Local(ref mut local) => local.tokens.as_mut(),
-            StmtKind::Item(ref mut item) => item.tokens.as_mut(),
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens.as_mut(),
-            StmtKind::Empty => None,
-            StmtKind::MacCall(ref mut mac) => mac.tokens.as_mut(),
-        }
-    }
-
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,

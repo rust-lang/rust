@@ -1,11 +1,11 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirectoryOwnership;
+use crate::module::DirOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, AstLike, Attribute, NodeId, PatKind};
+use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -81,8 +81,22 @@ impl AstLike for Annotatable {
         }
     }
 
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        panic!("Called finalize_tokens on an Annotatable: {:?}", tokens);
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Annotatable::Item(item) => item.tokens_mut(),
+            Annotatable::TraitItem(trait_item) => trait_item.tokens_mut(),
+            Annotatable::ImplItem(impl_item) => impl_item.tokens_mut(),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.tokens_mut(),
+            Annotatable::Stmt(stmt) => stmt.tokens_mut(),
+            Annotatable::Expr(expr) => expr.tokens_mut(),
+            Annotatable::Arm(arm) => arm.tokens_mut(),
+            Annotatable::Field(field) => field.tokens_mut(),
+            Annotatable::FieldPat(fp) => fp.tokens_mut(),
+            Annotatable::GenericParam(gp) => gp.tokens_mut(),
+            Annotatable::Param(p) => p.tokens_mut(),
+            Annotatable::StructField(sf) => sf.tokens_mut(),
+            Annotatable::Variant(v) => v.tokens_mut(),
+        }
     }
 }
 
@@ -900,10 +914,26 @@ pub trait ResolverExpand {
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ModuleData {
+    /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,
-    pub directory: PathBuf,
+    /// Stack of paths to files loaded by out-of-line module items,
+    /// used to detect and report recursive module inclusions.
+    pub file_path_stack: Vec<PathBuf>,
+    /// Directory to search child module files in,
+    /// often (but not necessarily) the parent of the top file path on the `file_path_stack`.
+    pub dir_path: PathBuf,
+}
+
+impl ModuleData {
+    pub fn with_dir_path(&self, dir_path: PathBuf) -> ModuleData {
+        ModuleData {
+            mod_path: self.mod_path.clone(),
+            file_path_stack: self.file_path_stack.clone(),
+            dir_path,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -911,9 +941,12 @@ pub struct ExpansionData {
     pub id: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
-    pub directory_ownership: DirectoryOwnership,
+    pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
+
+type OnExternModLoaded<'a> =
+    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
@@ -932,7 +965,7 @@ pub struct ExtCtxt<'a> {
     /// Called directly after having parsed an external `mod foo;` in expansion.
     ///
     /// `Ident` is the module name.
-    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
+    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -940,7 +973,7 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate, Ident)>,
+        extern_mod_loaded: OnExternModLoaded<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
@@ -952,8 +985,8 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
-                module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned { relative: None },
+                module: Default::default(),
+                dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
             force_mode: false,

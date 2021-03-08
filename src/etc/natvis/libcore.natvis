@@ -30,4 +30,19 @@
     </Expand>
   </Type>
 
+  <Type Name="core::result::Result&lt;*&gt;">
+    <DisplayString Condition="RUST$ENUM$DISR == 0x0">Ok({__0})</DisplayString>
+    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Err({(*($T2*) &amp;__0)})</DisplayString>
+    <Expand>
+      <Item Name="[value]" Condition="RUST$ENUM$DISR == 0x0">__0</Item>
+      <Item Name="[value]" Condition="RUST$ENUM$DISR == 0x1">(*($T2*) &amp;__0)</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="core::ptr::non_null::NonNull&lt;*&gt;">
+    <DisplayString>{(void*) pointer}</DisplayString>
+    <Expand>
+      <Item Name="[value]">*pointer</Item>
+    </Expand>
+  </Type>
 </AutoVisualizer>

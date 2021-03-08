@@ -108,8 +108,7 @@ impl JsonRenderer<'tcx> {
                                 .last()
                                 .map(Clone::clone),
                             visibility: types::Visibility::Public,
-                            kind: types::ItemKind::Trait,
-                            inner: types::ItemEnum::TraitItem(trait_item.clone().into()),
+                            inner: types::ItemEnum::Trait(trait_item.clone().into()),
                             source: None,
                             docs: Default::default(),
                             links: Default::default(),
@@ -158,11 +157,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
 
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
-            if let types::ItemEnum::TraitItem(ref mut t) = new_item.inner {
+            if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
                 t.implementors = self.get_trait_implementors(id)
-            } else if let types::ItemEnum::StructItem(ref mut s) = new_item.inner {
+            } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
                 s.impls = self.get_impls(id)
-            } else if let types::ItemEnum::EnumItem(ref mut e) = new_item.inner {
+            } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
                 e.impls = self.get_impls(id)
             }
             let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
