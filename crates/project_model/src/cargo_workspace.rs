@@ -9,6 +9,8 @@ use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
+use serde::Deserialize;
+use serde_json::from_value;
 
 use crate::build_data::BuildDataConfig;
 use crate::utf8_stdout;
@@ -104,6 +106,13 @@ pub struct PackageData {
     pub active_features: Vec<String>,
     // String representation of package id
     pub id: String,
+    // The contents of [package.metadata.rust-analyzer]
+    pub metadata: RustAnalyzerPackageMetaData,
+}
+
+#[derive(Deserialize, Default, Debug, Clone, Eq, PartialEq)]
+pub struct RustAnalyzerPackageMetaData {
+    pub rustc_private: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -159,6 +168,13 @@ impl PackageData {
     pub fn root(&self) -> &AbsPath {
         self.manifest.parent().unwrap()
     }
+}
+
+#[derive(Deserialize, Default)]
+// Deserialise helper for the cargo metadata
+struct PackageMetadata {
+    #[serde(rename = "rust-analyzer")]
+    rust_analyzer: Option<RustAnalyzerPackageMetaData>,
 }
 
 impl CargoWorkspace {
@@ -244,8 +260,10 @@ impl CargoWorkspace {
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
         for meta_pkg in &meta.packages {
-            let cargo_metadata::Package { id, edition, name, manifest_path, version, .. } =
-                meta_pkg;
+            let cargo_metadata::Package {
+                id, edition, name, manifest_path, version, metadata, ..
+            } = meta_pkg;
+            let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
             let is_member = ws_members.contains(&id);
             let edition = edition
                 .parse::<Edition>()
@@ -262,6 +280,7 @@ impl CargoWorkspace {
                 dependencies: Vec::new(),
                 features: meta_pkg.features.clone().into_iter().collect(),
                 active_features: Vec::new(),
+                metadata: meta.rust_analyzer.unwrap_or_default(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);

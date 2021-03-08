@@ -181,7 +181,8 @@ config_data! {
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
         /// Path to the rust compiler sources, for usage in rustc_private projects, or "discover"
-        /// to try to automatically find it.
+        /// to try to automatically find it. Any project which uses rust-analyzer with the rustcPrivate
+        /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
         rustcSource : Option<String> = "null",
 
         /// Additional arguments to `rustfmt`.
