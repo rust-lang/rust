@@ -2248,15 +2248,12 @@ impl ToString for i8 {
     #[inline]
     fn to_string(&self) -> String {
         let mut vec = vec![0; 4];
-        let n = *self;
         let mut free = 0;
-        let mut n: u8 = if n.is_negative() {
+        if self.is_negative() {
             vec[free] = b'-';
             free += 1;
-            i8::unsigned_abs(n)
-        } else {
-            n as u8
-        };
+        }
+        let mut n = self.unsigned_abs();
         if n >= 10 {
             if n >= 100 {
                 n -= 100;
