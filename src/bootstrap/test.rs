@@ -1922,6 +1922,77 @@ impl Step for CrateRustdoc {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRustdocJsonTypes {
+    host: TargetSelection,
+    test_kind: TestKind,
+}
+
+impl Step for CrateRustdocJsonTypes {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/rustdoc-json-types")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+
+        let test_kind = builder.kind.into();
+
+        builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let test_kind = self.test_kind;
+        let target = self.host;
+
+        // Use the previous stage compiler to reuse the artifacts that are
+        // created when running compiletest for src/test/rustdoc. If this used
+        // `compiler`, then it would cause rustdoc to be built *again*, which
+        // isn't really necessary.
+        let compiler = builder.compiler_for(builder.top_stage, target, target);
+        builder.ensure(compile::Rustc { compiler, target });
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            target,
+            test_kind.subcommand(),
+            "src/rustdoc-json-types",
+            SourceType::InTree,
+            &[],
+        );
+        if test_kind.subcommand() == "test" && !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
+        cargo.arg("-p").arg("rustdoc-json-types");
+
+        cargo.arg("--");
+        cargo.args(&builder.config.cmd.test_args());
+
+        if self.host.contains("musl") {
+            cargo.arg("'-Ctarget-feature=-crt-static'");
+        }
+
+        if !builder.config.verbose_tests {
+            cargo.arg("--quiet");
+        }
+
+        builder.info(&format!(
+            "{} rustdoc-json-types stage{} ({} -> {})",
+            test_kind, compiler.stage, &compiler.host, target
+        ));
+        let _time = util::timeit(&builder);
+
+        try_run(builder, &mut cargo.into());
+    }
+}
+
 /// Some test suites are run inside emulators or on remote devices, and most
 /// of our test binaries are linked dynamically which means we need to ship
 /// the standard library and such to the emulator ahead of time. This step
