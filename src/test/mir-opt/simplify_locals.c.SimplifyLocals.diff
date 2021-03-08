@@ -17,8 +17,13 @@
           StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:14:9: 14:14
           _1 = [const 0_u8; 10];           // scope 0 at $DIR/simplify-locals.rs:14:17: 14:26
 -         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
--         _3 = &_1;                        // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
+-         StorageLive(_3);                 // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
+-         StorageLive(_4);                 // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
+-         _4 = &_1;                        // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
+-         _3 = _4;                         // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
 -         _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 1 at $DIR/simplify-locals.rs:16:20: 16:26
+-         StorageDead(_3);                 // scope 1 at $DIR/simplify-locals.rs:16:25: 16:26
+-         StorageDead(_4);                 // scope 1 at $DIR/simplify-locals.rs:16:26: 16:27
 -         StorageDead(_2);                 // scope 1 at $DIR/simplify-locals.rs:16:26: 16:27
           _0 = const ();                   // scope 0 at $DIR/simplify-locals.rs:13:8: 17:2
           StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:17:1: 17:2
