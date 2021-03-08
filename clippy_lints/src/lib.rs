@@ -4,6 +4,7 @@
 #![feature(box_syntax)]
 #![feature(drain_filter)]
 #![feature(in_band_lifetimes)]
+#![feature(iter_zip)]
 #![feature(once_cell)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
