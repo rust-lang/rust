@@ -56,7 +56,7 @@ pub(crate) fn ensure_file_contents(file: &Path, contents: &str) -> Result<()> {
         display_path.display()
     );
     if std::env::var("CI").is_ok() {
-        eprintln!("\n    NOTE: run `cargo test` locally and commit the updated files\n");
+        eprintln!("    NOTE: run `cargo test` locally and commit the updated files\n");
     }
     if let Some(parent) = file.parent() {
         let _ = std::fs::create_dir_all(parent);

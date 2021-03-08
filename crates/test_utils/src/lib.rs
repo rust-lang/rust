@@ -377,7 +377,7 @@ pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
         display_path.display()
     );
     if is_ci() {
-        eprintln!("\n    NOTE: run `cargo test` locally and commit the updated files\n");
+        eprintln!("    NOTE: run `cargo test` locally and commit the updated files\n");
     }
     if let Some(parent) = file.parent() {
         let _ = std::fs::create_dir_all(parent);
