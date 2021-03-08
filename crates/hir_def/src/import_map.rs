@@ -388,7 +388,7 @@ pub fn search_dependencies<'a>(
     db: &'a dyn DefDatabase,
     krate: CrateId,
     query: Query,
-) -> Vec<ItemInNs> {
+) -> FxHashSet<ItemInNs> {
     let _p = profile::span("search_dependencies").detail(|| format!("{:?}", query));
 
     let graph = db.crate_graph();
@@ -403,7 +403,7 @@ pub fn search_dependencies<'a>(
     }
 
     let mut stream = op.union();
-    let mut res = Vec::new();
+    let mut res = FxHashSet::default();
     while let Some((_, indexed_values)) = stream.next() {
         for indexed_value in indexed_values {
             let import_map = &import_maps[indexed_value.index];
@@ -435,7 +435,6 @@ pub fn search_dependencies<'a>(
             res.extend(iter);
 
             if res.len() >= query.limit {
-                res.truncate(query.limit);
                 return res;
             }
         }
@@ -821,10 +820,10 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
+                dep::fmt::Display::format_method (a)
                 dep::fmt::Display (t)
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
-                dep::fmt::Display::format_method (a)
             "#]],
         );
     }
@@ -850,9 +849,9 @@ mod tests {
             "main",
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy).assoc_items_only(),
             expect![[r#"
+            dep::fmt::Display::format_method (a)
             dep::fmt::Display::FMT_CONST (a)
             dep::fmt::Display::format_function (a)
-            dep::fmt::Display::format_method (a)
         "#]],
         );
 
@@ -911,12 +910,12 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Fuzzy),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
-                dep::Fmt (v)
-                dep::Fmt (m)
-                dep::fmt::Display (t)
-                dep::fmt::Display::fmt (a)
                 dep::format (f)
+                dep::Fmt (v)
+                dep::fmt::Display (t)
+                dep::Fmt (t)
+                dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -926,10 +925,10 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Equals),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -939,11 +938,11 @@ mod tests {
             Query::new("fmt".to_string()).search_mode(SearchMode::Contains),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
                 dep::fmt::Display (t)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
     }
@@ -980,11 +979,11 @@ mod tests {
             Query::new("fmt".to_string()),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
                 dep::fmt::Display (t)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
 
@@ -994,10 +993,10 @@ mod tests {
             Query::new("fmt".to_string()).name_only(),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (t)
                 dep::Fmt (v)
-                dep::Fmt (m)
+                dep::Fmt (t)
                 dep::fmt::Display::fmt (a)
+                dep::Fmt (m)
             "#]],
         );
     }
@@ -1018,9 +1017,9 @@ mod tests {
             Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
+                dep::FMT (v)
                 dep::fmt (v)
                 dep::FMT (t)
-                dep::FMT (v)
             "#]],
         );
 
@@ -1060,6 +1059,8 @@ mod tests {
             expect![[r#"
                 dep::fmt (t)
                 dep::Fmt (t)
+                dep::Fmt (m)
+                dep::Fmt (v)
             "#]],
         );
     }
@@ -1080,9 +1081,9 @@ mod tests {
             Query::new("FMT".to_string()),
             expect![[r#"
                 dep::fmt (t)
+                dep::FMT (v)
                 dep::fmt (v)
                 dep::FMT (t)
-                dep::FMT (v)
             "#]],
         );
 
