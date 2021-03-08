@@ -592,7 +592,7 @@ impl<'a> AstValidator<'a> {
             self.session,
             ident.span,
             E0754,
-            "trying to load file for module `{}` with non ascii identifer name",
+            "trying to load file for module `{}` with non ascii identifier name",
             ident.name
         )
         .help("consider using `#[path]` attribute to specify filesystem path")
