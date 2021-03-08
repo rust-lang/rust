@@ -132,9 +132,9 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             return;
         }
 
-        // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
+        // Only run at mir-opt-level=2 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        if tcx.sess.mir_opt_level() < 3 {
+        if tcx.sess.mir_opt_level() < 2 {
             return;
         }
 
