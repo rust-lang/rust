@@ -12,7 +12,7 @@
 //! For the simpler lowering steps, IDs and spans should be preserved. Unlike
 //! expansion we do not preserve the process of lowering in the spans, so spans
 //! should not be modified here. When creating a new node (as opposed to
-//! 'folding' an existing one), then you create a new ID using `next_id()`.
+//! "folding" an existing one), create a new ID using `next_id()`.
 //!
 //! You must ensure that IDs are unique. That means that you should only use the
 //! ID from an AST node in a single HIR node (you can assume that AST node-IDs
@@ -26,7 +26,7 @@
 //! span and spans don't need to be kept in order, etc. Where code is preserved
 //! by lowering, it should have the same span as in the AST. Where HIR nodes are
 //! new it is probably best to give a span for the whole AST node being lowered.
-//! All nodes should have real spans, don't use dummy spans. Tools are likely to
+//! All nodes should have real spans; don't use dummy spans. Tools are likely to
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
@@ -95,7 +95,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// librustc_middle is independent of the parser, we use dynamic dispatch here.
     nt_to_tokenstream: NtToTokenstream,
 
-    /// Used to allocate HIR nodes
+    /// Used to allocate HIR nodes.
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
@@ -128,7 +128,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     is_in_trait_impl: bool,
     is_in_dyn_type: bool,
 
-    /// What to do when we encounter either an "anonymous lifetime
+    /// What to do when we encounter an "anonymous lifetime
     /// reference". The term "anonymous" is meant to encompass both
     /// `'_` lifetimes as well as fully elided cases where nothing is
     /// written at all (e.g., `&T` or `std::cell::Ref<T>`).
@@ -238,11 +238,13 @@ enum ImplTraitContext<'b, 'a> {
     OtherOpaqueTy {
         /// Set of lifetimes that this opaque type can capture, if it uses
         /// them. This includes lifetimes bound since we entered this context.
-        /// For example, in
+        /// For example:
         ///
+        /// ```
         /// type A<'b> = impl for<'a> Trait<'a, Out = impl Sized + 'a>;
+        /// ```
         ///
-        /// the inner opaque type captures `'a` because it uses it. It doesn't
+        /// Here the inner opaque type captures `'a` because it uses it. It doesn't
         /// need to capture `'b` because it already inherits the lifetime
         /// parameter from `A`.
         // FIXME(impl_trait): but `required_region_bounds` will ICE later
@@ -2110,7 +2112,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }
 
-    /// Transforms `-> T` into `Future<Output = T>`
+    /// Transforms `-> T` into `Future<Output = T>`.
     fn lower_async_fn_output_type_to_future_bound(
         &mut self,
         output: &FnRetTy,
