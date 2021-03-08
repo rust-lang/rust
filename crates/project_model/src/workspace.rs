@@ -274,19 +274,12 @@ impl ProjectWorkspace {
         crate_graph
     }
 
-    pub fn collect_build_data_configs(
-        &self,
-        collector: &mut BuildDataCollector,
-        for_private: bool,
-    ) {
+    pub fn collect_build_data_configs(&self, collector: &mut BuildDataCollector) {
         match self {
             ProjectWorkspace::Cargo { cargo, rustc, .. } => {
                 collector.add_config(&cargo.workspace_root(), cargo.build_data_config().clone());
-                if for_private {
-                    if let Some(rustc) = rustc {
-                        collector
-                            .add_config(rustc.workspace_root(), rustc.build_data_config().clone());
-                    }
+                if let Some(rustc) = rustc {
+                    collector.add_config(rustc.workspace_root(), rustc.build_data_config().clone());
                 }
             }
             _ => {}

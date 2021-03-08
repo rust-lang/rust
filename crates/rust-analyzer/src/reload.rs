@@ -340,10 +340,7 @@ impl GlobalState {
         if self.config.run_build_scripts() && workspace_build_data.is_none() {
             let mut collector = BuildDataCollector::default();
             for ws in &workspaces {
-                ws.collect_build_data_configs(
-                    &mut collector,
-                    self.config.run_rustc_build_scripts(),
-                );
+                ws.collect_build_data_configs(&mut collector);
             }
             self.fetch_build_data_request(collector)
         }
