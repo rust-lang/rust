@@ -35,5 +35,5 @@ fn main() {
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
 
-    assert_eq!(HOOK_COUNT.load(Ordering::Relaxed), 8);
+    assert_eq!(HOOK_COUNT.load(Ordering::Relaxed), 6);
 }
