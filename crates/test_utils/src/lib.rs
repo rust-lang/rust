@@ -14,11 +14,11 @@ mod fixture;
 use std::{
     convert::{TryFrom, TryInto},
     env, fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use profile::StopWatch;
-use stdx::lines_with_ends;
+use stdx::{is_ci, lines_with_ends};
 use text_size::{TextRange, TextSize};
 
 pub use dissimilar::diff as __diff;
@@ -288,14 +288,14 @@ pub fn skip_slow_tests() -> bool {
     if should_skip {
         eprintln!("ignoring slow test")
     } else {
-        let path = project_dir().join("./target/.slow_tests_cookie");
+        let path = project_root().join("./target/.slow_tests_cookie");
         fs::write(&path, ".").unwrap();
     }
     should_skip
 }
 
 /// Returns the path to the root directory of `rust-analyzer` project.
-pub fn project_dir() -> PathBuf {
+pub fn project_root() -> PathBuf {
     let dir = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(dir).parent().unwrap().parent().unwrap().to_owned()
 }
@@ -352,4 +352,40 @@ pub fn bench(label: &'static str) -> impl Drop {
     }
 
     Bencher { sw: StopWatch::start(), label }
+}
+
+/// Checks that the `file` has the specified `contents`. If that is not the
+/// case, updates the file and then fails the test.
+pub fn ensure_file_contents(file: &Path, contents: &str) {
+    if let Err(()) = try_ensure_file_contents(file, contents) {
+        panic!("Some files were not up-to-date");
+    }
+}
+
+/// Checks that the `file` has the specified `contents`. If that is not the
+/// case, updates the file and return an Error.
+pub fn try_ensure_file_contents(file: &Path, contents: &str) -> Result<(), ()> {
+    match std::fs::read_to_string(file) {
+        Ok(old_contents) if normalize_newlines(&old_contents) == normalize_newlines(contents) => {
+            return Ok(())
+        }
+        _ => (),
+    }
+    let display_path = file.strip_prefix(&project_root()).unwrap_or(file);
+    eprintln!(
+        "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
+        display_path.display()
+    );
+    if is_ci() {
+        eprintln!("    NOTE: run `cargo test` locally and commit the updated files\n");
+    }
+    if let Some(parent) = file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    std::fs::write(file, contents).unwrap();
+    Err(())
+}
+
+fn normalize_newlines(s: &str) -> String {
+    s.replace("\r\n", "\n")
 }

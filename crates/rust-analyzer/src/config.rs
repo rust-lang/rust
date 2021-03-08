@@ -859,12 +859,12 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
 mod tests {
     use std::fs;
 
-    use test_utils::project_dir;
+    use test_utils::{ensure_file_contents, project_root};
 
     use super::*;
 
     #[test]
-    fn schema_in_sync_with_package_json() {
+    fn generate_package_json_config() {
         let s = Config::json_schema();
         let schema = format!("{:#}", s);
         let mut schema = schema
@@ -877,7 +877,7 @@ mod tests {
             .to_string();
         schema.push_str(",\n");
 
-        let package_json_path = project_dir().join("editors/code/package.json");
+        let package_json_path = project_root().join("editors/code/package.json");
         let mut package_json = fs::read_to_string(&package_json_path).unwrap();
 
         let start_marker = "                \"$generated-start\": false,\n";
@@ -885,19 +885,18 @@ mod tests {
 
         let start = package_json.find(start_marker).unwrap() + start_marker.len();
         let end = package_json.find(end_marker).unwrap();
+
         let p = remove_ws(&package_json[start..end]);
         let s = remove_ws(&schema);
-
         if !p.contains(&s) {
             package_json.replace_range(start..end, &schema);
-            fs::write(&package_json_path, &mut package_json).unwrap();
-            panic!("new config, updating package.json")
+            ensure_file_contents(&package_json_path, &package_json)
         }
     }
 
     #[test]
-    fn schema_in_sync_with_docs() {
-        let docs_path = project_dir().join("docs/user/generated_config.adoc");
+    fn generate_config_documentation() {
+        let docs_path = project_root().join("docs/user/generated_config.adoc");
         let current = fs::read_to_string(&docs_path).unwrap();
         let expected = ConfigData::manual();
 

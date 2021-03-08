@@ -3,48 +3,48 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, read_file};
+use xshell::{cmd, pushd, pushenv, read_file};
 
-use crate::{
-    cargo_files,
-    codegen::{self, Mode},
-    project_root, run_rustfmt, rust_files,
-};
+use crate::{cargo_files, codegen, project_root, rust_files};
 
 #[test]
-fn generated_grammar_is_fresh() {
-    if let Err(error) = codegen::generate_syntax(Mode::Verify) {
-        panic!("{}. Please update it by running `cargo xtask codegen`", error);
-    }
+fn generate_grammar() {
+    codegen::generate_syntax().unwrap()
 }
 
 #[test]
-fn generated_tests_are_fresh() {
-    if let Err(error) = codegen::generate_parser_tests(Mode::Verify) {
-        panic!("{}. Please update tests by running `cargo xtask codegen`", error);
-    }
+fn generate_parser_tests() {
+    codegen::generate_parser_tests().unwrap()
 }
 
 #[test]
-fn generated_assists_are_fresh() {
-    if let Err(error) = codegen::generate_assists_tests(Mode::Verify) {
-        panic!("{}. Please update assists by running `cargo xtask codegen`", error);
-    }
+fn generate_assists_tests() {
+    codegen::generate_assists_tests().unwrap();
+}
+
+/// This clones rustc repo, and so is not worth to keep up-to-date. We update
+/// manually by un-ignoring the test from time to time.
+#[test]
+#[ignore]
+fn generate_lint_completions() {
+    codegen::generate_lint_completions().unwrap()
 }
 
 #[test]
 fn check_code_formatting() {
-    if let Err(error) = run_rustfmt(Mode::Verify) {
-        panic!("{}. Please format the code by running `cargo format`", error);
+    let _dir = pushd(project_root()).unwrap();
+    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+    crate::ensure_rustfmt().unwrap();
+    let res = cmd!("cargo fmt -- --check").run();
+    if !res.is_ok() {
+        let _ = cmd!("cargo fmt").run();
     }
+    res.unwrap()
 }
 
 #[test]
-fn smoke_test_docs_generation() {
-    // We don't commit docs to the repo, so we can just overwrite in tests.
-    codegen::generate_assists_docs(Mode::Overwrite).unwrap();
-    codegen::generate_feature_docs(Mode::Overwrite).unwrap();
-    codegen::generate_diagnostic_docs(Mode::Overwrite).unwrap();
+fn smoke_test_generate_documentation() {
+    codegen::docs().unwrap()
 }
 
 #[test]

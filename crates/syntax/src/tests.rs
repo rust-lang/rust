@@ -7,7 +7,7 @@ use std::{
 use ast::NameOwner;
 use expect_test::expect_file;
 use rayon::prelude::*;
-use test_utils::{bench, bench_fixture, project_dir, skip_slow_tests};
+use test_utils::{bench, bench_fixture, project_root, skip_slow_tests};
 
 use crate::{ast, fuzz, tokenize, AstNode, SourceFile, SyntaxError, TextRange, TextSize, Token};
 
@@ -153,7 +153,7 @@ fn reparse_fuzz_tests() {
 /// Test that Rust-analyzer can parse and validate the rust-analyzer
 #[test]
 fn self_hosting_parsing() {
-    let dir = project_dir().join("crates");
+    let dir = project_root().join("crates");
     let files = walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_entry(|entry| {
@@ -193,7 +193,7 @@ fn self_hosting_parsing() {
 }
 
 fn test_data_dir() -> PathBuf {
-    project_dir().join("crates/syntax/test_data")
+    project_root().join("crates/syntax/test_data")
 }
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {

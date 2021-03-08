@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use xshell::{cmd, cp, pushd, read_dir, write_file};
 
-use crate::{codegen, date_iso, flags, is_release_tag, project_root, Mode, Result};
+use crate::{codegen, date_iso, flags, is_release_tag, project_root, Result};
 
 impl flags::Release {
     pub(crate) fn run(self) -> Result<()> {
@@ -12,8 +12,7 @@ impl flags::Release {
             cmd!("git reset --hard tags/nightly").run()?;
             cmd!("git push").run()?;
         }
-        codegen::generate_assists_docs(Mode::Overwrite)?;
-        codegen::generate_feature_docs(Mode::Overwrite)?;
+        codegen::docs()?;
 
         let website_root = project_root().join("../rust-analyzer.github.io");
         let changelog_dir = website_root.join("./thisweek/_posts");

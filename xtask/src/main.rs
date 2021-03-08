@@ -28,7 +28,7 @@ use std::{
 use walkdir::{DirEntry, WalkDir};
 use xshell::{cmd, cp, pushd, pushenv};
 
-use crate::{codegen::Mode, dist::DistCmd};
+use crate::dist::DistCmd;
 
 fn main() -> Result<()> {
     let _d = pushd(project_root())?;
@@ -40,7 +40,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
         flags::XtaskCmd::Install(cmd) => cmd.run(),
-        flags::XtaskCmd::Codegen(cmd) => cmd.run(),
         flags::XtaskCmd::Lint(_) => run_clippy(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
         flags::XtaskCmd::PreCache(cmd) => cmd.run(),
@@ -83,18 +82,6 @@ fn cargo_files() -> impl Iterator<Item = PathBuf> {
 
 fn rust_files_in(path: &Path) -> impl Iterator<Item = PathBuf> {
     files_in(path, "rs")
-}
-
-fn run_rustfmt(mode: Mode) -> Result<()> {
-    let _dir = pushd(project_root())?;
-    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
-    ensure_rustfmt()?;
-    let check = match mode {
-        Mode::Overwrite => &[][..],
-        Mode::Verify => &["--", "--check"],
-    };
-    cmd!("cargo fmt {check...}").run()?;
-    Ok(())
 }
 
 fn ensure_rustfmt() -> Result<()> {

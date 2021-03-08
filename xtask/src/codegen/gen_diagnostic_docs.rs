@@ -2,18 +2,20 @@
 
 use std::{fmt, path::PathBuf};
 
+use xshell::write_file;
+
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, Location, Mode, PREAMBLE},
+    codegen::{extract_comment_blocks_with_empty_lines, Location, PREAMBLE},
     project_root, rust_files, Result,
 };
 
-pub(crate) fn generate_diagnostic_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_diagnostic_docs() -> Result<()> {
     let diagnostics = Diagnostic::collect()?;
     let contents =
         diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_diagnostic.adoc");
-    codegen::update(&dst, &contents, mode)?;
+    write_file(&dst, &contents)?;
     Ok(())
 }
 

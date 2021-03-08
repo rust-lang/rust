@@ -2,22 +2,25 @@
 
 use std::{fmt, path::Path};
 
+use xshell::write_file;
+
 use crate::{
-    codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, Mode, PREAMBLE},
+    codegen::{self, extract_comment_blocks_with_empty_lines, reformat, Location, PREAMBLE},
     project_root, rust_files_in, Result,
 };
 
-pub(crate) fn generate_assists_tests(mode: Mode) -> Result<()> {
+pub(crate) fn generate_assists_tests() -> Result<()> {
     let assists = Assist::collect()?;
-    generate_tests(&assists, mode)
+    generate_tests(&assists)
 }
 
-pub(crate) fn generate_assists_docs(mode: Mode) -> Result<()> {
+pub(crate) fn generate_assists_docs() -> Result<()> {
     let assists = Assist::collect()?;
     let contents = assists.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = format!("//{}\n{}\n", PREAMBLE, contents.trim());
     let dst = project_root().join("docs/user/generated_assists.adoc");
-    codegen::update(&dst, &contents, mode)
+    write_file(dst, &contents)?;
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -111,7 +114,7 @@ impl fmt::Display for Assist {
     }
 }
 
-fn generate_tests(assists: &[Assist], mode: Mode) -> Result<()> {
+fn generate_tests(assists: &[Assist]) -> Result<()> {
     let mut buf = String::from("use super::check_doc_test;\n");
 
     for assist in assists.iter() {
@@ -135,7 +138,10 @@ r#####"
         buf.push_str(&test)
     }
     let buf = reformat(&buf)?;
-    codegen::update(&project_root().join("crates/ide_assists/src/tests/generated.rs"), &buf, mode)
+    codegen::ensure_file_contents(
+        &project_root().join("crates/ide_assists/src/tests/generated.rs"),
+        &buf,
+    )
 }
 
 fn hide_hash_comments(text: &str) -> String {
