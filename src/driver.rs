@@ -20,7 +20,7 @@ use rustc_span::symbol::Symbol;
 use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
-use std::env::{self, VarError};
+use std::env;
 use std::lazy::SyncLazy;
 use std::ops::Deref;
 use std::panic;
@@ -314,13 +314,7 @@ pub fn main() {
         };
 
         let mut no_deps = false;
-        let clippy_args_var = env::var("CLIPPY_ARGS").map_or_else(
-            |e| match e {
-                VarError::NotPresent => None,
-                VarError::NotUnicode(s) => panic!("CLIPPY_ARGS is not valid Unicode: {:?}", s),
-            },
-            Some,
-        );
+        let clippy_args_var = env::var("CLIPPY_ARGS").ok();
         let clippy_args = clippy_args_var
             .as_deref()
             .unwrap_or_default()
