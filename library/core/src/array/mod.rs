@@ -42,7 +42,7 @@ pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
 /// without causing much metadata bloat.
 ///
 /// The trait is marked unsafe in order to restrict implementors to fixed-size
-/// arrays. User of this trait can assume that implementors have the exact
+/// arrays. A user of this trait can assume that implementors have the exact
 /// layout in memory of a fixed size array (for example, for unsafe
 /// initialization).
 ///
@@ -382,7 +382,7 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
 
 // The Default impls cannot be done with const generics because `[T; 0]` doesn't
 // require Default to be implemented, and having different impl blocks for
-// different numbers isn't supported yet.
+// different numbers aren't supported yet.
 
 macro_rules! array_impl_default {
     {$n:expr, $t:ident $($ts:ident)*} => {
@@ -489,7 +489,7 @@ impl<T, const N: usize> [T; N] {
     /// ```
     ///
     /// This method is particularly useful if combined with other methods, like
-    /// [`map`](#method.map). This way, you can can avoid moving the original
+    /// [`map`](#method.map). This way, you can avoid moving the original
     /// array if its elements are not `Copy`.
     ///
     /// ```
@@ -564,7 +564,7 @@ where
 /// yields fewer than `N` items, `None` is returned and all already yielded
 /// items are dropped.
 ///
-/// Since the iterator is passed as mutable reference and this function calls
+/// Since the iterator is passed as a mutable reference and this function calls
 /// `next` at most `N` times, the iterator can still be used afterwards to
 /// retrieve the remaining items.
 ///
