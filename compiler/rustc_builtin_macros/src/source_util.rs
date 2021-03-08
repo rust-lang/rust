@@ -4,7 +4,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{self, *};
-use rustc_expand::module::DirectoryOwnership;
+use rustc_expand::module::DirOwnership;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{self, new_parser_from_file};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
@@ -101,7 +101,7 @@ pub fn expand_include<'cx>(
         None => return DummyResult::any(sp),
     };
     // The file will be added to the code map by the parser
-    let mut file = match cx.resolve_path(file, sp) {
+    let file = match cx.resolve_path(file, sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
@@ -114,10 +114,9 @@ pub fn expand_include<'cx>(
     // then the path of `bar.rs` should be relative to the directory of `file`.
     // See https://github.com/rust-lang/rust/pull/69838/files#r395217057 for a discussion.
     // `MacroExpander::fully_expand_fragment` later restores, so "stack discipline" is maintained.
-    file.pop();
-    cx.current_expansion.directory_ownership = DirectoryOwnership::Owned { relative: None };
-    let mod_path = cx.current_expansion.module.mod_path.clone();
-    cx.current_expansion.module = Rc::new(ModuleData { mod_path, directory: file });
+    let dir_path = file.parent().unwrap_or(&file).to_owned();
+    cx.current_expansion.module = Rc::new(cx.current_expansion.module.with_dir_path(dir_path));
+    cx.current_expansion.dir_ownership = DirOwnership::Owned { relative: None };
 
     struct ExpandResult<'a> {
         p: Parser<'a>,
