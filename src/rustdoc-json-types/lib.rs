@@ -76,7 +76,7 @@ pub struct Item {
     /// Stringified versions of the attributes on this item (e.g. `"#[inline]"`)
     pub attrs: Vec<String>,
     pub deprecation: Option<Deprecation>,
-    pub kind: ItemKind,
+    #[serde(flatten)]
     pub inner: ItemEnum,
 }
 
@@ -185,48 +185,48 @@ pub enum ItemKind {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "kind", content = "inner", rename_all = "snake_case")]
 pub enum ItemEnum {
-    ModuleItem(Module),
-    ExternCrateItem {
+    Module(Module),
+    ExternCrate {
         name: String,
         rename: Option<String>,
     },
-    ImportItem(Import),
+    Import(Import),
 
-    UnionItem(Union),
-    StructItem(Struct),
-    StructFieldItem(Type),
-    EnumItem(Enum),
-    VariantItem(Variant),
+    Union(Union),
+    Struct(Struct),
+    StructField(Type),
+    Enum(Enum),
+    Variant(Variant),
 
-    FunctionItem(Function),
+    Function(Function),
 
-    TraitItem(Trait),
-    TraitAliasItem(TraitAlias),
-    MethodItem(Method),
-    ImplItem(Impl),
+    Trait(Trait),
+    TraitAlias(TraitAlias),
+    Method(Method),
+    Impl(Impl),
 
-    TypedefItem(Typedef),
-    OpaqueTyItem(OpaqueTy),
-    ConstantItem(Constant),
+    Typedef(Typedef),
+    OpaqueTy(OpaqueTy),
+    Constant(Constant),
 
-    StaticItem(Static),
+    Static(Static),
 
     /// `type`s from an extern block
-    ForeignTypeItem,
+    ForeignType,
 
     /// Declarative macro_rules! macro
-    MacroItem(String),
-    ProcMacroItem(ProcMacro),
+    Macro(String),
+    ProcMacro(ProcMacro),
 
-    AssocConstItem {
+    AssocConst {
         #[serde(rename = "type")]
         type_: Type,
         /// e.g. `const X: usize = 5;`
         default: Option<String>,
     },
-    AssocTypeItem {
+    AssocType {
         bounds: Vec<GenericBound>,
         /// e.g. `type X = usize;`
         default: Option<Type>,
@@ -508,3 +508,6 @@ pub struct Static {
     pub mutable: bool,
     pub expr: String,
 }
+
+#[cfg(test)]
+mod tests;
