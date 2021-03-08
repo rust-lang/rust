@@ -13,7 +13,7 @@ use project_model::ProjectManifest;
 use rust_analyzer::{config::Config, lsp_ext, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
-use test_utils::{find_mismatch, Fixture};
+use test_utils::Fixture;
 use vfs::AbsPathBuf;
 
 use crate::testdir::TestDir;
@@ -278,4 +278,99 @@ fn recv_timeout(receiver: &Receiver<Message>) -> Result<Option<Message>, Timeout
         recv(receiver) -> msg => Ok(msg.ok()),
         recv(after(timeout)) -> _ => Err(Timeout),
     }
+}
+
+// Comparison functionality borrowed from cargo:
+
+/// Compares JSON object for approximate equality.
+/// You can use `[..]` wildcard in strings (useful for OS dependent things such
+/// as paths). You can use a `"{...}"` string literal as a wildcard for
+/// arbitrary nested JSON. Arrays are sorted before comparison.
+fn find_mismatch<'a>(expected: &'a Value, actual: &'a Value) -> Option<(&'a Value, &'a Value)> {
+    match (expected, actual) {
+        (Value::Number(l), Value::Number(r)) if l == r => None,
+        (Value::Bool(l), Value::Bool(r)) if l == r => None,
+        (Value::String(l), Value::String(r)) if lines_match(l, r) => None,
+        (Value::Array(l), Value::Array(r)) => {
+            if l.len() != r.len() {
+                return Some((expected, actual));
+            }
+
+            let mut l = l.iter().collect::<Vec<_>>();
+            let mut r = r.iter().collect::<Vec<_>>();
+
+            l.retain(|l| match r.iter().position(|r| find_mismatch(l, r).is_none()) {
+                Some(i) => {
+                    r.remove(i);
+                    false
+                }
+                None => true,
+            });
+
+            if !l.is_empty() {
+                assert!(!r.is_empty());
+                Some((&l[0], &r[0]))
+            } else {
+                assert_eq!(r.len(), 0);
+                None
+            }
+        }
+        (Value::Object(l), Value::Object(r)) => {
+            fn sorted_values(obj: &serde_json::Map<String, Value>) -> Vec<&Value> {
+                let mut entries = obj.iter().collect::<Vec<_>>();
+                entries.sort_by_key(|it| it.0);
+                entries.into_iter().map(|(_k, v)| v).collect::<Vec<_>>()
+            }
+
+            let same_keys = l.len() == r.len() && l.keys().all(|k| r.contains_key(k));
+            if !same_keys {
+                return Some((expected, actual));
+            }
+
+            let l = sorted_values(l);
+            let r = sorted_values(r);
+
+            l.into_iter().zip(r).filter_map(|(l, r)| find_mismatch(l, r)).next()
+        }
+        (Value::Null, Value::Null) => None,
+        // magic string literal "{...}" acts as wildcard for any sub-JSON
+        (Value::String(l), _) if l == "{...}" => None,
+        _ => Some((expected, actual)),
+    }
+}
+
+/// Compare a line with an expected pattern.
+/// - Use `[..]` as a wildcard to match 0 or more characters on the same line
+///   (similar to `.*` in a regex).
+fn lines_match(expected: &str, actual: &str) -> bool {
+    // Let's not deal with / vs \ (windows...)
+    // First replace backslash-escaped backslashes with forward slashes
+    // which can occur in, for example, JSON output
+    let expected = expected.replace(r"\\", "/").replace(r"\", "/");
+    let mut actual: &str = &actual.replace(r"\\", "/").replace(r"\", "/");
+    for (i, part) in expected.split("[..]").enumerate() {
+        match actual.find(part) {
+            Some(j) => {
+                if i == 0 && j != 0 {
+                    return false;
+                }
+                actual = &actual[j + part.len()..];
+            }
+            None => return false,
+        }
+    }
+    actual.is_empty() || expected.ends_with("[..]")
+}
+
+#[test]
+fn lines_match_works() {
+    assert!(lines_match("a b", "a b"));
+    assert!(lines_match("a[..]b", "a b"));
+    assert!(lines_match("a[..]", "a b"));
+    assert!(lines_match("[..]", "a b"));
+    assert!(lines_match("[..]b", "a b"));
+
+    assert!(!lines_match("[..]b", "c"));
+    assert!(!lines_match("b", "c"));
+    assert!(!lines_match("b", "cb"));
 }
