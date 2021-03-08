@@ -1,5 +1,5 @@
 //! Tests that projections through unions cancel `DestinationPropagation`.
-
+// compile-flags: -Zunsound-mir-opts
 fn val() -> u32 {
     1
 }
