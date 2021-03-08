@@ -12,7 +12,7 @@ trait NonObjectSafe3 {
 }
 
 trait NonObjectSafe4 {
-    fn foo(&self, &Self);
+    fn foo(&self, s: &Self);
 }
 
 fn takes_non_object_safe_ref<T>(obj: &dyn NonObjectSafe1) {

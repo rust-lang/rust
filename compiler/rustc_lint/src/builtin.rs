@@ -857,11 +857,10 @@ declare_lint! {
     /// ```
     ///
     /// This syntax is now a hard error in the 2018 edition. In the 2015
-    /// edition, this lint is "allow" by default, because the old code is
-    /// still valid, and warning for all old code can be noisy. This lint
+    /// edition, this lint is "warn" by default. This lint
     /// enables the [`cargo fix`] tool with the `--edition` flag to
     /// automatically transition old code from the 2015 edition to 2018. The
-    /// tool will switch this lint to "warn" and will automatically apply the
+    /// tool will run this lint and automatically apply the
     /// suggested fix from the compiler (which is to add `_` to each
     /// parameter). This provides a completely automated way to update old
     /// code for a new edition. See [issue #41686] for more details.
@@ -869,7 +868,7 @@ declare_lint! {
     /// [issue #41686]: https://github.com/rust-lang/rust/issues/41686
     /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
     pub ANONYMOUS_PARAMETERS,
-    Allow,
+    Warn,
     "detects anonymous parameters",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #41686 <https://github.com/rust-lang/rust/issues/41686>",
@@ -884,6 +883,10 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
+        if cx.sess.edition() != Edition::Edition2015 {
+            // This is a hard error in future editions; avoid linting and erroring
+            return;
+        }
         if let ast::AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) = it.kind {
             for arg in sig.decl.inputs.iter() {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
