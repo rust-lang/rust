@@ -1452,6 +1452,18 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Expands all `#[cfg]` and `#[cfg_attr]` attributes in the code fragment it's applied to.
+    #[cfg(not(bootstrap))]
+    #[unstable(
+        feature = "cfg_eval",
+        issue = "82679",
+        reason = "`cfg_eval` is a recently implemented feature"
+    )]
+    #[rustc_builtin_macro]
+    pub macro cfg_eval($($tt:tt)*) {
+        /* compiler built-in */
+    }
+
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]

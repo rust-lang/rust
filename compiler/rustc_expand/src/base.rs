@@ -81,8 +81,22 @@ impl AstLike for Annotatable {
         }
     }
 
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        panic!("Called finalize_tokens on an Annotatable: {:?}", tokens);
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Annotatable::Item(item) => item.tokens_mut(),
+            Annotatable::TraitItem(trait_item) => trait_item.tokens_mut(),
+            Annotatable::ImplItem(impl_item) => impl_item.tokens_mut(),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.tokens_mut(),
+            Annotatable::Stmt(stmt) => stmt.tokens_mut(),
+            Annotatable::Expr(expr) => expr.tokens_mut(),
+            Annotatable::Arm(arm) => arm.tokens_mut(),
+            Annotatable::Field(field) => field.tokens_mut(),
+            Annotatable::FieldPat(fp) => fp.tokens_mut(),
+            Annotatable::GenericParam(gp) => gp.tokens_mut(),
+            Annotatable::Param(p) => p.tokens_mut(),
+            Annotatable::StructField(sf) => sf.tokens_mut(),
+            Annotatable::Variant(v) => v.tokens_mut(),
+        }
     }
 }
 
