@@ -24,6 +24,20 @@ fn main() {
         static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
         #[used]
         static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        // On OSX, jemalloc doesn't directly override malloc/free, but instead
+        // registers itself with the allocator's zone APIs in a ctor. However,
+        // the linker doesn't seem to consider ctors as "used" when statically
+        // linking, so we need to explicitly depend on the function.
+        #[cfg(target_os = "macos")]
+        {
+            extern "C" {
+                fn _rjem_je_zone_register();
+            }
+
+            #[used]
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+        }
     }
 
     rustc_driver::set_sigpipe_handler();
