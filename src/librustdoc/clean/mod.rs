@@ -393,7 +393,7 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
 
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
-        Constant::Generic {
+        Constant::Anonymous {
             type_: cx
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
@@ -1945,7 +1945,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Static(ty, mutability, body_id) => {
                     StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
                 }
-                ItemKind::Const(ty, body_id) => ConstantItem(Constant::Const {
+                ItemKind::Const(ty, body_id) => ConstantItem(Constant::Local {
                     type_: ty.clean(cx),
                     body: body_id,
                     did: def_id,
