@@ -44,7 +44,7 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
     /// Transform boolean comparisons into logical operations.
     fn combine_bool_cmp(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         match rvalue {
-            Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), a, b) => {
+            Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), box (a, b)) => {
                 let new = match (op, self.try_eval_bool(a), self.try_eval_bool(b)) {
                     // Transform "Eq(a, true)" ==> "a"
                     (BinOp::Eq, _, Some(true)) => Some(a.clone()),

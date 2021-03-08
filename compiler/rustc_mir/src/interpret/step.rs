@@ -165,7 +165,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op(&op, &dest)?;
             }
 
-            BinaryOp(bin_op, ref left, ref right) => {
+            BinaryOp(bin_op, box (ref left, ref right)) => {
                 let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(&self.eval_operand(left, layout)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
@@ -173,7 +173,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.binop_ignore_overflow(bin_op, &left, &right, &dest)?;
             }
 
-            CheckedBinaryOp(bin_op, ref left, ref right) => {
+            CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
                 let left = self.read_immediate(&self.eval_operand(left, None)?)?;
                 let layout = binop_right_homogeneous(bin_op).then_some(left.layout);

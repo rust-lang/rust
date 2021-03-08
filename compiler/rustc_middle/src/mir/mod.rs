@@ -1683,6 +1683,9 @@ pub struct Place<'tcx> {
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Place<'_>, 16);
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ProjectionElem<V, T> {
@@ -1981,6 +1984,9 @@ pub enum Operand<'tcx> {
     Constant(Box<Constant<'tcx>>),
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Operand<'_>, 24);
+
 impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Operand::*;
@@ -2096,8 +2102,8 @@ pub enum Rvalue<'tcx> {
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
-    BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
-    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
+    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     NullaryOp(NullOp, Ty<'tcx>),
     UnaryOp(UnOp, Operand<'tcx>),
@@ -2115,6 +2121,9 @@ pub enum Rvalue<'tcx> {
     /// away after type-checking and before lowering.
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Rvalue<'_>, 40);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
@@ -2138,6 +2147,9 @@ pub enum AggregateKind<'tcx> {
     Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(AggregateKind<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum BinOp {
@@ -2215,8 +2227,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
             }
-            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
-            CheckedBinaryOp(ref op, ref a, ref b) => {
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),

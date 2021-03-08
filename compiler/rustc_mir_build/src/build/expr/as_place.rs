@@ -667,7 +667,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             lt,
-            Rvalue::BinaryOp(BinOp::Lt, Operand::Copy(Place::from(index)), Operand::Copy(len)),
+            Rvalue::BinaryOp(
+                BinOp::Lt,
+                box (Operand::Copy(Place::from(index)), Operand::Copy(len)),
+            ),
         );
         let msg = BoundsCheck { len: Operand::Move(len), index: Operand::Copy(Place::from(index)) };
         // assert!(lt, "...")

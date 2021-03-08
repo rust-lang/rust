@@ -687,8 +687,8 @@ macro_rules! make_mir_visitor {
                         self.visit_ty(ty, TyContext::Location(location));
                     }
 
-                    Rvalue::BinaryOp(_bin_op, lhs, rhs)
-                    | Rvalue::CheckedBinaryOp(_bin_op, lhs, rhs) => {
+                    Rvalue::BinaryOp(_bin_op, box(lhs, rhs))
+                    | Rvalue::CheckedBinaryOp(_bin_op, box(lhs, rhs)) => {
                         self.visit_operand(lhs, location);
                         self.visit_operand(rhs, location);
                     }
