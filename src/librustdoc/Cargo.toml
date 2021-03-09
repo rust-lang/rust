@@ -20,7 +20,7 @@ itertools = "0.9"
 regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
 tracing = "0.1"
-tracing-tree = "0.1.6"
+tracing-tree = "0.1.9"
 
 [dependencies.tracing-subscriber]
 version = "0.2.13"
