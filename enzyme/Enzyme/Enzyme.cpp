@@ -453,8 +453,9 @@ public:
       args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
     assert(newFunc);
 
-    if (EnzymePrint)
+    if (EnzymePrint) {
       llvm::errs() << "postfn:\n" << *newFunc << "\n";
+    }
     Builder.setFastMathFlags(getFast());
 
     if (args.size() != newFunc->getFunctionType()->getNumParams()) {

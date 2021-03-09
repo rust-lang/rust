@@ -183,6 +183,7 @@ std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L, Type *Ty,
 // induction variable
 void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
                         MustExitScalarEvolution &SE,
+                        std::function<void(Instruction *, Value *)> replacer,
                         std::function<void(Instruction *)> eraser) {
   assert(Header);
   assert(CanonicalIV);
@@ -237,7 +238,7 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
         }
       }
 
-      PN->replaceAllUsesWith(NewIV);
+      replacer(PN, NewIV);
       IVsToRemove.push_back(PN);
     }
   }
@@ -458,6 +459,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
   loopContexts[L].var = CanonicalIV;
   loopContexts[L].incvar = pair.second;
   RemoveRedundantIVs(loopContexts[L].header, CanonicalIV, SE,
+                     [&](Instruction *I, Value *V) { replaceAWithB(I, V); },
                      [&](Instruction *I) { erase(I); });
   CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
                       CanonicalIV, SE, *this, pair.second,

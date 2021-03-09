@@ -85,264 +85,282 @@ bool is_load_uncacheable(
     const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
     const std::map<Argument *, bool> &uncacheable_args, bool topLevel);
 
-bool is_value_mustcache_from_origin(
-    Value *obj, AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args, bool topLevel) {
-  bool mustcache = false;
+struct CacheAnalysis {
+  AAResults &AA;
+  Function *oldFunc;
+  TargetLibraryInfo &TLI;
+  const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
+  const std::map<Argument *, bool> &uncacheable_args;
+  bool topLevel;
+  std::map<Value *, bool> seen;
+  CacheAnalysis(
+      AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
+      const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
+      const std::map<Argument *, bool> &uncacheable_args, bool topLevel)
+      : AA(AA), oldFunc(oldFunc), TLI(TLI),
+        unnecessaryInstructions(unnecessaryInstructions),
+        uncacheable_args(uncacheable_args), topLevel(topLevel) {}
 
-  // If the pointer operand is from an argument to the function, we need to
-  // check if the argument
-  //   received from the caller is uncacheable.
-  if (isa<UndefValue>(obj)) {
-  } else if (auto arg = dyn_cast<Argument>(obj)) {
-    auto found = uncacheable_args.find(arg);
-    if (found == uncacheable_args.end()) {
-      llvm::errs() << "uncacheable_args:\n";
-      for (auto &pair : uncacheable_args) {
-        llvm::errs() << " + " << *pair.first << ": " << pair.second
-                     << " of func " << pair.first->getParent()->getName()
-                     << "\n";
+  bool is_value_mustcache_from_origin(Value *obj) {
+    if (seen.find(obj) != seen.end())
+      return seen[obj];
+
+    bool mustcache = false;
+
+    // If the pointer operand is from an argument to the function, we need to
+    // check if the argument
+    //   received from the caller is uncacheable.
+    if (isa<UndefValue>(obj) || isa<ConstantPointerNull>(obj)) {
+      return false;
+    } else if (auto arg = dyn_cast<Argument>(obj)) {
+      auto found = uncacheable_args.find(arg);
+      if (found == uncacheable_args.end()) {
+        llvm::errs() << "uncacheable_args:\n";
+        for (auto &pair : uncacheable_args) {
+          llvm::errs() << " + " << *pair.first << ": " << pair.second
+                       << " of func " << pair.first->getParent()->getName()
+                       << "\n";
+        }
+        llvm::errs() << "could not find " << *arg << " of func "
+                     << arg->getParent()->getName() << " in args_map\n";
       }
-      llvm::errs() << "could not find " << *arg << " of func "
-                   << arg->getParent()->getName() << " in args_map\n";
-    }
-    assert(found != uncacheable_args.end());
-    if (found->second) {
-      mustcache = true;
-    }
-  } else {
+      assert(found != uncacheable_args.end());
+      if (found->second) {
+        mustcache = true;
+      }
+    } else if (auto pn = dyn_cast<PHINode>(obj)) {
+      seen[pn] = false;
+      for (auto &val : pn->incoming_values()) {
+        if (is_value_mustcache_from_origin(val)) {
+          mustcache = true;
+          break;
+        }
+      }
+    } else if (auto ci = dyn_cast<CastInst>(obj)) {
+      mustcache = is_value_mustcache_from_origin(ci->getOperand(0));
+    } else if (auto gep = dyn_cast<GetElementPtrInst>(obj)) {
+      mustcache = is_value_mustcache_from_origin(gep->getPointerOperand());
+    } else {
 
-    // Pointer operands originating from call instructions that are not
-    // malloc/free are conservatively considered uncacheable.
-    if (auto obj_op = dyn_cast<CallInst>(obj)) {
-      Function *called = obj_op->getCalledFunction();
+      // Pointer operands originating from call instructions that are not
+      // malloc/free are conservatively considered uncacheable.
+      if (auto obj_op = dyn_cast<CallInst>(obj)) {
+        Function *called = obj_op->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
-      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
+        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand()))
 #else
-      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue()))
 #endif
-        if (castinst->isCast()) {
-          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-            if (isAllocationFunction(*fn, TLI) ||
-                isDeallocationFunction(*fn, TLI)) {
-              called = fn;
+        {
+          if (castinst->isCast()) {
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              if (isAllocationFunction(*fn, TLI) ||
+                  isDeallocationFunction(*fn, TLI)) {
+                called = fn;
+              }
             }
           }
         }
-      }
-      if (called && isCertainMallocOrFree(called)) {
+        if (called && isCertainMallocOrFree(called)) {
+        } else {
+          // OP is a non malloc/free call so we need to cache
+          mustcache = true;
+        }
+      } else if (isa<AllocaInst>(obj)) {
+        // No change to modref if alloca
+      } else if (isa<GlobalVariable>(obj)) {
+        // In the absense of more fine-grained global info, assume object is
+        // written to in a subseqent call unless this is "topLevel";
+        if (!topLevel)
+          mustcache = true;
+      } else if (auto sli = dyn_cast<LoadInst>(obj)) {
+        // If obj is from a load instruction conservatively consider it
+        // uncacheable if that load itself cannot be cached
+        mustcache = is_load_uncacheable(*sli);
       } else {
-        // OP is a non malloc/free call so we need to cache
+        // In absence of more information, assume that the underlying object for
+        // pointer operand is uncacheable in caller.
         mustcache = true;
       }
-    } else if (isa<AllocaInst>(obj)) {
-      // No change to modref if alloca
-    } else if (isa<GlobalVariable>(obj)) {
-      // In the absense of more fine-grained global info, assume object is
-      // written to in a subseqent call unless this is "topLevel";
-      if (!topLevel)
-        mustcache = true;
-    } else if (auto sli = dyn_cast<LoadInst>(obj)) {
-      // If obj is from a load instruction conservatively consider it
-      // uncacheable if that load itself cannot be cached
-      mustcache =
-          is_load_uncacheable(*sli, AA, oldFunc, TLI, unnecessaryInstructions,
-                              uncacheable_args, topLevel);
-    } else {
-      // In absence of more information, assume that the underlying object for
-      // pointer operand is uncacheable in caller.
-      mustcache = true;
     }
+    return seen[obj] = mustcache;
   }
-  return mustcache;
-}
 
-bool is_load_uncacheable(
-    LoadInst &li, AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> &uncacheable_args, bool topLevel) {
-  assert(li.getParent()->getParent() == oldFunc);
+  bool is_load_uncacheable(LoadInst &li) {
+    assert(li.getParent()->getParent() == oldFunc);
 
-  // Find the underlying object for the pointer operand of the load instruction.
-  auto obj =
+    // Find the underlying object for the pointer operand of the load
+    // instruction.
+    auto obj =
 #if LLVM_VERSION_MAJOR >= 12
-      getUnderlyingObject(li.getPointerOperand(), 100);
+        getUnderlyingObject(li.getPointerOperand(), 100);
 #else
-      GetUnderlyingObject(li.getPointerOperand(),
-                          oldFunc->getParent()->getDataLayout(), 100);
+        GetUnderlyingObject(li.getPointerOperand(),
+                            oldFunc->getParent()->getDataLayout(), 100);
 #endif
 
-  bool can_modref = is_value_mustcache_from_origin(obj, AA, oldFunc, TLI,
-                                                   unnecessaryInstructions,
-                                                   uncacheable_args, topLevel);
+    bool can_modref = is_value_mustcache_from_origin(obj);
 
-  if (!can_modref) {
-    allFollowersOf(&li, [&](Instruction *inst2) {
-      if (!inst2->mayWriteToMemory())
+    if (!can_modref) {
+      allFollowersOf(&li, [&](Instruction *inst2) {
+        if (!inst2->mayWriteToMemory())
+          return false;
+
+        if (unnecessaryInstructions.count(inst2)) {
+          return false;
+        }
+
+        if (writesToMemoryReadBy(AA, &li, inst2)) {
+          can_modref = true;
+          EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
+                      "Load may need caching ", li, " due to ", *inst2);
+          // Early exit
+          return true;
+        }
         return false;
+      });
+    } else {
 
-      if (unnecessaryInstructions.count(inst2)) {
-        return false;
-      }
-
-      if (writesToMemoryReadBy(AA, &li, inst2)) {
-        can_modref = true;
-        EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
-                    "Load may need caching ", li, " due to ", *inst2);
-        // Early exit
-        return true;
-      }
-      return false;
-    });
-  }
-
-  return can_modref;
-}
-
-// Computes a map of LoadInst -> boolean for a function indicating whether that
-// load is "uncacheable".
-//   A load is considered "uncacheable" if the data at the loaded memory
-//   location can be modified after the load instruction.
-std::map<Instruction *, bool> compute_uncacheable_load_map(
-    Function *oldFunc, AAResults &AA, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    const std::map<Argument *, bool> uncacheable_args, bool topLevel) {
-  std::map<Instruction *, bool> can_modref_map;
-  for (inst_iterator I = inst_begin(*oldFunc), E = inst_end(*oldFunc); I != E;
-       ++I) {
-    Instruction *inst = &*I;
-    // For each load instruction, determine if it is uncacheable.
-    if (auto op = dyn_cast<LoadInst>(inst)) {
-      can_modref_map[inst] =
-          is_load_uncacheable(*op, AA, oldFunc, TLI, unnecessaryInstructions,
-                              uncacheable_args, topLevel);
+      EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
+                  "Load may need caching ", li, " due to origin ", *obj);
     }
+
+    return can_modref;
   }
-  return can_modref_map;
-}
 
-std::map<Argument *, bool> compute_uncacheable_args_for_one_callsite(
-    CallInst *callsite_op, DominatorTree &DT, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    AAResults &AA, Function *oldFunc,
-    const std::map<Argument *, bool> parent_uncacheable_args, bool topLevel) {
+  // Computes a map of LoadInst -> boolean for a function indicating whether
+  // that load is "uncacheable".
+  //   A load is considered "uncacheable" if the data at the loaded memory
+  //   location can be modified after the load instruction.
+  std::map<Instruction *, bool> compute_uncacheable_load_map() {
+    std::map<Instruction *, bool> can_modref_map;
+    for (inst_iterator I = inst_begin(*oldFunc), E = inst_end(*oldFunc); I != E;
+         ++I) {
+      Instruction *inst = &*I;
+      // For each load instruction, determine if it is uncacheable.
+      if (auto op = dyn_cast<LoadInst>(inst)) {
+        can_modref_map[inst] = is_load_uncacheable(*op);
+      }
+    }
+    return can_modref_map;
+  }
 
-  if (!callsite_op->getCalledFunction())
-    return {};
+  std::map<Argument *, bool>
+  compute_uncacheable_args_for_one_callsite(CallInst *callsite_op) {
 
-  std::vector<Value *> args;
-  std::vector<bool> args_safe;
+    if (!callsite_op->getCalledFunction())
+      return {};
 
-  // First, we need to propagate the uncacheable status from the parent function
-  // to the callee.
-  //   because memory location x modified after parent returns => x modified
-  //   after callee returns.
-  for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i) {
-    args.push_back(callsite_op->getArgOperand(i));
+    std::vector<Value *> args;
+    std::vector<bool> args_safe;
+
+    // First, we need to propagate the uncacheable status from the parent
+    // function to the callee.
+    //   because memory location x modified after parent returns => x modified
+    //   after callee returns.
+    for (unsigned i = 0; i < callsite_op->getNumArgOperands(); ++i) {
+      args.push_back(callsite_op->getArgOperand(i));
 
 // If the UnderlyingObject is from one of this function's arguments, then we
 // need to propagate the volatility.
 #if LLVM_VERSION_MAJOR >= 12
-    Value *obj = getUnderlyingObject(callsite_op->getArgOperand(i), 100);
+      Value *obj = getUnderlyingObject(callsite_op->getArgOperand(i), 100);
 #else
-    Value *obj = GetUnderlyingObject(
-        callsite_op->getArgOperand(i),
-        callsite_op->getParent()->getModule()->getDataLayout(), 100);
+      Value *obj = GetUnderlyingObject(
+          callsite_op->getArgOperand(i),
+          callsite_op->getParent()->getModule()->getDataLayout(), 100);
 #endif
 
-    bool init_safe = !is_value_mustcache_from_origin(
-        obj, AA, oldFunc, TLI, unnecessaryInstructions, parent_uncacheable_args,
-        topLevel);
-    args_safe.push_back(init_safe);
-  }
+      bool init_safe = !is_value_mustcache_from_origin(obj);
+      args_safe.push_back(init_safe);
+    }
 
-  // Second, we check for memory modifications that can occur in the
-  // continuation of the
-  //   callee inside the parent function.
-  allFollowersOf(callsite_op, [&](Instruction *inst2) {
-    // Don't consider modref from malloc/free as a need to cache
-    if (auto obj_op = dyn_cast<CallInst>(inst2)) {
-      Function *called = obj_op->getCalledFunction();
+    // Second, we check for memory modifications that can occur in the
+    // continuation of the
+    //   callee inside the parent function.
+    allFollowersOf(callsite_op, [&](Instruction *inst2) {
+      // Don't consider modref from malloc/free as a need to cache
+      if (auto obj_op = dyn_cast<CallInst>(inst2)) {
+        Function *called = obj_op->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
-      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand())) {
+        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledOperand()))
 #else
-      if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue())) {
+        if (auto castinst = dyn_cast<ConstantExpr>(obj_op->getCalledValue()))
 #endif
-        if (castinst->isCast()) {
-          if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-            if (isAllocationFunction(*fn, TLI) ||
-                isDeallocationFunction(*fn, TLI)) {
-              called = fn;
+        {
+          if (castinst->isCast()) {
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              if (isAllocationFunction(*fn, TLI) ||
+                  isDeallocationFunction(*fn, TLI)) {
+                called = fn;
+              }
             }
           }
         }
+        if (called && isCertainMallocOrFree(called)) {
+          return false;
+        }
       }
-      if (called && isCertainMallocOrFree(called)) {
+
+      if (unnecessaryInstructions.count(inst2))
         return false;
-      }
-    }
 
-    if (unnecessaryInstructions.count(inst2))
+      for (unsigned i = 0; i < args.size(); ++i) {
+        if (llvm::isModSet(AA.getModRefInfo(
+                inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
+          EmitWarning("UncacheableArg", callsite_op->getDebugLoc(), oldFunc,
+                      callsite_op->getParent(), "Callsite ", *callsite_op,
+                      " arg ", i, " uncacheable due to ", *inst2);
+          args_safe[i] = false;
+        }
+      }
       return false;
+    });
 
+    std::map<Argument *, bool> uncacheable_args;
+
+    auto arg = callsite_op->getCalledFunction()->arg_begin();
     for (unsigned i = 0; i < args.size(); ++i) {
-      if (llvm::isModSet(AA.getModRefInfo(
-              inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
-        args_safe[i] = false;
+      uncacheable_args[arg] = !args_safe[i];
+      ++arg;
+      if (arg == callsite_op->getCalledFunction()->arg_end()) {
+        break;
       }
     }
-    return false;
-  });
 
-  std::map<Argument *, bool> uncacheable_args;
-
-  auto arg = callsite_op->getCalledFunction()->arg_begin();
-  for (unsigned i = 0; i < args.size(); ++i) {
-    uncacheable_args[arg] = !args_safe[i];
-    ++arg;
-    if (arg == callsite_op->getCalledFunction()->arg_end()) {
-      break;
-    }
+    return uncacheable_args;
   }
 
-  return uncacheable_args;
-}
+  // Given a function and the arguments passed to it by its caller that are
+  // uncacheable (_uncacheable_args) compute
+  //   the set of uncacheable arguments for each callsite inside the function. A
+  //   pointer argument is uncacheable at a callsite if the memory pointed to
+  //   might be modified after that callsite.
+  std::map<CallInst *, const std::map<Argument *, bool>>
+  compute_uncacheable_args_for_callsites() {
+    std::map<CallInst *, const std::map<Argument *, bool>> uncacheable_args_map;
 
-// Given a function and the arguments passed to it by its caller that are
-// uncacheable (_uncacheable_args) compute
-//   the set of uncacheable arguments for each callsite inside the function. A
-//   pointer argument is uncacheable at a callsite if the memory pointed to
-//   might be modified after that callsite.
-std::map<CallInst *, const std::map<Argument *, bool>>
-compute_uncacheable_args_for_callsites(
-    Function *oldFunc, DominatorTree &DT, TargetLibraryInfo &TLI,
-    const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
-    AAResults &AA, const std::map<Argument *, bool> uncacheable_args,
-    bool topLevel) {
-  std::map<CallInst *, const std::map<Argument *, bool>> uncacheable_args_map;
+    for (inst_iterator I = inst_begin(*oldFunc), E = inst_end(*oldFunc); I != E;
+         ++I) {
+      Instruction &inst = *I;
+      if (auto op = dyn_cast<CallInst>(&inst)) {
 
-  for (inst_iterator I = inst_begin(*oldFunc), E = inst_end(*oldFunc); I != E;
-       ++I) {
-    Instruction &inst = *I;
-    if (auto op = dyn_cast<CallInst>(&inst)) {
+        // We do not need uncacheable args for intrinsic functions. So skip such
+        // callsites.
+        if (isa<IntrinsicInst>(&inst)) {
+          continue;
+        }
 
-      // We do not need uncacheable args for intrinsic functions. So skip such
-      // callsites.
-      if (isa<IntrinsicInst>(&inst)) {
-        continue;
+        // For all other calls, we compute the uncacheable args for this
+        // callsite.
+        uncacheable_args_map.insert(
+            std::pair<CallInst *, const std::map<Argument *, bool>>(
+                op, compute_uncacheable_args_for_one_callsite(op)));
       }
-
-      // For all other calls, we compute the uncacheable args for this callsite.
-      uncacheable_args_map.insert(
-          std::pair<CallInst *, const std::map<Argument *, bool>>(
-              op, compute_uncacheable_args_for_one_callsite(
-                      op, DT, TLI, unnecessaryInstructions, AA, oldFunc,
-                      uncacheable_args, topLevel)));
     }
+    return uncacheable_args_map;
   }
-  return uncacheable_args_map;
-}
+};
 
 void calculateUnusedValuesInFunction(
     Function &func, llvm::SmallPtrSetImpl<const Value *> &unnecessaryValues,
@@ -1197,15 +1215,13 @@ const AugmentedReturn &CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
+  CacheAnalysis CA(AA, gutils->oldFunc, TLI, unnecessaryInstructionsTmp,
+                   _uncacheable_argsPP, /*topLevel*/ false);
   const std::map<CallInst *, const std::map<Argument *, bool>>
-      uncacheable_args_map = compute_uncacheable_args_for_callsites(
-          gutils->oldFunc, gutils->DT, TLI, unnecessaryInstructionsTmp, AA,
-          _uncacheable_argsPP, /*topLevel*/ false);
+      uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
 
   const std::map<Instruction *, bool> can_modref_map =
-      compute_uncacheable_load_map(gutils->oldFunc, AA, TLI,
-                                   unnecessaryInstructionsTmp,
-                                   _uncacheable_argsPP, /*topLevel*/ false);
+      CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
 
   gutils->forceContexts();
@@ -2317,20 +2333,16 @@ Function *CreatePrimalAndGradient(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
+  CacheAnalysis CA(AA, gutils->oldFunc, TLI, unnecessaryInstructionsTmp,
+                   _uncacheable_argsPP, topLevel);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
-                          : compute_uncacheable_args_for_callsites(
-                                gutils->oldFunc, gutils->DT, TLI,
-                                unnecessaryInstructionsTmp, AA,
-                                _uncacheable_argsPP, topLevel);
+                          : CA.compute_uncacheable_args_for_callsites();
 
   const std::map<Instruction *, bool> can_modref_map =
-      augmenteddata
-          ? augmenteddata->can_modref_map
-          : compute_uncacheable_load_map(gutils->oldFunc, AA, TLI,
-                                         unnecessaryInstructionsTmp,
-                                         _uncacheable_argsPP, topLevel);
+      augmenteddata ? augmenteddata->can_modref_map
+                    : CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
 
   gutils->forceContexts();

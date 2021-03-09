@@ -314,6 +314,20 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     unwrap_cache[cidx] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
+#if LLVM_VERSION_MAJOR >= 9
+  } else if (isa<FPMathOperator>(val) && cast<FPMathOperator>(val)->getOpcode() == Instruction::FNeg) {
+    auto op = cast<FPMathOperator>(val);
+    auto op0 = getOp(op->getOperand(0));
+    if (op0 == nullptr)
+      goto endCheck;
+    auto toreturn = BuilderM.CreateFNeg(op0,
+                                        op->getName() + "_unwrap");
+    if (auto newi = dyn_cast<Instruction>(toreturn))
+      newi->copyIRFlags(op);
+    unwrap_cache[cidx] = toreturn;
+    assert(val->getType() == toreturn->getType());
+    return toreturn;
+#endif
   } else if (auto op = dyn_cast<SelectInst>(val)) {
     auto op0 = getOp(op->getOperand(0));
     if (op0 == nullptr)
