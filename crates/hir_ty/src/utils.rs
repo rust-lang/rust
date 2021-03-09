@@ -259,6 +259,6 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
     match container {
         AssocContainerId::ImplId(it) => Some(it.into()),
         AssocContainerId::TraitId(it) => Some(it.into()),
-        AssocContainerId::ContainerId(_) => None,
+        AssocContainerId::ModuleId(_) => None,
     }
 }

@@ -1157,7 +1157,7 @@ where
 {
     match id.lookup(db.upcast()).container {
         AssocContainerId::TraitId(_) | AssocContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
-        AssocContainerId::ContainerId(_) => None,
+        AssocContainerId::ModuleId(_) => None,
     }
 }
 
@@ -1185,7 +1185,7 @@ impl AssocItem {
         match container {
             AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
             AssocContainerId::ImplId(id) => AssocItemContainer::Impl(id.into()),
-            AssocContainerId::ContainerId(_) => panic!("invalid AssocItem"),
+            AssocContainerId::ModuleId(_) => panic!("invalid AssocItem"),
         }
     }
 

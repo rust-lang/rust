@@ -700,7 +700,7 @@ impl HasResolver for ContainerId {
 impl HasResolver for AssocContainerId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
-            AssocContainerId::ContainerId(it) => it.resolver(db),
+            AssocContainerId::ModuleId(it) => it.resolver(db),
             AssocContainerId::TraitId(it) => it.resolver(db),
             AssocContainerId::ImplId(it) => it.resolver(db),
         }

@@ -286,11 +286,11 @@ pub enum ContainerId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssocContainerId {
-    ContainerId(ContainerId),
+    ModuleId(ModuleId),
     ImplId(ImplId),
     TraitId(TraitId),
 }
-impl_from!(ContainerId for AssocContainerId);
+impl_from!(ModuleId for AssocContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -459,7 +459,7 @@ impl HasModule for ContainerId {
 impl HasModule for AssocContainerId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match *self {
-            AssocContainerId::ContainerId(it) => it.module(db),
+            AssocContainerId::ModuleId(it) => it,
             AssocContainerId::ImplId(it) => it.lookup(db).container.module(db),
             AssocContainerId::TraitId(it) => it.lookup(db).container.module(db),
         }
