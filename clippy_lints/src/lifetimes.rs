@@ -358,10 +358,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>, tbm: TraitBoundModifier) {
         let trait_ref = &poly_tref.trait_ref;
-        if CLOSURE_TRAIT_BOUNDS
-            .iter()
-            .any(|&item| trait_ref.trait_def_id() == self.cx.tcx.lang_items().require(item).ok())
-        {
+        if CLOSURE_TRAIT_BOUNDS.iter().any(|&item| {
+            self.cx
+                .tcx
+                .lang_items()
+                .require(item)
+                .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+        }) {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());

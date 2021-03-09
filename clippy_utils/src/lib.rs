@@ -239,7 +239,10 @@ pub fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: La
     if let TyKind::Path(qpath) = &ty.kind {
         cx.qpath_res(qpath, ty.hir_id)
             .opt_def_id()
-            .and_then(|id| (cx.tcx.lang_items().require(item) == Ok(id)).then(|| ty))
+            .map_or(false, |id| {
+                cx.tcx.lang_items().require(item).map_or(false, |lang_id| id == lang_id)
+            })
+            .then(|| ty)
     } else {
         None
     }
@@ -256,7 +259,8 @@ pub fn is_ty_param_diagnostic_item(
     if let TyKind::Path(qpath) = &ty.kind {
         cx.qpath_res(qpath, ty.hir_id)
             .opt_def_id()
-            .and_then(|id| cx.tcx.is_diagnostic_item(item, id).then(|| ty))
+            .map_or(false, |id| cx.tcx.is_diagnostic_item(item, id))
+            .then(|| ty)
     } else {
         None
     }
