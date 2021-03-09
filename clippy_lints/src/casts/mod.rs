@@ -1,5 +1,6 @@
 mod cast_lossless;
 mod cast_possible_truncation;
+mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_sign_loss;
 mod utils;
@@ -20,8 +21,8 @@ use rustc_target::abi::LayoutOf;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, numeric_literal::NumericLiteral, snippet_opt,
-    snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
+    is_hir_ty_cfg_dependant, meets_msrv, numeric_literal::NumericLiteral, snippet_opt, snippet_with_applicability,
+    span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 
 use utils::int_ty_to_nbits;
@@ -255,49 +256,6 @@ declare_clippy_lint! {
     "casting a function pointer to a numeric type not wide enough to store the address"
 }
 
-enum ArchSuffix {
-    _32,
-    _64,
-    None,
-}
-
-fn check_truncation_and_wrapping(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    let arch_64_suffix = " on targets with 64-bit wide pointers";
-    let arch_32_suffix = " on targets with 32-bit wide pointers";
-    let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
-    let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-    let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-    let (span_wrap, suffix_wrap) = match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
-        (true, true) | (false, false) => (to_nbits == from_nbits && cast_unsigned_to_signed, ArchSuffix::None),
-        (true, false) => (to_nbits <= 32 && cast_unsigned_to_signed, ArchSuffix::_32),
-        (false, true) => (
-            cast_unsigned_to_signed,
-            if from_nbits == 64 {
-                ArchSuffix::_64
-            } else {
-                ArchSuffix::_32
-            },
-        ),
-    };
-    if span_wrap {
-        span_lint(
-            cx,
-            CAST_POSSIBLE_WRAP,
-            expr.span,
-            &format!(
-                "casting `{}` to `{}` may wrap around the value{}",
-                cast_from,
-                cast_to,
-                match suffix_wrap {
-                    ArchSuffix::_32 => arch_32_suffix,
-                    ArchSuffix::_64 => arch_64_suffix,
-                    ArchSuffix::None => "",
-                }
-            ),
-        );
-    }
-}
-
 declare_lint_pass!(Casts => [
     CAST_PRECISION_LOSS,
     CAST_SIGN_LOSS,
@@ -449,16 +407,10 @@ fn lint_numeric_casts<'tcx>(
     cast_to: Ty<'tcx>,
 ) {
     cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+    cast_possible_wrap::check(cx, expr, cast_from, cast_to);
     cast_precision_loss::check(cx, expr, cast_from, cast_to);
     cast_lossless::check(cx, expr, cast_op, cast_from, cast_to);
     cast_sign_loss::check(cx, expr, cast_op, cast_from, cast_to);
-
-    match (cast_from.is_integral(), cast_to.is_integral()) {
-        (true, true) => {
-            check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-        },
-        (_, _) => {},
-    }
 }
 
 fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
