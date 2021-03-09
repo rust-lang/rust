@@ -15,8 +15,9 @@ use rustc_target::abi::LayoutOf;
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    in_constant, is_hir_ty_cfg_dependant, meets_msrv, method_chain_args, numeric_literal::NumericLiteral, sext,
-    snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
+    in_constant, is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, method_chain_args,
+    numeric_literal::NumericLiteral, sext, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg,
+    span_lint_and_then,
 };
 
 declare_clippy_lint! {
@@ -966,8 +967,4 @@ impl<'tcx> LateLintPass<'tcx> for PtrAsPtr {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn is_isize_or_usize(typ: Ty<'_>) -> bool {
-    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
 }

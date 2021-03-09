@@ -37,9 +37,9 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, indent_of, int_bits, is_type_diagnostic_item, match_path,
-    multispan_sugg, reindent_multiline, sext, snippet, snippet_opt, snippet_with_macro_callsite, span_lint,
-    span_lint_and_help, span_lint_and_then, unsext,
+    clip, comparisons, differing_macro_contexts, higher, indent_of, int_bits, is_isize_or_usize,
+    is_type_diagnostic_item, match_path, multispan_sugg, reindent_multiline, sext, snippet, snippet_opt,
+    snippet_with_macro_callsite, span_lint, span_lint_and_help, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -1665,8 +1665,4 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
-}
-
-fn is_isize_or_usize(typ: Ty<'_>) -> bool {
-    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
 }
