@@ -719,6 +719,20 @@ pub unsafe fn vbsl_f64(a: uint64x1_t, b: float64x1_t, c: float64x1_t) -> float64
 pub unsafe fn vbsl_p64(a: poly64x1_t, b: poly64x1_t, c: poly64x1_t) -> poly64x1_t {
     simd_select(transmute::<_, int64x1_t>(a), b, c)
 }
+/// Bitwise Select. (128-bit)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(bsl))]
+pub unsafe fn vbslq_f64(a: uint64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    simd_select(transmute::<_, int64x2_t>(a), b, c)
+}
+/// Bitwise Select. (128-bit)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(bsl))]
+pub unsafe fn vbslq_p64(a: poly64x2_t, b: poly64x2_t, c: poly64x2_t) -> poly64x2_t {
+    simd_select(transmute::<_, int64x2_t>(a), b, c)
+}
 
 /// Signed saturating Accumulate of Unsigned value.
 #[inline]
@@ -3946,6 +3960,24 @@ mod tests {
         let c = u64x1::new(u64::MIN);
         let e = u64x1::new(u64::MAX);
         let r: u64x1 = transmute(vbsl_p64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbslq_f64() {
+        let a = u64x2::new(u64::MAX, 0);
+        let b = f64x2::new(f64::MAX, f64::MAX);
+        let c = f64x2::new(f64::MIN, f64::MIN);
+        let e = f64x2::new(f64::MAX, f64::MIN);
+        let r: f64x2 = transmute(vbslq_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vbslq_p64() {
+        let a = u64x2::new(u64::MAX, 0);
+        let b = u64x2::new(u64::MAX, u64::MAX);
+        let c = u64x2::new(u64::MIN, u64::MIN);
+        let e = u64x2::new(u64::MAX, u64::MIN);
+        let r: u64x2 = transmute(vbslq_p64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
