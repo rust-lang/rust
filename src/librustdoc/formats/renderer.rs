@@ -9,7 +9,7 @@ use crate::formats::cache::Cache;
 /// Allows for different backends to rustdoc to be used with the `run_format()` function. Each
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
-crate trait FormatRenderer<'tcx>: Clone {
+crate trait FormatRenderer<'tcx>: Sized {
     /// Gives a description of the renderer. Used for performance profiling.
     fn descr() -> &'static str;
 
@@ -22,6 +22,9 @@ crate trait FormatRenderer<'tcx>: Clone {
         cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
+
+    /// Make a new renderer to render a child of the item currently being rendered.
+    fn make_child_renderer(&self) -> Self;
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
     fn item(&mut self, item: clean::Item) -> Result<(), Error>;
@@ -67,7 +70,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     item.name = Some(krate.name);
 
     // Render the crate documentation
-    let mut work = vec![(format_renderer.clone(), item)];
+    let mut work = vec![(format_renderer.make_child_renderer(), item)];
 
     let unknown = rustc_span::Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
@@ -87,7 +90,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             };
             for it in module.items {
                 debug!("Adding {:?} to worklist", it.name);
-                work.push((cx.clone(), it));
+                work.push((cx.make_child_renderer(), it));
             }
 
             cx.mod_item_out(&name)?;

@@ -1373,10 +1373,6 @@ impl IdMap {
         }
     }
 
-    crate fn reset(&mut self) {
-        self.map = init_id_map();
-    }
-
     crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
         let id = match self.map.get_mut(candidate.as_ref()) {
             None => candidate.to_string(),
