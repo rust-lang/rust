@@ -302,8 +302,14 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             lint_fn_to_numeric_cast(cx, expr, cast_expr, cast_from, cast_to);
-            lint_numeric_casts(cx, expr, cast_expr, cast_from, cast_to);
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+                cast_possible_wrap::check(cx, expr, cast_from, cast_to);
+                cast_precision_loss::check(cx, expr, cast_from, cast_to);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
+                cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
+            }
         } else if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind {
             if_chain! {
             if method_path.ident.name == sym!(cast);
@@ -318,22 +324,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
             }
         }
-    }
-}
-
-fn lint_numeric_casts<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &Expr<'tcx>,
-    cast_op: &Expr<'_>,
-    cast_from: Ty<'tcx>,
-    cast_to: Ty<'tcx>,
-) {
-    if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-        cast_possible_truncation::check(cx, expr, cast_from, cast_to);
-        cast_possible_wrap::check(cx, expr, cast_from, cast_to);
-        cast_precision_loss::check(cx, expr, cast_from, cast_to);
-        cast_lossless::check(cx, expr, cast_op, cast_from, cast_to);
-        cast_sign_loss::check(cx, expr, cast_op, cast_from, cast_to);
     }
 }
 
