@@ -17,7 +17,7 @@ fn check_handling_of_paths() {
     }
 
     use bar::foo::{alpha, charlie};
-    let alpha | beta | charlie = alpha; //~  ERROR variable `beta` is not bound in all patterns
+    let (alpha | beta | charlie) = alpha; //~  ERROR variable `beta` is not bound in all patterns
     match Some(alpha) {
         Some(alpha | beta) => {} //~ ERROR variable `beta` is not bound in all patterns
     }
@@ -31,19 +31,19 @@ fn check_misc_nesting() {
 
     // One level:
     const X: E<u8> = B(0);
-    let A(a, _) | _ = X; //~ ERROR variable `a` is not bound in all patterns
-    let _ | B(a) = X; //~ ERROR variable `a` is not bound in all patterns
-    let A(..) | B(a) = X; //~ ERROR variable `a` is not bound in all patterns
-    let A(a, _) | B(_) = X; //~ ERROR variable `a` is not bound in all patterns
-    let A(_, a) | B(_) = X; //~ ERROR variable `a` is not bound in all patterns
-    let A(a, b) | B(a) = X; //~ ERROR variable `b` is not bound in all patterns
+    let (A(a, _) | _) = X; //~ ERROR variable `a` is not bound in all patterns
+    let (_ | B(a)) = X; //~ ERROR variable `a` is not bound in all patterns
+    let (A(..) | B(a)) = X; //~ ERROR variable `a` is not bound in all patterns
+    let (A(a, _) | B(_)) = X; //~ ERROR variable `a` is not bound in all patterns
+    let (A(_, a) | B(_)) = X; //~ ERROR variable `a` is not bound in all patterns
+    let (A(a, b) | B(a)) = X; //~ ERROR variable `b` is not bound in all patterns
 
     // Two levels:
     const Y: E<E<u8>> = B(B(0));
-    let A(A(..) | B(_), _) | B(a) = Y; //~ ERROR variable `a` is not bound in all patterns
-    let A(A(..) | B(a), _) | B(A(a, _) | B(a)) = Y;
+    let (A(A(..) | B(_), _) | B(a)) = Y; //~ ERROR variable `a` is not bound in all patterns
+    let (A(A(..) | B(a), _) | B(A(a, _) | B(a))) = Y;
     //~^ ERROR variable `a` is not bound in all patterns
-    let A(A(a, b) | B(c), d) | B(e) = Y;
+    let (A(A(a, b) | B(c), d) | B(e)) = Y;
     //~^ ERROR variable `a` is not bound in all patterns
     //~| ERROR variable `a` is not bound in all patterns
     //~| ERROR variable `b` is not bound in all patterns

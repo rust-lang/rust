@@ -23,11 +23,11 @@ accept_pat!([p | q]);
 #[cfg(FALSE)]
 fn or_patterns() {
     // Top level of `let`:
-    let | A | B;
-    let A | B;
-    let A | B: u8;
-    let A | B = 0;
-    let A | B: u8 = 0;
+    let (| A | B);
+    let (A | B);
+    let (A | B): u8;
+    let (A | B) = 0;
+    let (A | B): u8 = 0;
 
     // Top level of `for`:
     for | A | B in 0 {}
@@ -69,10 +69,10 @@ fn or_patterns() {
     let [A | B, .. | ..];
 
     // These bind as `(prefix p) | q` as opposed to `prefix (p | q)`:
-    let box 0 | 1; // Unstable; we *can* the precedence if we want.
-    let &0 | 1;
-    let &mut 0 | 1;
-    let x @ 0 | 1;
-    let ref x @ 0 | 1;
-    let ref mut x @ 0 | 1;
+    let (box 0 | 1); // Unstable; we *can* change the precedence if we want.
+    let (&0 | 1);
+    let (&mut 0 | 1);
+    let (x @ 0 | 1);
+    let (ref x @ 0 | 1);
+    let (ref mut x @ 0 | 1);
 }

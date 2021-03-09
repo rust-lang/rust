@@ -872,7 +872,7 @@ impl EarlyLintPass for UnusedParens {
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let StmtKind::Local(ref local) = s.kind {
-            self.check_unused_parens_pat(cx, &local.pat, false, false);
+            self.check_unused_parens_pat(cx, &local.pat, true, false);
         }
 
         <Self as UnusedDelimLint>::check_stmt(self, cx, s)

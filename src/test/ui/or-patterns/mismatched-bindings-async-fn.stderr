@@ -15,20 +15,20 @@ LL | async fn a((x | s): String) {}
    |             variable not in all patterns
 
 error[E0408]: variable `s` is not bound in all patterns
-  --> $DIR/mismatched-bindings-async-fn.rs:11:9
+  --> $DIR/mismatched-bindings-async-fn.rs:11:10
    |
-LL |     let x | s = String::new();
-   |         ^   - variable not in all patterns
-   |         |
-   |         pattern doesn't bind `s`
+LL |     let (x | s) = String::new();
+   |          ^   - variable not in all patterns
+   |          |
+   |          pattern doesn't bind `s`
 
 error[E0408]: variable `x` is not bound in all patterns
-  --> $DIR/mismatched-bindings-async-fn.rs:11:13
+  --> $DIR/mismatched-bindings-async-fn.rs:11:14
    |
-LL |     let x | s = String::new();
-   |         -   ^ pattern doesn't bind `x`
-   |         |
-   |         variable not in all patterns
+LL |     let (x | s) = String::new();
+   |          -   ^ pattern doesn't bind `x`
+   |          |
+   |          variable not in all patterns
 
 error: aborting due to 4 previous errors
 

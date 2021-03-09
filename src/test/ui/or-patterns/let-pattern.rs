@@ -3,7 +3,7 @@
 // run-pass
 
 fn or_pat_let(x: Result<u32, u32>) -> u32 {
-    let Ok(y) | Err(y) = x;
+    let (Ok(y) | Err(y)) = x;
     y
 }
 
