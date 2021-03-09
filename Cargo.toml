@@ -42,5 +42,6 @@ rustc_version = "0.2.3"
 colored = "2"
 
 [package.metadata.rust-analyzer]
-# This crate uses #[feature(rustc_private)]
+# This crate uses #[feature(rustc_private)]. 
+# See https://github.com/rust-analyzer/rust-analyzer/pull/7891
 rustc_private = true
