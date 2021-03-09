@@ -5,6 +5,7 @@
     associated_type_bounds,
     never_type,
     try_blocks,
+    box_patterns,
     hash_drain_filter
 )]
 #![warn(rust_2018_idioms)]
