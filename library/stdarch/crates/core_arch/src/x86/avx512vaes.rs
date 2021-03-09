@@ -262,24 +262,24 @@ mod tests {
             0x19BE9F660038BDB5,
         );
         let mut a_decomp = [_mm_setzero_si128(); 4];
-        a_decomp[0] = _mm512_extracti32x4_epi32(a, 0);
-        a_decomp[1] = _mm512_extracti32x4_epi32(a, 1);
-        a_decomp[2] = _mm512_extracti32x4_epi32(a, 2);
-        a_decomp[3] = _mm512_extracti32x4_epi32(a, 3);
+        a_decomp[0] = _mm512_extracti32x4_epi32::<0>(a);
+        a_decomp[1] = _mm512_extracti32x4_epi32::<1>(a);
+        a_decomp[2] = _mm512_extracti32x4_epi32::<2>(a);
+        a_decomp[3] = _mm512_extracti32x4_epi32::<3>(a);
         let mut k_decomp = [_mm_setzero_si128(); 4];
-        k_decomp[0] = _mm512_extracti32x4_epi32(k, 0);
-        k_decomp[1] = _mm512_extracti32x4_epi32(k, 1);
-        k_decomp[2] = _mm512_extracti32x4_epi32(k, 2);
-        k_decomp[3] = _mm512_extracti32x4_epi32(k, 3);
+        k_decomp[0] = _mm512_extracti32x4_epi32::<0>(k);
+        k_decomp[1] = _mm512_extracti32x4_epi32::<1>(k);
+        k_decomp[2] = _mm512_extracti32x4_epi32::<2>(k);
+        k_decomp[3] = _mm512_extracti32x4_epi32::<3>(k);
         let r = vectorized(a, k);
         let mut e_decomp = [_mm_setzero_si128(); 4];
         for i in 0..4 {
             e_decomp[i] = linear(a_decomp[i], k_decomp[i]);
         }
-        assert_eq_m128i(_mm512_extracti32x4_epi32(r, 0), e_decomp[0]);
-        assert_eq_m128i(_mm512_extracti32x4_epi32(r, 1), e_decomp[1]);
-        assert_eq_m128i(_mm512_extracti32x4_epi32(r, 2), e_decomp[2]);
-        assert_eq_m128i(_mm512_extracti32x4_epi32(r, 3), e_decomp[3]);
+        assert_eq_m128i(_mm512_extracti32x4_epi32::<0>(r), e_decomp[0]);
+        assert_eq_m128i(_mm512_extracti32x4_epi32::<1>(r), e_decomp[1]);
+        assert_eq_m128i(_mm512_extracti32x4_epi32::<2>(r), e_decomp[2]);
+        assert_eq_m128i(_mm512_extracti32x4_epi32::<3>(r), e_decomp[3]);
     }
 
     #[simd_test(enable = "avx512vaes,avx512f")]

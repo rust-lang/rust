@@ -11182,7 +11182,7 @@ mod tests {
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_extracti64x4_epi64() {
         let a = _mm512_setr_epi64(1, 2, 3, 4, 5, 6, 7, 8);
-        let r = _mm512_extracti64x4_epi64(a, 0x1);
+        let r = _mm512_extracti64x4_epi64::<0x1>(a);
         let e = _mm256_setr_epi64x(5, 6, 7, 8);
         assert_eq_m256i(r, e);
     }
