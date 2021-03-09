@@ -62,8 +62,13 @@ pub trait CommandExt: Sealed {
     /// `fork`. This primarily means that any modifications made to memory on
     /// behalf of this closure will **not** be visible to the parent process.
     /// This is often a very constrained environment where normal operations
-    /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
+    /// like `malloc`, accessing environment variables through [`std::env`]
+    /// or acquiring a mutex are not guaranteed to work (due to
     /// other threads perhaps still running when the `fork` was run).
+    ///
+    /// For further details refer to the [POSIX fork() specification]
+    /// and the equivalent documentation for any targeted
+    /// platform, especially the requirements around *async-signal-safety*.
     ///
     /// This also means that all resources such as file descriptors and
     /// memory-mapped regions got duplicated. It is your responsibility to make
@@ -73,6 +78,10 @@ pub trait CommandExt: Sealed {
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
+    ///
+    /// [POSIX fork() specification]:
+    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    /// [`std::env`]: mod@crate::env
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where

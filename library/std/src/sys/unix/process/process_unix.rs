@@ -1,6 +1,7 @@
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::mem;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -45,15 +46,14 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process.
-        let result = unsafe {
-            let _env_lock = sys::os::env_lock();
-            cvt(libc::fork())?
-        };
+        // in its own process. Thus the parent drops the lock guard while the child
+        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        let (env_lock, result) = unsafe { (sys::os::env_lock(), cvt(libc::fork())?) };
 
         let pid = unsafe {
             match result {
                 0 => {
+                    mem::forget(env_lock);
                     drop(input);
                     let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
@@ -74,7 +74,10 @@ impl Command {
                     rtassert!(output.write(&bytes).is_ok());
                     libc::_exit(1)
                 }
-                n => n,
+                n => {
+                    drop(env_lock);
+                    n
+                }
             }
         };
 
