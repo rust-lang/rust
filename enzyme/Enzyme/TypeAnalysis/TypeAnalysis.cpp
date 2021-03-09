@@ -3652,6 +3652,7 @@ ConcreteType TypeAnalysis::firstPointer(size_t num, Value *val,
   if (errIfNotFound && (!dt.isKnown() || dt == BaseType::Anything)) {
     auto &res = analyzedFunctions.find(fn)->second;
     if (auto inst = dyn_cast<Instruction>(val)) {
+      llvm::errs() << *inst->getParent()->getParent()->getParent() << "\n";
       llvm::errs() << *inst->getParent()->getParent() << "\n";
       for (auto &pair : res.analysis) {
         if (auto in = dyn_cast<Instruction>(pair.first)) {

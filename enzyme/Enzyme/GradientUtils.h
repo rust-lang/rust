@@ -259,6 +259,18 @@ public:
     return red;
   }
 
+  bool assumeDynamicLoopOfSizeOne(llvm::Loop *L) const override {
+    auto OL = OrigLI.getLoopFor(isOriginal(L->getHeader()));
+    assert(OL);
+    for (auto OB : OL->getBlocks()) {
+      for (auto &OI : *OB) {
+        if (!isConstantInstruction(&OI))
+          return false;
+      }
+    }
+    return true;
+  }
+
   void setupOMPFor() {
     for (auto &BB : *oldFunc) {
       for (auto &I : BB) {
@@ -398,6 +410,9 @@ public:
 
   Instruction *isOriginal(const Instruction *newinst) const {
     return cast_or_null<Instruction>(isOriginal((const Value *)newinst));
+  }
+  BasicBlock *isOriginal(const BasicBlock *newinst) const {
+    return cast_or_null<BasicBlock>(isOriginal((const Value *)newinst));
   }
 
 private:

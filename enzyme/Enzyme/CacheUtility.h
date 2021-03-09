@@ -308,6 +308,8 @@ public:
               llvm::ValueToValueMapTy(),
           bool tryLegalityCheck = true) = 0;
 
+  virtual bool assumeDynamicLoopOfSizeOne(llvm::Loop *L) const = 0;
+
   /// If an allocation is requested to be freed, this subclass will be called to
   /// chose how and where to free it. It is by default not implemented, falling
   /// back to an error. Subclasses who want to free memory should implement this
@@ -360,8 +362,9 @@ InsertNewCanonicalIV(llvm::Loop *L, llvm::Type *Ty, std::string name = "iv");
 
 // Attempt to rewrite all phinode's in the loop in terms of the
 // induction variable
-void RemoveRedundantIVs(llvm::BasicBlock *Header, llvm::PHINode *CanonicalIV,
-                        MustExitScalarEvolution &SE,
-                        std::function<void(llvm::Instruction *, llvm::Value *)> replacer,
-                        std::function<void(llvm::Instruction *)> eraser);
+void RemoveRedundantIVs(
+    llvm::BasicBlock *Header, llvm::PHINode *CanonicalIV,
+    MustExitScalarEvolution &SE,
+    std::function<void(llvm::Instruction *, llvm::Value *)> replacer,
+    std::function<void(llvm::Instruction *)> eraser);
 #endif

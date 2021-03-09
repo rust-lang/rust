@@ -647,9 +647,10 @@ void CanonicalizeLoops(Function *F, TargetLibraryInfo &TLI) {
         InsertNewCanonicalIV(L, Type::getInt64Ty(F->getContext()), "tiv");
     PHINode *CanonicalIV = pair.first;
     assert(CanonicalIV);
-    RemoveRedundantIVs(L->getHeader(), CanonicalIV, SE,
-                       [&](Instruction *I, Value *V) { I->replaceAllUsesWith(V); },
-                       [&](Instruction *I) { I->eraseFromParent(); });
+    RemoveRedundantIVs(
+        L->getHeader(), CanonicalIV, SE,
+        [&](Instruction *I, Value *V) { I->replaceAllUsesWith(V); },
+        [&](Instruction *I) { I->eraseFromParent(); });
   }
 }
 

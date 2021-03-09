@@ -1224,7 +1224,7 @@ const AugmentedReturn &CreateAugmentedPrimal(
       CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
 
-  gutils->forceContexts();
+  // gutils->forceContexts();
 
   FnTypeInfo typeInfo(gutils->oldFunc);
   {
@@ -2345,7 +2345,7 @@ Function *CreatePrimalAndGradient(
                     : CA.compute_uncacheable_load_map();
   gutils->can_modref_map = &can_modref_map;
 
-  gutils->forceContexts();
+  // gutils->forceContexts();
 
   FnTypeInfo typeInfo(gutils->oldFunc);
   {

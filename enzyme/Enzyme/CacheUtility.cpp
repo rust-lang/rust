@@ -458,9 +458,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
   assert(CanonicalIV);
   loopContexts[L].var = CanonicalIV;
   loopContexts[L].incvar = pair.second;
-  RemoveRedundantIVs(loopContexts[L].header, CanonicalIV, SE,
-                     [&](Instruction *I, Value *V) { replaceAWithB(I, V); },
-                     [&](Instruction *I) { erase(I); });
+  RemoveRedundantIVs(
+      loopContexts[L].header, CanonicalIV, SE,
+      [&](Instruction *I, Value *V) { replaceAWithB(I, V); },
+      [&](Instruction *I) { erase(I); });
   CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
                       CanonicalIV, SE, *this, pair.second,
                       getLatches(L, loopContexts[L].exitBlocks));
@@ -583,6 +584,10 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
                                  loopContexts[L].preheader->getTerminator());
     loopContexts[L].dynamic = false;
     loopContexts[L].maxLimit = LimitVar;
+  } else if (assumeDynamicLoopOfSizeOne(L)) {
+    loopContexts[L].dynamic = false;
+    loopContexts[L].maxLimit = LimitVar =
+        ConstantInt::get(CanonicalIV->getType(), 0);
   } else {
     DebugLoc loc = L->getHeader()->begin()->getDebugLoc();
     for (auto &I : *L->getHeader()) {
@@ -637,7 +642,6 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
         Exp.expandCodeFor(MaxIterations, CanonicalIV->getType(),
                           loopContexts[L].preheader->getTerminator());
   }
-
   loopContext = loopContexts.find(L)->second;
   return true;
 }
