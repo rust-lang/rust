@@ -3,17 +3,18 @@ mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_sign_loss;
+mod unnecessary_cast;
 mod utils;
 
 use std::borrow::Cow;
 
 use if_chain::if_chain;
-use rustc_ast::{LitFloatType, LitIntType, LitKind};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, GenericArg, Lit, MutTy, Mutability, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, GenericArg, MutTy, Mutability, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, FloatTy, InferTy, Ty, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, Ty, TypeAndMut, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
@@ -21,8 +22,7 @@ use rustc_target::abi::LayoutOf;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    is_hir_ty_cfg_dependant, meets_msrv, numeric_literal::NumericLiteral, snippet_opt, snippet_with_applicability,
-    span_lint, span_lint_and_sugg, span_lint_and_then,
+    is_hir_ty_cfg_dependant, meets_msrv, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 
 use utils::int_ty_to_nbits;
@@ -284,72 +284,25 @@ fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     false
 }
 
-/// Returns the mantissa bits wide of a fp type.
-/// Will return 0 if the type is not a fp
-fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
-    match typ.kind() {
-        ty::Float(FloatTy::F32) => 23,
-        ty::Float(FloatTy::F64) | ty::Infer(InferTy::FloatVar(_)) => 52,
-        _ => 0,
-    }
-}
-
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
-        if let ExprKind::Cast(ref ex, cast_to) = expr.kind {
+        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
             if is_hir_ty_cfg_dependant(cx, cast_to) {
                 return;
             }
-            let (cast_from, cast_to) = (cx.typeck_results().expr_ty(ex), cx.typeck_results().expr_ty(expr));
-            lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
-            if let Some(lit) = get_numeric_literal(ex) {
-                let literal_str = snippet_opt(cx, ex.span).unwrap_or_default();
+            let (cast_from, cast_to) = (
+                cx.typeck_results().expr_ty(cast_expr),
+                cx.typeck_results().expr_ty(expr),
+            );
 
-                if_chain! {
-                    if let LitKind::Int(n, _) = lit.node;
-                    if let Some(src) = snippet_opt(cx, lit.span);
-                    if cast_to.is_floating_point();
-                    if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node);
-                    let from_nbits = 128 - n.leading_zeros();
-                    let to_nbits = fp_ty_mantissa_nbits(cast_to);
-                    if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
-                    then {
-                        let literal_str = if is_unary_neg(ex) { format!("-{}", num_lit.integer) } else { num_lit.integer.into() };
-                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
-                        return;
-                    }
-                }
-
-                match lit.node {
-                    LitKind::Int(_, LitIntType::Unsuffixed) if cast_to.is_integral() => {
-                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
-                    },
-                    LitKind::Float(_, LitFloatType::Unsuffixed) if cast_to.is_floating_point() => {
-                        show_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
-                    },
-                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
-                    _ => {
-                        if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
-                            span_lint(
-                                cx,
-                                UNNECESSARY_CAST,
-                                expr.span,
-                                &format!(
-                                    "casting to the same type is unnecessary (`{}` -> `{}`)",
-                                    cast_from, cast_to
-                                ),
-                            );
-                        }
-                    },
-                }
+            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
+                return;
             }
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                lint_numeric_casts(cx, expr, ex, cast_from, cast_to);
-            }
-
+            lint_fn_to_numeric_cast(cx, expr, cast_expr, cast_from, cast_to);
+            lint_numeric_casts(cx, expr, cast_expr, cast_from, cast_to);
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
         } else if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind {
             if_chain! {
@@ -368,37 +321,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
     }
 }
 
-fn is_unary_neg(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Unary(UnOp::Neg, _))
-}
-
-fn get_numeric_literal<'e>(expr: &'e Expr<'e>) -> Option<&'e Lit> {
-    match expr.kind {
-        ExprKind::Lit(ref lit) => Some(lit),
-        ExprKind::Unary(UnOp::Neg, e) => {
-            if let ExprKind::Lit(ref lit) = e.kind {
-                Some(lit)
-            } else {
-                None
-            }
-        },
-        _ => None,
-    }
-}
-
-fn show_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &str, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    let literal_kind_name = if cast_from.is_integral() { "integer" } else { "float" };
-    span_lint_and_sugg(
-        cx,
-        UNNECESSARY_CAST,
-        expr.span,
-        &format!("casting {} literal to `{}` is unnecessary", literal_kind_name, cast_to),
-        "try",
-        format!("{}_{}", literal_str.trim_end_matches('.'), cast_to),
-        Applicability::MachineApplicable,
-    );
-}
-
 fn lint_numeric_casts<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'tcx>,
@@ -406,11 +328,13 @@ fn lint_numeric_casts<'tcx>(
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) {
-    cast_possible_truncation::check(cx, expr, cast_from, cast_to);
-    cast_possible_wrap::check(cx, expr, cast_from, cast_to);
-    cast_precision_loss::check(cx, expr, cast_from, cast_to);
-    cast_lossless::check(cx, expr, cast_op, cast_from, cast_to);
-    cast_sign_loss::check(cx, expr, cast_op, cast_from, cast_to);
+    if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+        cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+        cast_possible_wrap::check(cx, expr, cast_from, cast_to);
+        cast_precision_loss::check(cx, expr, cast_from, cast_to);
+        cast_lossless::check(cx, expr, cast_op, cast_from, cast_to);
+        cast_sign_loss::check(cx, expr, cast_op, cast_from, cast_to);
+    }
 }
 
 fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
