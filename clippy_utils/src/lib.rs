@@ -1486,6 +1486,9 @@ pub fn match_function_call<'tcx>(
     None
 }
 
+// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
+// this function can be removed once the `normalizie` method does not panic when normalization does
+// not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -1501,7 +1504,8 @@ fn is_normalizable_helper<'tcx>(
     if let Some(&cached_result) = cache.get(ty) {
         return cached_result;
     }
-    cache.insert(ty, false); // prevent recursive loops
+    // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
+    cache.insert(ty, false);
     let result = cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
         if infcx.at(&cause, param_env).normalize(ty).is_ok() {
