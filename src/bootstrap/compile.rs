@@ -210,7 +210,7 @@ fn copy_self_contained_objects(
                 panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
             })
             .join("lib/wasm32-wasi");
-        for &obj in &["crt1.o", "crt1-reactor.o"] {
+        for &obj in &["crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
                 &libdir_self_contained,
