@@ -39,7 +39,7 @@ If a language client does not know about `rust-analyzer`'s configuration options
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/724
 
-**Client Capability:** `{ "snippetTextEdit": boolean }`
+**Experimental Client Capability:** `{ "snippetTextEdit": boolean }`
 
 If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests might contain `SnippetTextEdit`s instead of usual `TextEdit`s:
 
@@ -72,7 +72,7 @@ At the moment, rust-analyzer guarantees that only a single edit will have `Inser
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/994
 
-**Client Capability:** `{ "codeActionGroup": boolean }`
+**Experimental Client Capability:** `{ "codeActionGroup": boolean }`
 
 If this capability is set, `CodeAction` returned from the server contain an additional field, `group`:
 
@@ -119,7 +119,7 @@ Invoking code action at this position will yield two code actions for importing 
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/1002
 
-**Server Capability:** `{ "parentModule": boolean }`
+**Experimental Server Capability:** `{ "parentModule": boolean }`
 
 This request is sent from client to server to handle "Goto Parent Module" editor action.
 
@@ -153,7 +153,7 @@ mod foo;
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/992
 
-**Server Capability:** `{ "joinLines": boolean }`
+**Experimental Server Capability:** `{ "joinLines": boolean }`
 
 This request is sent from client to server to handle "Join Lines" editor action.
 
@@ -200,7 +200,7 @@ fn main() {
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/1001
 
-**Server Capability:** `{ "onEnter": boolean }`
+**Experimental Server Capability:** `{ "onEnter": boolean }`
 
 This request is sent from client to server to handle <kbd>Enter</kbd> keypress.
 
@@ -251,7 +251,7 @@ As proper cursor positioning is raison-d'etat for `onEnter`, it uses `SnippetTex
 
 ## Structural Search Replace (SSR)
 
-**Server Capability:** `{ "ssr": boolean }`
+**Experimental Server Capability:** `{ "ssr": boolean }`
 
 This request is sent from client to server to handle structural search replace -- automated syntax tree based transformation of the source.
 
@@ -293,7 +293,7 @@ SSR with query `foo($a, $b) ==>> ($a).foo($b)` will transform, eg `foo(y + 5, z)
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/999
 
-**Server Capability:** `{ "matchingBrace": boolean }`
+**Experimental Server Capability:** `{ "matchingBrace": boolean }`
 
 This request is sent from client to server to handle "Matching Brace" editor action.
 
@@ -338,7 +338,7 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 
 **Issue:** https://github.com/microsoft/language-server-protocol/issues/944
 
-**Server Capability:** `{ "runnables": { "kinds": string[] } }`
+**Experimental Server Capability:** `{ "runnables": { "kinds": string[] } }`
 
 This request is sent from client to server to get the list of things that can be run (tests, binaries, `cargo check -p`).
 
@@ -421,7 +421,7 @@ Reloads project information (that is, re-executes `cargo metadata`).
 
 ## Status Notification
 
-**Client Capability:** `{ "statusNotification": boolean }`
+**Experimental Client Capability:** `{ "statusNotification": boolean }`
 
 **Method:** `rust-analyzer/status`
 
@@ -519,7 +519,7 @@ interface InlayHint {
 
 ## Hover Actions
 
-**Client Capability:** `{ "hoverActions": boolean }`
+**Experimental Client Capability:** `{ "hoverActions": boolean }`
 
 If this capability is set, `Hover` request returned from the server might contain an additional field, `actions`:
 
