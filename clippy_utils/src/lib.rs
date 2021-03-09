@@ -1506,13 +1506,13 @@ fn is_normalizable_helper<'tcx>(
         let cause = rustc_middle::traits::ObligationCause::dummy();
         if infcx.at(&cause, param_env).normalize(ty).is_ok() {
             match ty.kind() {
-                ty::Adt(def, substs) => !def.variants.iter().any(|variant| {
+                ty::Adt(def, substs) => def.variants.iter().all(|variant| {
                     variant
                         .fields
                         .iter()
-                        .any(|field| !is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
+                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
                 }),
-                _ => !ty.walk().any(|generic_arg| !match generic_arg.unpack() {
+                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(inner_ty) if inner_ty != ty => {
                         is_normalizable_helper(cx, param_env, inner_ty, cache)
                     },
