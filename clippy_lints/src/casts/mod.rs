@@ -1,3 +1,6 @@
+mod cast_precision_loss;
+mod utils;
+
 use std::borrow::Cow;
 
 use if_chain::if_chain;
@@ -6,7 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Lit, MutTy, Mutability, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, FloatTy, InferTy, IntTy, Ty, TyCtxt, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, FloatTy, InferTy, Ty, TypeAndMut, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
@@ -19,6 +22,8 @@ use crate::utils::{
     numeric_literal::NumericLiteral, sext, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg,
     span_lint_and_then,
 };
+
+use utils::int_ty_to_nbits;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for casts from any numerical to a float type where
@@ -247,57 +252,6 @@ declare_clippy_lint! {
     pub FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     style,
     "casting a function pointer to a numeric type not wide enough to store the address"
-}
-
-/// Returns the size in bits of an integral type.
-/// Will return 0 if the type is not an int or uint variant
-fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
-    match typ.kind() {
-        ty::Int(i) => match i {
-            IntTy::Isize => tcx.data_layout.pointer_size.bits(),
-            IntTy::I8 => 8,
-            IntTy::I16 => 16,
-            IntTy::I32 => 32,
-            IntTy::I64 => 64,
-            IntTy::I128 => 128,
-        },
-        ty::Uint(i) => match i {
-            UintTy::Usize => tcx.data_layout.pointer_size.bits(),
-            UintTy::U8 => 8,
-            UintTy::U16 => 16,
-            UintTy::U32 => 32,
-            UintTy::U64 => 64,
-            UintTy::U128 => 128,
-        },
-        _ => 0,
-    }
-}
-
-fn span_precision_loss_lint(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to_f64: bool) {
-    let mantissa_nbits = if cast_to_f64 { 52 } else { 23 };
-    let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
-    let arch_dependent_str = "on targets with 64-bit wide pointers ";
-    let from_nbits_str = if arch_dependent {
-        "64".to_owned()
-    } else if is_isize_or_usize(cast_from) {
-        "32 or 64".to_owned()
-    } else {
-        int_ty_to_nbits(cast_from, cx.tcx).to_string()
-    };
-    span_lint(
-        cx,
-        CAST_PRECISION_LOSS,
-        expr.span,
-        &format!(
-            "casting `{0}` to `{1}` causes a loss of precision {2}(`{0}` is {3} bits wide, \
-             but `{1}`'s mantissa is only {4} bits wide)",
-            cast_from,
-            if cast_to_f64 { "f64" } else { "f32" },
-            if arch_dependent { arch_dependent_str } else { "" },
-            from_nbits_str,
-            mantissa_nbits
-        ),
-    );
 }
 
 fn should_strip_parens(op: &Expr<'_>, snip: &str) -> bool {
@@ -629,6 +583,7 @@ fn lint_numeric_casts<'tcx>(
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) {
+    cast_precision_loss::check(cx, expr, cast_from, cast_to);
     match (cast_from.is_integral(), cast_to.is_integral()) {
         (true, false) => {
             let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
@@ -637,9 +592,6 @@ fn lint_numeric_casts<'tcx>(
             } else {
                 64
             };
-            if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
-                span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
-            }
             if from_nbits < to_nbits {
                 span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
             }
