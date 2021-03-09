@@ -16,7 +16,6 @@ use ide_db::helpers::{
     insert_use::{InsertUseConfig, MergeBehavior},
     SnippetCap,
 };
-use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource};
 use rustc_hash::FxHashSet;
@@ -98,13 +97,15 @@ config_data! {
         diagnostics_enableExperimental: bool    = "true",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
-        /// List of warnings that should be displayed with info severity.\n\nThe
-        /// warnings will be indicated by a blue squiggly underline in code and
-        /// a blue icon in the `Problems Panel`.
+        /// List of warnings that should be displayed with info severity.
+        ///
+        /// The warnings will be indicated by a blue squiggly underline in code
+        /// and a blue icon in the `Problems Panel`.
         diagnostics_warningsAsHint: Vec<String> = "[]",
-        /// List of warnings that should be displayed with hint severity.\n\nThe
-        /// warnings will be indicated by faded text or three dots in code and
-        /// will not show up in the `Problems Panel`.
+        /// List of warnings that should be displayed with hint severity.
+        ///
+        /// The warnings will be indicated by faded text or three dots in code
+        /// and will not show up in the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = "[]",
 
         /// Controls file watching implementation.
@@ -158,7 +159,9 @@ config_data! {
         lens_references: bool = "false",
 
         /// Disable project auto-discovery in favor of explicitly specified set
-        /// of projects.\n\nElements must be paths pointing to `Cargo.toml`,
+        /// of projects.
+        ///
+        /// Elements must be paths pointing to `Cargo.toml`,
         /// `rust-project.json`, or JSON objects in `rust-project.json` format.
         linkedProjects: Vec<ManifestOrProjectJson> = "[]",
 
@@ -177,7 +180,7 @@ config_data! {
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_overrideCargo: Option<String> = "null",
         /// Additional arguments to be passed to cargo for runnables such as
-        /// tests or binaries.\nFor example, it may be `--release`.
+        /// tests or binaries. For example, it may be `--release`.
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
@@ -765,7 +768,8 @@ fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json:
 }
 
 fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json::Value {
-    let doc = doc.iter().map(|it| it.trim()).join(" ");
+    let doc = doc_comment_to_string(doc);
+    let doc = doc.trim_end_matches('\n');
     assert!(
         doc.ends_with('.') && doc.starts_with(char::is_uppercase),
         "bad docs for {}: {:?}",
@@ -854,9 +858,14 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
         .iter()
         .map(|(field, _ty, doc, default)| {
             let name = format!("rust-analyzer.{}", field.replace("_", "."));
-            format!("[[{}]]{} (default: `{}`)::\n{}\n", name, name, default, doc.join(" "))
+            let doc = doc_comment_to_string(*doc);
+            format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
         })
         .collect::<String>()
+}
+
+fn doc_comment_to_string(doc: &[&str]) -> String {
+    doc.iter().map(|it| it.strip_prefix(' ').unwrap_or(it)).map(|it| format!("{}\n", it)).collect()
 }
 
 #[cfg(test)]
@@ -901,13 +910,8 @@ mod tests {
     #[test]
     fn generate_config_documentation() {
         let docs_path = project_root().join("docs/user/generated_config.adoc");
-        let current = fs::read_to_string(&docs_path).unwrap();
         let expected = ConfigData::manual();
-
-        if remove_ws(&current) != remove_ws(&expected) {
-            fs::write(&docs_path, expected).unwrap();
-            panic!("updated config manual");
-        }
+        ensure_file_contents(&docs_path, &expected);
     }
 
     fn remove_ws(text: &str) -> String {
