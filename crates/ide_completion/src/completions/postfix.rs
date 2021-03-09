@@ -187,6 +187,16 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         ctx,
         cap,
         &dot_receiver,
+        "err",
+        "Err(expr)",
+        &format!("Err({})", receiver_text),
+    )
+    .add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
         "some",
         "Some(expr)",
         &format!("Some({})", receiver_text),
@@ -325,6 +335,7 @@ fn main() {
                 sn match match expr {}
                 sn box   Box::new(expr)
                 sn ok    Ok(expr)
+                sn err   Err(expr)
                 sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
@@ -357,6 +368,7 @@ fn main() {
                 sn match match expr {}
                 sn box   Box::new(expr)
                 sn ok    Ok(expr)
+                sn err   Err(expr)
                 sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
@@ -380,6 +392,7 @@ fn main() {
                 sn match match expr {}
                 sn box   Box::new(expr)
                 sn ok    Ok(expr)
+                sn err   Err(expr)
                 sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
@@ -408,6 +421,7 @@ fn main() {
                 sn match match expr {}
                 sn box   Box::new(expr)
                 sn ok    Ok(expr)
+                sn err   Err(expr)
                 sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
