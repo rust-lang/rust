@@ -208,7 +208,7 @@ pub(super) fn from_casted_value<'tcx>(
     });
     let ptr = Pointer::new(fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0));
     let mut offset = 0;
-    let mut block_params_iter = block_params.into_iter().copied();
+    let mut block_params_iter = block_params.iter().copied();
     for param in abi_params {
         let val = ptr.offset_i64(fx, offset).store(
             fx,

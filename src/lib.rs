@@ -240,9 +240,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         vec![]
     }
 
-    fn codegen_crate<'tcx>(
+    fn codegen_crate(
         &self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
@@ -252,9 +252,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
-        let res = driver::codegen_crate(tcx, metadata, need_metadata_module, config);
-
-        res
+        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
     }
 
     fn join_codegen(

@@ -205,8 +205,8 @@ pub(crate) fn should_write_ir(tcx: TyCtxt<'_>) -> bool {
     tcx.sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)
 }
 
-pub(crate) fn write_ir_file<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn write_ir_file(
+    tcx: TyCtxt<'_>,
     name: &str,
     write: impl FnOnce(&mut dyn Write) -> std::io::Result<()>,
 ) {
