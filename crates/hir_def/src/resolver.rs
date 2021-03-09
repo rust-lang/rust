@@ -342,6 +342,16 @@ impl Resolver {
                     traits.extend(prelude_def_map[prelude.local_id].scope.traits());
                 }
                 traits.extend(m.def_map[m.module_id].scope.traits());
+
+                // Add all traits that are in scope because of the containing DefMaps
+                m.def_map.with_ancestor_maps(db, m.module_id, &mut |def_map, module| {
+                    if let Some(prelude) = def_map.prelude() {
+                        let prelude_def_map = prelude.def_map(db);
+                        traits.extend(prelude_def_map[prelude.local_id].scope.traits());
+                    }
+                    traits.extend(def_map[module].scope.traits());
+                    None::<()>
+                });
             }
         }
         traits
