@@ -483,7 +483,7 @@ impl<'tcx> TyS<'tcx> {
 }
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(TyS<'_>, 32);
 
 impl<'tcx> Ord for TyS<'tcx> {
@@ -1030,7 +1030,7 @@ crate struct PredicateInner<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PredicateInner<'_>, 40);
 
 #[derive(Clone, Copy, Lift)]

@@ -951,7 +951,7 @@ pub struct LocalDecl<'tcx> {
 }
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics and for
@@ -1468,7 +1468,7 @@ pub struct Statement<'tcx> {
 }
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
@@ -1755,7 +1755,7 @@ impl<V, T> ProjectionElem<V, T> {
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we

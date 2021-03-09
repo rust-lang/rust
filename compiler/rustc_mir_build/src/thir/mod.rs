@@ -96,7 +96,7 @@ crate enum StmtKind<'tcx> {
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr<'_>, 168);
 
 /// The Thir trait implementor lowers their expressions (`&'tcx H::Expr`)
