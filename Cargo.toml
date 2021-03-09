@@ -75,3 +75,6 @@ debug = false
 [profile.release.package.syn]
 opt-level = 0
 debug = false
+
+[package.metadata.rust-analyzer]
+rustc_private = true
