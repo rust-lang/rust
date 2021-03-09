@@ -72,7 +72,7 @@ use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{self, ExpnKind, MacroKind};
@@ -260,6 +260,11 @@ pub fn is_ty_param_diagnostic_item(
     } else {
         None
     }
+}
+
+/// Return `true` if the passed `typ` is `isize` or `usize`.
+pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
+    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
 }
 
 /// Checks if the method call given in `expr` belongs to the given trait.
