@@ -216,6 +216,10 @@ declare_features! (
     /// Renamed from `optin_builtin_traits`.
     (active, auto_traits, "1.50.0", Some(13231), None),
 
+    /// Allows `#[doc(notable_trait)]`.
+    /// Renamed from `doc_spotlight`.
+    (active, doc_notable_trait, "1.52.0", Some(45040), None),
+
     // no-tracking-issue-end
 
     // -------------------------------------------------------------------------
@@ -373,9 +377,6 @@ declare_features! (
 
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
-
-    /// Allows `#[doc(spotlight)]`.
-    (active, doc_spotlight, "1.22.0", Some(45040), None),
 
     /// Allows `#[doc(include = "some-file")]`.
     (active, external_doc, "1.22.0", Some(44732), None),

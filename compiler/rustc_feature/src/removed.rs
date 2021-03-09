@@ -80,6 +80,11 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None, None),
+    /// Allows `#[doc(spotlight)]`.
+    /// The attribute was renamed to `#[doc(notable_trait)]`
+    /// and the feature to `doc_notable_trait`.
+    (removed, doc_spotlight, "1.22.0", Some(45040), None,
+     Some("renamed to `doc_notable_trait`")),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
