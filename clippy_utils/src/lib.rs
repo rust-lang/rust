@@ -1504,9 +1504,7 @@ fn is_normalizable_helper<'tcx>(
     cache.insert(ty, false); // prevent recursive loops
     let result = cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
-        if infcx.at(&cause, param_env).normalize(ty).is_err() {
-            false
-        } else {
+        if infcx.at(&cause, param_env).normalize(ty).is_ok() {
             match ty.kind() {
                 ty::Adt(def, substs) => !def.variants.iter().any(|variant| {
                     variant
@@ -1514,16 +1512,15 @@ fn is_normalizable_helper<'tcx>(
                         .iter()
                         .any(|field| !is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
                 }),
-                ty::Ref(_, pointee, _) | ty::RawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
-                    is_normalizable_helper(cx, param_env, pointee, cache)
-                },
-                ty::Array(inner_ty, _) | ty::Slice(inner_ty) => is_normalizable_helper(cx, param_env, inner_ty, cache),
-                ty::Tuple(tys) => !tys.iter().any(|inner| match inner.unpack() {
-                    GenericArgKind::Type(inner_ty) => !is_normalizable_helper(cx, param_env, inner_ty, cache),
-                    _ => false,
+                _ => !ty.walk().any(|generic_arg| !match generic_arg.unpack() {
+                    GenericArgKind::Type(inner_ty) if inner_ty != ty => {
+                        is_normalizable_helper(cx, param_env, inner_ty, cache)
+                    },
+                    _ => true, // if inner_ty == ty, we've already checked it
                 }),
-                _ => true,
             }
+        } else {
+            false
         }
     });
     cache.insert(ty, result);
