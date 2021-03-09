@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TypeFoldable};
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
@@ -216,12 +216,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
                             }
                             // Avoid pointing to the same function in multiple different
-                            // error messages
-                            if self.fn_self_span_reported.insert(self_arg.span) {
+                            // error messages.
+                            if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span)
+                            {
                                 err.span_note(
-                                    self_arg.span,
-                                    &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
-                                );
+                                        self_arg.span,
+                                        &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                                    );
                             }
                         }
                         // Deref::deref takes &self, which cannot cause a move
