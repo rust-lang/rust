@@ -37,9 +37,9 @@ use crate::{
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AstId, AstIdWithPath, ConstLoc, ContainerId, EnumLoc, EnumVariantId, FunctionLoc,
-    ImplLoc, Intern, LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc,
-    UnionLoc, UnresolvedMacro,
+    AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, FunctionLoc, ImplLoc, Intern,
+    LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    UnresolvedMacro,
 };
 
 const GLOB_RECURSION_LIMIT: usize = 100;
@@ -1042,7 +1042,6 @@ impl ModCollector<'_, '_> {
                 }
             }
             let module = self.def_collector.def_map.module_id(self.module_id);
-            let container = ContainerId::ModuleId(module);
 
             let mut def = None;
             match item {
@@ -1109,9 +1108,9 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Impl(imp) => {
                     let module = self.def_collector.def_map.module_id(self.module_id);
-                    let container = ContainerId::ModuleId(module);
-                    let impl_id = ImplLoc { container, id: ItemTreeId::new(self.file_id, imp) }
-                        .intern(self.def_collector.db);
+                    let impl_id =
+                        ImplLoc { container: module, id: ItemTreeId::new(self.file_id, imp) }
+                            .intern(self.def_collector.db);
                     self.def_collector.def_map.modules[self.module_id].scope.define_impl(impl_id)
                 }
                 ModItem::Function(id) => {
@@ -1140,7 +1139,7 @@ impl ModCollector<'_, '_> {
                     self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
-                        id: StructLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                        id: StructLoc { container: module, id: ItemTreeId::new(self.file_id, id) }
                             .intern(self.def_collector.db)
                             .into(),
                         name: &it.name,
@@ -1157,7 +1156,7 @@ impl ModCollector<'_, '_> {
                     self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
-                        id: UnionLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                        id: UnionLoc { container: module, id: ItemTreeId::new(self.file_id, id) }
                             .intern(self.def_collector.db)
                             .into(),
                         name: &it.name,
@@ -1174,7 +1173,7 @@ impl ModCollector<'_, '_> {
                     self.collect_derives(&attrs, it.ast_id.upcast());
 
                     def = Some(DefData {
-                        id: EnumLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                        id: EnumLoc { container: module, id: ItemTreeId::new(self.file_id, id) }
                             .intern(self.def_collector.db)
                             .into(),
                         name: &it.name,
@@ -1203,7 +1202,7 @@ impl ModCollector<'_, '_> {
                     let it = &self.item_tree[id];
 
                     def = Some(DefData {
-                        id: StaticLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                        id: StaticLoc { container: module, id: ItemTreeId::new(self.file_id, id) }
                             .intern(self.def_collector.db)
                             .into(),
                         name: &it.name,
@@ -1215,7 +1214,7 @@ impl ModCollector<'_, '_> {
                     let it = &self.item_tree[id];
 
                     def = Some(DefData {
-                        id: TraitLoc { container, id: ItemTreeId::new(self.file_id, id) }
+                        id: TraitLoc { container: module, id: ItemTreeId::new(self.file_id, id) }
                             .intern(self.def_collector.db)
                             .into(),
                         name: &it.name,

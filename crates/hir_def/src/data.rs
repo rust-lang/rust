@@ -97,7 +97,7 @@ impl TraitData {
         let tr_def = &item_tree[tr_loc.id.value];
         let name = tr_def.name.clone();
         let auto = tr_def.auto;
-        let module_id = tr_loc.container.module(db);
+        let module_id = tr_loc.container;
         let container = AssocContainerId::TraitId(tr);
         let mut expander = Expander::new(db, tr_loc.id.file_id, module_id);
 
@@ -147,7 +147,7 @@ impl ImplData {
         let target_trait = impl_def.target_trait.map(|id| item_tree[id].clone());
         let target_type = item_tree[impl_def.target_type].clone();
         let is_negative = impl_def.is_negative;
-        let module_id = impl_loc.container.module(db);
+        let module_id = impl_loc.container;
         let container = AssocContainerId::ImplId(id);
         let mut expander = Expander::new(db, impl_loc.id.file_id, module_id);
 

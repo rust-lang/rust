@@ -535,7 +535,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container.module(db.upcast()) }
+        Module { id: self.id.lookup(db.upcast()).container }
     }
 
     pub fn krate(self, db: &dyn HirDatabase) -> Option<Crate> {
@@ -556,11 +556,7 @@ impl Struct {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(
-            db,
-            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
-            self.id,
-        )
+        Type::from_def(db, self.id.lookup(db.upcast()).container.krate(), self.id)
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprKind> {
@@ -587,15 +583,11 @@ impl Union {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container.module(db.upcast()) }
+        Module { id: self.id.lookup(db.upcast()).container }
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(
-            db,
-            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
-            self.id,
-        )
+        Type::from_def(db, self.id.lookup(db.upcast()).container.krate(), self.id)
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -619,7 +611,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container.module(db.upcast()) }
+        Module { id: self.id.lookup(db.upcast()).container }
     }
 
     pub fn krate(self, db: &dyn HirDatabase) -> Option<Crate> {
@@ -635,11 +627,7 @@ impl Enum {
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_def(
-            db,
-            self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
-            self.id,
-        )
+        Type::from_def(db, self.id.lookup(db.upcast()).container.krate(), self.id)
     }
 }
 
@@ -1001,7 +989,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container.module(db.upcast()) }
+        Module { id: self.id.lookup(db.upcast()).container }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1510,7 +1498,7 @@ impl Impl {
     pub fn target_ty(self, db: &dyn HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let krate = self.id.lookup(db.upcast()).container.krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let ty = Ty::from_hir(&ctx, &impl_data.target_type);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
@@ -1525,7 +1513,7 @@ impl Impl {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.lookup(db.upcast()).container.module(db.upcast()).into()
+        self.id.lookup(db.upcast()).container.into()
     }
 
     pub fn krate(self, db: &dyn HirDatabase) -> Crate {

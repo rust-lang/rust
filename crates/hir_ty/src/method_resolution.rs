@@ -267,7 +267,7 @@ impl Ty {
                 LangItemTarget::ImplDefId(it) => Some(it),
                 _ => None,
             })
-            .map(|it| it.lookup(db.upcast()).container.module(db.upcast()).krate())
+            .map(|it| it.lookup(db.upcast()).container.krate())
             .collect();
         Some(res)
     }

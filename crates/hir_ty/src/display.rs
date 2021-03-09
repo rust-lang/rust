@@ -6,7 +6,7 @@ use arrayvec::ArrayVec;
 use chalk_ir::Mutability;
 use hir_def::{
     db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs,
-    AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
+    AssocContainerId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 
@@ -611,7 +611,7 @@ impl HirDisplay for CallableSig {
 }
 
 fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> {
-    let krate = trait_.lookup(db).container.module(db).krate();
+    let krate = trait_.lookup(db).container.krate();
     let fn_traits = [
         db.lang_item(krate, "fn".into()),
         db.lang_item(krate, "fn_mut".into()),

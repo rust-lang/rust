@@ -19,10 +19,10 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocContainerId, ConstId, ConstParamId, ContainerId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId,
-    LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, VariantId,
+    AdtId, AssocContainerId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId, LocalModuleId,
+    Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, TypeParamId,
+    VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -684,15 +684,6 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::ConstId(c) => c.resolver(db),
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
-        }
-    }
-}
-
-impl HasResolver for ContainerId {
-    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        match self {
-            ContainerId::ModuleId(it) => it.resolver(db),
-            ContainerId::DefWithBodyId(it) => it.module(db).resolver(db),
         }
     }
 }

@@ -21,8 +21,7 @@ use crate::{
     trace::Trace,
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId,
-    VariantId,
+    EnumId, LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StructId, UnionId, VariantId,
 };
 use cfg::CfgOptions;
 
@@ -92,10 +91,10 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprKind> {
 impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let loc = id.lookup(db);
-        let krate = loc.container.module(db).krate;
+        let krate = loc.container.krate;
         let item_tree = db.item_tree(loc.id.file_id);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
+        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
         let strukt = &item_tree[loc.id.value];
         let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &strukt.fields, None);
@@ -107,10 +106,10 @@ impl StructData {
     }
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let loc = id.lookup(db);
-        let krate = loc.container.module(db).krate;
+        let krate = loc.container.krate;
         let item_tree = db.item_tree(loc.id.file_id);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let cfg_options = db.crate_graph()[loc.container.module(db).krate].cfg_options.clone();
+        let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
         let union = &item_tree[loc.id.value];
         let variant_data = lower_fields(db, krate, &item_tree, &cfg_options, &union.fields, None);
@@ -126,7 +125,7 @@ impl StructData {
 impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
         let loc = e.lookup(db);
-        let krate = loc.container.module(db).krate;
+        let krate = loc.container.krate;
         let item_tree = db.item_tree(loc.id.file_id);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
 
@@ -168,7 +167,7 @@ impl HasChildSource<LocalEnumVariantId> for EnumId {
     ) -> InFile<ArenaMap<LocalEnumVariantId, Self::Value>> {
         let src = self.lookup(db).source(db);
         let mut trace = Trace::new_for_map();
-        lower_enum(db, &mut trace, &src, self.lookup(db).container.module(db));
+        lower_enum(db, &mut trace, &src, self.lookup(db).container);
         src.with_value(trace.into_map())
     }
 }
@@ -238,10 +237,10 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 // I don't really like the fact that we call into parent source
                 // here, this might add to more queries then necessary.
                 let src = it.parent.child_source(db);
-                (src.map(|map| map[it.local_id].kind()), it.parent.lookup(db).container.module(db))
+                (src.map(|map| map[it.local_id].kind()), it.parent.lookup(db).container)
             }
             VariantId::StructId(it) => {
-                (it.lookup(db).source(db).map(|it| it.kind()), it.lookup(db).container.module(db))
+                (it.lookup(db).source(db).map(|it| it.kind()), it.lookup(db).container)
             }
             VariantId::UnionId(it) => (
                 it.lookup(db).source(db).map(|it| {
@@ -249,7 +248,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                         .map(ast::StructKind::Record)
                         .unwrap_or(ast::StructKind::Unit)
                 }),
-                it.lookup(db).container.module(db),
+                it.lookup(db).container,
             ),
         };
         let mut expander = CfgExpander::new(db, src.file_id, module_id.krate);
