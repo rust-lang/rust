@@ -327,7 +327,7 @@
 #![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_block_in_unsafe_fn)]
+#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![feature(unsafe_cell_raw_get)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]

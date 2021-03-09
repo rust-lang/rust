@@ -8,7 +8,6 @@
 
 use crate::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
 
 declare_lint! {
     /// The `forbidden_lint_groups` lint detects violations of
@@ -2489,16 +2488,11 @@ declare_lint! {
 
 declare_lint! {
     /// The `unsafe_op_in_unsafe_fn` lint detects unsafe operations in unsafe
-    /// functions without an explicit unsafe block. This lint only works on
-    /// the [**nightly channel**] with the
-    /// `#![feature(unsafe_block_in_unsafe_fn)]` feature.
-    ///
-    /// [**nightly channel**]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
+    /// functions without an explicit unsafe block.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![feature(unsafe_block_in_unsafe_fn)]
     /// #![deny(unsafe_op_in_unsafe_fn)]
     ///
     /// unsafe fn foo() {}
@@ -2536,7 +2530,6 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
-    @feature_gate = sym::unsafe_block_in_unsafe_fn;
 }
 
 declare_lint! {
