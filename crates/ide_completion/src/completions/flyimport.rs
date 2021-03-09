@@ -21,6 +21,46 @@
 //! ```
 //!
 //! Also completes associated items, that require trait imports.
+//! If any unresolved and/or partially-qualified path predeces the input, it will be taken into account.
+//! Currently, only the imports with their import path ending with the whole qialifier will be proposed
+//! (no fuzzy matching for qualifier).
+//!
+//! ```
+//! mod foo {
+//!     pub mod bar {
+//!         pub struct Item;
+//!
+//!         impl Item {
+//!             pub const TEST_ASSOC: usize = 3;
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     bar::Item::TEST_A$0
+//! }
+//! ```
+//! ->
+//! ```
+//! use foo::bar;
+//!
+//! mod foo {
+//!     pub mod bar {
+//!         pub struct Item;
+//!
+//!         impl Item {
+//!             pub const TEST_ASSOC: usize = 3;
+//!         }
+//!     }
+//! }
+//!
+//! fn main() {
+//!     bar::Item::TEST_ASSOC
+//! }
+//! ```
+//!
+//! NOTE: currently, if an assoc item comes from a trait that's not currently imported and it also has an unresolved and/or partially-qualified path,
+//! no imports will be proposed.
 //!
 //! .Fuzzy search details
 //!
@@ -48,12 +88,12 @@
 //! Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corredponding
 //! capability enabled.
 
-use hir::{AsAssocItem, ModPath, ScopeDef};
+use hir::ModPath;
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::ImportScope,
 };
-use rustc_hash::FxHashSet;
+use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
@@ -92,48 +132,24 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
-    let scope_definitions = scope_definitions(ctx);
-    let mut all_mod_paths = import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
-        .into_iter()
-        .map(|(mod_path, item_in_ns)| {
-            let scope_item = match item_in_ns {
-                hir::ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
-                hir::ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
-                hir::ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
-            };
-            (mod_path, scope_item)
-        })
-        .filter(|(_, proposed_def)| !scope_definitions.contains(proposed_def))
-        .collect::<Vec<_>>();
-    all_mod_paths.sort_by_cached_key(|(mod_path, _)| {
-        compute_fuzzy_completion_order_key(mod_path, &user_input_lowercased)
-    });
-
-    acc.add_all(all_mod_paths.into_iter().filter_map(|(import_path, definition)| {
-        let import_for_trait_assoc_item = match definition {
-            ScopeDef::ModuleDef(module_def) => module_def
-                .as_assoc_item(ctx.db)
-                .and_then(|assoc| assoc.containing_trait(ctx.db))
-                .is_some(),
-            _ => false,
-        };
-        let import_edit = ImportEdit {
-            import_path,
-            import_scope: import_scope.clone(),
-            import_for_trait_assoc_item,
-        };
-        render_resolution_with_import(RenderContext::new(ctx), import_edit, &definition)
-    }));
+    acc.add_all(
+        import_assets
+            .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
+            .into_iter()
+            .sorted_by_key(|located_import| {
+                compute_fuzzy_completion_order_key(
+                    &located_import.import_path,
+                    &user_input_lowercased,
+                )
+            })
+            .filter_map(|import| {
+                render_resolution_with_import(
+                    RenderContext::new(ctx),
+                    ImportEdit { import, scope: import_scope.clone() },
+                )
+            }),
+    );
     Some(())
-}
-
-fn scope_definitions(ctx: &CompletionContext) -> FxHashSet<ScopeDef> {
-    let mut scope_definitions = FxHashSet::default();
-    ctx.scope.process_all_names(&mut |_, scope_def| {
-        scope_definitions.insert(scope_def);
-    });
-    scope_definitions
 }
 
 pub(crate) fn position_for_import<'a>(
@@ -160,23 +176,30 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
             current_module,
             ctx.sema.type_of_expr(dot_receiver)?,
             fuzzy_name,
+            dot_receiver.syntax().clone(),
         )
     } else {
         let fuzzy_name_length = fuzzy_name.len();
+        let approximate_node = match current_module.definition_source(ctx.db).value {
+            hir::ModuleSource::SourceFile(s) => s.syntax().clone(),
+            hir::ModuleSource::Module(m) => m.syntax().clone(),
+            hir::ModuleSource::BlockExpr(b) => b.syntax().clone(),
+        };
         let assets_for_path = ImportAssets::for_fuzzy_path(
             current_module,
             ctx.path_qual.clone(),
             fuzzy_name,
             &ctx.sema,
-        );
+            approximate_node,
+        )?;
 
-        if matches!(assets_for_path.as_ref()?.import_candidate(), ImportCandidate::Path(_))
+        if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
             && fuzzy_name_length < 2
         {
             cov_mark::hit!(ignore_short_input_for_path);
             None
         } else {
-            assets_for_path
+            Some(assets_for_path)
         }
     }
 }
@@ -186,11 +209,11 @@ fn compute_fuzzy_completion_order_key(
     user_input_lowercased: &str,
 ) -> usize {
     cov_mark::hit!(certain_fuzzy_order_test);
-    let proposed_import_name = match proposed_mod_path.segments().last() {
+    let import_name = match proposed_mod_path.segments().last() {
         Some(name) => name.to_string().to_lowercase(),
         None => return usize::MAX,
     };
-    match proposed_import_name.match_indices(user_input_lowercased).next() {
+    match import_name.match_indices(user_input_lowercased).next() {
         Some((first_matching_index, _)) => first_matching_index,
         None => usize::MAX,
     }
@@ -772,5 +795,156 @@ fn main() {
     Item
 }"#,
         );
+    }
+
+    #[test]
+    fn unresolved_qualifier() {
+        let fixture = r#"
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub struct Item;
+        }
+    }
+}
+
+fn main() {
+    bar::baz::Ite$0
+}"#;
+
+        check(
+            fixture,
+            expect![[r#"
+        st foo::bar::baz::Item
+        "#]],
+        );
+
+        check_edit(
+            "Item",
+            fixture,
+            r#"
+        use foo::bar;
+
+        mod foo {
+            pub mod bar {
+                pub mod baz {
+                    pub struct Item;
+                }
+            }
+        }
+
+        fn main() {
+            bar::baz::Item
+        }"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_assoc_item_container() {
+        let fixture = r#"
+mod foo {
+    pub struct Item;
+
+    impl Item {
+        pub const TEST_ASSOC: usize = 3;
+    }
+}
+
+fn main() {
+    Item::TEST_A$0
+}"#;
+
+        check(
+            fixture,
+            expect![[r#"
+        ct TEST_ASSOC (foo::Item)
+        "#]],
+        );
+
+        check_edit(
+            "TEST_ASSOC",
+            fixture,
+            r#"
+use foo::Item;
+
+mod foo {
+    pub struct Item;
+
+    impl Item {
+        pub const TEST_ASSOC: usize = 3;
+    }
+}
+
+fn main() {
+    Item::TEST_ASSOC
+}"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_assoc_item_container_with_path() {
+        let fixture = r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    bar::Item::TEST_A$0
+}"#;
+
+        check(
+            fixture,
+            expect![[r#"
+        ct TEST_ASSOC (foo::bar::Item)
+    "#]],
+        );
+
+        check_edit(
+            "TEST_ASSOC",
+            fixture,
+            r#"
+use foo::bar;
+
+mod foo {
+    pub mod bar {
+        pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    bar::Item::TEST_ASSOC
+}"#,
+        );
+    }
+
+    #[test]
+    fn fuzzy_unresolved_path() {
+        check(
+            r#"
+mod foo {
+    pub mod bar {
+        pub struct Item;
+
+        impl Item {
+            pub const TEST_ASSOC: usize = 3;
+        }
+    }
+}
+
+fn main() {
+    bar::Ass$0
+}"#,
+            expect![[]],
+        )
     }
 }

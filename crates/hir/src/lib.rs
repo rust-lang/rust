@@ -1114,6 +1114,7 @@ pub enum AssocItem {
     Const(Const),
     TypeAlias(TypeAlias),
 }
+#[derive(Debug)]
 pub enum AssocItemContainer {
     Trait(Trait),
     Impl(Impl),
@@ -2133,6 +2134,16 @@ impl ScopeDef {
         }
 
         items
+    }
+}
+
+impl From<ItemInNs> for ScopeDef {
+    fn from(item: ItemInNs) -> Self {
+        match item {
+            ItemInNs::Types(id) => ScopeDef::ModuleDef(id.into()),
+            ItemInNs::Values(id) => ScopeDef::ModuleDef(id.into()),
+            ItemInNs::Macros(id) => ScopeDef::MacroDef(id.into()),
+        }
     }
 }
 

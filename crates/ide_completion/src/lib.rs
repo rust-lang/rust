@@ -13,7 +13,9 @@ mod completions;
 
 use completions::flyimport::position_for_import;
 use ide_db::{
-    base_db::FilePosition, helpers::insert_use::ImportScope, imports_locator, RootDatabase,
+    base_db::FilePosition,
+    helpers::{import_assets::LocatedImport, insert_use::ImportScope},
+    items_locator, RootDatabase,
 };
 use text_edit::TextEdit;
 
@@ -139,25 +141,27 @@ pub fn resolve_completion_edits(
     position: FilePosition,
     full_import_path: &str,
     imported_name: String,
-    import_for_trait_assoc_item: bool,
 ) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let position_for_import = position_for_import(&ctx, None)?;
-    let import_scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
 
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();
 
-    let import_path = imports_locator::find_exact_imports(&ctx.sema, current_crate, imported_name)
-        .filter_map(|candidate| {
-            let item: hir::ItemInNs = candidate.either(Into::into, Into::into);
-            current_module.find_use_path_prefixed(db, item, config.insert_use.prefix_kind)
-        })
-        .find(|mod_path| mod_path.to_string() == full_import_path)?;
+    let (import_path, item_to_import) =
+        items_locator::with_exact_name(&ctx.sema, current_crate, imported_name)
+            .into_iter()
+            .filter_map(|candidate| {
+                current_module
+                    .find_use_path_prefixed(db, candidate, config.insert_use.prefix_kind)
+                    .zip(Some(candidate))
+            })
+            .find(|(mod_path, _)| mod_path.to_string() == full_import_path)?;
+    let import =
+        LocatedImport::new(import_path.clone(), item_to_import, item_to_import, Some(import_path));
 
-    ImportEdit { import_path, import_scope, import_for_trait_assoc_item }
-        .to_text_edit(config.insert_use)
-        .map(|edit| vec![edit])
+    ImportEdit { import, scope }.to_text_edit(config.insert_use).map(|edit| vec![edit])
 }
 
 #[cfg(test)]

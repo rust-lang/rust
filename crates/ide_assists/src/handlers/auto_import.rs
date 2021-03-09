@@ -1,7 +1,7 @@
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::{insert_use, ImportScope},
-    mod_path_to_ast,
+    item_name, mod_path_to_ast,
 };
 use syntax::{ast, AstNode, SyntaxNode};
 
@@ -92,14 +92,19 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group = import_group_message(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
-    for (import, _) in proposed_imports {
+    for import in proposed_imports {
+        let name = match item_name(ctx.db(), import.original_item) {
+            Some(name) => name,
+            None => continue,
+        };
         acc.add_group(
             &group,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", &import),
+            format!("Import `{}`", name),
             range,
             |builder| {
-                let rewriter = insert_use(&scope, mod_path_to_ast(&import), ctx.config.insert_use);
+                let rewriter =
+                    insert_use(&scope, mod_path_to_ast(&import.import_path), ctx.config.insert_use);
                 builder.rewrite(rewriter);
             },
         );
@@ -125,10 +130,10 @@ fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
         ImportCandidate::Path(candidate) => format!("Import {}", candidate.name.text()),
         ImportCandidate::TraitAssocItem(candidate) => {
-            format!("Import a trait for item {}", candidate.name.text())
+            format!("Import a trait for item {}", candidate.assoc_item_name.text())
         }
         ImportCandidate::TraitMethod(candidate) => {
-            format!("Import a trait for method {}", candidate.name.text())
+            format!("Import a trait for method {}", candidate.assoc_item_name.text())
         }
     };
     GroupLabel(name)
@@ -215,41 +220,6 @@ mod tests {
 
             pub mod PubMod {
                 pub struct PubStruct;
-            }
-            ",
-        );
-    }
-
-    #[test]
-    fn auto_imports_are_merged() {
-        check_assist(
-            auto_import,
-            r"
-            use PubMod::PubStruct1;
-
-            struct Test {
-                test: Pub$0Struct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
-            }
-            ",
-            r"
-            use PubMod::{PubStruct1, PubStruct2};
-
-            struct Test {
-                test: PubStruct2<u8>,
-            }
-
-            pub mod PubMod {
-                pub struct PubStruct1;
-                pub struct PubStruct2<T> {
-                    _t: T,
-                }
             }
             ",
         );

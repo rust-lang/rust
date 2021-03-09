@@ -2,15 +2,16 @@
 
 use std::fmt;
 
-use hir::{Documentation, ModPath, Mutability};
+use hir::{Documentation, Mutability};
 use ide_db::{
     helpers::{
+        import_assets::LocatedImport,
         insert_use::{self, ImportScope, InsertUseConfig},
         mod_path_to_ast, SnippetCap,
     },
     SymbolKind,
 };
-use stdx::{impl_from, never};
+use stdx::{format_to, impl_from, never};
 use syntax::{algo, TextRange};
 use text_edit::TextEdit;
 
@@ -272,9 +273,8 @@ impl CompletionItem {
 /// An extra import to add after the completion is applied.
 #[derive(Debug, Clone)]
 pub struct ImportEdit {
-    pub import_path: ModPath,
-    pub import_scope: ImportScope,
-    pub import_for_trait_assoc_item: bool,
+    pub import: LocatedImport,
+    pub scope: ImportScope,
 }
 
 impl ImportEdit {
@@ -284,7 +284,7 @@ impl ImportEdit {
         let _p = profile::span("ImportEdit::to_text_edit");
 
         let rewriter =
-            insert_use::insert_use(&self.import_scope, mod_path_to_ast(&self.import_path), cfg);
+            insert_use::insert_use(&self.scope, mod_path_to_ast(&self.import.import_path), cfg);
         let old_ast = rewriter.rewrite_root()?;
         let mut import_insert = TextEdit::builder();
         algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
@@ -322,20 +322,19 @@ impl Builder {
         let mut lookup = self.lookup;
         let mut insert_text = self.insert_text;
 
-        if let Some(import_to_add) = self.import_to_add.as_ref() {
-            if import_to_add.import_for_trait_assoc_item {
-                lookup = lookup.or_else(|| Some(label.clone()));
-                insert_text = insert_text.or_else(|| Some(label.clone()));
-                label = format!("{} ({})", label, import_to_add.import_path);
-            } else {
-                let mut import_path_without_last_segment = import_to_add.import_path.to_owned();
-                let _ = import_path_without_last_segment.pop_segment();
+        if let Some(original_path) = self
+            .import_to_add
+            .as_ref()
+            .and_then(|import_edit| import_edit.import.original_path.as_ref())
+        {
+            lookup = lookup.or_else(|| Some(label.clone()));
+            insert_text = insert_text.or_else(|| Some(label.clone()));
 
-                if !import_path_without_last_segment.segments().is_empty() {
-                    lookup = lookup.or_else(|| Some(label.clone()));
-                    insert_text = insert_text.or_else(|| Some(label.clone()));
-                    label = format!("{}::{}", import_path_without_last_segment, label);
-                }
+            let original_path_label = original_path.to_string();
+            if original_path_label.ends_with(&label) {
+                label = original_path_label;
+            } else {
+                format_to!(label, " ({})", original_path)
             }
         }
 
@@ -437,11 +436,5 @@ impl Builder {
     ) -> Builder {
         self.ref_match = ref_match;
         self
-    }
-}
-
-impl<'a> Into<CompletionItem> for Builder {
-    fn into(self) -> CompletionItem {
-        self.build()
     }
 }

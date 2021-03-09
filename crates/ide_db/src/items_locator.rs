@@ -1,9 +1,10 @@
 //! This module contains an import search functionality that is provided to the assists module.
 //! Later, this should be moved away to a separate crate that is accessible from the assists module.
 
+use either::Either;
 use hir::{
     import_map::{self, ImportKind},
-    AsAssocItem, Crate, MacroDef, ModuleDef, Semantics,
+    AsAssocItem, Crate, ItemInNs, ModuleDef, Semantics,
 };
 use syntax::{ast, AstNode, SyntaxKind::NAME};
 
@@ -12,47 +13,47 @@ use crate::{
     symbol_index::{self, FileSymbol},
     RootDatabase,
 };
-use either::Either;
 use rustc_hash::FxHashSet;
 
 pub(crate) const DEFAULT_QUERY_SEARCH_LIMIT: usize = 40;
 
-pub fn find_exact_imports<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+pub fn with_exact_name(
+    sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
-    name_to_import: String,
-) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>>> {
+    exact_name: String,
+) -> FxHashSet<ItemInNs> {
     let _p = profile::span("find_exact_imports");
-    Box::new(find_imports(
+    find_items(
         sema,
         krate,
         {
-            let mut local_query = symbol_index::Query::new(name_to_import.clone());
+            let mut local_query = symbol_index::Query::new(exact_name.clone());
             local_query.exact();
             local_query.limit(DEFAULT_QUERY_SEARCH_LIMIT);
             local_query
         },
-        import_map::Query::new(name_to_import)
+        import_map::Query::new(exact_name)
             .limit(DEFAULT_QUERY_SEARCH_LIMIT)
             .name_only()
             .search_mode(import_map::SearchMode::Equals)
             .case_sensitive(),
-    ))
+    )
 }
 
+#[derive(Debug)]
 pub enum AssocItemSearch {
     Include,
     Exclude,
     AssocItemsOnly,
 }
 
-pub fn find_similar_imports<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+pub fn with_similar_name(
+    sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
     fuzzy_search_string: String,
     assoc_item_search: AssocItemSearch,
     limit: Option<usize>,
-) -> Box<dyn Iterator<Item = Either<ModuleDef, MacroDef>> + 'a> {
+) -> FxHashSet<ItemInNs> {
     let _p = profile::span("find_similar_imports");
 
     let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
@@ -76,37 +77,39 @@ pub fn find_similar_imports<'a>(
         local_query.limit(limit);
     }
 
-    let db = sema.db;
-    Box::new(find_imports(sema, krate, local_query, external_query).filter(
-        move |import_candidate| match assoc_item_search {
+    find_items(sema, krate, local_query, external_query)
+        .into_iter()
+        .filter(move |&item| match assoc_item_search {
             AssocItemSearch::Include => true,
-            AssocItemSearch::Exclude => !is_assoc_item(import_candidate, db),
-            AssocItemSearch::AssocItemsOnly => is_assoc_item(import_candidate, db),
-        },
-    ))
+            AssocItemSearch::Exclude => !is_assoc_item(item, sema.db),
+            AssocItemSearch::AssocItemsOnly => is_assoc_item(item, sema.db),
+        })
+        .collect()
 }
 
-fn is_assoc_item(import_candidate: &Either<ModuleDef, MacroDef>, db: &RootDatabase) -> bool {
-    match import_candidate {
-        Either::Left(ModuleDef::Function(function)) => function.as_assoc_item(db).is_some(),
-        Either::Left(ModuleDef::Const(const_)) => const_.as_assoc_item(db).is_some(),
-        Either::Left(ModuleDef::TypeAlias(type_alias)) => type_alias.as_assoc_item(db).is_some(),
-        _ => false,
-    }
+fn is_assoc_item(item: ItemInNs, db: &RootDatabase) -> bool {
+    item.as_module_def_id()
+        .and_then(|module_def_id| ModuleDef::from(module_def_id).as_assoc_item(db))
+        .is_some()
 }
 
-fn find_imports<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+fn find_items(
+    sema: &Semantics<'_, RootDatabase>,
     krate: Crate,
     local_query: symbol_index::Query,
     external_query: import_map::Query,
-) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+) -> FxHashSet<ItemInNs> {
     let _p = profile::span("find_similar_imports");
     let db = sema.db;
 
     // Query dependencies first.
-    let mut candidates: FxHashSet<_> =
-        krate.query_external_importables(db, external_query).collect();
+    let mut candidates = krate
+        .query_external_importables(db, external_query)
+        .map(|external_importable| match external_importable {
+            Either::Left(module_def) => ItemInNs::from(module_def),
+            Either::Right(macro_def) => ItemInNs::from(macro_def),
+        })
+        .collect::<FxHashSet<_>>();
 
     // Query the local crate using the symbol index.
     let local_results = symbol_index::crate_symbols(db, krate.into(), local_query);
@@ -114,19 +117,19 @@ fn find_imports<'a>(
     candidates.extend(
         local_results
             .into_iter()
-            .filter_map(|import_candidate| get_name_definition(sema, &import_candidate))
+            .filter_map(|local_candidate| get_name_definition(sema, &local_candidate))
             .filter_map(|name_definition_to_import| match name_definition_to_import {
-                Definition::ModuleDef(module_def) => Some(Either::Left(module_def)),
-                Definition::Macro(macro_def) => Some(Either::Right(macro_def)),
+                Definition::ModuleDef(module_def) => Some(ItemInNs::from(module_def)),
+                Definition::Macro(macro_def) => Some(ItemInNs::from(macro_def)),
                 _ => None,
             }),
     );
 
-    candidates.into_iter()
+    candidates
 }
 
-fn get_name_definition<'a>(
-    sema: &Semantics<'a, RootDatabase>,
+fn get_name_definition(
+    sema: &Semantics<'_, RootDatabase>,
     import_candidate: &FileSymbol,
 ) -> Option<Definition> {
     let _p = profile::span("get_name_definition");

@@ -13,7 +13,10 @@ mod builder_ext;
 use hir::{
     AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
 };
-use ide_db::{helpers::SnippetCap, RootDatabase, SymbolKind};
+use ide_db::{
+    helpers::{item_name, SnippetCap},
+    RootDatabase, SymbolKind,
+};
 use syntax::TextRange;
 
 use crate::{
@@ -50,18 +53,20 @@ pub(crate) fn render_resolution<'a>(
 pub(crate) fn render_resolution_with_import<'a>(
     ctx: RenderContext<'a>,
     import_edit: ImportEdit,
-    resolution: &ScopeDef,
 ) -> Option<CompletionItem> {
+    let resolution = ScopeDef::from(import_edit.import.original_item);
     let local_name = match resolution {
         ScopeDef::ModuleDef(ModuleDef::Function(f)) => f.name(ctx.completion.db).to_string(),
         ScopeDef::ModuleDef(ModuleDef::Const(c)) => c.name(ctx.completion.db)?.to_string(),
         ScopeDef::ModuleDef(ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db).to_string(),
-        _ => import_edit.import_path.segments().last()?.to_string(),
+        _ => item_name(ctx.db(), import_edit.import.original_item)?.to_string(),
     };
-    Render::new(ctx).render_resolution(local_name, Some(import_edit), resolution).map(|mut item| {
-        item.completion_kind = CompletionKind::Magic;
-        item
-    })
+    Render::new(ctx).render_resolution(local_name, Some(import_edit), &resolution).map(
+        |mut item| {
+            item.completion_kind = CompletionKind::Magic;
+            item
+        },
+    )
 }
 
 /// Interface for data and methods required for items rendering.

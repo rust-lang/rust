@@ -8,7 +8,7 @@ pub mod line_index;
 pub mod symbol_index;
 pub mod defs;
 pub mod search;
-pub mod imports_locator;
+pub mod items_locator;
 pub mod source_change;
 pub mod ty_filter;
 pub mod traits;

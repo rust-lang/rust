@@ -1,7 +1,10 @@
 use std::iter;
 
 use hir::AsAssocItem;
-use ide_db::helpers::{import_assets::ImportCandidate, mod_path_to_ast};
+use ide_db::helpers::{
+    import_assets::{ImportCandidate, LocatedImport},
+    item_name, mod_path_to_ast,
+};
 use ide_db::RootDatabase;
 use syntax::{
     ast,
@@ -71,17 +74,17 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
     };
 
     let group_label = group_label(candidate);
-    for (import, item) in proposed_imports {
+    for import in proposed_imports {
         acc.add_group(
             &group_label,
             AssistId("qualify_path", AssistKind::QuickFix),
-            label(candidate, &import),
+            label(ctx.db(), candidate, &import),
             range,
             |builder| {
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
-                    import,
-                    item,
+                    &import.import_path,
+                    import.item_to_import,
                 )
             },
         );
@@ -97,8 +100,13 @@ enum QualifyCandidate<'db> {
 }
 
 impl QualifyCandidate<'_> {
-    fn qualify(&self, mut replacer: impl FnMut(String), import: hir::ModPath, item: hir::ItemInNs) {
-        let import = mod_path_to_ast(&import);
+    fn qualify(
+        &self,
+        mut replacer: impl FnMut(String),
+        import: &hir::ModPath,
+        item: hir::ItemInNs,
+    ) {
+        let import = mod_path_to_ast(import);
         match self {
             QualifyCandidate::QualifierStart(segment, generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
@@ -183,23 +191,29 @@ fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
 fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     let name = match candidate {
         ImportCandidate::Path(it) => &it.name,
-        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => &it.name,
+        ImportCandidate::TraitAssocItem(it) | ImportCandidate::TraitMethod(it) => {
+            &it.assoc_item_name
+        }
     }
     .text();
     GroupLabel(format!("Qualify {}", name))
 }
 
-fn label(candidate: &ImportCandidate, import: &hir::ModPath) -> String {
+fn label(db: &RootDatabase, candidate: &ImportCandidate, import: &LocatedImport) -> String {
+    let display_path = match item_name(db, import.original_item) {
+        Some(display_path) => display_path.to_string(),
+        None => "{unknown}".to_string(),
+    };
     match candidate {
         ImportCandidate::Path(candidate) => {
             if candidate.qualifier.is_some() {
-                format!("Qualify with `{}`", &import)
+                format!("Qualify with `{}`", display_path)
             } else {
-                format!("Qualify as `{}`", &import)
+                format!("Qualify as `{}`", display_path)
             }
         }
-        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", &import),
-        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", &import),
+        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", display_path),
+        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", display_path),
     }
 }
 
