@@ -5,6 +5,7 @@ mod cast_precision_loss;
 mod cast_ptr_alignment;
 mod cast_ref_to_mut;
 mod cast_sign_loss;
+mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_with_truncation;
 mod unnecessary_cast;
@@ -13,19 +14,16 @@ mod utils;
 use std::borrow::Cow;
 
 use if_chain::if_chain;
-use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, TypeAndMut};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{
-    is_hir_ty_cfg_dependant, meets_msrv, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then,
-};
+use crate::utils::{is_hir_ty_cfg_dependant, meets_msrv, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for casts from any numerical to a float type where
@@ -290,6 +288,33 @@ declare_clippy_lint! {
     "a cast of reference to a mutable pointer"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for expressions where a character literal is cast
+    /// to `u8` and suggests using a byte literal instead.
+    ///
+    /// **Why is this bad?** In general, casting values to smaller types is
+    /// error-prone and should be avoided where possible. In the particular case of
+    /// converting a character literal to u8, it is easy to avoid by just using a
+    /// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
+    /// than `'a' as u8`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// 'x' as u8
+    /// ```
+    ///
+    /// A better version, using the byte literal:
+    ///
+    /// ```rust,ignore
+    /// b'x'
+    /// ```
+    pub CHAR_LIT_AS_U8,
+    complexity,
+    "casting a character literal to `u8` truncates"
+}
+
 declare_lint_pass!(Casts => [
     CAST_PRECISION_LOSS,
     CAST_SIGN_LOSS,
@@ -297,10 +322,11 @@ declare_lint_pass!(Casts => [
     CAST_POSSIBLE_WRAP,
     CAST_LOSSLESS,
     CAST_REF_TO_MUT,
-    UNNECESSARY_CAST,
     CAST_PTR_ALIGNMENT,
+    UNNECESSARY_CAST,
     FN_TO_NUMERIC_CAST,
     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+    CHAR_LIT_AS_U8,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -335,73 +361,11 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         }
 
         cast_ptr_alignment::check(cx, expr);
+        char_lit_as_u8::check(cx, expr);
     }
 }
 
 const PTR_AS_PTR_MSRV: RustcVersion = RustcVersion::new(1, 38, 0);
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for expressions where a character literal is cast
-    /// to `u8` and suggests using a byte literal instead.
-    ///
-    /// **Why is this bad?** In general, casting values to smaller types is
-    /// error-prone and should be avoided where possible. In the particular case of
-    /// converting a character literal to u8, it is easy to avoid by just using a
-    /// byte literal instead. As an added bonus, `b'a'` is even slightly shorter
-    /// than `'a' as u8`.
-    ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    /// ```rust,ignore
-    /// 'x' as u8
-    /// ```
-    ///
-    /// A better version, using the byte literal:
-    ///
-    /// ```rust,ignore
-    /// b'x'
-    /// ```
-    pub CHAR_LIT_AS_U8,
-    complexity,
-    "casting a character literal to `u8` truncates"
-}
-
-declare_lint_pass!(CharLitAsU8 => [CHAR_LIT_AS_U8]);
-
-impl<'tcx> LateLintPass<'tcx> for CharLitAsU8 {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if !expr.span.from_expansion();
-            if let ExprKind::Cast(e, _) = &expr.kind;
-            if let ExprKind::Lit(l) = &e.kind;
-            if let LitKind::Char(c) = l.node;
-            if ty::Uint(UintTy::U8) == *cx.typeck_results().expr_ty(expr).kind();
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let snippet = snippet_with_applicability(cx, e.span, "'x'", &mut applicability);
-
-                span_lint_and_then(
-                    cx,
-                    CHAR_LIT_AS_U8,
-                    expr.span,
-                    "casting a character literal to `u8` truncates",
-                    |diag| {
-                        diag.note("`char` is four bytes wide, but `u8` is a single byte");
-
-                        if c.is_ascii() {
-                            diag.span_suggestion(
-                                expr.span,
-                                "use a byte literal instead",
-                                format!("b{}", snippet),
-                                applicability,
-                            );
-                        }
-                });
-            }
-        }
-    }
-}
 
 declare_clippy_lint! {
     /// **What it does:**
