@@ -17,9 +17,9 @@ memmap2 = "0.2.0"
 tt = { path = "../tt", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
 proc_macro_api = { path = "../proc_macro_api", version = "0.0.0" }
-test_utils = { path = "../test_utils", version = "0.0.0" }
 
 [dev-dependencies]
+test_utils = { path = "../test_utils" }
 cargo_metadata = "0.13"
 
 # used as proc macro test targets

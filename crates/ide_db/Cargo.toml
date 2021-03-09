@@ -24,10 +24,10 @@ syntax = { path = "../syntax", version = "0.0.0" }
 text_edit = { path = "../text_edit", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
-test_utils = { path = "../test_utils", version = "0.0.0" }
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../hir", version = "0.0.0" }
 
 [dev-dependencies]
+test_utils = { path = "../test_utils" }
 expect-test = "1.1"

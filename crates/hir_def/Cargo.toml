@@ -28,10 +28,10 @@ base_db = { path = "../base_db", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 hir_expand = { path = "../hir_expand", version = "0.0.0" }
-test_utils = { path = "../test_utils", version = "0.0.0" }
 mbe = { path = "../mbe", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
 
 [dev-dependencies]
+test_utils = { path = "../test_utils" }
 expect-test = "1.1"
