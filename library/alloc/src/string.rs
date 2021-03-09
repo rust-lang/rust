@@ -2352,6 +2352,16 @@ impl<'a> From<Cow<'a, str>> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
+    /// Converts a string slice into a Borrowed variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// assert_eq!(Cow::from("eggplant"), Cow::Borrowed("eggplant"));
+    /// ```
     #[inline]
     fn from(s: &'a str) -> Cow<'a, str> {
         Cow::Borrowed(s)
@@ -2360,6 +2370,18 @@ impl<'a> From<&'a str> for Cow<'a, str> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<String> for Cow<'a, str> {
+    /// Converts a String into an Owned variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let s = "eggplant".to_string();
+    /// let s2 = "eggplant".to_string();
+    /// assert_eq!(Cow::from(s), Cow::<'static, str>::Owned(s2));
+    /// ```
     #[inline]
     fn from(s: String) -> Cow<'a, str> {
         Cow::Owned(s)
@@ -2368,6 +2390,17 @@ impl<'a> From<String> for Cow<'a, str> {
 
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
 impl<'a> From<&'a String> for Cow<'a, str> {
+    /// Converts a String reference into a Borrowed variant.
+    /// No heap allocation is performed, and the string
+    /// is not copied.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let s = "eggplant".to_string();
+    /// assert_eq!(Cow::from(&s), Cow::Borrowed("eggplant"));
+    /// ```
     #[inline]
     fn from(s: &'a String) -> Cow<'a, str> {
         Cow::Borrowed(s.as_str())

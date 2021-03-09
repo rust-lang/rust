@@ -2433,8 +2433,10 @@ impl<'a> Resolver<'a> {
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
-                        } else {
+                        } else if self.session.edition() == Edition::Edition2015 {
                             (format!("maybe a missing crate `{}`?", ident), None)
+                        } else {
+                            (format!("could not find `{}` in the crate root", ident), None)
                         }
                     } else if i == 0 {
                         if ident
@@ -2450,10 +2452,16 @@ impl<'a> Resolver<'a> {
                         }
                     } else {
                         let parent = path[i - 1].ident.name;
-                        let parent = if parent == kw::PathRoot {
-                            "crate root".to_owned()
-                        } else {
-                            format!("`{}`", parent)
+                        let parent = match parent {
+                            // ::foo is mounted at the crate root for 2015, and is the extern
+                            // prelude for 2018+
+                            kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
+                                "the list of imported crates".to_owned()
+                            }
+                            kw::PathRoot | kw::Crate => "the crate root".to_owned(),
+                            _ => {
+                                format!("`{}`", parent)
+                            }
                         };
 
                         let mut msg = format!("could not find `{}` in {}", ident, parent);

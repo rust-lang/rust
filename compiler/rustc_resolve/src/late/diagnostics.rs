@@ -16,6 +16,7 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -133,7 +134,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
         // Make the base error.
-        let expected = source.descr_expected();
+        let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
         let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
@@ -166,6 +167,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let (mod_prefix, mod_str) = if path.len() == 1 {
                 (String::new(), "this scope".to_string())
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
+                if self.r.session.edition() > Edition::Edition2015 {
+                    // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
+                    // which overrides all other expectations of item type
+                    expected = "crate";
+                    (String::new(), "the list of imported crates".to_string())
+                } else {
+                    (String::new(), "the crate root".to_string())
+                }
+            } else if path.len() == 2 && path[0].ident.name == kw::Crate {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];

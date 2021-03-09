@@ -395,7 +395,11 @@ pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[doc(no_inline)]
+// The `no_inline`-attribute is required to make the documentation of all
+// targets available.
+// See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
+// more information.
+#[doc(no_inline)] // Note (#82861): required for correct documentation
 pub use core::arch;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
