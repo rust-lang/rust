@@ -85,6 +85,7 @@ use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
+use std::collections::HashMap;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -1494,13 +1495,49 @@ pub fn match_function_call<'tcx>(
     None
 }
 
+// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
+// this function can be removed once the `normalizie` method does not panic when normalization does
+// not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| {
+    is_normalizable_helper(cx, param_env, ty, &mut HashMap::new())
+}
+
+fn is_normalizable_helper<'tcx>(
+    cx: &LateContext<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    cache: &mut HashMap<Ty<'tcx>, bool>,
+) -> bool {
+    if let Some(&cached_result) = cache.get(ty) {
+        return cached_result;
+    }
+    // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
+    cache.insert(ty, false);
+    let result = cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
-        infcx.at(&cause, param_env).normalize(ty).is_ok()
-    })
+        if infcx.at(&cause, param_env).normalize(ty).is_ok() {
+            match ty.kind() {
+                ty::Adt(def, substs) => def.variants.iter().all(|variant| {
+                    variant
+                        .fields
+                        .iter()
+                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
+                }),
+                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
+                    GenericArgKind::Type(inner_ty) if inner_ty != ty => {
+                        is_normalizable_helper(cx, param_env, inner_ty, cache)
+                    },
+                    _ => true, // if inner_ty == ty, we've already checked it
+                }),
+            }
+        } else {
+            false
+        }
+    });
+    cache.insert(ty, result);
+    result
 }
 
 pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
