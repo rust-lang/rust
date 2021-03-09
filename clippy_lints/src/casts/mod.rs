@@ -4,6 +4,7 @@ mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_sign_loss;
 mod fn_to_numeric_cast;
+mod fn_to_numeric_cast_with_truncation;
 mod unnecessary_cast;
 mod utils;
 
@@ -304,7 +305,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             }
 
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
-            lint_fn_to_numeric_cast(cx, expr, cast_expr, cast_from, cast_to);
+            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
                 cast_possible_truncation::check(cx, expr, cast_from, cast_to);
@@ -355,43 +356,6 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
                 ),
             );
         }
-    }
-}
-
-fn lint_fn_to_numeric_cast(
-    cx: &LateContext<'_>,
-    expr: &Expr<'_>,
-    cast_expr: &Expr<'_>,
-    cast_from: Ty<'_>,
-    cast_to: Ty<'_>,
-) {
-    // We only want to check casts to `ty::Uint` or `ty::Int`
-    match cast_to.kind() {
-        ty::Uint(_) | ty::Int(..) => { /* continue on */ },
-        _ => return,
-    }
-    match cast_from.kind() {
-        ty::FnDef(..) | ty::FnPtr(_) => {
-            let mut applicability = Applicability::MaybeIncorrect;
-            let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
-
-            let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-            if to_nbits < cx.tcx.data_layout.pointer_size.bits() {
-                span_lint_and_sugg(
-                    cx,
-                    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
-                    expr.span,
-                    &format!(
-                        "casting function pointer `{}` to `{}`, which truncates the value",
-                        from_snippet, cast_to
-                    ),
-                    "try",
-                    format!("{} as usize", from_snippet),
-                    applicability,
-                );
-            }
-        },
-        _ => {},
     }
 }
 
