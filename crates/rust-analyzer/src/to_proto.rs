@@ -173,20 +173,20 @@ pub(crate) fn snippet_text_edit_vec(
 
 pub(crate) fn completion_item(
     line_index: &LineIndex,
-    completion_item: CompletionItem,
+    item: CompletionItem,
 ) -> Vec<lsp_types::CompletionItem> {
-    fn set_score(res: &mut lsp_types::CompletionItem, label: &str) {
-        res.preselect = Some(true);
+    fn set_score(lsp_item: &mut lsp_types::CompletionItem, label: &str) {
+        lsp_item.preselect = Some(true);
         // HACK: sort preselect items first
-        res.sort_text = Some(format!(" {}", label));
+        lsp_item.sort_text = Some(format!(" {}", label));
     }
 
     let mut additional_text_edits = Vec::new();
     let mut text_edit = None;
     // LSP does not allow arbitrary edits in completion, so we have to do a
     // non-trivial mapping here.
-    let source_range = completion_item.source_range();
-    for indel in completion_item.text_edit().iter() {
+    let source_range = item.source_range();
+    for indel in item.text_edit().iter() {
         if indel.delete.contains_range(source_range) {
             text_edit = Some(if indel.delete == source_range {
                 self::text_edit(line_index, indel.clone())
@@ -207,46 +207,46 @@ pub(crate) fn completion_item(
     }
     let text_edit = text_edit.unwrap();
 
-    let mut res = lsp_types::CompletionItem {
-        label: completion_item.label().to_string(),
-        detail: completion_item.detail().map(|it| it.to_string()),
-        filter_text: Some(completion_item.lookup().to_string()),
-        kind: completion_item.kind().map(completion_item_kind),
+    let mut lsp_item = lsp_types::CompletionItem {
+        label: item.label().to_string(),
+        detail: item.detail().map(|it| it.to_string()),
+        filter_text: Some(item.lookup().to_string()),
+        kind: item.kind().map(completion_item_kind),
         text_edit: Some(text_edit.into()),
         additional_text_edits: Some(additional_text_edits),
-        documentation: completion_item.documentation().map(documentation),
-        deprecated: Some(completion_item.deprecated()),
+        documentation: item.documentation().map(documentation),
+        deprecated: Some(item.deprecated()),
         ..Default::default()
     };
 
-    if completion_item.score().is_some() {
-        set_score(&mut res, completion_item.label());
+    if item.score().is_some() {
+        set_score(&mut lsp_item, item.label());
     }
 
-    if completion_item.deprecated() {
-        res.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
+    if item.deprecated() {
+        lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
     }
 
-    if completion_item.trigger_call_info() {
-        res.command = Some(command::trigger_parameter_hints());
+    if item.trigger_call_info() {
+        lsp_item.command = Some(command::trigger_parameter_hints());
     }
 
-    let mut all_results = match completion_item.ref_match() {
+    let mut res = match item.ref_match() {
         Some(ref_match) => {
-            let mut refed = res.clone();
+            let mut refed = lsp_item.clone();
             let (mutability, _score) = ref_match;
             let label = format!("&{}{}", mutability.as_keyword_for_ref(), refed.label);
             set_score(&mut refed, &label);
             refed.label = label;
-            vec![res, refed]
+            vec![lsp_item, refed]
         }
-        None => vec![res],
+        None => vec![lsp_item],
     };
 
-    for mut r in all_results.iter_mut() {
-        r.insert_text_format = Some(insert_text_format(completion_item.insert_text_format()));
+    for mut r in res.iter_mut() {
+        r.insert_text_format = Some(insert_text_format(item.insert_text_format()));
     }
-    all_results
+    res
 }
 
 pub(crate) fn signature_help(

@@ -208,7 +208,7 @@ impl CompletionItem {
             lookup: None,
             kind: None,
             text_edit: None,
-            deprecated: None,
+            deprecated: false,
             trigger_call_info: None,
             score: None,
             ref_match: None,
@@ -308,7 +308,7 @@ pub(crate) struct Builder {
     lookup: Option<String>,
     kind: Option<CompletionItemKind>,
     text_edit: Option<TextEdit>,
-    deprecated: Option<bool>,
+    deprecated: bool,
     trigger_call_info: Option<bool>,
     score: Option<CompletionScore>,
     ref_match: Option<(Mutability, CompletionScore)>,
@@ -355,7 +355,7 @@ impl Builder {
             lookup,
             kind: self.kind,
             completion_kind: self.completion_kind,
-            deprecated: self.deprecated.unwrap_or(false),
+            deprecated: self.deprecated,
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
             score: self.score,
             ref_match: self.ref_match,
@@ -415,7 +415,7 @@ impl Builder {
         self
     }
     pub(crate) fn set_deprecated(mut self, deprecated: bool) -> Builder {
-        self.deprecated = Some(deprecated);
+        self.deprecated = deprecated;
         self
     }
     pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
@@ -430,11 +430,8 @@ impl Builder {
         self.import_to_add = import_to_add;
         self
     }
-    pub(crate) fn set_ref_match(
-        mut self,
-        ref_match: Option<(Mutability, CompletionScore)>,
-    ) -> Builder {
-        self.ref_match = ref_match;
+    pub(crate) fn ref_match(mut self, ref_match: (Mutability, CompletionScore)) -> Builder {
+        self.ref_match = Some(ref_match);
         self
     }
 }
