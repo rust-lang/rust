@@ -5,10 +5,12 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
-mod rpc;
-mod process;
 pub mod msg;
+mod process;
+mod rpc;
+mod version;
 
+use base_db::{Env, ProcMacro};
 use std::{
     ffi::OsStr,
     io,
@@ -16,7 +18,6 @@ use std::{
     sync::Arc,
 };
 
-use base_db::{Env, ProcMacro};
 use tt::{SmolStr, Subtree};
 
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
@@ -75,6 +76,21 @@ impl ProcMacroClient {
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
+        match version::read_info(dylib_path) {
+            Ok(info) => {
+                if info.version.0 < 1 || info.version.1 < 47 {
+                    eprintln!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", dylib_path.to_string_lossy(), info);
+                }
+            }
+            Err(err) => {
+                eprintln!(
+                    "proc-macro {} failed to find the given version. Reason: {}",
+                    dylib_path.to_string_lossy(),
+                    err
+                );
+            }
+        }
+
         let macros = match self.process.find_proc_macros(dylib_path) {
             Err(err) => {
                 eprintln!("Failed to find proc macros. Error: {:#?}", err);

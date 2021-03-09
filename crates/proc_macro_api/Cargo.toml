@@ -19,3 +19,6 @@ jod-thread = "0.1.1"
 tt = { path = "../tt", version = "0.0.0" }
 base_db = { path = "../base_db", version = "0.0.0" }
 stdx = { path = "../stdx", version = "0.0.0" }
+snap = "1"
+object = { version = "0.23.0", default-features = false, features = ["std", "read_core", "elf", "macho", "pe", "unaligned"] }
+memmap = "0.7.0"
