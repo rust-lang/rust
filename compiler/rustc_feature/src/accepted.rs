@@ -275,6 +275,8 @@ declare_features! (
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
     /// The smallest useful subset of `const_generics`.
     (accepted, min_const_generics, "1.51.0", Some(74878), None),
+    /// The `unsafe_op_in_unsafe_fn` lint (allowed by default): no longer treat an unsafe function as an unsafe block.
+    (accepted, unsafe_block_in_unsafe_fn, "1.51.0", Some(71668), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

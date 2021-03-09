@@ -557,9 +557,6 @@ declare_features! (
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (active, ffi_const, "1.45.0", Some(58328), None),
 
-    /// No longer treat an unsafe function as an unsafe block.
-    (active, unsafe_block_in_unsafe_fn, "1.45.0", Some(71668), None),
-
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (active, abi_avr_interrupt, "1.45.0", Some(69664), None),
 
