@@ -1,6 +1,6 @@
-// MIR for `drop_in_place` after SimplifyCfg-make_shim
+// MIR for `std::ptr::drop_in_place` after SimplifyCfg-make_shim
 
-fn drop_in_place(_1: *mut Test) -> () {
+fn std::ptr::drop_in_place(_1: *mut Test) -> () {
     let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _2: &mut Test;               // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _3: ();                      // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
