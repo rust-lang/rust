@@ -812,13 +812,11 @@ impl Function {
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ret_type = &db.function_data(self.id).ret_type;
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let environment = TraitEnvironment::lower(db, &resolver);
-        Type {
-            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
-            ty: InEnvironment { value: Ty::from_hir_ext(&ctx, ret_type).0, environment },
-        }
+        let ty = Ty::from_hir_ext(&ctx, ret_type).0;
+        Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
@@ -830,6 +828,7 @@ impl Function {
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
         let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = TraitEnvironment::lower(db, &resolver);
         db.function_data(self.id)
@@ -837,7 +836,7 @@ impl Function {
             .iter()
             .map(|type_ref| {
                 let ty = Type {
-                    krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
+                    krate,
                     ty: InEnvironment {
                         value: Ty::from_hir_ext(&ctx, type_ref).0,
                         environment: environment.clone(),
@@ -1402,12 +1401,9 @@ impl TypeParam {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.parent.resolver(db.upcast());
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let krate = self.id.parent.module(db.upcast()).krate();
         let ty = Ty::Placeholder(self.id);
-        Type {
-            krate: self.id.parent.module(db.upcast()).krate(),
-            ty: InEnvironment { value: ty, environment },
-        }
+        Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
@@ -1426,14 +1422,11 @@ impl TypeParam {
         let params = db.generic_defaults(self.id.parent);
         let local_idx = hir_ty::param_idx(db, self.id)?;
         let resolver = self.id.parent.resolver(db.upcast());
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
         let subst = Substs::type_params(db, self.id.parent);
         let ty = ty.subst(&subst.prefix(local_idx));
-        Some(Type {
-            krate: self.id.parent.module(db.upcast()).krate(),
-            ty: InEnvironment { value: ty, environment },
-        })
+        Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
 }
 
@@ -1522,13 +1515,10 @@ impl Impl {
     pub fn target_ty(self, db: &dyn HirDatabase) -> Type {
         let impl_data = db.impl_data(self.id);
         let resolver = self.id.resolver(db.upcast());
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let environment = TraitEnvironment::lower(db, &resolver);
         let ty = Ty::from_hir(&ctx, &impl_data.target_type);
-        Type {
-            krate: self.id.lookup(db.upcast()).container.module(db.upcast()).krate(),
-            ty: InEnvironment { value: ty, environment },
-        }
+        Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
@@ -1724,13 +1714,11 @@ impl Type {
         };
 
         match db.trait_solve(self.krate, goal)? {
-            Solution::Unique(SolutionVariables(subst)) => subst.value.first().cloned(),
+            Solution::Unique(SolutionVariables(subst)) => {
+                subst.value.first().map(|ty| self.derived(ty.clone()))
+            }
             Solution::Ambig(_) => None,
         }
-        .map(|ty| Type {
-            krate: self.krate,
-            ty: InEnvironment { value: ty, environment: Arc::clone(&self.ty.environment) },
-        })
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
