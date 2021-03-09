@@ -1135,20 +1135,13 @@ pub(crate) fn handle_document_highlight(
         None
     };
 
-    let res = refs
-        .references
-        .get(&position.file_id)
-        .map(|file_refs| {
-            file_refs
-                .into_iter()
-                .map(|&(range, access)| DocumentHighlight {
-                    range: to_proto::range(&line_index, range),
-                    kind: access.map(to_proto::document_highlight_kind),
-                })
-                .chain(decl)
-                .collect()
-        })
-        .unwrap_or_default();
+    let file_refs = refs.references.get(&position.file_id).map_or(&[][..], Vec::as_slice);
+    let mut res = Vec::with_capacity(file_refs.len() + 1);
+    res.extend(decl);
+    res.extend(file_refs.iter().map(|&(range, access)| DocumentHighlight {
+        range: to_proto::range(&line_index, range),
+        kind: access.map(to_proto::document_highlight_kind),
+    }));
     Ok(Some(res))
 }
 
