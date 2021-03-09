@@ -58,6 +58,7 @@
 // | VS Code | **Rust Analyzer: Structural Search Replace**
 // |===
 
+mod from_comment;
 mod matching;
 mod nester;
 mod parsing;
@@ -71,6 +72,7 @@ mod tests;
 
 use crate::errors::bail;
 pub use crate::errors::SsrError;
+pub use crate::from_comment::ssr_from_comment;
 pub use crate::matching::Match;
 use crate::matching::MatchFailureReason;
 use hir::Semantics;

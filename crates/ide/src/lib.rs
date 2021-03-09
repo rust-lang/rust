@@ -41,6 +41,7 @@ mod parent_module;
 mod references;
 mod fn_references;
 mod runnables;
+mod ssr;
 mod status;
 mod syntax_highlighting;
 mod syntax_tree;
@@ -51,6 +52,7 @@ mod doc_links;
 use std::sync::Arc;
 
 use cfg::CfgOptions;
+
 use ide_db::base_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
@@ -502,7 +504,11 @@ impl Analysis {
         resolve: bool,
         frange: FileRange,
     ) -> Cancelable<Vec<Assist>> {
-        self.with_db(|db| Assist::get(db, config, resolve, frange))
+        self.with_db(|db| {
+            let mut acc = Assist::get(db, config, resolve, frange);
+            ssr::add_ssr_assist(db, &mut acc, resolve, frange);
+            acc
+        })
     }
 
     /// Computes the set of diagnostics for the given file.
