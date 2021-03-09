@@ -106,7 +106,7 @@ If we make no progress in an iteration, then we have reached a compilation
 error (e.g. an undefined macro). We attempt to recover from failures
 (unresolved macros or imports) for the sake of diagnostics. This allows
 compilation to continue past the first error, so that we can report more errors
-at a time. Recovery can't cause compilation to suceed. We know that it will
+at a time. Recovery can't cause compilation to succeed. We know that it will
 fail at this point. The recovery happens by expanding unresolved macros into
 [`ExprKind::Err`][err].
 
