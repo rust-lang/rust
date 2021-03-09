@@ -3,6 +3,7 @@ mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_sign_loss;
+mod fn_to_numeric_cast;
 mod unnecessary_cast;
 mod utils;
 
@@ -301,6 +302,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
                 return;
             }
+
+            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             lint_fn_to_numeric_cast(cx, expr, cast_expr, cast_from, cast_to);
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
@@ -382,16 +385,6 @@ fn lint_fn_to_numeric_cast(
                         "casting function pointer `{}` to `{}`, which truncates the value",
                         from_snippet, cast_to
                     ),
-                    "try",
-                    format!("{} as usize", from_snippet),
-                    applicability,
-                );
-            } else if *cast_to.kind() != ty::Uint(UintTy::Usize) {
-                span_lint_and_sugg(
-                    cx,
-                    FN_TO_NUMERIC_CAST,
-                    expr.span,
-                    &format!("casting function pointer `{}` to `{}`", from_snippet, cast_to),
                     "try",
                     format!("{} as usize", from_snippet),
                     applicability,
