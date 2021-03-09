@@ -133,7 +133,7 @@
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
-#![feature(unsafe_block_in_unsafe_fn)]
+#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![feature(unsize)]
 #![feature(unsized_fn_params)]
 #![feature(allocator_internals)]
