@@ -3,7 +3,13 @@
 Thank you for your interest in contributing to Rust! There are many ways to contribute
 and we appreciate all of them.
 
-To get started, read the [Contributing to Rust] chapter of the [rustc-dev-guide].
+Documentation for contributing to Rust is located in the [Guide to Rustc Development](https://rustc-dev-guide.rust-lang.org/),
+commonly known as the [rustc-dev-guide]. Despite the name, this guide documents
+not just how to develop rustc (the Rust compiler), but also how to contribute to any part
+of the Rust project.
+
+To get started with contributing, please read the [Contributing to Rust] chapter of the guide.
+That chapter explains how to get your development environment set up and how to get help.
 
 ## About the [rustc-dev-guide]
 
