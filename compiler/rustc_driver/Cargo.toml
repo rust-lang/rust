@@ -12,7 +12,7 @@ libc = "0.2"
 atty = "0.2"
 tracing = { version = "0.1.25" }
 tracing-subscriber = { version = "0.2.16", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
-tracing-tree = "0.1.8"
+tracing-tree = "0.1.9"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_target = { path = "../rustc_target" }
