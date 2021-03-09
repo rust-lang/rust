@@ -267,7 +267,7 @@ impl Attrs {
         db: &dyn DefDatabase,
         e: EnumId,
     ) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>> {
-        let krate = e.lookup(db).container.module(db).krate;
+        let krate = e.lookup(db).container.krate;
         let src = e.child_source(db);
         let mut res = ArenaMap::default();
 

@@ -424,7 +424,7 @@ pub(crate) fn trait_datum_query(
     let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
         auto: trait_data.auto,
-        upstream: trait_.lookup(db.upcast()).container.module(db.upcast()).krate() != krate,
+        upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
@@ -548,7 +548,7 @@ fn impl_def_datum(
     let generic_params = generics(db.upcast(), impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
     let trait_ = trait_ref.trait_;
-    let impl_type = if impl_id.lookup(db.upcast()).container.module(db.upcast()).krate() == krate {
+    let impl_type = if impl_id.lookup(db.upcast()).container.krate() == krate {
         rust_ir::ImplType::Local
     } else {
         rust_ir::ImplType::External

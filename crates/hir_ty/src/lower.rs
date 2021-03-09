@@ -1130,8 +1130,8 @@ impl CallableDefId {
         let db = db.upcast();
         match self {
             CallableDefId::FunctionId(f) => f.lookup(db).module(db),
-            CallableDefId::StructId(s) => s.lookup(db).container.module(db),
-            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container.module(db),
+            CallableDefId::StructId(s) => s.lookup(db).container,
+            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container,
         }
         .krate()
     }
