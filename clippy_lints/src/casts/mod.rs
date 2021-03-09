@@ -1,4 +1,5 @@
 mod cast_lossless;
+mod cast_possible_truncation;
 mod cast_precision_loss;
 mod utils;
 
@@ -312,52 +313,18 @@ fn check_truncation_and_wrapping(cx: &LateContext<'_>, expr: &Expr<'_>, cast_fro
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
     let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-    let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) =
-        match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
-            (true, true) | (false, false) => (
-                to_nbits < from_nbits,
-                ArchSuffix::None,
-                to_nbits == from_nbits && cast_unsigned_to_signed,
-                ArchSuffix::None,
-            ),
-            (true, false) => (
-                to_nbits <= 32,
-                if to_nbits == 32 {
-                    ArchSuffix::_64
-                } else {
-                    ArchSuffix::None
-                },
-                to_nbits <= 32 && cast_unsigned_to_signed,
-                ArchSuffix::_32,
-            ),
-            (false, true) => (
-                from_nbits == 64,
-                ArchSuffix::_32,
-                cast_unsigned_to_signed,
-                if from_nbits == 64 {
-                    ArchSuffix::_64
-                } else {
-                    ArchSuffix::_32
-                },
-            ),
-        };
-    if span_truncation {
-        span_lint(
-            cx,
-            CAST_POSSIBLE_TRUNCATION,
-            expr.span,
-            &format!(
-                "casting `{}` to `{}` may truncate the value{}",
-                cast_from,
-                cast_to,
-                match suffix_truncation {
-                    ArchSuffix::_32 => arch_32_suffix,
-                    ArchSuffix::_64 => arch_64_suffix,
-                    ArchSuffix::None => "",
-                }
-            ),
-        );
-    }
+    let (span_wrap, suffix_wrap) = match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
+        (true, true) | (false, false) => (to_nbits == from_nbits && cast_unsigned_to_signed, ArchSuffix::None),
+        (true, false) => (to_nbits <= 32 && cast_unsigned_to_signed, ArchSuffix::_32),
+        (false, true) => (
+            cast_unsigned_to_signed,
+            if from_nbits == 64 {
+                ArchSuffix::_64
+            } else {
+                ArchSuffix::_32
+            },
+        ),
+    };
     if span_wrap {
         span_lint(
             cx,
@@ -529,14 +496,9 @@ fn lint_numeric_casts<'tcx>(
 ) {
     cast_precision_loss::check(cx, expr, cast_from, cast_to);
     cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
+    cast_possible_truncation::check(cx, expr, cast_from, cast_to);
     match (cast_from.is_integral(), cast_to.is_integral()) {
         (false, true) => {
-            span_lint(
-                cx,
-                CAST_POSSIBLE_TRUNCATION,
-                expr.span,
-                &format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to),
-            );
             if !cast_to.is_signed() {
                 span_lint(
                     cx,
@@ -552,16 +514,6 @@ fn lint_numeric_casts<'tcx>(
         (true, true) => {
             check_loss_of_sign(cx, expr, cast_expr, cast_from, cast_to);
             check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-        },
-        (false, false) => {
-            if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.kind(), &cast_to.kind()) {
-                span_lint(
-                    cx,
-                    CAST_POSSIBLE_TRUNCATION,
-                    expr.span,
-                    "casting `f64` to `f32` may truncate the value",
-                );
-            }
         },
         (_, _) => {},
     }
