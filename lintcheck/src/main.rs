@@ -16,7 +16,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -337,12 +337,12 @@ impl LintcheckConfig {
     fn from_clap(clap_config: &ArgMatches) -> Self {
         // first, check if we got anything passed via the LINTCHECK_TOML env var,
         // if not, ask clap if we got any value for --crates-toml  <foo>
-        // if not, use the default "clippy_dev/lintcheck_crates.toml"
+        // if not, use the default "lintcheck/lintcheck_crates.toml"
         let sources_toml = env::var("LINTCHECK_TOML").unwrap_or_else(|_| {
             clap_config
                 .value_of("crates-toml")
                 .clone()
-                .unwrap_or("clippy_dev/lintcheck_crates.toml")
+                .unwrap_or("lintcheck/lintcheck_crates.toml")
                 .to_string()
         });
 
@@ -576,7 +576,7 @@ fn is_in_clippy_root() -> bool {
 pub fn main() {
     // assert that we launch lintcheck from the repo root (via cargo dev-lintcheck)
     if !is_in_clippy_root() {
-        eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo dev-lintcheck` alternatively.");
+        eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
     }
 
@@ -638,7 +638,7 @@ pub fn main() {
             name == only_one_crate
         }) {
             eprintln!(
-                "ERROR: could not find crate '{}' in clippy_dev/lintcheck_crates.toml",
+                "ERROR: could not find crate '{}' in lintcheck/lintcheck_crates.toml",
                 only_one_crate
             );
             std::process::exit(1);
@@ -818,7 +818,7 @@ fn create_dirs(krate_download_dir: &Path, extract_dir: &Path) {
 }
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
-    let lintcheck_sbcmd = SubCommand::with_name("lintcheck")
+    App::new("lintcheck")
         .about("run clippy on a set of crates and check output")
         .arg(
             Arg::with_name("only")
@@ -842,13 +842,8 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .long("jobs")
                 .help("number of threads to use, 0 automatic choice"),
         )
-        .arg(Arg::with_name("fix").help("runs cargo clippy --fix and checks if all suggestions apply"));
-
-    let app = App::new("Clippy developer tooling");
-
-    let app = app.subcommand(lintcheck_sbcmd);
-
-    app.get_matches()
+        .arg(Arg::with_name("fix").help("runs cargo clippy --fix and checks if all suggestions apply"))
+        .get_matches()
 }
 
 /// Returns the path to the Clippy project directory
@@ -881,24 +876,18 @@ fn lintcheck_test() {
     let args = [
         "run",
         "--target-dir",
-        "clippy_dev/target",
-        "--package",
-        "clippy_dev",
-        "--bin",
-        "clippy_dev",
+        "lintcheck/target",
         "--manifest-path",
-        "clippy_dev/Cargo.toml",
-        "--features",
-        "lintcheck",
+        "./lintcheck/Cargo.toml",
         "--",
-        "lintcheck",
         "--crates-toml",
-        "clippy_dev/test_sources.toml",
+        "lintcheck/test_sources.toml",
     ];
     let status = std::process::Command::new("cargo")
         .args(&args)
-        .current_dir("../" /* repo root */)
+        .current_dir("..") // repo root
         .status();
+    //.output();
 
     assert!(status.unwrap().success());
 }
