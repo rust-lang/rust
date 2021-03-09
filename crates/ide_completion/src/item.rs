@@ -430,11 +430,8 @@ impl Builder {
         self.import_to_add = import_to_add;
         self
     }
-    pub(crate) fn set_ref_match(
-        mut self,
-        ref_match: Option<(Mutability, CompletionScore)>,
-    ) -> Builder {
-        self.ref_match = ref_match;
+    pub(crate) fn ref_match(mut self, ref_match: (Mutability, CompletionScore)) -> Builder {
+        self.ref_match = Some(ref_match);
         self
     }
 }

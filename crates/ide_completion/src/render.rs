@@ -246,7 +246,6 @@ impl<'a> Render<'a> {
             }
         };
 
-        let mut ref_match = None;
         if let ScopeDef::Local(local) = resolution {
             if let Some((active_name, active_type)) = self.ctx.active_name_and_type() {
                 let ty = local.ty(self.ctx.db());
@@ -255,7 +254,11 @@ impl<'a> Render<'a> {
                 {
                     item = item.set_score(score);
                 }
-                ref_match = refed_type_matches(&active_type, &active_name, &ty, &local_name);
+                if let Some(ref_match) =
+                    refed_type_matches(&active_type, &active_name, &ty, &local_name)
+                {
+                    item = item.ref_match(ref_match);
+                }
             }
         }
 
@@ -285,7 +288,6 @@ impl<'a> Render<'a> {
         Some(
             item.kind(kind)
                 .add_import(import_to_add)
-                .set_ref_match(ref_match)
                 .set_documentation(self.docs(resolution))
                 .set_deprecated(self.is_deprecated(resolution))
                 .build(),
