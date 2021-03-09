@@ -4,6 +4,11 @@ use crate::fmt;
 use crate::sys::decode_error_kind;
 use crate::sys::os::error_string;
 
+fn _assert_error_is_sync_send() {
+    fn _is_sync_send<T: Sync + Send>() {}
+    _is_sync_send::<Error>();
+}
+
 #[test]
 fn test_debug_error() {
     let code = 6;

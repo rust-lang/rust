@@ -1406,9 +1406,3 @@ impl<T> fmt::Debug for JoinHandle<T> {
         f.pad("JoinHandle { .. }")
     }
 }
-
-fn _assert_sync_and_send() {
-    fn _assert_both<T: Send + Sync>() {}
-    _assert_both::<JoinHandle<()>>();
-    _assert_both::<Thread>();
-}

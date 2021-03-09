@@ -26,6 +26,8 @@ use core::iter::*;
 
 pub fn is_trusted_len<I: TrustedLen>(_: I) {}
 
+fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
+
 #[test]
 fn test_multi_iter() {
     let xs = [1, 2, 3, 4];

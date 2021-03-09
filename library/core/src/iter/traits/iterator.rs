@@ -13,8 +13,6 @@ use super::super::{
     Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
 
-fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
-
 /// An interface for dealing with iterators.
 ///
 /// This is the main iterator trait. For more about the concept of iterators

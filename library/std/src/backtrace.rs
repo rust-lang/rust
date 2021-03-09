@@ -142,11 +142,6 @@ struct Capture {
     frames: Vec<BacktraceFrame>,
 }
 
-fn _assert_send_sync() {
-    fn _assert<T: Send + Sync>() {}
-    _assert::<Backtrace>();
-}
-
 /// A single frame of a backtrace.
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {

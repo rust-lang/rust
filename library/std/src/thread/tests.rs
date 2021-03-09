@@ -1,10 +1,16 @@
-use super::Builder;
+use super::{Builder, JoinHandle, Thread};
 use crate::any::Any;
 use crate::mem;
 use crate::result;
 use crate::sync::mpsc::{channel, Sender};
 use crate::thread::{self, ThreadId};
 use crate::time::Duration;
+
+fn _assert_sync_and_send() {
+    fn _assert_both<T: Send + Sync>() {}
+    _assert_both::<JoinHandle<()>>();
+    _assert_both::<Thread>();
+}
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
