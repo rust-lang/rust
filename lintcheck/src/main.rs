@@ -1,5 +1,6 @@
 // Run clippy on a fixed set of crates and collect the warnings.
-// This helps observing the impact clippy changes have on a set of real-world code (and not just our testsuite).
+// This helps observing the impact clippy changes have on a set of real-world code (and not just our
+// testsuite).
 //
 // When a new lint is introduced, we can search the results for new warnings and check for false
 // positives.
@@ -556,12 +557,29 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
     logs_modified < clippy_modified
 }
 
+fn is_in_clippy_root() -> bool {
+    if let Ok(pb) = std::env::current_dir() {
+        if let Some(file) = pb.file_name() {
+            return file == PathBuf::from("rust-clippy");
+        }
+    }
+
+    false
+}
+
 /// lintchecks `main()` function
 ///
 /// # Panics
 ///
-/// This function panics if the clippy binaries don't exist.
+/// This function panics if the clippy binaries don't exist
+/// or if lintcheck is executed from the wrong directory (aka none-repo-root)
 pub fn main() {
+    // assert that we launch lintcheck from the repo root (via cargo dev-lintcheck)
+    if !is_in_clippy_root() {
+        eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo dev-lintcheck` alternatively.");
+        std::process::exit(3);
+    }
+
     let clap_config = &get_clap_config();
 
     let config = LintcheckConfig::from_clap(clap_config);
