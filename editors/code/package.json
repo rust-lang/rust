@@ -397,7 +397,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.autoreload": {
-                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on `Cargo.toml` changes.",
+                    "markdownDescription": "Automatically refresh project info via `cargo metadata` on\n`Cargo.toml` changes.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -443,7 +443,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.checkOnSave.allFeatures": {
-                    "markdownDescription": "Check with all features (`--all-features`). Defaults to `#rust-analyzer.cargo.allFeatures#`.",
+                    "markdownDescription": "Check with all features (`--all-features`).\nDefaults to `#rust-analyzer.cargo.allFeatures#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -469,7 +469,7 @@
                     ]
                 },
                 "rust-analyzer.checkOnSave.target": {
-                    "markdownDescription": "Check for a specific target. Defaults to `#rust-analyzer.cargo.target#`.",
+                    "markdownDescription": "Check for a specific target. Defaults to\n`#rust-analyzer.cargo.target#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -485,7 +485,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.features": {
-                    "markdownDescription": "List of features to activate. Defaults to `#rust-analyzer.cargo.features#`.",
+                    "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.",
                     "default": null,
                     "type": [
                         "null",
@@ -496,7 +496,7 @@
                     }
                 },
                 "rust-analyzer.checkOnSave.overrideCommand": {
-                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for checking. The command should include `--message-format=json` or similar option.",
+                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for\nchecking. The command should include `--message-format=json` or\nsimilar option.",
                     "default": null,
                     "type": [
                         "null",
@@ -522,7 +522,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.completion.autoimport.enable": {
-                    "markdownDescription": "Toggles the additional completions that automatically add imports when completed. Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
+                    "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -532,7 +532,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.enableExperimental": {
-                    "markdownDescription": "Whether to show experimental rust-analyzer diagnostics that might have more false positives than usual.",
+                    "markdownDescription": "Whether to show experimental rust-analyzer diagnostics that might\nhave more false positives than usual.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -546,7 +546,7 @@
                     "uniqueItems": true
                 },
                 "rust-analyzer.diagnostics.warningsAsHint": {
-                    "markdownDescription": "List of warnings that should be displayed with info severity.\\n\\nThe warnings will be indicated by a blue squiggly underline in code and a blue icon in the `Problems Panel`.",
+                    "markdownDescription": "List of warnings that should be displayed with info severity.\n\nThe warnings will be indicated by a blue squiggly underline in code\nand a blue icon in the `Problems Panel`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -554,7 +554,7 @@
                     }
                 },
                 "rust-analyzer.diagnostics.warningsAsInfo": {
-                    "markdownDescription": "List of warnings that should be displayed with hint severity.\\n\\nThe warnings will be indicated by faded text or three dots in code and will not show up in the `Problems Panel`.",
+                    "markdownDescription": "List of warnings that should be displayed with hint severity.\n\nThe warnings will be indicated by faded text or three dots in code\nand will not show up in the `Problems Panel`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -575,7 +575,7 @@
                     }
                 },
                 "rust-analyzer.hoverActions.debug": {
-                    "markdownDescription": "Whether to show `Debug` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Debug` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -585,17 +585,17 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.hoverActions.gotoTypeDef": {
-                    "markdownDescription": "Whether to show `Go to Type Definition` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Go to Type Definition` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.hoverActions.implementations": {
-                    "markdownDescription": "Whether to show `Implementations` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Implementations` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.hoverActions.run": {
-                    "markdownDescription": "Whether to show `Run` action. Only applies when `#rust-analyzer.hoverActions.enable#` is set.",
+                    "markdownDescription": "Whether to show `Run` action. Only applies when\n`#rust-analyzer.hoverActions.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -619,7 +619,7 @@
                     "minimum": 0
                 },
                 "rust-analyzer.inlayHints.parameterHints": {
-                    "markdownDescription": "Whether to show function parameter name inlay hints at the call site.",
+                    "markdownDescription": "Whether to show function parameter name inlay hints at the call\nsite.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -629,7 +629,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.debug": {
-                    "markdownDescription": "Whether to show `Debug` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Debug` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
@@ -639,27 +639,27 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.implementations": {
-                    "markdownDescription": "Whether to show `Implementations` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Implementations` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.run": {
-                    "markdownDescription": "Whether to show `Run` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Run` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.methodReferences": {
-                    "markdownDescription": "Whether to show `Method References` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `Method References` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.lens.references": {
-                    "markdownDescription": "Whether to show `References` lens. Only applies when `#rust-analyzer.lens.enable#` is set.",
+                    "markdownDescription": "Whether to show `References` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.linkedProjects": {
-                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set of projects.\\n\\nElements must be paths pointing to `Cargo.toml`, `rust-project.json`, or JSON objects in `rust-project.json` format.",
+                    "markdownDescription": "Disable project auto-discovery in favor of explicitly specified set\nof projects.\n\nElements must be paths pointing to `Cargo.toml`,\n`rust-project.json`, or JSON objects in `rust-project.json` format.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -689,7 +689,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.procMacro.server": {
-                    "markdownDescription": "Internal config, path to proc-macro server executable (typically, this is rust-analyzer itself, but we override this in tests).",
+                    "markdownDescription": "Internal config, path to proc-macro server executable (typically,\nthis is rust-analyzer itself, but we override this in tests).",
                     "default": null,
                     "type": [
                         "null",
@@ -705,7 +705,7 @@
                     ]
                 },
                 "rust-analyzer.runnables.cargoExtraArgs": {
-                    "markdownDescription": "Additional arguments to be passed to cargo for runnables such as tests or binaries.\\nFor example, it may be `--release`.",
+                    "markdownDescription": "Additional arguments to be passed to cargo for runnables such as\ntests or binaries. For example, it may be `--release`.",
                     "default": [],
                     "type": "array",
                     "items": {
@@ -713,7 +713,7 @@
                     }
                 },
                 "rust-analyzer.rustcSource": {
-                    "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private projects, or \"discover\" to try to automatically find it.    Any project which uses rust-analyzer with the rustcPrivate crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.    This option is not reloaded automatically; you must restart rust-analyzer for it to take effect.",
+                    "markdownDescription": "Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private\nprojects, or \"discover\" to try to automatically find it.\n\nAny project which uses rust-analyzer with the rustcPrivate\ncrates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.\n\nThis option is not reloaded automatically; you must restart rust-analyzer for it to take effect.",
                     "default": null,
                     "type": [
                         "null",
@@ -729,7 +729,7 @@
                     }
                 },
                 "rust-analyzer.rustfmt.overrideCommand": {
-                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for formatting.",
+                    "markdownDescription": "Advanced option, fully override the command rust-analyzer uses for\nformatting.",
                     "default": null,
                     "type": [
                         "null",
