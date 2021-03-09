@@ -2,7 +2,7 @@
 #[rustfmt::skip] // avoids tidy destroying the legibility of the hex/string tables
 fn exitstatus_display_tests() {
     // In practice this is the same on every Unix.
-    // If some weird platform turns out to be different, and this test fails, use #[cfg].
+    // If some weird platform turns out to be different, and this test fails, use if cfg!
     use crate::os::unix::process::ExitStatusExt;
     use crate::process::ExitStatus;
 
@@ -10,6 +10,11 @@ fn exitstatus_display_tests() {
         let got = format!("{}", <ExitStatus as ExitStatusExt>::from_raw(v));
         assert!(exp.contains(&got.as_str()), "got={:?} exp={:?}", &got, exp);
     };
+
+    // SuS says that wait status 0 corresponds to WIFEXITED and WEXITSTATUS==0.
+    // The implementation of `ExitStatusError` relies on this fact.
+    // So this one must always pass - don't disable this one with cfg!
+    t(0x00000, &["exit status: 0"]);
 
     // We cope with a variety of conventional signal strings, both with and without the signal
     // abbrevation too.  It would be better to compare this with the result of strsignal but that
@@ -20,7 +25,6 @@ fn exitstatus_display_tests() {
                  "signal: Terminated (SIGTERM)"]);
     t(0x0008b, &["signal: Segmentation fault (core dumped)",
                  "signal: Segmentation fault (SIGSEGV) (core dumped)"]);
-    t(0x00000, &["exit status: 0"]);
     t(0x0ff00, &["exit status: 255"]);
 
     // On MacOS, 0x0137f is WIFCONTINUED, not WIFSTOPPED.  Probably *BSD is similar.
