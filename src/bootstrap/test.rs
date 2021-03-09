@@ -1076,7 +1076,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
-            || (mode == "run-make" && suite.ends_with("fulldeps"))
+            || mode == "run-make"
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
