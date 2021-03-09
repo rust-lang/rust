@@ -334,7 +334,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant)
                 .into_iter()
                 .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
-                .filter(|(_, enum_ty_path)| enum_ty_path != "std::prelude::v1")
+                .filter(|(_, enum_ty_path)| !enum_ty_path.starts_with("std::prelude::"))
                 .collect();
             if !enum_candidates.is_empty() {
                 if let (PathSource::Type, Some(span)) =
