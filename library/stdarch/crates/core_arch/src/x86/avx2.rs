@@ -153,28 +153,28 @@ pub unsafe fn _mm256_adds_epu16(a: __m256i, b: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_alignr_epi8)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpalignr, n = 7))]
-#[rustc_args_required_const(2)]
+#[cfg_attr(test, assert_instr(vpalignr, IMM8 = 7))]
+#[rustc_legacy_const_generics(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_alignr_epi8(a: __m256i, b: __m256i, n: i32) -> __m256i {
-    let n = n as u32;
-    // If `palignr` is shifting the pair of vectors more than the size of two
+pub unsafe fn _mm256_alignr_epi8<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    // If palignr is shifting the pair of vectors more than the size of two
     // lanes, emit zero.
-    if n > 32 {
+    if IMM8 > 32 {
         return _mm256_set1_epi8(0);
     }
-    // If `palignr` is shifting the pair of input vectors more than one lane,
+    // If palignr is shifting the pair of input vectors more than one lane,
     // but less than two lanes, convert to shifting in zeroes.
-    let (a, b, n) = if n > 16 {
-        (_mm256_set1_epi8(0), a, n - 16)
+    let (a, b) = if IMM8 > 16 {
+        (_mm256_set1_epi8(0), a)
     } else {
-        (a, b, n)
+        (a, b)
     };
 
     let a = a.as_i8x32();
     let b = b.as_i8x32();
 
-    let r: i8x32 = match n {
+    let r: i8x32 = match IMM8 % 16 {
         0 => simd_shuffle32(
             b,
             a,
@@ -5106,10 +5106,10 @@ mod tests {
             -17, -18, -19, -20, -21, -22, -23, -24,
             -25, -26, -27, -28, -29, -30, -31, -32,
         );
-        let r = _mm256_alignr_epi8(a, b, 33);
+        let r = _mm256_alignr_epi8::<33>(a, b);
         assert_eq_m256i(r, _mm256_set1_epi8(0));
 
-        let r = _mm256_alignr_epi8(a, b, 17);
+        let r = _mm256_alignr_epi8::<17>(a, b);
         #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             2, 3, 4, 5, 6, 7, 8, 9,
@@ -5119,7 +5119,7 @@ mod tests {
         );
         assert_eq_m256i(r, expected);
 
-        let r = _mm256_alignr_epi8(a, b, 4);
+        let r = _mm256_alignr_epi8::<4>(a, b);
         #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             -5, -6, -7, -8, -9, -10, -11, -12,
@@ -5136,10 +5136,10 @@ mod tests {
             -18, -19, -20, -21, -22, -23, -24, -25,
             -26, -27, -28, -29, -30, -31, -32,
         );
-        let r = _mm256_alignr_epi8(a, b, 16);
+        let r = _mm256_alignr_epi8::<16>(a, b);
         assert_eq_m256i(r, expected);
 
-        let r = _mm256_alignr_epi8(a, b, 15);
+        let r = _mm256_alignr_epi8::<15>(a, b);
         #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             -16, 1, 2, 3, 4, 5, 6, 7,
@@ -5149,7 +5149,7 @@ mod tests {
         );
         assert_eq_m256i(r, expected);
 
-        let r = _mm256_alignr_epi8(a, b, 0);
+        let r = _mm256_alignr_epi8::<0>(a, b);
         assert_eq_m256i(r, b);
     }
 
