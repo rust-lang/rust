@@ -68,7 +68,7 @@ pub struct CompletionItem {
 
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
-    ref_match: Option<(Mutability, CompletionScore)>,
+    ref_match: Option<Mutability>,
 
     /// The import data to add to completion's edits.
     import_to_add: Option<ImportEdit>,
@@ -103,6 +103,9 @@ impl fmt::Debug for CompletionItem {
         }
         if let Some(score) = &self.score {
             s.field("score", score);
+        }
+        if let Some(mutability) = &self.ref_match {
+            s.field("ref_match", &format!("&{}", mutability.as_keyword_for_ref()));
         }
         if self.trigger_call_info {
             s.field("trigger_call_info", &true);
@@ -261,7 +264,7 @@ impl CompletionItem {
         self.trigger_call_info
     }
 
-    pub fn ref_match(&self) -> Option<(Mutability, CompletionScore)> {
+    pub fn ref_match(&self) -> Option<Mutability> {
         self.ref_match
     }
 
@@ -311,7 +314,7 @@ pub(crate) struct Builder {
     deprecated: bool,
     trigger_call_info: Option<bool>,
     score: Option<CompletionScore>,
-    ref_match: Option<(Mutability, CompletionScore)>,
+    ref_match: Option<Mutability>,
 }
 
 impl Builder {
@@ -430,8 +433,8 @@ impl Builder {
         self.import_to_add = import_to_add;
         self
     }
-    pub(crate) fn ref_match(mut self, ref_match: (Mutability, CompletionScore)) -> Builder {
-        self.ref_match = Some(ref_match);
+    pub(crate) fn ref_match(mut self, mutability: Mutability) -> Builder {
+        self.ref_match = Some(mutability);
         self
     }
 }

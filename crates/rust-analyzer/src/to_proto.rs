@@ -175,12 +175,6 @@ pub(crate) fn completion_item(
     line_index: &LineIndex,
     item: CompletionItem,
 ) -> Vec<lsp_types::CompletionItem> {
-    fn set_score(lsp_item: &mut lsp_types::CompletionItem, label: &str) {
-        lsp_item.preselect = Some(true);
-        // HACK: sort preselect items first
-        lsp_item.sort_text = Some(format!(" {}", label));
-    }
-
     let mut additional_text_edits = Vec::new();
     let mut text_edit = None;
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -220,7 +214,9 @@ pub(crate) fn completion_item(
     };
 
     if item.score().is_some() {
-        set_score(&mut lsp_item, item.label());
+        lsp_item.preselect = Some(true);
+        // HACK: sort preselect items first
+        lsp_item.sort_text = Some(format!(" {}", item.label()));
     }
 
     if item.deprecated() {
@@ -232,19 +228,23 @@ pub(crate) fn completion_item(
     }
 
     let mut res = match item.ref_match() {
-        Some(ref_match) => {
-            let mut refed = lsp_item.clone();
-            let (mutability, _score) = ref_match;
-            let label = format!("&{}{}", mutability.as_keyword_for_ref(), refed.label);
-            set_score(&mut refed, &label);
-            refed.label = label;
-            vec![lsp_item, refed]
+        Some(mutability) => {
+            let mut lsp_item_with_ref = lsp_item.clone();
+            lsp_item.preselect = Some(true);
+            lsp_item.sort_text = Some(format!(" {}", item.label()));
+            lsp_item_with_ref.label =
+                format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
+            if let Some(lsp_types::CompletionTextEdit::Edit(it)) = &mut lsp_item_with_ref.text_edit
+            {
+                it.new_text = format!("&{}{}", mutability.as_keyword_for_ref(), it.new_text);
+            }
+            vec![lsp_item_with_ref, lsp_item]
         }
         None => vec![lsp_item],
     };
 
-    for mut r in res.iter_mut() {
-        r.insert_text_format = Some(insert_text_format(item.insert_text_format()));
+    for lsp_item in res.iter_mut() {
+        lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
     }
     res
 }
@@ -1105,13 +1105,13 @@ mod tests {
         expect_test::expect![[r#"
             [
                 (
-                    "arg",
+                    "&arg",
                     None,
                 ),
                 (
-                    "&arg",
+                    "arg",
                     Some(
-                        " &arg",
+                        " arg",
                     ),
                 ),
             ]

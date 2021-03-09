@@ -1614,10 +1614,9 @@ impl Type {
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
-        if let Ty::Ref(.., substs) = &self.ty.value {
-            Some(self.derived(substs[0].clone()))
-        } else {
-            None
+        match &self.ty.value {
+            Ty::Ref(.., substs) => Some(self.derived(substs[0].clone())),
+            _ => None,
         }
     }
 
