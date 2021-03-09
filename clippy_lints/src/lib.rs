@@ -1076,6 +1076,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box use_self::UseSelf::new(msrv));
     store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
     store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark::new(msrv));
+    store.register_late_pass(move || box casts::Casts::new(msrv));
 
     store.register_late_pass(|| box size_of_in_element_count::SizeOfInElementCount);
     store.register_late_pass(|| box map_clone::MapClone);
@@ -1087,7 +1088,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box main_recursion::MainRecursion::default());
     store.register_late_pass(|| box lifetimes::Lifetimes);
     store.register_late_pass(|| box entry::HashMapPass);
-    store.register_late_pass(|| box casts::Casts);
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::TypeComplexity::new(type_complexity_threshold));
     store.register_late_pass(|| box minmax::MinMaxPass);
@@ -1276,7 +1276,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box strings::StringToString);
     store.register_late_pass(|| box zero_sized_map_values::ZeroSizedMapValues);
     store.register_late_pass(|| box vec_init_then_push::VecInitThenPush::default());
-    store.register_late_pass(move || box casts::PtrAsPtr::new(msrv));
     store.register_late_pass(|| box case_sensitive_file_extension_comparisons::CaseSensitiveFileExtensionComparisons);
     store.register_late_pass(|| box redundant_slicing::RedundantSlicing);
     store.register_late_pass(|| box from_str_radix_10::FromStrRadix10);

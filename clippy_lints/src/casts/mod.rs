@@ -8,22 +8,17 @@ mod cast_sign_loss;
 mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_with_truncation;
+mod ptr_as_ptr;
 mod unnecessary_cast;
 mod utils;
 
-use std::borrow::Cow;
-
-use if_chain::if_chain;
-use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, TypeAndMut};
 use rustc_semver::RustcVersion;
-use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
-use crate::utils::sugg::Sugg;
-use crate::utils::{is_hir_ty_cfg_dependant, meets_msrv, span_lint_and_sugg};
+use crate::utils::is_hir_ty_cfg_dependant;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for casts from any numerical to a float type where
@@ -315,58 +310,6 @@ declare_clippy_lint! {
     "casting a character literal to `u8` truncates"
 }
 
-declare_lint_pass!(Casts => [
-    CAST_PRECISION_LOSS,
-    CAST_SIGN_LOSS,
-    CAST_POSSIBLE_TRUNCATION,
-    CAST_POSSIBLE_WRAP,
-    CAST_LOSSLESS,
-    CAST_REF_TO_MUT,
-    CAST_PTR_ALIGNMENT,
-    UNNECESSARY_CAST,
-    FN_TO_NUMERIC_CAST,
-    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
-    CHAR_LIT_AS_U8,
-]);
-
-impl<'tcx> LateLintPass<'tcx> for Casts {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        cast_ref_to_mut::check(cx, expr);
-
-        if expr.span.from_expansion() {
-            return;
-        }
-        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
-            if is_hir_ty_cfg_dependant(cx, cast_to) {
-                return;
-            }
-            let (cast_from, cast_to) = (
-                cx.typeck_results().expr_ty(cast_expr),
-                cx.typeck_results().expr_ty(expr),
-            );
-
-            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
-                return;
-            }
-
-            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
-            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
-                cast_possible_wrap::check(cx, expr, cast_from, cast_to);
-                cast_precision_loss::check(cx, expr, cast_from, cast_to);
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
-                cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-            }
-        }
-
-        cast_ptr_alignment::check(cx, expr);
-        char_lit_as_u8::check(cx, expr);
-    }
-}
-
-const PTR_AS_PTR_MSRV: RustcVersion = RustcVersion::new(1, 38, 0);
-
 declare_clippy_lint! {
     /// **What it does:**
     /// Checks for `as` casts between raw pointers without changing its mutability,
@@ -398,58 +341,66 @@ declare_clippy_lint! {
     "casting using `as` from and to raw pointers that doesn't change its mutability, where `pointer::cast` could take the place of `as`"
 }
 
-pub struct PtrAsPtr {
+pub struct Casts {
     msrv: Option<RustcVersion>,
 }
 
-impl PtrAsPtr {
+impl Casts {
     #[must_use]
     pub fn new(msrv: Option<RustcVersion>) -> Self {
         Self { msrv }
     }
 }
 
-impl_lint_pass!(PtrAsPtr => [PTR_AS_PTR]);
+impl_lint_pass!(Casts => [
+    CAST_PRECISION_LOSS,
+    CAST_SIGN_LOSS,
+    CAST_POSSIBLE_TRUNCATION,
+    CAST_POSSIBLE_WRAP,
+    CAST_LOSSLESS,
+    CAST_REF_TO_MUT,
+    CAST_PTR_ALIGNMENT,
+    UNNECESSARY_CAST,
+    FN_TO_NUMERIC_CAST,
+    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+    CHAR_LIT_AS_U8,
+    PTR_AS_PTR,
+]);
 
-impl<'tcx> LateLintPass<'tcx> for PtrAsPtr {
+impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &PTR_AS_PTR_MSRV) {
-            return;
-        }
-
         if expr.span.from_expansion() {
             return;
         }
 
-        if_chain! {
-            if let ExprKind::Cast(cast_expr, cast_to_hir_ty) = expr.kind;
-            let (cast_from, cast_to) = (cx.typeck_results().expr_ty(cast_expr), cx.typeck_results().expr_ty(expr));
-            if let ty::RawPtr(TypeAndMut { mutbl: from_mutbl, .. }) = cast_from.kind();
-            if let ty::RawPtr(TypeAndMut { ty: to_pointee_ty, mutbl: to_mutbl }) = cast_to.kind();
-            if matches!((from_mutbl, to_mutbl),
-                (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut));
-            // The `U` in `pointer::cast` have to be `Sized`
-            // as explained here: https://github.com/rust-lang/rust/issues/60602.
-            if to_pointee_ty.is_sized(cx.tcx.at(expr.span), cx.param_env);
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut applicability);
-                let turbofish = match &cast_to_hir_ty.kind {
-                        TyKind::Infer => Cow::Borrowed(""),
-                        TyKind::Ptr(mut_ty) if matches!(mut_ty.ty.kind, TyKind::Infer) => Cow::Borrowed(""),
-                        _ => Cow::Owned(format!("::<{}>", to_pointee_ty)),
-                    };
-                span_lint_and_sugg(
-                    cx,
-                    PTR_AS_PTR,
-                    expr.span,
-                    "`as` casting between raw pointers without changing its mutability",
-                    "try `pointer::cast`, a safer alternative",
-                    format!("{}.cast{}()", cast_expr_sugg.maybe_par(), turbofish),
-                    applicability,
-                );
+        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
+            if is_hir_ty_cfg_dependant(cx, cast_to) {
+                return;
+            }
+            let (cast_from, cast_to) = (
+                cx.typeck_results().expr_ty(cast_expr),
+                cx.typeck_results().expr_ty(expr),
+            );
+
+            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
+                return;
+            }
+
+            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
+            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+                cast_possible_wrap::check(cx, expr, cast_from, cast_to);
+                cast_precision_loss::check(cx, expr, cast_from, cast_to);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
+                cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
             }
         }
+
+        cast_ref_to_mut::check(cx, expr);
+        cast_ptr_alignment::check(cx, expr);
+        char_lit_as_u8::check(cx, expr);
+        ptr_as_ptr::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);
