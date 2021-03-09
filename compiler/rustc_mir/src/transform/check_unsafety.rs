@@ -123,6 +123,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 UnsafetyViolationKind::General,
                 UnsafetyViolationDetails::UseOfInlineAssembly,
             ),
+            StatementKind::CopyNonOverlapping(..) => unreachable!(),
         }
         self.super_statement(statement, location);
     }

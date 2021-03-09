@@ -115,6 +115,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(&mut bx, coverage.clone());
                 bx
             }
+            mir::StatementKind::CopyNonOverlapping(box mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                let dst_val = self.codegen_operand(&mut bx, dst);
+                let src_val = self.codegen_operand(&mut bx, src);
+                let count = self.codegen_operand(&mut bx, count).immediate();
+                let pointee_layout = dst_val
+                    .layout
+                    .pointee_info_at(&mut bx, rustc_target::abi::Size::ZERO)
+                    .expect("Expected pointer");
+                let bytes = bx.mul(count, bx.const_usize(pointee_layout.size.bytes()));
+
+                let align = pointee_layout.align;
+                let dst = dst_val.immediate();
+                let src = src_val.immediate();
+                bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty());
+                bx
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::AscribeUserType(..)

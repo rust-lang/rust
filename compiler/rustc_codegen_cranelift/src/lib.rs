@@ -11,6 +11,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
+#![feature(box_patterns)]
 
 extern crate snap;
 #[macro_use]
