@@ -63,8 +63,14 @@ pub struct CompletionItem {
     /// after completion.
     trigger_call_info: bool,
 
-    /// Score is useful to pre select or display in better order completion items
-    score: Option<CompletionScore>,
+    /// We use this to sort completion. Relevance records facts like "do the
+    /// types align precisely?". We can't sort by relevances directly, they are
+    /// only partially ordered.
+    ///
+    /// Note that Relevance ignores fuzzy match score. We compute Relevance for
+    /// all possible items, and then separately build an ordered completion list
+    /// based on relevance and fuzzy matching with the already typed identifier.
+    relevance: Relevance,
 
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
@@ -101,8 +107,8 @@ impl fmt::Debug for CompletionItem {
         if self.deprecated {
             s.field("deprecated", &true);
         }
-        if let Some(score) = &self.score {
-            s.field("score", score);
+        if self.relevance.is_relevant() {
+            s.field("relevance", &self.relevance);
         }
         if let Some(mutability) = &self.ref_match {
             s.field("ref_match", &format!("&{}", mutability.as_keyword_for_ref()));
@@ -120,6 +126,36 @@ pub enum CompletionScore {
     TypeMatch,
     /// If type and name match
     TypeAndNameMatch,
+}
+
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Default)]
+pub struct Relevance {
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// fn f(spam: String) {}
+    /// fn main {
+    ///     let spam = 92;
+    ///     f($0) // name of local matches the name of param
+    /// }
+    /// ```
+    pub exact_name_match: bool,
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// fn f(spam: String) {}
+    /// fn main {
+    ///     let foo = String::new();
+    ///     f($0) // type of local matches the type of param
+    /// }
+    /// ```
+    pub exact_type_match: bool,
+}
+
+impl Relevance {
+    pub fn is_relevant(&self) -> bool {
+        self != &Relevance::default()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -213,7 +249,7 @@ impl CompletionItem {
             text_edit: None,
             deprecated: false,
             trigger_call_info: None,
-            score: None,
+            relevance: Relevance::default(),
             ref_match: None,
             import_to_add: None,
         }
@@ -256,8 +292,8 @@ impl CompletionItem {
         self.deprecated
     }
 
-    pub fn score(&self) -> Option<CompletionScore> {
-        self.score
+    pub fn relevance(&self) -> Relevance {
+        self.relevance
     }
 
     pub fn trigger_call_info(&self) -> bool {
@@ -313,7 +349,7 @@ pub(crate) struct Builder {
     text_edit: Option<TextEdit>,
     deprecated: bool,
     trigger_call_info: Option<bool>,
-    score: Option<CompletionScore>,
+    relevance: Relevance,
     ref_match: Option<Mutability>,
 }
 
@@ -360,7 +396,7 @@ impl Builder {
             completion_kind: self.completion_kind,
             deprecated: self.deprecated,
             trigger_call_info: self.trigger_call_info.unwrap_or(false),
-            score: self.score,
+            relevance: self.relevance,
             ref_match: self.ref_match,
             import_to_add: self.import_to_add,
         }
@@ -421,8 +457,8 @@ impl Builder {
         self.deprecated = deprecated;
         self
     }
-    pub(crate) fn set_score(mut self, score: CompletionScore) -> Builder {
-        self.score = Some(score);
+    pub(crate) fn set_relevance(mut self, relevance: Relevance) -> Builder {
+        self.relevance = relevance;
         self
     }
     pub(crate) fn trigger_call_info(mut self) -> Builder {
