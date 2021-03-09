@@ -232,9 +232,8 @@ pub(crate) fn completion_item(
     }
 
     let mut res = match item.ref_match() {
-        Some(ref_match) => {
+        Some(mutability) => {
             let mut refed = lsp_item.clone();
-            let (mutability, _score) = ref_match;
             let label = format!("&{}{}", mutability.as_keyword_for_ref(), refed.label);
             set_score(&mut refed, &label);
             refed.label = label;
@@ -243,8 +242,8 @@ pub(crate) fn completion_item(
         None => vec![lsp_item],
     };
 
-    for mut r in res.iter_mut() {
-        r.insert_text_format = Some(insert_text_format(item.insert_text_format()));
+    for lsp_item in res.iter_mut() {
+        lsp_item.insert_text_format = Some(insert_text_format(item.insert_text_format()));
     }
     res
 }

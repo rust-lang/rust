@@ -254,10 +254,17 @@ impl<'a> Render<'a> {
                 {
                     item = item.set_score(score);
                 }
-                if let Some(ref_match) =
-                    refed_type_matches(&active_type, &active_name, &ty, &local_name)
-                {
-                    item = item.ref_match(ref_match);
+
+                if let Some(ty_without_ref) = active_type.remove_ref() {
+                    if ty_without_ref == ty {
+                        cov_mark::hit!(suggest_ref);
+                        let mutability = if active_type.is_mutable_reference() {
+                            Mutability::Mut
+                        } else {
+                            Mutability::Shared
+                        };
+                        item = item.ref_match(mutability)
+                    }
                 }
             }
         }
@@ -339,19 +346,6 @@ fn compute_score_from_active(
     }
 
     Some(res)
-}
-fn refed_type_matches(
-    active_type: &Type,
-    active_name: &str,
-    ty: &Type,
-    name: &str,
-) -> Option<(Mutability, CompletionScore)> {
-    let derefed_active = active_type.remove_ref()?;
-    let score = compute_score_from_active(&derefed_active, &active_name, &ty, &name)?;
-    Some((
-        if active_type.is_mutable_reference() { Mutability::Mut } else { Mutability::Shared },
-        score,
-    ))
 }
 
 fn compute_score(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionScore> {
@@ -946,5 +940,67 @@ fn f(foo: &Foo) { f(foo, w$0) }
                 lc foo []
             "#]],
         );
+    }
+
+    #[test]
+    fn suggest_ref_mut() {
+        cov_mark::check!(suggest_ref);
+        check(
+            r#"
+struct S;
+fn foo(s: &mut S) {}
+fn main() {
+    let mut s = S;
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "S",
+                        source_range: 70..70,
+                        delete: 70..70,
+                        insert: "S",
+                        kind: SymbolKind(
+                            Struct,
+                        ),
+                    },
+                    CompletionItem {
+                        label: "foo(…)",
+                        source_range: 70..70,
+                        delete: 70..70,
+                        insert: "foo(${1:&mut s})$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "-> ()",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        source_range: 70..70,
+                        delete: 70..70,
+                        insert: "main()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "-> ()",
+                    },
+                    CompletionItem {
+                        label: "s",
+                        source_range: 70..70,
+                        delete: 70..70,
+                        insert: "s",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "S",
+                        ref_match: "&mut ",
+                    },
+                ]
+            "#]],
+        )
     }
 }
