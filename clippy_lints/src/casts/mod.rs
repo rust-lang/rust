@@ -1,6 +1,7 @@
 mod cast_lossless;
 mod cast_possible_truncation;
 mod cast_precision_loss;
+mod cast_sign_loss;
 mod utils;
 
 use std::borrow::Cow;
@@ -17,11 +18,10 @@ use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
 
-use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, method_chain_args, numeric_literal::NumericLiteral, sext,
-    snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
+    is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, numeric_literal::NumericLiteral, snippet_opt,
+    snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 
 use utils::int_ty_to_nbits;
@@ -261,52 +261,6 @@ enum ArchSuffix {
     None,
 }
 
-fn check_loss_of_sign(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    if !cast_from.is_signed() || cast_to.is_signed() {
-        return;
-    }
-
-    // don't lint for positive constants
-    let const_val = constant(cx, &cx.typeck_results(), op);
-    if_chain! {
-        if let Some((Constant::Int(n), _)) = const_val;
-        if let ty::Int(ity) = *cast_from.kind();
-        if sext(cx.tcx, n, ity) >= 0;
-        then {
-            return
-        }
-    }
-
-    // don't lint for the result of methods that always return non-negative values
-    if let ExprKind::MethodCall(ref path, _, _, _) = op.kind {
-        let mut method_name = path.ident.name.as_str();
-        let allowed_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
-
-        if_chain! {
-            if method_name == "unwrap";
-            if let Some(arglist) = method_chain_args(op, &["unwrap"]);
-            if let ExprKind::MethodCall(ref inner_path, _, _, _) = &arglist[0][0].kind;
-            then {
-                method_name = inner_path.ident.name.as_str();
-            }
-        }
-
-        if allowed_methods.iter().any(|&name| method_name == name) {
-            return;
-        }
-    }
-
-    span_lint(
-        cx,
-        CAST_SIGN_LOSS,
-        expr.span,
-        &format!(
-            "casting `{}` to `{}` may lose the sign of the value",
-            cast_from, cast_to
-        ),
-    );
-}
-
 fn check_truncation_and_wrapping(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
@@ -490,29 +444,17 @@ fn show_unnecessary_cast(cx: &LateContext<'_>, expr: &Expr<'_>, literal_str: &st
 fn lint_numeric_casts<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'tcx>,
-    cast_expr: &Expr<'_>,
+    cast_op: &Expr<'_>,
     cast_from: Ty<'tcx>,
     cast_to: Ty<'tcx>,
 ) {
-    cast_precision_loss::check(cx, expr, cast_from, cast_to);
-    cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
     cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+    cast_precision_loss::check(cx, expr, cast_from, cast_to);
+    cast_lossless::check(cx, expr, cast_op, cast_from, cast_to);
+    cast_sign_loss::check(cx, expr, cast_op, cast_from, cast_to);
+
     match (cast_from.is_integral(), cast_to.is_integral()) {
-        (false, true) => {
-            if !cast_to.is_signed() {
-                span_lint(
-                    cx,
-                    CAST_SIGN_LOSS,
-                    expr.span,
-                    &format!(
-                        "casting `{}` to `{}` may lose the sign of the value",
-                        cast_from, cast_to
-                    ),
-                );
-            }
-        },
         (true, true) => {
-            check_loss_of_sign(cx, expr, cast_expr, cast_from, cast_to);
             check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
         },
         (_, _) => {},
