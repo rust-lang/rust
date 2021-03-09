@@ -260,7 +260,7 @@ impl<'a> InferenceContext<'a> {
                         }));
                         Some(trait_substs)
                     }
-                    AssocContainerId::ContainerId(_) => None,
+                    AssocContainerId::ModuleId(_) => None,
                 };
 
                 self.write_assoc_resolution(id, item);

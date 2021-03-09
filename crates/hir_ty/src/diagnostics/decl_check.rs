@@ -99,9 +99,14 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let body = self.db.body(func.into());
 
         // Recursively validate inner scope items, such as static variables and constants.
-        for (item_id, _) in body.item_scope.values() {
-            let mut validator = DeclValidator::new(self.db, self.krate, self.sink);
-            validator.validate_item(item_id);
+        let db = self.db;
+        for block_def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+            for (_, module) in block_def_map.modules() {
+                for (def_id, _) in module.scope.values() {
+                    let mut validator = DeclValidator::new(self.db, self.krate, self.sink);
+                    validator.validate_item(def_id);
+                }
+            }
         }
 
         // Check whether non-snake case identifiers are allowed for this function.

@@ -1121,7 +1121,7 @@ impl ModCollector<'_, '_> {
 
                     def = Some(DefData {
                         id: FunctionLoc {
-                            container: container.into(),
+                            container: module.into(),
                             id: ItemTreeId::new(self.file_id, id),
                         }
                         .intern(self.def_collector.db)
@@ -1188,7 +1188,7 @@ impl ModCollector<'_, '_> {
                     if let Some(name) = &it.name {
                         def = Some(DefData {
                             id: ConstLoc {
-                                container: container.into(),
+                                container: module.into(),
                                 id: ItemTreeId::new(self.file_id, id),
                             }
                             .intern(self.def_collector.db)
@@ -1228,7 +1228,7 @@ impl ModCollector<'_, '_> {
 
                     def = Some(DefData {
                         id: TypeAliasLoc {
-                            container: container.into(),
+                            container: module.into(),
                             id: ItemTreeId::new(self.file_id, id),
                         }
                         .intern(self.def_collector.db)

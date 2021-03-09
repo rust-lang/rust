@@ -13,7 +13,7 @@ use std::{env, sync::Arc};
 use base_db::{fixture::WithFixture, FileRange, SourceDatabase, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
-    body::{BodySourceMap, SyntheticSyntax},
+    body::{Body, BodySourceMap, SyntheticSyntax},
     child_by_source::ChildBySource,
     db::DefDatabase,
     item_scope::ItemScope,
@@ -234,13 +234,13 @@ fn visit_module(
                     let def = it.into();
                     cb(def);
                     let body = db.body(def);
-                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                    visit_body(db, &body, cb);
                 }
                 AssocItemId::ConstId(it) => {
                     let def = it.into();
                     cb(def);
                     let body = db.body(def);
-                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                    visit_body(db, &body, cb);
                 }
                 AssocItemId::TypeAliasId(_) => (),
             }
@@ -259,19 +259,19 @@ fn visit_module(
                     let def = it.into();
                     cb(def);
                     let body = db.body(def);
-                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                    visit_body(db, &body, cb);
                 }
                 ModuleDefId::ConstId(it) => {
                     let def = it.into();
                     cb(def);
                     let body = db.body(def);
-                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                    visit_body(db, &body, cb);
                 }
                 ModuleDefId::StaticId(it) => {
                     let def = it.into();
                     cb(def);
                     let body = db.body(def);
-                    visit_scope(db, crate_def_map, &body.item_scope, cb);
+                    visit_body(db, &body, cb);
                 }
                 ModuleDefId::TraitId(it) => {
                     let trait_data = db.trait_data(it);
@@ -285,6 +285,14 @@ fn visit_module(
                 }
                 ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.local_id, cb),
                 _ => (),
+            }
+        }
+    }
+
+    fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(DefWithBodyId)) {
+        for def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+            for (mod_id, _) in def_map.modules() {
+                visit_module(db, &def_map, mod_id, cb);
             }
         }
     }

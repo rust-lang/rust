@@ -715,7 +715,7 @@ fn transform_receiver_ty(
                 .fill_with_unknown()
                 .build()
         }
-        AssocContainerId::ContainerId(_) => unreachable!(),
+        AssocContainerId::ModuleId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
     Some(sig.value.params()[0].clone().subst_bound_vars(&substs))

@@ -17,13 +17,16 @@ use crate::{
 };
 
 pub trait ChildBySource {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap;
+    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
+        let mut res = DynMap::default();
+        self.child_by_source_to(db, &mut res);
+        res
+    }
+    fn child_by_source_to(&self, db: &dyn DefDatabase, map: &mut DynMap);
 }
 
 impl ChildBySource for TraitId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
-
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let data = db.trait_data(*self);
         for (_name, item) in data.items.iter() {
             match *item {
@@ -41,15 +44,11 @@ impl ChildBySource for TraitId {
                 }
             }
         }
-
-        res
     }
 }
 
 impl ChildBySource for ImplId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
-
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let data = db.impl_data(*self);
         for &item in data.items.iter() {
             match item {
@@ -67,25 +66,21 @@ impl ChildBySource for ImplId {
                 }
             }
         }
-
-        res
     }
 }
 
 impl ChildBySource for ModuleId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let def_map = self.def_map(db);
         let module_data = &def_map[self.local_id];
-        module_data.scope.child_by_source(db)
+        module_data.scope.child_by_source_to(db, res);
     }
 }
 
 impl ChildBySource for ItemScope {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
-        self.declarations().for_each(|item| add_module_def(db, &mut res, item));
-        self.impls().for_each(|imp| add_impl(db, &mut res, imp));
-        return res;
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
+        self.declarations().for_each(|item| add_module_def(db, res, item));
+        self.impls().for_each(|imp| add_impl(db, res, imp));
 
         fn add_module_def(db: &dyn DefDatabase, map: &mut DynMap, item: ModuleDefId) {
             match item {
@@ -134,9 +129,7 @@ impl ChildBySource for ItemScope {
 }
 
 impl ChildBySource for VariantId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
-
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         for (local_id, source) in arena_map.value.iter() {
@@ -150,28 +143,27 @@ impl ChildBySource for VariantId {
                 }
             }
         }
-        res
     }
 }
 
 impl ChildBySource for EnumId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
-        let mut res = DynMap::default();
-
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         for (local_id, source) in arena_map.value.iter() {
             let id = EnumVariantId { parent: *self, local_id };
             res[keys::VARIANT].insert(arena_map.with_value(source.clone()), id)
         }
-
-        res
     }
 }
 
 impl ChildBySource for DefWithBodyId {
-    fn child_by_source(&self, db: &dyn DefDatabase) -> DynMap {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap) {
         let body = db.body(*self);
-        body.item_scope.child_by_source(db)
+        for def_map in body.block_scopes.iter().filter_map(|block| db.block_def_map(*block)) {
+            // All block expressions are merged into the same map, because they logically all add
+            // inner items to the containing `DefWithBodyId`.
+            def_map[def_map.root()].scope.child_by_source_to(db, res);
+        }
     }
 }

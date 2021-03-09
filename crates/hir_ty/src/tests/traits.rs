@@ -3174,6 +3174,39 @@ fn f() {
 }
 
 #[test]
+fn trait_in_scope_with_inner_item() {
+    check_infer(
+        r#"
+mod m {
+    pub trait Tr {
+        fn method(&self) -> u8 { 0 }
+    }
+
+    impl Tr for () {}
+}
+
+use m::Tr;
+
+fn f() {
+    fn inner() {
+        ().method();
+      //^^^^^^^^^^^ u8
+    }
+}
+        "#,
+        expect![[r#"
+            46..50 'self': &Self
+            58..63 '{ 0 }': u8
+            60..61 '0': u8
+            115..185 '{     ...   } }': ()
+            132..183 '{     ...     }': ()
+            142..144 '()': ()
+            142..153 '().method()': u8
+        "#]],
+    );
+}
+
+#[test]
 fn inner_use_in_block() {
     check_types(
         r#"

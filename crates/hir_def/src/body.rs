@@ -28,11 +28,10 @@ use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
-    item_scope::ItemScope,
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
-    AsMacroCall, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
+    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
 };
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
@@ -226,7 +225,8 @@ pub struct Body {
     pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
     pub body_expr: ExprId,
-    pub item_scope: ItemScope,
+    /// Block expressions in this body that may contain inner items.
+    pub block_scopes: Vec<BlockId>,
     _c: Count<Self>,
 }
 
@@ -295,7 +295,7 @@ impl Body {
             }
         };
         let expander = Expander::new(db, file_id, module);
-        let (body, source_map) = Body::new(db, def, expander, params, body);
+        let (body, source_map) = Body::new(db, expander, params, body);
         (Arc::new(body), Arc::new(source_map))
     }
 
@@ -305,12 +305,11 @@ impl Body {
 
     fn new(
         db: &dyn DefDatabase,
-        def: DefWithBodyId,
         expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, def, expander, params, body)
+        lower::lower(db, expander, params, body)
     }
 }
 

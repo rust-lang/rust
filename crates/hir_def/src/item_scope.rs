@@ -168,37 +168,6 @@ impl ItemScope {
         self.unnamed_trait_imports.insert(tr, vis);
     }
 
-    pub(crate) fn push_res(&mut self, name: Name, def: PerNs) -> bool {
-        let mut changed = false;
-
-        if let Some(types) = def.types {
-            self.types.entry(name.clone()).or_insert_with(|| {
-                changed = true;
-                types
-            });
-        }
-        if let Some(values) = def.values {
-            self.values.entry(name.clone()).or_insert_with(|| {
-                changed = true;
-                values
-            });
-        }
-        if let Some(macros) = def.macros {
-            self.macros.entry(name.clone()).or_insert_with(|| {
-                changed = true;
-                macros
-            });
-        }
-
-        if def.is_none() {
-            if self.unresolved.insert(name) {
-                changed = true;
-            }
-        }
-
-        changed
-    }
-
     pub(crate) fn push_res_with_import(
         &mut self,
         glob_imports: &mut PerNsGlobImports,
