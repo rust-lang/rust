@@ -1,6 +1,4 @@
-use crate::utils::{
-    get_node_span, get_parent_node, in_macro, is_allowed, peel_mid_ty_refs, snippet_with_context, span_lint_and_sugg,
-};
+use crate::utils::{get_parent_node, in_macro, is_allowed, peel_mid_ty_refs, snippet_with_context, span_lint_and_sugg};
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Destination, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
@@ -102,11 +100,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let parent = get_parent_node(cx.tcx, expr.hir_id);
-                // This is an odd case. The expression is a macro argument, but the top level
-                // address of expression is inserted by the compiler.
-                if matches!(kind, RefOp::AddrOf) && parent.and_then(get_node_span).map_or(false, in_macro) {
-                    return;
-                }
 
                 let expr_adjustments = find_adjustments(cx.tcx, typeck, expr);
                 let expr_ty = typeck.expr_ty(expr);
