@@ -108,11 +108,13 @@ pub(super) fn post_mingw() -> CrtObjects {
 }
 
 pub(super) fn pre_wasi_fallback() -> CrtObjects {
+    // Use crt1-command.o instead of crt1.o to enable support for new-style
+    // commands. See https://reviews.llvm.org/D81689 for more info.
     new(&[
-        (LinkOutputKind::DynamicNoPicExe, &["crt1.o"]),
-        (LinkOutputKind::DynamicPicExe, &["crt1.o"]),
-        (LinkOutputKind::StaticNoPicExe, &["crt1.o"]),
-        (LinkOutputKind::StaticPicExe, &["crt1.o"]),
+        (LinkOutputKind::DynamicNoPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::DynamicPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::StaticNoPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::StaticPicExe, &["crt1-command.o"]),
         (LinkOutputKind::WasiReactorExe, &["crt1-reactor.o"]),
     ])
 }
