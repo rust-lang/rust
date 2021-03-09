@@ -323,28 +323,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let result = Scalar::from_uint(truncated_bits, layout.size);
                 self.write_scalar(result, dest)?;
             }
-            sym::copy | sym::copy_nonoverlapping => {
-                let elem_ty = instance.substs.type_at(0);
-                let elem_layout = self.layout_of(elem_ty)?;
-                let count = self.read_scalar(&args[2])?.to_machine_usize(self)?;
-                let elem_align = elem_layout.align.abi;
-
-                let size = elem_layout.size.checked_mul(count, self).ok_or_else(|| {
-                    err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
-                })?;
-                let src = self.read_scalar(&args[0])?.check_init()?;
-                let src = self.memory.check_ptr_access(src, size, elem_align)?;
-                let dest = self.read_scalar(&args[1])?.check_init()?;
-                let dest = self.memory.check_ptr_access(dest, size, elem_align)?;
-
-                if let (Some(src), Some(dest)) = (src, dest) {
-                    self.memory.copy(
-                        src,
-                        dest,
-                        size,
-                        intrinsic_name == sym::copy_nonoverlapping,
-                    )?;
-                }
+            sym::copy => {
+                self.copy(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
             sym::offset => {
                 let ptr = self.read_scalar(&args[0])?.check_init()?;

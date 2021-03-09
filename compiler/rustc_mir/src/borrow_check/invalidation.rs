@@ -92,6 +92,15 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, input);
                 }
             }
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                self.consume_operand(location, src);
+                self.consume_operand(location, dst);
+                self.consume_operand(location, count);
+            }
             StatementKind::Nop
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)
