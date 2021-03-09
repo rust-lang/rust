@@ -1,14 +1,26 @@
-error: an or-pattern parameter must be wrapped in parentheses
+error: top-level or-patterns are not allowed in function parameters
   --> $DIR/or-patterns-syntactic-fail.rs:17:13
    |
 LL |     fn fun1(A | B: E) {}
    |             ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
-error: an or-pattern parameter must be wrapped in parentheses
-  --> $DIR/or-patterns-syntactic-fail.rs:19:13
+error: top-level or-patterns are not allowed in function parameters
+  --> $DIR/or-patterns-syntactic-fail.rs:20:13
    |
 LL |     fn fun2(| A | B: E) {}
    |             ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: top-level or-patterns are not allowed in `let` bindings
+  --> $DIR/or-patterns-syntactic-fail.rs:25:9
+   |
+LL |     let A | B: E = A;
+   |         ^^^^^ help: wrap the pattern in parentheses: `(A | B)`
+
+error: top-level or-patterns are not allowed in `let` bindings
+  --> $DIR/or-patterns-syntactic-fail.rs:28:9
+   |
+LL |     let | A | B: E = A;
+   |         ^^^^^^^ help: wrap the pattern in parentheses: `(A | B)`
 
 error[E0369]: no implementation for `E | ()`
   --> $DIR/or-patterns-syntactic-fail.rs:13:22
@@ -20,6 +32,6 @@ LL |     let _ = |A | B: E| ();
    |
    = note: an implementation of `std::ops::BitOr` might be missing for `E`
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0369`.

@@ -885,7 +885,9 @@ struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
+        let s = match &self.0 {
+            Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) => s,
+        };
         s.as_ref()
     }
 
