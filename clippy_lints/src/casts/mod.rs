@@ -1,3 +1,4 @@
+mod cast_lossless;
 mod cast_precision_loss;
 mod utils;
 
@@ -18,9 +19,8 @@ use rustc_target::abi::LayoutOf;
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    in_constant, is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, method_chain_args,
-    numeric_literal::NumericLiteral, sext, snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg,
-    span_lint_and_then,
+    is_hir_ty_cfg_dependant, is_isize_or_usize, meets_msrv, method_chain_args, numeric_literal::NumericLiteral, sext,
+    snippet_opt, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
 
 use utils::int_ty_to_nbits;
@@ -254,52 +254,6 @@ declare_clippy_lint! {
     "casting a function pointer to a numeric type not wide enough to store the address"
 }
 
-fn should_strip_parens(op: &Expr<'_>, snip: &str) -> bool {
-    if let ExprKind::Binary(_, _, _) = op.kind {
-        if snip.starts_with('(') && snip.ends_with(')') {
-            return true;
-        }
-    }
-    false
-}
-
-fn span_lossless_lint(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
-    if in_constant(cx, expr.hir_id) {
-        return;
-    }
-    // The suggestion is to use a function call, so if the original expression
-    // has parens on the outside, they are no longer needed.
-    let mut applicability = Applicability::MachineApplicable;
-    let opt = snippet_opt(cx, op.span);
-    let sugg = opt.as_ref().map_or_else(
-        || {
-            applicability = Applicability::HasPlaceholders;
-            ".."
-        },
-        |snip| {
-            if should_strip_parens(op, snip) {
-                &snip[1..snip.len() - 1]
-            } else {
-                snip.as_str()
-            }
-        },
-    );
-
-    span_lint_and_sugg(
-        cx,
-        CAST_LOSSLESS,
-        expr.span,
-        &format!(
-            "casting `{}` to `{}` may become silently lossy if you later change the type",
-            cast_from, cast_to
-        ),
-        "try",
-        format!("{}::from({})", cast_to, sugg),
-        applicability,
-    );
-}
-
 enum ArchSuffix {
     _32,
     _64,
@@ -420,16 +374,6 @@ fn check_truncation_and_wrapping(cx: &LateContext<'_>, expr: &Expr<'_>, cast_fro
                 }
             ),
         );
-    }
-}
-
-fn check_lossless(cx: &LateContext<'_>, expr: &Expr<'_>, op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
-    let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-    let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) && from_nbits < to_nbits && !cast_signed_to_unsigned
-    {
-        span_lossless_lint(cx, expr, op, cast_from, cast_to);
     }
 }
 
@@ -584,18 +528,8 @@ fn lint_numeric_casts<'tcx>(
     cast_to: Ty<'tcx>,
 ) {
     cast_precision_loss::check(cx, expr, cast_from, cast_to);
+    cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
     match (cast_from.is_integral(), cast_to.is_integral()) {
-        (true, false) => {
-            let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-            let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.kind() {
-                32
-            } else {
-                64
-            };
-            if from_nbits < to_nbits {
-                span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
-            }
-        },
         (false, true) => {
             span_lint(
                 cx,
@@ -618,7 +552,6 @@ fn lint_numeric_casts<'tcx>(
         (true, true) => {
             check_loss_of_sign(cx, expr, cast_expr, cast_from, cast_to);
             check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-            check_lossless(cx, expr, cast_expr, cast_from, cast_to);
         },
         (false, false) => {
             if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.kind(), &cast_to.kind()) {
@@ -629,10 +562,8 @@ fn lint_numeric_casts<'tcx>(
                     "casting `f64` to `f32` may truncate the value",
                 );
             }
-            if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.kind(), &cast_to.kind()) {
-                span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
-            }
         },
+        (_, _) => {},
     }
 }
 
