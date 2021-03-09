@@ -213,7 +213,7 @@ pub(crate) fn completion_item(
         ..Default::default()
     };
 
-    if item.score().is_some() {
+    if item.relevance().is_relevant() {
         lsp_item.preselect = Some(true);
         // HACK: sort preselect items first
         lsp_item.sort_text = Some(format!(" {}", item.label()));
@@ -1106,7 +1106,9 @@ mod tests {
             [
                 (
                     "&arg",
-                    None,
+                    Some(
+                        " arg",
+                    ),
                 ),
                 (
                     "arg",

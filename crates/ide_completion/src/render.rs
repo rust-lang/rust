@@ -20,8 +20,8 @@ use ide_db::{
 use syntax::TextRange;
 
 use crate::{
-    item::ImportEdit, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
-    CompletionScore,
+    item::{ImportEdit, Relevance},
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
 };
 
 use crate::render::{enum_variant::render_variant, function::render_fn, macro_::render_macro};
@@ -117,7 +117,7 @@ impl<'a> RenderContext<'a> {
         node.docs(self.db())
     }
 
-    fn active_name_and_type(&self) -> Option<(String, Type)> {
+    fn expected_name_and_type(&self) -> Option<(String, Type)> {
         if let Some(record_field) = &self.completion.record_field_syntax {
             cov_mark::hit!(record_field_type_match);
             let (struct_field, _local) = self.completion.sema.resolve_record_field(record_field)?;
@@ -155,8 +155,8 @@ impl<'a> Render<'a> {
         .set_documentation(field.docs(self.ctx.db()))
         .set_deprecated(is_deprecated);
 
-        if let Some(score) = compute_score(&self.ctx, &ty, &name.to_string()) {
-            item = item.set_score(score);
+        if let Some(relevance) = compute_relevance(&self.ctx, &ty, &name.to_string()) {
+            item = item.set_relevance(relevance);
         }
 
         item.build()
@@ -247,18 +247,15 @@ impl<'a> Render<'a> {
         };
 
         if let ScopeDef::Local(local) = resolution {
-            if let Some((active_name, active_type)) = self.ctx.active_name_and_type() {
-                let ty = local.ty(self.ctx.db());
-                if let Some(score) =
-                    compute_score_from_active(&active_type, &active_name, &ty, &local_name)
-                {
-                    item = item.set_score(score);
-                }
-
-                if let Some(ty_without_ref) = active_type.remove_ref() {
+            let ty = local.ty(self.ctx.db());
+            if let Some(relevance) = compute_relevance(&self.ctx, &ty, &local_name) {
+                item = item.set_relevance(relevance)
+            }
+            if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
+                if let Some(ty_without_ref) = expected_type.remove_ref() {
                     if ty_without_ref == ty {
                         cov_mark::hit!(suggest_ref);
-                        let mutability = if active_type.is_mutable_reference() {
+                        let mutability = if expected_type.is_mutable_reference() {
                             Mutability::Mut
                         } else {
                             Mutability::Shared
@@ -326,31 +323,12 @@ impl<'a> Render<'a> {
     }
 }
 
-fn compute_score_from_active(
-    active_type: &Type,
-    active_name: &str,
-    ty: &Type,
-    name: &str,
-) -> Option<CompletionScore> {
-    // Compute score
-    // For the same type
-    if active_type != ty {
-        return None;
-    }
-
-    let mut res = CompletionScore::TypeMatch;
-
-    // If same type + same name then go top position
-    if active_name == name {
-        res = CompletionScore::TypeAndNameMatch
-    }
-
+fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<Relevance> {
+    let (expected_name, expected_type) = ctx.expected_name_and_type()?;
+    let mut res = Relevance::default();
+    res.exact_type_match = ty == &expected_type;
+    res.exact_name_match = name == &expected_name;
     Some(res)
-}
-
-fn compute_score(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionScore> {
-    let (active_name, active_type) = ctx.active_name_and_type()?;
-    compute_score_from_active(&active_type, &active_name, ty, name)
 }
 
 #[cfg(test)]
@@ -361,7 +339,7 @@ mod tests {
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
-        CompletionKind, CompletionScore,
+        CompletionKind, Relevance,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -369,24 +347,25 @@ mod tests {
         expect.assert_debug_eq(&actual);
     }
 
-    fn check_scores(ra_fixture: &str, expect: Expect) {
-        fn display_score(score: Option<CompletionScore>) -> &'static str {
-            match score {
-                Some(CompletionScore::TypeMatch) => "[type]",
-                Some(CompletionScore::TypeAndNameMatch) => "[type+name]",
-                None => "[]".into(),
+    fn check_relevance(ra_fixture: &str, expect: Expect) {
+        fn display_relevance(relevance: Relevance) -> &'static str {
+            match relevance {
+                Relevance { exact_type_match: true, exact_name_match: true } => "[type+name]",
+                Relevance { exact_type_match: true, exact_name_match: false } => "[type]",
+                Relevance { exact_type_match: false, exact_name_match: true } => "[name]",
+                Relevance { exact_type_match: false, exact_name_match: false } => "[]",
             }
         }
 
         let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
-        completions.sort_by_key(|it| (Reverse(it.score()), it.label().to_string()));
+        completions.sort_by_key(|it| (Reverse(it.relevance()), it.label().to_string()));
         let actual = completions
             .into_iter()
             .filter(|it| it.completion_kind == CompletionKind::Reference)
             .map(|it| {
                 let tag = it.kind().unwrap().tag();
-                let score = display_score(it.score());
-                format!("{} {} {}\n", tag, it.label(), score)
+                let relevance = display_relevance(it.relevance());
+                format!("{} {} {}\n", tag, it.label(), relevance)
             })
             .collect::<String>();
         expect.assert_eq(&actual);
@@ -849,9 +828,9 @@ fn foo(xs: Vec<i128>)
     }
 
     #[test]
-    fn active_param_score() {
+    fn active_param_relevance() {
         cov_mark::check!(active_param_type_match);
-        check_scores(
+        check_relevance(
             r#"
 struct S { foo: i64, bar: u32, baz: u32 }
 fn test(bar: u32) { }
@@ -866,9 +845,9 @@ fn foo(s: S) { test(s.$0) }
     }
 
     #[test]
-    fn record_field_scores() {
+    fn record_field_relevances() {
         cov_mark::check!(record_field_type_match);
-        check_scores(
+        check_relevance(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
@@ -883,8 +862,8 @@ fn foo(a: A) { B { bar: a.$0 }; }
     }
 
     #[test]
-    fn record_field_and_call_scores() {
-        check_scores(
+    fn record_field_and_call_relevances() {
+        check_relevance(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
@@ -897,7 +876,7 @@ fn foo(a: A) { B { bar: f(a.$0) }; }
                 fd baz []
             "#]],
         );
-        check_scores(
+        check_relevance(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }
 struct B { x: (), y: f32, bar: u32 }
@@ -914,7 +893,7 @@ fn foo(a: A) { f(B { bar: a.$0 }); }
 
     #[test]
     fn prioritize_exact_ref_match() {
-        check_scores(
+        check_relevance(
             r#"
 struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w$0) }
@@ -929,7 +908,7 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 
     #[test]
     fn too_many_arguments() {
-        check_scores(
+        check_relevance(
             r#"
 struct Foo;
 fn f(foo: &Foo) { f(foo, w$0) }
@@ -997,6 +976,10 @@ fn main() {
                             Local,
                         ),
                         detail: "S",
+                        relevance: Relevance {
+                            exact_name_match: true,
+                            exact_type_match: false,
+                        },
                         ref_match: "&mut ",
                     },
                 ]
