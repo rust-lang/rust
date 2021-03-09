@@ -2,6 +2,7 @@ mod cast_lossless;
 mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
+mod cast_ptr_alignment;
 mod cast_sign_loss;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_with_truncation;
@@ -13,21 +14,17 @@ use std::borrow::Cow;
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, GenericArg, MutTy, Mutability, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, MutTy, Mutability, TyKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty, TypeAndMut, UintTy};
+use rustc_middle::ty::{self, TypeAndMut, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::sym;
-use rustc_target::abi::LayoutOf;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     is_hir_ty_cfg_dependant, meets_msrv, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
 };
-
-use utils::int_ty_to_nbits;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for casts from any numerical to a float type where
@@ -270,22 +267,6 @@ declare_lint_pass!(Casts => [
     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
 ]);
 
-/// Check if the given type is either `core::ffi::c_void` or
-/// one of the platform specific `libc::<platform>::c_void` of libc.
-fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Adt(adt, _) = ty.kind() {
-        let names = cx.get_def_path(adt.did);
-
-        if names.is_empty() {
-            return false;
-        }
-        if names[0] == sym::libc || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
-            return true;
-        }
-    }
-    false
-}
-
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
@@ -306,7 +287,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
 
             fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
-            lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
                 cast_possible_truncation::check(cx, expr, cast_from, cast_to);
                 cast_possible_wrap::check(cx, expr, cast_from, cast_to);
@@ -314,48 +294,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
                 cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
             }
-        } else if let ExprKind::MethodCall(method_path, _, args, _) = expr.kind {
-            if_chain! {
-            if method_path.ident.name == sym!(cast);
-            if let Some(generic_args) = method_path.args;
-            if let [GenericArg::Type(cast_to)] = generic_args.args;
-            // There probably is no obvious reason to do this, just to be consistent with `as` cases.
-            if !is_hir_ty_cfg_dependant(cx, cast_to);
-            then {
-                let (cast_from, cast_to) =
-                    (cx.typeck_results().expr_ty(&args[0]), cx.typeck_results().expr_ty(expr));
-                lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-            }
-            }
         }
-    }
-}
 
-fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
-    if_chain! {
-        if let ty::RawPtr(from_ptr_ty) = &cast_from.kind();
-        if let ty::RawPtr(to_ptr_ty) = &cast_to.kind();
-        if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
-        if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
-        if from_layout.align.abi < to_layout.align.abi;
-        // with c_void, we inherently need to trust the user
-        if !is_c_void(cx, from_ptr_ty.ty);
-        // when casting from a ZST, we don't know enough to properly lint
-        if !from_layout.is_zst();
-        then {
-            span_lint(
-                cx,
-                CAST_PTR_ALIGNMENT,
-                expr.span,
-                &format!(
-                    "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
-                    cast_from,
-                    cast_to,
-                    from_layout.align.abi.bytes(),
-                    to_layout.align.abi.bytes(),
-                ),
-            );
-        }
+        cast_ptr_alignment::check(cx, expr);
     }
 }
 
