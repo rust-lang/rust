@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{
     Adt, AsAssocItem, AssocItemContainer, FieldSource, GenericParam, HasAttrs, HasSource,
     HirDisplay, Module, ModuleDef, ModuleSource, Semantics,
@@ -366,7 +367,7 @@ fn hover_for_definition(
                 .and_then(|fd| hover_for_builtin(fd, it))
                 .or_else(|| Some(Markup::fenced_block(&it.name()))),
         },
-        Definition::Local(it) => Some(Markup::fenced_block(&it.ty(db).display(db))),
+        Definition::Local(it) => hover_for_local(it, db),
         Definition::SelfType(impl_def) => {
             impl_def.target_ty(db).as_adt().and_then(|adt| match adt {
                 Adt::Struct(it) => from_def_source(db, it, mod_path),
@@ -403,6 +404,29 @@ fn hover_for_definition(
         let docs = def.attrs(db).docs().map(Into::into);
         hover_markup(docs, short_label, mod_path)
     }
+}
+
+fn hover_for_local(it: hir::Local, db: &RootDatabase) -> Option<Markup> {
+    let ty = it.ty(db);
+    let ty = ty.display(db);
+    let is_mut = if it.is_mut(db) { "mut " } else { "" };
+    let desc = match it.source(db).value {
+        Either::Left(ident) => {
+            let name = it.name(db).unwrap();
+            let let_kw = if ident
+                .syntax()
+                .parent()
+                .map_or(false, |p| p.kind() == LET_STMT || p.kind() == CONDITION)
+            {
+                "let "
+            } else {
+                ""
+            };
+            format!("{}{}{}: {}", let_kw, is_mut, name, ty)
+        }
+        Either::Right(_) => format!("{}self: {}", is_mut, ty),
+    };
+    hover_markup(None, Some(desc), None)
 }
 
 fn hover_for_keyword(
@@ -574,7 +598,7 @@ fn main() {
                 *iter*
 
                 ```rust
-                Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
+                let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, |&mut u32, &u32, &mut u32| -> Option<u32>, u32>>
                 ```
             "#]],
         );
@@ -798,7 +822,7 @@ fn main() {
                 ```
 
                 ```rust
-                const foo: u32 = 123
+                const foo: u32
                 ```
             "#]],
         );
@@ -831,7 +855,7 @@ fn main() {
                 *zz*
 
                 ```rust
-                Test<i32, u8>
+                let zz: Test<i32, u8>
                 ```
             "#]],
         );
@@ -870,7 +894,7 @@ fn main() { let b$0ar = Some(12); }
                 *bar*
 
                 ```rust
-                Option<i32>
+                let bar: Option<i32>
                 ```
             "#]],
         );
@@ -938,7 +962,7 @@ fn main() {
                 *foo*
 
                 ```rust
-                i32
+                foo: i32
                 ```
             "#]],
         )
@@ -952,7 +976,7 @@ fn main() {
                 *foo*
 
                 ```rust
-                i32
+                foo: i32
                 ```
             "#]],
         )
@@ -966,7 +990,7 @@ fn main() {
                 *foo*
 
                 ```rust
-                i32
+                foo: i32
                 ```
             "#]],
         )
@@ -980,7 +1004,7 @@ fn main() {
                 *foo*
 
                 ```rust
-                i32
+                foo: i32
                 ```
             "#]],
         )
@@ -1000,7 +1024,7 @@ fn main() {
                 *_x*
 
                 ```rust
-                impl Deref<Target = u8> + DerefMut<Target = u8>
+                _x: impl Deref<Target = u8> + DerefMut<Target = u8>
                 ```
             "#]],
         )
@@ -1022,7 +1046,7 @@ fn main() { let foo_$0test = Thing::new(); }
                 *foo_test*
 
                 ```rust
-                Thing
+                let foo_test: Thing
                 ```
             "#]],
         )
@@ -1081,7 +1105,7 @@ fn main() {
                 ```
 
                 ```rust
-                const C: u32 = 1
+                const C: u32
                 ```
             "#]],
         )
@@ -1182,7 +1206,7 @@ fn y() {
                 *x*
 
                 ```rust
-                i32
+                let x: i32
                 ```
             "#]],
         )
@@ -1259,7 +1283,7 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
                 *bar*
 
                 ```rust
-                u32
+                bar: u32
                 ```
             "#]],
         );
@@ -1277,7 +1301,7 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
                 *bar*
 
                 ```rust
-                u32
+                bar: u32
                 ```
             "#]],
         );
@@ -3302,7 +3326,7 @@ fn main() {
                 *f*
 
                 ```rust
-                &i32
+                f: &i32
                 ```
             "#]],
         );
@@ -3321,7 +3345,7 @@ impl Foo {
                 *self*
 
                 ```rust
-                &Foo
+                self: &Foo
                 ```
             "#]],
         );
@@ -3341,7 +3365,7 @@ impl Foo {
                 *self*
 
                 ```rust
-                Arc<Foo>
+                self: Arc<Foo>
                 ```
             "#]],
         );
@@ -3537,7 +3561,7 @@ fn foo() {
                 ```
 
                 ```rust
-                const FOO: usize = 3
+                const FOO: usize
                 ```
 
                 ---

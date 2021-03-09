@@ -330,10 +330,11 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 HlTag::Symbol(SymbolKind::Local)
             };
             let mut h = Highlight::new(tag);
-            if local.is_mut(db) || local.ty(db).is_mutable_reference() {
+            let ty = local.ty(db);
+            if local.is_mut(db) || ty.is_mutable_reference() {
                 h |= HlMod::Mutable;
             }
-            if local.ty(db).as_callable(db).is_some() || local.ty(db).impls_fnonce(db) {
+            if ty.as_callable(db).is_some() || ty.impls_fnonce(db) {
                 h |= HlMod::Callable;
             }
             return h;

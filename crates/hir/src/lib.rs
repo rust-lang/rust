@@ -1296,13 +1296,7 @@ impl Local {
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
         let body = db.body(self.parent.into());
-        match &body[self.pat_id] {
-            Pat::Bind { mode, .. } => match mode {
-                BindingAnnotation::Mutable | BindingAnnotation::RefMut => true,
-                _ => false,
-            },
-            _ => false,
-        }
+        matches!(&body[self.pat_id], Pat::Bind { mode: BindingAnnotation::Mutable, .. })
     }
 
     pub fn parent(self, _db: &dyn HirDatabase) -> DefWithBody {
