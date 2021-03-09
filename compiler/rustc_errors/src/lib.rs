@@ -52,7 +52,7 @@ pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilderInner`.)
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]

@@ -408,7 +408,7 @@ pub enum SubregionOrigin<'tcx> {
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(SubregionOrigin<'_>, 32);
 
 /// Times when we replace late-bound regions with variables:

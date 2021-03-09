@@ -244,7 +244,7 @@ pub enum TokenKind {
 }
 
 // `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -682,7 +682,7 @@ pub enum Nonterminal {
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Nonterminal, 48);
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]

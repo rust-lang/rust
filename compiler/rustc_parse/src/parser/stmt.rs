@@ -13,7 +13,8 @@ use rustc_ast::token::{self, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::AstLike;
 use rustc_ast::{AttrStyle, AttrVec, Attribute, MacCall, MacCallStmt, MacStmtStyle};
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt, StmtKind, DUMMY_NODE_ID};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
+use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
@@ -220,9 +221,10 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_pat_allow_top_alt(None, GateOr::Yes, RecoverComma::Yes)?;
+        let (pat, colon) =
+            self.parse_pat_before_ty(None, GateOr::Yes, RecoverComma::Yes, "`let` bindings")?;
 
-        let (err, ty) = if self.eat(&token::Colon) {
+        let (err, ty) = if colon {
             // Save the state of the parser before parsing type normally, in case there is a `:`
             // instead of an `=` typo.
             let parser_snapshot_before_type = self.clone();

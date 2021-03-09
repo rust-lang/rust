@@ -9,7 +9,7 @@ fn main() {}
 
 #[cfg(FALSE)]
 fn leading() {
-    fn fun1( A: E) {} //~ ERROR an or-pattern parameter must be wrapped in parentheses
+    fn fun1( A: E) {} //~ ERROR top-level or-patterns are not allowed
     fn fun2(  A: E) {} //~ ERROR unexpected `||` before function parameter
     let ( | A): E;
     let ( | A): (E); //~ ERROR unexpected token `||` in pattern
@@ -39,6 +39,9 @@ fn trailing() {
         | A | B  => {}
         //~^ ERROR a trailing `|` is not allowed in an or-pattern
     }
+
+    // These test trailing-vert in `let` bindings, but they also test that we don't emit a
+    // duplicate suggestion that would confuse rustfix.
 
     let a  : u8 = 0; //~ ERROR a trailing `|` is not allowed in an or-pattern
     let a  = 0; //~ ERROR a trailing `|` is not allowed in an or-pattern

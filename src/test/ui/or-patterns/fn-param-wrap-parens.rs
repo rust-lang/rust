@@ -11,4 +11,4 @@ enum E { A, B }
 use E::*;
 
 #[cfg(FALSE)]
-fn fun1(A | B: E) {} //~ ERROR an or-pattern parameter must be wrapped in parentheses
+fn fun1(A | B: E) {} //~ ERROR top-level or-patterns are not allowed
