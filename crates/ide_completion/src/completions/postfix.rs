@@ -180,8 +180,25 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     )
     .add_to(acc);
 
-    postfix_snippet(ctx, cap, &dot_receiver, "ok", "Ok(expr)", &format!("Ok({})", receiver_text))
-        .add_to(acc);
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "ok",
+        "Ok(expr)",
+        &format!("Ok({})", receiver_text)
+    )
+    .add_to(acc);
+
+    postfix_snippet(
+        ctx,
+        cap,
+        &dot_receiver,
+        "err",
+        "Err(expr)",
+        &format!("Err({})", receiver_text)
+    )
+    .add_to(acc);
 
     postfix_snippet(
         ctx,
