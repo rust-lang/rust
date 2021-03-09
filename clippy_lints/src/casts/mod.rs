@@ -3,6 +3,7 @@ mod cast_possible_truncation;
 mod cast_possible_wrap;
 mod cast_precision_loss;
 mod cast_ptr_alignment;
+mod cast_ref_to_mut;
 mod cast_sign_loss;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_with_truncation;
@@ -14,7 +15,7 @@ use std::borrow::Cow;
 use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MutTy, Mutability, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TypeAndMut, UintTy};
@@ -23,7 +24,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    is_hir_ty_cfg_dependant, meets_msrv, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
+    is_hir_ty_cfg_dependant, meets_msrv, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then,
 };
 
 declare_clippy_lint! {
@@ -255,51 +256,6 @@ declare_clippy_lint! {
     "casting a function pointer to a numeric type not wide enough to store the address"
 }
 
-declare_lint_pass!(Casts => [
-    CAST_PRECISION_LOSS,
-    CAST_SIGN_LOSS,
-    CAST_POSSIBLE_TRUNCATION,
-    CAST_POSSIBLE_WRAP,
-    CAST_LOSSLESS,
-    UNNECESSARY_CAST,
-    CAST_PTR_ALIGNMENT,
-    FN_TO_NUMERIC_CAST,
-    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
-]);
-
-impl<'tcx> LateLintPass<'tcx> for Casts {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.from_expansion() {
-            return;
-        }
-        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
-            if is_hir_ty_cfg_dependant(cx, cast_to) {
-                return;
-            }
-            let (cast_from, cast_to) = (
-                cx.typeck_results().expr_ty(cast_expr),
-                cx.typeck_results().expr_ty(expr),
-            );
-
-            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
-                return;
-            }
-
-            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
-            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
-            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
-                cast_possible_wrap::check(cx, expr, cast_from, cast_to);
-                cast_precision_loss::check(cx, expr, cast_from, cast_to);
-                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
-                cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
-            }
-        }
-
-        cast_ptr_alignment::check(cx, expr);
-    }
-}
-
 declare_clippy_lint! {
     /// **What it does:** Checks for casts of `&T` to `&mut T` anywhere in the code.
     ///
@@ -334,26 +290,51 @@ declare_clippy_lint! {
     "a cast of reference to a mutable pointer"
 }
 
-declare_lint_pass!(RefToMut => [CAST_REF_TO_MUT]);
+declare_lint_pass!(Casts => [
+    CAST_PRECISION_LOSS,
+    CAST_SIGN_LOSS,
+    CAST_POSSIBLE_TRUNCATION,
+    CAST_POSSIBLE_WRAP,
+    CAST_LOSSLESS,
+    CAST_REF_TO_MUT,
+    UNNECESSARY_CAST,
+    CAST_PTR_ALIGNMENT,
+    FN_TO_NUMERIC_CAST,
+    FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+]);
 
-impl<'tcx> LateLintPass<'tcx> for RefToMut {
+impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Unary(UnOp::Deref, e) = &expr.kind;
-            if let ExprKind::Cast(e, t) = &e.kind;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::Mut, .. }) = t.kind;
-            if let ExprKind::Cast(e, t) = &e.kind;
-            if let TyKind::Ptr(MutTy { mutbl: Mutability::Not, .. }) = t.kind;
-            if let ty::Ref(..) = cx.typeck_results().node_type(e.hir_id).kind();
-            then {
-                span_lint(
-                    cx,
-                    CAST_REF_TO_MUT,
-                    expr.span,
-                    "casting `&T` to `&mut T` may cause undefined behavior, consider instead using an `UnsafeCell`",
-                );
+        cast_ref_to_mut::check(cx, expr);
+
+        if expr.span.from_expansion() {
+            return;
+        }
+        if let ExprKind::Cast(ref cast_expr, cast_to) = expr.kind {
+            if is_hir_ty_cfg_dependant(cx, cast_to) {
+                return;
+            }
+            let (cast_from, cast_to) = (
+                cx.typeck_results().expr_ty(cast_expr),
+                cx.typeck_results().expr_ty(expr),
+            );
+
+            if unnecessary_cast::check(cx, expr, cast_expr, cast_from, cast_to) {
+                return;
+            }
+
+            fn_to_numeric_cast::check(cx, expr, cast_expr, cast_from, cast_to);
+            fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+                cast_possible_truncation::check(cx, expr, cast_from, cast_to);
+                cast_possible_wrap::check(cx, expr, cast_from, cast_to);
+                cast_precision_loss::check(cx, expr, cast_from, cast_to);
+                cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to);
+                cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
             }
         }
+
+        cast_ptr_alignment::check(cx, expr);
     }
 }
 

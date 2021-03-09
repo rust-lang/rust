@@ -1176,7 +1176,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
     store.register_late_pass(|| box unnecessary_sort_by::UnnecessarySortBy);
     store.register_late_pass(|| box unnecessary_wraps::UnnecessaryWraps);
-    store.register_late_pass(|| box casts::RefToMut);
     store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
     store.register_late_pass(|| box transmuting_null::TransmutingNull);
     store.register_late_pass(|| box path_buf_push_overwrite::PathBufPushOverwrite);
