@@ -107,7 +107,7 @@
 [[rust-analyzer.runnables.cargoExtraArgs]]rust-analyzer.runnables.cargoExtraArgs (default: `[]`)::
  Additional arguments to be passed to cargo for runnables such as  tests or binaries.\nFor example, it may be `--release`.
 [[rust-analyzer.rustcSource]]rust-analyzer.rustcSource (default: `null`)::
- Path to the rust compiler sources, for usage in rustc_private projects, or "discover"  to try to automatically find it. Any project which uses rust-analyzer with the rustcPrivate  crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
+ Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private  projects, or "discover" to try to automatically find it.   Any project which uses rust-analyzer with the rustcPrivate  crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.   This option is not reloaded automatically; you must restart rust-analyzer for it to take effect.
 [[rust-analyzer.rustfmt.extraArgs]]rust-analyzer.rustfmt.extraArgs (default: `[]`)::
  Additional arguments to `rustfmt`.
 [[rust-analyzer.rustfmt.overrideCommand]]rust-analyzer.rustfmt.overrideCommand (default: `null`)::

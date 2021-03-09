@@ -180,10 +180,14 @@ config_data! {
         /// tests or binaries.\nFor example, it may be `--release`.
         runnables_cargoExtraArgs: Vec<String>   = "[]",
 
-        /// Path to the rust compiler sources, for usage in rustc_private projects, or "discover"
-        /// to try to automatically find it. Any project which uses rust-analyzer with the rustcPrivate
+        /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
+        /// projects, or "discover" to try to automatically find it.
+        ///
+        /// Any project which uses rust-analyzer with the rustcPrivate
         /// crates must set `[package.metadata.rust-analyzer] rustc_private=true` to use it.
-        rustcSource : Option<String> = "null",
+        ///
+        /// This option is not reloaded automatically; you must restart rust-analyzer for it to take effect.
+        rustcSource: Option<String> = "null",
 
         /// Additional arguments to `rustfmt`.
         rustfmt_extraArgs: Vec<String>               = "[]",
