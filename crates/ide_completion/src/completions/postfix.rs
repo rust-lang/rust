@@ -186,7 +186,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         &dot_receiver,
         "ok",
         "Ok(expr)",
-        &format!("Ok({})", receiver_text)
+        &format!("Ok({})", receiver_text),
     )
     .add_to(acc);
 
@@ -196,7 +196,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         &dot_receiver,
         "err",
         "Err(expr)",
-        &format!("Err({})", receiver_text)
+        &format!("Err({})", receiver_text),
     )
     .add_to(acc);
 
