@@ -403,7 +403,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
+    /// **What it does:** Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
     /// `_.flat_map(_)`
