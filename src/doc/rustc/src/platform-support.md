@@ -198,6 +198,7 @@ target | std | host | notes
 `powerpc-unknown-linux-gnuspe` | ✓ |  | PowerPC SPE Linux
 `powerpc-unknown-linux-musl` | ? |  |
 `powerpc-unknown-netbsd` | ✓ | ✓ |
+`powerpc-unknown-openbsd` | ? |  |
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
