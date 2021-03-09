@@ -64,8 +64,8 @@ pub(crate) fn read_info(dylib_path: &Path) -> io::Result<RustCInfo> {
     Ok(RustCInfo { version, channel, commit, date })
 }
 
-// This is used inside read_version() to locate the ".rustc" section
-// from a proc macro crate's binary file.
+/// This is used inside read_version() to locate the ".rustc" section
+/// from a proc macro crate's binary file.
 fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'a [u8]> {
     BinaryFile::parse(dylib_binary)
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?
@@ -75,25 +75,26 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
         .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-// Check the version of rustc that was used to compile a proc macro crate's
-// binary file.
-// A proc macro crate binary's ".rustc" section has following byte layout:
-// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
-// * ff060000 734e6150 is followed, it's the snappy format magic bytes,
-//   means bytes from here(including this sequence) are compressed in
-//   snappy compression format. Version info is inside here, so decompress
-//   this.
-// The bytes you get after decompressing the snappy format portion has
-// following layout:
-// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
-// * [crate root bytes] next 4 bytes is to store crate root position,
-//   according to rustc's source code comment
-// * [length byte] next 1 byte tells us how many bytes we should read next
-//   for the version string's utf8 bytes
-// * [version string bytes encoded in utf8] <- GET THIS BOI
-// * [some more bytes that we don really care but still there] :-)
-// Check this issue for more about the bytes layout:
-// https://github.com/rust-analyzer/rust-analyzer/issues/6174
+/// Check the version of rustc that was used to compile a proc macro crate's
+///
+/// binary file.
+/// A proc macro crate binary's ".rustc" section has following byte layout:
+/// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes
+/// * ff060000 734e6150 is followed, it's the snappy format magic bytes,
+///   means bytes from here(including this sequence) are compressed in
+///   snappy compression format. Version info is inside here, so decompress
+///   this.
+/// The bytes you get after decompressing the snappy format portion has
+/// following layout:
+/// * [b'r',b'u',b's',b't',0,0,0,5] is the first 8 bytes(again)
+/// * [crate root bytes] next 4 bytes is to store crate root position,
+///   according to rustc's source code comment
+/// * [length byte] next 1 byte tells us how many bytes we should read next
+///   for the version string's utf8 bytes
+/// * [version string bytes encoded in utf8] <- GET THIS BOI
+/// * [some more bytes that we don really care but still there] :-)
+/// Check this issue for more about the bytes layout:
+/// https://github.com/rust-analyzer/rust-analyzer/issues/6174
 fn read_version(dylib_path: &Path) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
     let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
