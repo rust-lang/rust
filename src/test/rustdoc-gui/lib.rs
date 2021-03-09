@@ -27,6 +27,11 @@ pub fn foo() {}
 /// Just a normal struct.
 pub struct Foo;
 
+impl Foo {
+    #[must_use]
+    pub fn must_use(&self) -> bool { true }
+}
+
 /// Just a normal enum.
 pub enum WhoLetTheDogOut {
     /// Woof!
