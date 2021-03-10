@@ -286,11 +286,7 @@ impl Serialize for TypeWithKind {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_seq(None)?;
-        seq.serialize_element(&self.ty.name)?;
-        let x: ItemType = self.kind.into();
-        seq.serialize_element(&x)?;
-        seq.end()
+        (&self.ty.name, ItemType::from(self.kind)).serialize(serializer)
     }
 }
 
