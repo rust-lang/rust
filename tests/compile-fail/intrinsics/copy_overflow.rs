@@ -1,4 +1,4 @@
-// error-pattern: overflow computing total size of `copy`
+// error-pattern: overflow computing total size
 use std::mem;
 
 fn main() {
