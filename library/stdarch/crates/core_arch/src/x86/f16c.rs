@@ -4,7 +4,7 @@
 
 use crate::{
     core_arch::{simd::*, x86::*},
-    hint::unreachable_unchecked,
+    //    hint::unreachable_unchecked,
     mem::transmute,
 };
 
@@ -42,22 +42,6 @@ pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
     transmute(llvm_vcvtph2ps_256(transmute(a)))
 }
 
-macro_rules! dispatch_rounding {
-    ($rounding:ident, $call:ident) => {{
-        match $rounding {
-            0 => call!(0),
-            1 => call!(1),
-            2 => call!(2),
-            3 => call!(3),
-            4 => call!(4),
-            5 => call!(5),
-            6 => call!(6),
-            7 => call!(7),
-            _ => unreachable_unchecked(),
-        }
-    }};
-}
-
 /// Converts the 4 x 32-bit float values in the 128-bit vector `a` into 4 x
 /// 16-bit half-precision float values stored in the lowest 64-bit of a 128-bit
 /// vector.
@@ -71,16 +55,13 @@ macro_rules! dispatch_rounding {
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
 #[target_feature(enable = "f16c")]
-#[rustc_args_required_const(1)]
-#[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
-pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
-    let a = transmute(a);
-    macro_rules! call {
-        ($rounding:expr) => {
-            llvm_vcvtps2ph_128(a, $rounding)
-        };
-    }
-    transmute(dispatch_rounding!(imm_rounding, call))
+#[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm_cvtps_ph<const IMM_ROUNDING: i32>(a: __m128) -> __m128i {
+    static_assert_imm3!(IMM_ROUNDING);
+    let a = a.as_f32x4();
+    let r = llvm_vcvtps2ph_128(a, IMM_ROUNDING);
+    transmute(r)
 }
 
 /// Converts the 8 x 32-bit float values in the 256-bit vector `a` into 8 x
@@ -95,16 +76,13 @@ pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
 #[target_feature(enable = "f16c")]
-#[rustc_args_required_const(1)]
-#[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
-pub unsafe fn _mm256_cvtps_ph(a: __m256, imm_rounding: i32) -> __m128i {
-    let a = transmute(a);
-    macro_rules! call {
-        ($rounding:expr) => {
-            llvm_vcvtps2ph_256(a, $rounding)
-        };
-    }
-    transmute(dispatch_rounding!(imm_rounding, call))
+#[cfg_attr(test, assert_instr("vcvtps2ph", IMM_ROUNDING = 0))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn _mm256_cvtps_ph<const IMM_ROUNDING: i32>(a: __m256) -> __m128i {
+    static_assert_imm3!(IMM_ROUNDING);
+    let a = a.as_f32x8();
+    let r = llvm_vcvtps2ph_256(a, IMM_ROUNDING);
+    transmute(r)
 }
 
 #[cfg(test)]
@@ -116,7 +94,7 @@ mod tests {
     unsafe fn test_mm_cvtph_ps() {
         let array = [1_f32, 2_f32, 3_f32, 4_f32];
         let float_vec: __m128 = transmute(array);
-        let halfs: __m128i = _mm_cvtps_ph(float_vec, 0);
+        let halfs: __m128i = _mm_cvtps_ph::<0>(float_vec);
         let floats: __m128 = _mm_cvtph_ps(halfs);
         let result: [f32; 4] = transmute(floats);
         assert_eq!(result, array);
@@ -126,7 +104,7 @@ mod tests {
     unsafe fn test_mm256_cvtph_ps() {
         let array = [1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32];
         let float_vec: __m256 = transmute(array);
-        let halfs: __m128i = _mm256_cvtps_ph(float_vec, 0);
+        let halfs: __m128i = _mm256_cvtps_ph::<0>(float_vec);
         let floats: __m256 = _mm256_cvtph_ps(halfs);
         let result: [f32; 8] = transmute(floats);
         assert_eq!(result, array);

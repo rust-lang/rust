@@ -2565,17 +2565,12 @@ pub unsafe fn _mm256_slli_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_slli_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpslldq, imm8 = 3))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpslldq(a, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8 * 8, call))
+pub unsafe fn _mm256_slli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    _mm256_bslli_epi128::<IMM8>(a)
 }
 
 /// Shifts 128-bit lanes in `a` left by `imm8` bytes while shifting in zeros.
@@ -2583,17 +2578,52 @@ pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bslli_epi128)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpslldq, imm8 = 3))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpslldq, IMM8 = 3))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_bslli_epi128(a: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpslldq(a, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8 * 8, call))
+pub unsafe fn _mm256_bslli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let a = a.as_i8x32();
+    let zero = _mm256_setzero_si256().as_i8x32();
+    let r: i8x32 = simd_shuffle32(
+        zero,
+        a,
+        [
+            32 - (IMM8 as u32 & 0xff),
+            33 - (IMM8 as u32 & 0xff),
+            34 - (IMM8 as u32 & 0xff),
+            35 - (IMM8 as u32 & 0xff),
+            36 - (IMM8 as u32 & 0xff),
+            37 - (IMM8 as u32 & 0xff),
+            38 - (IMM8 as u32 & 0xff),
+            39 - (IMM8 as u32 & 0xff),
+            40 - (IMM8 as u32 & 0xff),
+            41 - (IMM8 as u32 & 0xff),
+            42 - (IMM8 as u32 & 0xff),
+            43 - (IMM8 as u32 & 0xff),
+            44 - (IMM8 as u32 & 0xff),
+            45 - (IMM8 as u32 & 0xff),
+            46 - (IMM8 as u32 & 0xff),
+            47 - (IMM8 as u32 & 0xff),
+            48 - (IMM8 as u32 & 0xff) - 16,
+            49 - (IMM8 as u32 & 0xff) - 16,
+            50 - (IMM8 as u32 & 0xff) - 16,
+            51 - (IMM8 as u32 & 0xff) - 16,
+            52 - (IMM8 as u32 & 0xff) - 16,
+            53 - (IMM8 as u32 & 0xff) - 16,
+            54 - (IMM8 as u32 & 0xff) - 16,
+            55 - (IMM8 as u32 & 0xff) - 16,
+            56 - (IMM8 as u32 & 0xff) - 16,
+            57 - (IMM8 as u32 & 0xff) - 16,
+            58 - (IMM8 as u32 & 0xff) - 16,
+            59 - (IMM8 as u32 & 0xff) - 16,
+            60 - (IMM8 as u32 & 0xff) - 16,
+            61 - (IMM8 as u32 & 0xff) - 16,
+            62 - (IMM8 as u32 & 0xff) - 16,
+            63 - (IMM8 as u32 & 0xff) - 16,
+        ],
+    );
+    transmute(r)
 }
 
 /// Shifts packed 32-bit integers in `a` left by the amount
@@ -2729,17 +2759,12 @@ pub unsafe fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_srli_si256)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrldq, imm8 = 3))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpsrldq(a, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8 * 8, call))
+pub unsafe fn _mm256_srli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    _mm256_bsrli_epi128::<IMM8>(a)
 }
 
 /// Shifts 128-bit lanes in `a` right by `imm8` bytes while shifting in zeros.
@@ -2747,17 +2772,145 @@ pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_bsrli_epi128)
 #[inline]
 #[target_feature(enable = "avx2")]
-#[cfg_attr(test, assert_instr(vpsrldq, imm8 = 3))]
-#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr(vpsrldq, IMM8 = 1))]
+#[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_bsrli_epi128(a: __m256i, imm8: i32) -> __m256i {
-    let a = a.as_i64x4();
-    macro_rules! call {
-        ($imm8:expr) => {
-            vpsrldq(a, $imm8)
-        };
-    }
-    transmute(constify_imm8!(imm8 * 8, call))
+pub unsafe fn _mm256_bsrli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
+    static_assert_imm8!(IMM8);
+    let a = a.as_i8x32();
+    let zero = _mm256_setzero_si256().as_i8x32();
+    let r: i8x32 = match IMM8 % 16 {
+        0 => simd_shuffle32(
+            a,
+            zero,
+            [
+                0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                23, 24, 25, 26, 27, 28, 29, 30, 31,
+            ],
+        ),
+        1 => simd_shuffle32(
+            a,
+            zero,
+            [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31, 32,
+            ],
+        ),
+        2 => simd_shuffle32(
+            a,
+            zero,
+            [
+                2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 18, 19, 20, 21, 22, 23, 24,
+                25, 26, 27, 28, 29, 30, 31, 32, 32,
+            ],
+        ),
+        3 => simd_shuffle32(
+            a,
+            zero,
+            [
+                3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 19, 20, 21, 22, 23, 24,
+                25, 26, 27, 28, 29, 30, 31, 32, 32, 32,
+            ],
+        ),
+        4 => simd_shuffle32(
+            a,
+            zero,
+            [
+                4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 20, 21, 22, 23, 24, 25,
+                26, 27, 28, 29, 30, 31, 32, 32, 32, 32,
+            ],
+        ),
+        5 => simd_shuffle32(
+            a,
+            zero,
+            [
+                5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 21, 22, 23, 24, 25, 26,
+                27, 28, 29, 30, 31, 32, 32, 32, 32, 32,
+            ],
+        ),
+        6 => simd_shuffle32(
+            a,
+            zero,
+            [
+                6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 22, 23, 24, 25, 26, 27,
+                28, 29, 30, 31, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        7 => simd_shuffle32(
+            a,
+            zero,
+            [
+                7, 8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 23, 24, 25, 26, 27,
+                28, 29, 30, 31, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        8 => simd_shuffle32(
+            a,
+            zero,
+            [
+                8, 9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 24, 25, 26, 27, 28,
+                29, 30, 31, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        9 => simd_shuffle32(
+            a,
+            zero,
+            [
+                9, 10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 25, 26, 27, 28, 29,
+                30, 31, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        10 => simd_shuffle32(
+            a,
+            zero,
+            [
+                10, 11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 26, 27, 28, 29, 30,
+                31, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        11 => simd_shuffle32(
+            a,
+            zero,
+            [
+                11, 12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 27, 28, 29, 30, 31,
+                32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        12 => simd_shuffle32(
+            a,
+            zero,
+            [
+                12, 13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 28, 29, 30, 31, 32,
+                32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        13 => simd_shuffle32(
+            a,
+            zero,
+            [
+                13, 14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 29, 30, 31, 32, 32,
+                32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        14 => simd_shuffle32(
+            a,
+            zero,
+            [
+                14, 15, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 30, 31, 32, 32, 32,
+                32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        15 => simd_shuffle32(
+            a,
+            zero,
+            [
+                14, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 31, 32, 32, 32, 32,
+                32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+            ],
+        ),
+        _ => zero,
+    };
+    transmute(r)
 }
 
 /// Shifts packed 16-bit integers in `a` right by `count` while shifting in
@@ -4824,7 +4977,7 @@ mod tests {
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_slli_si256() {
         let a = _mm256_set1_epi64x(0xFFFFFFFF);
-        let r = _mm256_slli_si256(a, 3);
+        let r = _mm256_slli_si256::<3>(a);
         assert_eq_m256i(r, _mm256_set1_epi64x(0xFFFFFFFF000000));
     }
 
@@ -4923,7 +5076,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        let r = _mm256_srli_si256(a, 3);
+        let r = _mm256_srli_si256::<3>(a);
         #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             4, 5, 6, 7, 8, 9, 10, 11,
