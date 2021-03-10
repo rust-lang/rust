@@ -1,5 +1,8 @@
 use ide_db::helpers::FamousDefs;
-use syntax::{AstNode, ast::{self, make, ArgListOwner, edit::AstNodeEdit}};
+use syntax::{
+    ast::{self, edit::AstNodeEdit, make, ArgListOwner},
+    AstNode,
+};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -31,16 +34,20 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
         ast::Expr::MethodCallExpr(expr) => {
             closure = match expr.arg_list()?.args().next()? {
                 ast::Expr::ClosureExpr(expr) => expr,
-                _ => { return None; }
+                _ => {
+                    return None;
+                }
             };
-            
+
             expr
-        },
+        }
         ast::Expr::ClosureExpr(expr) => {
             closure = expr;
             ast::MethodCallExpr::cast(closure.syntax().ancestors().nth(2)?)?
-        },
-        _ => { return None; }
+        }
+        _ => {
+            return None;
+        }
     };
 
     let (total_expr, parent) = validate_method_call_expr(&ctx.sema, total_expr)?;
@@ -58,8 +65,10 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
 
             let block = match body {
                 ast::Expr::BlockExpr(block) => block,
-                _ => make::block_expr(Vec::new(), Some(body))
-            }.reset_indent().indent(original_indentation);
+                _ => make::block_expr(Vec::new(), Some(body)),
+            }
+            .reset_indent()
+            .indent(original_indentation);
 
             let expr_for_loop = make::expr_for_loop(param, parent, block);
             builder.replace_ast(total_expr, expr_for_loop)
@@ -187,6 +196,7 @@ fn main() {
             r#"
 fn main() {
     value.$0for_each(|x| println!("{}", x));
-}"#)
+}"#,
+        )
     }
 }
