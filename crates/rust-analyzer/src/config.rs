@@ -395,6 +395,9 @@ impl Config {
     pub fn work_done_progress(&self) -> bool {
         try_or!(self.caps.window.as_ref()?.work_done_progress?, false)
     }
+    pub fn will_rename(&self) -> bool {
+        try_or!(self.caps.workspace.as_ref()?.file_operations.as_ref()?.will_rename?, false)
+    }
     pub fn code_action_resolve(&self) -> bool {
         try_or!(
             self.caps

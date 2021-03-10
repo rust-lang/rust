@@ -94,6 +94,7 @@ pub(crate) fn rename_with_semantics(
     }
 }
 
+/// Called by the client when it is about to rename a file.
 pub(crate) fn will_rename_file(
     db: &RootDatabase,
     file_id: FileId,

@@ -305,7 +305,6 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.name(db),
             ModuleDef::Const(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
-
             ModuleDef::BuiltinType(it) => Some(it.name()),
         }
     }
