@@ -2188,7 +2188,7 @@ function defocusSearchBar() {
             return "+";
         }
         // button will collapse the section
-        // note that this text is also set in the HTML template in render.rs
+        // note that this text is also set in the HTML template in ../render/mod.rs
         return "\u2212"; // "\u2212" is "−" minus sign
     }
 
@@ -2831,17 +2831,10 @@ function defocusSearchBar() {
         });
     }
 
-    function enableSearchInput() {
-        if (search_input) {
-            search_input.removeAttribute('disabled');
-        }
-    }
-
     function addSearchOptions(crates) {
         var elem = document.getElementById("crate-search");
 
         if (!elem) {
-            enableSearchInput();
             return;
         }
         var savedCrate = getSettingValue("saved-filter-crate");
@@ -2860,7 +2853,6 @@ function defocusSearchBar() {
                 elem.value = savedCrate;
             }
         }
-        enableSearchInput();
     };
 
     function buildHelperPopup() {
@@ -2952,7 +2944,7 @@ function defocusSearchBar() {
         search_input.addEventListener("blur", function() {
             search_input.placeholder = search_input.origPlaceholder;
         });
-        enableSearchInput();
+        search_input.removeAttribute('disabled');
 
         var crateSearchDropDown = document.getElementById("crate-search");
         crateSearchDropDown.addEventListener("focus", loadSearch);
