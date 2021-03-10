@@ -115,11 +115,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             // Call CopyNonOverlapping
-            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
-                let count = self.eval_operand(count, None)?;
-
+            CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { src, dst, count }) => {
                 let src = self.eval_operand(src, None)?;
                 let dst = self.eval_operand(dst, None)?;
+                let count = self.eval_operand(count, None)?;
                 self.copy(&src, &dst, &count, /* nonoverlapping */ true)?;
             }
 
@@ -160,15 +159,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
+        let size = size.checked_mul(count, self).ok_or_else(|| {
+            err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
+        })?;
+
+        // Make sure we check both pointers for an access of the total size and aligment,
+        // *even if* the total size is 0.
         let src =
             self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
 
         let dst =
             self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
-
-        let size = size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
-        })?;
 
         if let (Some(src), Some(dst)) = (src, dst) {
             self.memory.copy(src, dst, size, nonoverlapping)?;
