@@ -158,7 +158,7 @@ unsafe fn ptr_to_maybe_str(p: *const c_char) -> Option<&'static str> {
 
 // This is pretty universal - the nix crate makes the same assumption.  We need it to be no larger
 // than the platform's actual value - but, only on platforms where there is sys_siglist or
-// sys_signame.  This value is a pretty safe bet, and we have a test caee for it.
+// sys_signame.  This value is a pretty safe bet, and we have a test case for it.
 const NSIG: usize = 32;
 
 #[cfg(not(target_env = "musl"))]
