@@ -24,8 +24,7 @@ use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::interpret::ErrorHandled;
-use crate::mir::Body;
-use crate::mir::GeneratorLayout;
+use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
@@ -34,9 +33,7 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, par_iter, ParallelIterator};
@@ -58,56 +55,42 @@ use rustc_target::abi::{Align, VariantIdx};
 
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::{ControlFlow, Range};
-use std::ptr;
-use std::str;
+use std::{fmt, ptr, str};
 
-pub use self::sty::BoundRegionKind::*;
-pub use self::sty::RegionKind;
-pub use self::sty::RegionKind::*;
-pub use self::sty::TyKind::*;
-pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar};
-pub use self::sty::{BoundRegion, BoundRegionKind, EarlyBoundRegion, FreeRegion, Region};
-pub use self::sty::{CanonicalPolyFnSig, FnSig, GenSig, PolyFnSig, PolyGenSig};
-pub use self::sty::{ClosureSubsts, GeneratorSubsts, TypeAndMut, UpvarSubsts};
-pub use self::sty::{ClosureSubstsParts, GeneratorSubstsParts};
-pub use self::sty::{ConstVid, RegionVid};
-pub use self::sty::{ExistentialPredicate, ParamConst, ParamTy, ProjectionTy};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
-pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{PolyTraitRef, TraitRef, TyKind};
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::InferTy::*;
 pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
-
-pub use self::context::{tls, FreeRegionInfo, TyCtxt};
-pub use self::context::{
-    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    DelaySpanBugEmitted, ResolvedOpaqueTy, UserType, UserTypeAnnotationIndex,
-};
-pub use self::context::{
-    CtxtInterners, GeneratorInteriorTypeCause, GlobalCtxt, Lift, TypeckResults,
-};
-
-pub use self::instance::{Instance, InstanceDef};
-
-pub use self::list::List;
-
-pub use self::trait_def::TraitDef;
-
 pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt};
+pub use self::context::{
+    tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorInteriorTypeCause, GlobalCtxt,
+    Lift, ResolvedOpaqueTy, TyCtxt, TypeckResults, UserType, UserTypeAnnotationIndex,
+};
+pub use self::instance::{Instance, InstanceDef};
+pub use self::list::List;
+pub use self::sty::BoundRegionKind::*;
+pub use self::sty::RegionKind::*;
+pub use self::sty::TyKind::*;
+pub use self::sty::{
+    Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, CanonicalPolyFnSig,
+    ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBoundRegion, ExistentialPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig, GeneratorSubsts,
+    GeneratorSubstsParts, ParamConst, ParamTy, PolyExistentialProjection, PolyExistentialTraitRef,
+    PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind, RegionVid, TraitRef,
+    TyKind, TypeAndMut, UpvarSubsts,
+};
+pub use self::trait_def::TraitDef;
 
 pub mod _match;
 pub mod adjustment;
 pub mod binding;
 pub mod cast;
 pub mod codec;
-mod erase_regions;
 pub mod error;
 pub mod fast_reject;
 pub mod flags;
@@ -127,6 +110,7 @@ pub mod walk;
 mod consts;
 mod context;
 mod diagnostics;
+mod erase_regions;
 mod instance;
 mod list;
 mod structural_impls;
