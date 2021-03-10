@@ -500,7 +500,10 @@ crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 }
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
-    clean::Constant::Extern { type_: cx.tcx.type_of(def_id).clean(cx), def_id }
+    clean::Constant {
+        type_: cx.tcx.type_of(def_id).clean(cx),
+        kind: clean::ConstantKind::Extern { def_id },
+    }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {

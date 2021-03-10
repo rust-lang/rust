@@ -1987,65 +1987,58 @@ crate struct Static {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-crate enum Constant {
+crate struct Constant {
+    crate type_: Type,
+    crate kind: ConstantKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+crate enum ConstantKind {
     /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
     /// `BodyId`, we need to handle it on its own.
-    TyConst { type_: Type, expr: String },
-    /// A constant (expression) that’s not an item or associated item. These are usually found
+    ///
+    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
+    /// by a DefId. So this field must be different from `Extern`.
+    TyConst { expr: String },
+    /// A constant (expression) that's not an item or associated item. These are usually found
     /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
     /// used to define explicit discriminant values for enum variants.
-    Anonymous { type_: Type, body: BodyId },
+    Anonymous { body: BodyId },
     /// A constant from a different crate.
-    Extern { type_: Type, def_id: DefId },
-    /// const FOO: u32 = ...;
-    Local { type_: Type, def_id: DefId, body: BodyId },
+    Extern { def_id: DefId },
+    /// `const FOO: u32 = ...;`
+    Local { def_id: DefId, body: BodyId },
 }
 
 impl Constant {
     crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
-        match self {
-            Self::TyConst { expr, .. } => expr.clone(),
-            Self::Extern { def_id, .. } => print_inlined_const(tcx, *def_id),
-            Self::Local { body, .. } | Self::Anonymous { body, .. } => print_const_expr(tcx, *body),
+        match self.kind {
+            ConstantKind::TyConst { ref expr } => expr.clone(),
+            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                print_const_expr(tcx, body)
+            }
         }
     }
 
     crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        match self {
-            Self::TyConst { .. } | Self::Anonymous { .. } => None,
-            Self::Extern { def_id, .. } | Self::Local { def_id, .. } => {
-                print_evaluated_const(tcx, *def_id)
+        match self.kind {
+            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
+            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+                print_evaluated_const(tcx, def_id)
             }
         }
     }
 
     crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
-        match self {
-            Self::TyConst { .. } => false,
-            Self::Extern { def_id, .. } => def_id.as_local().map_or(false, |def_id| {
+        match self.kind {
+            ConstantKind::TyConst { .. } => false,
+            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
                 is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
             }),
-            Self::Local { body, .. } | Self::Anonymous { body, .. } => {
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }
-        }
-    }
-
-    crate fn type_(&self) -> &Type {
-        match *self {
-            Self::TyConst { ref type_, .. }
-            | Self::Extern { ref type_, .. }
-            | Self::Local { ref type_, .. }
-            | Self::Anonymous { ref type_, .. } => type_,
-        }
-    }
-
-    crate fn to_type(self) -> Type {
-        match self {
-            Self::TyConst { type_, .. }
-            | Self::Extern { type_, .. }
-            | Self::Local { type_, .. }
-            | Self::Anonymous { type_, .. } => type_,
         }
     }
 }

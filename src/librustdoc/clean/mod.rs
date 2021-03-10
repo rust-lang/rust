@@ -393,12 +393,12 @@ impl Clean<Lifetime> for hir::GenericParam<'_> {
 
 impl Clean<Constant> for hir::ConstArg {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
-        Constant::Anonymous {
+        Constant {
             type_: cx
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
                 .clean(cx),
-            body: self.value.body,
+            kind: ConstantKind::Anonymous { body: self.value.body },
         }
     }
 }
@@ -1744,7 +1744,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
         // FIXME: instead of storing the stringified expression, store `self` directly instead.
-        Constant::TyConst { type_: self.ty.clean(cx), expr: self.to_string() }
+        Constant {
+            type_: self.ty.clean(cx),
+            kind: ConstantKind::TyConst { expr: self.to_string() },
+        }
     }
 }
 
@@ -1945,9 +1948,10 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Static(ty, mutability, body_id) => {
                     StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
                 }
-                ItemKind::Const(ty, body_id) => {
-                    ConstantItem(Constant::Local { type_: ty.clean(cx), body: body_id, def_id })
-                }
+                ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+                    type_: ty.clean(cx),
+                    kind: ConstantKind::Local { body: body_id, def_id },
+                }),
                 ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                     bounds: ty.bounds.clean(cx),
                     generics: ty.generics.clean(cx),

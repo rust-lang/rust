@@ -142,7 +142,7 @@ impl FromWithTcx<clean::Constant> for Constant {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
         let is_literal = constant.is_literal(tcx);
-        Constant { type_: constant.to_type().into_tcx(tcx), expr, value, is_literal }
+        Constant { type_: constant.type_.into_tcx(tcx), expr, value, is_literal }
     }
 }
 

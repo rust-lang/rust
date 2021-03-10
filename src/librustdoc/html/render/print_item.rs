@@ -982,7 +982,7 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
         "{vis}const {name}: {typ}",
         vis = it.visibility.print_with_space(cx.tcx(), it.def_id, cx.cache()),
         name = it.name.as_ref().unwrap(),
-        typ = c.type_().print(cx.cache(), cx.tcx()),
+        typ = c.type_.print(cx.cache(), cx.tcx()),
     );
 
     let value = c.value(cx.tcx());
