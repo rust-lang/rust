@@ -3,22 +3,22 @@
 set -e
 set -o pipefail
 
-# https://docs.travis-ci.com/user/environment-variables/#default-environment-variables
-if [ "$TRAVIS_EVENT_TYPE" = "cron" ] ; then # running in cron job
+# https://docs.github.com/en/actions/reference/environment-variables
+if [ "$GITHUB_EVENT_NAME" = "schedule" ] ; then # running in scheduled job
   FLAGS=""
 
   echo "Doing full link check."
   set -x
 elif [ "$CI" = "true" ] ; then # running in PR CI build
-  if [ -z "$TRAVIS_COMMIT_RANGE" ]; then
-    echo "error: unexpected state: TRAVIS_COMMIT_RANGE must be non-empty in CI"
+  if [ -z "$BASE_SHA" ]; then
+    echo "error: unexpected state: BASE_SHA must be non-empty in CI"
     exit 1
   fi
 
-  CHANGED_FILES=$(git diff --name-only $TRAVIS_COMMIT_RANGE | tr '\n' ' ')
+  CHANGED_FILES=$(git diff --name-only $BASE_SHA... | tr '\n' ' ')
   FLAGS="--no-cache -f $CHANGED_FILES"
 
-  echo "Checking files changed in $TRAVIS_COMMIT_RANGE: $CHANGED_FILES"
+  echo "Checking files changed since $BASE_SHA: $CHANGED_FILES"
   set -x
 else # running locally
   COMMIT_RANGE=master...

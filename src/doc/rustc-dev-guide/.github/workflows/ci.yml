@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    # Run at 18:00 UTC every day
+    - cron: '0 18 * * *'
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      MDBOOK_VERSION: 0.4.7
+      MDBOOK_LINKCHECK_VERSION: 0.7.2
+      MDBOOK_TOC_VERSION: 0.6.1
+      DEPLOY_DIR: book/html
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # linkcheck needs the base commit.
+          fetch-depth: 0
+
+      - name: Cache binaries
+        id: mdbook-cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin
+          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}
+
+      - name: Cache linkcheck
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/book/linkcheck
+          key: ${{ runner.os }}-${{ hashFiles('./book/linkcheck') }}
+
+      - name: Check line lengths
+        if: github.event_name != 'push'
+        run: |
+          shopt -s globstar
+          MAX_LINE_LENGTH=100 bash ci/check_line_lengths.sh src/**/*.md
+
+      - name: Install latest nightly Rust toolchain
+        if: steps.mdbook-cache.outputs.cache-hit != 'true'
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+
+      - name: Install Dependencies
+        if: steps.mdbook-cache.outputs.cache-hit != 'true'
+        run: |
+          cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
+          cargo install mdbook-linkcheck --version ${{ env.MDBOOK_LINKCHECK_VERSION }}
+          cargo install mdbook-toc --version ${{ env.MDBOOK_TOC_VERSION }}
+
+      - name: Check build
+        run: mdbook build
+
+      - name: Deploy to gh-pages
+        if: github.event_name == 'push' && github.repository == 'rust-lang/rustc-dev-guide'
+        run: |
+          touch "${{ env.DEPLOY_DIR }}/.nojekyll"
+          cp CNAME "${{ env.DEPLOY_DIR }}"
+          cd "${{ env.DEPLOY_DIR }}"
+          rm -rf .git
+          git init
+          git config user.name "Deploy from CI"
+          git config user.email ""
+          git add .
+          git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
+          git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
