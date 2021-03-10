@@ -2409,26 +2409,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_block_noalloc(&mut self, b: &Block, targeted_by_break: bool) -> hir::Block<'hir> {
-        let mut expr: Option<&'hir _> = None;
-
-        let stmts = self.arena.alloc_from_iter(
-            b.stmts
-                .iter()
-                .enumerate()
-                .filter_map(|(index, stmt)| {
-                    if index == b.stmts.len() - 1 {
-                        if let StmtKind::Expr(ref e) = stmt.kind {
-                            expr = Some(self.lower_expr(e));
-                            None
-                        } else {
-                            Some(self.lower_stmt(stmt))
-                        }
-                    } else {
-                        Some(self.lower_stmt(stmt))
-                    }
-                })
-                .flatten(),
-        );
+        let (stmts, expr) = match &*b.stmts {
+            [stmts @ .., Stmt { kind: StmtKind::Expr(e), .. }] => (stmts, Some(&*e)),
+            stmts => (stmts, None),
+        };
+        let stmts = self.arena.alloc_from_iter(stmts.iter().flat_map(|stmt| self.lower_stmt(stmt)));
+        let expr = expr.map(|e| self.lower_expr(e));
         let rules = self.lower_block_check_mode(&b.rules);
         let hir_id = self.lower_node_id(b.id);
 
