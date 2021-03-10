@@ -20,9 +20,6 @@ pub use closure::*;
 pub use generics::*;
 
 use crate::hir::exports::ExportMap;
-use crate::hir::place::{
-    Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
-};
 use crate::ich::StableHashingContext;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::mir::{Body, GeneratorLayout};
@@ -351,140 +348,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
 
 #[rustc_diagnostic_item = "Ty"]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
-
-#[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, TypeFoldable, Copy, HashStable)]
-pub enum BorrowKind {
-    /// Data must be immutable and is aliasable.
-    ImmBorrow,
-
-    /// Data must be immutable but not aliasable. This kind of borrow
-    /// cannot currently be expressed by the user and is used only in
-    /// implicit closure bindings. It is needed when the closure
-    /// is borrowing or mutating a mutable referent, e.g.:
-    ///
-    /// ```
-    /// let x: &mut isize = ...;
-    /// let y = || *x += 5;
-    /// ```
-    ///
-    /// If we were to try to translate this closure into a more explicit
-    /// form, we'd encounter an error with the code as written:
-    ///
-    /// ```
-    /// struct Env { x: & &mut isize }
-    /// let x: &mut isize = ...;
-    /// let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
-    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
-    /// ```
-    ///
-    /// This is then illegal because you cannot mutate a `&mut` found
-    /// in an aliasable location. To solve, you'd have to translate with
-    /// an `&mut` borrow:
-    ///
-    /// ```
-    /// struct Env { x: & &mut isize }
-    /// let x: &mut isize = ...;
-    /// let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
-    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
-    /// ```
-    ///
-    /// Now the assignment to `**env.x` is legal, but creating a
-    /// mutable pointer to `x` is not because `x` is not mutable. We
-    /// could fix this by declaring `x` as `let mut x`. This is ok in
-    /// user code, if awkward, but extra weird for closures, since the
-    /// borrow is hidden.
-    ///
-    /// So we introduce a "unique imm" borrow -- the referent is
-    /// immutable, but not aliasable. This solves the problem. For
-    /// simplicity, we don't give users the way to express this
-    /// borrow, it's just used when translating closures.
-    UniqueImmBorrow,
-
-    /// Data is mutable and not aliasable.
-    MutBorrow,
-}
-
-pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
-    let name = match place.base {
-        HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
-        _ => bug!("Capture_information should only contain upvars"),
-    };
-    let mut curr_string = name;
-
-    for (i, proj) in place.projections.iter().enumerate() {
-        match proj.kind {
-            HirProjectionKind::Deref => {
-                curr_string = format!("*{}", curr_string);
-            }
-            HirProjectionKind::Field(idx, variant) => match place.ty_before_projection(i).kind() {
-                ty::Adt(def, ..) => {
-                    curr_string = format!(
-                        "{}.{}",
-                        curr_string,
-                        def.variants[variant].fields[idx as usize].ident.name.as_str()
-                    );
-                }
-                ty::Tuple(_) => {
-                    curr_string = format!("{}.{}", curr_string, idx);
-                }
-                _ => {
-                    bug!(
-                        "Field projection applied to a type other than Adt or Tuple: {:?}.",
-                        place.ty_before_projection(i).kind()
-                    )
-                }
-            },
-            proj => bug!("{:?} unexpected because it isn't captured", proj),
-        }
-    }
-
-    curr_string.to_string()
-}
-
-/// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
-/// for a particular capture as well as identifying the part of the source code
-/// that triggered this capture to occur.
-#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub struct CaptureInfo<'tcx> {
-    /// Expr Id pointing to use that resulted in selecting the current capture kind
-    ///
-    /// Eg:
-    /// ```rust,no_run
-    /// let mut t = (0,1);
-    ///
-    /// let c = || {
-    ///     println!("{}",t); // L1
-    ///     t.1 = 4; // L2
-    /// };
-    /// ```
-    /// `capture_kind_expr_id` will point to the use on L2 and `path_expr_id` will point to the
-    /// use on L1.
-    ///
-    /// If the user doesn't enable feature `capture_disjoint_fields` (RFC 2229) then, it is
-    /// possible that we don't see the use of a particular place resulting in capture_kind_expr_id being
-    /// None. In such case we fallback on uvpars_mentioned for span.
-    ///
-    /// Eg:
-    /// ```rust,no_run
-    /// let x = 5;
-    ///
-    /// let c = || {
-    ///     let _ = x
-    /// };
-    /// ```
-    ///
-    /// In this example, if `capture_disjoint_fields` is **not** set, then x will be captured,
-    /// but we won't see it being used during capture analysis, since it's essentially a discard.
-    pub capture_kind_expr_id: Option<hir::HirId>,
-    /// Expr Id pointing to use that resulted the corresponding place being captured
-    ///
-    /// See `capture_kind_expr_id` for example.
-    ///
-    pub path_expr_id: Option<hir::HirId>,
-
-    /// Capture mode that was selected
-    pub capture_kind: UpvarCapture<'tcx>,
-}
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
@@ -1652,39 +1515,6 @@ impl<'tcx> FieldDef {
     /// via the second field of `TyKind::AdtDef`.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
-    }
-}
-
-impl BorrowKind {
-    pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
-        match m {
-            hir::Mutability::Mut => MutBorrow,
-            hir::Mutability::Not => ImmBorrow,
-        }
-    }
-
-    /// Returns a mutability `m` such that an `&m T` pointer could be used to obtain this borrow
-    /// kind. Because borrow kinds are richer than mutabilities, we sometimes have to pick a
-    /// mutability that is stronger than necessary so that it at least *would permit* the borrow in
-    /// question.
-    pub fn to_mutbl_lossy(self) -> hir::Mutability {
-        match self {
-            MutBorrow => hir::Mutability::Mut,
-            ImmBorrow => hir::Mutability::Not,
-
-            // We have no type corresponding to a unique imm borrow, so
-            // use `&mut`. It gives all the capabilities of an `&uniq`
-            // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::Mutability::Mut,
-        }
-    }
-
-    pub fn to_user_str(&self) -> &'static str {
-        match *self {
-            MutBorrow => "mutable",
-            ImmBorrow => "immutable",
-            UniqueImmBorrow => "uniquely immutable",
-        }
     }
 }
 
