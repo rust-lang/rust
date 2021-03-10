@@ -119,7 +119,6 @@ macro_rules! language_item_table {
 
             $(
                 #[doc = concat!("Returns the [`DefId`] of the `", stringify!($name), "` lang item if it is defined.")]
-                #[allow(dead_code)]
                 pub fn $method(&self) -> Option<DefId> {
                     self.items[LangItem::$variant as usize]
                 }
