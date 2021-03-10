@@ -2215,7 +2215,7 @@ impl<T> [T] {
     /// Binary searches this sorted slice with a key extraction function.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
-    /// `sort_by_key` using the same key extraction function.
+    /// [`sort_by_key`] using the same key extraction function.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2225,6 +2225,7 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`sort_by_key`]: slice::sort_by_key
     /// [`binary_search`]: slice::binary_search
     /// [`binary_search_by`]: slice::binary_search_by
     /// [`partition_point`]: slice::partition_point
@@ -2247,6 +2248,10 @@ impl<T> [T] {
     /// let r = s.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
+    // Lint rustdoc::broken_intra_doc_links is allowed as `slice::sort_by_key` is
+    // in crate `alloc`, and as such doesn't exists yet when building `core`
+    // links to downstream crate: https://github.com/rust-lang/rust/issues/74481
+    #[cfg_attr(not(bootstrap), allow(rustdoc::broken_intra_doc_links))]
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
