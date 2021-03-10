@@ -89,12 +89,16 @@ crate struct Cache {
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     crate document_private: bool,
 
+    /// Crates marked with [`#[doc(masked)]`][doc_masked].
+    ///
+    /// [doc_masked]: https://doc.rust-lang.org/nightly/unstable-book/language-features/doc-masked.html
+    crate masked_crates: FxHashSet<CrateNum>,
+
     // Private fields only used when initially crawling a crate to build a cache
     stack: Vec<String>,
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
     stripped_mod: bool,
-    masked_crates: FxHashSet<CrateNum>,
 
     crate search_index: Vec<IndexItem>,
     crate deref_trait_did: Option<DefId>,
@@ -146,7 +150,6 @@ impl Cache {
         // Crawl the crate to build various caches used for the output
         debug!(?self.crate_version);
         self.traits = krate.external_traits.take();
-        self.masked_crates = mem::take(&mut krate.masked_crates);
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code

@@ -57,7 +57,6 @@ crate struct Crate {
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
-    crate masked_crates: FxHashSet<CrateNum>,
     crate collapsed: bool,
 }
 
