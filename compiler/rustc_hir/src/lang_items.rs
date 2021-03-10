@@ -74,7 +74,8 @@ macro_rules! language_item_table {
             }
         }
 
-        /// All of the language items in the current crate, defined or not.
+        /// All of the language items, defined or not.
+        /// Defined lang items can come from the current crate or its dependencies.
         #[derive(HashStable_Generic, Debug)]
         pub struct LanguageItems {
             /// Mappings from lang items to their possibly found [`DefId`]s.
