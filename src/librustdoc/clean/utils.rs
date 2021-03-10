@@ -7,7 +7,6 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -38,7 +37,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
-    let mut masked_crates = FxHashSet::default();
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {
@@ -49,7 +47,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                     && (it.attrs.has_doc_flag(sym::masked)
                         || cx.tcx.is_compiler_builtins(it.def_id.krate))
                 {
-                    masked_crates.insert(it.def_id.krate);
+                    cx.cache.masked_crates.insert(it.def_id.krate);
                 }
             }
         }
@@ -82,7 +80,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
         externs,
         primitives,
         external_traits: cx.external_traits.clone(),
-        masked_crates,
         collapsed: false,
     }
 }
