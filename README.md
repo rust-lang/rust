@@ -90,7 +90,7 @@ build.
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
 
-[msys2]: https://msys2.github.io/
+[msys2]: https://www.msys2.org/
 
 1. Grab the latest [MSYS2 installer][msys2] and go through the installer.
 
