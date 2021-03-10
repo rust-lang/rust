@@ -799,8 +799,18 @@ pub(crate) fn handle_rename(
     let _p = profile::span("handle_rename");
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    let change =
+    let mut change =
         snap.analysis.rename(position, &*params.new_name)?.map_err(to_proto::rename_error)?;
+
+    // this is kind of a hack to prevent double edits from happening when moving files
+    // When a module gets renamed by renaming the mod declaration this causes the file to move
+    // which in turn will trigger a WillRenameFiles request to the server for which we reply with a
+    // a second identical set of renames, the client will then apply both edits causing incorrect edits
+    // with this we only emit source_file_edits in the WillRenameFiles response which will do the rename instead
+    // See https://github.com/microsoft/vscode-languageserver-node/issues/752 for more info
+    if !change.file_system_edits.is_empty() && snap.config.will_rename() {
+        change.source_file_edits.clear();
+    }
     let workspace_edit = to_proto::workspace_edit(&snap, change)?;
     Ok(Some(workspace_edit))
 }
