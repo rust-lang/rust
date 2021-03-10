@@ -503,13 +503,13 @@ impl From<clean::Import> for Import {
         use clean::ImportKind::*;
         match import.kind {
             Simple(s) => Import {
-                span: import.source.path.whole_name(),
+                source: import.source.path.whole_name(),
                 name: s.to_string(),
                 id: import.source.did.map(from_def_id),
                 glob: false,
             },
             Glob => Import {
-                span: import.source.path.whole_name(),
+                source: import.source.path.whole_name(),
                 name: import.source.path.last_name().to_string(),
                 id: import.source.did.map(from_def_id),
                 glob: true,

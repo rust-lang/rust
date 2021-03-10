@@ -461,7 +461,7 @@ pub struct Impl {
 #[serde(rename_all = "snake_case")]
 pub struct Import {
     /// The full path being imported.
-    pub span: String,
+    pub source: String,
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,
