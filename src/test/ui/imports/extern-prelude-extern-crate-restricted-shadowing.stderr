@@ -24,10 +24,10 @@ LL |         extern crate std as Vec;
 LL | define_vec!();
    | -------------- in this macro invocation
 note: `Vec` could also refer to the struct defined here
-  --> $SRC_DIR/std/src/prelude/v1.rs:LL:COL
+  --> $SRC_DIR/std/src/prelude/mod.rs:LL:COL
    |
-LL | pub use crate::vec::Vec;
-   |         ^^^^^^^^^^^^^^^
+LL |     pub use super::v1::*;
+   |             ^^^^^^^^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
