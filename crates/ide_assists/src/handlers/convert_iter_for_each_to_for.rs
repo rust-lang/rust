@@ -28,50 +28,54 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 /// }
 /// ```
 pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let closure;
+    let method;
 
-    let total_expr = match ctx.find_node_at_offset::<ast::Expr>()? {
-        ast::Expr::MethodCallExpr(expr) => {
-            closure = match expr.arg_list()?.args().next()? {
-                ast::Expr::ClosureExpr(expr) => expr,
-                _ => {
-                    return None;
-                }
-            };
+    let stmt = if let Some(stmt) = ctx.find_node_at_offset::<ast::ExprStmt>() {
+        method = ast::MethodCallExpr::cast(stmt.syntax().first_child()?)?;
+        Some(stmt)
+    } else {
+        method = match ctx.find_node_at_offset::<ast::Expr>()? {
+            ast::Expr::MethodCallExpr(expr) => expr,
+            ast::Expr::ClosureExpr(expr) => {
+                ast::MethodCallExpr::cast(expr.syntax().ancestors().nth(2)?)?
+            }
+            _ => {
+                return None;
+            }
+        };
+        None
+    };
 
-            expr
-        }
-        ast::Expr::ClosureExpr(expr) => {
-            closure = expr;
-            ast::MethodCallExpr::cast(closure.syntax().ancestors().nth(2)?)?
-        }
+    let closure = match method.arg_list()?.args().next()? {
+        ast::Expr::ClosureExpr(expr) => expr,
         _ => {
             return None;
         }
     };
 
-    let (total_expr, parent) = validate_method_call_expr(&ctx.sema, total_expr)?;
+    let (method, parent) = validate_method_call_expr(&ctx.sema, method)?;
 
     let param_list = closure.param_list()?;
     let param = param_list.params().next()?.pat()?;
     let body = closure.body()?;
 
+    let indent = stmt.as_ref().map_or(method.indent_level(), |stmt| stmt.indent_level());
+    let syntax = stmt.as_ref().map_or(method.syntax(), |stmt| stmt.syntax());
+
     acc.add(
         AssistId("convert_iter_for_each_to_for", AssistKind::RefactorRewrite),
         "Replace this `Iterator::for_each` with a for loop",
-        total_expr.syntax().text_range(),
+        syntax.text_range(),
         |builder| {
-            let original_indentation = total_expr.indent_level();
-
             let block = match body {
                 ast::Expr::BlockExpr(block) => block,
                 _ => make::block_expr(Vec::new(), Some(body)),
             }
             .reset_indent()
-            .indent(original_indentation);
+            .indent(indent);
 
             let expr_for_loop = make::expr_for_loop(param, parent, block);
-            builder.replace_ast(total_expr, expr_for_loop)
+            builder.replace(syntax.text_range(), expr_for_loop.syntax().text())
         },
     )
 }
@@ -125,7 +129,7 @@ impl Empty {
     }
 
     #[test]
-    fn test_for_each_in_method() {
+    fn test_for_each_in_method_stmt() {
         check_assist_with_fixtures(
             r#"
 use empty_iter::*;
@@ -141,14 +145,37 @@ fn main() {
     let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y);
-    };
+    }
 }
 "#,
         )
     }
 
     #[test]
-    fn test_for_each_without_braces() {
+    fn test_for_each_in_method() {
+        check_assist_with_fixtures(
+            r#"
+use empty_iter::*;
+fn main() {
+    let x = Empty;
+    x.iter().$0for_each(|(x, y)| {
+        println!("x: {}, y: {}", x, y);
+    })
+}"#,
+            r#"
+use empty_iter::*;
+fn main() {
+    let x = Empty;
+    for (x, y) in x.iter() {
+        println!("x: {}, y: {}", x, y);
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_for_each_without_braces_stmt() {
         check_assist_with_fixtures(
             r#"
 use empty_iter::*;
@@ -162,14 +189,14 @@ fn main() {
     let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y)
-    };
+    }
 }
 "#,
         )
     }
 
     #[test]
-    fn test_for_each_in_closure() {
+    fn test_for_each_in_closure_stmt() {
         check_assist_with_fixtures(
             r#"
 use empty_iter::*;
@@ -183,7 +210,7 @@ fn main() {
     let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y)
-    };
+    }
 }
 "#,
         )
