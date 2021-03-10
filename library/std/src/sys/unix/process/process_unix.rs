@@ -693,7 +693,7 @@ impl ExitStatusError {
 }
 
 #[cfg(target_os = "linux")]
-#[unstable(feature = "linux_pidfd", issue = "none")]
+#[unstable(feature = "linux_pidfd", issue = "82971")]
 impl crate::os::linux::process::ChildExt for crate::process::Child {
     fn pidfd(&self) -> io::Result<&PidFd> {
         self.handle
