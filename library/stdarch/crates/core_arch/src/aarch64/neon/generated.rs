@@ -175,6 +175,24 @@ pub unsafe fn vceqzq_s64(a: int64x2_t) -> uint64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(cmeq))]
+pub unsafe fn vceqz_p8(a: poly8x8_t) -> uint8x8_t {
+    let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_eq(a, transmute(b))
+}
+
+/// Signed compare bitwise equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmeq))]
+pub unsafe fn vceqzq_p8(a: poly8x16_t) -> uint8x16_t {
+    let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    simd_eq(a, transmute(b))
+}
+
+/// Signed compare bitwise equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmeq))]
 pub unsafe fn vceqz_p64(a: poly64x1_t) -> uint64x1_t {
     let b: i64x1 = i64x1::new(0);
     simd_eq(a, transmute(b))
@@ -1275,6 +1293,22 @@ mod test {
         let a: i64x2 = i64x2::new(-9223372036854775808, 0x00);
         let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
         let r: u64x2 = transmute(vceqzq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vceqz_p8() {
+        let a: i8x8 = i8x8::new(-128, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06);
+        let e: u8x8 = u8x8::new(0, 0xFF, 0, 0, 0, 0, 0, 0);
+        let r: u8x8 = transmute(vceqz_p8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vceqzq_p8() {
+        let a: i8x16 = i8x16::new(-128, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x7F);
+        let e: u8x16 = u8x16::new(0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x16 = transmute(vceqzq_p8(transmute(a)));
         assert_eq!(r, e);
     }
 

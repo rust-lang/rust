@@ -158,7 +158,7 @@ aarch64 = cmeq
 generate uint64x*_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t, poly64x1_t:uint64x1_t, poly64x2_t:uint64x2_t
 
 arm = vceq.
-generate uint*_t, int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t
+generate uint*_t, int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, poly8x8_t:uint8x8_t, poly8x16_t:uint8x16_t
 
 /// Floating-point compare equal
 name = vceq
@@ -182,7 +182,7 @@ fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
 
 aarch64 = cmeq
-generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t, poly64x1_t:uint64x1_t, poly64x2_t:uint64x2_t
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t, poly8x8_t:uint8x8_t, poly8x16_t:uint8x16_t, poly64x1_t:uint64x1_t, poly64x2_t:uint64x2_t
 
 /// Unsigned compare bitwise equal to zero
 name = vceqz
@@ -218,7 +218,7 @@ aarch64 = cmtst
 generate int64x1_t:uint64x1_t, int64x2_t:uint64x2_t, poly64x1_t:uint64x1_t, poly64x2_t:uint64x2_t
 
 arm = vtst
-generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, poly8x8_t:uint8x8_t, poly8x16_t:uint8x16_t
 
 /// Unsigned compare bitwise Test bits nonzero
 name = vtst
