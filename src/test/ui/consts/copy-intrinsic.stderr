@@ -33,5 +33,37 @@ LL | | };
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error: aborting due to 2 previous errors
+error: any use of this value will cause an error
+  --> $DIR/copy-intrinsic.rs:32:5
+   |
+LL | / const COPY_SIZE_OVERFLOW: () = unsafe {
+LL | |     let x = 0;
+LL | |     let mut y = 0;
+LL | |     ptr::copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy`
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/copy-intrinsic.rs:39:5
+   |
+LL | / const COPY_NONOVERLAPPING_SIZE_OVERFLOW: () = unsafe {
+LL | |     let x = 0;
+LL | |     let mut y = 0;
+LL | |     ptr::copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1));
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow computing total size of `copy_nonoverlapping`
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 4 previous errors
 

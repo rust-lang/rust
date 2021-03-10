@@ -235,6 +235,7 @@ fn test_short_markdown_summary() {
     t("code `let x = i32;` ...", "code <code>let x = i32;</code> …");
     t("type `Type<'static>` ...", "type <code>Type<'static></code> …");
     t("# top header", "top header");
+    t("# top header\n\nfollowed by a paragraph", "top header");
     t("## header", "header");
     t("first paragraph\n\nsecond paragraph", "first paragraph");
     t("```\nfn main() {}\n```", "");
