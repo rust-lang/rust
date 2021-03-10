@@ -38,7 +38,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
 
     builder.levels.id_to_set.reserve(krate.exported_macros.len() + 1);
 
-    let push = builder.levels.push(&krate.item.attrs, &store, true);
+    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
         builder.levels.register_id(macro_def.hir_id());
@@ -566,11 +566,12 @@ struct LintLevelMapBuilder<'a, 'tcx> {
 }
 
 impl LintLevelMapBuilder<'_, '_> {
-    fn with_lint_attrs<F>(&mut self, id: hir::HirId, attrs: &[ast::Attribute], f: F)
+    fn with_lint_attrs<F>(&mut self, id: hir::HirId, f: F)
     where
         F: FnOnce(&mut Self),
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
+        let attrs = self.tcx.hir().attrs(id);
         let push = self.levels.push(attrs, self.store, is_crate_hir);
         if push.changed {
             self.levels.register_id(id);
@@ -588,19 +589,19 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
+        self.with_lint_attrs(param.hir_id, |builder| {
             intravisit::walk_param(builder, param);
         });
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        self.with_lint_attrs(it.hir_id(), &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_item(builder, it);
         });
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.with_lint_attrs(it.hir_id(), &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_foreign_item(builder, it);
         })
     }
@@ -613,13 +614,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.with_lint_attrs(e.hir_id, &e.attrs, |builder| {
+        self.with_lint_attrs(e.hir_id, |builder| {
             intravisit::walk_expr(builder, e);
         })
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
-        self.with_lint_attrs(s.hir_id, &s.attrs, |builder| {
+        self.with_lint_attrs(s.hir_id, |builder| {
             intravisit::walk_struct_field(builder, s);
         })
     }
@@ -630,31 +631,31 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
-        self.with_lint_attrs(v.id, &v.attrs, |builder| {
+        self.with_lint_attrs(v.id, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
-        self.with_lint_attrs(l.hir_id, &l.attrs, |builder| {
+        self.with_lint_attrs(l.hir_id, |builder| {
             intravisit::walk_local(builder, l);
         })
     }
 
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        self.with_lint_attrs(a.hir_id, &a.attrs, |builder| {
+        self.with_lint_attrs(a.hir_id, |builder| {
             intravisit::walk_arm(builder, a);
         })
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.with_lint_attrs(trait_item.hir_id(), &trait_item.attrs, |builder| {
+        self.with_lint_attrs(trait_item.hir_id(), |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.with_lint_attrs(impl_item.hir_id(), &impl_item.attrs, |builder| {
+        self.with_lint_attrs(impl_item.hir_id(), |builder| {
             intravisit::walk_impl_item(builder, impl_item);
         });
     }

@@ -6,7 +6,7 @@ use crate::{itemlikevisit, LangItem};
 
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{self as ast, CrateSugar, LlvmAsmDialect};
-use rustc_ast::{AttrVec, Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
+use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, StrStyle, UintTy};
 pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -469,7 +469,6 @@ pub enum GenericParamKind<'hir> {
 pub struct GenericParam<'hir> {
     pub hir_id: HirId,
     pub name: ParamName,
-    pub attrs: &'hir [Attribute],
     pub bounds: GenericBounds<'hir>,
     pub span: Span,
     pub pure_wrt_drop: bool,
@@ -630,7 +629,6 @@ pub struct ModuleItems {
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct CrateItem<'hir> {
     pub module: Mod<'hir>,
-    pub attrs: &'hir [Attribute],
     pub span: Span,
 }
 
@@ -675,6 +673,9 @@ pub struct Crate<'hir> {
     pub proc_macros: Vec<HirId>,
 
     pub trait_map: BTreeMap<HirId, Vec<TraitCandidate>>,
+
+    /// Collected attributes from HIR nodes.
+    pub attrs: BTreeMap<HirId, &'hir [Attribute]>,
 }
 
 impl Crate<'hir> {
@@ -766,7 +767,6 @@ impl Crate<'_> {
 pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
-    pub attrs: &'hir [Attribute],
     pub def_id: LocalDefId,
     pub span: Span,
     pub ast: ast::MacroDef,
@@ -1166,16 +1166,6 @@ pub enum StmtKind<'hir> {
     Semi(&'hir Expr<'hir>),
 }
 
-impl<'hir> StmtKind<'hir> {
-    pub fn attrs(&self, get_item: impl FnOnce(ItemId) -> &'hir Item<'hir>) -> &'hir [Attribute] {
-        match *self {
-            StmtKind::Local(ref l) => &l.attrs,
-            StmtKind::Item(ref item_id) => &get_item(*item_id).attrs,
-            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => &e.attrs,
-        }
-    }
-}
-
 /// Represents a `let` statement (i.e., `let <pat>:<ty> = <expr>;`).
 #[derive(Debug, HashStable_Generic)]
 pub struct Local<'hir> {
@@ -1186,7 +1176,6 @@ pub struct Local<'hir> {
     pub init: Option<&'hir Expr<'hir>>,
     pub hir_id: HirId,
     pub span: Span,
-    pub attrs: AttrVec,
     /// Can be `ForLoopDesugar` if the `let` statement is part of a `for` loop
     /// desugaring. Otherwise will be `Normal`.
     pub source: LocalSource,
@@ -1199,7 +1188,6 @@ pub struct Arm<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
-    pub attrs: &'hir [Attribute],
     /// If this pattern and the optional guard matches, then `body` is evaluated.
     pub pat: &'hir Pat<'hir>,
     /// Optional guard clause.
@@ -1458,7 +1446,6 @@ pub struct AnonConst {
 pub struct Expr<'hir> {
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
-    pub attrs: AttrVec,
     pub span: Span,
 }
 
@@ -2040,7 +2027,6 @@ impl TraitItemId {
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -2103,7 +2089,6 @@ pub struct ImplItem<'hir> {
     pub def_id: LocalDefId,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
-    pub attrs: &'hir [Attribute],
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
@@ -2433,7 +2418,6 @@ pub struct LlvmInlineAsm<'hir> {
 /// Represents a parameter in a function header.
 #[derive(Debug, HashStable_Generic)]
 pub struct Param<'hir> {
-    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub pat: &'hir Pat<'hir>,
     pub ty_span: Span,
@@ -2551,8 +2535,6 @@ pub struct Variant<'hir> {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    /// Attributes of the variant.
-    pub attrs: &'hir [Attribute],
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
     pub id: HirId,
     /// Fields and constructor id of the variant.
@@ -2646,7 +2628,6 @@ pub struct StructField<'hir> {
     pub vis: Visibility<'hir>,
     pub hir_id: HirId,
     pub ty: &'hir Ty<'hir>,
-    pub attrs: &'hir [Attribute],
 }
 
 impl StructField<'_> {
@@ -2715,7 +2696,6 @@ impl ItemId {
 pub struct Item<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
@@ -2932,7 +2912,6 @@ pub struct ForeignItemRef<'hir> {
 #[derive(Debug)]
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
-    pub attrs: &'hir [Attribute],
     pub kind: ForeignItemKind<'hir>,
     pub def_id: LocalDefId,
     pub span: Span,
@@ -3091,13 +3070,13 @@ impl<'hir> Node<'hir> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Block<'static>, 48);
-    rustc_data_structures::static_assert_size!(super::Expr<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 200);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 144);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 168);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 152);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 152);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
 }

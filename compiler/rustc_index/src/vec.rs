@@ -695,9 +695,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
         IndexVec { raw: self.raw, _marker: PhantomData }
     }
-}
 
-impl<I: Idx, T: Clone> IndexVec<I, T> {
     /// Grows the index vector so that it contains an entry for
     /// `elem`; if that is already true, then has no
     /// effect. Otherwise, inserts new values as needed by invoking
@@ -711,14 +709,16 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.raw.resize(new_len, value)
-    }
-
-    #[inline]
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
+    }
+}
+
+impl<I: Idx, T: Clone> IndexVec<I, T> {
+    #[inline]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.raw.resize(new_len, value)
     }
 }
 

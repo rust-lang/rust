@@ -139,11 +139,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for VisibilityKind<'_>
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let TraitItem { def_id: _, ident, ref attrs, ref generics, ref kind, span } = *self;
+        let TraitItem { def_id: _, ident, ref generics, ref kind, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
@@ -153,22 +152,13 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let ImplItem {
-            def_id: _,
-            ident,
-            ref vis,
-            defaultness,
-            ref attrs,
-            ref generics,
-            ref kind,
-            span,
-        } = *self;
+        let ImplItem { def_id: _, ident, ref vis, defaultness, ref generics, ref kind, span } =
+            *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
@@ -178,11 +168,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let ForeignItem { def_id: _, ident, ref attrs, ref kind, span, ref vis } = *self;
+        let ForeignItem { def_id: _, ident, ref kind, span, ref vis } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
@@ -192,11 +181,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Item { ident, ref attrs, def_id: _, ref kind, ref vis, span } = *self;
+        let Item { ident, def_id: _, ref kind, ref vis, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
@@ -206,11 +194,10 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for MacroDef<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let MacroDef { ident, ref attrs, def_id: _, ref ast, ref vis, span } = *self;
+        let MacroDef { ident, def_id: _, ref ast, ref vis, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
             ast.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);

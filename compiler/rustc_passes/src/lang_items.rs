@@ -13,7 +13,6 @@ use crate::weak_lang_items;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::Attribute;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -30,29 +29,21 @@ struct LanguageItemCollector<'tcx> {
 
 impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        self.check_for_lang(Target::from_item(item), item.hir_id(), item.attrs);
+        self.check_for_lang(Target::from_item(item), item.hir_id());
 
         if let hir::ItemKind::Enum(def, ..) = &item.kind {
             for variant in def.variants {
-                self.check_for_lang(Target::Variant, variant.id, variant.attrs);
+                self.check_for_lang(Target::Variant, variant.id);
             }
         }
     }
 
     fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
-        self.check_for_lang(
-            Target::from_trait_item(trait_item),
-            trait_item.hir_id(),
-            trait_item.attrs,
-        )
+        self.check_for_lang(Target::from_trait_item(trait_item), trait_item.hir_id())
     }
 
     fn visit_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) {
-        self.check_for_lang(
-            target_from_impl_item(self.tcx, impl_item),
-            impl_item.hir_id(),
-            impl_item.attrs,
-        )
+        self.check_for_lang(target_from_impl_item(self.tcx, impl_item), impl_item.hir_id())
     }
 
     fn visit_foreign_item(&mut self, _: &hir::ForeignItem<'_>) {}
@@ -63,7 +54,8 @@ impl LanguageItemCollector<'tcx> {
         LanguageItemCollector { tcx, items: LanguageItems::new() }
     }
 
-    fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId, attrs: &[Attribute]) {
+    fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId) {
+        let attrs = self.tcx.hir().attrs(hir_id);
         let check_name = |attr, sym| self.tcx.sess.check_name(attr, sym);
         if let Some((value, span)) = extract(check_name, &attrs) {
             match ITEM_REFS.get(&value).cloned() {

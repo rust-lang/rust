@@ -114,6 +114,8 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     generator_kind: Option<hir::GeneratorKind>,
 
+    attrs: BTreeMap<hir::HirId, &'hir [Attribute]>,
+
     /// When inside an `async` context, this is the `HirId` of the
     /// `task_context` local bound to the resume argument of the generator.
     task_context: Option<hir::HirId>,
@@ -309,6 +311,7 @@ pub fn lower_crate<'a, 'hir>(
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         modules: BTreeMap::new(),
+        attrs: BTreeMap::default(),
         exported_macros: Vec::new(),
         non_exported_macro_attrs: Vec::new(),
         catch_scopes: Vec::new(),
@@ -565,7 +568,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.items, c.span);
-        let attrs = self.lower_attrs(&c.attrs);
+        self.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
         let body_ids = body_ids(&self.bodies);
         let proc_macros =
             c.proc_macros.iter().map(|id| self.node_id_to_hir_id[*id].unwrap()).collect();
@@ -592,8 +595,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.resolver.definitions().init_def_id_to_hir_id_mapping(def_id_to_hir_id);
 
+        #[cfg(debug_assertions)]
+        for (&id, attrs) in self.attrs.iter() {
+            // Verify that we do not store empty slices in the map.
+            if attrs.is_empty() {
+                panic!("Stored empty attributes for {:?}", id);
+            }
+        }
+
         hir::Crate {
-            item: hir::CrateItem { module, attrs, span: c.span },
+            item: hir::CrateItem { module, span: c.span },
             exported_macros: self.arena.alloc_from_iter(self.exported_macros),
             non_exported_macro_attrs: self.arena.alloc_from_iter(self.non_exported_macro_attrs),
             items: self.items,
@@ -606,6 +617,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             modules: self.modules,
             proc_macros,
             trait_map,
+            attrs: self.attrs,
         }
     }
 
@@ -834,7 +846,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericParam {
             hir_id: self.lower_node_id(node_id),
             name: hir_name,
-            attrs: &[],
             bounds: &[],
             span,
             pure_wrt_drop: false,
@@ -967,11 +978,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
-        self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)))
+    fn lower_attrs(&mut self, id: hir::HirId, attrs: &[Attribute]) -> Option<&'hir [Attribute]> {
+        if attrs.is_empty() {
+            None
+        } else {
+            let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
+            debug_assert!(!ret.is_empty());
+            self.attrs.insert(id, ret);
+            Some(ret)
+        }
     }
 
-    fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
+    fn lower_attr(&self, attr: &Attribute) -> Attribute {
         // Note that we explicitly do not walk the path. Since we don't really
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
@@ -991,7 +1009,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Attribute { kind, id: attr.id, style: attr.style, span: attr.span }
     }
 
-    fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
+    fn alias_attrs(&mut self, id: hir::HirId, target_id: hir::HirId) {
+        if let Some(&a) = self.attrs.get(&target_id) {
+            debug_assert!(!a.is_empty());
+            self.attrs.insert(id, a);
+        }
+    }
+
+    fn lower_mac_args(&self, args: &MacArgs) -> MacArgs {
         match *args {
             MacArgs::Empty => MacArgs::Empty,
             MacArgs::Delimited(dspan, delim, ref tokens) => {
@@ -1444,7 +1469,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
-                            attrs: &[],
                             bounds: hir_bounds,
                             span,
                             kind: hir::GenericParamKind::Type {
@@ -1572,7 +1596,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let opaque_ty_item = hir::Item {
             def_id: opaque_ty_id,
             ident: Ident::invalid(),
-            attrs: Default::default(),
             kind: opaque_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
             span: opaque_ty_span,
@@ -1733,7 +1756,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         name,
                         span: lifetime.span,
                         pure_wrt_drop: false,
-                        attrs: &[],
                         bounds: &[],
                         kind: hir::GenericParamKind::Lifetime { kind },
                     });
@@ -1790,14 +1812,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         });
         let init = l.init.as_ref().map(|e| self.lower_expr(e));
+        let hir_id = self.lower_node_id(l.id);
+        self.lower_attrs(hir_id, &l.attrs);
         (
             hir::Local {
-                hir_id: self.lower_node_id(l.id),
+                hir_id,
                 ty,
                 pat: self.lower_pat(&l.pat),
                 init,
                 span: l.span,
-                attrs: l.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
                 source: hir::LocalSource::Normal,
             },
             ids,
@@ -2300,12 +2323,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         };
 
+        let hir_id = self.lower_node_id(param.id);
+        self.lower_attrs(hir_id, &param.attrs);
         hir::GenericParam {
-            hir_id: self.lower_node_id(param.id),
+            hir_id,
             name,
             span: param.ident.span,
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
-            attrs: self.lower_attrs(&param.attrs),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,
         }
@@ -2426,7 +2450,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
-        let kind = match s.kind {
+        let (hir_id, kind) = match s.kind {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
                 let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
@@ -2439,9 +2463,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.stmt(s.span, hir::StmtKind::Item(item_id))
                     })
                     .collect();
+                let hir_id = self.lower_node_id(s.id);
+                self.alias_attrs(hir_id, l.hir_id);
                 ids.push({
                     hir::Stmt {
-                        hir_id: self.lower_node_id(s.id),
+                        hir_id,
                         kind: hir::StmtKind::Local(self.arena.alloc(l)),
                         span: s.span,
                     }
@@ -2464,12 +2490,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     })
                     .collect();
             }
-            StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.lower_expr(e)),
-            StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.lower_expr(e)),
+            StmtKind::Expr(ref e) => {
+                let e = self.lower_expr(e);
+                let hir_id = self.lower_node_id(s.id);
+                self.alias_attrs(hir_id, e.hir_id);
+                (hir_id, hir::StmtKind::Expr(e))
+            }
+            StmtKind::Semi(ref e) => {
+                let e = self.lower_expr(e);
+                let hir_id = self.lower_node_id(s.id);
+                self.alias_attrs(hir_id, e.hir_id);
+                (hir_id, hir::StmtKind::Semi(e))
+            }
             StmtKind::Empty => return smallvec![],
             StmtKind::MacCall(..) => panic!("shouldn't exist here"),
         };
-        smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]
+        smallvec![hir::Stmt { hir_id, kind, span: s.span }]
     }
 
     fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
@@ -2513,13 +2549,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn stmt_let_pat(
         &mut self,
-        attrs: AttrVec,
+        attrs: Option<&'hir [Attribute]>,
         span: Span,
         init: Option<&'hir hir::Expr<'hir>>,
         pat: &'hir hir::Pat<'hir>,
         source: hir::LocalSource,
     ) -> hir::Stmt<'hir> {
-        let local = hir::Local { attrs, hir_id: self.next_id(), init, pat, source, span, ty: None };
+        let hir_id = self.next_id();
+        if let Some(a) = attrs {
+            debug_assert!(!a.is_empty());
+            self.attrs.insert(hir_id, a);
+        }
+        let local = hir::Local { hir_id, init, pat, source, span, ty: None };
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 

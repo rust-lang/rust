@@ -76,8 +76,8 @@ impl CognitiveComplexity {
 
         if rust_cc > self.limit.limit() {
             let fn_span = match kind {
-                FnKind::ItemFn(ident, _, _, _, _) | FnKind::Method(ident, _, _, _) => ident.span,
-                FnKind::Closure(_) => {
+                FnKind::ItemFn(ident, _, _, _) | FnKind::Method(ident, _, _) => ident.span,
+                FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
                     let pos = snippet_opt(cx, header_span).and_then(|snip| {
                         let low_offset = snip.find('|')?;

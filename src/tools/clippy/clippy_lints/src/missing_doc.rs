@@ -127,7 +127,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
-        self.check_missing_docs_attrs(cx, &krate.item.attrs, krate.item.span, "the", "crate");
+        let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
+        self.check_missing_docs_attrs(cx, attrs, krate.item.span, "the", "crate");
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
@@ -160,13 +161,15 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, &it.attrs, it.span, article, desc);
+        let attrs = cx.tcx.hir().attrs(it.hir_id());
+        self.check_missing_docs_attrs(cx, attrs, it.span, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, &trait_item.attrs, trait_item.span, article, desc);
+        let attrs = cx.tcx.hir().attrs(trait_item.hir_id());
+        self.check_missing_docs_attrs(cx, attrs, trait_item.span, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
@@ -181,16 +184,19 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, &impl_item.attrs, impl_item.span, article, desc);
+        let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
+        self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::StructField<'_>) {
         if !sf.is_positional() {
-            self.check_missing_docs_attrs(cx, &sf.attrs, sf.span, "a", "struct field");
+            let attrs = cx.tcx.hir().attrs(sf.hir_id);
+            self.check_missing_docs_attrs(cx, attrs, sf.span, "a", "struct field");
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, &v.attrs, v.span, "a", "variant");
+        let attrs = cx.tcx.hir().attrs(v.id);
+        self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
     }
 }

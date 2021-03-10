@@ -62,12 +62,12 @@ impl CheckAttrVisitor<'tcx> {
     fn check_attributes(
         &self,
         hir_id: HirId,
-        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
         let mut is_valid = true;
+        let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             is_valid &= if self.tcx.sess.check_name(attr, sym::inline) {
                 self.check_inline(hir_id, attr, span, target)
@@ -1213,53 +1213,29 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
-        self.check_attributes(
-            item.hir_id(),
-            item.attrs,
-            &item.span,
-            target,
-            Some(ItemLike::Item(item)),
-        );
+        self.check_attributes(item.hir_id(), &item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
         let target = Target::from_generic_param(generic_param);
-        self.check_attributes(
-            generic_param.hir_id,
-            generic_param.attrs,
-            &generic_param.span,
-            target,
-            None,
-        );
+        self.check_attributes(generic_param.hir_id, &generic_param.span, target, None);
         intravisit::walk_generic_param(self, generic_param)
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
-        self.check_attributes(
-            trait_item.hir_id(),
-            &trait_item.attrs,
-            &trait_item.span,
-            target,
-            None,
-        );
+        self.check_attributes(trait_item.hir_id(), &trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_struct_field(&mut self, struct_field: &'tcx hir::StructField<'tcx>) {
-        self.check_attributes(
-            struct_field.hir_id,
-            &struct_field.attrs,
-            &struct_field.span,
-            Target::Field,
-            None,
-        );
+        self.check_attributes(struct_field.hir_id, &struct_field.span, Target::Field, None);
         intravisit::walk_struct_field(self, struct_field);
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.check_attributes(arm.hir_id, &arm.attrs, &arm.span, Target::Arm, None);
+        self.check_attributes(arm.hir_id, &arm.span, Target::Arm, None);
         intravisit::walk_arm(self, arm);
     }
 
@@ -1267,7 +1243,6 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(
             f_item.hir_id(),
-            &f_item.attrs,
             &f_item.span,
             target,
             Some(ItemLike::ForeignItem(f_item)),
@@ -1277,14 +1252,14 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = target_from_impl_item(self.tcx, impl_item);
-        self.check_attributes(impl_item.hir_id(), &impl_item.attrs, &impl_item.span, target, None);
+        self.check_attributes(impl_item.hir_id(), &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         // When checking statements ignore expressions, they will be checked later.
         if let hir::StmtKind::Local(ref l) = stmt.kind {
-            self.check_attributes(l.hir_id, &l.attrs, &stmt.span, Target::Statement, None);
+            self.check_attributes(l.hir_id, &stmt.span, Target::Statement, None);
         }
         intravisit::walk_stmt(self, stmt)
     }
@@ -1295,7 +1270,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
             _ => Target::Expression,
         };
 
-        self.check_attributes(expr.hir_id, &expr.attrs, &expr.span, target, None);
+        self.check_attributes(expr.hir_id, &expr.span, target, None);
         intravisit::walk_expr(self, expr)
     }
 
@@ -1305,23 +1280,17 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         generics: &'tcx hir::Generics<'tcx>,
         item_id: HirId,
     ) {
-        self.check_attributes(variant.id, variant.attrs, &variant.span, Target::Variant, None);
+        self.check_attributes(variant.id, &variant.span, Target::Variant, None);
         intravisit::walk_variant(self, variant, generics, item_id)
     }
 
     fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
-        self.check_attributes(
-            macro_def.hir_id(),
-            macro_def.attrs,
-            &macro_def.span,
-            Target::MacroDef,
-            None,
-        );
+        self.check_attributes(macro_def.hir_id(), &macro_def.span, Target::MacroDef, None);
         intravisit::walk_macro_def(self, macro_def);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.check_attributes(param.hir_id, param.attrs, &param.span, Target::Param, None);
+        self.check_attributes(param.hir_id, &param.span, Target::Param, None);
 
         intravisit::walk_param(self, param);
     }
@@ -1389,13 +1358,7 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     tcx.hir().visit_exported_macros_in_krate(check_attr_visitor);
     check_invalid_macro_level_attr(tcx, tcx.hir().krate().non_exported_macro_attrs);
     if module_def_id.is_top_level_module() {
-        check_attr_visitor.check_attributes(
-            CRATE_HIR_ID,
-            tcx.hir().krate_attrs(),
-            &DUMMY_SP,
-            Target::Mod,
-            None,
-        );
+        check_attr_visitor.check_attributes(CRATE_HIR_ID, &DUMMY_SP, Target::Mod, None);
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
     }
 }

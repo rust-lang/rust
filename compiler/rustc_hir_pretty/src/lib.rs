@@ -16,6 +16,7 @@ use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::collections::BTreeMap;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
@@ -82,6 +83,7 @@ impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
 pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
+    attrs: &'a BTreeMap<hir::HirId, &'a [ast::Attribute]>,
     ann: &'a (dyn PpAnn + 'a),
 }
 
@@ -163,12 +165,12 @@ pub fn print_crate<'a>(
     input: String,
     ann: &'a dyn PpAnn,
 ) -> String {
-    let mut s = State::new_from_input(sm, filename, input, ann);
+    let mut s = State::new_from_input(sm, filename, input, &krate.attrs, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
 
-    s.print_mod(&krate.item.module, &krate.item.attrs);
+    s.print_mod(&krate.item.module, s.attrs(hir::CRATE_HIR_ID));
     s.print_remaining_comments();
     s.s.eof()
 }
@@ -178,9 +180,19 @@ impl<'a> State<'a> {
         sm: &'a SourceMap,
         filename: FileName,
         input: String,
+        attrs: &'a BTreeMap<hir::HirId, &[ast::Attribute]>,
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
-        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann }
+        State {
+            s: pp::mk_printer(),
+            comments: Some(Comments::new(sm, filename, input)),
+            attrs,
+            ann,
+        }
+    }
+
+    fn attrs(&self, id: hir::HirId) -> &'a [ast::Attribute] {
+        self.attrs.get(&id).map_or(&[], |la| *la)
     }
 }
 
@@ -188,7 +200,8 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::mk_printer(), comments: None, ann };
+    let mut printer =
+        State { s: pp::mk_printer(), comments: None, attrs: &BTreeMap::default(), ann };
     f(&mut printer);
     printer.s.eof()
 }
@@ -441,7 +454,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        self.print_outer_attributes(self.attrs(item.hir_id()));
         match item.kind {
             hir::ForeignItemKind::Fn(ref decl, ref arg_names, ref generics) => {
                 self.head("");
@@ -549,7 +562,8 @@ impl<'a> State<'a> {
     pub fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(&item.attrs);
+        let attrs = self.attrs(item.hir_id());
+        self.print_outer_attributes(attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -634,14 +648,14 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.nbsp();
                 self.bopen();
-                self.print_mod(_mod, &item.attrs);
+                self.print_mod(_mod, attrs);
                 self.bclose(item.span);
             }
             hir::ItemKind::ForeignMod { abi, items } => {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(item.attrs);
+                self.print_inner_attributes(self.attrs(item.hir_id()));
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
@@ -725,7 +739,7 @@ impl<'a> State<'a> {
 
                 self.s.space();
                 self.bopen();
-                self.print_inner_attributes(&item.attrs);
+                self.print_inner_attributes(attrs);
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
@@ -822,7 +836,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.attrs);
+            self.print_outer_attributes(self.attrs(v.id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -876,7 +890,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(&field.attrs);
+                        s.print_outer_attributes(s.attrs(field.hir_id));
                         s.print_visibility(&field.vis);
                         s.print_type(&field.ty)
                     });
@@ -898,7 +912,7 @@ impl<'a> State<'a> {
                 for field in struct_def.fields() {
                     self.hardbreak_if_not_bol();
                     self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(&field.attrs);
+                    self.print_outer_attributes(self.attrs(field.hir_id));
                     self.print_visibility(&field.vis);
                     self.print_ident(field.ident);
                     self.word_nbsp(":");
@@ -937,7 +951,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(&ti.attrs);
+        self.print_outer_attributes(self.attrs(ti.hir_id()));
         match ti.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
                 let vis =
@@ -976,7 +990,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(&ii.attrs);
+        self.print_outer_attributes(self.attrs(ii.hir_id()));
         self.print_defaultness(ii.defaultness);
 
         match ii.kind {
@@ -1321,7 +1335,7 @@ impl<'a> State<'a> {
 
     pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
-        self.print_outer_attributes(&expr.attrs);
+        self.print_outer_attributes(self.attrs(expr.hir_id));
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
@@ -2020,20 +2034,20 @@ impl<'a> State<'a> {
     }
 
     pub fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(&arg.attrs);
+        self.print_outer_attributes(self.attrs(arg.hir_id));
         self.print_pat(&arg.pat);
     }
 
     pub fn print_arm(&mut self, arm: &hir::Arm<'_>) {
         // I have no idea why this check is necessary, but here it
         // is :(
-        if arm.attrs.is_empty() {
+        if self.attrs(arm.hir_id).is_empty() {
             self.s.space();
         }
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(&arm.attrs);
+        self.print_outer_attributes(&self.attrs(arm.hir_id));
         self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref g) = arm.guard {

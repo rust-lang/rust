@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -60,7 +60,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     }
 
     // If the user wants no main function at all, then stop here.
-    if tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
+    if tcx.sess.contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 
@@ -80,10 +80,11 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
 
 // Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
 // (with `ast::Item`), so make sure to keep them in sync.
-fn entry_point_type(sess: &Session, item: &Item<'_>, at_root: bool) -> EntryPointType {
-    if sess.contains_name(&item.attrs, sym::start) {
+fn entry_point_type(ctxt: &EntryContext<'_, '_>, item: &Item<'_>, at_root: bool) -> EntryPointType {
+    let attrs = ctxt.map.attrs(item.hir_id());
+    if ctxt.session.contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if sess.contains_name(&item.attrs, sym::main) {
+    } else if ctxt.session.contains_name(attrs, sym::main) {
         EntryPointType::MainAttr
     } else if item.ident.name == sym::main {
         if at_root {
@@ -103,13 +104,14 @@ fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
 }
 
 fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
-    match entry_point_type(&ctxt.session, item, at_root) {
+    match entry_point_type(ctxt, item, at_root) {
         EntryPointType::None => (),
         _ if !matches!(item.kind, ItemKind::Fn(..)) => {
-            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::start) {
+            let attrs = ctxt.map.attrs(item.hir_id());
+            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.session, attr.span, "start");
             }
-            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::main) {
+            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::main) {
                 throw_attr_err(&ctxt.session, attr.span, "main");
             }
         }

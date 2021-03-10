@@ -168,7 +168,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
         // all codegen-specific attributes are `AssumedUsed` in rustc_ast::feature_gate.
-        all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
+        all_attrs.report_unchecked_attrs(dirty_clean_visitor.checked_attrs);
     })
 }
 
@@ -535,13 +535,14 @@ impl FindAllAttrs<'_, 'tcx> {
         false
     }
 
-    fn report_unchecked_attrs(&self, checked_attrs: &FxHashSet<ast::AttrId>) {
+    fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
                 self.tcx.sess.span_err(
                     attr.span,
                     "found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute",
                 );
+                checked_attrs.insert(attr.id);
             }
         }
     }
@@ -554,7 +555,7 @@ impl intravisit::Visitor<'tcx> for FindAllAttrs<'_, 'tcx> {
         intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }

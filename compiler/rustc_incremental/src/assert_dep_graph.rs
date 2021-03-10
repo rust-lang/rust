@@ -68,7 +68,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         let (if_this_changed, then_this_would_need) = {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
-            visitor.process_attrs(hir::CRATE_HIR_ID, &tcx.hir().krate().item.attrs);
+            visitor.process_attrs(hir::CRATE_HIR_ID);
             tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
@@ -113,9 +113,10 @@ impl IfThisChanged<'tcx> {
         value
     }
 
-    fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
+    fn process_attrs(&mut self, hir_id: hir::HirId) {
         let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
+        let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             if self.tcx.sess.check_name(attr, sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -167,22 +168,22 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.hir_id(), &item.attrs);
+        self.process_attrs(item.hir_id());
         intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.process_attrs(trait_item.hir_id(), &trait_item.attrs);
+        self.process_attrs(trait_item.hir_id());
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.process_attrs(impl_item.hir_id(), &impl_item.attrs);
+        self.process_attrs(impl_item.hir_id());
         intravisit::walk_impl_item(self, impl_item);
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
-        self.process_attrs(s.hir_id, &s.attrs);
+        self.process_attrs(s.hir_id);
         intravisit::walk_struct_field(self, s);
     }
 }

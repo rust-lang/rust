@@ -1239,7 +1239,8 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
                 let result = object_lifetime_defaults_for_item(tcx, generics);
 
                 // Debugging aid.
-                if tcx.sess.contains_name(&item.attrs, sym::rustc_object_lifetime_default) {
+                let attrs = tcx.hir().attrs(item.hir_id());
+                if tcx.sess.contains_name(attrs, sym::rustc_object_lifetime_default) {
                     let object_lifetime_default_reprs: String = result
                         .iter()
                         .map(|set| match *set {

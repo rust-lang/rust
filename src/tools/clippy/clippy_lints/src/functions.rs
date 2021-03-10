@@ -251,9 +251,9 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         hir_id: hir::HirId,
     ) {
         let unsafety = match kind {
-            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
-            intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
-            intravisit::FnKind::Closure(_) => return,
+            intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _) => unsafety,
+            intravisit::FnKind::Method(_, sig, _) => sig.header.unsafety,
+            intravisit::FnKind::Closure => return,
         };
 
         // don't warn for implementations, it's not their fault
@@ -267,9 +267,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                         ..
                     },
                     _,
-                    _,
                 )
-                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
+                | intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _) => {
                     self.check_arg_number(cx, decl, span.with_hi(decl.output.span().hi()))
                 },
                 _ => {},
@@ -281,7 +280,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        let attr = must_use_attr(&item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attr = must_use_attr(attrs);
         if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
             let is_public = cx.access_levels.is_exported(item.hir_id());
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -292,7 +292,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
                 return;
             }
-            if is_public && !is_proc_macro(cx.sess(), &item.attrs) && attr_by_name(&item.attrs, "no_mangle").is_none() {
+            if is_public && !is_proc_macro(cx.sess(), attrs) && attr_by_name(attrs, "no_mangle").is_none() {
                 check_must_use_candidate(
                     cx,
                     &sig.decl,
@@ -313,11 +313,12 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
             if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             } else if is_public
-                && !is_proc_macro(cx.sess(), &item.attrs)
+                && !is_proc_macro(cx.sess(), attrs)
                 && trait_ref_of_method(cx, item.hir_id()).is_none()
             {
                 check_must_use_candidate(
@@ -345,7 +346,8 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 check_result_unit_err(cx, &sig.decl, item.span, fn_header_span);
             }
 
-            let attr = must_use_attr(&item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let attr = must_use_attr(attrs);
             if let Some(attr) = attr {
                 check_needless_must_use(cx, &sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             }
@@ -353,7 +355,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
                 let body = cx.tcx.hir().body(eid);
                 Self::check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.hir_id());
 
-                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), &item.attrs) {
+                if attr.is_none() && is_public && !is_proc_macro(cx.sess(), attrs) {
                     check_must_use_candidate(
                         cx,
                         &sig.decl,

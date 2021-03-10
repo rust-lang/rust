@@ -406,6 +406,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAttributes {
         if !cx.sess().is_attr_used(attr) {
             debug!("emitting warning for: {:?}", attr);
             cx.struct_span_lint(UNUSED_ATTRIBUTES, attr.span, |lint| {
+                // Mark as used to avoid duplicate warnings.
+                cx.sess().mark_attr_used(attr);
                 lint.build("unused attribute").emit()
             });
             // Is it a builtin attribute that must be used at the crate level?
