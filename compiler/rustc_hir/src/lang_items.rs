@@ -38,7 +38,7 @@ macro_rules! expand_group {
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $(#[$attr:meta])* $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
+        $( $(#[$attr:meta])* $variant:ident $($group:expr)?, $module:ident :: $name:ident, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -60,7 +60,7 @@ macro_rules! language_item_table {
             /// would result in [`sym::eq`] since it is `#[lang = "eq"]`.
             pub fn name(self) -> Symbol {
                 match self {
-                    $( LangItem::$variant => $name, )*
+                    $( LangItem::$variant => $module::$name, )*
                 }
             }
 
@@ -128,7 +128,7 @@ macro_rules! language_item_table {
         /// A mapping from the name of the lang item to its order and the form it must be of.
         pub static ITEM_REFS: SyncLazy<FxHashMap<Symbol, (usize, Target)>> = SyncLazy::new(|| {
             let mut item_refs = FxHashMap::default();
-            $( item_refs.insert($name, (LangItem::$variant as usize, $target)); )*
+            $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
             item_refs
         });
 
