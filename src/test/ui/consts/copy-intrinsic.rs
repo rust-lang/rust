@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 #![feature(const_mut_refs, const_intrinsic_copy, const_ptr_offset)]
-use std::ptr;
+use std::{ptr, mem};
 
 const COPY_ZERO: () = unsafe {
     // Since we are not copying anything, this should be allowed.
@@ -26,6 +26,20 @@ const COPY_OOB_2: () = unsafe {
     //~| previously accepted
 };
 
+const COPY_SIZE_OVERFLOW: () = unsafe {
+    let x = 0;
+    let mut y = 0;
+    ptr::copy(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1)); //~ ERROR any use of this value will cause an error
+    //~| overflow computing total size of `copy`
+    //~| previously accepted
+};
+const COPY_NONOVERLAPPING_SIZE_OVERFLOW: () = unsafe {
+    let x = 0;
+    let mut y = 0;
+    ptr::copy_nonoverlapping(&x, &mut y, 1usize << (mem::size_of::<usize>() * 8 - 1)); //~ ERROR any use of this value will cause an error
+    //~| overflow computing total size of `copy_nonoverlapping`
+    //~| previously accepted
+};
 
 fn main() {
 }
