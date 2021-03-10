@@ -1093,6 +1093,7 @@ fn markdown_summary_with_limit(md: &str, length_limit: usize) -> (String, bool) 
                 Tag::Emphasis => s.push_str("</em>"),
                 Tag::Strong => s.push_str("</strong>"),
                 Tag::Paragraph => break,
+                Tag::Heading(..) => break,
                 _ => {}
             },
             Event::HardBreak | Event::SoftBreak => {
