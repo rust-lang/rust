@@ -482,8 +482,8 @@ appropriate labels to issues that haven't been triaged yet:
   that this issue is specific to.
 
 * Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
-  are only assigned during triage meetings, and replace the [I-prioritize][ipri]
-  label.
+  can be assigned by anyone that understand the issue and is able to
+  prioritize it, and replace the [I-prioritize][ipri] label.
 
 * The gray **proposed-final-comment-period** label marks bugs that are using
   the RFC signoff functionality of [rfcbot] and are currently awaiting
