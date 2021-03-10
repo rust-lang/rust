@@ -1226,7 +1226,7 @@ impl LinkCollector<'_, '_> {
                             &ori_link.range,
                             &item.attrs,
                         )
-                        .unwrap_or_else(|| span_of_attrs(&item.attrs).unwrap_or(item.span.span()));
+                        .unwrap_or_else(|| span_of_attrs(&item.attrs).unwrap_or(item.span.inner()));
 
                         rustc_session::parse::feature_err(
                             &self.cx.tcx.sess.parse_sess,
@@ -1691,7 +1691,7 @@ fn report_diagnostic(
     };
 
     let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs).unwrap_or(item.span.span());
+    let sp = span_of_attrs(attrs).unwrap_or(item.span.inner());
 
     tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);

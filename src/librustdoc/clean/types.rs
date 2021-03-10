@@ -1866,12 +1866,12 @@ impl Span {
         Self(sp.source_callsite())
     }
 
-    crate fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
+    crate fn inner(&self) -> rustc_span::Span {
+        self.0
     }
 
-    crate fn span(&self) -> rustc_span::Span {
-        self.0
+    crate fn dummy() -> Self {
+        Self(rustc_span::DUMMY_SP)
     }
 
     crate fn is_dummy(&self) -> bool {
