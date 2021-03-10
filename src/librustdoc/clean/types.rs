@@ -81,13 +81,19 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// Stringified span
-    crate source: Span,
-    /// Not everything has a name. E.g., impls
+    /// The [`Span`] of this item in the source code.
+    crate span: Span,
+    /// The name of this item.
+    /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
+    /// Attributes on this item, e.g. `#[derive(...)]` or `#[inline]`.
     crate attrs: Box<Attributes>,
+    /// The visibility of this item (private, `pub`, `pub(crate)`, etc.).
     crate visibility: Visibility,
+    /// Information about this item that is specific to what kind of item it is.
+    /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
+    /// The [`DefId`] of this item.
     crate def_id: DefId,
 }
 
@@ -100,7 +106,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.source)
+            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -165,7 +171,7 @@ impl Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
-        let source = def_id.as_local().map_or_else(
+        let span = def_id.as_local().map_or_else(
             || cx.tcx.def_span(def_id),
             |local| {
                 let hir = cx.tcx.hir();
@@ -177,7 +183,7 @@ impl Item {
             def_id,
             kind: box kind,
             name,
-            source: source.clean(cx),
+            span: span.clean(cx),
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }

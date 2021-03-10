@@ -459,7 +459,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    source: clean::Span::dummy(),
+                    span: clean::Span::dummy(),
                     def_id: DefId::local(CRATE_DEF_INDEX),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(

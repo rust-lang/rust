@@ -41,11 +41,11 @@ impl DocFolder for SourceCollector<'_, '_> {
         // then we need to render it out to the filesystem.
         if self.scx.include_sources
             // skip all synthetic "files"
-            && item.source.filename(self.sess()).is_real()
+            && item.span.filename(self.sess()).is_real()
             // skip non-local files
-            && item.source.cnum(self.sess()) == LOCAL_CRATE
+            && item.span.cnum(self.sess()) == LOCAL_CRATE
         {
-            let filename = item.source.filename(self.sess());
+            let filename = item.span.filename(self.sess());
             // If it turns out that we couldn't read this file, then we probably
             // can't read any of the files (generating html output from json or
             // something like that), so just don't include sources for the

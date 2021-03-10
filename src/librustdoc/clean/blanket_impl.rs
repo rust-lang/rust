@@ -102,7 +102,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .collect();
 
                 impls.push(Item {
-                    source: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
+                    span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
