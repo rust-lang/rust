@@ -7,34 +7,21 @@
 //! The module transforms all lint names to ascii lowercase to ensure that we don't have mismatches
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
-//!
-//! The metadata currently contains:
-//! - [x] TODO The lint declaration line for [#1303](https://github.com/rust-lang/rust-clippy/issues/1303)
-//!   and [#6492](https://github.com/rust-lang/rust-clippy/issues/6492)
-//! - [ ] TODO The Applicability for each lint for [#4310](https://github.com/rust-lang/rust-clippy/issues/4310)
 
-// # Applicability
-// - TODO xFrednet 2021-01-17: Find lint emit and collect applicability
-//   - TODO xFrednet 2021-02-28:  4x weird emission forwarding
-//     - See clippy_lints/src/enum_variants.rs@EnumVariantNames::check_name
-//   - TODO xFrednet 2021-02-28:  6x emission forwarding with local that is initializes from
-//     function.
-//     - See clippy_lints/src/methods/mod.rs@lint_binary_expr_with_method_call
-//   - TODO xFrednet 2021-02-28:  2x lint from local from function call
-//     - See clippy_lints/src/misc.rs@check_binary
-//   - TODO xFrednet 2021-02-28:  2x lint from local from method call
-//     - See clippy_lints/src/non_copy_const.rs@lint
 // # NITs
 // - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
 
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{self as hir, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath, def::DefKind};
+use rustc_hir::{
+    self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
+};
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
 use rustc_middle::hir::map::Map;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
-use serde::Serialize;
+use serde::{ser::SerializeStruct, Serialize, Serializer};
+use std::collections::BinaryHeap;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -47,7 +34,7 @@ use crate::utils::{
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "../metadata_collection.json";
 /// These lints are excluded from the export.
-const BLACK_LISTED_LINTS: [&str; 2] = ["lint_author", "deep_code_inspection"];
+const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
 /// `clippy::all`
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
@@ -107,7 +94,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub INTERNAL_METADATA_COLLECTOR,
-    internal,
+    internal_warn,
     "A busy bee collection metadata about lints"
 }
 
@@ -116,7 +103,10 @@ impl_lint_pass!(MetadataCollector => [INTERNAL_METADATA_COLLECTOR]);
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Default)]
 pub struct MetadataCollector {
-    lints: Vec<LintMetadata>,
+    /// All collected lints
+    ///
+    /// We use a Heap here to have the lints added in alphabetic order in the export
+    lints: BinaryHeap<LintMetadata>,
     applicability_into: FxHashMap<String, ApplicabilityInfo>,
 }
 
@@ -124,6 +114,8 @@ impl Drop for MetadataCollector {
     /// You might ask: How hacky is this?
     /// My answer:     YES
     fn drop(&mut self) {
+        // The metadata collector gets dropped twice, this makes sure that we only write
+        // when the list is full
         if self.lints.is_empty() {
             return;
         }
@@ -131,7 +123,8 @@ impl Drop for MetadataCollector {
         let mut applicability_info = std::mem::take(&mut self.applicability_into);
 
         // Mapping the final data
-        self.lints
+        let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
+        lints
             .iter_mut()
             .for_each(|x| x.applicability = applicability_info.remove(&x.id));
 
@@ -140,11 +133,11 @@ impl Drop for MetadataCollector {
             fs::remove_file(OUTPUT_FILE).unwrap();
         }
         let mut file = OpenOptions::new().write(true).create(true).open(OUTPUT_FILE).unwrap();
-        writeln!(file, "{}", serde_json::to_string_pretty(&self.lints).unwrap()).unwrap();
+        writeln!(file, "{}", serde_json::to_string_pretty(&lints).unwrap()).unwrap();
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 struct LintMetadata {
     id: String,
     id_span: SerializableSpan,
@@ -154,6 +147,24 @@ struct LintMetadata {
     /// mapped shortly before the actual output.
     applicability: Option<ApplicabilityInfo>,
 }
+
+// impl Ord for LintMetadata {
+//     fn cmp(&self, other: &Self) -> Ordering {
+//         self.id.cmp(&other.id)
+//     }
+// }
+//
+// impl PartialOrd for LintMetadata {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         Some(self.cmp(other))
+//     }
+// }
+//
+// impl PartialEq for LintMetadata {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.id == other.id
+//     }
+// }
 
 impl LintMetadata {
     fn new(id: String, id_span: SerializableSpan, group: String, docs: String) -> Self {
@@ -167,7 +178,7 @@ impl LintMetadata {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 struct SerializableSpan {
     path: String,
     line: usize,
@@ -194,25 +205,30 @@ impl SerializableSpan {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct ApplicabilityInfo {
     /// Indicates if any of the lint emissions uses multiple spans. This is related to
     /// [rustfix#141](https://github.com/rust-lang/rustfix/issues/141) as such suggestions can
     /// currently not be applied automatically.
-    is_multi_suggestion: bool,
-    applicability: Option<String>,
+    is_multi_part_suggestion: bool,
+    applicability: Option<usize>,
 }
 
-#[allow(dead_code)]
-fn log_to_file(msg: &str) {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .append(true)
-        .create(true)
-        .open("metadata-lint.log")
-        .unwrap();
+impl Serialize for ApplicabilityInfo {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let index = self.applicability.unwrap_or_default();
 
-    write!(file, "{}", msg).unwrap();
+        let mut s = serializer.serialize_struct("ApplicabilityInfo", 2)?;
+        s.serialize_field("is_multi_part_suggestion", &self.is_multi_part_suggestion)?;
+        s.serialize_field(
+            "applicability",
+            &paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX],
+        )?;
+        s.end()
+    }
 }
 
 impl<'hir> LateLintPass<'hir> for MetadataCollector {
@@ -266,16 +282,20 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// ```
     fn check_expr(&mut self, cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) {
         if let Some(args) = match_lint_emission(cx, expr) {
-            let mut emission_info = extract_complex_emission_info(cx, args);
+            let mut emission_info = extract_emission_info(cx, args);
             if emission_info.is_empty() {
-                lint_collection_error_span(cx, expr.span, "Look, here ... I have no clue what todo with it");
+                // See:
+                // - src/misc.rs:734:9
+                // - src/methods/mod.rs:3545:13
+                // - src/methods/mod.rs:3496:13
+                // We are basically unable to resolve the lint name it self.
                 return;
             }
 
             for (lint_name, applicability, is_multi_part) in emission_info.drain(..) {
                 let app_info = self.applicability_into.entry(lint_name).or_default();
                 app_info.applicability = applicability;
-                app_info.is_multi_suggestion = is_multi_part;
+                app_info.is_multi_part_suggestion = is_multi_part;
             }
         }
     }
@@ -289,7 +309,7 @@ fn sym_to_string(sym: Symbol) -> String {
 }
 
 fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
-    extract_attr_docs(item).or_else(|| {
+    extract_attr_docs(cx, item).or_else(|| {
         lint_collection_error_item(cx, item, "could not collect the lint documentation");
         None
     })
@@ -305,8 +325,10 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 /// ```
 ///
 /// Would result in `Hello world!\n=^.^=\n`
-fn extract_attr_docs(item: &Item<'_>) -> Option<String> {
-    item.attrs
+fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
+    cx.tcx
+        .hir()
+        .attrs(item.hir_id())
         .iter()
         .filter_map(|ref x| x.doc_str().map(|sym| sym.as_str().to_string()))
         .reduce(|mut acc, sym| {
@@ -357,15 +379,6 @@ fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &s
     );
 }
 
-fn lint_collection_error_span(cx: &LateContext<'_>, span: Span, message: &str) {
-    span_lint(
-        cx,
-        INTERNAL_METADATA_COLLECTOR,
-        span,
-        &format!("Metadata collection error: {}", message),
-    );
-}
-
 // ==================================================================
 // Applicability
 // ==================================================================
@@ -377,11 +390,15 @@ fn match_lint_emission<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) 
         .find_map(|emission_fn| match_function_call(cx, expr, emission_fn))
 }
 
-fn extract_complex_emission_info<'hir>(
+fn take_higher_applicability(a: Option<usize>, b: Option<usize>) -> Option<usize> {
+    a.map_or(b, |a| a.max(b.unwrap_or_default()).into())
+}
+
+fn extract_emission_info<'hir>(
     cx: &LateContext<'hir>,
     args: &'hir [hir::Expr<'hir>],
-) -> Vec<(String, Option<String>, bool)> {
-    let mut lints= Vec::new();
+) -> Vec<(String, Option<usize>, bool)> {
+    let mut lints = Vec::new();
     let mut applicability = None;
     let mut multi_part = false;
 
@@ -401,7 +418,10 @@ fn extract_complex_emission_info<'hir>(
         }
     }
 
-    lints.drain(..).map(|lint_name| (lint_name, applicability.clone(), multi_part)).collect()
+    lints
+        .drain(..)
+        .map(|lint_name| (lint_name, applicability, multi_part))
+        .collect()
 }
 
 /// Resolves the possible lints that this expression could reference
@@ -412,7 +432,7 @@ fn resolve_lints(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Vec<Str
 }
 
 /// This function tries to resolve the linked applicability to the given expression.
-fn resolve_applicability(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<String> {
+fn resolve_applicability(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<usize> {
     let mut resolver = ApplicabilityResolver::new(cx);
     resolver.visit_expr(expr);
     resolver.complete()
@@ -457,7 +477,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
         if_chain! {
             if let ExprKind::Path(qpath) = &expr.kind;
             if let QPath::Resolved(_, path) = qpath;
-            
+
             let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&expr));
             if match_type(self.cx, expr_ty, &paths::LINT);
             then {
@@ -492,15 +512,11 @@ impl<'a, 'hir> ApplicabilityResolver<'a, 'hir> {
     }
 
     fn add_new_index(&mut self, new_index: usize) {
-        self.applicability_index = self
-            .applicability_index
-            .map_or(new_index, |old_index| old_index.min(new_index))
-            .into();
+        self.applicability_index = take_higher_applicability(self.applicability_index, Some(new_index));
     }
 
-    fn complete(self) -> Option<String> {
+    fn complete(self) -> Option<usize> {
         self.applicability_index
-            .map(|index| paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX].to_string())
     }
 }
 

@@ -41,10 +41,6 @@ fn dogfood_clippy() {
         command.args(&["-D", "clippy::internal"]);
     }
 
-    if cfg!(feature = "metadata-collector-lint") {
-        command.args(&["-D", "clippy::internal"]);
-    }
-
     let output = command.output().unwrap();
 
     println!("status: {}", output.status);

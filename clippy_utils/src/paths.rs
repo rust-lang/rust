@@ -9,10 +9,10 @@ pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
 pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
 #[cfg(feature = "metadata-collector-lint")]
 pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
-    ["rustc_lint_defs", "Applicability", "MachineApplicable"],
-    ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
-    ["rustc_lint_defs", "Applicability", "HasPlaceholders"],
     ["rustc_lint_defs", "Applicability", "Unspecified"],
+    ["rustc_lint_defs", "Applicability", "HasPlaceholders"],
+    ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
+    ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
 #[cfg(feature = "metadata-collector-lint")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
