@@ -1,7 +1,7 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::{mem, sync::Arc};
+use std::mem;
 
 use either::Either;
 use hir_expand::{
@@ -11,7 +11,6 @@ use hir_expand::{
 };
 use la_arena::Arena;
 use profile::Count;
-use rustc_hash::FxHashMap;
 use syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, AstChildren, LiteralKind, LoopBodyOwner, NameOwner,
@@ -32,7 +31,6 @@ use crate::{
         Statement,
     },
     item_scope::BuiltinShadowMode,
-    item_tree::ItemTree,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockLoc, ModuleDefId,
@@ -63,7 +61,6 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let item_tree = db.item_tree(expander.current_file_id);
     ExprCollector {
         db,
         source_map: BodySourceMap::default(),
@@ -76,11 +73,6 @@ pub(super) fn lower(
             block_scopes: Vec::new(),
             _c: Count::new(),
         },
-        item_trees: {
-            let mut map = FxHashMap::default();
-            map.insert(expander.current_file_id, item_tree);
-            map
-        },
         expander,
     }
     .collect(params, body)
@@ -91,8 +83,6 @@ struct ExprCollector<'a> {
     expander: Expander,
     body: Body,
     source_map: BodySourceMap,
-
-    item_trees: FxHashMap<HirFileId, Arc<ItemTree>>,
 }
 
 impl ExprCollector<'_> {
@@ -588,9 +578,6 @@ impl ExprCollector<'_> {
                     collector(self, None);
                 } else {
                     self.source_map.expansions.insert(macro_call, self.expander.current_file_id);
-
-                    let item_tree = self.db.item_tree(self.expander.current_file_id);
-                    self.item_trees.insert(self.expander.current_file_id, item_tree);
 
                     let id = collector(self, Some(expansion));
                     self.expander.exit(self.db, mark);
