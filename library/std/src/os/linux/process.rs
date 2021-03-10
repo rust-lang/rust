@@ -1,6 +1,6 @@
 //! Linux-specific extensions to primitives in the `std::process` module.
 
-#![unstable(feature = "linux_pidfd", issue = "none")]
+#![unstable(feature = "linux_pidfd", issue = "82971")]
 
 use crate::io::Result;
 use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
@@ -31,13 +31,14 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// // The file descriptor will be closed when `pidfd` is dropped.
 /// ```
-/// Refer to the man page of `pidfd_open(2)` for further details.
+/// Refer to the man page of [`pidfd_open(2)`] for further details.
 ///
 /// [`Command`]: process::Command
 /// [`create_pidfd`]: CommandExt::create_pidfd
 /// [`Child`]: process::Child
 /// [`pidfd`]: fn@ChildExt::pidfd
 /// [`take_pidfd`]: ChildExt::take_pidfd
+/// [`pidfd_open(2)`]: https://man7.org/linux/man-pages/man2/pidfd_open.2.html
 #[derive(Debug)]
 pub struct PidFd {
     inner: FileDesc,
