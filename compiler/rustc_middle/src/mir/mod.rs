@@ -2738,7 +2738,7 @@ fn pretty_print_const_value(
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
-        let val = val.lift(tcx).unwrap();
+        let val = tcx.lift(val).unwrap();
         let ty = tcx.lift(ty).unwrap();
         let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
         cx.print_alloc_ids = true;

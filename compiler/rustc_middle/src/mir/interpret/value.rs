@@ -8,7 +8,7 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
-use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
@@ -53,8 +53,9 @@ impl From<Scalar> for ConstValue<'tcx> {
     }
 }
 
-impl<'tcx> ConstValue<'tcx> {
-    pub fn lift<'lifted>(self, tcx: TyCtxt<'lifted>) -> Option<ConstValue<'lifted>> {
+impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
+    type Lifted = ConstValue<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
         Some(match self {
             ConstValue::Scalar(s) => ConstValue::Scalar(s),
             ConstValue::Slice { data, start, end } => {
@@ -65,7 +66,9 @@ impl<'tcx> ConstValue<'tcx> {
             }
         })
     }
+}
 
+impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
