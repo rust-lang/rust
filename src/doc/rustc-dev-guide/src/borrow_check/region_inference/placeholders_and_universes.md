@@ -21,7 +21,7 @@ fn main() {
 ```
 
 This program ought not to type-check: `foo` needs a static reference
-for its argument, and `bar` wants to be given a function that that
+for its argument, and `bar` wants to be given a function that
 accepts **any** reference (so it can call it with something on its
 stack, for example). But *how* do we reject it and *why*?
 

@@ -191,7 +191,7 @@ git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy ma
 ```
 
 takes all changes since the last `subtree pull` from the tool repo
-repo and adds these commits to the rustc repo + a merge commit that moves the tool changes into
+and adds these commits to the rustc repo + a merge commit that moves the tool changes into
 the specified directory in the rust repository.
 
 It is recommended that you always do a push first and get that merged to the tool master branch.
