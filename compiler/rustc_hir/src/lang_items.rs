@@ -38,7 +38,7 @@ macro_rules! expand_group {
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $(#[attr:meta])* $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
+        $( $(#[$attr:meta])* $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
@@ -48,7 +48,7 @@ macro_rules! language_item_table {
                 $(
                     #[doc = concat!("The `", stringify!($name), "` lang item.")]
                     ///
-                    $(#[attr])*
+                    $(#[$attr])*
                     $variant,
                 )*
             }
