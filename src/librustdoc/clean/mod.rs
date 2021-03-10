@@ -1133,7 +1133,7 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
-                    Some(inline::print_inlined_const(cx.tcx, self.def_id))
+                    Some(inline::print_inlined_const(tcx, self.def_id))
                 } else {
                     None
                 };
@@ -1743,8 +1743,8 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
-        // FIXME: instead of storing `format!("{}", self)`, store `self` directly instead.
-        Constant::TyConst { type_: self.ty.clean(cx), expr: format!("{}", self) }
+        // FIXME: instead of storing the stringified expression, store `self` directly instead.
+        Constant::TyConst { type_: self.ty.clean(cx), expr: self.to_string() }
     }
 }
 
@@ -1945,11 +1945,9 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 ItemKind::Static(ty, mutability, body_id) => {
                     StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
                 }
-                ItemKind::Const(ty, body_id) => ConstantItem(Constant::Local {
-                    type_: ty.clean(cx),
-                    body: body_id,
-                    did: def_id,
-                }),
+                ItemKind::Const(ty, body_id) => {
+                    ConstantItem(Constant::Local { type_: ty.clean(cx), body: body_id, def_id })
+                }
                 ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                     bounds: ty.bounds.clean(cx),
                     generics: ty.generics.clean(cx),

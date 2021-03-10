@@ -1995,17 +1995,17 @@ crate enum Constant {
     /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
     /// used to define explicit discriminant values for enum variants.
     Anonymous { type_: Type, body: BodyId },
-    /// Inlined constant.
-    Extern { type_: Type, did: DefId },
+    /// A constant from a different crate.
+    Extern { type_: Type, def_id: DefId },
     /// const FOO: u32 = ...;
-    Local { type_: Type, did: DefId, body: BodyId },
+    Local { type_: Type, def_id: DefId, body: BodyId },
 }
 
 impl Constant {
     crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
         match self {
             Self::TyConst { expr, .. } => expr.clone(),
-            Self::Extern { did, .. } => print_inlined_const(tcx, *did),
+            Self::Extern { def_id, .. } => print_inlined_const(tcx, *def_id),
             Self::Local { body, .. } | Self::Anonymous { body, .. } => print_const_expr(tcx, *body),
         }
     }
@@ -2013,16 +2013,18 @@ impl Constant {
     crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
         match self {
             Self::TyConst { .. } | Self::Anonymous { .. } => None,
-            Self::Extern { did, .. } | Self::Local { did, .. } => print_evaluated_const(tcx, *did),
+            Self::Extern { def_id, .. } | Self::Local { def_id, .. } => {
+                print_evaluated_const(tcx, *def_id)
+            }
         }
     }
 
     crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
         match self {
             Self::TyConst { .. } => false,
-            Self::Extern { did, .. } => did
-                .as_local()
-                .map_or(false, |did| is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(did))),
+            Self::Extern { def_id, .. } => def_id.as_local().map_or(false, |def_id| {
+                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
+            }),
             Self::Local { body, .. } | Self::Anonymous { body, .. } => {
                 is_literal_expr(tcx, body.hir_id)
             }
