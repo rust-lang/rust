@@ -1,6 +1,5 @@
 use ide_db::helpers::FamousDefs;
-use stdx::format_to;
-use syntax::{AstNode, ast::{self, ArgListOwner}};
+use syntax::{AstNode, ast::{self, make, ArgListOwner, edit::AstNodeEdit}};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -47,7 +46,7 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
     let (total_expr, parent) = validate_method_call_expr(&ctx.sema, total_expr)?;
 
     let param_list = closure.param_list()?;
-    let param = param_list.params().next()?;
+    let param = param_list.params().next()?.pat()?;
     let body = closure.body()?;
 
     acc.add(
@@ -55,16 +54,15 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
         "Replace this `Iterator::for_each` with a for loop",
         total_expr.syntax().text_range(),
         |builder| {
-            let mut buf = String::new();
+            let original_indentation = total_expr.indent_level();
 
-            format_to!(buf, "for {} in {} ", param, parent);
+            let block = match body {
+                ast::Expr::BlockExpr(block) => block,
+                _ => make::block_expr(Vec::new(), Some(body))
+            }.reset_indent().indent(original_indentation);
 
-            match body {
-                ast::Expr::BlockExpr(body) => format_to!(buf, "{}", body),
-                _ => format_to!(buf, "{{\n{}\n}}", body)
-            }
-
-            builder.replace(total_expr.syntax().text_range(), buf)
+            let expr_for_loop = make::expr_for_loop(param, parent, block);
+            builder.replace_ast(total_expr, expr_for_loop)
         },
     )
 }
@@ -94,45 +92,68 @@ mod tests {
 
     use super::*;
 
+    fn check_assist_with_fixtures(before: &str, after: &str) {
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}",
+            before,
+            FamousDefs::FIXTURE,
+        );
+        check_assist(convert_iter_for_each_to_for, before, after);
+    }
+
     #[test]
     fn test_for_each_in_method() {
-        check_assist(
-            convert_iter_for_each_to_for,
-            r"
+        check_assist_with_fixtures(
+            r#"
 fn main() {
     let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
     x.iter().$0for_each(|(x, y)| {
-        dbg!(x, y)
+        println!("x: {}, y: {}", x, y);
     });
-}",
-            r"
+}"#,
+            r#"
 fn main() {
     let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
     for (x, y) in x.iter() {
-        dbg!(x, y)
+        println!("x: {}, y: {}", x, y);
     };
-}",
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_for_each_without_braces() {
+        check_assist_with_fixtures(
+            r#"
+fn main() {
+    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    x.iter().$0for_each(|(x, y)| println!("x: {}, y: {}", x, y));
+}"#,
+            r#"
+fn main() {
+    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    for (x, y) in x.iter() {
+        println!("x: {}, y: {}", x, y)
+    };
+}"#,
         )
     }
 
     #[test]
     fn test_for_each_in_closure() {
-        check_assist(
-            convert_iter_for_each_to_for,
-            r"
+        check_assist_with_fixtures(
+            r#"
 fn main() {
     let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
-    x.iter().for_each($0|(x, y)| {
-        dbg!(x, y)
-    });
-}",
-            r"
+    x.iter().for_each($0|(x, y)| println!("x: {}, y: {}", x, y));
+}"#,
+            r#"
 fn main() {
     let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
     for (x, y) in x.iter() {
-        dbg!(x, y)
+        println!("x: {}, y: {}", x, y)
     };
-}",
+}"#,
         )
     }
 }
