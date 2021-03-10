@@ -21,7 +21,7 @@ use crate::{display::TryToNav, FilePosition, FileSystemEdit, RangeInfo, SourceCh
 
 type RenameResult<T> = Result<T, RenameError>;
 #[derive(Debug)]
-pub struct RenameError(pub(crate) String);
+pub struct RenameError(String);
 
 impl fmt::Display for RenameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,16 +47,15 @@ pub(crate) fn prepare_rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
-    let range = match &sema
+    let name_like = sema
         .find_node_at_offset_with_descend(&syntax, position.offset)
-        .ok_or_else(|| format_err!("No references found at position"))?
-    {
+        .ok_or_else(|| format_err!("No references found at position"))?;
+    let node = match &name_like {
         ast::NameLike::Name(it) => it.syntax(),
         ast::NameLike::NameRef(it) => it.syntax(),
         ast::NameLike::Lifetime(it) => it.syntax(),
-    }
-    .text_range();
-    Ok(RangeInfo::new(range, ()))
+    };
+    Ok(RangeInfo::new(sema.original_range(node).range, ()))
 }
 
 // Feature: Rename
@@ -546,6 +545,8 @@ mod tests {
 
     use crate::{fixture, FileId};
 
+    use super::{RangeInfo, RenameError};
+
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
@@ -589,6 +590,45 @@ mod tests {
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_debug_eq(&source_change)
+    }
+
+    fn check_prepare(ra_fixture: &str, expect: Expect) {
+        let (analysis, position) = fixture::position(ra_fixture);
+        let result = analysis
+            .prepare_rename(position)
+            .unwrap_or_else(|err| panic!("PrepareRename was cancelled: {}", err));
+        match result {
+            Ok(RangeInfo { range, info: () }) => {
+                let source = analysis.file_text(position.file_id).unwrap();
+                expect.assert_eq(&format!("{:?}: {}", range, &source[range]))
+            }
+            Err(RenameError(err)) => expect.assert_eq(&err),
+        };
+    }
+
+    #[test]
+    fn test_prepare_rename_namelikes() {
+        check_prepare(r"fn name$0<'lifetime>() {}", expect![[r#"3..7: name"#]]);
+        check_prepare(r"fn name<'lifetime$0>() {}", expect![[r#"8..17: 'lifetime"#]]);
+        check_prepare(r"fn name<'lifetime>() { name$0(); }", expect![[r#"23..27: name"#]]);
+    }
+
+    #[test]
+    fn test_prepare_rename_in_macro() {
+        check_prepare(
+            r"macro_rules! foo {
+    ($ident:ident) => {
+        pub struct $ident;
+    }
+}
+foo!(Foo$0);",
+            expect![[r#"83..86: Foo"#]],
+        );
+    }
+
+    #[test]
+    fn test_prepare_rename_keyword() {
+        check_prepare(r"struct$0 Foo;", expect![[r#"No references found at position"#]]);
     }
 
     #[test]
