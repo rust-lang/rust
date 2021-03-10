@@ -482,7 +482,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        match self.ecx.const_to_op(c.literal, None) {
+        match self.ecx.const_to_op(c.literal, None, c.span) {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);

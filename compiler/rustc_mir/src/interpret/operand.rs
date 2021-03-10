@@ -11,6 +11,7 @@ use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::{ConstInt, Ty};
 use rustc_middle::{mir, ty};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Abi, HasDataLayout, LayoutOf, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -160,10 +161,11 @@ pub enum Operand<Tag = ()> {
 pub struct OpTy<'tcx, Tag = ()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
+    pub span: Span,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 80);
+rustc_data_structures::static_assert_size!(OpTy<'_, ()>, 88);
 
 impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
@@ -176,21 +178,21 @@ impl<'tcx, Tag> std::ops::Deref for OpTy<'tcx, Tag> {
 impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout }
+        OpTy { op: Operand::Indirect(*mplace), layout: mplace.layout, span: DUMMY_SP }
     }
 }
 
 impl<'tcx, Tag: Copy> From<&'_ MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(mplace: &MPlaceTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout }
+        OpTy { op: Operand::Indirect(**mplace), layout: mplace.layout, span: DUMMY_SP }
     }
 }
 
 impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
     fn from(val: ImmTy<'tcx, Tag>) -> Self {
-        OpTy { op: Operand::Immediate(val.imm), layout: val.layout }
+        OpTy { op: Operand::Immediate(val.imm), layout: val.layout, span: DUMMY_SP }
     }
 }
 
@@ -372,7 +374,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let field_layout = op.layout.field(self, field)?;
         if field_layout.is_zst() {
             let immediate = Scalar::ZST.into();
-            return Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout });
+            return Ok(OpTy {
+                op: Operand::Immediate(immediate),
+                layout: field_layout,
+                span: op.span,
+            });
         }
         let offset = op.layout.fields.offset(field);
         let immediate = match *base {
@@ -390,7 +396,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 op.layout
             ),
         };
-        Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout })
+        Ok(OpTy { op: Operand::Immediate(immediate), layout: field_layout, span: op.span })
     }
 
     pub fn operand_index(
@@ -454,13 +460,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let layout = self.layout_of_local(frame, local, layout)?;
-        let op = if layout.is_zst() {
+        let (op, span) = if layout.is_zst() {
             // Do not read from ZST, they might not be initialized
-            Operand::Immediate(Scalar::ZST.into())
+            (Operand::Immediate(Scalar::ZST.into()), DUMMY_SP)
         } else {
-            M::access_local(&self, frame, local)?
+            (
+                M::access_local(&self, frame, local)?,
+                self.frame().body.local_decls[local].source_info.span,
+            )
         };
-        Ok(OpTy { op, layout })
+        Ok(OpTy { op, layout, span })
     }
 
     /// Every place can be read from, so we can turn them into an operand.
@@ -471,13 +480,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         place: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = match **place {
-            Place::Ptr(mplace) => Operand::Indirect(mplace),
+        let (op, span) = match **place {
+            Place::Ptr(mplace) => (Operand::Indirect(mplace), DUMMY_SP),
             Place::Local { frame, local } => {
-                *self.access_local(&self.stack()[frame], local, None)?
+                let op = self.access_local(&self.stack()[frame], local, None)?;
+                (*op, op.span)
             }
         };
-        Ok(OpTy { op, layout: place.layout })
+        Ok(OpTy { op, layout: place.layout, span })
     }
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
@@ -532,7 +542,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(val, layout)?
+                self.const_to_op(val, layout, constant.span)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -555,6 +565,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
+        span: Span,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
@@ -601,7 +612,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ))
             }
         };
-        Ok(OpTy { op, layout })
+        Ok(OpTy { op, layout, span })
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.

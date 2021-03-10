@@ -46,7 +46,7 @@ pub(crate) fn destructure_const<'tcx>(
 ) -> mir::DestructuredConst<'tcx> {
     trace!("destructure_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.const_to_op(val, None).unwrap();
+    let op = ecx.const_to_op(val, None, DUMMY_SP).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty.kind() {
@@ -80,7 +80,7 @@ pub(crate) fn deref_const<'tcx>(
 ) -> &'tcx ty::Const<'tcx> {
     trace!("deref_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
-    let op = ecx.const_to_op(val, None).unwrap();
+    let op = ecx.const_to_op(val, None, DUMMY_SP).unwrap();
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Scalar::Ptr(ptr) = mplace.ptr {
         assert_eq!(

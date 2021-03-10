@@ -689,7 +689,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let span = const_.span;
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
-            self.const_to_op(const_, None).map_err(|err| {
+            self.const_to_op(const_, None, span).map_err(|err| {
                 // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
                 self.frame_mut().loc = Err(span);
@@ -783,19 +783,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
-
         if !unwinding {
             // Copy the return value to the caller's stack frame.
-            if let Some(ref return_place) = frame.return_place {
-                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op_transmute(&op, return_place)?;
-                trace!("{:?}", self.dump_place(**return_place));
+            if let Some(return_place) = self.frame().return_place {
+                let op = self.access_local(self.frame(), mir::RETURN_PLACE, None)?;
+                self.copy_op_transmute(&op, &return_place)?;
+                trace!("{:?}", self.dump_place(*return_place));
             } else {
                 throw_ub!(Unreachable);
             }
         }
+
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
         // Now where do we jump next?
 

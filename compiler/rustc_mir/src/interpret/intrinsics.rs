@@ -13,7 +13,10 @@ use rustc_middle::mir::{
 use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{
+    symbol::{sym, Symbol},
+    DUMMY_SP,
+};
 use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
 
 use super::{
@@ -172,7 +175,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val =
                     self.tcx.const_eval_global_id(self.param_env, gid, Some(self.tcx.span))?;
                 let const_ = ty::Const { val: ty::ConstKind::Value(val), ty };
-                let val = self.const_to_op(&const_, None)?;
+                let val = self.const_to_op(&const_, None, DUMMY_SP)?;
                 self.copy_op(&val, dest)?;
             }
 
