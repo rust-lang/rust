@@ -93,7 +93,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         match it.kind {
             hir::ItemKind::Fn(..) => {
                 let desc = "a function";
-                check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
+                let attrs = cx.tcx.hir().attrs(it.hir_id());
+                check_missing_inline_attrs(cx, attrs, it.span, desc);
             },
             hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics, ref _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
@@ -108,7 +109,8 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir().trait_item(tit.id);
-                                check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
+                                let attrs = cx.tcx.hir().attrs(item.hir_id());
+                                check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }
                         },
                     }
@@ -160,6 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             }
         }
 
-        check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
+        let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
+        check_missing_inline_attrs(cx, attrs, impl_item.span, desc);
     }
 }

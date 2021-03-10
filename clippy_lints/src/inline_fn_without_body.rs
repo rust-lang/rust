@@ -34,7 +34,8 @@ declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind {
-            check_attrs(cx, item.ident.name, &item.attrs);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            check_attrs(cx, item.ident.name, attrs);
         }
     }
 }

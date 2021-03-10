@@ -1207,11 +1207,11 @@ fn find_matches_sugg(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr
         if b0 != b1;
         let if_guard = &b0_arms[0].guard;
         if if_guard.is_none() || b0_arms.len() == 1;
-        if b0_arms[0].attrs.is_empty();
+        if cx.tcx.hir().attrs(b0_arms[0].hir_id).is_empty();
         if b0_arms[1..].iter()
             .all(|arm| {
                 find_bool_lit(&arm.body.kind, desugared).map_or(false, |b| b == b0) &&
-                arm.guard.is_none() && arm.attrs.is_empty()
+                arm.guard.is_none() && cx.tcx.hir().attrs(arm.hir_id).is_empty()
             });
         then {
             // The suggestion may be incorrect, because some arms can have `cfg` attributes
