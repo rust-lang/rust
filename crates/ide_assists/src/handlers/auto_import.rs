@@ -1,7 +1,7 @@
 use ide_db::helpers::{
     import_assets::{ImportAssets, ImportCandidate},
     insert_use::{insert_use, ImportScope},
-    item_name, mod_path_to_ast,
+    mod_path_to_ast,
 };
 use syntax::{ast, AstNode, SyntaxNode};
 
@@ -90,17 +90,13 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
     }
 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
-    let group = import_group_message(import_assets.import_candidate());
+    let group_label = group_label(import_assets.import_candidate());
     let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
     for import in proposed_imports {
-        let name = match item_name(ctx.db(), import.original_item) {
-            Some(name) => name,
-            None => continue,
-        };
         acc.add_group(
-            &group,
+            &group_label,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", name),
+            format!("Import `{}`", import.import_path),
             range,
             |builder| {
                 let rewriter =
@@ -126,7 +122,7 @@ pub(super) fn find_importable_node(ctx: &AssistContext) -> Option<(ImportAssets,
     }
 }
 
-fn import_group_message(import_candidate: &ImportCandidate) -> GroupLabel {
+fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
     let name = match import_candidate {
         ImportCandidate::Path(candidate) => format!("Import {}", candidate.name.text()),
         ImportCandidate::TraitAssocItem(candidate) => {

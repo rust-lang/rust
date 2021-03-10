@@ -3,7 +3,7 @@ use std::iter;
 use hir::AsAssocItem;
 use ide_db::helpers::{
     import_assets::{ImportCandidate, LocatedImport},
-    item_name, mod_path_to_ast,
+    mod_path_to_ast,
 };
 use ide_db::RootDatabase;
 use syntax::{
@@ -78,7 +78,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         acc.add_group(
             &group_label,
             AssistId("qualify_path", AssistKind::QuickFix),
-            label(ctx.db(), candidate, &import),
+            label(candidate, &import),
             range,
             |builder| {
                 qualify_candidate.qualify(
@@ -199,21 +199,17 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     GroupLabel(format!("Qualify {}", name))
 }
 
-fn label(db: &RootDatabase, candidate: &ImportCandidate, import: &LocatedImport) -> String {
-    let display_path = match item_name(db, import.original_item) {
-        Some(display_path) => display_path.to_string(),
-        None => "{unknown}".to_string(),
-    };
+fn label(candidate: &ImportCandidate, import: &LocatedImport) -> String {
     match candidate {
         ImportCandidate::Path(candidate) => {
             if candidate.qualifier.is_some() {
-                format!("Qualify with `{}`", display_path)
+                format!("Qualify with `{}`", import.import_path)
             } else {
-                format!("Qualify as `{}`", display_path)
+                format!("Qualify as `{}`", import.import_path)
             }
         }
-        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", display_path),
-        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", display_path),
+        ImportCandidate::TraitAssocItem(_) => format!("Qualify `{}`", import.import_path),
+        ImportCandidate::TraitMethod(_) => format!("Qualify with cast as `{}`", import.import_path),
     }
 }
 
