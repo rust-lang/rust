@@ -64,7 +64,7 @@ pub struct Item {
     pub name: Option<String>,
     /// The source location of this item (absent if it came from a macro expansion or inline
     /// assembly).
-    pub source: Option<Span>,
+    pub span: Option<Span>,
     /// By default all documented items are public, but you can tell rustdoc to output private items
     /// so this field is needed to differentiate.
     pub visibility: Visibility,

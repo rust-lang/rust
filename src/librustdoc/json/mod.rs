@@ -109,7 +109,7 @@ impl JsonRenderer<'tcx> {
                                 .map(Clone::clone),
                             visibility: types::Visibility::Public,
                             inner: types::ItemEnum::Trait(trait_item.clone().into()),
-                            source: None,
+                            span: None,
                             docs: Default::default(),
                             links: Default::default(),
                             attrs: Default::default(),

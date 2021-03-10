@@ -33,7 +33,7 @@ impl JsonRenderer<'_> {
             id: from_def_id(def_id),
             crate_id: def_id.krate.as_u32(),
             name: name.map(|sym| sym.to_string()),
-            source: self.convert_span(span),
+            span: self.convert_span(span),
             visibility: self.convert_visibility(visibility),
             docs: attrs.collapsed_doc_value(),
             links: attrs
