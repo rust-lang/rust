@@ -267,13 +267,14 @@ fn partial_ord_expand(
 #[cfg(test)]
 mod tests {
     use base_db::{fixture::WithFixture, CrateId, SourceDatabase};
+    use expect_test::{expect, Expect};
     use name::{known, Name};
 
     use crate::{test_db::TestDB, AstId, MacroCallId, MacroCallKind, MacroCallLoc};
 
     use super::*;
 
-    fn expand_builtin_derive(s: &str, name: Name) -> String {
+    fn expand_builtin_derive(ra_fixture: &str, name: Name) -> String {
         let expander = BuiltinDeriveExpander::find_by_name(&name).unwrap();
         let fixture = format!(
             r#"//- /main.rs crate:main deps:core
@@ -282,7 +283,7 @@ $0
 //- /lib.rs crate:core
 // empty
 "#,
-            s
+            ra_fixture
         );
 
         let (db, file_pos) = TestDB::with_position(&fixture);
@@ -314,66 +315,57 @@ $0
         parsed.text().to_string()
     }
 
+    fn check_derive(ra_fixture: &str, name: Name, expected: Expect) {
+        let expanded = expand_builtin_derive(ra_fixture, name);
+        expected.assert_eq(&expanded);
+    }
+
     #[test]
     fn test_copy_expand_simple() {
-        let expanded = expand_builtin_derive(
+        check_derive(
             r#"
-        #[derive(Copy)]
-        struct Foo;
-"#,
+            #[derive(Copy)]
+            struct Foo;
+            "#,
             known::Copy,
+            expect![["impl< >core::marker::CopyforFoo< >{}"]],
         );
-
-        assert_eq!(expanded, "impl< >core::marker::CopyforFoo< >{}");
     }
 
     #[test]
     fn test_copy_expand_with_type_params() {
-        let expanded = expand_builtin_derive(
+        check_derive(
             r#"
-        #[derive(Copy)]
-        struct Foo<A, B>;
-"#,
+            #[derive(Copy)]
+            struct Foo<A, B>;
+            "#,
             known::Copy,
-        );
-
-        assert_eq!(
-            expanded,
-            "impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"
+            expect![["impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"]],
         );
     }
 
     #[test]
     fn test_copy_expand_with_lifetimes() {
-        let expanded = expand_builtin_derive(
+        check_derive(
             r#"
-        #[derive(Copy)]
-        struct Foo<A, B, 'a, 'b>;
-"#,
+            #[derive(Copy)]
+            struct Foo<A, B, 'a, 'b>;
+            "#,
             known::Copy,
-        );
-
-        // We currently just ignore lifetimes
-
-        assert_eq!(
-            expanded,
-            "impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"
+            // We currently just ignore lifetimes
+            expect![["impl<T0:core::marker::Copy,T1:core::marker::Copy>core::marker::CopyforFoo<T0,T1>{}"]],
         );
     }
 
     #[test]
     fn test_clone_expand() {
-        let expanded = expand_builtin_derive(
+        check_derive(
             r#"
-        #[derive(Clone)]
-        struct Foo<A, B>;
-"#,
+            #[derive(Clone)]
+            struct Foo<A, B>;
+            "#,
             known::Clone,
-        );
-
-        assert_eq!(
-            expanded,
-            "impl<T0:core::clone::Clone,T1:core::clone::Clone>core::clone::CloneforFoo<T0,T1>{}"
+            expect![["impl<T0:core::clone::Clone,T1:core::clone::Clone>core::clone::CloneforFoo<T0,T1>{}"]],
         );
     }
 }

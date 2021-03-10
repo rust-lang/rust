@@ -526,6 +526,7 @@ dependencies = [
  "base_db",
  "cfg",
  "either",
+ "expect-test",
  "la-arena",
  "log",
  "mbe",

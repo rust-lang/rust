@@ -491,6 +491,7 @@ mod tests {
         MacroCallLoc,
     };
     use base_db::{fixture::WithFixture, SourceDatabase};
+    use expect_test::{expect, Expect};
     use std::sync::Arc;
     use syntax::ast::NameOwner;
 
@@ -574,87 +575,86 @@ mod tests {
         db.parse_or_expand(file_id).unwrap().to_string()
     }
 
+    fn check_expansion(ra_fixture: &str, expect: Expect) {
+        let expansion = expand_builtin_macro(ra_fixture);
+        expect.assert_eq(&expansion);
+    }
+
     #[test]
     fn test_column_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! column {() => {}}
             column!()
             "#,
+            expect![["0"]],
         );
-
-        assert_eq!(expanded, "0");
     }
 
     #[test]
     fn test_line_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! line {() => {}}
             line!()
             "#,
+            expect![["0"]],
         );
-
-        assert_eq!(expanded, "0");
     }
 
     #[test]
     fn test_stringify_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! stringify {() => {}}
             stringify!(a b c)
             "#,
+            expect![["\"a b c\""]],
         );
-
-        assert_eq!(expanded, "\"a b c\"");
     }
 
     #[test]
     fn test_env_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! env {() => {}}
             env!("TEST_ENV_VAR")
             "#,
+            expect![["\"__RA_UNIMPLEMENTED__\""]],
         );
-
-        assert_eq!(expanded, "\"__RA_UNIMPLEMENTED__\"");
     }
 
     #[test]
     fn test_option_env_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! option_env {() => {}}
             option_env!("TEST_ENV_VAR")
             "#,
+            expect![["std::option::Option::None:: < &str>"]],
         );
-
-        assert_eq!(expanded, "std::option::Option::None:: < &str>");
     }
 
     #[test]
     fn test_file_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! file {() => {}}
             file!()
             "#,
+            expect![[r#""""#]],
         );
-
-        assert_eq!(expanded, "\"\"");
     }
 
     #[test]
     fn test_assert_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! assert {
@@ -663,14 +663,13 @@ mod tests {
             }
             assert!(true, "{} {:?}", arg1(a, b, c), arg2);
             "#,
+            expect![["{{(&(true), &(\"{} {:?}\"), &(arg1(a,b,c)), &(arg2),);}}"]],
         );
-
-        assert_eq!(expanded, "{{(&(true), &(\"{} {:?}\"), &(arg1(a,b,c)), &(arg2),);}}");
     }
 
     #[test]
     fn test_compile_error_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! compile_error {
@@ -679,15 +678,14 @@ mod tests {
             }
             compile_error!("error!");
             "#,
+            // This expands to nothing (since it's in item position), but emits an error.
+            expect![[""]],
         );
-
-        // This expands to nothing (since it's in item position), but emits an error.
-        assert_eq!(expanded, "");
     }
 
     #[test]
     fn test_format_args_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! format_args {
@@ -696,17 +694,15 @@ mod tests {
             }
             format_args!("{} {:?}", arg1(a, b, c), arg2);
             "#,
-        );
-
-        assert_eq!(
-            expanded,
-            r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
+            expect![[
+                r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#
+            ]],
         );
     }
 
     #[test]
     fn test_format_args_expand_with_comma_exprs() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! format_args {
@@ -715,17 +711,15 @@ mod tests {
             }
             format_args!("{} {:?}", a::<A,B>(), b);
             "#,
-        );
-
-        assert_eq!(
-            expanded,
-            r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A,B>()),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(b),std::fmt::Display::fmt),])"#
+            expect![[
+                r#"std::fmt::Arguments::new_v1(&[], &[std::fmt::ArgumentV1::new(&(a::<A,B>()),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(b),std::fmt::Display::fmt),])"#
+            ]],
         );
     }
 
     #[test]
     fn test_include_bytes_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r#"
             #[rustc_builtin_macro]
             macro_rules! include_bytes {
@@ -734,21 +728,19 @@ mod tests {
             }
             include_bytes("foo");
             "#,
+            expect![[r#"b"""#]],
         );
-
-        assert_eq!(expanded, r#"b"""#);
     }
 
     #[test]
     fn test_concat_expand() {
-        let expanded = expand_builtin_macro(
+        check_expansion(
             r##"
             #[rustc_builtin_macro]
             macro_rules! concat {}
             concat!("foo", "r", 0, r#"bar"#, false);
             "##,
+            expect![[r#""foor0barfalse""#]],
         );
-
-        assert_eq!(expanded, r#""foor0barfalse""#);
     }
 }
