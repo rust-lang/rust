@@ -2069,6 +2069,8 @@ impl<'test> TestCx<'test> {
             f = f.with_extra_extension("js");
         } else if self.config.target.contains("wasm32") {
             f = f.with_extra_extension("wasm");
+        } else if self.config.target.contains("spirv") {
+            f = f.with_extra_extension("spv");
         } else if !env::consts::EXE_SUFFIX.is_empty() {
             f = f.with_extra_extension(env::consts::EXE_SUFFIX);
         }
