@@ -88,14 +88,28 @@ fn validate_method_call_expr(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_assist;
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
+    const EMPTY_ITER_FIXTURE: &'static str = r"
+//- /lib.rs deps:core crate:empty_iter
+pub struct EmptyIter;
+impl Iterator for EmptyIter {
+    type Item = usize;
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+pub struct Empty;
+impl Empty {
+    pub fn iter(&self) -> EmptyIter { EmptyIter }
+}
+";
+
     fn check_assist_with_fixtures(before: &str, after: &str) {
         let before = &format!(
-            "//- /main.rs crate:main deps:core,empty_iter{}{}",
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
             before,
+            EMPTY_ITER_FIXTURE,
             FamousDefs::FIXTURE,
         );
         check_assist(convert_iter_for_each_to_for, before, after);
@@ -105,19 +119,22 @@ mod tests {
     fn test_for_each_in_method() {
         check_assist_with_fixtures(
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     x.iter().$0for_each(|(x, y)| {
         println!("x: {}, y: {}", x, y);
     });
 }"#,
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y);
     };
-}"#,
+}
+"#,
         )
     }
 
@@ -125,17 +142,20 @@ fn main() {
     fn test_for_each_without_braces() {
         check_assist_with_fixtures(
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     x.iter().$0for_each(|(x, y)| println!("x: {}, y: {}", x, y));
 }"#,
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y)
     };
-}"#,
+}
+"#,
         )
     }
 
@@ -143,17 +163,30 @@ fn main() {
     fn test_for_each_in_closure() {
         check_assist_with_fixtures(
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     x.iter().for_each($0|(x, y)| println!("x: {}, y: {}", x, y));
 }"#,
             r#"
+use empty_iter::*;
 fn main() {
-    let x = vec![(1, 1), (2, 2), (3, 3), (4, 4)];
+    let x = Empty;
     for (x, y) in x.iter() {
         println!("x: {}, y: {}", x, y)
     };
-}"#,
+}
+"#,
         )
+    }
+
+    #[test]
+    fn test_for_each_not_applicable() {
+        check_assist_not_applicable(
+            convert_iter_for_each_to_for,
+            r#"
+fn main() {
+    value.$0for_each(|x| println!("{}", x));
+}"#)
     }
 }
