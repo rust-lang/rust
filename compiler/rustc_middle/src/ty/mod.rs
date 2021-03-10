@@ -15,6 +15,7 @@ pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
+pub use upvar::*;
 
 use crate::hir::exports::ExportMap;
 use crate::hir::place::{
@@ -115,6 +116,7 @@ mod instance;
 mod list;
 mod structural_impls;
 mod sty;
+mod upvar;
 
 // Data types
 
@@ -515,37 +517,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
 #[rustc_diagnostic_item = "Ty"]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    TypeFoldable,
-    HashStable
-)]
-pub struct UpvarPath {
-    pub hir_id: hir::HirId,
-}
-
-/// Upvars do not get their own `NodeId`. Instead, we use the pair of
-/// the original var ID (that is, the root variable that is referenced
-/// by the upvar) and the ID of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub struct UpvarId {
-    pub var_path: UpvarPath,
-    pub closure_expr_id: LocalDefId,
-}
-
-impl UpvarId {
-    pub fn new(var_hir_id: hir::HirId, closure_def_id: LocalDefId) -> UpvarId {
-        UpvarId { var_path: UpvarPath { hir_id: var_hir_id }, closure_expr_id: closure_def_id }
-    }
-}
-
 #[derive(Clone, PartialEq, Debug, TyEncodable, TyDecodable, TypeFoldable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -596,36 +567,6 @@ pub enum BorrowKind {
 
     /// Data is mutable and not aliasable.
     MutBorrow,
-}
-
-/// Information describing the capture of an upvar. This is computed
-/// during `typeck`, specifically by `regionck`.
-#[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub enum UpvarCapture<'tcx> {
-    /// Upvar is captured by value. This is always true when the
-    /// closure is labeled `move`, but can also be true in other cases
-    /// depending on inference.
-    ///
-    /// If the upvar was inferred to be captured by value (e.g. `move`
-    /// was not used), then the `Span` points to a usage that
-    /// required it. There may be more than one such usage
-    /// (e.g. `|| { a; a; }`), in which case we pick an
-    /// arbitrary one.
-    ByValue(Option<Span>),
-
-    /// Upvar is captured by reference.
-    ByRef(UpvarBorrow<'tcx>),
-}
-
-#[derive(PartialEq, Clone, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub struct UpvarBorrow<'tcx> {
-    /// The kind of borrow: by-ref upvars have access to shared
-    /// immutable borrows, which are not part of the normal language
-    /// syntax.
-    pub kind: BorrowKind,
-
-    /// Region of the resulting reference.
-    pub region: ty::Region<'tcx>,
 }
 
 /// Given the closure DefId this map provides a map of root variables to minimum
@@ -748,9 +689,6 @@ pub struct CaptureInfo<'tcx> {
     /// Capture mode that was selected
     pub capture_kind: UpvarCapture<'tcx>,
 }
-
-pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
-pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
