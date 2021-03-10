@@ -156,7 +156,7 @@ impl DefMap {
         }
     }
 
-    pub(super) fn resolve_path_fp_with_macro_single(
+    fn resolve_path_fp_with_macro_single(
         &self,
         db: &dyn DefDatabase,
         mode: ResolveMode,
@@ -384,10 +384,16 @@ impl DefMap {
                 }
             }
         };
-        let from_extern_prelude = self
-            .extern_prelude
-            .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public));
+        // Give precedence to names in outer `DefMap`s over the extern prelude; only check prelude
+        // from the crate DefMap.
+        let from_extern_prelude = match self.block {
+            Some(_) => PerNs::none(),
+            None => self
+                .extern_prelude
+                .get(name)
+                .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public)),
+        };
+
         let from_prelude = self.resolve_in_prelude(db, name);
 
         from_legacy_macro.or(from_scope_or_builtin).or(from_extern_prelude).or(from_prelude)
