@@ -565,6 +565,438 @@ pub unsafe fn vcgeq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
     simd_ge(a, b)
 }
 
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgez_s8(a: int8x8_t) -> uint8x8_t {
+    let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgezq_s8(a: int8x16_t) -> uint8x16_t {
+    let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgez_s16(a: int16x4_t) -> uint16x4_t {
+    let b: i16x4 = i16x4::new(0, 0, 0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgezq_s16(a: int16x8_t) -> uint16x8_t {
+    let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgez_s32(a: int32x2_t) -> uint32x2_t {
+    let b: i32x2 = i32x2::new(0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgezq_s32(a: int32x4_t) -> uint32x4_t {
+    let b: i32x4 = i32x4::new(0, 0, 0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgez_s64(a: int64x1_t) -> uint64x1_t {
+    let b: i64x1 = i64x1::new(0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmge))]
+pub unsafe fn vcgezq_s64(a: int64x2_t) -> uint64x2_t {
+    let b: i64x2 = i64x2::new(0, 0);
+    simd_ge(a, transmute(b))
+}
+
+/// Floating-point compare greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmge))]
+pub unsafe fn vcgez_f32(a: float32x2_t) -> uint32x2_t {
+    let b: f32x2 = f32x2::new(0.0, 0.0);
+    simd_ge(a, transmute(b))
+}
+
+/// Floating-point compare greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmge))]
+pub unsafe fn vcgezq_f32(a: float32x4_t) -> uint32x4_t {
+    let b: f32x4 = f32x4::new(0.0, 0.0, 0.0, 0.0);
+    simd_ge(a, transmute(b))
+}
+
+/// Floating-point compare greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmge))]
+pub unsafe fn vcgez_f64(a: float64x1_t) -> uint64x1_t {
+    let b: f64 = 0.0;
+    simd_ge(a, transmute(b))
+}
+
+/// Floating-point compare greater than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmge))]
+pub unsafe fn vcgezq_f64(a: float64x2_t) -> uint64x2_t {
+    let b: f64x2 = f64x2::new(0.0, 0.0);
+    simd_ge(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtz_s8(a: int8x8_t) -> uint8x8_t {
+    let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtzq_s8(a: int8x16_t) -> uint8x16_t {
+    let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtz_s16(a: int16x4_t) -> uint16x4_t {
+    let b: i16x4 = i16x4::new(0, 0, 0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtzq_s16(a: int16x8_t) -> uint16x8_t {
+    let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtz_s32(a: int32x2_t) -> uint32x2_t {
+    let b: i32x2 = i32x2::new(0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtzq_s32(a: int32x4_t) -> uint32x4_t {
+    let b: i32x4 = i32x4::new(0, 0, 0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtz_s64(a: int64x1_t) -> uint64x1_t {
+    let b: i64x1 = i64x1::new(0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vcgtzq_s64(a: int64x2_t) -> uint64x2_t {
+    let b: i64x2 = i64x2::new(0, 0);
+    simd_gt(a, transmute(b))
+}
+
+/// Floating-point compare greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmgt))]
+pub unsafe fn vcgtz_f32(a: float32x2_t) -> uint32x2_t {
+    let b: f32x2 = f32x2::new(0.0, 0.0);
+    simd_gt(a, transmute(b))
+}
+
+/// Floating-point compare greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmgt))]
+pub unsafe fn vcgtzq_f32(a: float32x4_t) -> uint32x4_t {
+    let b: f32x4 = f32x4::new(0.0, 0.0, 0.0, 0.0);
+    simd_gt(a, transmute(b))
+}
+
+/// Floating-point compare greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmgt))]
+pub unsafe fn vcgtz_f64(a: float64x1_t) -> uint64x1_t {
+    let b: f64 = 0.0;
+    simd_gt(a, transmute(b))
+}
+
+/// Floating-point compare greater than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmgt))]
+pub unsafe fn vcgtzq_f64(a: float64x2_t) -> uint64x2_t {
+    let b: f64x2 = f64x2::new(0.0, 0.0);
+    simd_gt(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclez_s8(a: int8x8_t) -> uint8x8_t {
+    let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclezq_s8(a: int8x16_t) -> uint8x16_t {
+    let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclez_s16(a: int16x4_t) -> uint16x4_t {
+    let b: i16x4 = i16x4::new(0, 0, 0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclezq_s16(a: int16x8_t) -> uint16x8_t {
+    let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclez_s32(a: int32x2_t) -> uint32x2_t {
+    let b: i32x2 = i32x2::new(0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclezq_s32(a: int32x4_t) -> uint32x4_t {
+    let b: i32x4 = i32x4::new(0, 0, 0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclez_s64(a: int64x1_t) -> uint64x1_t {
+    let b: i64x1 = i64x1::new(0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(cmgt))]
+pub unsafe fn vclezq_s64(a: int64x2_t) -> uint64x2_t {
+    let b: i64x2 = i64x2::new(0, 0);
+    simd_le(a, transmute(b))
+}
+
+/// Floating-point compare less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmle))]
+pub unsafe fn vclez_f32(a: float32x2_t) -> uint32x2_t {
+    let b: f32x2 = f32x2::new(0.0, 0.0);
+    simd_le(a, transmute(b))
+}
+
+/// Floating-point compare less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmle))]
+pub unsafe fn vclezq_f32(a: float32x4_t) -> uint32x4_t {
+    let b: f32x4 = f32x4::new(0.0, 0.0, 0.0, 0.0);
+    simd_le(a, transmute(b))
+}
+
+/// Floating-point compare less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmle))]
+pub unsafe fn vclez_f64(a: float64x1_t) -> uint64x1_t {
+    let b: f64 = 0.0;
+    simd_le(a, transmute(b))
+}
+
+/// Floating-point compare less than or equal to zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmle))]
+pub unsafe fn vclezq_f64(a: float64x2_t) -> uint64x2_t {
+    let b: f64x2 = f64x2::new(0.0, 0.0);
+    simd_le(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltz_s8(a: int8x8_t) -> uint8x8_t {
+    let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltzq_s8(a: int8x16_t) -> uint8x16_t {
+    let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltz_s16(a: int16x4_t) -> uint16x4_t {
+    let b: i16x4 = i16x4::new(0, 0, 0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltzq_s16(a: int16x8_t) -> uint16x8_t {
+    let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltz_s32(a: int32x2_t) -> uint32x2_t {
+    let b: i32x2 = i32x2::new(0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltzq_s32(a: int32x4_t) -> uint32x4_t {
+    let b: i32x4 = i32x4::new(0, 0, 0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltz_s64(a: int64x1_t) -> uint64x1_t {
+    let b: i64x1 = i64x1::new(0);
+    simd_lt(a, transmute(b))
+}
+
+/// Compare signed less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sshr))]
+pub unsafe fn vcltzq_s64(a: int64x2_t) -> uint64x2_t {
+    let b: i64x2 = i64x2::new(0, 0);
+    simd_lt(a, transmute(b))
+}
+
+/// Floating-point compare less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmlt))]
+pub unsafe fn vcltz_f32(a: float32x2_t) -> uint32x2_t {
+    let b: f32x2 = f32x2::new(0.0, 0.0);
+    simd_lt(a, transmute(b))
+}
+
+/// Floating-point compare less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmlt))]
+pub unsafe fn vcltzq_f32(a: float32x4_t) -> uint32x4_t {
+    let b: f32x4 = f32x4::new(0.0, 0.0, 0.0, 0.0);
+    simd_lt(a, transmute(b))
+}
+
+/// Floating-point compare less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmlt))]
+pub unsafe fn vcltz_f64(a: float64x1_t) -> uint64x1_t {
+    let b: f64 = 0.0;
+    simd_lt(a, transmute(b))
+}
+
+/// Floating-point compare less than zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcmlt))]
+pub unsafe fn vcltzq_f64(a: float64x2_t) -> uint64x2_t {
+    let b: f64x2 = f64x2::new(0.0, 0.0);
+    simd_lt(a, transmute(b))
+}
+
 /// Multiply
 #[inline]
 #[target_feature(enable = "neon")]
@@ -1241,6 +1673,390 @@ mod test {
         let b: f64x2 = f64x2::new(0.1, 1.2);
         let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0xFF_FF_FF_FF_FF_FF_FF_FF);
         let r: u64x2 = transmute(vcgeq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_s8() {
+        let a: i8x8 = i8x8::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u8x8 = u8x8::new(0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+        let r: u8x8 = transmute(vcgez_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_s8() {
+        let a: i8x16 = i8x16::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x7F);
+        let e: u8x16 = u8x16::new(0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+        let r: u8x16 = transmute(vcgezq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_s16() {
+        let a: i16x4 = i16x4::new(-32768, -1, 0x00, 0x01);
+        let e: u16x4 = u16x4::new(0, 0, 0xFF_FF, 0xFF_FF);
+        let r: u16x4 = transmute(vcgez_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_s16() {
+        let a: i16x8 = i16x8::new(-32768, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u16x8 = u16x8::new(0, 0, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF);
+        let r: u16x8 = transmute(vcgezq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, -1);
+        let e: u32x2 = u32x2::new(0, 0);
+        let r: u32x2 = transmute(vcgez_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, -1, 0x00, 0x01);
+        let e: u32x4 = u32x4::new(0, 0, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x4 = transmute(vcgezq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcgez_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, -1);
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vcgezq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_f32() {
+        let a: f32x2 = f32x2::new(-1.2, 0.0);
+        let e: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let r: u32x2 = transmute(vcgez_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_f32() {
+        let a: f32x4 = f32x4::new(-1.2, 0.0, 1.2, 2.3);
+        let e: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x4 = transmute(vcgezq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgez_f64() {
+        let a: f64 = -1.2;
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcgez_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgezq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vcgezq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_s8() {
+        let a: i8x8 = i8x8::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u8x8 = u8x8::new(0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+        let r: u8x8 = transmute(vcgtz_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_s8() {
+        let a: i8x16 = i8x16::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x7F);
+        let e: u8x16 = u8x16::new(0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+        let r: u8x16 = transmute(vcgtzq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_s16() {
+        let a: i16x4 = i16x4::new(-32768, -1, 0x00, 0x01);
+        let e: u16x4 = u16x4::new(0, 0, 0, 0xFF_FF);
+        let r: u16x4 = transmute(vcgtz_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_s16() {
+        let a: i16x8 = i16x8::new(-32768, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u16x8 = u16x8::new(0, 0, 0, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF, 0xFF_FF);
+        let r: u16x8 = transmute(vcgtzq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, -1);
+        let e: u32x2 = u32x2::new(0, 0);
+        let r: u32x2 = transmute(vcgtz_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, -1, 0x00, 0x01);
+        let e: u32x4 = u32x4::new(0, 0, 0, 0xFF_FF_FF_FF);
+        let r: u32x4 = transmute(vcgtzq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcgtz_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, -1);
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vcgtzq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_f32() {
+        let a: f32x2 = f32x2::new(-1.2, 0.0);
+        let e: u32x2 = u32x2::new(0, 0);
+        let r: u32x2 = transmute(vcgtz_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_f32() {
+        let a: f32x4 = f32x4::new(-1.2, 0.0, 1.2, 2.3);
+        let e: u32x4 = u32x4::new(0, 0, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x4 = transmute(vcgtzq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtz_f64() {
+        let a: f64 = -1.2;
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcgtz_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcgtzq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vcgtzq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_s8() {
+        let a: i8x8 = i8x8::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u8x8 = u8x8::new(0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0);
+        let r: u8x8 = transmute(vclez_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_s8() {
+        let a: i8x16 = i8x16::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x7F);
+        let e: u8x16 = u8x16::new(0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x16 = transmute(vclezq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_s16() {
+        let a: i16x4 = i16x4::new(-32768, -1, 0x00, 0x01);
+        let e: u16x4 = u16x4::new(0xFF_FF, 0xFF_FF, 0xFF_FF, 0);
+        let r: u16x4 = transmute(vclez_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_s16() {
+        let a: i16x8 = i16x8::new(-32768, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u16x8 = u16x8::new(0xFF_FF, 0xFF_FF, 0xFF_FF, 0, 0, 0, 0, 0);
+        let r: u16x8 = transmute(vclezq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, -1);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x2 = transmute(vclez_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, -1, 0x00, 0x01);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0);
+        let r: u32x4 = transmute(vclezq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vclez_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, -1);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vclezq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_f32() {
+        let a: f32x2 = f32x2::new(-1.2, 0.0);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x2 = transmute(vclez_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_f32() {
+        let a: f32x4 = f32x4::new(-1.2, 0.0, 1.2, 2.3);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0, 0);
+        let r: u32x4 = transmute(vclezq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclez_f64() {
+        let a: f64 = -1.2;
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vclez_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vclezq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vclezq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_s8() {
+        let a: i8x8 = i8x8::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u8x8 = u8x8::new(0xFF, 0xFF, 0, 0, 0, 0, 0, 0);
+        let r: u8x8 = transmute(vcltz_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_s8() {
+        let a: i8x16 = i8x16::new(-128, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x7F);
+        let e: u8x16 = u8x16::new(0xFF, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let r: u8x16 = transmute(vcltzq_s8(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_s16() {
+        let a: i16x4 = i16x4::new(-32768, -1, 0x00, 0x01);
+        let e: u16x4 = u16x4::new(0xFF_FF, 0xFF_FF, 0, 0);
+        let r: u16x4 = transmute(vcltz_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_s16() {
+        let a: i16x8 = i16x8::new(-32768, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+        let e: u16x8 = u16x8::new(0xFF_FF, 0xFF_FF, 0, 0, 0, 0, 0, 0);
+        let r: u16x8 = transmute(vcltzq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_s32() {
+        let a: i32x2 = i32x2::new(-2147483648, -1);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF);
+        let r: u32x2 = transmute(vcltz_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_s32() {
+        let a: i32x4 = i32x4::new(-2147483648, -1, 0x00, 0x01);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0xFF_FF_FF_FF, 0, 0);
+        let r: u32x4 = transmute(vcltzq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_s64() {
+        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcltz_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_s64() {
+        let a: i64x2 = i64x2::new(-9223372036854775808, -1);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vcltzq_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_f32() {
+        let a: f32x2 = f32x2::new(-1.2, 0.0);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 0);
+        let r: u32x2 = transmute(vcltz_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_f32() {
+        let a: f32x4 = f32x4::new(-1.2, 0.0, 1.2, 2.3);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 0, 0, 0);
+        let r: u32x4 = transmute(vcltzq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltz_f64() {
+        let a: f64 = -1.2;
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcltz_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcltzq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
+        let r: u64x2 = transmute(vcltzq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 

@@ -424,6 +424,86 @@ arm = vcge.s
 // we are missing float16x4_t:uint16x4_t, float16x8_t:uint16x8_t
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
 
+/// Compare signed greater than or equal to zero
+name = vcgez
+fn = simd_ge
+a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, MAX
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
+
+aarch64 = cmge
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
+
+/// Floating-point compare greater than or equal to zero
+name = vcgez
+fn = simd_ge
+a = -1.2, 0.0, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7
+fixed = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+validate FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
+
+aarch64 = fcmge
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+
+/// Compare signed greater than zero
+name = vcgtz
+fn = simd_gt
+a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, MAX
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
+
+aarch64 = cmgt
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
+
+/// Floating-point compare greater than zero
+name = vcgtz
+fn = simd_gt
+a = -1.2, 0.0, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7
+fixed = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+validate FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
+
+aarch64 = fcmgt
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+
+/// Compare signed less than or equal to zero
+name = vclez
+fn = simd_le
+a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, MAX
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
+
+aarch64 = cmgt
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
+
+/// Floating-point compare less than or equal to zero
+name = vclez
+fn = simd_le
+a = -1.2, 0.0, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7
+fixed = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+validate TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
+
+aarch64 = fcmle
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+
+/// Compare signed less than zero
+name = vcltz
+fn = simd_lt
+a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, MAX
+fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+validate TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
+
+aarch64 = sshr
+generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
+
+/// Floating-point compare less than zero
+name = vcltz
+fn = simd_lt
+a = -1.2, 0.0, 1.2, 2.3, 3.4, 4.5, 5.6, 6.7
+fixed = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+validate TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
+
+aarch64 = fcmlt
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+
 /// Saturating subtract
 name = vqsub
 a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42

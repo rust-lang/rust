@@ -278,6 +278,7 @@ fn ff_val(t: &str) -> &'static str {
 fn false_val(_t: &str) -> &'static str {
     "0"
 }
+
 fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
     match v {
         "FALSE" => false_val(t),
@@ -390,6 +391,12 @@ fn gen_aarch64(
                 current_fn,
             )
         }
+        (_, 1, _) => format!(
+            r#"pub unsafe fn {}(a: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t, out_t, ext_c, multi_calls,
+        ),
         (_, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}
@@ -584,6 +591,12 @@ fn gen_arm(
                 current_fn,
             )
         }
+        (_, 1, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t, in_t, out_t, ext_c, multi_calls,
+        ),
         (_, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}
@@ -690,14 +703,12 @@ fn get_call(in_str: &str, in_t: &str, out_t: &str, fixed: &Vec<String>) -> Strin
         let s = &params[i];
         if s.contains(':') {
             let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
-            if re_params.len() == 1 {
+            if re_params[1] == "" {
                 re = Some((re_params[0].clone(), in_t.to_string()));
-            } else if re_params.len() == 2 {
-                if re_params[1] == "in_t" {
-                    re = Some((re_params[0].clone(), in_t.to_string()));
-                } else if re_params[1] == "out_t" {
-                    re = Some((re_params[0].clone(), out_t.to_string()));
-                }
+            } else if re_params[1] == "in_t" {
+                re = Some((re_params[0].clone(), in_t.to_string()));
+            } else if re_params[1] == "out_t" {
+                re = Some((re_params[0].clone(), out_t.to_string()));
             }
         } else {
             if !param_str.is_empty() {
