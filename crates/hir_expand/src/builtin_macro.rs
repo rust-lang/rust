@@ -5,6 +5,7 @@ use crate::{
 };
 
 use base_db::{AnchoredPath, FileId};
+use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree, ExpandResult};
 use parser::FragmentKind;
@@ -97,6 +98,7 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand,
     (llvm_asm, LlvmAsm) => asm_expand,
     (asm, Asm) => asm_expand,
+    (cfg, Cfg) => cfg_expand,
 
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
@@ -255,6 +257,18 @@ fn asm_expand(
     let expanded = quote! {
         ()
     };
+    ExpandResult::ok(expanded)
+}
+
+fn cfg_expand(
+    db: &dyn AstDatabase,
+    id: LazyMacroId,
+    tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    let loc = db.lookup_intern_macro(id);
+    let expr = CfgExpr::parse(tt);
+    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&expr) != Some(false);
+    let expanded = if enabled { quote!(true) } else { quote!(false) };
     ExpandResult::ok(expanded)
 }
 
