@@ -197,9 +197,19 @@ pub(crate) fn diagnostics(
             );
         });
 
-    if let Some(m) = sema.to_module_def(file_id) {
-        m.diagnostics(db, &mut sink);
-    };
+    match sema.to_module_def(file_id) {
+        Some(m) => m.diagnostics(db, &mut sink),
+        None => {
+            res.borrow_mut().push(
+                Diagnostic::hint(
+                    parse.tree().syntax().text_range(),
+                    "file not included in module tree".to_string(),
+                )
+                .with_unused(true),
+            );
+        }
+    }
+
     drop(sink);
     res.into_inner()
 }
