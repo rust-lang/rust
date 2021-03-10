@@ -3,8 +3,19 @@
 
 #![crate_type = "lib"]
 
+// Verify that we don't miscompile this even if rustc didn't apply the trivial loop detection to
+// insert the sideeffect intrinsic.
+
 fn infinite_loop() -> u8 {
-    loop {}
+    let mut x = 0;
+    // CHECK-NOT: sideeffect
+    loop {
+        if x == 42 {
+            x = 0;
+        } else {
+            x = 42;
+        }
+    }
 }
 
 // CHECK-LABEL: @test

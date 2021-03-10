@@ -967,10 +967,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
-    insert_sideeffect: bool = (false, parse_bool, [TRACKED],
-        "fix undefined behavior when a thread doesn't eventually make progress \
-        (such as entering an empty infinite loop) by inserting llvm.sideeffect \
-        (default: no)"),
     instrument_coverage: bool = (false, parse_bool, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \

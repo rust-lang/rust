@@ -560,7 +560,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_threshold, Some(123));
     tracked!(inline_mir_hint_threshold, Some(123));
-    tracked!(insert_sideeffect, true);
     tracked!(instrument_coverage, true);
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
