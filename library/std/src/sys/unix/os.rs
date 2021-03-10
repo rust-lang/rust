@@ -206,7 +206,7 @@ pub mod signal_lookup {
     }
 }
 
-#[cfg(arget_env = "musl")]
+#[cfg(target_env = "musl")]
 pub mod signal_lookup {
     pub struct ViaStrsignal;
     pub static descrs: ViaStrSignal = ViaStrSignal;
