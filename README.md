@@ -31,7 +31,7 @@ by running `./x.py --help` or reading the [rustc dev guide][rustcguidebuild].
    * `g++` 5.1 or later or `clang++` 3.5 or later
    * `python` 3 or 2.7
    * GNU `make` 3.81 or later
-   * `cmake` 3.4.3 or later
+   * `cmake` 3.13.4 or later
    * `ninja`
    * `curl`
    * `git`

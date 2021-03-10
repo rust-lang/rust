@@ -123,6 +123,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 UnsafetyViolationKind::General,
                 UnsafetyViolationDetails::UseOfInlineAssembly,
             ),
+            StatementKind::CopyNonOverlapping(..) => unreachable!(),
         }
         self.super_statement(statement, location);
     }
@@ -340,7 +341,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 false
             }
             // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
-            Safety::FnUnsafe if self.tcx.features().unsafe_block_in_unsafe_fn => {
+            Safety::FnUnsafe => {
                 for violation in violations {
                     let mut violation = *violation;
 
@@ -355,8 +356,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 false
             }
-            // `unsafe` function bodies allow unsafe without additional unsafe blocks (before RFC 2585)
-            Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
+            Safety::BuiltinUnsafe => true,
             Safety::ExplicitUnsafe(hir_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {

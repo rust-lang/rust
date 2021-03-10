@@ -832,6 +832,27 @@ fn codegen_stmt<'tcx>(
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
+        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+          src,
+          dst,
+          count,
+        }) => {
+            let dst = codegen_operand(fx, dst);
+            let pointee = dst
+              .layout()
+              .pointee_info_at(fx, rustc_target::abi::Size::ZERO)
+              .expect("Expected pointer");
+            let dst = dst.load_scalar(fx);
+            let src = codegen_operand(fx, src).load_scalar(fx);
+            let count = codegen_operand(fx, count).load_scalar(fx);
+            let elem_size: u64 = pointee.size.bytes();
+            let bytes = if elem_size != 1 {
+               fx.bcx.ins().imul_imm(count, elem_size as i64)
+            } else {
+               count
+            };
+            fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, bytes);
+        }
     }
 }
 

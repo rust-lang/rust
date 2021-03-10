@@ -210,7 +210,7 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
         StatementKind::Assign(box (place, rval)) => {
             check_place(tcx, *place, span, body)?;
             check_rvalue(tcx, body, def_id, rval, span)
-        },
+        }
 
         StatementKind::FakeRead(_, place) |
         // just an assignment
@@ -218,6 +218,13 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
 
         StatementKind::LlvmInlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
 
+        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping{
+          dst, src, count,
+        }) => {
+          check_operand(tcx, dst, span, body)?;
+          check_operand(tcx, src, span, body)?;
+          check_operand(tcx, count, span, body)
+        }
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

@@ -641,67 +641,73 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        if intrinsic.is_some() && intrinsic != Some(sym::drop_in_place) {
-            let intrinsic = intrinsic.unwrap();
-            let dest = match ret_dest {
-                _ if fn_abi.ret.is_indirect() => llargs[0],
-                ReturnDest::Nothing => {
-                    bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
-                }
-                ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
-                ReturnDest::DirectOperand(_) => {
-                    bug!("Cannot use direct operand with an intrinsic call")
-                }
-            };
-
-            let args: Vec<_> = args
-                .iter()
-                .enumerate()
-                .map(|(i, arg)| {
-                    // The indices passed to simd_shuffle* in the
-                    // third argument must be constant. This is
-                    // checked by const-qualification, which also
-                    // promotes any complex rvalues to constants.
-                    if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
-                        if let mir::Operand::Constant(constant) = arg {
-                            let c = self.eval_mir_constant(constant);
-                            let (llval, ty) = self.simd_shuffle_indices(
-                                &bx,
-                                constant.span,
-                                constant.literal.ty,
-                                c,
-                            );
-                            return OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) };
-                        } else {
-                            span_bug!(span, "shuffle indices must be constant");
-                        }
+        match intrinsic {
+            None | Some(sym::drop_in_place) => {}
+            Some(sym::copy_nonoverlapping) => unreachable!(),
+            Some(intrinsic) => {
+                let dest = match ret_dest {
+                    _ if fn_abi.ret.is_indirect() => llargs[0],
+                    ReturnDest::Nothing => {
+                        bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
                     }
+                    ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
+                    ReturnDest::DirectOperand(_) => {
+                        bug!("Cannot use direct operand with an intrinsic call")
+                    }
+                };
 
-                    self.codegen_operand(&mut bx, arg)
-                })
-                .collect();
+                let args: Vec<_> = args
+                    .iter()
+                    .enumerate()
+                    .map(|(i, arg)| {
+                        // The indices passed to simd_shuffle* in the
+                        // third argument must be constant. This is
+                        // checked by const-qualification, which also
+                        // promotes any complex rvalues to constants.
+                        if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
+                            if let mir::Operand::Constant(constant) = arg {
+                                let c = self.eval_mir_constant(constant);
+                                let (llval, ty) = self.simd_shuffle_indices(
+                                    &bx,
+                                    constant.span,
+                                    constant.literal.ty,
+                                    c,
+                                );
+                                return OperandRef {
+                                    val: Immediate(llval),
+                                    layout: bx.layout_of(ty),
+                                };
+                            } else {
+                                span_bug!(span, "shuffle indices must be constant");
+                            }
+                        }
 
-            Self::codegen_intrinsic_call(
-                &mut bx,
-                *instance.as_ref().unwrap(),
-                &fn_abi,
-                &args,
-                dest,
-                span,
-            );
+                        self.codegen_operand(&mut bx, arg)
+                    })
+                    .collect();
 
-            if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                Self::codegen_intrinsic_call(
+                    &mut bx,
+                    *instance.as_ref().unwrap(),
+                    &fn_abi,
+                    &args,
+                    dest,
+                    span,
+                );
+
+                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                    self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                }
+
+                if let Some((_, target)) = *destination {
+                    helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+                    helper.funclet_br(self, &mut bx, target);
+                } else {
+                    bx.unreachable();
+                }
+
+                return;
             }
-
-            if let Some((_, target)) = *destination {
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-                helper.funclet_br(self, &mut bx, target);
-            } else {
-                bx.unreachable();
-            }
-
-            return;
         }
 
         // Split the rust-call tupled arguments off.

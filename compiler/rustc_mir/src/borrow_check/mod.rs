@@ -626,6 +626,15 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                     self.consume_operand(location, (input, span), flow_state);
                 }
             }
+
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ..
+            }) => {
+                span_bug!(
+                    span,
+                    "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
+                )
+            }
             StatementKind::Nop
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)

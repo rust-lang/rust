@@ -854,6 +854,34 @@ impl<T> Option<T> {
     // Entry-like operations to insert if None and return a reference
     /////////////////////////////////////////////////////////////////////////
 
+    /// Inserts the default value into the option if it is [`None`], then
+    /// returns a mutable reference to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_get_or_default)]
+    ///
+    /// let mut x = None;
+    ///
+    /// {
+    ///     let y: &mut u32 = x.get_or_default();
+    ///     assert_eq!(y, &0);
+    ///
+    ///     *y = 7;
+    /// }
+    ///
+    /// assert_eq!(x, Some(7));
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_get_or_default", issue = "82901")]
+    pub fn get_or_default(&mut self) -> &mut T
+    where
+        T: Default,
+    {
+        self.get_or_insert_with(Default::default)
+    }
+
     /// Inserts `value` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
     ///
