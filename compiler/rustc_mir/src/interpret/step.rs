@@ -160,7 +160,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
         let size = size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_format!("overflow computing total size of `copy_nonoverlapping`")
+            err_ub_format!(
+                "overflow computing total size of `{}`",
+                if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
+            )
         })?;
 
         // Make sure we check both pointers for an access of the total size and aligment,
