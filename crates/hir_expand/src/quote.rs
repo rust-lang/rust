@@ -188,8 +188,9 @@ macro_rules! impl_to_to_tokentrees {
 
 impl_to_to_tokentrees! {
     u32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
-    usize => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
-    i32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()}};
+    usize => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
+    i32 => self { tt::Literal{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
+    bool => self { tt::Ident{text: self.to_string().into(), id: tt::TokenId::unspecified()} };
     tt::Leaf => self { self };
     tt::Literal => self { self };
     tt::Ident => self { self };

@@ -154,6 +154,7 @@ pub mod known {
         macro_rules,
         derive,
         doc,
+        cfg,
         cfg_attr,
         // Components of known path (value or mod name)
         std,

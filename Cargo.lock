@@ -524,6 +524,7 @@ name = "hir_expand"
 version = "0.0.0"
 dependencies = [
  "base_db",
+ "cfg",
  "either",
  "la-arena",
  "log",

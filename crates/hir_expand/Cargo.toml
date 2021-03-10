@@ -16,6 +16,7 @@ rustc-hash = "1.0.0"
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 
 base_db = { path = "../base_db", version = "0.0.0" }
+cfg = { path = "../cfg", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
