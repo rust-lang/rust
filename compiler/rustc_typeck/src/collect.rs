@@ -2666,7 +2666,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if tcx.sess.check_name(attr, sym::used) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
         } else if tcx.sess.check_name(attr, sym::cmse_nonsecure_entry) {
-            if tcx.fn_sig(id).abi() != abi::Abi::C {
+            if !matches!(tcx.fn_sig(id).abi(), abi::Abi::C { .. }) {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,

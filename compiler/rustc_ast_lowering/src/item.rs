@@ -319,10 +319,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             ItemKind::ForeignMod(ref fm) => {
                 if fm.abi.is_none() {
-                    self.maybe_lint_missing_abi(span, id, abi::Abi::C);
+                    self.maybe_lint_missing_abi(span, id, abi::Abi::C { unwind: false });
                 }
                 hir::ItemKind::ForeignMod {
-                    abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
+                    abi: fm.abi.map_or(abi::Abi::C { unwind: false }, |abi| self.lower_abi(abi)),
                     items: self
                         .arena
                         .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
@@ -1334,8 +1334,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match ext {
             Extern::None => abi::Abi::Rust,
             Extern::Implicit => {
-                self.maybe_lint_missing_abi(span, id, abi::Abi::C);
-                abi::Abi::C
+                self.maybe_lint_missing_abi(span, id, abi::Abi::C { unwind: false });
+                abi::Abi::C { unwind: false }
             }
             Extern::Explicit(abi) => self.lower_abi(abi),
         }

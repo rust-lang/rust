@@ -476,8 +476,11 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
-        if fn_sig.abi != Abi::C {
-            fx.tcx.sess.span_fatal(span, &format!("Variadic call for non-C abi {:?}", fn_sig.abi));
+        if !matches!(fn_sig.abi, Abi::C { .. }) {
+            fx.tcx.sess.span_fatal(
+                span,
+                &format!("Variadic call for non-C abi {:?}", fn_sig.abi),
+            );
         }
         let sig_ref = fx.bcx.func.dfg.call_signature(call_inst).unwrap();
         let abi_params = call_args

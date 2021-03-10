@@ -641,6 +641,9 @@ declare_features! (
     /// Allows associated types in inherent impls.
     (active, inherent_associated_types, "1.52.0", Some(8995), None),
 
+    /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
+    (active, c_unwind, "1.52.0", Some(74990), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
