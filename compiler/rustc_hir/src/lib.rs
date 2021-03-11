@@ -5,6 +5,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
+#![feature(extended_key_value_attributes)]
 #![feature(in_band_lifetimes)]
 #![feature(once_cell)]
 #![feature(or_patterns)]
