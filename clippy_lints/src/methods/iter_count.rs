@@ -14,11 +14,11 @@ pub(crate) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'
         "slice"
     } else if is_type_diagnostic_item(cx, ty, sym::vec_type) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, ty, sym::vecdeque_type) {
         "VecDeque"
-    } else if is_type_diagnostic_item(cx, ty, sym!(hashset_type)) {
+    } else if is_type_diagnostic_item(cx, ty, sym::hashset_type) {
         "HashSet"
-    } else if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
+    } else if is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
         "HashMap"
     } else if match_type(cx, ty, &paths::BTREEMAP) {
         "BTreeMap"

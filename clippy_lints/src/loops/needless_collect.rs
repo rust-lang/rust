@@ -29,9 +29,9 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         then {
             let ty = cx.typeck_results().node_type(ty.hir_id);
             if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
+                is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
-                is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) {
+                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
                 if method.ident.name == sym!(len) {
                     let span = shorten_needless_collect_span(expr);
                     span_lint_and_sugg(
@@ -99,7 +99,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
                 if let ty = cx.typeck_results().node_type(ty.hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
+                    is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
                 if iter_calls.len() == 1;
