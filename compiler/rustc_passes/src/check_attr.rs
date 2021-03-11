@@ -8,7 +8,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::{Attribute, LitKind, NestedMetaItem};
+use rustc_ast::{Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -87,6 +87,10 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_export_name(hir_id, &attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::rustc_args_required_const) {
                 self.check_rustc_args_required_const(&attr, span, target, item)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_layout_scalar_valid_range_start) {
+                self.check_rustc_layout_scalar_valid_range(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_layout_scalar_valid_range_end) {
+                self.check_rustc_layout_scalar_valid_range(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
                 self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
             } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
@@ -804,6 +808,37 @@ impl CheckAttrVisitor<'tcx> {
             false
         } else {
             true
+        }
+    }
+
+    fn check_rustc_layout_scalar_valid_range(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        if target != Target::Struct {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a struct")
+                .span_label(*span, "not a struct")
+                .emit();
+            return false;
+        }
+
+        let list = match attr.meta_item_list() {
+            None => return false,
+            Some(it) => it,
+        };
+
+        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+            true
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "expected exactly one integer literal argument")
+                .emit();
+            false
         }
     }
 
