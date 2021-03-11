@@ -499,7 +499,7 @@ fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
 
         // /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.63/src/custom_keyword.rs
         let path = PathBuf::from(file);
-        let mut piter = path.into_iter();
+        let mut piter = path.iter();
         // consume all elements until we find ".cargo", so that "/home/matthias" is skipped
         let _: Option<&OsStr> = piter.find(|x| x == &std::ffi::OsString::from(".cargo"));
         // collect the remaining segments
@@ -594,7 +594,7 @@ fn is_in_clippy_root() -> bool {
 /// This function panics if the clippy binaries don't exist
 /// or if lintcheck is executed from the wrong directory (aka none-repo-root)
 pub fn main() {
-    // assert that we launch lintcheck from the repo root (via cargo dev-lintcheck)
+    // assert that we launch lintcheck from the repo root (via cargo lintcheck)
     if !is_in_clippy_root() {
         eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
