@@ -4,7 +4,6 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -913,12 +912,6 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
     }
 }
 
-impl<'a, 'tcx> FingerprintDecoder for CacheDecoder<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error> {
-        Fingerprint::decode_opaque(&mut self.opaque)
-    }
-}
-
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         RefDecodable::decode(d)
@@ -1008,12 +1001,6 @@ where
 
         let end_pos = self.position();
         ((end_pos - start_pos) as u64).encode(self)
-    }
-}
-
-impl<'a, 'tcx, E: OpaqueEncoder> FingerprintEncoder for CacheEncoder<'a, 'tcx, E> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), E::Error> {
-        self.encoder.encode_fingerprint(f)
     }
 }
 
