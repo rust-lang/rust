@@ -40,22 +40,22 @@ crate enum PatternError {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate enum BindingMode {
+pub enum BindingMode {
     ByValue,
     ByRef(BorrowKind),
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate struct FieldPat<'tcx> {
-    crate field: Field,
-    crate pattern: Pat<'tcx>,
+pub struct FieldPat<'tcx> {
+    pub field: Field,
+    pub pattern: Pat<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate struct Pat<'tcx> {
-    crate ty: Ty<'tcx>,
-    crate span: Span,
-    crate kind: Box<PatKind<'tcx>>,
+pub struct Pat<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub span: Span,
+    pub kind: Box<PatKind<'tcx>>,
 }
 
 impl<'tcx> Pat<'tcx> {
@@ -65,8 +65,8 @@ impl<'tcx> Pat<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct PatTyProj<'tcx> {
-    crate user_ty: CanonicalUserType<'tcx>,
+pub struct PatTyProj<'tcx> {
+    pub user_ty: CanonicalUserType<'tcx>,
 }
 
 impl<'tcx> PatTyProj<'tcx> {
@@ -92,8 +92,8 @@ impl<'tcx> PatTyProj<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct Ascription<'tcx> {
-    crate user_ty: PatTyProj<'tcx>,
+pub struct Ascription<'tcx> {
+    pub user_ty: PatTyProj<'tcx>,
     /// Variance to use when relating the type `user_ty` to the **type of the value being
     /// matched**. Typically, this is `Variance::Covariant`, since the value being matched must
     /// have a type that is some subtype of the ascribed type.
@@ -112,12 +112,12 @@ crate struct Ascription<'tcx> {
     /// requires that `&'static str <: T_x`, where `T_x` is the type of `x`. Really, we should
     /// probably be checking for a `PartialEq` impl instead, but this preserves the behavior
     /// of the old type-check for now. See #57280 for details.
-    crate variance: ty::Variance,
-    crate user_ty_span: Span,
+    pub variance: ty::Variance,
+    pub user_ty_span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-crate enum PatKind<'tcx> {
+pub enum PatKind<'tcx> {
     Wild,
 
     AscribeUserType {
@@ -195,10 +195,10 @@ crate enum PatKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-crate struct PatRange<'tcx> {
-    crate lo: &'tcx ty::Const<'tcx>,
-    crate hi: &'tcx ty::Const<'tcx>,
-    crate end: RangeEnd,
+pub struct PatRange<'tcx> {
+    pub lo: &'tcx ty::Const<'tcx>,
+    pub hi: &'tcx ty::Const<'tcx>,
+    pub end: RangeEnd,
 }
 
 impl<'tcx> fmt::Display for Pat<'tcx> {
