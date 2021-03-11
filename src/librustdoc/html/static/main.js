@@ -2955,7 +2955,11 @@ function defocusSearchBar() {
         enableSearchInput();
 
         var crateSearchDropDown = document.getElementById("crate-search");
-        crateSearchDropDown.addEventListener("focus", loadSearch);
+        // `crateSearchDropDown` can be null in case there is only crate because in that case, the
+        // crate filter dropdown is removed.
+        if (crateSearchDropDown) {
+            crateSearchDropDown.addEventListener("focus", loadSearch);
+        }
         var params = getQueryStringParams();
         if (params.search !== undefined) {
             loadSearch();
