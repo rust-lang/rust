@@ -98,13 +98,13 @@ declare_clippy_lint! {
 }
 
 const DROP_REF_SUMMARY: &str = "calls to `std::mem::drop` with a reference instead of an owned value. \
-                                Dropping a reference does nothing.";
+                                Dropping a reference does nothing";
 const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value. \
-                                  Forgetting a reference does nothing.";
+                                  Forgetting a reference does nothing";
 const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that implements `Copy`. \
-                                 Dropping a copy leaves the original intact.";
+                                 Dropping a copy leaves the original intact";
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
-                                   Forgetting a copy leaves the original intact.";
+                                   Forgetting a copy leaves the original intact";
 
 declare_lint_pass!(DropForgetRef => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
 

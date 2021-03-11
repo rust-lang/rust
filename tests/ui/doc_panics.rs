@@ -30,11 +30,7 @@ pub fn inner_body(opt: Option<u32>) {
 
 /// This needs to be documented
 pub fn unreachable_and_panic() {
-    if true {
-        unreachable!()
-    } else {
-        panic!()
-    }
+    if true { unreachable!() } else { panic!() }
 }
 
 /// This is documented
@@ -84,11 +80,7 @@ pub fn todo_documented() {
 ///
 /// We still need to do this part
 pub fn unreachable_amd_panic_documented() {
-    if true {
-        unreachable!()
-    } else {
-        panic!()
-    }
+    if true { unreachable!() } else { panic!() }
 }
 
 /// This is okay because it is private

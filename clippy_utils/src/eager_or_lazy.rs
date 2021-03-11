@@ -100,8 +100,7 @@ fn identify_some_potentially_expensive_patterns<'tcx>(cx: &LateContext<'tcx>, ex
                 ExprKind::Call(..) => !is_ctor_or_promotable_const_function(self.cx, expr),
                 ExprKind::Index(obj, _) => {
                     let ty = self.cx.typeck_results().expr_ty(obj);
-                    is_type_diagnostic_item(self.cx, ty, sym::hashmap_type)
-                        || match_type(self.cx, ty, &paths::BTREEMAP)
+                    is_type_diagnostic_item(self.cx, ty, sym::hashmap_type) || match_type(self.cx, ty, &paths::BTREEMAP)
                 },
                 ExprKind::MethodCall(..) => true,
                 _ => false,

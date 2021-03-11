@@ -92,12 +92,6 @@ impl ClippyCmd {
             panic!("Usage of `--fix` requires `-Z unstable-options`");
         }
 
-        // Run the dogfood tests directly on nightly cargo. This is required due
-        // to a bug in rustup.rs when running cargo on custom toolchains. See issue #3118.
-        if env::var_os("CLIPPY_DOGFOOD").is_some() && cfg!(windows) {
-            args.insert(0, "+nightly".to_string());
-        }
-
         let mut clippy_args: Vec<String> = old_args.collect();
         if cargo_subcommand == "fix" && !clippy_args.iter().any(|arg| arg == "--no-deps") {
             clippy_args.push("--no-deps".into());

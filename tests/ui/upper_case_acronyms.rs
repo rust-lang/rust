@@ -16,7 +16,8 @@ enum Flags {
     FIN,
 }
 
-struct GCCLLVMSomething; // linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
-                         // `GccLlvmSomething`
+// linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
+// `GccLlvmSomething`
+struct GCCLLVMSomething;
 
 fn main() {}
