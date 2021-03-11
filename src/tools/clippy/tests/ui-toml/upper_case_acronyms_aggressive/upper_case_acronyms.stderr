@@ -61,9 +61,9 @@ LL |     FIN,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Fin`
 
 error: name `GCCLLVMSomething` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:19:8
+  --> $DIR/upper_case_acronyms.rs:21:8
    |
-LL | struct GCCLLVMSomething; // linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
+LL | struct GCCLLVMSomething;
    |        ^^^^^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `GccllvmSomething`
 
 error: aborting due to 11 previous errors

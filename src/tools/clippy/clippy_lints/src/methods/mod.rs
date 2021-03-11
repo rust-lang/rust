@@ -1,8 +1,10 @@
 mod bind_instead_of_map;
 mod bytes_nth;
 mod filter_map_identity;
+mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
+mod iter_count;
 mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
@@ -401,7 +403,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.map(_).flatten(_)`,
+    /// **What it does:** Checks for usage of `_.map(_).flatten(_)` on `Iterator` and `Option`
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
     /// `_.flat_map(_)`
@@ -1513,6 +1515,58 @@ declare_clippy_lint! {
     "replace `.bytes().nth()` with `.as_bytes().get()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for the usage of `_.to_owned()`, `vec.to_vec()`, or similar when calling `_.clone()` would be clearer.
+    ///
+    /// **Why is this bad?** These methods do the same thing as `_.clone()` but may be confusing as
+    /// to why we are calling `to_vec` on something that is already a `Vec` or calling `to_owned` on something that is already owned.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let a = vec![1, 2, 3];
+    /// let b = a.to_vec();
+    /// let c = a.to_owned();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let a = vec![1, 2, 3];
+    /// let b = a.clone();
+    /// let c = a.clone();
+    /// ```
+    pub IMPLICIT_CLONE,
+    pedantic,
+    "implicitly cloning a value by invoking a function on its dereferenced type"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for the use of `.iter().count()`.
+    ///
+    /// **Why is this bad?** `.len()` is more efficient and more
+    /// readable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Bad
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.iter().count();
+    /// let _ = &some_vec[..].iter().count();
+    ///
+    /// // Good
+    /// let some_vec = vec![0, 1, 2, 3];
+    /// let _ = some_vec.len();
+    /// let _ = &some_vec[..].len();
+    /// ```
+    pub ITER_COUNT,
+    complexity,
+    "replace `.iter().count()` with `.len()`"
+}
+
 pub struct Methods {
     msrv: Option<RustcVersion>,
 }
@@ -1558,6 +1612,7 @@ impl_lint_pass!(Methods => [
     MAP_FLATTEN,
     ITERATOR_STEP_BY_ZERO,
     ITER_NEXT_SLICE,
+    ITER_COUNT,
     ITER_NTH,
     ITER_NTH_ZERO,
     BYTES_NTH,
@@ -1579,6 +1634,7 @@ impl_lint_pass!(Methods => [
     MAP_COLLECT_RESULT_UNIT,
     FROM_ITER_INSTEAD_OF_COLLECT,
     INSPECT_FOR_EACH,
+    IMPLICIT_CLONE
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -1636,6 +1692,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
             },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
+            ["count", "into_iter"] => iter_count::lints(cx, expr, &arg_lists[1], "into_iter"),
+            ["count", "iter"] => iter_count::lints(cx, expr, &arg_lists[1], "iter"),
+            ["count", "iter_mut"] => iter_count::lints(cx, expr, &arg_lists[1], "iter_mut"),
             ["nth", "iter"] => lint_iter_nth(cx, expr, &arg_lists, false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, &arg_lists, true),
             ["nth", "bytes"] => bytes_nth::lints(cx, expr, &arg_lists[1]),
@@ -1670,6 +1729,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             ["ok_or_else", ..] => unnecessary_lazy_eval::lint(cx, expr, arg_lists[0], "ok_or"),
             ["collect", "map"] => lint_map_collect(cx, expr, arg_lists[1], arg_lists[0]),
             ["for_each", "inspect"] => inspect_for_each::lint(cx, expr, method_spans[1]),
+            ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
+            ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
+            ["to_path_buf", ..] => implicit_clone::check(cx, expr, sym::Path),
+            ["to_vec", ..] => implicit_clone::check(cx, expr, sym::slice),
             _ => {},
         }
 
@@ -2003,12 +2066,26 @@ fn lint_or_fun_call<'tcx>(
             if poss.contains(&name);
 
             then {
+                let macro_expanded_snipped;
                 let sugg: Cow<'_, str> = {
                     let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
                         (false, Some(fun_span)) => (fun_span, false),
                         _ => (arg.span, true),
                     };
-                    let snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                    let snippet = {
+                        let not_macro_argument_snippet = snippet_with_macro_callsite(cx, snippet_span, "..");
+                        if not_macro_argument_snippet == "vec![]" {
+                            macro_expanded_snipped = snippet(cx, snippet_span, "..");
+                            match macro_expanded_snipped.strip_prefix("$crate::vec::") {
+                                Some(stripped) => Cow::from(stripped),
+                                None => macro_expanded_snipped
+                            }
+                        }
+                        else {
+                            not_macro_argument_snippet
+                        }
+                    };
+
                     if use_lambda {
                         let l_arg = if fn_has_arguments { "_" } else { "" };
                         format!("|{}| {}", l_arg, snippet).into()
@@ -2523,7 +2600,7 @@ fn lint_step_by<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, args: &'tcx 
                 cx,
                 ITERATOR_STEP_BY_ZERO,
                 expr.span,
-                "Iterator::step_by(0) will panic at runtime",
+                "`Iterator::step_by(0)` will panic at runtime",
             );
         }
     }
@@ -3035,7 +3112,7 @@ fn lint_filter_next<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, fil
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find(..)` instead.";
+                   `.find(..)` instead";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             let iter_snippet = snippet(cx, filter_args[0].span, "..");
@@ -3163,7 +3240,7 @@ fn lint_filter_map_next<'tcx>(
         }
 
         let msg = "called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
-                   `.find_map(..)` instead.";
+                   `.find_map(..)` instead";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             let iter_snippet = snippet(cx, filter_args[0].span, "..");

@@ -9,7 +9,7 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::{is_ctor_or_promotable_const_function, is_type_diagnostic_item, match_type, paths};
+use crate::{is_ctor_or_promotable_const_function, is_type_diagnostic_item};
 use rustc_hir::def::{DefKind, Res};
 
 use rustc_hir::intravisit;
@@ -101,7 +101,7 @@ fn identify_some_potentially_expensive_patterns<'tcx>(cx: &LateContext<'tcx>, ex
                 ExprKind::Index(obj, _) => {
                     let ty = self.cx.typeck_results().expr_ty(obj);
                     is_type_diagnostic_item(self.cx, ty, sym::hashmap_type)
-                        || match_type(self.cx, ty, &paths::BTREEMAP)
+                        || is_type_diagnostic_item(self.cx, ty, sym::BTreeMap)
                 },
                 ExprKind::MethodCall(..) => true,
                 _ => false,

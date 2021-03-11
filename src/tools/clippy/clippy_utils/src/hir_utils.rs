@@ -1,5 +1,5 @@
 use crate::consts::{constant_context, constant_simple};
-use crate::differing_macro_contexts;
+use crate::{differing_macro_contexts, snippet_opt};
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -9,6 +9,7 @@ use rustc_hir::{
     GenericArg, GenericArgs, Guard, HirId, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path,
     PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ich::StableHashingContextProvider;
 use rustc_middle::ty::TypeckResults;
@@ -110,8 +111,54 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     /// Checks whether two blocks are the same.
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
-        over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r))
-            && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
+        match (left.stmts, left.expr, right.stmts, right.expr) {
+            ([], None, [], None) => {
+                // For empty blocks, check to see if the tokens are equal. This will catch the case where a macro
+                // expanded to nothing, or the cfg attribute was used.
+                let (left, right) = match (
+                    snippet_opt(self.inner.cx, left.span),
+                    snippet_opt(self.inner.cx, right.span),
+                ) {
+                    (Some(left), Some(right)) => (left, right),
+                    _ => return true,
+                };
+                let mut left_pos = 0;
+                let left = tokenize(&left)
+                    .map(|t| {
+                        let end = left_pos + t.len;
+                        let s = &left[left_pos..end];
+                        left_pos = end;
+                        (t, s)
+                    })
+                    .filter(|(t, _)| {
+                        !matches!(
+                            t.kind,
+                            TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
+                        )
+                    })
+                    .map(|(_, s)| s);
+                let mut right_pos = 0;
+                let right = tokenize(&right)
+                    .map(|t| {
+                        let end = right_pos + t.len;
+                        let s = &right[right_pos..end];
+                        right_pos = end;
+                        (t, s)
+                    })
+                    .filter(|(t, _)| {
+                        !matches!(
+                            t.kind,
+                            TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
+                        )
+                    })
+                    .map(|(_, s)| s);
+                left.eq(right)
+            },
+            _ => {
+                over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r))
+                    && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
+            },
+        }
     }
 
     #[allow(clippy::similar_names)]
@@ -131,7 +178,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             }
         }
 
-        let is_eq = match (&reduce_exprkind(&left.kind), &reduce_exprkind(&right.kind)) {
+        let is_eq = match (
+            &reduce_exprkind(self.inner.cx, &left.kind),
+            &reduce_exprkind(self.inner.cx, &right.kind),
+        ) {
             (&ExprKind::AddrOf(lb, l_mut, ref le), &ExprKind::AddrOf(rb, r_mut, ref re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
@@ -360,11 +410,30 @@ impl HirEqInterExpr<'_, '_, '_> {
 }
 
 /// Some simple reductions like `{ return }` => `return`
-fn reduce_exprkind<'hir>(kind: &'hir ExprKind<'hir>) -> &ExprKind<'hir> {
+fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'hir ExprKind<'hir> {
     if let ExprKind::Block(block, _) = kind {
         match (block.stmts, block.expr) {
+            // From an `if let` expression without an `else` block. The arm for the implicit wild pattern is an empty
+            // block with an empty span.
+            ([], None) if block.span.is_empty() => &ExprKind::Tup(&[]),
             // `{}` => `()`
-            ([], None) => &ExprKind::Tup(&[]),
+            ([], None) => match snippet_opt(cx, block.span) {
+                // Don't reduce if there are any tokens contained in the braces
+                Some(snip)
+                    if tokenize(&snip)
+                        .map(|t| t.kind)
+                        .filter(|t| {
+                            !matches!(
+                                t,
+                                TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
+                            )
+                        })
+                        .ne([TokenKind::OpenBrace, TokenKind::CloseBrace].iter().cloned()) =>
+                {
+                    kind
+                },
+                _ => &ExprKind::Tup(&[]),
+            },
             ([], Some(expr)) => match expr.kind {
                 // `{ return .. }` => `return ..`
                 ExprKind::Ret(..) => &expr.kind,

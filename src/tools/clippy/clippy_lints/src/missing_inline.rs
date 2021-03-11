@@ -69,21 +69,21 @@ fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp
     }
 }
 
-fn is_executable(cx: &LateContext<'_>) -> bool {
+fn is_executable_or_proc_macro(cx: &LateContext<'_>) -> bool {
     use rustc_session::config::CrateType;
 
     cx.tcx
         .sess
         .crate_types()
         .iter()
-        .any(|t: &CrateType| matches!(t, CrateType::Executable))
+        .any(|t: &CrateType| matches!(t, CrateType::Executable | CrateType::ProcMacro))
 }
 
 declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable_or_proc_macro(cx) {
             return;
         }
 
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         use rustc_middle::ty::{ImplContainer, TraitContainer};
-        if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
+        if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable_or_proc_macro(cx) {
             return;
         }
 

@@ -416,11 +416,7 @@ fn erode_from_back(s: &str) -> String {
             break;
         }
     }
-    if ret.is_empty() {
-        s.to_string()
-    } else {
-        ret
-    }
+    if ret.is_empty() { s.to_string() } else { ret }
 }
 
 fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {

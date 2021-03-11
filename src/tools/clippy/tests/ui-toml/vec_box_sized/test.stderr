@@ -1,4 +1,4 @@
-error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/test.rs:9:12
    |
 LL | struct Foo(Vec<Box<u8>>);
@@ -6,13 +6,13 @@ LL | struct Foo(Vec<Box<u8>>);
    |
    = note: `-D clippy::vec-box` implied by `-D warnings`
 
-error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/test.rs:10:12
    |
 LL | struct Bar(Vec<Box<u32>>);
    |            ^^^^^^^^^^^^^ help: try: `Vec<u32>`
 
-error: `Vec<T>` is already on the heap, the boxing is unnecessary.
+error: `Vec<T>` is already on the heap, the boxing is unnecessary
   --> $DIR/test.rs:13:18
    |
 LL | struct FooBarBaz(Vec<Box<C>>);
