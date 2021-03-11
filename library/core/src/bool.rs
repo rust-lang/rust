@@ -41,7 +41,8 @@ impl bool {
     /// assert_eq!(true.not(), false);
     /// ```
     #[unstable(feature = "bool_not_method", issue = "none")]
-    pub fn not(self) -> Self {
+    #[inline]
+    pub const fn not(self) -> Self {
         !self
     }
 }
