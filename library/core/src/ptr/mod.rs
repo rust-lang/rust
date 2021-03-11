@@ -473,19 +473,21 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
-    // For types smaller than the block optimization below,
-    // just swap directly to avoid pessimizing codegen.
-    if mem::size_of::<T>() < 32 {
-        // SAFETY: the caller must guarantee that `x` and `y` are valid
-        // for writes, properly aligned, and non-overlapping.
-        unsafe {
-            let z = read(x);
-            copy_nonoverlapping(y, x, 1);
-            write(y, z);
-        }
-    } else {
+    // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
+    // at least as large as the block size, to avoid pessimizing codegen.
+    if mem::size_of::<T>() >= 32 {
         // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
         unsafe { swap_nonoverlapping(x, y, 1) };
+        return;
+    }
+
+    // Direct swapping, for the cases not going through the block optimization.
+    // SAFETY: the caller must guarantee that `x` and `y` are valid
+    // for writes, properly aligned, and non-overlapping.
+    unsafe {
+        let z = read(x);
+        copy_nonoverlapping(y, x, 1);
+        write(y, z);
     }
 }
 
