@@ -531,24 +531,26 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
             check_const_value_eq(relation, a_val, b_val, a, b)?
         }
 
-        (
-            ty::ConstKind::Unevaluated(a_def, a_substs, None),
-            ty::ConstKind::Unevaluated(b_def, b_substs, None),
-        ) if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() => {
-            tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs)))
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
+            if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() =>
+        {
+            tcx.try_unify_abstract_consts(((au.def, au.substs), (bu.def, bu.substs)))
         }
 
         // While this is slightly incorrect, it shouldn't matter for `min_const_generics`
         // and is the better alternative to waiting until `const_evaluatable_checked` can
         // be stabilized.
-        (
-            ty::ConstKind::Unevaluated(a_def, a_substs, a_promoted),
-            ty::ConstKind::Unevaluated(b_def, b_substs, b_promoted),
-        ) if a_def == b_def && a_promoted == b_promoted => {
+        (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
+            if au.def == bu.def && au.promoted == bu.promoted =>
+        {
             let substs =
-                relation.relate_with_variance(ty::Variance::Invariant, a_substs, b_substs)?;
+                relation.relate_with_variance(ty::Variance::Invariant, au.substs, bu.substs)?;
             return Ok(tcx.mk_const(ty::Const {
-                val: ty::ConstKind::Unevaluated(a_def, substs, a_promoted),
+                val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                    def: au.def,
+                    substs,
+                    promoted: au.promoted,
+                }),
                 ty: a.ty,
             }));
         }

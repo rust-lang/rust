@@ -491,7 +491,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let lint_only = match c.literal {
                         ConstantKind::Ty(ct) => match ct.val {
                             // Promoteds must lint and not error as the user didn't ask for them
-                            ConstKind::Unevaluated(_, _, Some(_)) => true,
+                            ConstKind::Unevaluated(ty::Unevaluated {
+                                def: _,
+                                substs: _,
+                                promoted: Some(_),
+                            }) => true,
                             // Out of backwards compatibility we cannot report hard errors in unused
                             // generic functions using associated constants of the generic parameters.
                             _ => c.literal.needs_subst(),

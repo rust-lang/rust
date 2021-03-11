@@ -1001,17 +1001,17 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     literal: tcx
                         .mk_const(ty::Const {
                             ty,
-                            val: ty::ConstKind::Unevaluated(
+                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                                 def,
-                                InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
                                     if let ty::GenericParamDefKind::Lifetime = param.kind {
                                         tcx.lifetimes.re_erased.into()
                                     } else {
                                         tcx.mk_param_from_def(param)
                                     }
                                 }),
-                                Some(promoted_id),
-                            ),
+                                promoted: Some(promoted_id),
+                            }),
                         })
                         .into(),
                 }))
