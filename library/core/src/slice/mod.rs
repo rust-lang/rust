@@ -308,7 +308,7 @@ impl<T> [T] {
     /// Returns a mutable reference to an element or subslice depending on the
     /// type of index (see [`get`]) or `None` if the index is out of bounds.
     ///
-    /// [`get`]: #method.get
+    /// [`get`]: slice::get
     ///
     /// # Examples
     ///
@@ -339,7 +339,7 @@ impl<T> [T] {
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
     ///
-    /// [`get`]: #method.get
+    /// [`get`]: slice::get
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -373,7 +373,7 @@ impl<T> [T] {
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
     ///
-    /// [`get_mut`]: #method.get_mut
+    /// [`get_mut`]: slice::get_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -424,7 +424,7 @@ impl<T> [T] {
     /// }
     /// ```
     ///
-    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
     #[inline]
@@ -487,7 +487,7 @@ impl<T> [T] {
     /// assert!(!a.as_ptr_range().contains(&y));
     /// ```
     ///
-    /// [`as_ptr`]: #method.as_ptr
+    /// [`as_ptr`]: slice::as_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
@@ -529,7 +529,7 @@ impl<T> [T] {
     /// use two pointers to refer to a range of elements in memory, as is
     /// common in C++.
     ///
-    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
     #[inline]
@@ -780,8 +780,8 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`chunks_exact`]: #method.chunks_exact
-    /// [`rchunks`]: #method.rchunks
+    /// [`chunks_exact`]: slice::chunks_exact
+    /// [`rchunks`]: slice::rchunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
@@ -818,8 +818,8 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 3]);
     /// ```
     ///
-    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
-    /// [`rchunks_mut`]: #method.rchunks_mut
+    /// [`chunks_exact_mut`]: slice::chunks_exact_mut
+    /// [`rchunks_mut`]: slice::rchunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
@@ -855,8 +855,8 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['m']);
     /// ```
     ///
-    /// [`chunks`]: #method.chunks
-    /// [`rchunks_exact`]: #method.rchunks_exact
+    /// [`chunks`]: slice::chunks
+    /// [`rchunks_exact`]: slice::rchunks_exact
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
@@ -897,8 +897,8 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 0]);
     /// ```
     ///
-    /// [`chunks_mut`]: #method.chunks_mut
-    /// [`rchunks_exact_mut`]: #method.rchunks_exact_mut
+    /// [`chunks_mut`]: slice::chunks_mut
+    /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
     pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
@@ -1032,7 +1032,7 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['m']);
     /// ```
     ///
-    /// [`chunks_exact`]: #method.chunks_exact
+    /// [`chunks_exact`]: slice::chunks_exact
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
@@ -1182,7 +1182,7 @@ impl<T> [T] {
     /// assert_eq!(v, &[1, 1, 2, 2, 0]);
     /// ```
     ///
-    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
+    /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[unstable(feature = "array_chunks", issue = "74985")]
     #[inline]
     pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
@@ -1214,7 +1214,7 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`windows`]: #method.windows
+    /// [`windows`]: slice::windows
     #[unstable(feature = "array_windows", issue = "75027")]
     #[inline]
     pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
@@ -1247,8 +1247,8 @@ impl<T> [T] {
     /// assert!(iter.next().is_none());
     /// ```
     ///
-    /// [`rchunks_exact`]: #method.rchunks_exact
-    /// [`chunks`]: #method.chunks
+    /// [`rchunks_exact`]: slice::rchunks_exact
+    /// [`chunks`]: slice::chunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
@@ -1285,8 +1285,8 @@ impl<T> [T] {
     /// assert_eq!(v, &[3, 2, 2, 1, 1]);
     /// ```
     ///
-    /// [`rchunks_exact_mut`]: #method.rchunks_exact_mut
-    /// [`chunks_mut`]: #method.chunks_mut
+    /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
+    /// [`chunks_mut`]: slice::chunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
@@ -1323,9 +1323,9 @@ impl<T> [T] {
     /// assert_eq!(iter.remainder(), &['l']);
     /// ```
     ///
-    /// [`chunks`]: #method.chunks
-    /// [`rchunks`]: #method.rchunks
-    /// [`chunks_exact`]: #method.chunks_exact
+    /// [`chunks`]: slice::chunks
+    /// [`rchunks`]: slice::rchunks
+    /// [`chunks_exact`]: slice::chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
@@ -1366,9 +1366,9 @@ impl<T> [T] {
     /// assert_eq!(v, &[0, 2, 2, 1, 1]);
     /// ```
     ///
-    /// [`chunks_mut`]: #method.chunks_mut
-    /// [`rchunks_mut`]: #method.rchunks_mut
-    /// [`chunks_exact_mut`]: #method.chunks_exact_mut
+    /// [`chunks_mut`]: slice::chunks_mut
+    /// [`rchunks_mut`]: slice::rchunks_mut
+    /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
     pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
@@ -1552,7 +1552,7 @@ impl<T> [T] {
     /// even if the resulting reference is not used. The caller has to ensure that
     /// `0 <= mid <= self.len()`.
     ///
-    /// [`split_at`]: #method.split_at
+    /// [`split_at`]: slice::split_at
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -1601,7 +1601,7 @@ impl<T> [T] {
     /// even if the resulting reference is not used. The caller has to ensure that
     /// `0 <= mid <= self.len()`.
     ///
-    /// [`split_at_mut`]: #method.split_at_mut
+    /// [`split_at_mut`]: slice::split_at_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -2103,9 +2103,9 @@ impl<T> [T] {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
-    /// [`binary_search_by`]: #method.binary_search_by
-    /// [`binary_search_by_key`]: #method.binary_search_by_key
-    /// [`partition_point`]: #method.partition_point
+    /// [`binary_search_by`]: slice::binary_search_by
+    /// [`binary_search_by_key`]: slice::binary_search_by_key
+    /// [`partition_point`]: slice::partition_point
     ///
     /// # Examples
     ///
@@ -2156,9 +2156,9 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
-    /// [`binary_search`]: #method.binary_search
-    /// [`binary_search_by_key`]: #method.binary_search_by_key
-    /// [`partition_point`]: #method.partition_point
+    /// [`binary_search`]: slice::binary_search
+    /// [`binary_search_by_key`]: slice::binary_search_by_key
+    /// [`partition_point`]: slice::partition_point
     ///
     /// # Examples
     ///
@@ -2225,10 +2225,10 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
-    /// [`sort_by_key`]: #method.sort_by_key
-    /// [`binary_search`]: #method.binary_search
-    /// [`binary_search_by`]: #method.binary_search_by
-    /// [`partition_point`]: #method.partition_point
+    /// [`sort_by_key`]: slice::sort_by_key
+    /// [`binary_search`]: slice::binary_search
+    /// [`binary_search_by`]: slice::binary_search_by
+    /// [`partition_point`]: slice::partition_point
     ///
     /// # Examples
     ///
@@ -2248,6 +2248,12 @@ impl<T> [T] {
     /// let r = s.binary_search_by_key(&1, |&(a, b)| b);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
+    // Lint rustdoc::broken_intra_doc_links is allowed as `slice::sort_by_key` is
+    // in crate `alloc`, and as such doesn't exists yet when building `core`.
+    // links to downstream crate: #74481. Since primitives are only documented in
+    // libstd (#73423), this never leads to broken links in practice.
+    #[cfg_attr(not(bootstrap), allow(rustdoc::broken_intra_doc_links))]
+    #[cfg_attr(bootstrap, allow(broken_intra_doc_links))]
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
     pub fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
@@ -2446,7 +2452,7 @@ impl<T> [T] {
     /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
     /// used for [`sort_unstable`].
     ///
-    /// [`sort_unstable`]: #method.sort_unstable
+    /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
@@ -2494,7 +2500,7 @@ impl<T> [T] {
     /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
     /// used for [`sort_unstable`].
     ///
-    /// [`sort_unstable`]: #method.sort_unstable
+    /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
@@ -2546,7 +2552,7 @@ impl<T> [T] {
     /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
     /// used for [`sort_unstable`].
     ///
-    /// [`sort_unstable`]: #method.sort_unstable
+    /// [`sort_unstable`]: slice::sort_unstable
     ///
     /// # Panics
     ///
@@ -2883,7 +2889,7 @@ impl<T> [T] {
     /// trait to generate values, you can pass [`Default::default`] as the
     /// argument.
     ///
-    /// [`fill`]: #method.fill
+    /// [`fill`]: slice::fill
     ///
     /// # Examples
     ///
@@ -2956,8 +2962,8 @@ impl<T> [T] {
     /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
-    /// [`copy_from_slice`]: #method.copy_from_slice
-    /// [`split_at_mut`]: #method.split_at_mut
+    /// [`copy_from_slice`]: slice::copy_from_slice
+    /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     pub fn clone_from_slice(&mut self, src: &[T])
     where
@@ -3018,8 +3024,8 @@ impl<T> [T] {
     /// assert_eq!(slice, [4, 5, 3, 4, 5]);
     /// ```
     ///
-    /// [`clone_from_slice`]: #method.clone_from_slice
-    /// [`split_at_mut`]: #method.split_at_mut
+    /// [`clone_from_slice`]: slice::clone_from_slice
+    /// [`split_at_mut`]: slice::split_at_mut
     #[doc(alias = "memcpy")]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T])
@@ -3136,7 +3142,7 @@ impl<T> [T] {
     /// assert_eq!(slice, [4, 5, 3, 1, 2]);
     /// ```
     ///
-    /// [`split_at_mut`]: #method.split_at_mut
+    /// [`split_at_mut`]: slice::split_at_mut
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         assert!(self.len() == other.len(), "destination and source slices have different lengths");
@@ -3380,7 +3386,7 @@ impl<T> [T] {
     /// function to determine the ordering of two elements. Apart from that, it's equivalent to
     /// [`is_sorted`]; see its documentation for more information.
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: slice::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     pub fn is_sorted_by<F>(&self, mut compare: F) -> bool
     where
@@ -3395,7 +3401,7 @@ impl<T> [T] {
     /// elements, as determined by `f`. Apart from that, it's equivalent to [`is_sorted`]; see its
     /// documentation for more information.
     ///
-    /// [`is_sorted`]: #method.is_sorted
+    /// [`is_sorted`]: slice::is_sorted
     ///
     /// # Examples
     ///
@@ -3429,9 +3435,9 @@ impl<T> [T] {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
     ///
-    /// [`binary_search`]: #method.binary_search
-    /// [`binary_search_by`]: #method.binary_search_by
-    /// [`binary_search_by_key`]: #method.binary_search_by_key
+    /// [`binary_search`]: slice::binary_search
+    /// [`binary_search_by`]: slice::binary_search_by
+    /// [`binary_search_by_key`]: slice::binary_search_by_key
     ///
     /// # Examples
     ///
