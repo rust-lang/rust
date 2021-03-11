@@ -3753,6 +3753,26 @@ pub unsafe fn vdupq_n_s8(value: i8) -> int8x16_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_s16(value: i16) -> int16x8_t {
+    int16x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_s32(value: i32) -> int32x4_t {
+    int32x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
 pub unsafe fn vdupq_n_u8(value: u8) -> uint8x16_t {
@@ -3760,6 +3780,154 @@ pub unsafe fn vdupq_n_u8(value: u8) -> uint8x16_t {
         value, value, value, value, value, value, value, value, value, value, value, value, value,
         value, value, value,
     )
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_u16(value: u16) -> uint16x8_t {
+    uint16x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_u32(value: u32) -> uint32x4_t {
+    uint32x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_p8(value: p8) -> poly8x16_t {
+    poly8x16_t(
+        value, value, value, value, value, value, value, value, value, value, value, value, value,
+        value, value, value,
+    )
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_p16(value: p16) -> poly16x8_t {
+    poly16x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdupq_n_f32(value: f32) -> float32x4_t {
+    float32x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar.
+/// This instruction duplicates the vector element at the specified element index
+/// in the source SIMD&FP register into a scalar or each element in a vector,
+/// and writes the result to the destination SIMD&FP register.
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_s8(value: i8) -> int8x8_t {
+    int8x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_s16(value: i16) -> int16x4_t {
+    int16x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_s32(value: i32) -> int32x2_t {
+    int32x2_t(value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_u8(value: u8) -> uint8x8_t {
+    uint8x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_u16(value: u16) -> uint16x4_t {
+    uint16x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_u32(value: u32) -> uint32x2_t {
+    uint32x2_t(value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.8"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_p8(value: p8) -> poly8x8_t {
+    poly8x8_t(value, value, value, value, value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.16"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_p16(value: p16) -> poly16x4_t {
+    poly16x4_t(value, value, value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdup.32"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(dup))]
+pub unsafe fn vdup_n_f32(value: f32) -> float32x2_t {
+    float32x2_t(value, value)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -5534,12 +5702,142 @@ mod tests {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_s16() {
+        let v: i16 = 64;
+        let e = i16x8::new(64, 64, 64, 64, 64, 64, 64, 64);
+        let r: i16x8 = transmute(vdupq_n_s16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_s32() {
+        let v: i32 = 64;
+        let e = i32x4::new(64, 64, 64, 64);
+        let r: i32x4 = transmute(vdupq_n_s32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vdupq_n_u8() {
         let v: u8 = 42;
         let e = u8x16::new(
             42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
         );
         let r: u8x16 = transmute(vdupq_n_u8(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_u16() {
+        let v: u16 = 64;
+        let e = u16x8::new(64, 64, 64, 64, 64, 64, 64, 64);
+        let r: u16x8 = transmute(vdupq_n_u16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_u32() {
+        let v: u32 = 64;
+        let e = u32x4::new(64, 64, 64, 64);
+        let r: u32x4 = transmute(vdupq_n_u32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_p8() {
+        let v: p8 = 64;
+        let e = u8x16::new(
+            64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+        );
+        let r: u8x16 = transmute(vdupq_n_p8(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_p16() {
+        let v: p16 = 64;
+        let e = u16x8::new(64, 64, 64, 64, 64, 64, 64, 64);
+        let r: u16x8 = transmute(vdupq_n_p16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_f32() {
+        let v: f32 = 64.0;
+        let e = f32x4::new(64.0, 64.0, 64.0, 64.0);
+        let r: f32x4 = transmute(vdupq_n_f32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_s8() {
+        let v: i8 = 64;
+        let e = i8x8::new(64, 64, 64, 64, 64, 64, 64, 64);
+        let r: i8x8 = transmute(vdup_n_s8(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_s16() {
+        let v: i16 = 64;
+        let e = i16x4::new(64, 64, 64, 64);
+        let r: i16x4 = transmute(vdup_n_s16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_s32() {
+        let v: i32 = 64;
+        let e = i32x2::new(64, 64);
+        let r: i32x2 = transmute(vdup_n_s32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_u8() {
+        let v: u8 = 42;
+        let e = u8x8::new(42, 42, 42, 42, 42, 42, 42, 42);
+        let r: u8x8 = transmute(vdup_n_u8(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_u16() {
+        let v: u16 = 64;
+        let e = u16x4::new(64, 64, 64, 64);
+        let r: u16x4 = transmute(vdup_n_u16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_u32() {
+        let v: u32 = 64;
+        let e = u32x2::new(64, 64);
+        let r: u32x2 = transmute(vdup_n_u32(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_p8() {
+        let v: p8 = 64;
+        let e = u8x8::new(64, 64, 64, 64, 64, 64, 64, 64);
+        let r: u8x8 = transmute(vdup_n_p8(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_p16() {
+        let v: p16 = 64;
+        let e = u16x4::new(64, 64, 64, 64);
+        let r: u16x4 = transmute(vdup_n_p16(v));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_f32() {
+        let v: f32 = 64.0;
+        let e = f32x2::new(64.0, 64.0);
+        let r: f32x2 = transmute(vdup_n_f32(v));
         assert_eq!(r, e);
     }
 
