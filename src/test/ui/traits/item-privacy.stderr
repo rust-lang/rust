@@ -116,8 +116,8 @@ LL |     C::A;
    |     ^^^^ `assoc_const::C` cannot be made into an object
    |
    = help: consider moving `C` to another trait
-   = help: consider moving `B` to another trait
    = help: consider moving `A` to another trait
+   = help: consider moving `B` to another trait
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/item-privacy.rs:25:15
    |

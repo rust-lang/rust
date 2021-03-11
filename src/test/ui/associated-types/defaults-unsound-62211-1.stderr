@@ -1,17 +1,16 @@
-error[E0277]: `Self` doesn't implement `std::fmt::Display`
+error[E0277]: the trait bound `Self: Copy` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:20:5
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^
-   |     |                                                                                |
-   |     |                                                                                required by this bound in `UncheckedCopy::Output`
-   |     `Self` cannot be formatted with the default formatter
+   |     ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |            |
+   |     |            required by this bound in `UncheckedCopy::Output`
+   |     the trait `Copy` is not implemented for `Self`
    |
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider further restricting `Self`
    |
-LL | trait UncheckedCopy: Sized + std::fmt::Display {
-   |                            ^^^^^^^^^^^^^^^^^^^
+LL | trait UncheckedCopy: Sized + Copy {
+   |                            ^^^^^^
 
 error[E0277]: the trait bound `Self: Deref` is not satisfied
   --> $DIR/defaults-unsound-62211-1.rs:20:5
@@ -41,19 +40,20 @@ help: consider further restricting `Self`
 LL | trait UncheckedCopy: Sized + AddAssign<&'static str> {
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `Self: Copy` is not satisfied
+error[E0277]: `Self` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:20:5
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |     ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |     |            |
-   |     |            required by this bound in `UncheckedCopy::Output`
-   |     the trait `Copy` is not implemented for `Self`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^
+   |     |                                                                                |
+   |     |                                                                                required by this bound in `UncheckedCopy::Output`
+   |     `Self` cannot be formatted with the default formatter
    |
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 help: consider further restricting `Self`
    |
-LL | trait UncheckedCopy: Sized + Copy {
-   |                            ^^^^^^
+LL | trait UncheckedCopy: Sized + std::fmt::Display {
+   |                            ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

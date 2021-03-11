@@ -942,7 +942,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
 
         self.add_bounds(param_ty, ast_bounds, &mut bounds);
-        bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
+        // Sort by `DefPathHash` so that the order is stable across compilation sessions
+        bounds.trait_bounds.sort_by_key(|(t, _, _)| self.tcx().def_path_hash(t.def_id()));
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
             if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
@@ -1318,7 +1319,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
-        auto_traits.sort_by_key(|i| i.trait_ref().def_id());
+        // Sort by `DefPathHash` so that the order is stable across compilation sessions
+        auto_traits.sort_by_key(|i| self.tcx().def_path_hash(i.trait_ref().def_id()));
         auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
         debug!("regular_traits: {:?}", regular_traits);
         debug!("auto_traits: {:?}", auto_traits);
