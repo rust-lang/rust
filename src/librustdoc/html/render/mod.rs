@@ -166,23 +166,6 @@ crate struct IndexItem {
     crate search_type: Option<IndexItemFunctionType>,
 }
 
-impl Serialize for IndexItem {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        assert_eq!(
-            self.parent.is_some(),
-            self.parent_idx.is_some(),
-            "`{}` is missing idx",
-            self.name
-        );
-
-        (self.ty, &self.name, &self.path, &self.desc, self.parent_idx, &self.search_type)
-            .serialize(serializer)
-    }
-}
-
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct RenderType {
