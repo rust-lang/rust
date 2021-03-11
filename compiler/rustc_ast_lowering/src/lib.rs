@@ -223,7 +223,7 @@ enum ImplTraitContext<'b, 'a> {
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
     ///
     /// Newly generated parameters should be inserted into the given `Vec`.
-    Universal(&'b mut Vec<hir::GenericParam<'a>>),
+    Universal(&'b mut Vec<hir::GenericParam<'a>>, LocalDefId),
 
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -278,7 +278,7 @@ impl<'a> ImplTraitContext<'_, 'a> {
     fn reborrow<'this>(&'this mut self) -> ImplTraitContext<'this, 'a> {
         use self::ImplTraitContext::*;
         match self {
-            Universal(params) => Universal(params),
+            Universal(params, parent) => Universal(params, *parent),
             ReturnPositionOpaqueTy { fn_def_id, origin } => {
                 ReturnPositionOpaqueTy { fn_def_id: *fn_def_id, origin: *origin }
             }
@@ -475,25 +475,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         impl MiscCollector<'_, '_, '_> {
-            fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree, owner: LocalDefId) {
+            fn allocate_use_tree_hir_id_counters(&mut self, tree: &UseTree) {
                 match tree.kind {
                     UseTreeKind::Simple(_, id1, id2) => {
                         for &id in &[id1, id2] {
-                            self.lctx.resolver.create_def(
-                                owner,
-                                id,
-                                DefPathData::Misc,
-                                ExpnId::root(),
-                                tree.prefix.span,
-                            );
                             self.lctx.allocate_hir_id_counter(id);
                         }
                     }
                     UseTreeKind::Glob => (),
                     UseTreeKind::Nested(ref trees) => {
                         for &(ref use_tree, id) in trees {
-                            let hir_id = self.lctx.allocate_hir_id_counter(id);
-                            self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
+                            self.lctx.allocate_hir_id_counter(id);
+                            self.allocate_use_tree_hir_id_counters(use_tree);
                         }
                     }
                 }
@@ -502,7 +495,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         impl<'tcx> Visitor<'tcx> for MiscCollector<'tcx, '_, '_> {
             fn visit_item(&mut self, item: &'tcx Item) {
-                let hir_id = self.lctx.allocate_hir_id_counter(item.id);
+                self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.kind {
                     ItemKind::Struct(_, ref generics)
@@ -521,7 +514,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         self.lctx.type_def_lifetime_params.insert(def_id.to_def_id(), count);
                     }
                     ItemKind::Use(ref use_tree) => {
-                        self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
+                        self.allocate_use_tree_hir_id_counters(use_tree);
                     }
                     _ => {}
                 }
@@ -939,8 +932,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // `lifetimes_to_define`. If we swapped the order of these two,
                     // in-band-lifetimes introduced by generics or where-clauses
                     // wouldn't have been added yet.
-                    let generics =
-                        this.lower_generics_mut(generics, ImplTraitContext::Universal(&mut params));
+                    let generics = this.lower_generics_mut(
+                        generics,
+                        ImplTraitContext::Universal(
+                            &mut params,
+                            this.current_hir_id_owner.last().unwrap().0,
+                        ),
+                    );
                     let res = f(this, &mut params);
                     (params, (generics, res))
                 })
@@ -1145,6 +1143,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocTyConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
+                let mut parent_def_id = self.current_hir_id_owner.last().unwrap().0;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
@@ -1164,7 +1163,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // so desugar to
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal(..) if self.is_in_dyn_type => (true, itctx),
+                    ImplTraitContext::Universal(_, parent) if self.is_in_dyn_type => {
+                        parent_def_id = parent;
+                        (true, itctx)
+                    }
 
                     // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
                     // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
@@ -1198,7 +1200,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // constructing the HIR for `impl bounds...` and then lowering that.
 
                     let impl_trait_node_id = self.resolver.next_node_id();
-                    let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
                     self.resolver.create_def(
                         parent_def_id,
                         impl_trait_node_id,
@@ -1451,7 +1452,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             |this| this.lower_param_bounds(bounds, nested_itctx),
                         )
                     }
-                    ImplTraitContext::Universal(in_band_ty_params) => {
+                    ImplTraitContext::Universal(in_band_ty_params, parent_def_id) => {
                         // Add a definition for the in-band `Param`.
                         let def_id = self.resolver.local_def_id(def_node_id);
 
@@ -1460,7 +1461,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let hir_bounds = self.with_hir_id_owner(def_node_id, |this| {
                             this.lower_param_bounds(
                                 bounds,
-                                ImplTraitContext::Universal(in_band_ty_params),
+                                ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
                             )
                         });
                         // Set the name to `impl Bound1 + Bound2`.
@@ -1891,7 +1892,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             this.arena.alloc_from_iter(inputs.iter().map(|param| {
                 if let Some((_, ibty)) = &mut in_band_ty_params {
-                    this.lower_ty_direct(&param.ty, ImplTraitContext::Universal(ibty))
+                    this.lower_ty_direct(
+                        &param.ty,
+                        ImplTraitContext::Universal(
+                            ibty,
+                            this.current_hir_id_owner.last().unwrap().0,
+                        ),
+                    )
                 } else {
                     this.lower_ty_direct(&param.ty, ImplTraitContext::disallowed())
                 }
