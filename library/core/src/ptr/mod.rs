@@ -473,12 +473,23 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
-    // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
-    // at least as large as the block size, to avoid pessimizing codegen.
-    if mem::size_of::<T>() >= 32 {
-        // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
-        unsafe { swap_nonoverlapping(x, y, 1) };
-        return;
+    // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
+    // reinterpretation of values as (chunkable) byte arrays, and the loop in the
+    // block optimization in `swap_nonoverlapping_bytes` is hard to rewrite back
+    // into the (unoptimized) direct swapping implementation, so we disable it.
+    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
+    // understanding `mem::replace`, `Option::take`, etc. - a better overall
+    // solution might be to make `swap_nonoverlapping` into an intrinsic, which
+    // a backend can choose to implement using the block optimization, or not.
+    #[cfg(not(target_arch = "spirv"))]
+    {
+        // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
+        // at least as large as the block size, to avoid pessimizing codegen.
+        if mem::size_of::<T>() >= 32 {
+            // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
+            unsafe { swap_nonoverlapping(x, y, 1) };
+            return;
+        }
     }
 
     // Direct swapping, for the cases not going through the block optimization.
