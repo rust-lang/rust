@@ -15,4 +15,6 @@ pub fn foo() {}
 #[doc("hello", "bar")]
 //~^ ERROR unknown `doc` attribute
 //~| WARN
+//~| ERROR unknown `doc` attribute
+//~| WARN
 fn bar() {}

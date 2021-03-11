@@ -531,6 +531,8 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
+        let mut is_valid = true;
+
         if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
             for meta in list {
                 if let Some(i_meta) = meta.meta_item() {
@@ -539,14 +541,14 @@ impl CheckAttrVisitor<'tcx> {
                             if !self.check_attr_crate_level(&meta, hir_id, "alias")
                                 || !self.check_doc_alias(&meta, hir_id, target) =>
                         {
-                            return false;
+                            is_valid = false
                         }
 
                         sym::keyword
                             if !self.check_attr_crate_level(&meta, hir_id, "keyword")
                                 || !self.check_doc_keyword(&meta, hir_id) =>
                         {
-                            return false;
+                            is_valid = false
                         }
 
                         sym::test if CRATE_HIR_ID != hir_id => {
@@ -562,7 +564,7 @@ impl CheckAttrVisitor<'tcx> {
                                     .emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
 
                         // no_default_passes: deprecated
@@ -602,7 +604,7 @@ impl CheckAttrVisitor<'tcx> {
                                     .emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
                     }
                 } else {
@@ -614,11 +616,12 @@ impl CheckAttrVisitor<'tcx> {
                             lint.build(&format!("unknown `doc` attribute")).emit();
                         },
                     );
-                    return false;
+                    is_valid = false;
                 }
             }
         }
-        true
+
+        is_valid
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
