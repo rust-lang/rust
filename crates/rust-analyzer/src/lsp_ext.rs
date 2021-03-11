@@ -180,16 +180,9 @@ pub struct CargoRunnable {
 pub enum RelatedTests {}
 
 impl Request for RelatedTests {
-    type Params = RelatedTestsParams;
+    type Params = lsp_types::TextDocumentPositionParams;
     type Result = Vec<TestInfo>;
     const METHOD: &'static str = "rust-analyzer/relatedTests";
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct RelatedTestsParams {
-    #[serde(flatten)]
-    pub text_document_position: lsp_types::TextDocumentPositionParams,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

@@ -86,8 +86,8 @@ impl SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
-    pub fn file_part(file: FileId, range: TextRange) -> SearchScope {
-        SearchScope::new(std::iter::once((file, Some(range))).collect())
+    pub fn file_range(range: FileRange) -> SearchScope {
+        SearchScope::new(std::iter::once((range.file_id, Some(range.range))).collect())
     }
 
     pub fn files(files: &[FileId]) -> SearchScope {

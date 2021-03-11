@@ -609,10 +609,10 @@ pub(crate) fn handle_runnables(
 
 pub(crate) fn handle_related_tests(
     snap: GlobalStateSnapshot,
-    params: lsp_ext::RelatedTestsParams,
+    params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Vec<lsp_ext::TestInfo>> {
     let _p = profile::span("handle_related_tests");
-    let position = from_proto::file_position(&snap, params.text_document_position)?;
+    let position = from_proto::file_position(&snap, params)?;
 
     let tests = snap.analysis.related_tests(position, None)?;
     let mut res = Vec::new();

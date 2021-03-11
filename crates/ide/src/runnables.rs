@@ -5,7 +5,10 @@ use cfg::CfgExpr;
 use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
-    base_db::FilePosition, defs::Definition, search::SearchScope, RootDatabase, SymbolKind,
+    base_db::{FilePosition, FileRange},
+    defs::Definition,
+    search::SearchScope,
+    RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -168,7 +171,7 @@ fn find_related_tests_in_module(
         };
 
         let file_id = mod_source.file_id.original_file(sema.db);
-        let mod_scope = SearchScope::file_part(file_id, range);
+        let mod_scope = SearchScope::file_range(FileRange { file_id, range });
         let fn_pos = FilePosition { file_id, offset: fn_name.syntax().text_range().start() };
         find_related_tests(sema, fn_pos, Some(mod_scope), tests)
     }
