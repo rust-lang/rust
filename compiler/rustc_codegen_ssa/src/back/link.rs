@@ -711,7 +711,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             status.signal() == Some(libc::SIGILL)
         }
 
-        #[cfg(windows)]
+        #[cfg(not(unix))]
         fn is_illegal_instruction(_status: &ExitStatus) -> bool {
             false
         }
@@ -1198,7 +1198,7 @@ fn exec_linker(
     flush_linked_file(&output, out_filename)?;
     return output;
 
-    #[cfg(unix)]
+    #[cfg(not(windows))]
     fn flush_linked_file(_: &io::Result<Output>, _: &Path) -> io::Result<()> {
         Ok(())
     }
@@ -1236,6 +1236,11 @@ fn exec_linker(
     fn command_line_too_big(err: &io::Error) -> bool {
         const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
         err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn command_line_too_big(_: &io::Error) -> bool {
+        false
     }
 
     struct Escape<'a> {
