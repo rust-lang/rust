@@ -148,6 +148,7 @@ pub enum SymbolKind {
     Local,
     Macro,
     Module,
+    Region,
     SelfParam,
     Static,
     Struct,

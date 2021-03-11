@@ -1,7 +1,8 @@
 use ide_db::SymbolKind;
 use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
-    match_ast, AstNode, SourceFile, SyntaxNode, TextRange, WalkEvent,
+    match_ast, AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange,
+    WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -32,17 +33,29 @@ pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
-    for event in file.syntax().preorder() {
+    for event in file.syntax().preorder_with_tokens() {
         match event {
-            WalkEvent::Enter(node) => {
+            WalkEvent::Enter(NodeOrToken::Node(node)) => {
                 if let Some(mut symbol) = structure_node(&node) {
                     symbol.parent = stack.last().copied();
                     stack.push(res.len());
                     res.push(symbol);
                 }
             }
-            WalkEvent::Leave(node) => {
+            WalkEvent::Leave(NodeOrToken::Node(node)) => {
                 if structure_node(&node).is_some() {
+                    stack.pop().unwrap();
+                }
+            }
+            WalkEvent::Enter(NodeOrToken::Token(token)) => {
+                if let Some(mut symbol) = structure_token(token) {
+                    symbol.parent = stack.last().copied();
+                    stack.push(res.len());
+                    res.push(symbol);
+                }
+            }
+            WalkEvent::Leave(NodeOrToken::Token(token)) => {
+                if structure_token(token).is_some() {
                     stack.pop().unwrap();
                 }
             }
@@ -159,6 +172,26 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     }
 }
 
+fn structure_token(token: SyntaxToken) -> Option<StructureNode> {
+    if let Some(comment) = ast::Comment::cast(token) {
+        let text = comment.text().trim();
+
+        if let Some(region_name) = text.strip_prefix("// region:").map(|text| text.trim()) {
+            return Some(StructureNode {
+                parent: None,
+                label: region_name.to_string(),
+                navigation_range: comment.syntax().text_range(),
+                node_range: comment.syntax().text_range(),
+                kind: SymbolKind::Region,
+                detail: None,
+                deprecated: false,
+            });
+        }
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
@@ -217,6 +250,9 @@ fn obsolete() {}
 
 #[deprecated(note = "for awhile")]
 fn very_obsolete() {}
+
+// region: Some region name
+// endregion
 "#,
             expect![[r#"
                 [
@@ -420,6 +456,15 @@ fn very_obsolete() {}
                             "fn()",
                         ),
                         deprecated: true,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "Some region name",
+                        navigation_range: 501..528,
+                        node_range: 501..528,
+                        kind: Region,
+                        detail: None,
+                        deprecated: false,
                     },
                 ]
             "#]],
