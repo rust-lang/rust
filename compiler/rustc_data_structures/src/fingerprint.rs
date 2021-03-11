@@ -1,7 +1,7 @@
 use crate::stable_hasher;
 use rustc_serialize::{
     opaque::{self, EncodeResult, FileEncodeResult},
-    Decodable, Encodable,
+    Decodable, Decoder, Encodable, Encoder,
 };
 use std::hash::{Hash, Hasher};
 use std::mem::{self, MaybeUninit};
@@ -158,7 +158,7 @@ impl<E: rustc_serialize::Encoder> FingerprintEncoder for E {
 impl FingerprintEncoder for opaque::Encoder {
     fn encode_fingerprint(&mut self, f: &Fingerprint) -> EncodeResult {
         let bytes: [u8; 16] = unsafe { mem::transmute([f.0.to_le(), f.1.to_le()]) };
-        self.emit_raw_bytes(&bytes);
+        self.emit_raw_bytes(&bytes)?;
         Ok(())
     }
 }

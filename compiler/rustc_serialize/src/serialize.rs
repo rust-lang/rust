@@ -7,6 +7,7 @@ Core encoding and decoding interfaces.
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 use std::path;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -200,6 +201,14 @@ pub trait Encoder {
     {
         f(self)
     }
+
+    #[inline]
+    fn emit_raw_bytes(&mut self, s: &[u8]) -> Result<(), Self::Error> {
+        for &c in s.iter() {
+            self.emit_u8(c)?;
+        }
+        Ok(())
+    }
 }
 
 pub trait Decoder {
@@ -377,6 +386,15 @@ pub trait Decoder {
 
     // Failure
     fn error(&mut self, err: &str) -> Self::Error;
+
+    #[inline]
+    fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), Self::Error> {
+        for c in s.iter_mut() {
+            let h = self.read_u8()?;
+            unsafe { *c.as_mut_ptr() = h };
+        }
+        Ok(())
+    }
 }
 
 /// Trait for types that can be serialized
