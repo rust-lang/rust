@@ -17,6 +17,7 @@
 #![feature(min_specialization)]
 #![cfg_attr(test, feature(test))]
 
+use rustc_data_structures::sync;
 use smallvec::SmallVec;
 
 use std::alloc::Layout;
@@ -556,8 +557,19 @@ struct DropType {
     obj: *mut u8,
 }
 
-unsafe fn drop_for_type<T>(to_drop: *mut u8) {
-    std::ptr::drop_in_place(to_drop as *mut T)
+// SAFETY: we require `T: Send` before type-erasing into `DropType`.
+#[cfg(parallel_compiler)]
+unsafe impl sync::Send for DropType {}
+
+impl DropType {
+    #[inline]
+    unsafe fn new<T: sync::Send>(obj: *mut T) -> Self {
+        unsafe fn drop_for_type<T>(to_drop: *mut u8) {
+            std::ptr::drop_in_place(to_drop as *mut T)
+        }
+
+        DropType { drop_fn: drop_for_type::<T>, obj: obj as *mut u8 }
+    }
 }
 
 impl Drop for DropType {
@@ -585,21 +597,26 @@ pub struct DropArena {
 
 impl DropArena {
     #[inline]
-    pub unsafe fn alloc<T>(&self, object: T) -> &mut T {
+    pub unsafe fn alloc<T>(&self, object: T) -> &mut T
+    where
+        T: sync::Send,
+    {
         let mem = self.arena.alloc_raw(Layout::new::<T>()) as *mut T;
         // Write into uninitialized memory.
         ptr::write(mem, object);
         let result = &mut *mem;
         // Record the destructor after doing the allocation as that may panic
         // and would cause `object`'s destructor to run twice if it was recorded before.
-        self.destructors
-            .borrow_mut()
-            .push(DropType { drop_fn: drop_for_type::<T>, obj: result as *mut T as *mut u8 });
+        self.destructors.borrow_mut().push(DropType::new(result));
         result
     }
 
     #[inline]
-    pub unsafe fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+    pub unsafe fn alloc_from_iter<T, I>(&self, iter: I) -> &mut [T]
+    where
+        T: sync::Send,
+        I: IntoIterator<Item = T>,
+    {
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
         if vec.is_empty() {
             return &mut [];
@@ -620,8 +637,7 @@ impl DropArena {
         // Record the destructors after doing the allocation as that may panic
         // and would cause `object`'s destructor to run twice if it was recorded before.
         for i in 0..len {
-            destructors
-                .push(DropType { drop_fn: drop_for_type::<T>, obj: start_ptr.add(i) as *mut u8 });
+            destructors.push(DropType::new(start_ptr.add(i)));
         }
 
         slice::from_raw_parts_mut(start_ptr, len)
