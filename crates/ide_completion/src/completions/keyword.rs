@@ -12,21 +12,21 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
 
     if ctx.use_item_syntax.is_some() {
         if ctx.path_qual.is_none() {
-            CompletionItem::new(CompletionKind::Keyword, source_range, "crate::")
-                .kind(CompletionItemKind::Keyword)
-                .insert_text("crate::")
-                .add_to(acc);
+            let mut crate_builder =
+                CompletionItem::new(CompletionKind::Keyword, source_range, "crate::");
+            crate_builder.kind(CompletionItemKind::Keyword).insert_text("crate::");
+            crate_builder.add_to(acc);
         }
-        CompletionItem::new(CompletionKind::Keyword, source_range, "self")
-            .kind(CompletionItemKind::Keyword)
-            .add_to(acc);
+        let mut self_builder = CompletionItem::new(CompletionKind::Keyword, source_range, "self");
+        self_builder.kind(CompletionItemKind::Keyword);
+        self_builder.add_to(acc);
         if iter::successors(ctx.path_qual.clone(), |p| p.qualifier())
             .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
         {
-            CompletionItem::new(CompletionKind::Keyword, source_range, "super::")
-                .kind(CompletionItemKind::Keyword)
-                .insert_text("super::")
-                .add_to(acc);
+            let mut super_builder =
+                CompletionItem::new(CompletionKind::Keyword, source_range, "super::");
+            super_builder.kind(CompletionItemKind::Keyword).insert_text("super::");
+            super_builder.add_to(acc);
         }
     }
 
@@ -34,11 +34,10 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     if let Some(receiver) = &ctx.dot_receiver {
         if let Some(ty) = ctx.sema.type_of_expr(receiver) {
             if ty.impls_future(ctx.db) {
-                CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
-                    .kind(CompletionItemKind::Keyword)
-                    .detail("expr.await")
-                    .insert_text("await")
-                    .add_to(acc);
+                let mut builder =
+                    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
+                builder.kind(CompletionItemKind::Keyword).detail("expr.await").insert_text("await");
+                builder.add_to(acc);
             }
         };
     }
@@ -165,9 +164,10 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
 }
 
 fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet: &str) {
-    let builder = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw)
-        .kind(CompletionItemKind::Keyword);
-    let builder = match ctx.config.snippet_cap {
+    let mut builder = CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), kw);
+    builder.kind(CompletionItemKind::Keyword);
+
+    match ctx.config.snippet_cap {
         Some(cap) => {
             let tmp;
             let snippet = if snippet.ends_with('}') && ctx.incomplete_let {
@@ -177,9 +177,11 @@ fn add_keyword(ctx: &CompletionContext, acc: &mut Completions, kw: &str, snippet
             } else {
                 snippet
             };
-            builder.insert_snippet(cap, snippet)
+            builder.insert_snippet(cap, snippet);
         }
-        None => builder.insert_text(if snippet.contains('$') { kw } else { snippet }),
+        None => {
+            builder.insert_text(if snippet.contains('$') { kw } else { snippet });
+        }
     };
     acc.add(builder.build());
 }

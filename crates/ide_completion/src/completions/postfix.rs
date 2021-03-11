@@ -301,6 +301,7 @@ fn postfix_snippet(
         .detail(detail)
         .kind(CompletionItemKind::Snippet)
         .snippet_edit(cap, edit)
+        .clone()
 }
 
 #[cfg(test)]

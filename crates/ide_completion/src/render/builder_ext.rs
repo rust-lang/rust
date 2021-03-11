@@ -52,11 +52,11 @@ impl Builder {
     }
 
     pub(super) fn add_call_parens(
-        mut self,
+        &mut self,
         ctx: &CompletionContext,
         name: String,
         params: Params,
-    ) -> Builder {
+    ) -> &mut Builder {
         if !self.should_add_parens(ctx) {
             return self;
         }
@@ -71,7 +71,7 @@ impl Builder {
         let (snippet, label) = if params.is_empty() {
             (format!("{}()$0", name), format!("{}()", name))
         } else {
-            self = self.trigger_call_info();
+            self.trigger_call_info();
             let snippet = match (ctx.config.add_call_argument_snippets, params) {
                 (true, Params::Named(params)) => {
                     let function_params_snippet =

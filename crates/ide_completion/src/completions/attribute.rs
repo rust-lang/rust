@@ -45,15 +45,15 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
             CompletionKind::Attribute,
             ctx.source_range(),
             attr_completion.label,
-        )
-        .kind(CompletionItemKind::Attribute);
+        );
+        item.kind(CompletionItemKind::Attribute);
 
         if let Some(lookup) = attr_completion.lookup {
-            item = item.lookup_by(lookup);
+            item.lookup_by(lookup);
         }
 
         if let Some((snippet, cap)) = attr_completion.snippet.zip(ctx.config.snippet_cap) {
-            item = item.insert_snippet(cap, snippet);
+            item.insert_snippet(cap, snippet);
         }
 
         if attribute.kind() == ast::AttrKind::Inner || !attr_completion.prefer_inner {
@@ -168,16 +168,20 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
             );
             let lookup = components.join(", ");
             let label = components.iter().rev().join(", ");
-            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label)
-                .lookup_by(lookup)
-                .kind(CompletionItemKind::Attribute)
-                .add_to(acc)
+            let mut builder =
+                CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
+            builder.lookup_by(lookup).kind(CompletionItemKind::Attribute);
+            builder.add_to(acc);
         }
 
         for custom_derive_name in get_derive_names_in_scope(ctx).difference(&existing_derives) {
-            CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), custom_derive_name)
-                .kind(CompletionItemKind::Attribute)
-                .add_to(acc)
+            let mut builder = CompletionItem::new(
+                CompletionKind::Attribute,
+                ctx.source_range(),
+                custom_derive_name,
+            );
+            builder.kind(CompletionItemKind::Attribute);
+            builder.add_to(acc);
         }
     }
 }
@@ -193,14 +197,13 @@ fn complete_lint(
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))
         {
-            CompletionItem::new(
+            let mut builder = CompletionItem::new(
                 CompletionKind::Attribute,
                 ctx.source_range(),
                 lint_completion.label,
-            )
-            .kind(CompletionItemKind::Attribute)
-            .detail(lint_completion.description)
-            .add_to(acc)
+            );
+            builder.kind(CompletionItemKind::Attribute).detail(lint_completion.description);
+            builder.add_to(acc)
         }
     }
 }

@@ -71,15 +71,16 @@ fn build_completion(
     pat: String,
     item: impl HasAttrs + Copy,
 ) -> CompletionItem {
-    let completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name)
+    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name);
+    completion
         .kind(CompletionItemKind::Binding)
         .set_documentation(ctx.docs(item))
         .set_deprecated(ctx.is_deprecated(item))
         .detail(&pat);
-    let completion = if let Some(snippet_cap) = ctx.snippet_cap() {
-        completion.insert_snippet(snippet_cap, pat)
+    if let Some(snippet_cap) = ctx.snippet_cap() {
+        completion.insert_snippet(snippet_cap, pat);
     } else {
-        completion.insert_text(pat)
+        completion.insert_text(pat);
     };
     completion.build()
 }

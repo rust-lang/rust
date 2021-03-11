@@ -36,17 +36,17 @@ impl<'a> ConstRender<'a> {
         let name = self.name()?;
         let detail = self.detail();
 
-        let item = CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name)
-            .kind(SymbolKind::Const)
+        let mut item =
+            CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), name);
+        item.kind(SymbolKind::Const)
             .set_documentation(self.ctx.docs(self.const_))
             .set_deprecated(
                 self.ctx.is_deprecated(self.const_)
                     || self.ctx.is_deprecated_assoc_item(self.const_),
             )
-            .detail(detail)
-            .build();
+            .detail(detail);
 
-        Some(item)
+        Some(item.build())
     }
 
     fn name(&self) -> Option<String> {
