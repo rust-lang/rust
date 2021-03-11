@@ -16,7 +16,7 @@ use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, E
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_span::edition::{Edition, DEFAULT_EDITION};
+use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
 use crate::core::new_handler;
@@ -469,17 +469,7 @@ impl Options {
             }
         }
 
-        let edition = if let Some(e) = matches.opt_str("edition") {
-            match e.parse() {
-                Ok(e) => e,
-                Err(_) => {
-                    diag.struct_err("could not parse edition").emit();
-                    return Err(1);
-                }
-            }
-        } else {
-            DEFAULT_EDITION
-        };
+        let edition = config::parse_crate_edition(&matches);
 
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(&html::render::INITIAL_IDS);
