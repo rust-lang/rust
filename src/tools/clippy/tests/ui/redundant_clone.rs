@@ -1,6 +1,7 @@
 // run-rustfix
 // rustfix-only-machine-applicable
 
+#![allow(clippy::implicit_clone)]
 use std::ffi::OsString;
 use std::path::Path;
 
@@ -58,11 +59,7 @@ fn main() {
 #[derive(Clone)]
 struct Alpha;
 fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
-    if b {
-        (a.clone(), a.clone())
-    } else {
-        (Alpha, a)
-    }
+    if b { (a.clone(), a.clone()) } else { (Alpha, a) }
 }
 
 fn cannot_double_move(a: Alpha) -> (Alpha, Alpha) {

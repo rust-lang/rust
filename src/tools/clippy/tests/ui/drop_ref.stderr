@@ -1,4 +1,4 @@
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:11:5
    |
 LL |     drop(&SomeStruct);
@@ -11,7 +11,7 @@ note: argument has type `&SomeStruct`
 LL |     drop(&SomeStruct);
    |          ^^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:14:5
    |
 LL |     drop(&owned1);
@@ -23,7 +23,7 @@ note: argument has type `&SomeStruct`
 LL |     drop(&owned1);
    |          ^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:15:5
    |
 LL |     drop(&&owned1);
@@ -35,7 +35,7 @@ note: argument has type `&&SomeStruct`
 LL |     drop(&&owned1);
    |          ^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:16:5
    |
 LL |     drop(&mut owned1);
@@ -47,7 +47,7 @@ note: argument has type `&mut SomeStruct`
 LL |     drop(&mut owned1);
    |          ^^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:20:5
    |
 LL |     drop(reference1);
@@ -59,7 +59,7 @@ note: argument has type `&SomeStruct`
 LL |     drop(reference1);
    |          ^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:23:5
    |
 LL |     drop(reference2);
@@ -71,7 +71,7 @@ note: argument has type `&mut SomeStruct`
 LL |     drop(reference2);
    |          ^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:26:5
    |
 LL |     drop(reference3);
@@ -83,7 +83,7 @@ note: argument has type `&SomeStruct`
 LL |     drop(reference3);
    |          ^^^^^^^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:31:5
    |
 LL |     drop(&val);
@@ -95,7 +95,7 @@ note: argument has type `&T`
 LL |     drop(&val);
    |          ^^^^
 
-error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
   --> $DIR/drop_ref.rs:39:5
    |
 LL |     std::mem::drop(&SomeStruct);

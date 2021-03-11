@@ -50,7 +50,7 @@ pub(super) fn lint<'tcx>(
                     UNNECESSARY_LAZY_EVALUATIONS,
                     expr.span,
                     msg,
-                    &format!("Use `{}` instead", simplify_using),
+                    &format!("use `{}` instead", simplify_using),
                     format!(
                         "{0}.{1}({2})",
                         snippet(cx, args[0].span, ".."),

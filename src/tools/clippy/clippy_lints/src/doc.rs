@@ -329,9 +329,9 @@ fn lint_for_missing_headers<'tcx>(
             if_chain! {
                 if let Some(body_id) = body_id;
                 if let Some(future) = cx.tcx.lang_items().future_trait();
-                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let mir = cx.tcx.optimized_mir(def_id.to_def_id());
-                let ret_ty = mir.return_ty();
+                let typeck = cx.tcx.typeck_body(body_id);
+                let body = cx.tcx.hir().body(body_id);
+                let ret_ty = typeck.expr_ty(&body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
