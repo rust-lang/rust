@@ -120,6 +120,7 @@ impl NestedMetaItem {
 }
 
 impl Attribute {
+    #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
             AttrKind::Normal(ref item, _) => item.path == name,
