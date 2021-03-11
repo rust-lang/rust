@@ -54,14 +54,14 @@ pub fn read_file(
     report_incremental_info: bool,
     path: &Path,
     nightly_build: bool,
-) -> io::Result<Option<(Vec<u8>, usize)>> {
-    let data = match fs::read(path) {
-        Ok(data) => data,
+) -> io::Result<Option<io::BufReader<fs::File>>> {
+    let file = match fs::File::open(path) {
+        Ok(file) => file,
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(err) => return Err(err),
     };
 
-    let mut file = io::Cursor::new(data);
+    let mut file = io::BufReader::new(file);
 
     // Check FILE_MAGIC
     {
@@ -102,8 +102,7 @@ pub fn read_file(
         }
     }
 
-    let post_header_start_pos = file.position() as usize;
-    Ok(Some((file.into_inner(), post_header_start_pos)))
+    Ok(Some(file))
 }
 
 fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &str) {
