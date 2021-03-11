@@ -131,12 +131,12 @@ where
     /// Returns true if any lane is set, or false otherwise.
     #[inline]
     pub fn any(self) -> bool {
-        self.0 != 0
+        self != Self::splat(false)
     }
 
     /// Returns true if all lanes are set, or false otherwise.
     #[inline]
     pub fn all(self) -> bool {
-        self.0 == (!0) >> (64 - LANES)
+        self == Self::splat(true)
     }
 }

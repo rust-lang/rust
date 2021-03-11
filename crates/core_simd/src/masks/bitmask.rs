@@ -1,9 +1,9 @@
 use crate::LanesAtMost32;
 
 /// A mask where each lane is represented by a single bit.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq, Hash)]
 #[repr(transparent)]
-pub struct BitMask<const LANES: usize>(pub(crate) u64)
+pub struct BitMask<const LANES: usize>(u64)
 where
     BitMask<LANES>: LanesAtMost32;
 
@@ -14,7 +14,7 @@ where
     /// Construct a mask by setting all lanes to the given value.
     pub fn splat(value: bool) -> Self {
         if value {
-            Self(u64::MAX)
+            Self(u64::MAX >> (64 - LANES))
         } else {
             Self(u64::MIN)
         }
