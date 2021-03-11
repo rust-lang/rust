@@ -9,7 +9,7 @@ if [ "$GITHUB_EVENT_NAME" = "schedule" ] ; then # running in scheduled job
 
   echo "Doing full link check."
   set -x
-elif [ "$CI" = "true" ] ; then # running in PR CI build
+elif [ "$GITHUB_EVENT_NAME" = "pull_request" ] ; then # running in PR CI build
   if [ -z "$BASE_SHA" ]; then
     echo "error: unexpected state: BASE_SHA must be non-empty in CI"
     exit 1
