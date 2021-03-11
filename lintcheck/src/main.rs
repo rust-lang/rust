@@ -7,6 +7,7 @@
 
 #![allow(clippy::filter_map, clippy::collapsible_else_if)]
 
+use std::ffi::OsStr;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{collections::HashMap, io::ErrorKind};
@@ -486,13 +487,32 @@ fn read_crates(toml_path: &Path) -> Vec<CrateSource> {
 fn parse_json_message(json_message: &str, krate: &Crate) -> ClippyWarning {
     let jmsg: Value = serde_json::from_str(&json_message).unwrap_or_else(|e| panic!("Failed to parse json:\n{:?}", e));
 
+    let file: String = jmsg["message"]["spans"][0]["file_name"]
+        .to_string()
+        .trim_matches('"')
+        .into();
+
+    let file = if file.contains(".cargo") {
+        // if we deal with macros, a filename may show the origin of a macro which can be inside a dep from
+        // the registry.
+        // don't show the full path in that case.
+
+        // /home/matthias/.cargo/registry/src/github.com-1ecc6299db9ec823/syn-1.0.63/src/custom_keyword.rs
+        let path = PathBuf::from(file);
+        let mut piter = path.into_iter();
+        // consume all elements until we find ".cargo", so that "/home/matthias" is skipped
+        let _: Option<&OsStr> = piter.find(|x| x == &std::ffi::OsString::from(".cargo"));
+        // collect the remaining segments
+        let file = piter.collect::<PathBuf>();
+        format!("{}", file.display())
+    } else {
+        file
+    };
+
     ClippyWarning {
         crate_name: krate.name.to_string(),
         crate_version: krate.version.to_string(),
-        file: jmsg["message"]["spans"][0]["file_name"]
-            .to_string()
-            .trim_matches('"')
-            .into(),
+        file,
         line: jmsg["message"]["spans"][0]["line_start"]
             .to_string()
             .trim_matches('"')
