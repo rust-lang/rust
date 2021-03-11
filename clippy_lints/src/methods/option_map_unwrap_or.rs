@@ -12,7 +12,7 @@ use rustc_span::{sym, Symbol};
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
-pub(super) fn lint<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &rustc_hir::Expr<'_>,
     map_args: &'tcx [rustc_hir::Expr<'_>],

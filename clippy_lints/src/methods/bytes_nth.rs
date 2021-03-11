@@ -7,7 +7,7 @@ use rustc_span::sym;
 
 use super::BYTES_NTH;
 
-pub(super) fn lints<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>]) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, iter_args: &'tcx [Expr<'tcx>]) {
     if_chain! {
         if let ExprKind::MethodCall(_, _, ref args, _) = expr.kind;
         let ty = cx.typeck_results().expr_ty(&iter_args[0]).peel_refs();

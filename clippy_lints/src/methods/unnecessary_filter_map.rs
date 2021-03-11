@@ -9,7 +9,7 @@ use if_chain::if_chain;
 
 use super::UNNECESSARY_FILTER_MAP;
 
-pub(super) fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if !match_trait_method(cx, expr, &paths::ITERATOR) {
         return;
     }
