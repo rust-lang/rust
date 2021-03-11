@@ -1,6 +1,6 @@
 # Parameter Environment
 
-When working with associated and/or or generic items (types, constants,
+When working with associated and/or generic items (types, constants,
 functions/methods) it is often relevant to have more information about the
 `Self` or generic parameters. Trait bounds and similar information is encoded in
 the [`ParamEnv`][pe]. Often this is not enough information to obtain things like the

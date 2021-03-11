@@ -147,7 +147,7 @@ when possible.
 
 Calling `iterate_to_fixpoint` on your `Engine` will return a `Results`, which
 contains the dataflow state at fixpoint upon entry of each block. Once you have
-a `Results`, you can can inspect the dataflow state at fixpoint at any point in
+a `Results`, you can inspect the dataflow state at fixpoint at any point in
 the CFG. If you only need the state at a few locations (e.g., each `Drop`
 terminator) use a [`ResultsCursor`]. If you need the state at *every* location,
 a [`ResultsVisitor`] will be more efficient.

@@ -75,7 +75,7 @@ index**. The idea of a "universe" is that it is a set of names that
 are in scope within some type or at some point. Universes are formed
 into a tree, where each child extends its parents with some new names.
 So the **root universe** conceptually contains global names, such as
-the the lifetime `'static` or the type `i32`. In the compiler, we also
+the lifetime `'static` or the type `i32`. In the compiler, we also
 put generic type parameters into this root universe (in this sense,
 there is not just one root universe, but one per item). So consider
 this function `bar`:

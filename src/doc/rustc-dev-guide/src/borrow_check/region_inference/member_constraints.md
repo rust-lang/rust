@@ -141,7 +141,7 @@ i.e., that `'0` must be *smaller* than. In our example, this would be
 examples, the chain may be more indirect.
 
 We can use upper bounds to rule out members in a very similar way to
-lower lower bounds. If UB is some upper bound, then we know that `UB:
+lower bounds. If UB is some upper bound, then we know that `UB:
 '0` must hold, so we can rule out any choice `'choice` where `UB:
 'choice` does not hold.
 
