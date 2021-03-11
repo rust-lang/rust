@@ -13,9 +13,7 @@ use rustc_span::symbol::sym;
 
 use super::ITER_NEXT_SLICE;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, iter_args: &'tcx [hir::Expr<'_>]) {
-    let caller_expr = &iter_args[0];
-
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, caller_expr: &'tcx hir::Expr<'_>) {
     // Skip lint if the `iter().next()` expression is a for loop argument,
     // since it is already covered by `&loops::ITER_NEXT_LOOP`
     let mut parent_expr_opt = get_parent_expr(cx, expr);

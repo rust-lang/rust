@@ -62,17 +62,18 @@ mod zst_offset;
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_adt_constructor, contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
-use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, method_calls, paths, return_ty};
+use clippy_utils::{contains_return, get_trait_def_id, in_macro, iter_input_pats, paths, return_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::{PrimTy, QPath, TraitItem, TraitItemKind};
+use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::{sym, SymbolStr};
+use rustc_span::symbol::SymbolStr;
+use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
@@ -1704,134 +1705,32 @@ impl_lint_pass!(Methods => [
     IMPLICIT_CLONE
 ]);
 
+/// Extracts a method call name, args, and `Span` of the method name.
+fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(SymbolStr, &'tcx [hir::Expr<'tcx>], Span)> {
+    if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
+        if !args.iter().any(|e| e.span.from_expansion()) {
+            return Some((path.ident.name.as_str(), args, span));
+        }
+    }
+    None
+}
+
+/// Same as `method_call` but the `SymbolStr` is dereferenced into a temporary `&str`
+macro_rules! method_call {
+    ($expr:expr) => {
+        method_call($expr)
+            .as_ref()
+            .map(|&(ref name, args, span)| (&**name, args, span))
+    };
+}
+
 impl<'tcx> LateLintPass<'tcx> for Methods {
-    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if in_macro(expr.span) {
             return;
         }
 
-        let (method_names, arg_lists, method_spans) = method_calls(expr, 2);
-        let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
-
-        match method_names.as_slice() {
-            ["unwrap", "get"] => get_unwrap::check(cx, expr, arg_lists[1], false),
-            ["unwrap", "get_mut"] => get_unwrap::check(cx, expr, arg_lists[1], true),
-            ["unwrap", ..] => unwrap_used::check(cx, expr, arg_lists[0]),
-            ["expect", "ok"] => ok_expect::check(cx, expr, arg_lists[1]),
-            ["expect", ..] => expect_used::check(cx, expr, arg_lists[0]),
-            ["unwrap_or", "map"] => option_map_unwrap_or::check(cx, expr, arg_lists[1], arg_lists[0], method_spans[1]),
-            ["unwrap_or_else", "map"] => {
-                if !map_unwrap_or::check(cx, expr, arg_lists[1], arg_lists[0], self.msrv.as_ref()) {
-                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or");
-                }
-            },
-            ["map_or", ..] => option_map_or_none::check(cx, expr, arg_lists[0]),
-            ["and_then", ..] => {
-                let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, arg_lists[0]);
-                let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, arg_lists[0]);
-                if !biom_option_linted && !biom_result_linted {
-                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "and");
-                }
-            },
-            ["or_else", ..] => {
-                if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, arg_lists[0]) {
-                    unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "or");
-                }
-            },
-            ["next", "filter"] => filter_next::check(cx, expr, arg_lists[1]),
-            ["next", "skip_while"] => skip_while_next::check(cx, expr, arg_lists[1]),
-            ["next", "iter"] => iter_next_slice::check(cx, expr, arg_lists[1]),
-            ["map", "filter"] => filter_map::check(cx, expr, false, method_spans[0]),
-            ["map", "filter_map"] => filter_map_map::check(cx, expr),
-            ["next", "filter_map"] => filter_map_next::check(cx, expr, arg_lists[1], self.msrv.as_ref()),
-            ["map", "find"] => filter_map::check(cx, expr, true, method_spans[0]),
-            ["flat_map", "filter"] => filter_flat_map::check(cx, expr),
-            ["flat_map", "filter_map"] => filter_map_flat_map::check(cx, expr),
-            ["flat_map", ..] => flat_map_identity::check(cx, expr, arg_lists[0], method_spans[0]),
-            ["flatten", "map"] => map_flatten::check(cx, expr, arg_lists[1]),
-            [option_check_method, "find"] if "is_some" == *option_check_method || "is_none" == *option_check_method => {
-                search_is_some::check(
-                    cx,
-                    expr,
-                    "find",
-                    option_check_method,
-                    arg_lists[1],
-                    arg_lists[0],
-                    method_spans[1],
-                )
-            },
-            [option_check_method, "position"]
-                if "is_some" == *option_check_method || "is_none" == *option_check_method =>
-            {
-                search_is_some::check(
-                    cx,
-                    expr,
-                    "position",
-                    option_check_method,
-                    arg_lists[1],
-                    arg_lists[0],
-                    method_spans[1],
-                )
-            },
-            [option_check_method, "rposition"]
-                if "is_some" == *option_check_method || "is_none" == *option_check_method =>
-            {
-                search_is_some::check(
-                    cx,
-                    expr,
-                    "rposition",
-                    option_check_method,
-                    arg_lists[1],
-                    arg_lists[0],
-                    method_spans[1],
-                )
-            },
-            ["extend", ..] => string_extend_chars::check(cx, expr, arg_lists[0]),
-            ["count", "into_iter"] => iter_count::check(cx, expr, &arg_lists[1], "into_iter"),
-            ["count", "iter"] => iter_count::check(cx, expr, &arg_lists[1], "iter"),
-            ["count", "iter_mut"] => iter_count::check(cx, expr, &arg_lists[1], "iter_mut"),
-            ["nth", "iter"] => iter_nth::check(cx, expr, &arg_lists, false),
-            ["nth", "iter_mut"] => iter_nth::check(cx, expr, &arg_lists, true),
-            ["nth", "bytes"] => bytes_nth::check(cx, expr, &arg_lists[1]),
-            ["nth", ..] => iter_nth_zero::check(cx, expr, arg_lists[0]),
-            ["step_by", ..] => iterator_step_by_zero::check(cx, expr, arg_lists[0]),
-            ["next", "skip"] => iter_skip_next::check(cx, expr, arg_lists[1]),
-            ["collect", "cloned"] => iter_cloned_collect::check(cx, expr, arg_lists[1]),
-            ["as_ref"] => useless_asref::check(cx, expr, "as_ref", arg_lists[0]),
-            ["as_mut"] => useless_asref::check(cx, expr, "as_mut", arg_lists[0]),
-            ["fold", ..] => unnecessary_fold::check(cx, expr, arg_lists[0], method_spans[0]),
-            ["filter_map", ..] => {
-                unnecessary_filter_map::check(cx, expr, arg_lists[0]);
-                filter_map_identity::check(cx, expr, arg_lists[0], method_spans[0]);
-            },
-            ["count", "map"] => suspicious_map::check(cx, expr, arg_lists[1], arg_lists[0]),
-            ["assume_init"] => uninit_assumed_init::check(cx, &arg_lists[0][0], expr),
-            ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
-                manual_saturating_arithmetic::check(cx, expr, &arg_lists, &arith["checked_".len()..])
-            },
-            ["add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub"] => {
-                zst_offset::check(cx, expr, arg_lists[0])
-            },
-            ["is_file", ..] => filetype_is_file::check(cx, expr, arg_lists[0]),
-            ["map", "as_ref"] => {
-                option_as_ref_deref::check(cx, expr, arg_lists[1], arg_lists[0], false, self.msrv.as_ref())
-            },
-            ["map", "as_mut"] => {
-                option_as_ref_deref::check(cx, expr, arg_lists[1], arg_lists[0], true, self.msrv.as_ref())
-            },
-            ["unwrap_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "unwrap_or"),
-            ["get_or_insert_with", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "get_or_insert"),
-            ["ok_or_else", ..] => unnecessary_lazy_eval::check(cx, expr, arg_lists[0], "ok_or"),
-            ["collect", "map"] => map_collect_result_unit::check(cx, expr, arg_lists[1], arg_lists[0]),
-            ["for_each", "inspect"] => inspect_for_each::check(cx, expr, method_spans[1]),
-            ["to_owned", ..] => implicit_clone::check(cx, expr, sym::ToOwned),
-            ["to_os_string", ..] => implicit_clone::check(cx, expr, sym::OsStr),
-            ["to_path_buf", ..] => implicit_clone::check(cx, expr, sym::Path),
-            ["to_vec", ..] => implicit_clone::check(cx, expr, sym::slice),
-            _ => {},
-        }
+        check_methods(cx, expr, self.msrv.as_ref());
 
         match expr.kind {
             hir::ExprKind::Call(ref func, ref args) => {
@@ -2020,6 +1919,140 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
     extract_msrv_attr!(LateContext);
 }
+
+#[allow(clippy::too_many_lines)]
+fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Option<&RustcVersion>) {
+    if let Some((name, [recv, args @ ..], span)) = method_call!(expr) {
+        match (name, args) {
+            ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [recv, _]) => {
+                zst_offset::check(cx, expr, recv)
+            },
+            ("and_then", [arg]) => {
+                let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, recv, arg);
+                let biom_result_linted = bind_instead_of_map::ResultAndThenOk::check(cx, expr, recv, arg);
+                if !biom_option_linted && !biom_result_linted {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
+                }
+            },
+            ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
+            ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
+            ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
+            ("collect", []) => match method_call!(recv) {
+                Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
+                Some(("map", [m_recv, m_arg], _)) => {
+                    map_collect_result_unit::check(cx, expr, m_recv, m_arg, recv);
+                },
+                _ => {},
+            },
+            ("count", []) => match method_call!(recv) {
+                Some((name @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
+                    iter_count::check(cx, expr, recv2, name);
+                },
+                Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
+                _ => {},
+            },
+            ("expect", [_]) => match method_call!(recv) {
+                Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
+                _ => expect_used::check(cx, expr, recv),
+            },
+            ("extend", [arg]) => string_extend_chars::check(cx, expr, recv, arg),
+            ("filter_map", [arg]) => {
+                unnecessary_filter_map::check(cx, expr, arg);
+                filter_map_identity::check(cx, expr, arg, span);
+            },
+            ("flat_map", [flm_arg]) => match method_call!(recv) {
+                Some(("filter", [_, _], _)) => filter_flat_map::check(cx, expr),
+                Some(("filter_map", [_, _], _)) => filter_map_flat_map::check(cx, expr),
+                _ => flat_map_identity::check(cx, expr, flm_arg, span),
+            },
+            ("flatten", []) => {
+                if let Some(("map", [recv, map_arg], _)) = method_call!(recv) {
+                    map_flatten::check(cx, expr, recv, map_arg);
+                }
+            },
+            ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
+            ("for_each", [_]) => {
+                if let Some(("inspect", [_, _], span2)) = method_call!(recv) {
+                    inspect_for_each::check(cx, expr, span2);
+                }
+            },
+            ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
+            ("is_file", []) => filetype_is_file::check(cx, expr, recv),
+            ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
+            ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+            ("map", [m_arg]) => {
+                if let Some((name, [recv2, args @ ..], span2)) = method_call!(recv) {
+                    match (name, args) {
+                        ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
+                        ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, msrv),
+                        ("filter", [f_arg]) => {
+                            filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false)
+                        },
+                        ("filter_map", [_]) => filter_map_map::check(cx, expr),
+                        ("find", [f_arg]) => filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true),
+                        _ => {},
+                    }
+                }
+            },
+            ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
+            ("next", []) => {
+                if let Some((name, [recv, args @ ..], _)) = method_call!(recv) {
+                    match (name, args) {
+                        ("filter", [arg]) => filter_next::check(cx, expr, recv, arg),
+                        ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv, arg, msrv),
+                        ("iter", []) => iter_next_slice::check(cx, expr, recv),
+                        ("skip", [arg]) => iter_skip_next::check(cx, expr, recv, arg),
+                        ("skip_while", [_]) => skip_while_next::check(cx, expr),
+                        _ => {},
+                    }
+                }
+            },
+            ("nth", [n_arg]) => match method_call!(recv) {
+                Some(("bytes", [recv2], _)) => bytes_nth::check(cx, expr, recv2, n_arg),
+                Some(("iter", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, false),
+                Some(("iter_mut", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, true),
+                _ => iter_nth_zero::check(cx, expr, recv, n_arg),
+            },
+            ("ok_or_else", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "ok_or"),
+            ("or_else", [arg]) => {
+                if !bind_instead_of_map::ResultOrElseErrInfo::check(cx, expr, recv, arg) {
+                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "or");
+                }
+            },
+            ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
+            ("to_os_string", []) => implicit_clone::check(cx, expr, sym::OsStr),
+            ("to_owned", []) => implicit_clone::check(cx, expr, sym::ToOwned),
+            ("to_path_buf", []) => implicit_clone::check(cx, expr, sym::Path),
+            ("to_vec", []) => implicit_clone::check(cx, expr, sym::slice),
+            ("unwrap", []) => match method_call!(recv) {
+                Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
+                Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
+                _ => unwrap_used::check(cx, expr, recv),
+            },
+            ("unwrap_or", [u_arg]) => match method_call!(recv) {
+                Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {
+                    manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
+                },
+                Some(("map", [m_recv, m_arg], span)) => {
+                    option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span)
+                },
+                _ => {},
+            },
+            ("unwrap_or_else", [u_arg]) => match method_call!(recv) {
+                Some(("map", [recv, map_arg], _)) if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, msrv) => {},
+                _ => unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or"),
+            },
+            _ => {},
+        }
+    }
+}
+
+fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, is_some: bool) {
+    if let Some((name @ ("find" | "position" | "rposition"), [f_recv, arg], span)) = method_call!(recv) {
+        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span)
+    }
+}
+
 /// Used for `lint_binary_expr_with_method_call`.
 #[derive(Copy, Clone)]
 struct BinaryExprInfo<'a> {

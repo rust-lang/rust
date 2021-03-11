@@ -8,11 +8,14 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 
-pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
-    let unwrap_arg = &args[0][1];
-    let arith_lhs = &args[1][0];
-    let arith_rhs = &args[1][1];
-
+pub fn check(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    arith_lhs: &hir::Expr<'_>,
+    arith_rhs: &hir::Expr<'_>,
+    unwrap_arg: &hir::Expr<'_>,
+    arith: &str,
+) {
     let ty = cx.typeck_results().expr_ty(arith_lhs);
     if !ty.is_integral() {
         return;
