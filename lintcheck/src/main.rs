@@ -862,7 +862,11 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .long("jobs")
                 .help("number of threads to use, 0 automatic choice"),
         )
-        .arg(Arg::with_name("fix").help("runs cargo clippy --fix and checks if all suggestions apply"))
+        .arg(
+            Arg::with_name("fix")
+                .long("--fix")
+                .help("runs cargo clippy --fix and checks if all suggestions apply"),
+        )
         .get_matches()
 }
 
