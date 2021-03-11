@@ -1167,6 +1167,7 @@ where
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
