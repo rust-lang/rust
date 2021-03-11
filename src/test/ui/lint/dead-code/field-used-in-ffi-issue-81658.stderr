@@ -1,0 +1,14 @@
+error: field is never read: `items`
+  --> $DIR/field-used-in-ffi-issue-81658.rs:13:5
+   |
+LL |     items: Option<Vec<T>>,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/field-used-in-ffi-issue-81658.rs:7:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+
