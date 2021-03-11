@@ -18,36 +18,37 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
 
 crate mod constant;
+
 crate mod cx;
+pub use cx::build_thir;
 
 crate mod pattern;
-crate use self::pattern::PatTyProj;
-crate use self::pattern::{BindingMode, FieldPat, Pat, PatKind, PatRange};
+pub use self::pattern::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
 
 mod arena;
-crate use arena::Arena;
+pub use arena::Arena;
 
 mod util;
 
 #[derive(Copy, Clone, Debug)]
-crate enum LintLevel {
+pub enum LintLevel {
     Inherited,
     Explicit(hir::HirId),
 }
 
 #[derive(Debug)]
-crate struct Block<'thir, 'tcx> {
-    crate targeted_by_break: bool,
-    crate region_scope: region::Scope,
-    crate opt_destruction_scope: Option<region::Scope>,
-    crate span: Span,
-    crate stmts: &'thir [Stmt<'thir, 'tcx>],
-    crate expr: Option<&'thir Expr<'thir, 'tcx>>,
-    crate safety_mode: BlockSafety,
+pub struct Block<'thir, 'tcx> {
+    pub targeted_by_break: bool,
+    pub region_scope: region::Scope,
+    pub opt_destruction_scope: Option<region::Scope>,
+    pub span: Span,
+    pub stmts: &'thir [Stmt<'thir, 'tcx>],
+    pub expr: Option<&'thir Expr<'thir, 'tcx>>,
+    pub safety_mode: BlockSafety,
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum BlockSafety {
+pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(hir::HirId),
     PushUnsafe,
@@ -55,13 +56,13 @@ crate enum BlockSafety {
 }
 
 #[derive(Debug)]
-crate struct Stmt<'thir, 'tcx> {
-    crate kind: StmtKind<'thir, 'tcx>,
-    crate opt_destruction_scope: Option<region::Scope>,
+pub struct Stmt<'thir, 'tcx> {
+    pub kind: StmtKind<'thir, 'tcx>,
+    pub opt_destruction_scope: Option<region::Scope>,
 }
 
 #[derive(Debug)]
-crate enum StmtKind<'thir, 'tcx> {
+pub enum StmtKind<'thir, 'tcx> {
     Expr {
         /// scope for this statement; may be used as lifetime of temporaries
         scope: region::Scope,
@@ -111,23 +112,23 @@ rustc_data_structures::static_assert_size!(Expr<'_, '_>, 144);
 /// example, method calls and overloaded operators are absent: they are
 /// expected to be converted into `Expr::Call` instances.
 #[derive(Debug)]
-crate struct Expr<'thir, 'tcx> {
+pub struct Expr<'thir, 'tcx> {
     /// type of this expression
-    crate ty: Ty<'tcx>,
+    pub ty: Ty<'tcx>,
 
     /// lifetime of this expression if it should be spilled into a
     /// temporary; should be None only if in a constant context
-    crate temp_lifetime: Option<region::Scope>,
+    pub temp_lifetime: Option<region::Scope>,
 
     /// span of the expression in the source
-    crate span: Span,
+    pub span: Span,
 
     /// kind of expression
-    crate kind: ExprKind<'thir, 'tcx>,
+    pub kind: ExprKind<'thir, 'tcx>,
 }
 
 #[derive(Debug)]
-crate enum ExprKind<'thir, 'tcx> {
+pub enum ExprKind<'thir, 'tcx> {
     Scope {
         region_scope: region::Scope,
         lint_level: LintLevel,
@@ -316,41 +317,41 @@ crate enum ExprKind<'thir, 'tcx> {
 }
 
 #[derive(Debug)]
-crate struct FieldExpr<'thir, 'tcx> {
-    crate name: Field,
-    crate expr: &'thir Expr<'thir, 'tcx>,
+pub struct FieldExpr<'thir, 'tcx> {
+    pub name: Field,
+    pub expr: &'thir Expr<'thir, 'tcx>,
 }
 
 #[derive(Debug)]
-crate struct FruInfo<'thir, 'tcx> {
-    crate base: &'thir Expr<'thir, 'tcx>,
-    crate field_types: &'thir [Ty<'tcx>],
+pub struct FruInfo<'thir, 'tcx> {
+    pub base: &'thir Expr<'thir, 'tcx>,
+    pub field_types: &'thir [Ty<'tcx>],
 }
 
 #[derive(Debug)]
-crate struct Arm<'thir, 'tcx> {
-    crate pattern: Pat<'tcx>,
-    crate guard: Option<Guard<'thir, 'tcx>>,
-    crate body: &'thir Expr<'thir, 'tcx>,
-    crate lint_level: LintLevel,
-    crate scope: region::Scope,
-    crate span: Span,
+pub struct Arm<'thir, 'tcx> {
+    pub pattern: Pat<'tcx>,
+    pub guard: Option<Guard<'thir, 'tcx>>,
+    pub body: &'thir Expr<'thir, 'tcx>,
+    pub lint_level: LintLevel,
+    pub scope: region::Scope,
+    pub span: Span,
 }
 
 #[derive(Debug)]
-crate enum Guard<'thir, 'tcx> {
+pub enum Guard<'thir, 'tcx> {
     If(&'thir Expr<'thir, 'tcx>),
     IfLet(Pat<'tcx>, &'thir Expr<'thir, 'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
-crate enum LogicalOp {
+pub enum LogicalOp {
     And,
     Or,
 }
 
 #[derive(Debug)]
-crate enum InlineAsmOperand<'thir, 'tcx> {
+pub enum InlineAsmOperand<'thir, 'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
         expr: &'thir Expr<'thir, 'tcx>,
