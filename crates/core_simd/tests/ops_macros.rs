@@ -501,20 +501,24 @@ macro_rules! impl_float_tests {
 
                 fn max_lane<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        test_helpers::prop_assert_biteq! (
-                            Vector::<LANES>::from_array(x).max_lane(),
-                            x.iter().copied().fold(Scalar::NAN, Scalar::max),
-                        );
+                        let vmax = Vector::<LANES>::from_array(x).max_lane();
+                        let smax = x.iter().copied().fold(Scalar::NAN, Scalar::max);
+                        // 0 and -0 are treated the same
+                        if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {
+                            test_helpers::prop_assert_biteq!(vmax, smax);
+                        }
                         Ok(())
                     });
                 }
 
                 fn min_lane<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        test_helpers::prop_assert_biteq! (
-                            Vector::<LANES>::from_array(x).min_lane(),
-                            x.iter().copied().fold(Scalar::NAN, Scalar::min),
-                        );
+                        let vmax = Vector::<LANES>::from_array(x).min_lane();
+                        let smax = x.iter().copied().fold(Scalar::NAN, Scalar::min);
+                        // 0 and -0 are treated the same
+                        if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {
+                            test_helpers::prop_assert_biteq!(vmax, smax);
+                        }
                         Ok(())
                     });
                 }
