@@ -183,10 +183,10 @@ unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'
         // original source text order. The first element (res1) we'll store uses
         // all the low bytes from the 2 masks and the second element (res2) uses
         // all the upper bytes.
-        let res1 = v8x16_shuffle::<0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23>(
+        let res1 = i8x16_shuffle::<0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23>(
             masked2, masked1,
         );
-        let res2 = v8x16_shuffle::<8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31>(
+        let res2 = i8x16_shuffle::<8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31>(
             masked2, masked1,
         );
 

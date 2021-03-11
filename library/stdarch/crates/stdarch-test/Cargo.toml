@@ -17,7 +17,7 @@ cfg-if = "0.1"
 # time, and we want to make updates to this explicit rather than automatically
 # picking up updates which might break CI with new instruction names.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasmprinter = "=0.2.6"
+wasmprinter = "=0.2.24"
 
 [features]
 default = []

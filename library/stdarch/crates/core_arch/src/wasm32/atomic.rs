@@ -12,11 +12,11 @@
 use stdarch_test::assert_instr;
 
 extern "C" {
-    #[link_name = "llvm.wasm.atomic.wait.i32"]
+    #[link_name = "llvm.wasm.memory.atomic.wait.i32"]
     fn llvm_atomic_wait_i32(ptr: *mut i32, exp: i32, timeout: i64) -> i32;
-    #[link_name = "llvm.wasm.atomic.wait.i64"]
+    #[link_name = "llvm.wasm.memory.atomic.wait.i64"]
     fn llvm_atomic_wait_i64(ptr: *mut i64, exp: i64, timeout: i64) -> i32;
-    #[link_name = "llvm.wasm.atomic.notify"]
+    #[link_name = "llvm.wasm.memory.atomic.notify"]
     fn llvm_atomic_notify(ptr: *mut i32, cnt: i32) -> i32;
 }
 
