@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 9d4978a16ab69027
+lsp_ext.rs hash: 4dfa8d7035f4aee7
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -586,12 +586,7 @@ This request is sent from client to server to get the list of tests for the spec
 
 **Method:** `rust-analyzer/relatedTests`
 
-**Request:**
-
-```typescript
-interface RelatedTestsParams : extends TextDocumentPositionParams {    
-}
-```
+**Request:** `TextDocumentPositionParams`
 
 **Response:** `TestInfo[]`
 
