@@ -1902,9 +1902,10 @@ where
             return;
         }
 
+        self.ctxt().hash_stable(ctx, hasher);
+
         if self.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
-            self.ctxt().hash_stable(ctx, hasher);
             return;
         }
 
@@ -1917,7 +1918,6 @@ where
             Some(pos) => pos,
             None => {
                 Hash::hash(&TAG_INVALID_SPAN, hasher);
-                span.ctxt.hash_stable(ctx, hasher);
                 return;
             }
         };
@@ -1944,7 +1944,6 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
-        span.ctxt.hash_stable(ctx, hasher);
     }
 }
 
