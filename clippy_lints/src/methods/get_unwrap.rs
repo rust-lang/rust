@@ -27,10 +27,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, get_args
     } else if is_type_diagnostic_item(cx, expr_ty, sym::vec_type) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
-    } else if is_type_diagnostic_item(cx, expr_ty, sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, expr_ty, sym::vecdeque_type) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "VecDeque"
-    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym!(hashmap_type)) {
+    } else if !is_mut && is_type_diagnostic_item(cx, expr_ty, sym::hashmap_type) {
         needs_ref = true;
         "HashMap"
     } else if !is_mut && match_type(cx, expr_ty, &paths::BTREEMAP) {

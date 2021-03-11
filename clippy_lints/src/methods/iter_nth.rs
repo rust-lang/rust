@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
         "slice"
     } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vec_type) {
         "Vec"
-    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym!(vecdeque_type)) {
+    } else if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&iter_args[0]), sym::vecdeque_type) {
         "VecDeque"
     } else {
         let nth_args = nth_and_iter_args[0];
