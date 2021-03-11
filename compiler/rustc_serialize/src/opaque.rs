@@ -2,7 +2,7 @@ use crate::leb128::{self, max_leb128_len};
 use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::mem::MaybeUninit;
 use std::path::Path;
 use std::ptr;
@@ -680,6 +680,151 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 }
 
+pub struct FileDecoder {
+    pub file: BufReader<File>,
+}
+
+impl FileDecoder {
+    #[inline]
+    pub fn new(file: BufReader<File>) -> Self {
+        FileDecoder { file }
+    }
+
+    #[inline]
+    pub fn advance(&mut self, bytes: usize) {
+        self.file.consume(bytes)
+    }
+}
+
+macro_rules! read_leb128 {
+    ($dec:expr, $fun:ident, $ty:ty) => {{
+        let mut buf = $dec.file.buffer();
+        if buf.len() < max_leb128_len!($ty) {
+            buf = $dec.file.fill_buf()?;
+        }
+        let (value, bytes_read): ($ty, usize) = leb128::$fun(&buf);
+        $dec.file.consume(bytes_read);
+        Ok(value)
+    }};
+}
+
+impl serialize::Decoder for FileDecoder {
+    type Error = io::Error;
+
+    #[inline]
+    fn read_nil(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    #[inline]
+    fn read_u128(&mut self) -> Result<u128, Self::Error> {
+        read_leb128!(self, read_u128_leb128, u128)
+    }
+
+    #[inline]
+    fn read_u64(&mut self) -> Result<u64, Self::Error> {
+        read_leb128!(self, read_u64_leb128, u64)
+    }
+
+    #[inline]
+    fn read_u32(&mut self) -> Result<u32, Self::Error> {
+        read_leb128!(self, read_u32_leb128, u32)
+    }
+
+    #[inline]
+    fn read_u16(&mut self) -> Result<u16, Self::Error> {
+        read_leb128!(self, read_u16_leb128, u16)
+    }
+
+    #[inline]
+    fn read_u8(&mut self) -> Result<u8, Self::Error> {
+        let mut value = [0; 1];
+        self.file.read_exact(&mut value)?;
+        let [value] = value;
+        Ok(value)
+    }
+
+    #[inline]
+    fn read_usize(&mut self) -> Result<usize, Self::Error> {
+        read_leb128!(self, read_usize_leb128, usize)
+    }
+
+    #[inline]
+    fn read_i128(&mut self) -> Result<i128, Self::Error> {
+        read_leb128!(self, read_i128_leb128, i128)
+    }
+
+    #[inline]
+    fn read_i64(&mut self) -> Result<i64, Self::Error> {
+        read_leb128!(self, read_i64_leb128, i64)
+    }
+
+    #[inline]
+    fn read_i32(&mut self) -> Result<i32, Self::Error> {
+        read_leb128!(self, read_i32_leb128, i32)
+    }
+
+    #[inline]
+    fn read_i16(&mut self) -> Result<i16, Self::Error> {
+        read_leb128!(self, read_i16_leb128, i16)
+    }
+
+    #[inline]
+    fn read_i8(&mut self) -> Result<i8, Self::Error> {
+        let as_u8 = self.read_u8()?;
+        unsafe { Ok(::std::mem::transmute(as_u8)) }
+    }
+
+    #[inline]
+    fn read_isize(&mut self) -> Result<isize, Self::Error> {
+        read_leb128!(self, read_isize_leb128, isize)
+    }
+
+    #[inline]
+    fn read_bool(&mut self) -> Result<bool, Self::Error> {
+        let value = self.read_u8()?;
+        Ok(value != 0)
+    }
+
+    #[inline]
+    fn read_f64(&mut self) -> Result<f64, Self::Error> {
+        let bits = self.read_u64()?;
+        Ok(f64::from_bits(bits))
+    }
+
+    #[inline]
+    fn read_f32(&mut self) -> Result<f32, Self::Error> {
+        let bits = self.read_u32()?;
+        Ok(f32::from_bits(bits))
+    }
+
+    #[inline]
+    fn read_char(&mut self) -> Result<char, Self::Error> {
+        let bits = self.read_u32()?;
+        Ok(std::char::from_u32(bits).unwrap())
+    }
+
+    #[inline]
+    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
+        let len = self.read_usize()?;
+        let mut buf = Vec::new();
+        buf.resize(len, 0u8);
+        self.file.read_exact(&mut buf)?;
+        let s = String::from_utf8(buf).unwrap();
+        Ok(Cow::Owned(s))
+    }
+
+    #[inline]
+    fn error(&mut self, err: &str) -> Self::Error {
+        io::Error::new(io::ErrorKind::Other, err)
+    }
+
+    #[inline]
+    fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), Self::Error> {
+        self.file.read_exact(unsafe { MaybeUninit::slice_assume_init_mut(s) })
+    }
+}
+
 // Specializations for contiguous byte sequences follow. The default implementations for slices
 // encode and decode each element individually. This isn't necessary for `u8` slices when using
 // opaque encoders and decoders, because each `u8` is unchanged by encoding and decoding.
@@ -706,6 +851,22 @@ impl serialize::Encodable<FileEncoder> for [u8] {
 // since the default implementations call `decode` to produce a `Vec<u8>` internally.
 impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
     fn decode(d: &mut Decoder<'a>) -> Result<Self, String> {
+        let len = serialize::Decoder::read_usize(d)?;
+
+        let mut v = Vec::with_capacity(len);
+        let buf = &mut v.spare_capacity_mut()[..len];
+        d.read_raw_bytes(buf)?;
+
+        unsafe {
+            v.set_len(len);
+        }
+
+        Ok(v)
+    }
+}
+
+impl serialize::Decodable<FileDecoder> for Vec<u8> {
+    fn decode(d: &mut FileDecoder) -> Result<Self, io::Error> {
         let len = serialize::Decoder::read_usize(d)?;
 
         let mut v = Vec::with_capacity(len);
