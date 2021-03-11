@@ -533,7 +533,13 @@ where
         None
     };
 
-    let result = if let Some(result) = result {
+    if let Some(result) = result {
+        // If `-Zincremental-verify-ich` is specified, re-hash results from
+        // the cache and make sure that they have the expected fingerprint.
+        if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+            incremental_verify_ich(*tcx.dep_context(), &result, dep_node, dep_node_index, query);
+        }
+
         result
     } else {
         // We could not load a result from the on-disk cache, so
@@ -545,20 +551,21 @@ where
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        result
-    };
-
-    // If `-Zincremental-verify-ich` is specified, re-hash results from
-    // the cache and make sure that they have the expected fingerprint.
-    if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+        // Verify that re-running the query produced a result with the expected hash
+        // This catches bugs in query implementations, turning them into ICEs.
+        // For example, a query might sort its result by `DefId` - since `DefId`s are
+        // not stable across compilation sessions, the result could get up getting sorted
+        // in a different order when the query is re-run, even though all of the inputs
+        // (e.g. `DefPathHash` values) were green.
+        //
+        // See issue #82920 for an example of a miscompilation that would get turned into
+        // an ICE by this check
         incremental_verify_ich(*tcx.dep_context(), &result, dep_node, dep_node_index, query);
-    }
 
-    result
+        result
+    }
 }
 
-#[inline(never)]
-#[cold]
 fn incremental_verify_ich<CTX, K, V: Debug>(
     tcx: CTX::DepContext,
     result: &V,
