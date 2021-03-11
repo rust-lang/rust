@@ -315,9 +315,8 @@ This is because, like any dependency, we want to be able to control which versio
 Submodules allow us to do just that: every submodule is "pinned" to a certain
 commit, which doesn't change unless modified manually. If you use `git checkout <commit>`
 in the `miri` directory and go back to the `rust` directory, you can stage this
-change like any
-This is usually done by
-the maintainers of the project, and looks like [this][miri-update].
+change like any other. This is usually done by the maintainers of the
+project, and looks like [this][miri-update].
 
 Git submodules take some time to get used to, so don't worry if it isn't perfectly
 clear yet. You will rarely have to use them directly and, again, you don't need
