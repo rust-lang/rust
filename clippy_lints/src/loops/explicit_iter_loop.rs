@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty, TyS};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::utils::{is_type_diagnostic_item, match_type, paths};
 
@@ -55,9 +55,9 @@ fn is_ref_iterable_type(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     is_iterable_array(ty, cx) ||
     is_type_diagnostic_item(cx, ty, sym::vec_type) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
-    is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) ||
-    is_type_diagnostic_item(cx, ty, sym!(hashset_type)) ||
-    is_type_diagnostic_item(cx, ty, sym!(vecdeque_type)) ||
+    is_type_diagnostic_item(cx, ty, sym::hashmap_type) ||
+    is_type_diagnostic_item(cx, ty, sym::hashset_type) ||
+    is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
     match_type(cx, ty, &paths::BINARY_HEAP) ||
     match_type(cx, ty, &paths::BTREEMAP) ||
     match_type(cx, ty, &paths::BTREESET)

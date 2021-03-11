@@ -3,6 +3,12 @@ use rustc_tools_util::VersionInfo;
 
 #[test]
 fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
+    // do not run this test inside the upstream rustc repo:
+    // https://github.com/rust-lang/rust-clippy/issues/6683
+    if option_env!("RUSTC_TEST_SUITE").is_some() {
+        return;
+    }
+
     let clippy_meta = cargo_metadata::MetadataCommand::new()
         .no_deps()
         .exec()

@@ -4,6 +4,7 @@ use crate::utils::{is_type_diagnostic_item, match_type, multispan_sugg, paths, s
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_span::sym;
 
 /// Checks for the `FOR_KV_MAP` lint.
 pub(super) fn check<'tcx>(
@@ -35,7 +36,7 @@ pub(super) fn check<'tcx>(
                 _ => arg,
             };
 
-            if is_type_diagnostic_item(cx, ty, sym!(hashmap_type)) || match_type(cx, ty, &paths::BTREEMAP) {
+            if is_type_diagnostic_item(cx, ty, sym::hashmap_type) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(
                     cx,
                     FOR_KV_MAP,

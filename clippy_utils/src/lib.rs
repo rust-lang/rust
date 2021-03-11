@@ -63,9 +63,9 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Crate, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
-    Item, ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind,
-    TraitRef, TyKind, Unsafety,
+    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item,
+    ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
+    TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -1431,24 +1431,24 @@ pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool
 }
 
 /// Returns true if ty has `iter` or `iter_mut` methods
-pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<&'static str> {
+pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<Symbol> {
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
     // so we can't use its `lookup_method` method.
-    let into_iter_collections: [&[&str]; 13] = [
-        &paths::VEC,
-        &paths::OPTION,
-        &paths::RESULT,
-        &paths::BTREESET,
-        &paths::BTREEMAP,
-        &paths::VEC_DEQUE,
-        &paths::LINKED_LIST,
-        &paths::BINARY_HEAP,
-        &paths::HASHSET,
-        &paths::HASHMAP,
-        &paths::PATH_BUF,
-        &paths::PATH,
-        &paths::RECEIVER,
+    let into_iter_collections: &[Symbol] = &[
+        sym::vec_type,
+        sym::option_type,
+        sym::result_type,
+        sym::BTreeMap,
+        sym::BTreeSet,
+        sym::vecdeque_type,
+        sym::LinkedList,
+        sym::BinaryHeap,
+        sym::hashset_type,
+        sym::hashmap_type,
+        sym::PathBuf,
+        sym::Path,
+        sym::Receiver,
     ];
 
     let ty_to_check = match probably_ref_ty.kind() {
@@ -1457,15 +1457,15 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     };
 
     let def_id = match ty_to_check.kind() {
-        ty::Array(..) => return Some("array"),
-        ty::Slice(..) => return Some("slice"),
+        ty::Array(..) => return Some(sym::array),
+        ty::Slice(..) => return Some(sym::slice),
         ty::Adt(adt, _) => adt.did,
         _ => return None,
     };
 
-    for path in &into_iter_collections {
-        if match_def_path(cx, def_id, path) {
-            return Some(*path.last().unwrap());
+    for &name in into_iter_collections {
+        if cx.tcx.is_diagnostic_item(name, def_id) {
+            return Some(cx.tcx.item_name(def_id));
         }
     }
     None
@@ -1682,8 +1682,8 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     did.map_or(false, |did| must_use_attr(&cx.tcx.get_attrs(did)).is_some())
 }
 
-pub fn is_no_std_crate(krate: &Crate<'_>) -> bool {
-    krate.item.attrs.iter().any(|attr| {
+pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr.path == sym::no_std
         } else {

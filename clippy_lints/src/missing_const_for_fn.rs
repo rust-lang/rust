@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                     return;
                 }
             },
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         let mir = cx.tcx.optimized_mir(def_id);

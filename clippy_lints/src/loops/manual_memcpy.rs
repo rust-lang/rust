@@ -203,7 +203,7 @@ struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        let Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) = &self.0;
+        let (Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s)) = &self.0;
         s.as_ref()
     }
 
@@ -328,7 +328,7 @@ fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || is_type_diagnostic_item(cx, ty, sym::vec_type) || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
+    is_slice || is_type_diagnostic_item(cx, ty, sym::vec_type) || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
