@@ -347,25 +347,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Extra care is needed if any user code is allowed to run between calling
     /// this method and using it, as is the case for `match` and index
     /// expressions.
-    crate fn as_place<M>(&mut self, mut block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
+    crate fn as_place(
+        &mut self,
+        mut block: BasicBlock,
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx(), self.hir.typeck_results()))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
     /// intermediate `Place` values until we know the full set of projections.
-    crate fn as_place_builder<M>(
+    crate fn as_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: M,
-    ) -> BlockAnd<PlaceBuilder<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let expr = self.hir.mirror(expr);
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Mut, None)
     }
 
@@ -374,16 +371,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
     /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    crate fn as_read_only_place<M>(
+    crate fn as_read_only_place(
         &mut self,
         mut block: BasicBlock,
-        expr: M,
-    ) -> BlockAnd<Place<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
-        block.and(place_builder.into_place(self.hir.tcx(), self.hir.typeck_results()))
+        block.and(place_builder.into_place(self.tcx, self.typeck_results))
     }
 
     /// This is used when constructing a compound `Place`, so that we can avoid creating
@@ -392,22 +386,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// place. The place itself may or may not be mutable:
     /// * If this expr is a place expr like a.b, then we will return that place.
     /// * Otherwise, a temporary is created: in that event, it will be an immutable temporary.
-    fn as_read_only_place_builder<M>(
+    fn as_read_only_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: M,
-    ) -> BlockAnd<PlaceBuilder<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let expr = self.hir.mirror(expr);
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Not, None)
     }
 
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
-        expr: Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
@@ -419,18 +409,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((region_scope, source_info), lint_level, |this| {
-                    let value = this.hir.mirror(value);
                     this.expr_as_place(block, value, mutability, fake_borrow_temps)
                 })
             }
             ExprKind::Field { lhs, name } => {
-                let lhs = this.hir.mirror(lhs);
                 let place_builder =
                     unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
-                let arg = this.hir.mirror(arg);
                 let place_builder =
                     unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
                 block.and(place_builder.deref())
@@ -462,7 +449,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
-                let source = this.hir.mirror(source);
                 let place_builder = unpack!(
                     block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
                 );
@@ -474,8 +460,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             inferred_ty: expr.ty,
                         });
 
-                    let place =
-                        place_builder.clone().into_place(this.hir.tcx(), this.hir.typeck_results());
+                    let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
                     this.cfg.push(
                         block,
                         Statement {
@@ -493,7 +478,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder)
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
-                let source = this.hir.mirror(source);
                 let temp =
                     unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
@@ -570,12 +554,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         upvar_id: ty::UpvarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let closure_ty = self
-            .hir
-            .typeck_results()
-            .node_type(self.hir.tcx().hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
+            .typeck_results
+            .node_type(self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id));
 
         let closure_kind = if let ty::Closure(_, closure_substs) = closure_ty.kind() {
-            self.hir.infcx().closure_kind(closure_substs).unwrap()
+            self.infcx.closure_kind(closure_substs).unwrap()
         } else {
             // Generators are considered FnOnce.
             ty::ClosureKind::FnOnce
@@ -599,22 +582,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_index_expression(
         &mut self,
         mut block: BasicBlock,
-        base: ExprRef<'tcx>,
-        index: ExprRef<'tcx>,
+        base: &Expr<'_, 'tcx>,
+        index: &Expr<'_, 'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
         temp_lifetime: Option<region::Scope>,
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        let lhs = self.hir.mirror(base);
-
         let base_fake_borrow_temps = &mut Vec::new();
         let is_outermost_index = fake_borrow_temps.is_none();
         let fake_borrow_temps = fake_borrow_temps.unwrap_or(base_fake_borrow_temps);
 
         let mut base_place =
-            unpack!(block = self.expr_as_place(block, lhs, mutability, Some(fake_borrow_temps),));
+            unpack!(block = self.expr_as_place(block, base, mutability, Some(fake_borrow_temps),));
 
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
@@ -623,7 +604,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         block = self.bounds_check(
             block,
-            base_place.clone().into_place(self.hir.tcx(), self.hir.typeck_results()),
+            base_place.clone().into_place(self.tcx, self.typeck_results),
             idx,
             expr_span,
             source_info,
@@ -632,8 +613,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if is_outermost_index {
             self.read_fake_borrows(block, fake_borrow_temps, source_info)
         } else {
-            base_place =
-                base_place.expect_upvars_resolved(self.hir.tcx(), self.hir.typeck_results());
+            base_place = base_place.expect_upvars_resolved(self.tcx, self.typeck_results);
             self.add_fake_borrows_of_base(
                 &base_place,
                 block,
@@ -654,8 +634,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) -> BasicBlock {
-        let usize_ty = self.hir.usize_ty();
-        let bool_ty = self.hir.bool_ty();
+        let usize_ty = self.tcx.types.usize;
+        let bool_ty = self.tcx.types.bool;
         // bounds check:
         let len = self.temp(usize_ty, expr_span);
         let lt = self.temp(bool_ty, expr_span);
@@ -685,7 +665,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_span: Span,
         source_info: SourceInfo,
     ) {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         let local = match base_place.base {
             PlaceBase::Local(local) => local,
             PlaceBase::Upvar { .. } => bug!("Expected PlacseBase::Local found Upvar"),

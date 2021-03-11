@@ -147,7 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match_pair: MatchPair<'pat, 'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         match *match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
@@ -251,13 +251,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().exhaustive_patterns
+                        self.tcx.features().exhaustive_patterns
                             && !v
                                 .uninhabited_from(
-                                    self.hir.tcx(),
+                                    self.tcx,
                                     substs,
                                     adt_def.adt_kind(),
-                                    self.hir.param_env,
+                                    self.param_env,
                                 )
                                 .is_empty()
                     }

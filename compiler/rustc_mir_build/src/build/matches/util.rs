@@ -15,8 +15,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place =
-                    self.hir.tcx().mk_place_field(place, fieldpat.field, fieldpat.pattern.ty);
+                let place = self.tcx.mk_place_field(place, fieldpat.field, fieldpat.pattern.ty);
                 MatchPair::new(place, &fieldpat.pattern)
             })
             .collect()
@@ -30,9 +29,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         opt_slice: Option<&'pat Pat<'tcx>>,
         suffix: &'pat [Pat<'tcx>],
     ) {
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         let (min_length, exact_size) = match place.ty(&self.local_decls, tcx).ty.kind() {
-            ty::Array(_, length) => (length.eval_usize(tcx, self.hir.param_env), true),
+            ty::Array(_, length) => (length.eval_usize(tcx, self.param_env), true),
             _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
         };
 

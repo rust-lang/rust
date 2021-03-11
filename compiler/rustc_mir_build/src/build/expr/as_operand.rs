@@ -14,10 +14,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// after the current enclosing `ExprKind::Scope` has ended, so
     /// please do *not* return it from functions to avoid bad
     /// miscompiles.
-    crate fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Operand<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
+    crate fn as_local_operand(
+        &mut self,
+        block: BasicBlock,
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
         self.as_operand(block, Some(local_scope), expr)
     }
@@ -70,14 +71,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// value to the stack.
     ///
     /// See #68034 for more details.
-    crate fn as_local_call_operand<M>(
+    crate fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
-        expr: M,
-    ) -> BlockAnd<Operand<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
+        expr: &Expr<'_, 'tcx>,
+    ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
         self.as_call_operand(block, Some(local_scope), expr)
     }
@@ -88,41 +86,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// this time.
     ///
     /// The operand is known to be live until the end of `scope`.
-    crate fn as_operand<M>(
-        &mut self,
-        block: BasicBlock,
-        scope: Option<region::Scope>,
-        expr: M,
-    ) -> BlockAnd<Operand<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let expr = self.hir.mirror(expr);
-        self.expr_as_operand(block, scope, expr)
-    }
-
+    ///
     /// Like `as_local_call_operand`, except that the argument will
     /// not be valid once `scope` ends.
-    fn as_call_operand<M>(
-        &mut self,
-        block: BasicBlock,
-        scope: Option<region::Scope>,
-        expr: M,
-    ) -> BlockAnd<Operand<'tcx>>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let expr = self.hir.mirror(expr);
-        self.expr_as_call_operand(block, scope, expr)
-    }
-
-    fn expr_as_operand(
+    crate fn as_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);
+        debug!("as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
@@ -133,7 +106,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!("expr_as_operand: category={:?} for={:?}", category, expr.kind);
+        debug!("as_operand: category={:?} for={:?}", category, expr.kind);
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);
@@ -146,13 +119,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    fn expr_as_call_operand(
+    crate fn as_call_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("expr_as_call_operand(block={:?}, expr={:?})", block, expr);
+        debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
@@ -163,12 +136,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             });
         }
 
-        let tcx = this.hir.tcx();
+        let tcx = this.tcx;
 
         if tcx.features().unsized_fn_params {
             let ty = expr.ty;
             let span = expr.span;
-            let param_env = this.hir.param_env;
+            let param_env = this.param_env;
 
             if !ty.is_sized(tcx.at(span), param_env) {
                 // !sized means !copy, so this is an unsized move
@@ -176,9 +149,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.
-                if let ExprKind::Deref { ref arg } = expr.kind {
-                    let arg = this.hir.mirror(arg.clone());
-
+                if let ExprKind::Deref { arg } = expr.kind {
                     // Generate let tmp0 = arg0
                     let operand = unpack!(block = this.as_temp(block, scope, arg, Mutability::Mut));
 
@@ -193,6 +164,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.expr_as_operand(block, scope, expr)
+        this.as_operand(block, scope, expr)
     }
 }

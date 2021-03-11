@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::scope::DropKind;
-use crate::thir::cx::Cx;
-use crate::thir::{BindingMode, LintLevel, PatKind};
+use crate::thir::cx::build_thir;
+use crate::thir::{Arena, BindingMode, Expr, LintLevel, Pat, PatKind};
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -9,13 +9,13 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GeneratorKind, HirIdMap, Node};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_span::symbol::kw;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
+use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
@@ -42,6 +42,8 @@ crate fn mir_built<'tcx>(
 /// Construct the MIR for a given `DefId`.
 fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_> {
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
+    let body_owner_kind = tcx.hir().body_owner_kind(id);
+    let typeck_results = tcx.typeck_opt_const_arg(def);
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
@@ -86,15 +88,15 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     // If we don't have a specialized span for the body, just use the
     // normal def span.
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
+    let arena = Arena::default();
 
     tcx.infer_ctxt().enter(|infcx| {
-        let cx = Cx::new(&infcx, def, id);
-        let body = if let Some(ErrorReported) = cx.typeck_results().tainted_by_errors {
-            build::construct_error(cx, body_id)
-        } else if cx.body_owner_kind.is_fn_or_closure() {
+        let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
+            build::construct_error(&infcx, def, id, body_id, body_owner_kind)
+        } else if body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_sig = cx.typeck_results().liberated_fn_sigs()[id];
+            let fn_sig = typeck_results.liberated_fn_sigs()[id];
             let fn_def_id = tcx.hir().local_def_id(id);
 
             let safety = match fn_sig.unsafety {
@@ -103,6 +105,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
+            let thir = build_thir(tcx, def, &arena, &body.value);
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind() {
@@ -178,7 +181,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let mut mir = build::construct_fn(
-                cx,
+                &infcx,
+                def,
                 id,
                 arguments,
                 safety,
@@ -186,6 +190,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
                 return_ty,
                 return_ty_span,
                 body,
+                thir,
                 span_with_body,
             );
             if yield_ty.is_some() {
@@ -205,9 +210,12 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             // place to be the type of the constant because NLL typeck will
             // equate them.
 
-            let return_ty = cx.typeck_results().node_type(id);
+            let return_ty = typeck_results.node_type(id);
 
-            build::construct_const(cx, body_id, return_ty, return_ty_span)
+            let ast_expr = &tcx.hir().body(body_id).value;
+            let thir = build_thir(tcx, def, &arena, ast_expr);
+
+            build::construct_const(&infcx, thir, def, id, return_ty, return_ty_span)
         };
 
         lints::check(tcx, &body);
@@ -304,10 +312,17 @@ impl BlockFrame {
 struct BlockContext(Vec<BlockFrame>);
 
 struct Builder<'a, 'tcx> {
-    hir: Cx<'a, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
+    region_scope_tree: &'tcx region::ScopeTree,
+    param_env: ty::ParamEnv<'tcx>,
+
     cfg: CFG<'tcx>,
 
     def_id: DefId,
+    hir_id: hir::HirId,
+    check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
     generator_kind: Option<GeneratorKind>,
@@ -607,8 +622,9 @@ struct ArgInfo<'tcx>(
     Option<ImplicitSelfKind>,
 );
 
-fn construct_fn<'a, 'tcx, A>(
-    hir: Cx<'a, 'tcx>,
+fn construct_fn<'tcx, A>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    fn_def: ty::WithOptConstParam<LocalDefId>,
     fn_id: hir::HirId,
     arguments: A,
     safety: Safety,
@@ -616,6 +632,7 @@ fn construct_fn<'a, 'tcx, A>(
     return_ty: Ty<'tcx>,
     return_ty_span: Span,
     body: &'tcx hir::Body<'tcx>,
+    expr: &Expr<'_, 'tcx>,
     span_with_body: Span,
 ) -> Body<'tcx>
 where
@@ -623,15 +640,13 @@ where
 {
     let arguments: Vec<_> = arguments.collect();
 
-    let tcx = hir.tcx();
-    let tcx_hir = tcx.hir();
-    let span = tcx_hir.span(fn_id);
-
-    let fn_def_id = tcx_hir.local_def_id(fn_id);
+    let tcx = infcx.tcx;
+    let span = tcx.hir().span(fn_id);
 
     let mut builder = Builder::new(
-        hir,
-        fn_def_id.to_def_id(),
+        infcx,
+        fn_def,
+        fn_id,
         span_with_body,
         arguments.len(),
         safety,
@@ -655,16 +670,16 @@ where
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
-                        fn_def_id.to_def_id(),
+                        fn_def.did.to_def_id(),
                         &arguments,
                         arg_scope,
-                        &body.value,
+                        expr,
                     )
                 }))
             }));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
-        let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
+        let should_abort = should_abort_on_panic(tcx, fn_def.did, abi);
         builder.build_drop_trees(should_abort);
         return_block.unit()
     }));
@@ -675,7 +690,7 @@ where
     } else {
         None
     };
-    debug!("fn_id {:?} has attrs {:?}", fn_def_id, tcx.get_attrs(fn_def_id.to_def_id()));
+    debug!("fn_id {:?} has attrs {:?}", fn_def, tcx.get_attrs(fn_def.did.to_def_id()));
 
     let mut body = builder.finish();
     body.spread_arg = spread_arg;
@@ -683,22 +698,20 @@ where
 }
 
 fn construct_const<'a, 'tcx>(
-    hir: Cx<'a, 'tcx>,
-    body_id: hir::BodyId,
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    expr: &Expr<'_, 'tcx>,
+    def: ty::WithOptConstParam<LocalDefId>,
+    hir_id: hir::HirId,
     const_ty: Ty<'tcx>,
     const_ty_span: Span,
 ) -> Body<'tcx> {
-    let tcx = hir.tcx();
-    let owner_id = tcx.hir().body_owner(body_id);
-    let def_id = tcx.hir().local_def_id(owner_id);
-    let span = tcx.hir().span(owner_id);
+    let tcx = infcx.tcx;
+    let span = tcx.hir().span(hir_id);
     let mut builder =
-        Builder::new(hir, def_id.to_def_id(), span, 0, Safety::Safe, const_ty, const_ty_span, None);
+        Builder::new(infcx, def, hir_id, span, 0, Safety::Safe, const_ty, const_ty_span, None);
 
     let mut block = START_BLOCK;
-    let ast_expr = &tcx.hir().body(body_id).value;
-    let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(Place::return_place(), block, expr));
+    unpack!(block = builder.expr_into_dest(Place::return_place(), block, &expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -712,15 +725,19 @@ fn construct_const<'a, 'tcx>(
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'tcx> {
-    let tcx = hir.tcx();
-    let owner_id = tcx.hir().body_owner(body_id);
-    let def_id = tcx.hir().local_def_id(owner_id);
-    let span = tcx.hir().span(owner_id);
+fn construct_error<'a, 'tcx>(
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    def: ty::WithOptConstParam<LocalDefId>,
+    hir_id: hir::HirId,
+    body_id: hir::BodyId,
+    body_owner_kind: hir::BodyOwnerKind,
+) -> Body<'tcx> {
+    let tcx = infcx.tcx;
+    let span = tcx.hir().span(hir_id);
     let ty = tcx.ty_error();
     let generator_kind = tcx.hir().body(body_id).generator_kind;
-    let num_params = match hir.body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len(),
+    let num_params = match body_owner_kind {
+        hir::BodyOwnerKind::Fn => tcx.hir().fn_decl_by_hir_id(hir_id).unwrap().inputs.len(),
         hir::BodyOwnerKind::Closure => {
             if generator_kind.is_some() {
                 // Generators have an implicit `self` parameter *and* a possibly
@@ -728,22 +745,14 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
                 2
             } else {
                 // The implicit self parameter adds another local in MIR.
-                1 + tcx.hir().fn_decl_by_hir_id(owner_id).unwrap().inputs.len()
+                1 + tcx.hir().fn_decl_by_hir_id(hir_id).unwrap().inputs.len()
             }
         }
         hir::BodyOwnerKind::Const => 0,
         hir::BodyOwnerKind::Static(_) => 0,
     };
-    let mut builder = Builder::new(
-        hir,
-        def_id.to_def_id(),
-        span,
-        num_params,
-        Safety::Safe,
-        ty,
-        span,
-        generator_kind,
-    );
+    let mut builder =
+        Builder::new(infcx, def, hir_id, span, num_params, Safety::Safe, ty, span, generator_kind);
     let source_info = builder.source_info(span);
     // Some MIR passes will expect the number of parameters to match the
     // function declaration.
@@ -758,8 +767,9 @@ fn construct_error<'a, 'tcx>(hir: Cx<'a, 'tcx>, body_id: hir::BodyId) -> Body<'t
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn new(
-        hir: Cx<'a, 'tcx>,
-        def_id: DefId,
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        def: ty::WithOptConstParam<LocalDefId>,
+        hir_id: hir::HirId,
         span: Span,
         arg_count: usize,
         safety: Safety,
@@ -767,10 +777,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         return_span: Span,
         generator_kind: Option<GeneratorKind>,
     ) -> Builder<'a, 'tcx> {
-        let lint_level = LintLevel::Explicit(hir.root_lint_level);
+        let tcx = infcx.tcx;
+        let attrs = tcx.hir().attrs(hir_id);
+        // Some functions always have overflow checks enabled,
+        // however, they may not get codegen'd, depending on
+        // the settings for the crate they are codegened in.
+        let mut check_overflow = tcx.sess.contains_name(attrs, sym::rustc_inherit_overflow_checks);
+        // Respect -C overflow-checks.
+        check_overflow |= tcx.sess.overflow_checks();
+        // Constants always need overflow checks.
+        check_overflow |= matches!(
+            tcx.hir().body_owner_kind(hir_id),
+            hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_)
+        );
+
+        let lint_level = LintLevel::Explicit(hir_id);
         let mut builder = Builder {
-            hir,
-            def_id,
+            tcx,
+            infcx,
+            typeck_results: tcx.typeck_opt_const_arg(def),
+            region_scope_tree: tcx.region_scope_tree(def.did),
+            param_env: tcx.param_env(def.did),
+            def_id: def.did.to_def_id(),
+            hir_id,
+            check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
@@ -826,7 +856,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fn_def_id: DefId,
         arguments: &[ArgInfo<'tcx>],
         argument_scope: region::Scope,
-        ast_body: &'tcx hir::Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
     ) -> BlockAnd<()> {
         // Allocate locals for the function arguments
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
@@ -846,9 +876,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let tcx = self.hir.tcx();
+        let tcx = self.tcx;
         let tcx_hir = tcx.hir();
-        let hir_typeck_results = self.hir.typeck_results();
+        let hir_typeck_results = self.typeck_results;
 
         // In analyze_closure() in upvar.rs we gathered a list of upvars used by a
         // indexed closure and we stored in a map called closure_captures in TypeckResults
@@ -924,14 +954,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                arg_opt.as_ref().map_or(ast_body.span, |arg| arg.pat.span),
+                arg_opt.as_ref().map_or(expr.span, |arg| arg.pat.span),
                 argument_scope,
                 local,
                 DropKind::Value,
             );
 
             if let Some(arg) = arg_opt {
-                let pattern = self.hir.pattern_from_hir(&arg.pat);
+                let pat = match tcx.hir().get(arg.pat.hir_id) {
+                    Node::Pat(pat) | Node::Binding(pat) => pat,
+                    node => bug!("pattern became {:?}", node),
+                };
+                let pattern = Pat::from_hir(tcx, self.param_env, self.typeck_results, pat);
                 let original_source_scope = self.source_scope;
                 let span = pattern.span;
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
@@ -966,7 +1000,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => {
                         scope = self.declare_bindings(
                             scope,
-                            ast_body.span,
+                            expr.span,
                             &pattern,
                             matches::ArmHasGuard(false),
                             Some((Some(&place), span)),
@@ -983,8 +1017,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        let body = self.hir.mirror(ast_body);
-        self.into(Place::return_place(), block, body)
+        self.expr_into_dest(Place::return_place(), block, &expr)
     }
 
     fn set_correct_source_scope_for_arg(
@@ -993,15 +1026,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         original_source_scope: SourceScope,
         pattern_span: Span,
     ) {
-        let tcx = self.hir.tcx();
-        let current_root = tcx.maybe_lint_level_root_bounded(arg_hir_id, self.hir.root_lint_level);
+        let tcx = self.tcx;
+        let current_root = tcx.maybe_lint_level_root_bounded(arg_hir_id, self.hir_id);
         let parent_root = tcx.maybe_lint_level_root_bounded(
             self.source_scopes[original_source_scope]
                 .local_data
                 .as_ref()
                 .assert_crate_local()
                 .lint_root,
-            self.hir.root_lint_level,
+            self.hir_id,
         );
         if current_root != parent_root {
             self.source_scope =
@@ -1013,7 +1046,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match self.unit_temp {
             Some(tmp) => tmp,
             None => {
-                let ty = self.hir.unit_ty();
+                let ty = self.tcx.mk_unit();
                 let fn_span = self.fn_span;
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);
@@ -1031,7 +1064,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 mod block;
 mod cfg;
 mod expr;
-mod into;
 mod matches;
 mod misc;
 mod scope;
