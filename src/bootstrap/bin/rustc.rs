@@ -17,7 +17,7 @@
 
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command};
 use std::str::FromStr;
 use std::time::Instant;
 
@@ -171,19 +171,8 @@ fn main() {
             let is_test = args.iter().any(|a| a == "--test");
             // If the user requested resource usage data, then
             // include that in addition to the timing output.
-            let rusage_data = env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| {
-                #[cfg(windows)]
-                {
-                    use std::os::windows::io::AsRawHandle;
-                    let handle = child.as_raw_handle();
-                    format_rusage_data(handle)
-                }
-                #[cfg(not(windows))]
-                {
-                    let _child = child;
-                    format_rusage_data()
-                }
-            });
+            let rusage_data =
+                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
             eprintln!(
                 "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
                 crate_name,
@@ -221,15 +210,16 @@ fn main() {
 }
 
 #[cfg(all(not(unix), not(windows)))]
-/// getrusage is not available on non-unix platforms. So for now, we do not
-/// bother trying to make a shim for it.
-fn format_rusage_data() -> Option<String> {
+// In the future we can add this for more platforms
+fn format_rusage_data(_child: Child) -> Option<String> {
     None
 }
 
 #[cfg(windows)]
-fn format_rusage_data(handle: std::os::windows::raw::HANDLE) -> Option<String> {
+fn format_rusage_data(child: Child) -> Option<String> {
+    use std::os::windows::io::AsRawHandle;
     use winapi::um::{processthreadsapi, psapi, timezoneapi};
+    let handle = child.as_raw_handle();
     macro_rules! try_bool {
         ($e:expr) => {
             if $e != 1 {
@@ -295,7 +285,7 @@ fn format_rusage_data(handle: std::os::windows::raw::HANDLE) -> Option<String> {
 /// fields. Note that we are focusing mainly on data that we believe to be
 /// supplied on Linux (the `rusage` struct has other fields in it but they are
 /// currently unsupported by Linux).
-fn format_rusage_data() -> Option<String> {
+fn format_rusage_data(_child: Child) -> Option<String> {
     let rusage: libc::rusage = unsafe {
         let mut recv = std::mem::zeroed();
         // -1 is RUSAGE_CHILDREN, which means to get the rusage for all children
