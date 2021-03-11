@@ -912,10 +912,9 @@ fn render_assoc_item(
         let cache = cx.cache();
         let tcx = cx.tcx();
         let name = meth.name.as_ref().unwrap();
-        let anchor = format!("#{}.{}", meth.type_(), name);
         let href = match link {
             AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
-            AssocItemLink::Anchor(None) => anchor,
+            AssocItemLink::Anchor(None) => format!("#{}.{}", meth.type_(), name),
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
@@ -925,7 +924,9 @@ fn render_assoc_item(
                     ItemType::TyMethod
                 };
 
-                href(did, cache).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
+                href(did, cache)
+                    .map(|p| format!("{}#{}.{}", p.0, ty, name))
+                    .unwrap_or_else(|| format!("#{}.{}", ty, name))
             }
         };
         let vis = meth.visibility.print_with_space(tcx, meth.def_id, cache).to_string();
