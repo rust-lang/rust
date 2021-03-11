@@ -548,10 +548,12 @@ mod impls {
         ($(($ty:ident, $meth:ident),)*) => {$(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for $ty {
+                #[inline]
                 fn hash<H: Hasher>(&self, state: &mut H) {
                     state.$meth(*self)
                 }
 
+                #[inline]
                 fn hash_slice<H: Hasher>(data: &[$ty], state: &mut H) {
                     let newlen = data.len() * mem::size_of::<$ty>();
                     let ptr = data.as_ptr() as *const u8;
@@ -582,6 +584,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for bool {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u8(*self as u8)
         }
@@ -589,6 +592,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for char {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write_u32(*self as u32)
         }
@@ -596,6 +600,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for str {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             state.write(self.as_bytes());
             state.write_u8(0xff)
@@ -604,6 +609,7 @@ mod impls {
 
     #[stable(feature = "never_hash", since = "1.29.0")]
     impl Hash for ! {
+        #[inline]
         fn hash<H: Hasher>(&self, _: &mut H) {
             *self
         }
@@ -613,6 +619,7 @@ mod impls {
         () => (
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Hash for () {
+                #[inline]
                 fn hash<H: Hasher>(&self, _state: &mut H) {}
             }
         );
@@ -621,6 +628,7 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($name: Hash),+> Hash for ($($name,)+) where last_type!($($name,)+): ?Sized {
                 #[allow(non_snake_case)]
+                #[inline]
                 fn hash<S: Hasher>(&self, state: &mut S) {
                     let ($(ref $name,)+) = *self;
                     $($name.hash(state);)+
@@ -650,6 +658,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.len().hash(state);
             Hash::hash_slice(self, state)
@@ -658,6 +667,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -665,6 +675,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             (**self).hash(state);
         }
@@ -672,6 +683,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *const T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             #[cfg(not(bootstrap))]
             {
@@ -701,6 +713,7 @@ mod impls {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Hash for *mut T {
+        #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             #[cfg(not(bootstrap))]
             {
