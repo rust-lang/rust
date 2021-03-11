@@ -1,0 +1,14 @@
+error: field is never read: `guard`
+  --> $DIR/drop-only-field-issue-81658.rs:15:5
+   |
+LL |     guard: MutexGuard<'a, T>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/drop-only-field-issue-81658.rs:8:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+
