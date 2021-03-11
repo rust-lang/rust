@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Span;
+use rustc_span::symbol::Symbol;
 
 use super::INTO_ITER_ON_REF;
 
@@ -27,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, self_ref_ty: Ty<
     }
 }
 
-fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(&'static str, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symbol, &'static str)> {
     has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let mutbl = match self_ref_ty.kind() {
             ty::Ref(_, _, mutbl) => mutbl,

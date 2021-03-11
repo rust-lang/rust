@@ -62,8 +62,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
-use rustc_span::symbol::{sym, Symbol, SymbolStr};
+use rustc_span::symbol::{sym, SymbolStr};
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::utils::{
