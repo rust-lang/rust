@@ -22,12 +22,6 @@ note: the enum `Bar` is defined here
 LL | enum Bar {
    | ^^^^^^^^
 
-error[E0603]: cannot match on a field named `a` of variant `struct_variant_privacy::Bar::Baz`, which is not accessible in current scope
-  --> $DIR/struct-variant-privacy-xc.rs:7:44
-   |
-LL |         struct_variant_privacy::Bar::Baz { a: _a } => {}
-   |                                            ^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0603`.

@@ -1,13 +1,13 @@
 // edition:2018
 
 fn main() {
-    use a::LocalModPrivateStruct;
-    let Box { 1: _, .. }: Box<()>; //~ ERROR cannot match on
-    let LocalModPrivateStruct { 1: _, .. } = LocalModPrivateStruct::default();
-    //~^ ERROR cannot match on
+    use a::ModPrivateStruct;
+    let Box { 0: _, .. }: Box<()>; //~ ERROR field `0` of
+    let Box { 1: _, .. }: Box<()>; //~ ERROR field `1` of
+    let ModPrivateStruct { 1: _, .. } = ModPrivateStruct::default(); //~ ERROR field `1` of
 }
 
 mod a {
     #[derive(Default)]
-    pub struct LocalModPrivateStruct(u8, u8);
+    pub struct ModPrivateStruct(u8, u8);
 }
