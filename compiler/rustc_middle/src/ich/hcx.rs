@@ -250,13 +250,6 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         &CACHE
     }
 
-    fn byte_pos_to_line_and_col(
-        &mut self,
-        byte: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
-        self.source_map().byte_pos_to_line_and_col(byte)
-    }
-
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,

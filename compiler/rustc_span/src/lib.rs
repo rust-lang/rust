@@ -1874,10 +1874,6 @@ pub trait HashStableContext {
     fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
-    fn byte_pos_to_line_and_col(
-        &mut self,
-        byte: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)>;
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,

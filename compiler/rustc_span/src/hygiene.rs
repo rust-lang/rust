@@ -1362,12 +1362,6 @@ fn update_disambiguator(expn_id: ExpnId) {
         fn hash_spans(&self) -> bool {
             true
         }
-        fn byte_pos_to_line_and_col(
-            &mut self,
-            byte: BytePos,
-        ) -> Option<(Lrc<SourceFile>, usize, BytePos)> {
-            self.caching_source_map.byte_pos_to_line_and_col(byte)
-        }
         fn span_data_to_lines_and_cols(
             &mut self,
             span: &crate::SpanData,
