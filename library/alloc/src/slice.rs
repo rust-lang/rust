@@ -231,7 +231,7 @@ impl<T> [T] {
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable`](#method.sort_unstable).
+    /// See [`sort_unstable`](slice::sort_unstable).
     ///
     /// # Current implementation
     ///
@@ -282,7 +282,7 @@ impl<T> [T] {
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by`](#method.sort_unstable_by).
+    /// See [`sort_unstable_by`](slice::sort_unstable_by).
     ///
     /// # Current implementation
     ///
@@ -320,12 +320,12 @@ impl<T> [T] {
     /// worst-case, where the key function is *O*(*m*).
     ///
     /// For expensive key functions (e.g. functions that are not simple property accesses or
-    /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
+    /// basic operations), [`sort_by_cached_key`](slice::sort_by_cached_key) is likely to be
     /// significantly faster, as it does not recompute element keys.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
-    /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
+    /// See [`sort_unstable_by_key`](slice::sort_unstable_by_key).
     ///
     /// # Current implementation
     ///
@@ -363,7 +363,7 @@ impl<T> [T] {
     /// worst-case, where the key function is *O*(*m*).
     ///
     /// For simple key functions (e.g., functions that are property accesses or
-    /// basic operations), [`sort_by_key`](#method.sort_by_key) is likely to be
+    /// basic operations), [`sort_by_key`](slice::sort_by_key) is likely to be
     /// faster.
     ///
     /// # Current implementation
