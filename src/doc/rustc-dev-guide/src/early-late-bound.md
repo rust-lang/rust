@@ -64,7 +64,7 @@ trait Foo<T> {
 Here, the type `(Self, T, U)` would be `($0, $1, $2)`, where `$N` means a
 [`ParamTy`] with the index of `N`.
 
-In rustc, the [`Generics`] structure carries the this information. So the
+In rustc, the [`Generics`] structure carries this information. So the
 [`Generics`] for `Bar` above would be just like for `U` and would indicate the
 'parent' generics of `Foo`, which declares `Self` and `T`.  You can read more
 in [this chapter](./generics.md).
