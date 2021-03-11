@@ -10,6 +10,7 @@ on:
 
 jobs:
   date-check:
+    if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
 
     steps:

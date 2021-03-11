@@ -11,6 +11,7 @@ on:
 
 jobs:
   ci:
+    if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.4.7
@@ -63,7 +64,7 @@ jobs:
         run: mdbook build
 
       - name: Deploy to gh-pages
-        if: github.event_name == 'push' && github.repository == 'rust-lang/rustc-dev-guide'
+        if: github.event_name == 'push'
         run: |
           touch "${{ env.DEPLOY_DIR }}/.nojekyll"
           cp CNAME "${{ env.DEPLOY_DIR }}"
