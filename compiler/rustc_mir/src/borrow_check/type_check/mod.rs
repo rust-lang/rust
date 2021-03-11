@@ -314,7 +314,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             }
         } else {
             let tcx = self.tcx();
-            if let ty::ConstKind::Unevaluated(def, substs, promoted) = constant.literal.val {
+            if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) =
+                constant.literal.val
+            {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                                      promoted: &Body<'tcx>,

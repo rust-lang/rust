@@ -638,7 +638,7 @@ impl Inliner<'tcx> {
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&constant| {
-                        matches!(constant.literal.val, ConstKind::Unevaluated(_, _, _))
+                        matches!(constant.literal.val, ConstKind::Unevaluated(_))
                     }),
                 );
             }

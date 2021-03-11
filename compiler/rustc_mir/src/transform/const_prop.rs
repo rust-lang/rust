@@ -490,7 +490,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal.val {
                         // Promoteds must lint and not error as the user didn't ask for them
-                        ConstKind::Unevaluated(_, _, Some(_)) => true,
+                        ConstKind::Unevaluated(uv) if uv.promoted.is_some() => true,
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
                         _ => c.literal.needs_subst(),

@@ -16,7 +16,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RequiredConstsVisitor<'a, 'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, _: Location) {
         let const_kind = constant.literal.val;
 
-        if let ConstKind::Unevaluated(_, _, _) = const_kind {
+        if let ConstKind::Unevaluated(_) = const_kind {
             self.required_consts.push(*constant);
         }
     }
