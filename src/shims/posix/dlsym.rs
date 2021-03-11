@@ -35,7 +35,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        check_abi(abi, Abi::C)?;
+        check_abi(abi, Abi::C { unwind: false })?;
 
         match dlsym {
             Dlsym::Linux(dlsym) => linux::EvalContextExt::call_dlsym(this, dlsym, args, ret),
