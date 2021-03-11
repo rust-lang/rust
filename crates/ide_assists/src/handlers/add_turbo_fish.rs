@@ -56,13 +56,20 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
         if let_stmt.colon_token().is_none() {
             let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
+            let semi_pos = let_stmt.syntax().last_token()?.text_range().end();
+
             acc.add(
                 AssistId("add_type_ascription", AssistKind::RefactorRewrite),
                 "Add `: _` before assignment operator",
                 ident.text_range(),
-                |builder| match ctx.config.snippet_cap {
-                    Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
-                    None => builder.insert(type_pos, ": _"),
+                |builder| {
+                    if let_stmt.semicolon_token().is_none() {
+                        builder.insert(semi_pos, ";");
+                    }
+                    match ctx.config.snippet_cap {
+                        Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
+                        None => builder.insert(type_pos, ": _"),
+                    }
                 },
             )?
         } else {
@@ -263,6 +270,26 @@ fn main() {
     let x: () = make::<${0:_}>();
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_append_semicolon() {
+        check_assist_by_label(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x = make$0()
+}
+"#,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let x: ${0:_} = make();
+}
+"#,
+            "Add `: _` before assignment operator",
         );
     }
 }
