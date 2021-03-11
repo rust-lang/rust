@@ -559,7 +559,7 @@ pub fn check_abi<'a>(abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
     if abi == exp_abi {
         Ok(())
     } else {
-        throw_ub_format!("calling a function with ABI {:?} using caller ABI {:?}", exp_abi, abi)
+        throw_ub_format!("calling a function with ABI {} using caller ABI {}", exp_abi.name(), abi.name())
     }
 }
 

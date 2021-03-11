@@ -32,7 +32,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (_dest, _ret) = ret.expect("we don't support any diverging dlsym");
         assert!(this.tcx.sess.target.os == "windows");
 
-        check_abi(abi, Abi::System)?;
+        check_abi(abi, Abi::System { unwind: false })?;
 
         match dlsym {}
     }
