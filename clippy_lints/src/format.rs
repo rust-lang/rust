@@ -28,11 +28,11 @@ declare_clippy_lint! {
     /// ```rust
     ///
     /// // Bad
-    /// # let foo = "foo";
+    /// let foo = "foo";
     /// format!("{}", foo);
     ///
     /// // Good
-    /// format!("foo");
+    /// foo.to_owned();
     /// ```
     pub USELESS_FORMAT,
     complexity,

@@ -14,10 +14,22 @@ bitflags = {name = "bitflags", versions = ['1.2.1']}
 libc = {name = "libc", versions = ['0.2.81']}
 log = {name = "log", versions = ['0.4.11']}
 proc-macro2 = {name = "proc-macro2", versions = ['1.0.24']}
-puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
 quote = {name = "quote", versions = ['1.0.7']}
 rand = {name = "rand", versions = ['0.7.3']}
 rand_core = {name = "rand_core", versions = ['0.6.0']}
 regex = {name = "regex", versions = ['1.3.2']}
 syn = {name = "syn", versions = ['1.0.54']}
 unicode-xid = {name = "unicode-xid", versions = ['0.2.1']}
+# some more of dtolnays crates
+anyhow = {name = "anyhow", versions = ['1.0.38']}
+async-trait = {name = "async-trait", versions = ['0.1.42']}
+cxx = {name = "cxx", versions = ['1.0.32']}
+ryu = {name = "ryu", version = ['1.0.5']}
+serde_yaml = {name = "serde_yaml", versions = ['0.8.17']}
+thiserror = {name = "thiserror", versions = ['1.0.24']}
+# some embark crates, there are other interesting crates but
+# unfortunately adding them increases lintcheck runtime drastically
+cfg-expr = {name = "cfg-expr", versions = ['0.7.1']}
+puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
+rpmalloc = {name = "rpmalloc", versions = ['0.2.0']}
+tame-oidc = {name = "tame-oidc", versions = ['0.1.0']}

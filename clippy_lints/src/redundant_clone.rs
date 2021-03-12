@@ -1,6 +1,6 @@
 use crate::utils::{
-    fn_has_unsatisfiable_preds, has_drop, is_copy, is_type_diagnostic_item, match_def_path, match_type, paths,
-    snippet_opt, span_lint_hir, span_lint_hir_and_then, walk_ptrs_ty_depth,
+    fn_has_unsatisfiable_preds, has_drop, is_copy, is_type_diagnostic_item, match_def_path, paths, snippet_opt,
+    span_lint_hir, span_lint_hir_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};
@@ -165,9 +165,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, res)) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
                     if res == cloned;
-                    if match_def_path(cx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
-                    if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
-                        || match_type(cx, pred_arg_ty, &paths::OS_STRING);
+                    if cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id);
+                    if is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
+                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString);
                     then {
                         (pred_arg, res)
                     } else {

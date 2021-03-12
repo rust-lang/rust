@@ -1,27 +1,19 @@
-# Clippy Dev Tool
-
-The Clippy Dev Tool is a tool to ease Clippy development, similar to `rustc`s
-`x.py`.
-
-Functionalities (incomplete):
-
-## `lintcheck`
+## `cargo lintcheck`
 
 Runs clippy on a fixed set of crates read from
-`clippy_dev/lintcheck_crates.toml` and saves logs of the lint warnings into the
+`lintcheck/lintcheck_crates.toml` and saves logs of the lint warnings into the
 repo.  We can then check the diff and spot new or disappearing warnings.
 
 From the repo root, run:
 
 ```
-cargo run --target-dir clippy_dev/target --package clippy_dev \
---bin clippy_dev --manifest-path clippy_dev/Cargo.toml --features lintcheck -- lintcheck
+cargo run --target-dir lintcheck/target --manifest-path lintcheck/Cargo.toml
 ```
 
 or
 
 ```
-cargo dev-lintcheck
+cargo lintcheck
 ```
 
 By default the logs will be saved into
@@ -75,3 +67,11 @@ is checked.
 
 **Note:** `-Wclippy::all` is always enabled by default, unless `-Aclippy::all`
 is explicitly specified in the options.
+
+### Fix mode
+You can run `./lintcheck/target/debug/lintcheck --fix` which will run Clippy with `-Zunstable-options --fix` and
+print a warning if Clippys suggestions fail to apply (if the resulting code does not build).  
+This lets us spot bad suggestions or false positives automatically in some cases.  
+
+Please note that the target dir should be cleaned afterwards since clippy will modify 
+the downloaded sources which can lead to unexpected results when running lintcheck again afterwards.

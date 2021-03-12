@@ -1,7 +1,14 @@
+// edition:2018
 // run-rustfix
 
 #![warn(clippy::manual_map)]
-#![allow(clippy::no_effect, clippy::map_identity, clippy::unit_arg, clippy::match_ref_pats)]
+#![allow(
+    clippy::no_effect,
+    clippy::map_identity,
+    clippy::unit_arg,
+    clippy::match_ref_pats,
+    dead_code
+)]
 
 fn main() {
     match Some(0) {
@@ -119,4 +126,64 @@ fn main() {
         Some(Some((x, 1))) => Some(x),
         _ => None,
     };
+
+    // #6795
+    fn f1() -> Result<(), ()> {
+        let _ = match Some(Ok(())) {
+            Some(x) => Some(x?),
+            None => None,
+        };
+        Ok(())
+    }
+
+    for &x in Some(Some(true)).iter() {
+        let _ = match x {
+            Some(x) => Some(if x { continue } else { x }),
+            None => None,
+        };
+    }
+
+    // #6797
+    let x1 = (Some(String::new()), 0);
+    let x2 = x1.0;
+    match x2 {
+        Some(x) => Some((x, x1.1)),
+        None => None,
+    };
+
+    struct S1 {
+        x: Option<String>,
+        y: u32,
+    }
+    impl S1 {
+        fn f(self) -> Option<(String, u32)> {
+            match self.x {
+                Some(x) => Some((x, self.y)),
+                None => None,
+            }
+        }
+    }
+
+    // #6811
+    match Some(0) {
+        Some(x) => Some(vec![x]),
+        None => None,
+    };
+
+    match option_env!("") {
+        Some(x) => Some(String::from(x)),
+        None => None,
+    };
+
+    // #6819
+    async fn f2(x: u32) -> u32 {
+        x
+    }
+
+    async fn f3() {
+        match Some(0) {
+            Some(x) => Some(f2(x).await),
+            None => None,
+        };
+    }
 }

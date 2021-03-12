@@ -62,8 +62,14 @@ fn or_fun_call() {
     let mut map = HashMap::<u64, String>::new();
     map.entry(42).or_insert(String::new());
 
+    let mut map_vec = HashMap::<u64, Vec<i32>>::new();
+    map_vec.entry(42).or_insert(vec![]);
+
     let mut btree = BTreeMap::<u64, String>::new();
     btree.entry(42).or_insert(String::new());
+
+    let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
+    btree_vec.entry(42).or_insert(vec![]);
 
     let stringy = Some(String::from(""));
     let _ = stringy.unwrap_or("".to_owned());

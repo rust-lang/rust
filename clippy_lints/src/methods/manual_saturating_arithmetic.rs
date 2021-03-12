@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_target::abi::LayoutOf;
 
-pub fn lint(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
+pub fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[&[hir::Expr<'_>]], arith: &str) {
     let unwrap_arg = &args[0][1];
     let arith_lhs = &args[1][0];
     let arith_rhs = &args[1][1];
