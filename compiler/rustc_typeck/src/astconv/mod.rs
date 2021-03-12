@@ -1321,7 +1321,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // `dyn Trait + Send`.
         // Sort by `DefPathHash` so that the order is stable across compilation sessions
         auto_traits.sort_by_key(|i| self.tcx().def_path_hash(i.trait_ref().def_id()));
-        auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
+        auto_traits.dedup_by_key(|i| self.tcx().def_path_hash(i.trait_ref().def_id()));
         debug!("regular_traits: {:?}", regular_traits);
         debug!("auto_traits: {:?}", auto_traits);
 
