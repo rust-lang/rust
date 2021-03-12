@@ -24,7 +24,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(literal.ty, ty);
                 Constant { span, user_ty, literal: literal.into() }
             }
-            ExprKind::StaticRef { literal, .. } => Constant { span, user_ty: None, literal: literal.into() },
+            ExprKind::StaticRef { literal, .. } => {
+                Constant { span, user_ty: None, literal: literal.into() }
+            }
             ExprKind::ConstBlock { value } => {
                 Constant { span: span, user_ty: None, literal: value.into() }
             }
