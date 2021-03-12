@@ -820,7 +820,8 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match r {
             ty::ReLateBound(index, _br) if *index == self.binder_index => {
-                bug!("{:?} {:?}", index, _br)
+                // If you hit this, you should be using `Binder::bind_with_vars` or `Binder::rebind`
+                bug!("Trying to collect bound vars with a bound region: {:?} {:?}", index, _br)
             }
 
             _ => (),
@@ -870,19 +871,19 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
                 if self.bound_vars.len() <= bound_ty.var.as_usize() {
-                    panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
+                    bug!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
                 }
                 let list_var = self.bound_vars[bound_ty.var.as_usize()];
                 match list_var {
                     ty::BoundVariableKind::Ty(kind) => {
                         if kind != bound_ty.kind {
-                            panic!(
+                            bug!(
                                 "Mismatched type kinds: {:?} doesn't var in list {:?}",
                                 bound_ty.kind, list_var
                             );
                         }
                     }
-                    _ => panic!(
+                    _ => bug!(
                         "Mismatched bound variable kinds! Expected type, found {:?}",
                         list_var
                     ),
@@ -899,19 +900,19 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => {
                 if self.bound_vars.len() <= br.var.as_usize() {
-                    panic!("Not enough bound vars: {:?} not found in {:?}", *br, self.bound_vars);
+                    bug!("Not enough bound vars: {:?} not found in {:?}", *br, self.bound_vars);
                 }
                 let list_var = self.bound_vars[br.var.as_usize()];
                 match list_var {
                     ty::BoundVariableKind::Region(kind) => {
                         if kind != br.kind {
-                            panic!(
+                            bug!(
                                 "Mismatched region kinds: {:?} doesn't match var ({:?}) in list ({:?})",
                                 br.kind, list_var, self.bound_vars
                             );
                         }
                     }
-                    _ => panic!(
+                    _ => bug!(
                         "Mismatched bound variable kinds! Expected region, found {:?}",
                         list_var
                     ),
