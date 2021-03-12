@@ -6,27 +6,27 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-/// Assist: convert_iter_for_each_to_for
+// Assist: convert_iter_for_each_to_for
 //
-/// Converts an Iterator::for_each function into a for loop.
-///
-/// ```rust
-/// fn main() {
-///     let vec = vec![(1, 2), (2, 3), (3, 4)];
-///     x.iter().for_each(|(x, y)| {
-///         println!("x: {}, y: {}", x, y);
-///    })
-/// }
-/// ```
-/// ->
-/// ```rust
-/// fn main() {
-///     let vec = vec![(1, 2), (2, 3), (3, 4)];
-///     for (x, y) in x.iter() {
-///         println!("x: {}, y: {}", x, y);
-///     });
-/// }
-/// ```
+// Converts an Iterator::for_each function into a for loop.
+//
+// ```rust
+// fn main() {
+//     let vec = vec![(1, 2), (2, 3), (3, 4)];
+//     x.iter().for_each(|(x, y)| {
+//         println!("x: {}, y: {}", x, y);
+//     });
+// }
+// ```
+// ->
+// ```rust
+// fn main() {
+//     let vec = vec![(1, 2), (2, 3), (3, 4)];
+//     for (x, y) in x.iter() {
+//         println!("x: {}, y: {}", x, y);
+//     }
+// }
+// ```
 pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
     let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
