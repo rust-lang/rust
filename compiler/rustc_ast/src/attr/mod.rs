@@ -495,12 +495,10 @@ impl MetaItemKind {
     fn token_trees_and_spacings(&self, span: Span) -> Vec<TreeAndSpacing> {
         match *self {
             MetaItemKind::Word => vec![],
-            MetaItemKind::NameValue(ref lit) => {
-                vec![
-                    TokenTree::token(token::Eq, span).into(),
-                    TokenTree::Token(lit.to_token()).into(),
-                ]
-            }
+            MetaItemKind::NameValue(ref lit) => vec![
+                TokenTree::token(token::Eq, span).into(),
+                TokenTree::Token(lit.to_token()).into(),
+            ],
             MetaItemKind::List(ref list) => {
                 let mut tokens = Vec::new();
                 for (i, item) in list.iter().enumerate() {

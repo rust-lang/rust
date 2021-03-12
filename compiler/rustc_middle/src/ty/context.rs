@@ -52,7 +52,6 @@ use rustc_hir::{
 };
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
-use rustc_middle::arena::ArenaAllocatable;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -193,7 +192,7 @@ impl<'tcx> Interner for TyInterner<'tcx> {
         self,
         iter: impl IntoIterator<Item = Self::Span>,
     ) -> Self::AllocatedSpanSlice {
-        self.tcx.arena.alloc_from_iter(iter)
+        self.tcx.arena.alloc_from_iter::<Self::Span, Self::Span, _>(iter)
     }
 
     fn alloc_promoted(self, value: Self::Promoted) -> Self::AllocatedPromoted {

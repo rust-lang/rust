@@ -741,11 +741,6 @@ where
 impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
-    // #[inline]
-    // fn tcx(&self) -> TyCtxt<'tcx> {
-    //     self.tcx
-    // }
-
     #[inline]
     fn interner(&self) -> TyInterner<'tcx> {
         self.tcx.interner()

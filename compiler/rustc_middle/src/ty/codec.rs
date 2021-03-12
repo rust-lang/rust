@@ -160,7 +160,6 @@ encodable_via_deref! {
 pub trait TyDecoder<'tcx>: Decoder {
     const CLEAR_CROSS_CRATE: bool;
 
-    //fn tcx(&self) -> TyCtxt<'tcx>;
     fn interner(&self) -> TyInterner<'tcx>;
 
     fn peek_byte(&self) -> u8;

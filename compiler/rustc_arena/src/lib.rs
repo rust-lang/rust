@@ -733,10 +733,10 @@ macro_rules! declare_arena {
                 self.dropless.alloc_slice(value)
             }
 
-            pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, U>, U>(
-                &'a self,
-                iter: impl ::std::iter::IntoIterator<Item = T>,
-            ) -> &'a mut [T] {
+            pub fn alloc_from_iter<T: ArenaAllocatable<'tcx, U>, U, V: IntoIterator<Item = T>>(
+                &self,
+                iter: V,
+            ) -> &mut [T] {
                 T::allocate_from_iter(self, iter)
             }
         }
