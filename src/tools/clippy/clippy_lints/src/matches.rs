@@ -1173,9 +1173,9 @@ fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
                     cx,
                     WILDCARD_IN_OR_PATTERNS,
                     arm.pat.span,
-                    "wildcard pattern covers any other pattern as it will match anyway.",
+                    "wildcard pattern covers any other pattern as it will match anyway",
                     None,
-                    "Consider handling `_` separately.",
+                    "consider handling `_` separately",
                 );
             }
         }

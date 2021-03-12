@@ -141,8 +141,31 @@ LL |         Ok(3) => println!("ok"),
    |         ^^^^^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: this `match` has identical arm bodies
+  --> $DIR/match_same_arms2.rs:144:14
+   |
+LL |           1 => {
+   |  ______________^
+LL | |             empty!(0);
+LL | |         },
+   | |_________^
+   |
+note: same as this
+  --> $DIR/match_same_arms2.rs:141:14
+   |
+LL |           0 => {
+   |  ______________^
+LL | |             empty!(0);
+LL | |         },
+   | |_________^
+help: consider refactoring into `0 | 1`
+  --> $DIR/match_same_arms2.rs:141:9
+   |
+LL |         0 => {
+   |         ^
+
 error: match expression looks like `matches!` macro
-  --> $DIR/match_same_arms2.rs:133:16
+  --> $DIR/match_same_arms2.rs:162:16
    |
 LL |       let _ans = match x {
    |  ________________^
@@ -154,5 +177,5 @@ LL | |     };
    |
    = note: `-D clippy::match-like-matches-macro` implied by `-D warnings`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

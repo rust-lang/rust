@@ -13,6 +13,7 @@ extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_infer;
+extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_middle;
 extern crate rustc_mir;
@@ -61,27 +62,29 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, HirId, ImplItem, ImplItemKind, Item, ItemKind,
-    MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
+    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item,
+    ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
+    TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, layout::IntegerExt, DefIdTree, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
+use rustc_span::hygiene::{self, ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, SyntaxContext, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use smallvec::SmallVec;
 
 use crate::consts::{constant, Constant};
+use std::collections::HashMap;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -229,11 +232,66 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: hir::LangI
     }
 }
 
+/// Checks if the first type parameter is a lang item.
+pub fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangItem) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .map_or(false, |id| {
+                cx.tcx.lang_items().require(item).map_or(false, |lang_id| id == lang_id)
+            })
+            .then(|| ty)
+    } else {
+        None
+    }
+}
+
+/// Checks if the first type parameter is a diagnostic item.
+pub fn is_ty_param_diagnostic_item(
+    cx: &LateContext<'_>,
+    qpath: &QPath<'tcx>,
+    item: Symbol,
+) -> Option<&'tcx hir::Ty<'tcx>> {
+    let ty = get_qpath_generic_tys(qpath).next()?;
+
+    if let TyKind::Path(qpath) = &ty.kind {
+        cx.qpath_res(qpath, ty.hir_id)
+            .opt_def_id()
+            .map_or(false, |id| cx.tcx.is_diagnostic_item(item, id))
+            .then(|| ty)
+    } else {
+        None
+    }
+}
+
+/// Return `true` if the passed `typ` is `isize` or `usize`.
+pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
+    matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+}
+
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
+}
+
+/// Checks if the method call given in `expr` belongs to a trait or other container with a given
+/// diagnostic item
+pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
+    cx.tcx
+        .opt_associated_item(def_id)
+        .and_then(|associated_item| match associated_item.container {
+            ty::TraitContainer(assoc_def_id) => Some(assoc_def_id),
+            ty::ImplContainer(assoc_def_id) => match cx.tcx.type_of(assoc_def_id).kind() {
+                ty::Adt(adt, _) => Some(adt.did),
+                ty::Slice(_) => cx.tcx.get_diagnostic_item(sym::slice), // this isn't perfect but it works
+                _ => None,
+            },
+        })
+        .map_or(false, |assoc_def_id| cx.tcx.is_diagnostic_item(diag_item, assoc_def_id))
 }
 
 /// Checks if an expression references a variable of the given name.
@@ -252,6 +310,27 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
         QPath::TypeRelative(_, ref seg) => seg,
         QPath::LangItem(..) => panic!("last_path_segment: lang item has no path segments"),
     }
+}
+
+pub fn get_qpath_generics(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
+    match path {
+        QPath::Resolved(_, p) => p.segments.last().and_then(|s| s.args),
+        QPath::TypeRelative(_, s) => s.args,
+        QPath::LangItem(..) => None,
+    }
+}
+
+pub fn get_qpath_generic_tys(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+    get_qpath_generics(path)
+        .map_or([].as_ref(), |a| a.args)
+        .iter()
+        .filter_map(|a| {
+            if let hir::GenericArg::Type(ty) = a {
+                Some(ty)
+            } else {
+                None
+            }
+        })
 }
 
 pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
@@ -452,6 +531,18 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.ty_adt_def() {
         Some(def) => def.has_dtor(cx.tcx),
         None => false,
+    }
+}
+
+/// Checks whether a type can be partially moved.
+pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    if has_drop(cx, ty) || is_copy(cx, ty) {
+        return false;
+    }
+    match ty.kind() {
+        ty::Param(_) => false,
+        ty::Adt(def, subs) => def.all_fields().any(|f| !is_copy(cx, f.ty(cx.tcx, subs))),
+        _ => true,
     }
 }
 
@@ -745,6 +836,35 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
     reindent_multiline(snip, true, indent)
 }
 
+/// Same as `snippet_with_applicability`, but first walks the span up to the given context. This
+/// will result in the macro call, rather then the expansion, if the span is from a child context.
+/// If the span is not from a child context, it will be used directly instead.
+///
+/// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
+/// would result in `box []`. If given the context of the address of expression, this function will
+/// correctly get a snippet of `vec![]`.
+pub fn snippet_with_context(
+    cx: &LateContext<'_>,
+    span: Span,
+    outer: SyntaxContext,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> Cow<'a, str> {
+    let outer_span = hygiene::walk_chain(span, outer);
+    let span = if outer_span.ctxt() == outer {
+        outer_span
+    } else {
+        // The span is from a macro argument, and the outer context is the macro using the argument
+        if *applicability != Applicability::Unspecified {
+            *applicability = Applicability::MaybeIncorrect;
+        }
+        // TODO: get the argument span.
+        span
+    };
+
+    snippet_with_applicability(cx, span, default, applicability)
+}
+
 /// Returns a new Span that extends the original Span to the first non-whitespace char of the first
 /// line.
 ///
@@ -921,6 +1041,21 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         },
         _ => None,
     })
+}
+
+/// Gets the parent node if it's an impl block.
+pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
+    let map = tcx.hir();
+    match map.parent_iter(id).next() {
+        Some((
+            _,
+            Node::Item(Item {
+                kind: ItemKind::Impl(imp),
+                ..
+            }),
+        )) => Some(imp),
+        _ => None,
+    }
 }
 
 /// Returns the base type for HIR references and pointers.
@@ -1359,13 +1494,49 @@ pub fn match_function_call<'tcx>(
     None
 }
 
+// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
+// this function can be removed once the `normalizie` method does not panic when normalization does
+// not succeed
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| {
+    is_normalizable_helper(cx, param_env, ty, &mut HashMap::new())
+}
+
+fn is_normalizable_helper<'tcx>(
+    cx: &LateContext<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    cache: &mut HashMap<Ty<'tcx>, bool>,
+) -> bool {
+    if let Some(&cached_result) = cache.get(ty) {
+        return cached_result;
+    }
+    // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
+    cache.insert(ty, false);
+    let result = cx.tcx.infer_ctxt().enter(|infcx| {
         let cause = rustc_middle::traits::ObligationCause::dummy();
-        infcx.at(&cause, param_env).normalize(ty).is_ok()
-    })
+        if infcx.at(&cause, param_env).normalize(ty).is_ok() {
+            match ty.kind() {
+                ty::Adt(def, substs) => def.variants.iter().all(|variant| {
+                    variant
+                        .fields
+                        .iter()
+                        .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
+                }),
+                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
+                    GenericArgKind::Type(inner_ty) if inner_ty != ty => {
+                        is_normalizable_helper(cx, param_env, inner_ty, cache)
+                    },
+                    _ => true, // if inner_ty == ty, we've already checked it
+                }),
+            }
+        } else {
+            false
+        }
+    });
+    cache.insert(ty, result);
+    result
 }
 
 pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -> bool {
@@ -1546,12 +1717,12 @@ pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
 /// ```
 pub fn fn_has_unsatisfiable_preds(cx: &LateContext<'_>, did: DefId) -> bool {
     use rustc_trait_selection::traits;
-    let predicates =
-        cx.tcx
-            .predicates_of(did)
-            .predicates
-            .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
+    let predicates = cx
+        .tcx
+        .predicates_of(did)
+        .predicates
+        .iter()
+        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     traits::impossible_predicates(
         cx.tcx,
         traits::elaborate_predicates(cx.tcx, predicates)

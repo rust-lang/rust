@@ -12,12 +12,13 @@ use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{ExpnKind, Span};
+use rustc_span::symbol::sym;
 
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_integer_const, iter_input_pats,
-    last_path_segment, match_qpath, match_trait_method, paths, snippet, snippet_opt, span_lint, span_lint_and_sugg,
+    get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_diagnostic_assoc_item, is_integer_const,
+    iter_input_pats, last_path_segment, match_qpath, snippet, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, span_lint_hir_and_then, unsext, SpanlessEq,
 };
 
@@ -292,7 +293,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                     TOPLEVEL_REF_ARG,
                     arg.pat.span,
                     "`ref` directly on a function argument is ignored. \
-                    Consider using a reference type instead.",
+                    Consider using a reference type instead",
                 );
             }
         }
@@ -422,7 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 expr.span,
                 &format!(
                     "used binding `{}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used.",
+                     underscore signals that a binding will not be used",
                     binding
                 ),
             );
@@ -554,11 +555,16 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
 
     let (arg_ty, snip) = match expr.kind {
         ExprKind::MethodCall(.., ref args, _) if args.len() == 1 => {
-            if match_trait_method(cx, expr, &paths::TO_STRING) || match_trait_method(cx, expr, &paths::TO_OWNED) {
-                (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
-            } else {
-                return;
-            }
+            if_chain!(
+                if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+                if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString)
+                    || is_diagnostic_assoc_item(cx, expr_def_id, sym::ToOwned);
+                then {
+                    (cx.typeck_results().expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
+                } else {
+                    return;
+                }
+            )
         },
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.kind {

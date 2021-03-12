@@ -1,4 +1,4 @@
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:33:5
    |
 LL |     drop(s1);
@@ -11,7 +11,7 @@ note: argument has type SomeStruct
 LL |     drop(s1);
    |          ^^
 
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:34:5
    |
 LL |     drop(s2);
@@ -23,7 +23,7 @@ note: argument has type SomeStruct
 LL |     drop(s2);
    |          ^^
 
-error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements `Copy`. Dropping a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:36:5
    |
 LL |     drop(s4);
@@ -35,7 +35,7 @@ note: argument has type SomeStruct
 LL |     drop(s4);
    |          ^^
 
-error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:39:5
    |
 LL |     forget(s1);
@@ -48,7 +48,7 @@ note: argument has type SomeStruct
 LL |     forget(s1);
    |            ^^
 
-error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:40:5
    |
 LL |     forget(s2);
@@ -60,7 +60,7 @@ note: argument has type SomeStruct
 LL |     forget(s2);
    |            ^^
 
-error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements `Copy`. Forgetting a copy leaves the original intact
   --> $DIR/drop_forget_copy.rs:42:5
    |
 LL |     forget(s4);

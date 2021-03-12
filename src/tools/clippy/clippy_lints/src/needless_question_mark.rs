@@ -142,7 +142,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
         cx,
         NEEDLESS_QUESTION_MARK,
         entire_expr.span,
-        "Question mark operator is useless here",
+        "question mark operator is useless here",
         "try",
         format!("{}", utils::snippet(cx, inner_expr.span, r#""...""#)),
         Applicability::MachineApplicable,

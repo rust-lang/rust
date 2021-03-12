@@ -16,10 +16,25 @@
 
 use std::path::PathBuf;
 
+macro_rules! mac {
+    () => {
+        foobar()
+    };
+}
+
+macro_rules! closure_mac {
+    () => {
+        |n| foo(n)
+    };
+}
+
 fn main() {
     let a = Some(1u8).map(|a| foo(a));
     meta(|a| foo(a));
     let c = Some(1u8).map(|a| {1+2; foo}(a));
+    true.then(|| mac!()); // don't lint function in macro expansion
+    Some(1).map(closure_mac!()); // don't lint closure in macro expansion
+    let _: Option<Vec<u8>> = true.then(|| vec![]); // special case vec!
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
     unsafe {

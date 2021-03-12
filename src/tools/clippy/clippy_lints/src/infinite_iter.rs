@@ -89,11 +89,7 @@ impl Finiteness {
 impl From<bool> for Finiteness {
     #[must_use]
     fn from(b: bool) -> Self {
-        if b {
-            Infinite
-        } else {
-            Finite
-        }
+        if b { Infinite } else { Finite }
     }
 }
 
