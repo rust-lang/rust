@@ -775,7 +775,7 @@ impl SyntaxExtension {
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            Some(attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>().into());
+            attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
@@ -803,7 +803,8 @@ impl SyntaxExtension {
         SyntaxExtension {
             kind,
             span,
-            allow_internal_unstable,
+            allow_internal_unstable: (!allow_internal_unstable.is_empty())
+                .then(|| allow_internal_unstable.into()),
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
             stability: stability.map(|(s, _)| s),
