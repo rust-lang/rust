@@ -350,6 +350,7 @@ mod types;
 mod undropped_manually_drops;
 mod unicode;
 mod unit_return_expecting_ord;
+mod unit_types;
 mod unnamed_address;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
@@ -960,20 +961,20 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &types::BOX_VEC,
         &types::IMPLICIT_HASHER,
         &types::INVALID_UPCAST_COMPARISONS,
-        &types::LET_UNIT_VALUE,
         &types::LINKEDLIST,
         &types::OPTION_OPTION,
         &types::RC_BUFFER,
         &types::REDUNDANT_ALLOCATION,
         &types::TYPE_COMPLEXITY,
-        &types::UNIT_ARG,
-        &types::UNIT_CMP,
         &types::VEC_BOX,
         &undropped_manually_drops::UNDROPPED_MANUALLY_DROPS,
         &unicode::INVISIBLE_CHARACTERS,
         &unicode::NON_ASCII_LITERAL,
         &unicode::UNICODE_NOT_NFC,
         &unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD,
+        &unit_types::LET_UNIT_VALUE,
+        &unit_types::UNIT_ARG,
+        &unit_types::UNIT_CMP,
         &unnamed_address::FN_ADDRESS_COMPARISONS,
         &unnamed_address::VTABLE_ADDRESS_COMPARISONS,
         &unnecessary_sort_by::UNNECESSARY_SORT_BY,
@@ -1084,8 +1085,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box map_clone::MapClone);
     store.register_late_pass(|| box map_err_ignore::MapErrIgnore);
     store.register_late_pass(|| box shadow::Shadow);
-    store.register_late_pass(|| box types::LetUnitValue);
-    store.register_late_pass(|| box types::UnitCmp);
+    store.register_late_pass(|| box unit_types::LetUnitValue);
+    store.register_late_pass(|| box unit_types::UnitCmp);
     store.register_late_pass(|| box loops::Loops);
     store.register_late_pass(|| box main_recursion::MainRecursion::default());
     store.register_late_pass(|| box lifetimes::Lifetimes);
@@ -1160,7 +1161,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box useless_conversion::UselessConversion::default());
     store.register_late_pass(|| box types::ImplicitHasher);
     store.register_late_pass(|| box fallible_impl_from::FallibleImplFrom);
-    store.register_late_pass(|| box types::UnitArg);
+    store.register_late_pass(|| box unit_types::UnitArg);
     store.register_late_pass(|| box double_comparison::DoubleComparisons);
     store.register_late_pass(|| box question_mark::QuestionMark);
     store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
@@ -1415,11 +1416,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&trait_bounds::TYPE_REPETITION_IN_BOUNDS),
         LintId::of(&types::IMPLICIT_HASHER),
         LintId::of(&types::INVALID_UPCAST_COMPARISONS),
-        LintId::of(&types::LET_UNIT_VALUE),
         LintId::of(&types::LINKEDLIST),
         LintId::of(&types::OPTION_OPTION),
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
+        LintId::of(&unit_types::LET_UNIT_VALUE),
         LintId::of(&unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(&unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(&unused_self::UNUSED_SELF),
@@ -1708,12 +1709,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&types::BOX_VEC),
         LintId::of(&types::REDUNDANT_ALLOCATION),
         LintId::of(&types::TYPE_COMPLEXITY),
-        LintId::of(&types::UNIT_ARG),
-        LintId::of(&types::UNIT_CMP),
         LintId::of(&types::VEC_BOX),
         LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
+        LintId::of(&unit_types::UNIT_ARG),
+        LintId::of(&unit_types::UNIT_CMP),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
@@ -1934,8 +1935,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::TRANSMUTE_PTR_TO_REF),
         LintId::of(&types::BORROWED_BOX),
         LintId::of(&types::TYPE_COMPLEXITY),
-        LintId::of(&types::UNIT_ARG),
         LintId::of(&types::VEC_BOX),
+        LintId::of(&unit_types::UNIT_ARG),
         LintId::of(&unnecessary_sort_by::UNNECESSARY_SORT_BY),
         LintId::of(&unwrap::UNNECESSARY_UNWRAP),
         LintId::of(&useless_conversion::USELESS_CONVERSION),
@@ -2005,10 +2006,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
         LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
-        LintId::of(&types::UNIT_CMP),
         LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
+        LintId::of(&unit_types::UNIT_CMP),
         LintId::of(&unnamed_address::FN_ADDRESS_COMPARISONS),
         LintId::of(&unnamed_address::VTABLE_ADDRESS_COMPARISONS),
         LintId::of(&unused_io_amount::UNUSED_IO_AMOUNT),
