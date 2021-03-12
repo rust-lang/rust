@@ -1,4 +1,8 @@
-#![feature(const_impl_trait, type_alias_impl_trait)]
+#![feature(const_impl_trait)]
+// revisions: min_tait full_tait
+#![cfg_attr(min_tait, feature(min_type_alias_impl_trait))]
+#![cfg_attr(not(min_tait), feature(type_alias_impl_trait, min_type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 
 type Foo = impl Send;
 

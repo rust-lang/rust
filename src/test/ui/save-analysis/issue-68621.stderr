@@ -1,8 +1,0 @@
-error: could not find defining uses
-  --> $DIR/issue-68621.rs:14:19
-   |
-LL |     type Future = impl Trait;
-   |                   ^^^^^^^^^^
-
-error: aborting due to previous error
-

@@ -2,7 +2,10 @@
 // Ensures that we don't ICE when emitting an error
 // for a non-defining use when lifetimes are involved
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
 fn f<'a>() -> Alias<'a, ()> {}

@@ -1,7 +1,10 @@
 // Issue 52985: user code provides no use case that allows a type alias `impl Trait`
 // We now emit a 'could not find defining uses' error
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 
 type Foo = impl Copy; //~ could not find defining uses
 
