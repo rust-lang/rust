@@ -2,8 +2,11 @@ error: variant is never constructed: `Variant1`
   --> $DIR/unused-variant.rs:5:5
    |
 LL |     Variant1,
-   |     ^^^^^^^^
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_Variant1`
    |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/unused-variant.rs:1:9
    |

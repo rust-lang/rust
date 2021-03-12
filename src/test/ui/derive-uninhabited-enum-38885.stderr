@@ -2,8 +2,11 @@ warning: variant is never constructed: `Void`
   --> $DIR/derive-uninhabited-enum-38885.rs:13:5
    |
 LL |     Void(Void),
-   |     ^^^^^^^^^^
+   |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_Void`
    |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
    = note: `-W dead-code` implied by `-W unused`
 
 warning: 1 warning emitted
