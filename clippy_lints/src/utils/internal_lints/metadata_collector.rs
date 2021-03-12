@@ -32,7 +32,7 @@ use crate::utils::{
 };
 
 /// This is the output file of the lint collector.
-const OUTPUT_FILE: &str = "../metadata_collection.json";
+const OUTPUT_FILE: &str = "../util/gh-pages/metadata_collection.json";
 /// These lints are excluded from the export.
 const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
@@ -62,7 +62,7 @@ const SUGGESTION_DIAGNOSTIC_BUILDER_METHODS: [(&str, bool); 9] = [
     ("span_suggestions", true),
 ];
 const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
-    &["clippy_utils", "diagnostics", "mutispan_sugg"],
+    &["clippy_utils", "diagnostics", "multispan_sugg"],
     &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
 ];
 
@@ -226,11 +226,8 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &'hir Item<'_>) {
         if_chain! {
             // item validation
-            if let ItemKind::Static(ref ty, Mutability::Not, body_id) = item.kind;
+            if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind;
             if is_lint_ref_type(cx, ty);
-            let expr = &cx.tcx.hir().body(body_id).value;
-            if let ExprKind::AddrOf(_, _, ref inner_exp) = expr.kind;
-            if let ExprKind::Struct(_, _, _) = inner_exp.kind;
             // blacklist check
             let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
             if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
