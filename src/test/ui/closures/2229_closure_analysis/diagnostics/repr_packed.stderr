@@ -1,0 +1,22 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/repr_packed.rs:3:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+warning: borrow of packed field is unsafe and requires unsafe function or block (error E0133)
+  --> $DIR/repr_packed.rs:25:24
+   |
+LL |         println!("{}", foo.x);
+   |                        ^^^^^
+   |
+   = note: `#[warn(safe_packed_borrows)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #46043 <https://github.com/rust-lang/rust/issues/46043>
+   = note: fields of packed structs might be misaligned: dereferencing a misaligned pointer or even just creating a misaligned reference is undefined behavior
+
+warning: 2 warnings emitted
+
