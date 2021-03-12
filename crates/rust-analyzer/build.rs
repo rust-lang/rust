@@ -39,8 +39,7 @@ fn set_rerun() {
 }
 
 fn rev() -> Option<String> {
-    let output = Command::new("git").args(&["rev-parse", "HEAD"]).output().ok()?;
+    let output = Command::new("git").args(&["describe", "--tags"]).output().ok()?;
     let stdout = String::from_utf8(output.stdout).ok()?;
-    let short_hash = stdout.get(0..7)?;
-    Some(short_hash.to_owned())
+    Some(stdout)
 }
