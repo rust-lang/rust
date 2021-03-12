@@ -11,37 +11,45 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Converts an Iterator::for_each function into a for loop.
 //
 // ```
+// # //- /lib.rs crate:core
+// # pub mod iter { pub mod traits { pub mod iterator { pub trait Iterator {} } } }
+// # pub struct SomeIter;
+// # impl self::iter::traits::iterator::Iterator for SomeIter {}
+// # //- /lib.rs crate:main deps:core
+// # use core::SomeIter;
 // fn main() {
-//     let vec = vec![(1, 2), (2, 3), (3, 4)];
-//     x.iter().for_each(|(x, y)| {
+//     let iter = SomeIter;
+//     iter.for_each$0(|(x, y)| {
 //         println!("x: {}, y: {}", x, y);
 //     });
 // }
 // ```
 // ->
 // ```
+// # use core::SomeIter;
 // fn main() {
-//     let vec = vec![(1, 2), (2, 3), (3, 4)];
-//     for (x, y) in x.iter() {
+//     let iter = SomeIter;
+//     for (x, y) in iter {
 //         println!("x: {}, y: {}", x, y);
 //     }
 // }
 // ```
+
 pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
-    let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
 
     let closure = match method.arg_list()?.args().next()? {
         ast::Expr::ClosureExpr(expr) => expr,
         _ => return None,
     };
 
-    let (method, receiver) = validate_method_call_expr(&ctx.sema, method)?;
+    let (method, receiver) = validate_method_call_expr(ctx, method)?;
 
     let param_list = closure.param_list()?;
     let param = param_list.params().next()?.pat()?;
     let body = closure.body()?;
 
+    let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
     let syntax = stmt.as_ref().map_or(method.syntax(), |stmt| stmt.syntax());
 
     acc.add(
@@ -65,12 +73,17 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
 }
 
 fn validate_method_call_expr(
-    sema: &hir::Semantics<ide_db::RootDatabase>,
+    ctx: &AssistContext,
     expr: ast::MethodCallExpr,
 ) -> Option<(ast::Expr, ast::Expr)> {
-    if expr.name_ref()?.text() != "for_each" {
+    let name_ref = expr.name_ref()?;
+    if name_ref.syntax().text_range().intersect(ctx.frange.range).is_none()
+        || name_ref.text() != "for_each"
+    {
         return None;
     }
+
+    let sema = &ctx.sema;
 
     let receiver = expr.receiver()?;
     let expr = ast::Expr::MethodCallExpr(expr);
@@ -85,7 +98,7 @@ fn validate_method_call_expr(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{self, check_assist};
 
     use super::*;
 
@@ -110,6 +123,16 @@ impl Empty {
             FamousDefs::FIXTURE,
         );
         check_assist(convert_iter_for_each_to_for, before, after);
+    }
+
+    fn check_assist_not_applicable(before: &str) {
+        let before = &format!(
+            "//- /main.rs crate:main deps:core,empty_iter{}{}{}",
+            before,
+            EMPTY_ITER_FIXTURE,
+            FamousDefs::FIXTURE,
+        );
+        tests::check_assist_not_applicable(convert_iter_for_each_to_for, before);
     }
 
     #[test]
@@ -201,13 +224,24 @@ fn main() {
 "#,
         )
     }
+
     #[test]
     fn test_for_each_not_applicable() {
         check_assist_not_applicable(
-            convert_iter_for_each_to_for,
             r#"
 fn main() {
-    value.$0for_each(|x| println!("{}", x));
+    ().$0for_each(|x| println!("{}", x));
+}"#,
+        )
+    }
+
+    #[test]
+    fn test_for_each_not_applicable_invalid_cursor_pos() {
+        check_assist_not_applicable(
+            r#"
+use empty_iter::*;
+fn main() {
+    Empty.iter().for_each(|(x, y)| $0println!("x: {}, y: {}", x, y));
 }"#,
         )
     }

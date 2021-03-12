@@ -210,17 +210,24 @@ fn doctest_convert_iter_for_each_to_for() {
     check_doc_test(
         "convert_iter_for_each_to_for",
         r#####"
+//- /lib.rs crate:core
+pub mod iter { pub mod traits { pub mod iterator { pub trait Iterator {} } } }
+pub struct SomeIter;
+impl self::iter::traits::iterator::Iterator for SomeIter {}
+//- /lib.rs crate:main deps:core
+use core::SomeIter;
 fn main() {
-    let vec = vec![(1, 2), (2, 3), (3, 4)];
-    x.iter().for_each(|(x, y)| {
+    let iter = SomeIter;
+    iter.for_each$0(|(x, y)| {
         println!("x: {}, y: {}", x, y);
     });
 }
 "#####,
         r#####"
+use core::SomeIter;
 fn main() {
-    let vec = vec![(1, 2), (2, 3), (3, 4)];
-    for (x, y) in x.iter() {
+    let iter = SomeIter;
+    for (x, y) in iter {
         println!("x: {}, y: {}", x, y);
     }
 }
