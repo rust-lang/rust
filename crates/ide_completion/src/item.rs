@@ -499,3 +499,63 @@ impl Builder {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use itertools::Itertools;
+    use test_utils::assert_eq_text;
+
+    use super::CompletionRelevance;
+
+    /// Check that these are CompletionRelevance are sorted in ascending order
+    /// by their relevance score.
+    ///
+    /// We want to avoid making assertions about the absolute score of any
+    /// item, but we do want to assert whether each is >, <, or == to the
+    /// others.
+    ///
+    /// If provided vec![vec![a], vec![b, c], vec![d]], then this will assert:
+    ///     a.score < b.score == c.score < d.score
+    fn check_relevance_score_ordered(expected_relevance_order: Vec<Vec<CompletionRelevance>>) {
+        let expected = format!("{:#?}", &expected_relevance_order);
+
+        let actual_relevance_order = expected_relevance_order
+            .into_iter()
+            .flatten()
+            .map(|r| (r.score(), r))
+            .sorted_by_key(|(score, _r)| *score)
+            .fold(
+                (u8::MIN, vec![vec![]]),
+                |(mut currently_collecting_score, mut out), (score, r)| {
+                    if currently_collecting_score == score {
+                        out.last_mut().unwrap().push(r);
+                    } else {
+                        currently_collecting_score = score;
+                        out.push(vec![r]);
+                    }
+                    (currently_collecting_score, out)
+                },
+            )
+            .1;
+
+        let actual = format!("{:#?}", &actual_relevance_order);
+
+        assert_eq_text!(&expected, &actual);
+    }
+
+    #[test]
+    fn relevance_score() {
+        // This test asserts that the relevance score for these items is ascending, and
+        // that any items in the same vec have the same score.
+        let expected_relevance_order = vec![
+            vec![CompletionRelevance::default()],
+            vec![
+                CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },
+                CompletionRelevance { exact_type_match: true, ..CompletionRelevance::default() },
+            ],
+            vec![CompletionRelevance { exact_name_match: true, exact_type_match: true }],
+        ];
+
+        check_relevance_score_ordered(expected_relevance_order);
+    }
+}
