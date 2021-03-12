@@ -1,4 +1,4 @@
-use crate::utils::{match_trait_method, path_to_local_id, paths, snippet, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{is_trait_method, path_to_local_id, snippet, span_lint_and_sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, is_
     if_chain! {
         if let ExprKind::MethodCall(_, _, [map_recv, map_arg], map_span) = expr.kind;
         if let ExprKind::MethodCall(_, _, [_, filter_arg], filter_span) = map_recv.kind;
-        if match_trait_method(cx, map_recv, &paths::ITERATOR);
+        if is_trait_method(cx, map_recv, sym::Iterator);
 
         // filter(|x| ...is_some())...
         if let ExprKind::Closure(_, _, filter_body_id, ..) = filter_arg.kind;

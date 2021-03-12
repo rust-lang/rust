@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, match_trait_method, paths, snippet, span_lint_and_sugg};
+use crate::utils::{is_trait_method, is_type_diagnostic_item, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -17,7 +17,7 @@ pub(super) fn check(
     if_chain! {
         // called on Iterator
         if let [map_expr] = collect_args;
-        if match_trait_method(cx, map_expr, &paths::ITERATOR);
+        if is_trait_method(cx, map_expr, sym::Iterator);
         // return of collect `Result<(),_>`
         let collect_ret_ty = cx.typeck_results().expr_ty(expr);
         if is_type_diagnostic_item(cx, collect_ret_ty, sym::result_type);

@@ -2,8 +2,8 @@ use super::utils::{LoopNestVisitor, Nesting};
 use super::WHILE_LET_ON_ITERATOR;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_enclosing_block, get_trait_def_id, implements_trait, is_refutable, last_path_segment, match_trait_method,
-    path_to_local, path_to_local_id, paths, snippet_with_applicability, span_lint_and_sugg,
+    get_enclosing_block, implements_trait, is_refutable, is_trait_method, last_path_segment, path_to_local,
+    path_to_local_id, snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -27,7 +27,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             // Don't lint when the iterator is recreated on every iteration
             if_chain! {
                 if let ExprKind::MethodCall(..) | ExprKind::Call(..) = iter_expr.kind;
-                if let Some(iter_def_id) = get_trait_def_id(cx, &paths::ITERATOR);
+                if let Some(iter_def_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
                 if implements_trait(cx, cx.typeck_results().expr_ty(iter_expr), iter_def_id, &[]);
                 then {
                     return;
@@ -36,7 +36,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 
             let lhs_constructor = last_path_segment(qpath);
             if method_path.ident.name == sym::next
-                && match_trait_method(cx, match_expr, &paths::ITERATOR)
+                && is_trait_method(cx, match_expr, sym::Iterator)
                 && lhs_constructor.ident.name == sym::Some
                 && (pat_args.is_empty()
                     || !is_refutable(cx, &pat_args[0])

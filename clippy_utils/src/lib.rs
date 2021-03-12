@@ -273,6 +273,7 @@ pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
 }
 
 /// Checks if the method call given in `expr` belongs to the given trait.
+/// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
     let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
@@ -293,6 +294,13 @@ pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: 
             },
         })
         .map_or(false, |assoc_def_id| cx.tcx.is_diagnostic_item(diag_item, assoc_def_id))
+}
+
+/// Checks if the method call given in `expr` belongs to the given trait.
+pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
+    cx.typeck_results()
+        .type_dependent_def_id(expr.hir_id)
+        .map_or(false, |did| is_diagnostic_assoc_item(cx, did, diag_item))
 }
 
 /// Checks if an expression references a variable of the given name.

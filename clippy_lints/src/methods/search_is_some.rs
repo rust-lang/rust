@@ -1,5 +1,5 @@
 use crate::utils::{
-    is_type_diagnostic_item, match_trait_method, paths, snippet, snippet_with_applicability, span_lint_and_help,
+    is_trait_method, is_type_diagnostic_item, snippet, snippet_with_applicability, span_lint_and_help,
     span_lint_and_sugg, strip_pat_refs,
 };
 use if_chain::if_chain;
@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
     method_span: Span,
 ) {
     // lint if caller of search is an Iterator
-    if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
+    if is_trait_method(cx, &is_some_args[0], sym::Iterator) {
         let msg = format!(
             "called `is_some()` after searching an `Iterator` with `{}`",
             search_method

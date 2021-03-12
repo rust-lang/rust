@@ -1,14 +1,15 @@
-use crate::utils::{match_trait_method, paths, snippet, span_lint, span_lint_and_sugg};
+use crate::utils::{is_trait_method, snippet, span_lint, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 use super::FILTER_NEXT;
 
 /// lint use of `filter().next()` for `Iterators`
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, filter_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.filter().next()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
+    if is_trait_method(cx, expr, sym::Iterator) {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(..)` instead";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
