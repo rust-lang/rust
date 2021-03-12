@@ -28,38 +28,20 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 /// }
 /// ```
 pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let method;
-
-    let stmt = if let Some(stmt) = ctx.find_node_at_offset::<ast::ExprStmt>() {
-        method = ast::MethodCallExpr::cast(stmt.syntax().first_child()?)?;
-        Some(stmt)
-    } else {
-        method = match ctx.find_node_at_offset::<ast::Expr>()? {
-            ast::Expr::MethodCallExpr(expr) => expr,
-            ast::Expr::ClosureExpr(expr) => {
-                ast::MethodCallExpr::cast(expr.syntax().ancestors().nth(2)?)?
-            }
-            _ => {
-                return None;
-            }
-        };
-        None
-    };
+    let method = ctx.find_node_at_offset::<ast::MethodCallExpr>()?;
+    let stmt = method.syntax().parent().and_then(ast::ExprStmt::cast);
 
     let closure = match method.arg_list()?.args().next()? {
         ast::Expr::ClosureExpr(expr) => expr,
-        _ => {
-            return None;
-        }
+        _ => return None,
     };
 
-    let (method, parent) = validate_method_call_expr(&ctx.sema, method)?;
+    let (method, receiver) = validate_method_call_expr(&ctx.sema, method)?;
 
     let param_list = closure.param_list()?;
     let param = param_list.params().next()?.pat()?;
     let body = closure.body()?;
 
-    let indent = stmt.as_ref().map_or(method.indent_level(), |stmt| stmt.indent_level());
     let syntax = stmt.as_ref().map_or(method.syntax(), |stmt| stmt.syntax());
 
     acc.add(
@@ -67,6 +49,8 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
         "Replace this `Iterator::for_each` with a for loop",
         syntax.text_range(),
         |builder| {
+            let indent = stmt.as_ref().map_or(method.indent_level(), |stmt| stmt.indent_level());
+
             let block = match body {
                 ast::Expr::BlockExpr(block) => block,
                 _ => make::block_expr(Vec::new(), Some(body)),
@@ -74,7 +58,7 @@ pub(crate) fn convert_iter_for_each_to_for(acc: &mut Assists, ctx: &AssistContex
             .reset_indent()
             .indent(indent);
 
-            let expr_for_loop = make::expr_for_loop(param, parent, block);
+            let expr_for_loop = make::expr_for_loop(param, receiver, block);
             builder.replace(syntax.text_range(), expr_for_loop.syntax().text())
         },
     )
@@ -88,15 +72,15 @@ fn validate_method_call_expr(
         return None;
     }
 
+    let receiver = expr.receiver()?;
     let expr = ast::Expr::MethodCallExpr(expr);
-    let parent = ast::Expr::cast(expr.syntax().first_child()?)?;
 
-    let it_type = sema.type_of_expr(&parent)?;
-    let module = sema.scope(parent.syntax()).module()?;
+    let it_type = sema.type_of_expr(&receiver)?;
+    let module = sema.scope(receiver.syntax()).module()?;
     let krate = module.krate();
 
     let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
-    it_type.impls_trait(sema.db, iter_trait, &[]).then(|| (expr, parent))
+    it_type.impls_trait(sema.db, iter_trait, &[]).then(|| (expr, receiver))
 }
 
 #[cfg(test)]
@@ -175,6 +159,29 @@ fn main() {
     }
 
     #[test]
+    fn test_for_each_in_iter_stmt() {
+        check_assist_with_fixtures(
+            r#"
+use empty_iter::*;
+fn main() {
+    let x = Empty.iter();
+    x.$0for_each(|(x, y)| {
+        println!("x: {}, y: {}", x, y);
+    });
+}"#,
+            r#"
+use empty_iter::*;
+fn main() {
+    let x = Empty.iter();
+    for (x, y) in x {
+        println!("x: {}, y: {}", x, y);
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
     fn test_for_each_without_braces_stmt() {
         check_assist_with_fixtures(
             r#"
@@ -194,28 +201,6 @@ fn main() {
 "#,
         )
     }
-
-    #[test]
-    fn test_for_each_in_closure_stmt() {
-        check_assist_with_fixtures(
-            r#"
-use empty_iter::*;
-fn main() {
-    let x = Empty;
-    x.iter().for_each($0|(x, y)| println!("x: {}, y: {}", x, y));
-}"#,
-            r#"
-use empty_iter::*;
-fn main() {
-    let x = Empty;
-    for (x, y) in x.iter() {
-        println!("x: {}, y: {}", x, y)
-    }
-}
-"#,
-        )
-    }
-
     #[test]
     fn test_for_each_not_applicable() {
         check_assist_not_applicable(
