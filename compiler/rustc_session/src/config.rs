@@ -2074,6 +2074,7 @@ fn parse_pretty(
             ("hir,identified", true) => Hir(PpHirMode::Identified),
             ("hir,typed", true) => Hir(PpHirMode::Typed),
             ("hir-tree", true) => HirTree,
+            ("thir-tree", true) => ThirTree,
             ("mir", true) => Mir,
             ("mir-cfg", true) => MirCFG,
             _ => {
@@ -2265,6 +2266,8 @@ pub enum PpMode {
     Hir(PpHirMode),
     /// `-Zunpretty=hir-tree`
     HirTree,
+    /// `-Zunpretty=thir-tree`
+    ThirTree,
     /// `-Zunpretty=mir`
     Mir,
     /// `-Zunpretty=mir-cfg`
@@ -2282,6 +2285,7 @@ impl PpMode {
             | AstTree(PpAstTreeMode::Expanded)
             | Hir(_)
             | HirTree
+            | ThirTree
             | Mir
             | MirCFG => true,
         }

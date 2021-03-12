@@ -347,10 +347,10 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
-	position: relative;
 }
 
 .example-wrap {
+	position: relative;
 	width: 100%;
 }
 

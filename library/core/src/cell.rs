@@ -378,7 +378,7 @@ impl<T> Cell<T> {
         }
     }
 
-    /// Replaces the contained value, and returns it.
+    /// Replaces the contained value with `val`, and returns the old contained value.
     ///
     /// # Examples
     ///

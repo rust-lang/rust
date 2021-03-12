@@ -14,7 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-crate fn build_thir<'thir, 'tcx>(
+pub fn build_thir<'thir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
     arena: &'thir Arena<'thir, 'tcx>,
