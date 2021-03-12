@@ -559,6 +559,7 @@ impl Config {
         config.submodules = true;
         config.fast_submodules = true;
         config.docs = true;
+        config.docs_minification = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
