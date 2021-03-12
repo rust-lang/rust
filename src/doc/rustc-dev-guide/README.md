@@ -1,4 +1,4 @@
-[![Travis CI badge](https://api.travis-ci.com/rust-lang/rustc-dev-guide.svg?branch=master)](https://travis-ci.com/github/rust-lang/rustc-dev-guide)
+[![CI](https://github.com/rust-lang/rustc-dev-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-lang/rustc-dev-guide/actions/workflows/ci.yml)
 
 
 This is a collaborative effort to build a guide that explains how rustc
