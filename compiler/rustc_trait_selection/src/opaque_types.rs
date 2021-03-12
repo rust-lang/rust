@@ -422,7 +422,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => 0,
+            hir::OpaqueTyOrigin::Binding
+            | hir::OpaqueTyOrigin::TyAlias
+            | hir::OpaqueTyOrigin::Misc => 0,
         };
 
         let span = tcx.def_span(def_id);
@@ -581,6 +583,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Otherwise, generate the label we'll use in the error message.
             hir::OpaqueTyOrigin::Binding
             | hir::OpaqueTyOrigin::FnReturn
+            | hir::OpaqueTyOrigin::TyAlias
             | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
