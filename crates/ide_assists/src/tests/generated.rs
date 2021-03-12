@@ -206,6 +206,36 @@ const _: i32 = 0b1010;
 }
 
 #[test]
+fn doctest_convert_iter_for_each_to_for() {
+    check_doc_test(
+        "convert_iter_for_each_to_for",
+        r#####"
+//- /lib.rs crate:core
+pub mod iter { pub mod traits { pub mod iterator { pub trait Iterator {} } } }
+pub struct SomeIter;
+impl self::iter::traits::iterator::Iterator for SomeIter {}
+//- /lib.rs crate:main deps:core
+use core::SomeIter;
+fn main() {
+    let iter = SomeIter;
+    iter.for_each$0(|(x, y)| {
+        println!("x: {}, y: {}", x, y);
+    });
+}
+"#####,
+        r#####"
+use core::SomeIter;
+fn main() {
+    let iter = SomeIter;
+    for (x, y) in iter {
+        println!("x: {}, y: {}", x, y);
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",
