@@ -1,8 +1,9 @@
 use crate::leb128::{self, max_leb128_len};
 use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufReader, Read, Seek, SeekFrom, Write};
 use std::mem::MaybeUninit;
 use std::path::Path;
 use std::ptr;
@@ -681,29 +682,138 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 }
 
 pub struct FileDecoder {
-    pub file: BufReader<File>,
+    file: File,
+    buf: Box<[u8]>,
+    pos: usize,
+    cap: usize,
 }
 
 impl FileDecoder {
     #[inline]
     pub fn new(file: BufReader<File>) -> Self {
-        FileDecoder { file }
+        const CAP: usize = 8 * 1024;
+        let mut buf = Vec::with_capacity(CAP);
+        buf.resize(CAP, 0u8);
+        let old_buf = file.buffer();
+        let len = old_buf.len();
+        buf[..len].copy_from_slice(old_buf);
+        let file = file.into_inner();
+        FileDecoder { file, buf: buf.into(), pos: 0, cap: len }
     }
 
     #[inline]
     pub fn advance(&mut self, bytes: usize) {
-        self.file.consume(bytes)
+        self.pos += bytes;
+        debug_assert!(self.pos <= self.cap);
+    }
+
+    #[inline]
+    pub fn read_all(self) -> Result<(Box<[u8]>, usize), io::Error> {
+        let mut file = self.file;
+        let start_pos = file.seek(SeekFrom::Current(0))?;
+        let start_pos = start_pos.try_into().unwrap();
+        file.seek(SeekFrom::Start(0))?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes)?;
+        Ok((bytes.into(), start_pos))
+    }
+
+    #[inline]
+    fn read_byte(&mut self) -> Result<u8, io::Error> {
+        if self.pos < self.cap {
+            let c = self.buf[self.pos];
+            self.pos += 1;
+            Ok(c)
+        } else {
+            let read = self.file.read(&mut self.buf)?;
+            self.pos = 0;
+            self.cap = read;
+            Ok(self.buf[0])
+        }
+    }
+
+    fn read_exact(&mut self, mut out: &mut [u8]) -> Result<(), io::Error> {
+        loop {
+            let len = out.len();
+            if len == 0 {
+                return Ok(());
+            } else if self.pos + len < self.cap {
+                out.copy_from_slice(&self.buf[self.pos..self.pos + len]);
+                self.pos += len;
+                return Ok(());
+            }
+
+            let available = self.cap - self.pos;
+            out[..available].copy_from_slice(&self.buf[self.pos..self.cap]);
+            self.pos += len;
+
+            // Re-fill the buffer starting from zero.
+            let read = self.file.read(&mut self.buf)?;
+            self.pos = 0;
+            self.cap = read;
+            out = &mut out[available..];
+        }
+    }
+
+    /// Read the buffer until we encounter a byte with its top bit unset.
+    #[inline]
+    fn read_for_leb128(&mut self) -> Result<&[u8], io::Error> {
+        self.fill_for_leb128()?;
+        Ok(&self.buf[self.pos..self.cap])
+    }
+
+    /// Fill the buffer until we encounter a byte with its top bit unset.
+    /// Fast path.
+    #[inline]
+    fn fill_for_leb128(&mut self) -> Result<(), io::Error> {
+        let buf = &mut self.buf[..];
+        let known = &buf[self.pos..self.cap];
+        if std::intrinsics::likely(known.iter().any(|c| c & 0x80 == 0)) {
+            return Ok(());
+        }
+
+        self.fill_more_for_leb128()
+    }
+
+    /// Fill the buffer until we encounter a byte with its top bit unset.
+    /// Slow path.
+    #[cold]
+    fn fill_more_for_leb128(&mut self) -> Result<(), io::Error> {
+        let buf = &mut self.buf[..];
+        let max = leb128::max_leb128_len();
+        if self.pos + max >= self.cap {
+            // The buffer should be large enough.
+            debug_assert!(self.pos > max);
+            let len = self.cap - self.pos;
+            let (start, end) = buf.split_at_mut(self.pos);
+            start[..len].copy_from_slice(&end[..len]);
+            self.pos = 0;
+            self.cap = len;
+        }
+
+        // We've reached the end of our internal buffer then we need to fetch
+        // some more data from the file.
+        loop {
+            let read = self.file.read(&mut buf[self.cap..])?;
+            self.cap += read;
+
+            if read == 0 {
+                return Err(io::Error::new(io::ErrorKind::UnexpectedEof, ""));
+            }
+
+            let known = &mut buf[self.pos..self.cap];
+            if known.iter().any(|c| c & 0x80 == 0) {
+                return Ok(());
+            }
+        }
     }
 }
 
 macro_rules! read_leb128 {
     ($dec:expr, $fun:ident, $ty:ty) => {{
-        let mut buf = $dec.file.buffer();
-        if buf.len() < max_leb128_len!($ty) {
-            buf = $dec.file.fill_buf()?;
-        }
-        let (value, bytes_read): ($ty, usize) = leb128::$fun(&buf);
-        $dec.file.consume(bytes_read);
+        let buf = $dec.read_for_leb128()?;
+        let (value, bytes_read): ($ty, usize) = leb128::$fun(buf);
+        $dec.advance(bytes_read);
         Ok(value)
     }};
 }
@@ -738,9 +848,7 @@ impl serialize::Decoder for FileDecoder {
 
     #[inline]
     fn read_u8(&mut self) -> Result<u8, Self::Error> {
-        let mut value = [0; 1];
-        self.file.read_exact(&mut value)?;
-        let [value] = value;
+        let value = self.read_byte()?;
         Ok(value)
     }
 
@@ -809,7 +917,7 @@ impl serialize::Decoder for FileDecoder {
         let len = self.read_usize()?;
         let mut buf = Vec::new();
         buf.resize(len, 0u8);
-        self.file.read_exact(&mut buf)?;
+        self.read_exact(&mut buf)?;
         let s = String::from_utf8(buf).unwrap();
         Ok(Cow::Owned(s))
     }
@@ -821,7 +929,7 @@ impl serialize::Decoder for FileDecoder {
 
     #[inline]
     fn read_raw_bytes(&mut self, s: &mut [MaybeUninit<u8>]) -> Result<(), Self::Error> {
-        self.file.read_exact(unsafe { MaybeUninit::slice_assume_init_mut(s) })
+        self.read_exact(unsafe { MaybeUninit::slice_assume_init_mut(s) })
     }
 }
 
