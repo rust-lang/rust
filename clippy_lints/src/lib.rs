@@ -291,6 +291,7 @@ mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
 mod needless_continue;
+mod needless_for_each;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -781,7 +782,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &methods::CLONE_DOUBLE_REF,
         &methods::CLONE_ON_COPY,
         &methods::CLONE_ON_REF_PTR,
-        &methods::EXCESSIVE_FOR_EACH,
         &methods::EXPECT_FUN_CALL,
         &methods::EXPECT_USED,
         &methods::FILETYPE_IS_FILE,
@@ -868,6 +868,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &needless_borrow::NEEDLESS_BORROW,
         &needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         &needless_continue::NEEDLESS_CONTINUE,
+        &needless_for_each::NEEDLESS_FOR_EACH,
         &needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         &needless_question_mark::NEEDLESS_QUESTION_MARK,
         &needless_update::NEEDLESS_UPDATE,
@@ -1046,6 +1047,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box ptr_eq::PtrEq);
     store.register_late_pass(|| box needless_bool::NeedlessBool);
     store.register_late_pass(|| box needless_bool::BoolComparison);
+    store.register_late_pass(|| box needless_for_each::NeedlessForEach);
     store.register_late_pass(|| box approx_const::ApproxConstant);
     store.register_late_pass(|| box misc::MiscLints);
     store.register_late_pass(|| box eta_reduction::EtaReduction);
@@ -1314,7 +1316,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&matches::WILDCARD_ENUM_MATCH_ARM),
         LintId::of(&mem_forget::MEM_FORGET),
         LintId::of(&methods::CLONE_ON_REF_PTR),
-        LintId::of(&methods::EXCESSIVE_FOR_EACH),
         LintId::of(&methods::EXPECT_USED),
         LintId::of(&methods::FILETYPE_IS_FILE),
         LintId::of(&methods::GET_UNWRAP),
@@ -1325,6 +1326,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
         LintId::of(&missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS),
         LintId::of(&modulo_arithmetic::MODULO_ARITHMETIC),
+        LintId::of(&needless_for_each::NEEDLESS_FOR_EACH),
         LintId::of(&panic_in_result_fn::PANIC_IN_RESULT_FN),
         LintId::of(&panic_unimplemented::PANIC),
         LintId::of(&panic_unimplemented::TODO),
