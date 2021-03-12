@@ -788,7 +788,8 @@ fn for_each_late_bound_region_defined_on<'tcx>(
     fn_def_id: DefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    if let Some((owner, late_bounds)) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
+    let map = tcx.is_late_bound_map(fn_def_id.expect_local());
+    if let Some((owner, late_bounds)) = map {
         for &late_bound in late_bounds.iter() {
             let hir_id = HirId { owner, local_id: late_bound };
             let name = tcx.hir().name(hir_id);

@@ -12,7 +12,6 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefIdMap, LOCAL_CRATE};
-use rustc_hir::hir_id::ItemLocalId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
@@ -21,7 +20,7 @@ use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -282,23 +281,11 @@ type ScopeRef<'a> = &'a Scope<'a>;
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers {
-        resolve_lifetimes,
-
-        named_region_map: |tcx, id| tcx.resolve_lifetimes(LOCAL_CRATE).defs.get(&id),
-        is_late_bound_map,
-        object_lifetime_defaults_map: |tcx, id| {
-            tcx.resolve_lifetimes(LOCAL_CRATE).object_lifetime_defaults.get(&id)
-        },
-
-        ..*providers
-    };
+    *providers = ty::query::Providers { resolve_lifetimes, ..*providers };
 }
 
 /// Computes the `ResolveLifetimes` map that contains data for the
-/// entire crate. You should not read the result of this query
-/// directly, but rather use `named_region_map`, `is_late_bound_map`,
-/// etc.
+/// entire crate.
 fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> ResolveLifetimes {
     assert_eq!(for_krate, LOCAL_CRATE);
 
@@ -320,32 +307,6 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, for_krate: CrateNum) -> ResolveLifetimes {
     }
 
     rl
-}
-
-fn is_late_bound_map<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
-    match tcx.def_kind(def_id) {
-        DefKind::AnonConst => {
-            let mut def_id = tcx
-                .parent(def_id.to_def_id())
-                .unwrap_or_else(|| bug!("anon const or closure without a parent"));
-            // We search for the next outer anon const or fn here
-            // while skipping closures.
-            //
-            // Note that for `AnonConst` we still just recurse until we
-            // find a function body, but who cares :shrug:
-            while tcx.is_closure(def_id) {
-                def_id = tcx
-                    .parent(def_id)
-                    .unwrap_or_else(|| bug!("anon const or closure without a parent"));
-            }
-
-            tcx.is_late_bound_map(def_id.expect_local())
-        }
-        _ => tcx.resolve_lifetimes(LOCAL_CRATE).late_bound.get(&def_id).map(|lt| (def_id, lt)),
-    }
 }
 
 fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {

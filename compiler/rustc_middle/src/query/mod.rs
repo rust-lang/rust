@@ -1239,18 +1239,6 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         desc { "resolving lifetimes" }
     }
-    query named_region_map(_: LocalDefId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, Region>> {
-        desc { "looking up a named region" }
-    }
-    query is_late_bound_map(_: LocalDefId) ->
-        Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
-        desc { "testing if a region is late bound" }
-    }
-    query object_lifetime_defaults_map(_: LocalDefId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
-        desc { "looking up lifetime defaults for a region" }
-    }
 
     query visibility(def_id: DefId) -> ty::Visibility {
         eval_always

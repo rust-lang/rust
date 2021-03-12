@@ -10,7 +10,7 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
 use crate::middle::region;
-use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
+use crate::middle::resolve_lifetime::ResolveLifetimes;
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;

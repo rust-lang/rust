@@ -2618,16 +2618,55 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn named_region(self, id: HirId) -> Option<resolve_lifetime::Region> {
-        self.named_region_map(id.owner).and_then(|map| map.get(&id.local_id).cloned())
+        self.resolve_lifetimes(LOCAL_CRATE)
+            .defs
+            .get(&id.owner)
+            .and_then(|map| map.get(&id.local_id).cloned())
+    }
+
+    pub fn is_late_bound_map(
+        self,
+        mut local_def_id: LocalDefId,
+    ) -> Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+        loop {
+            match self.def_kind(local_def_id) {
+                DefKind::AnonConst => {
+                    let mut def_id = self
+                        .parent(local_def_id.to_def_id())
+                        .unwrap_or_else(|| bug!("anon const or closure without a parent"));
+                    // We search for the next outer anon const or fn here
+                    // while skipping closures.
+                    //
+                    // Note that for `AnonConst` we still just recurse until we
+                    // find a function body, but who cares :shrug:
+                    while self.is_closure(def_id) {
+                        def_id = self
+                            .parent(def_id)
+                            .unwrap_or_else(|| bug!("anon const or closure without a parent"));
+                    }
+
+                    local_def_id = def_id.expect_local()
+                }
+                _ => {
+                    break self
+                        .resolve_lifetimes(LOCAL_CRATE)
+                        .late_bound
+                        .get(&local_def_id)
+                        .map(|lt| (local_def_id, lt));
+                }
+            }
+        }
     }
 
     pub fn is_late_bound(self, id: HirId) -> bool {
-        self.is_late_bound_map(id.owner)
-            .map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
+        let map = self.is_late_bound_map(id.owner);
+        map.map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
     }
 
     pub fn object_lifetime_defaults(self, id: HirId) -> Option<&'tcx [ObjectLifetimeDefault]> {
-        self.object_lifetime_defaults_map(id.owner)
+        self.resolve_lifetimes(LOCAL_CRATE)
+            .object_lifetime_defaults
+            .get(&id.owner)
             .and_then(|map| map.get(&id.local_id).map(|v| &**v))
     }
 }
