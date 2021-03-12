@@ -33,13 +33,13 @@ pub(super) mod tls;
 mod interner;
 mod mapping;
 
-pub(super) trait ToChalk {
+pub(crate) trait ToChalk {
     type Chalk;
     fn to_chalk(self, db: &dyn HirDatabase) -> Self::Chalk;
     fn from_chalk(db: &dyn HirDatabase, chalk: Self::Chalk) -> Self;
 }
 
-pub(super) fn from_chalk<T, ChalkT>(db: &dyn HirDatabase, chalk: ChalkT) -> T
+pub(crate) fn from_chalk<T, ChalkT>(db: &dyn HirDatabase, chalk: ChalkT) -> T
 where
     T: ToChalk<Chalk = ChalkT>,
 {

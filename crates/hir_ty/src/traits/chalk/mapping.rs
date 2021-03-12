@@ -17,7 +17,7 @@ use crate::{
     primitive::UintTy,
     traits::{Canonical, Obligation},
     AliasTy, CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy,
-    OpaqueTyId, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment, TraitRef, Ty,
+    OpaqueTyId, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -536,31 +536,6 @@ where
     }
 }
 
-impl ToChalk for Arc<TraitEnvironment> {
-    type Chalk = chalk_ir::Environment<Interner>;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Environment<Interner> {
-        let mut clauses = Vec::new();
-        for pred in &self.predicates {
-            if pred.is_error() {
-                // for env, we just ignore errors
-                continue;
-            }
-            let program_clause: chalk_ir::ProgramClause<Interner> =
-                pred.clone().to_chalk(db).cast(&Interner);
-            clauses.push(program_clause.into_from_env_clause(&Interner));
-        }
-        chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses)
-    }
-
-    fn from_chalk(
-        _db: &dyn HirDatabase,
-        _env: chalk_ir::Environment<Interner>,
-    ) -> Arc<TraitEnvironment> {
-        unimplemented!()
-    }
-}
-
 impl<T: ToChalk> ToChalk for InEnvironment<T>
 where
     T::Chalk: chalk_ir::interner::HasInterner<Interner = Interner>,
@@ -569,19 +544,16 @@ where
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::InEnvironment<T::Chalk> {
         chalk_ir::InEnvironment {
-            environment: self.environment.to_chalk(db),
+            environment: self.environment.env.clone(),
             goal: self.value.to_chalk(db),
         }
     }
 
     fn from_chalk(
-        db: &dyn HirDatabase,
-        in_env: chalk_ir::InEnvironment<T::Chalk>,
+        _db: &dyn HirDatabase,
+        _in_env: chalk_ir::InEnvironment<T::Chalk>,
     ) -> InEnvironment<T> {
-        InEnvironment {
-            environment: from_chalk(db, in_env.environment),
-            value: from_chalk(db, in_env.goal),
-        }
+        unimplemented!()
     }
 }
 

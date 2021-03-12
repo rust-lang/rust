@@ -38,22 +38,25 @@ fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
 /// fn foo<T: Default>(t: T) {}
 /// ```
 /// we assume that `T: Default`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitEnvironment {
-    pub predicates: Vec<GenericPredicate>,
+    // When we're using Chalk's Ty we can make this a BTreeMap since it's Ord,
+    // but for now it's too annoying...
+    pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
+    pub(crate) env: chalk_ir::Environment<Interner>,
 }
 
 impl TraitEnvironment {
-    /// Returns trait refs with the given self type which are supposed to hold
-    /// in this trait env. E.g. if we are in `foo<T: SomeTrait>()`, this will
-    /// find that `T: SomeTrait` if we call it for `T`.
-    pub(crate) fn trait_predicates_for_self_ty<'a>(
+    pub(crate) fn traits_in_scope_from_clauses<'a>(
         &'a self,
         ty: &'a Ty,
-    ) -> impl Iterator<Item = &'a TraitRef> + 'a {
-        self.predicates.iter().filter_map(move |pred| match pred {
-            GenericPredicate::Implemented(tr) if tr.self_ty() == ty => Some(tr),
-            _ => None,
+    ) -> impl Iterator<Item = TraitId> + 'a {
+        self.traits_from_clauses.iter().filter_map(move |(self_ty, trait_id)| {
+            if self_ty == ty {
+                Some(*trait_id)
+            } else {
+                None
+            }
         })
     }
 }
