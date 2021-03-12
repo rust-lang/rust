@@ -528,8 +528,7 @@ fn iterate_trait_method_candidates(
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
     let env_traits = if let Ty::Placeholder(_) = self_ty.value {
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
-        env.trait_predicates_for_self_ty(&self_ty.value)
-            .map(|tr| tr.trait_)
+        env.traits_in_scope_from_clauses(&self_ty.value)
             .flat_map(|t| all_super_traits(db.upcast(), t))
             .collect()
     } else {

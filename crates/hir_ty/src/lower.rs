@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::Mutability;
+use chalk_ir::{cast::Cast, Mutability};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -27,6 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
+    traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
         make_mut_slice, variant_data,
@@ -914,10 +915,21 @@ impl TraitEnvironment {
     pub fn lower(db: &dyn HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
         let ctx = TyLoweringContext::new(db, &resolver)
             .with_type_param_mode(TypeParamLoweringMode::Placeholder);
-        let mut predicates = resolver
-            .where_predicates_in_scope()
-            .flat_map(|pred| GenericPredicate::from_where_predicate(&ctx, pred))
-            .collect::<Vec<_>>();
+        let mut traits_in_scope = Vec::new();
+        let mut clauses = Vec::new();
+        for pred in resolver.where_predicates_in_scope() {
+            for pred in GenericPredicate::from_where_predicate(&ctx, pred) {
+                if pred.is_error() {
+                    continue;
+                }
+                if let GenericPredicate::Implemented(tr) = &pred {
+                    traits_in_scope.push((tr.self_ty().clone(), tr.trait_));
+                }
+                let program_clause: chalk_ir::ProgramClause<Interner> =
+                    pred.clone().to_chalk(db).cast(&Interner);
+                clauses.push(program_clause.into_from_env_clause(&Interner));
+            }
+        }
 
         if let Some(def) = resolver.generic_def() {
             let container: Option<AssocContainerId> = match def {
@@ -938,12 +950,15 @@ impl TraitEnvironment {
                 let substs = Substs::type_params(db, trait_id);
                 let trait_ref = TraitRef { trait_: trait_id, substs };
                 let pred = GenericPredicate::Implemented(trait_ref);
-
-                predicates.push(pred);
+                let program_clause: chalk_ir::ProgramClause<Interner> =
+                    pred.clone().to_chalk(db).cast(&Interner);
+                clauses.push(program_clause.into_from_env_clause(&Interner));
             }
         }
 
-        Arc::new(TraitEnvironment { predicates })
+        let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
+
+        Arc::new(TraitEnvironment { traits_from_clauses: traits_in_scope, env })
     }
 }
 
