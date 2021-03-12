@@ -2,8 +2,11 @@ error: type alias is never used: `Unused`
   --> $DIR/type-alias.rs:4:1
    |
 LL | type Unused = u8;
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_Unused`
    |
+   = note: the leading underscore helps signal to the reader that the type alias may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the type alias
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/type-alias.rs:1:9
    |

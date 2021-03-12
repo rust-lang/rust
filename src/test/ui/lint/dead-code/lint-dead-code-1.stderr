@@ -2,8 +2,11 @@ error: struct is never constructed: `Bar`
   --> $DIR/lint-dead-code-1.rs:12:16
    |
 LL |     pub struct Bar;
-   |                ^^^
+   |                ^^^ help: if this is intentional, prefix it with an underscore: `_Bar`
    |
+   = note: the leading underscore helps signal to the reader that the struct may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the struct
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/lint-dead-code-1.rs:5:9
    |
@@ -14,55 +17,91 @@ error: static is never used: `priv_static`
   --> $DIR/lint-dead-code-1.rs:20:1
    |
 LL | static priv_static: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_priv_static`
+   |
+   = note: the leading underscore helps signal to the reader that the static may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the static
+           is only used through FFI or used only for its effect when dropped)
 
 error: constant is never used: `priv_const`
   --> $DIR/lint-dead-code-1.rs:27:1
    |
 LL | const priv_const: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_priv_const`
+   |
+   = note: the leading underscore helps signal to the reader that the constant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the constant
+           is only used through FFI or used only for its effect when dropped)
 
 error: struct is never constructed: `PrivStruct`
   --> $DIR/lint-dead-code-1.rs:35:8
    |
 LL | struct PrivStruct;
-   |        ^^^^^^^^^^
+   |        ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_PrivStruct`
+   |
+   = note: the leading underscore helps signal to the reader that the struct may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the struct
+           is only used through FFI or used only for its effect when dropped)
 
 error: enum is never used: `priv_enum`
   --> $DIR/lint-dead-code-1.rs:64:6
    |
 LL | enum priv_enum { foo2, bar2 }
-   |      ^^^^^^^^^
+   |      ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_priv_enum`
+   |
+   = note: the leading underscore helps signal to the reader that the enum may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the enum
+           is only used through FFI or used only for its effect when dropped)
 
 error: variant is never constructed: `bar3`
   --> $DIR/lint-dead-code-1.rs:67:5
    |
 LL |     bar3
-   |     ^^^^
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_bar3`
+   |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 
 error: function is never used: `priv_fn`
   --> $DIR/lint-dead-code-1.rs:88:4
    |
 LL | fn priv_fn() {
-   |    ^^^^^^^
+   |    ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_priv_fn`
+   |
+   = note: the leading underscore helps signal to the reader that the function may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the function
+           is only used through FFI or used only for its effect when dropped)
 
 error: function is never used: `foo`
   --> $DIR/lint-dead-code-1.rs:93:4
    |
 LL | fn foo() {
-   |    ^^^
+   |    ^^^ help: if this is intentional, prefix it with an underscore: `_foo`
+   |
+   = note: the leading underscore helps signal to the reader that the function may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the function
+           is only used through FFI or used only for its effect when dropped)
 
 error: function is never used: `bar`
   --> $DIR/lint-dead-code-1.rs:98:4
    |
 LL | fn bar() {
-   |    ^^^
+   |    ^^^ help: if this is intentional, prefix it with an underscore: `_bar`
+   |
+   = note: the leading underscore helps signal to the reader that the function may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the function
+           is only used through FFI or used only for its effect when dropped)
 
 error: function is never used: `baz`
   --> $DIR/lint-dead-code-1.rs:102:4
    |
 LL | fn baz() -> impl Copy {
-   |    ^^^
+   |    ^^^ help: if this is intentional, prefix it with an underscore: `_baz`
+   |
+   = note: the leading underscore helps signal to the reader that the function may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the function
+           is only used through FFI or used only for its effect when dropped)
 
 error: aborting due to 10 previous errors
 

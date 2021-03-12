@@ -2,8 +2,11 @@ error: enum is never used: `E`
   --> $DIR/empty-unused-enum.rs:3:6
    |
 LL | enum E {}
-   |      ^
+   |      ^ help: if this is intentional, prefix it with an underscore: `_E`
    |
+   = note: the leading underscore helps signal to the reader that the enum may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the enum
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/empty-unused-enum.rs:1:9
    |
