@@ -19,6 +19,7 @@ use hir_def::{
     item_scope::ItemScope,
     keys,
     nameres::DefMap,
+    src::HasSource,
     AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::{db::AstDatabase, InFile};
@@ -195,18 +196,15 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
-            let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id).syntax().text_range().start()
+            loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::ConstId(it) => {
             let loc = it.lookup(&db);
-            let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id).syntax().text_range().start()
+            loc.source(&db).value.syntax().text_range().start()
         }
         DefWithBodyId::StaticId(it) => {
             let loc = it.lookup(&db);
-            let tree = db.item_tree(loc.id.file_id);
-            tree.source(&db, loc.id).syntax().text_range().start()
+            loc.source(&db).value.syntax().text_range().start()
         }
     });
     for def in defs {
