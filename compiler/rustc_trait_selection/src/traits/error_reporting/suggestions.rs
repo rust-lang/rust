@@ -1908,7 +1908,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if is_const_fn {
                     err.help(
-                        "consider creating a new `const` item and initializing with the result \
+                        "consider creating a new `const` item and initializing it with the result \
                         of the function call to be used in the repeat position, like \
                         `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
                     );
@@ -1916,7 +1916,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if self.tcx.sess.is_nightly_build() && is_const_fn {
                     err.help(
-                        "create an inline `const` block, see PR \
+                        "create an inline `const` block, see RFC \
                         #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
                         for more information",
                     );
