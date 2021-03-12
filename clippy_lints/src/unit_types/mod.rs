@@ -1,18 +1,17 @@
+mod let_unit_value;
 mod utils;
 
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, MatchSource, Node, Stmt, StmtKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 
 use if_chain::if_chain;
 
 use crate::utils::diagnostics::{span_lint, span_lint_and_then};
-use crate::utils::higher;
-use crate::utils::source::{indent_of, reindent_multiline, snippet_opt, snippet_with_macro_callsite};
+use crate::utils::source::{indent_of, reindent_multiline, snippet_opt};
 
 use utils::{is_unit, is_unit_literal};
 
@@ -35,37 +34,11 @@ declare_clippy_lint! {
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
-declare_lint_pass!(LetUnitValue => [LET_UNIT_VALUE]);
+declare_lint_pass!(UnitTypes => [LET_UNIT_VALUE]);
 
-impl<'tcx> LateLintPass<'tcx> for LetUnitValue {
+impl<'tcx> LateLintPass<'tcx> for UnitTypes {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if let StmtKind::Local(ref local) = stmt.kind {
-            if is_unit(cx.typeck_results().pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
-                    return;
-                }
-                if higher::is_from_for_desugar(local) {
-                    return;
-                }
-                span_lint_and_then(
-                    cx,
-                    LET_UNIT_VALUE,
-                    stmt.span,
-                    "this let-binding has unit value",
-                    |diag| {
-                        if let Some(expr) = &local.init {
-                            let snip = snippet_with_macro_callsite(cx, expr.span, "()");
-                            diag.span_suggestion(
-                                stmt.span,
-                                "omit the `let` binding",
-                                format!("{};", snip),
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        }
-                    },
-                );
-            }
-        }
+        let_unit_value::check(cx, stmt);
     }
 }
 
