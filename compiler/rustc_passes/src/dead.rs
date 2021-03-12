@@ -589,10 +589,11 @@ impl DeadVisitor<'tcx> {
                     Applicability::MachineApplicable,
                 )
                 .note(&format!(
-                    "the leading underscore helps signal to the reader that the {} may still serve\n\
-                    a purpose even if it isn't used in a way that we can detect (e.g. the {}\nis \
-                    only used through FFI or used only for its effect when dropped)",
-                    descr, descr,
+                    "The leading underscore signals to the reader that while the {} may not be {}\n\
+                    by any Rust code, it still serves some other purpose that isn't detected by rustc.\n\
+                    (e.g. some values are used for their effect when dropped or used in FFI code\n\
+                    exclusively through raw pointers)",
+                    descr, participle,
                 ));
                 // Force the note we added to the front, before any other subdiagnostics
                 diag.children.rotate_right(1);
