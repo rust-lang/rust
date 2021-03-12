@@ -1264,6 +1264,14 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
 }
 
+extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
+                                           LLVMRustCodeModel Model) {
+  auto CM = fromRust(Model);
+  if (!CM.hasValue())
+    return;
+  unwrap(M)->setCodeModel(*CM);
+}
+
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
 // right now. This ThinLTO support is only enabled on "recent ish" versions of
 // LLVM, and otherwise it's just blanket rejected from other compilers.
