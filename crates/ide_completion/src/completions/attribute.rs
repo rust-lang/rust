@@ -168,20 +168,20 @@ fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input:
             );
             let lookup = components.join(", ");
             let label = components.iter().rev().join(", ");
-            let mut builder =
+            let mut item =
                 CompletionItem::new(CompletionKind::Attribute, ctx.source_range(), label);
-            builder.lookup_by(lookup).kind(CompletionItemKind::Attribute);
-            builder.add_to(acc);
+            item.lookup_by(lookup).kind(CompletionItemKind::Attribute);
+            item.add_to(acc);
         }
 
         for custom_derive_name in get_derive_names_in_scope(ctx).difference(&existing_derives) {
-            let mut builder = CompletionItem::new(
+            let mut item = CompletionItem::new(
                 CompletionKind::Attribute,
                 ctx.source_range(),
                 custom_derive_name,
             );
-            builder.kind(CompletionItemKind::Attribute);
-            builder.add_to(acc);
+            item.kind(CompletionItemKind::Attribute);
+            item.add_to(acc);
         }
     }
 }
@@ -197,13 +197,13 @@ fn complete_lint(
             .into_iter()
             .filter(|completion| !existing_lints.contains(completion.label))
         {
-            let mut builder = CompletionItem::new(
+            let mut item = CompletionItem::new(
                 CompletionKind::Attribute,
                 ctx.source_range(),
                 lint_completion.label,
             );
-            builder.kind(CompletionItemKind::Attribute).detail(lint_completion.description);
-            builder.add_to(acc)
+            item.kind(CompletionItemKind::Attribute).detail(lint_completion.description);
+            item.add_to(acc)
         }
     }
 }

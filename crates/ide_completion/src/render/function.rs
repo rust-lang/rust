@@ -41,13 +41,12 @@ impl<'a> FunctionRender<'a> {
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
         let params = self.params();
-        let mut builder = CompletionItem::new(
+        let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
             self.name.clone(),
         );
-        builder
-            .kind(self.kind())
+        item.kind(self.kind())
             .set_documentation(self.ctx.docs(self.func))
             .set_deprecated(
                 self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
@@ -56,7 +55,7 @@ impl<'a> FunctionRender<'a> {
             .add_call_parens(self.ctx.completion, self.name, params)
             .add_import(import_to_add);
 
-        builder.build()
+        item.build()
     }
 
     fn detail(&self) -> String {

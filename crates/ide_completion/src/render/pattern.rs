@@ -69,20 +69,19 @@ fn build_completion(
     ctx: RenderContext<'_>,
     name: String,
     pat: String,
-    item: impl HasAttrs + Copy,
+    def: impl HasAttrs + Copy,
 ) -> CompletionItem {
-    let mut completion = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name);
-    completion
-        .kind(CompletionItemKind::Binding)
-        .set_documentation(ctx.docs(item))
-        .set_deprecated(ctx.is_deprecated(item))
+    let mut item = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), name);
+    item.kind(CompletionItemKind::Binding)
+        .set_documentation(ctx.docs(def))
+        .set_deprecated(ctx.is_deprecated(def))
         .detail(&pat);
     if let Some(snippet_cap) = ctx.snippet_cap() {
-        completion.insert_snippet(snippet_cap, pat);
+        item.insert_snippet(snippet_cap, pat);
     } else {
-        completion.insert_text(pat);
+        item.insert_text(pat);
     };
-    completion.build()
+    item.build()
 }
 
 fn render_pat(

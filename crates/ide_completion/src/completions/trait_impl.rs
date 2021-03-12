@@ -145,8 +145,8 @@ fn add_function_impl(
         format!("fn {}(..)", fn_name)
     };
 
-    let mut builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label);
-    builder.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
+    let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label);
+    item.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
 
     let completion_kind = if func.self_param(ctx.db).is_some() {
         CompletionItemKind::Method
@@ -160,15 +160,15 @@ fn add_function_impl(
         match ctx.config.snippet_cap {
             Some(cap) => {
                 let snippet = format!("{} {{\n    $0\n}}", function_decl);
-                builder.snippet_edit(cap, TextEdit::replace(range, snippet));
+                item.snippet_edit(cap, TextEdit::replace(range, snippet));
             }
             None => {
                 let header = format!("{} {{", function_decl);
-                builder.text_edit(TextEdit::replace(range, header));
+                item.text_edit(TextEdit::replace(range, header));
             }
         };
-        builder.kind(completion_kind);
-        builder.add_to(acc);
+        item.kind(completion_kind);
+        item.add_to(acc);
     }
 }
 
@@ -184,14 +184,12 @@ fn add_type_alias_impl(
 
     let range = TextRange::new(type_def_node.text_range().start(), ctx.source_range().end());
 
-    let mut builder =
-        CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
-    builder
-        .text_edit(TextEdit::replace(range, snippet))
+    let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
+    item.text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
         .kind(SymbolKind::TypeAlias)
         .set_documentation(type_alias.docs(ctx.db));
-    builder.add_to(acc);
+    item.add_to(acc);
 }
 
 fn add_const_impl(
@@ -209,14 +207,13 @@ fn add_const_impl(
             let range =
                 TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
 
-            let mut builder =
+            let mut item =
                 CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
-            builder
-                .text_edit(TextEdit::replace(range, snippet))
+            item.text_edit(TextEdit::replace(range, snippet))
                 .lookup_by(const_name)
                 .kind(SymbolKind::Const)
                 .set_documentation(const_.docs(ctx.db));
-            builder.add_to(acc);
+            item.add_to(acc);
         }
     }
 }

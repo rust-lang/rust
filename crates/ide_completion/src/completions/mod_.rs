@@ -80,10 +80,9 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
             if mod_under_caret.semicolon_token().is_none() {
                 label.push(';');
             }
-            let mut builder =
-                CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label);
-            builder.kind(SymbolKind::Module);
-            builder.add_to(acc)
+            let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), &label);
+            item.kind(SymbolKind::Module);
+            item.add_to(acc)
         });
 
     Some(())
