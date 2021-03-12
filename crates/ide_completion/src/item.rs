@@ -122,14 +122,6 @@ impl fmt::Debug for CompletionItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
-pub enum CompletionScore {
-    /// If only type match
-    TypeMatch,
-    /// If type and name match
-    TypeAndNameMatch,
-}
-
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Default)]
 pub struct CompletionRelevance {
     /// This is set in cases like these:

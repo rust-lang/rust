@@ -23,10 +23,7 @@ use crate::{completions::Completions, context::CompletionContext, item::Completi
 
 pub use crate::{
     config::CompletionConfig,
-    item::{
-        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionScore, ImportEdit,
-        InsertTextFormat,
-    },
+    item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit, InsertTextFormat},
 };
 
 //FIXME: split the following feature into fine-grained features.
