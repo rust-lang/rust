@@ -97,13 +97,13 @@ See [RFC](https://github.com/rust-lang/rfcs/pull/2256) and [./syntax.md](./synta
 
 - [rowan](https://github.com/rust-analyzer/rowan) library is used for constructing syntax trees.
 - `ast` provides a type safe API on top of the raw `rowan` tree.
-- `ungrammar` description of the grammar, which is used to generate `syntax_kinds` and `ast` modules, using `cargo xtask codegen` command.
+- `ungrammar` description of the grammar, which is used to generate `syntax_kinds` and `ast` modules, using `cargo test -p xtask` command.
 
 Tests for ra_syntax are mostly data-driven.
 `test_data/parser` contains subdirectories with a bunch of `.rs` (test vectors) and `.txt` files with corresponding syntax trees.
 During testing, we check `.rs` against `.txt`.
 If the `.txt` file is missing, it is created (this is how you update tests).
-Additionally, running `cargo xtask codegen` will walk the grammar module and collect all `// test test_name` comments into files inside `test_data/parser/inline` directory.
+Additionally, running the xtask test suite with `cargo test -p xtask` will walk the grammar module and collect all `// test test_name` comments into files inside `test_data/parser/inline` directory.
 
 To update test data, run with `UPDATE_EXPECT` variable:
 
@@ -111,7 +111,7 @@ To update test data, run with `UPDATE_EXPECT` variable:
 env UPDATE_EXPECT=1 cargo qt
 ```
 
-After adding a new inline test you need to run `cargo xtest codegen` and also update the test data as described above.
+After adding a new inline test you need to run `cargo test -p xtask` and also update the test data as described above.
 
 Note  [`api_walkthrough`](https://github.com/rust-analyzer/rust-analyzer/blob/2fb6af89eb794f775de60b82afe56b6f986c2a40/crates/ra_syntax/src/lib.rs#L190-L348)
 in particular: it shows off various methods of working with syntax tree.

@@ -19,7 +19,7 @@ The LSP allows various code editors, like VS Code, Emacs or Vim, to implement se
 To improve this document, send a pull request: +
 https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/manual.adoc[https://github.com/rust-analyzer/.../manual.adoc]
 
-The manual is written in https://asciidoc.org[AsciiDoc] and includes some extra files which are generated from the source code. Run `cargo test` and `cargo xtask codegen` to create these and then `asciidoctor manual.adoc` to create an HTML copy.
+The manual is written in https://asciidoc.org[AsciiDoc] and includes some extra files which are generated from the source code. Run `cargo test` and `cargo test -p xtask` to create these and then `asciidoctor manual.adoc` to create an HTML copy.
 
 ====
 

@@ -62,7 +62,7 @@ pub(crate) fn ensure_file_contents(file: &Path, contents: &str) -> Result<()> {
         let _ = std::fs::create_dir_all(parent);
     }
     std::fs::write(file, contents).unwrap();
-    anyhow::bail!("some file were not up to date")
+    anyhow::bail!("some file was not up to date and has been updated, simply re-run the tests")
 }
 
 fn normalize_newlines(s: &str) -> String {

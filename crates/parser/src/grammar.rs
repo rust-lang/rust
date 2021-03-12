@@ -18,7 +18,7 @@
 //! // fn foo() {}
 //! ```
 //!
-//! After adding a new inline-test, run `cargo xtask codegen` to
+//! After adding a new inline-test, run `cargo test -p xtask` to
 //! extract it as a standalone text-fixture into
 //! `crates/syntax/test_data/parser/`, and run `cargo test` once to
 //! create the "gold" value.

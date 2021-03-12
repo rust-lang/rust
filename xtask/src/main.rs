@@ -1,7 +1,7 @@
 //! See https://github.com/matklad/cargo-xtask/.
 //!
 //! This binary defines various auxiliary build commands, which are not
-//! expressible with just `cargo`. Notably, it provides `cargo xtask codegen`
+//! expressible with just `cargo`. Notably, it provides tests via `cargo test -p xtask`
 //! for code generation and `cargo xtask install` for installation of
 //! rust-analyzer server and client.
 //!
