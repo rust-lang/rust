@@ -145,28 +145,34 @@ impl<'a> Render<'a> {
     fn add_field(&mut self, field: hir::Field, ty: &Type) -> CompletionItem {
         let is_deprecated = self.ctx.is_deprecated(field);
         let name = field.name(self.ctx.db());
-        let mut item = CompletionItem::new(
+        let mut builder = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
             name.to_string(),
-        )
-        .kind(SymbolKind::Field)
-        .detail(ty.display(self.ctx.db()).to_string())
-        .set_documentation(field.docs(self.ctx.db()))
-        .set_deprecated(is_deprecated);
+        );
+        builder
+            .kind(SymbolKind::Field)
+            .detail(ty.display(self.ctx.db()).to_string())
+            .set_documentation(field.docs(self.ctx.db()))
+            .set_deprecated(is_deprecated);
 
         if let Some(relevance) = compute_relevance(&self.ctx, &ty, &name.to_string()) {
-            item = item.set_relevance(relevance);
+            builder.set_relevance(relevance);
         }
 
-        item.build()
+        builder.build()
     }
 
     fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
-        CompletionItem::new(CompletionKind::Reference, self.ctx.source_range(), field.to_string())
-            .kind(SymbolKind::Field)
-            .detail(ty.display(self.ctx.db()).to_string())
-            .build()
+        let mut builder = CompletionItem::new(
+            CompletionKind::Reference,
+            self.ctx.source_range(),
+            field.to_string(),
+        );
+
+        builder.kind(SymbolKind::Field).detail(ty.display(self.ctx.db()).to_string());
+
+        builder.build()
     }
 
     fn render_resolution(
@@ -225,15 +231,13 @@ impl<'a> Render<'a> {
                 CompletionItemKind::SymbolKind(SymbolKind::SelfParam)
             }
             ScopeDef::Unknown => {
-                let item = CompletionItem::new(
+                let mut item = CompletionItem::new(
                     CompletionKind::Reference,
                     self.ctx.source_range(),
                     local_name,
-                )
-                .kind(CompletionItemKind::UnresolvedReference)
-                .add_import(import_to_add)
-                .build();
-                return Some(item);
+                );
+                item.kind(CompletionItemKind::UnresolvedReference).add_import(import_to_add);
+                return Some(item.build());
             }
         };
 
@@ -242,14 +246,14 @@ impl<'a> Render<'a> {
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
             if !ty.is_unknown() {
-                item = item.detail(ty.display(self.ctx.db()).to_string());
+                item.detail(ty.display(self.ctx.db()).to_string());
             }
         };
 
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
             if let Some(relevance) = compute_relevance(&self.ctx, &ty, &local_name) {
-                item = item.set_relevance(relevance)
+                item.set_relevance(relevance);
             }
             if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
                 if let Some(ty_without_ref) = expected_type.remove_ref() {
@@ -260,7 +264,7 @@ impl<'a> Render<'a> {
                         } else {
                             Mutability::Shared
                         };
-                        item = item.ref_match(mutability)
+                        item.ref_match(mutability);
                     }
                 }
             }
@@ -281,21 +285,17 @@ impl<'a> Render<'a> {
                 };
                 if has_non_default_type_params {
                     cov_mark::hit!(inserts_angle_brackets_for_generics);
-                    item = item
-                        .lookup_by(local_name.clone())
+                    item.lookup_by(local_name.clone())
                         .label(format!("{}<…>", local_name))
                         .insert_snippet(cap, format!("{}<$0>", local_name));
                 }
             }
         }
-
-        Some(
-            item.kind(kind)
-                .add_import(import_to_add)
-                .set_documentation(self.docs(resolution))
-                .set_deprecated(self.is_deprecated(resolution))
-                .build(),
-        )
+        item.kind(kind)
+            .add_import(import_to_add)
+            .set_documentation(self.docs(resolution))
+            .set_deprecated(self.is_deprecated(resolution));
+        Some(item.build())
     }
 
     fn docs(&self, resolution: &ScopeDef) -> Option<Documentation> {

@@ -54,10 +54,9 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     params.into_iter().for_each(|(label, lookup)| {
-        CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label)
-            .kind(CompletionItemKind::Binding)
-            .lookup_by(lookup)
-            .add_to(acc)
+        let mut builder = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), label);
+        builder.kind(CompletionItemKind::Binding).lookup_by(lookup);
+        builder.add_to(acc)
     });
 }
 

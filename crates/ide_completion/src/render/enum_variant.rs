@@ -59,20 +59,20 @@ impl<'a> EnumRender<'a> {
             CompletionKind::Reference,
             self.ctx.source_range(),
             self.qualified_name.clone(),
-        )
-        .kind(SymbolKind::Variant)
-        .set_documentation(self.variant.docs(self.ctx.db()))
-        .set_deprecated(self.ctx.is_deprecated(self.variant))
-        .add_import(import_to_add)
-        .detail(self.detail());
+        );
+        builder
+            .kind(SymbolKind::Variant)
+            .set_documentation(self.variant.docs(self.ctx.db()))
+            .set_deprecated(self.ctx.is_deprecated(self.variant))
+            .add_import(import_to_add)
+            .detail(self.detail());
 
         if self.variant_kind == StructKind::Tuple {
             cov_mark::hit!(inserts_parens_for_tuple_enums);
             let params = Params::Anonymous(self.variant.fields(self.ctx.db()).len());
-            builder =
-                builder.add_call_parens(self.ctx.completion, self.short_qualified_name, params);
+            builder.add_call_parens(self.ctx.completion, self.short_qualified_name, params);
         } else if self.path.is_some() {
-            builder = builder.lookup_by(self.short_qualified_name);
+            builder.lookup_by(self.short_qualified_name);
         }
 
         builder.build()
