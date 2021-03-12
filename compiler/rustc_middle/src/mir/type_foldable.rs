@@ -342,8 +342,8 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
         }
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.literal.visit_with(visitor)
-        // FIXME: should this be visiting the `user_ty`, too?
+        self.literal.visit_with(visitor)?;
+        self.user_ty.visit_with(visitor)
     }
 }
 
