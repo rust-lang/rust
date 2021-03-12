@@ -22,12 +22,14 @@ fn dogfood_clippy() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let enable_metadata_collection = std::env::var("ENABLE_METADATA_COLLECTION").unwrap_or_else(|_| "0".to_string());
 
     let mut command = Command::new(&*CLIPPY_PATH);
     command
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
+        .env("ENABLE_METADATA_COLLECTION", &enable_metadata_collection)
         .arg("clippy")
         .arg("--all-targets")
         .arg("--all-features")

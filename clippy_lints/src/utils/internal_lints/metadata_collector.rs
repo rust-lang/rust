@@ -148,24 +148,6 @@ struct LintMetadata {
     applicability: Option<ApplicabilityInfo>,
 }
 
-// impl Ord for LintMetadata {
-//     fn cmp(&self, other: &Self) -> Ordering {
-//         self.id.cmp(&other.id)
-//     }
-// }
-//
-// impl PartialOrd for LintMetadata {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
-//
-// impl PartialEq for LintMetadata {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.id == other.id
-//     }
-// }
-
 impl LintMetadata {
     fn new(id: String, id_span: SerializableSpan, group: String, docs: String) -> Self {
         Self {
