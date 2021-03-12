@@ -199,7 +199,7 @@ impl<'tcx> Interner for TyInterner<'tcx> {
         self,
         iter: impl IntoIterator<Item = Self::Span>,
     ) -> Self::AllocatedSpanSlice {
-        self.tcx.arena.alloc_from_iter(iter)
+        self.tcx.arena.alloc_from_iter::<Self::Span, Self::Span, _>(iter)
     }
 
     fn alloc_promoted(self, value: Self::Promoted) -> Self::AllocatedPromoted {
