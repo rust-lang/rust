@@ -174,7 +174,10 @@ crate struct LifetimeContext<'a, 'tcx> {
 
     is_in_const_generic: bool,
 
-    definition_only: bool,
+    /// Indicates that we only care about the definition of a trait. This should
+    /// be false if the `Item` we are resolving lifetimes for is not a trait or
+    /// we eventually need lifetimes resolve for trait items.
+    trait_definition_only: bool,
 
     /// List of labels in the function/method currently under analysis.
     labels_in_fn: Vec<Ident>,
@@ -319,7 +322,7 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
-        resolve_lifetimes_definition,
+        resolve_lifetimes_trait_definition,
         resolve_lifetimes,
 
         named_region_map: |tcx, id| resolve_lifetimes_for(tcx, id).defs.get(&id),
@@ -339,14 +342,16 @@ pub fn provide(providers: &mut ty::query::Providers) {
 /// Like `resolve_lifetimes`, but does not resolve lifetimes for trait items.
 /// Also does not generate any diagnostics.
 #[tracing::instrument(level = "debug", skip(tcx))]
-fn resolve_lifetimes_definition(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> ResolveLifetimes {
+fn resolve_lifetimes_trait_definition(
+    tcx: TyCtxt<'_>,
+    local_def_id: LocalDefId,
+) -> ResolveLifetimes {
     do_resolve(tcx, local_def_id, true)
 }
 
-/// Computes the `ResolveLifetimes` map that contains data for the
-/// entire crate. You should not read the result of this query
-/// directly, but rather use `named_region_map`, `is_late_bound_map`,
-/// etc.
+/// Computes the `ResolveLifetimes` map that contains data for an entire `Item`.
+/// You should not read the result of this query directly, but rather use
+/// `named_region_map`, `is_late_bound_map`, etc.
 #[tracing::instrument(level = "debug", skip(tcx))]
 fn resolve_lifetimes(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> ResolveLifetimes {
     do_resolve(tcx, local_def_id, false)
@@ -355,7 +360,7 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> ResolveLifeti
 fn do_resolve(
     tcx: TyCtxt<'_>,
     local_def_id: LocalDefId,
-    definition_only: bool,
+    trait_definition_only: bool,
 ) -> ResolveLifetimes {
     let item = tcx.hir().expect_item(tcx.hir().local_def_id_to_hir_id(local_def_id));
     let mut named_region_map =
@@ -367,7 +372,7 @@ fn do_resolve(
         trait_ref_hack: false,
         is_in_fn_syntax: false,
         is_in_const_generic: false,
-        definition_only,
+        trait_definition_only,
         labels_in_fn: vec![],
         xcrate_object_lifetime_defaults: Default::default(),
         lifetime_uses: &mut Default::default(),
@@ -390,12 +395,22 @@ fn do_resolve(
     rl
 }
 
+/// Given `any` owner (structs, traits, trait methods, etc.), does lifetime resolution.
+/// There are two important things this does.
+/// First, we have to resolve lifetimes for
+/// the entire *`Item`* that contains this owner, because that's the largest "scope"
+/// where we can have relevant lifetimes.
+/// Second, if we are asking for lifetimes in a trait *definition*, we use `resolve_lifetimes_trait_definition`
+/// instead of `resolve_lifetimes`, which does not descend into the trait items and does not emit diagnostics.
+/// This allows us to avoid cycles. Importantly, if we ask for lifetimes for lifetimes that have an owner
+/// other than the trait itself (like the trait methods or associated types), then we just use the regular
+/// `resolve_lifetimes`.
 fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ResolveLifetimes {
     let item_id = item_for(tcx, def_id);
     if item_id == def_id {
         let item = tcx.hir().item(hir::ItemId { def_id: item_id });
         match item.kind {
-            hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_definition(item_id),
+            hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(item_id),
             _ => tcx.resolve_lifetimes(item_id),
         }
     } else {
@@ -403,6 +418,7 @@ fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx R
     }
 }
 
+/// Finds the `Item` that contains the given `LocalDefId`
 fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
     let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
     match tcx.hir().find(hir_id) {
@@ -470,7 +486,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_nested_item(&mut self, _: hir::ItemId) {}
 
     fn visit_trait_item_ref(&mut self, ii: &'tcx hir::TraitItemRef) {
-        if !self.definition_only {
+        if !self.trait_definition_only {
             intravisit::walk_trait_item_ref(self, ii)
         }
     }
@@ -513,6 +529,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // Opaque types are visited when we visit the
                 // `TyKind::OpaqueDef`, so that they have the lifetimes from
                 // their parent opaque_ty in scope.
+                //
+                // The core idea here is that since OpaqueTys are generated with the impl Trait as
+                // their owner, we can keep going until we find the Item that owns that. We then
+                // conservatively add all resolved lifetimes. Otherwise we run into problems in
+                // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
                 for (_hir_id, node) in
                     self.tcx.hir().parent_iter(self.tcx.hir().local_def_id_to_hir_id(item.def_id))
                 {
@@ -760,7 +781,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 };
 
                                 if !parent_is_item {
-                                    if !self.definition_only {
+                                    if !self.trait_definition_only {
                                         struct_span_err!(
                                             self.tcx.sess,
                                             lifetime.span,
@@ -1007,7 +1028,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        if !self.definition_only {
+        if !self.trait_definition_only {
             check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
         }
         for param in generics.params {
@@ -1501,7 +1522,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             trait_ref_hack: self.trait_ref_hack,
             is_in_fn_syntax: self.is_in_fn_syntax,
             is_in_const_generic: self.is_in_const_generic,
-            definition_only: self.definition_only,
+            trait_definition_only: self.trait_definition_only,
             labels_in_fn,
             xcrate_object_lifetime_defaults,
             lifetime_uses,
@@ -1511,7 +1532,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         {
             let _enter = span.enter();
             f(self.scope, &mut this);
-            if !self.definition_only {
+            if !self.trait_definition_only {
                 this.check_uses_for_lifetimes_defined_by_scope();
             }
         }
@@ -1973,7 +1994,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             // Check for fn-syntax conflicts with in-band lifetime definitions
-            if !self.definition_only && self.is_in_fn_syntax {
+            if !self.trait_definition_only && self.is_in_fn_syntax {
                 match def {
                     Region::EarlyBound(_, _, LifetimeDefOrigin::InBand)
                     | Region::LateBound(_, _, LifetimeDefOrigin::InBand) => {

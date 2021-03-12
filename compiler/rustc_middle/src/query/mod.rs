@@ -1252,12 +1252,18 @@ rustc_queries! {
         desc { "looking up link arguments for a crate" }
     }
 
-    /// Lifetime resolution. See `middle::resolve_lifetimes`.
-    query resolve_lifetimes_definition(_: LocalDefId) -> ResolveLifetimes {
+    /// Does lifetime resolution, but does not descend into trait items. This
+    /// should only be used for resolving lifetimes of on trait definitions,
+    /// and is used to avoid cycles. Importantly, `resolve_lifetimes` still visits
+    /// the same lifetimes and is responsible for diagnostics.
+    /// See `rustc_resolve::late::lifetimes for details.
+    query resolve_lifetimes_trait_definition(_: LocalDefId) -> ResolveLifetimes {
         storage(ArenaCacheSelector<'tcx>)
-        desc { "resolving lifetimes in a definition" }
+        desc { "resolving lifetimes for a trait definition" }
     }
-    /// Lifetime resolution. See `middle::resolve_lifetimes`.
+    /// Does lifetime resolution on items. Importantly, we can't resolve
+    /// lifetimes directly on things like trait methods, because of trait params.
+    /// See `rustc_resolve::late::lifetimes for details.
     query resolve_lifetimes(_: LocalDefId) -> ResolveLifetimes {
         storage(ArenaCacheSelector<'tcx>)
         desc { "resolving lifetimes" }
@@ -1270,6 +1276,10 @@ rustc_queries! {
         Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
         desc { "testing if a region is late bound" }
     }
+    /// For a given item (like a struct), gets the default lifetimes to be used
+    /// for each paramter if a trait object were to be passed for that parameter.
+    /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
+    /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
     query object_lifetime_defaults_map(_: LocalDefId)
         -> Option<Vec<ObjectLifetimeDefault>> {
         desc { "looking up lifetime defaults for a region on an item" }
