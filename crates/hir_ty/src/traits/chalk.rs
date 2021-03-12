@@ -487,19 +487,14 @@ pub(crate) fn struct_datum_query(
     struct_id: AdtId,
 ) -> Arc<StructDatum> {
     debug!("struct_datum {:?}", struct_id);
-    let type_ctor = Ty::Adt(struct_id, Substs::empty());
     let chalk_ir::AdtId(adt_id) = struct_id;
-    debug!("struct {:?} = {:?}", struct_id, type_ctor);
     let num_params = generics(db.upcast(), adt_id.into()).len();
     let upstream = adt_id.module(db.upcast()).krate() != krate;
-    let where_clauses = type_ctor
-        .as_generic_def()
-        .map(|generic_def| {
-            let generic_params = generics(db.upcast(), generic_def);
-            let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
-            convert_where_clauses(db, generic_def, &bound_vars)
-        })
-        .unwrap_or_else(Vec::new);
+    let where_clauses = {
+        let generic_params = generics(db.upcast(), adt_id.into());
+        let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
+        convert_where_clauses(db, adt_id.into(), &bound_vars)
+    };
     let flags = rust_ir::AdtFlags {
         upstream,
         // FIXME set fundamental and phantom_data flags correctly
