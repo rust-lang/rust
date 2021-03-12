@@ -17,4 +17,9 @@ pub fn foo() {}
 //~| WARN
 //~| ERROR unknown `doc` attribute
 //~| WARN
+#[doc(foo::bar, crate::bar::baz = "bye")]
+//~^ ERROR unknown `doc` attribute
+//~| WARN
+//~| ERROR unknown `doc` attribute
+//~| WARN
 fn bar() {}
