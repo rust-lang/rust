@@ -10,7 +10,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn lint<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
+pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, arg_ty: Ty<'tcx>) {
     if_chain! {
         if let Some(to_string_meth_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, to_string_meth_did, &paths::TO_STRING_METHOD);

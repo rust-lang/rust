@@ -66,8 +66,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let ExprKind::Struct(qpath, fields, base) = expr.kind;
-            if let Some(def_id)  = cx.qpath_res(qpath, expr.hir_id).opt_def_id();
-            let ty = cx.tcx.type_of(def_id);
+            let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();
             if adt_def.is_struct();
             if let Some(variant) = adt_def.variants.iter().next();

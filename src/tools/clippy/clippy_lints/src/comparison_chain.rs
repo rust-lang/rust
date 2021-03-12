@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
             expr.span,
             "`if` chain can be rewritten with `match`",
             None,
-            "Consider rewriting the `if` chain to use `cmp` and `match`.",
+            "consider rewriting the `if` chain to use `cmp` and `match`",
         )
     }
 }
