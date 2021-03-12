@@ -1,16 +1,16 @@
 mod let_unit_value;
+mod unit_cmp;
 mod utils;
 
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, MatchSource, Node, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, MatchSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 
 use if_chain::if_chain;
 
-use crate::utils::diagnostics::{span_lint, span_lint_and_then};
+use crate::utils::diagnostics::span_lint_and_then;
 use crate::utils::source::{indent_of, reindent_multiline, snippet_opt};
 
 use utils::{is_unit, is_unit_literal};
@@ -32,14 +32,6 @@ declare_clippy_lint! {
     pub LET_UNIT_VALUE,
     pedantic,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
-}
-
-declare_lint_pass!(UnitTypes => [LET_UNIT_VALUE]);
-
-impl<'tcx> LateLintPass<'tcx> for UnitTypes {
-    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        let_unit_value::check(cx, stmt);
-    }
 }
 
 declare_clippy_lint! {
@@ -89,56 +81,15 @@ declare_clippy_lint! {
     "comparing unit values"
 }
 
-declare_lint_pass!(UnitCmp => [UNIT_CMP]);
+declare_lint_pass!(UnitTypes => [LET_UNIT_VALUE, UNIT_CMP]);
 
-impl<'tcx> LateLintPass<'tcx> for UnitCmp {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.from_expansion() {
-            if let Some(callee) = expr.span.source_callee() {
-                if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
-                    if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
-                        let op = cmp.node;
-                        if op.is_comparison() && is_unit(cx.typeck_results().expr_ty(left)) {
-                            let result = match &*symbol.as_str() {
-                                "assert_eq" | "debug_assert_eq" => "succeed",
-                                "assert_ne" | "debug_assert_ne" => "fail",
-                                _ => return,
-                            };
-                            span_lint(
-                                cx,
-                                UNIT_CMP,
-                                expr.span,
-                                &format!(
-                                    "`{}` of unit values detected. This will always {}",
-                                    symbol.as_str(),
-                                    result
-                                ),
-                            );
-                        }
-                    }
-                }
-            }
-            return;
-        }
-        if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
-            let op = cmp.node;
-            if op.is_comparison() && is_unit(cx.typeck_results().expr_ty(left)) {
-                let result = match op {
-                    BinOpKind::Eq | BinOpKind::Le | BinOpKind::Ge => "true",
-                    _ => "false",
-                };
-                span_lint(
-                    cx,
-                    UNIT_CMP,
-                    expr.span,
-                    &format!(
-                        "{}-comparison of unit values detected. This will always be {}",
-                        op.as_str(),
-                        result
-                    ),
-                );
-            }
-        }
+impl LateLintPass<'_> for UnitTypes {
+    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
+        let_unit_value::check(cx, stmt);
+    }
+
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        unit_cmp::check(cx, expr);
     }
 }
 
