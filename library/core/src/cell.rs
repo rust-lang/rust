@@ -325,7 +325,7 @@ impl<T> Cell<T> {
     /// let c = Cell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_cell_new", since = "1.24.0")]
     #[inline]
     pub const fn new(value: T) -> Cell<T> {
         Cell { value: UnsafeCell::new(value) }
@@ -655,7 +655,7 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_refcell_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_refcell_new", since = "1.24.0")]
     #[inline]
     pub const fn new(value: T) -> RefCell<T> {
         RefCell { value: UnsafeCell::new(value), borrow: Cell::new(UNUSED) }
