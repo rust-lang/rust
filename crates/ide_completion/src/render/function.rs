@@ -60,7 +60,19 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn detail(&self) -> String {
-        let params = if let Some(self_param) = self.func.self_param(self.ctx.db()) {
+        let ret_ty = self.func.ret_type(self.ctx.db());
+        let ret = if ret_ty.is_unit() {
+            // Omit the return type if it is the unit type
+            String::new()
+        } else {
+            format!(" {}", self.ty_display())
+        };
+
+        format!("fn({}){}", self.params_display(), ret)
+    }
+
+    fn params_display(&self) -> String {
+        if let Some(self_param) = self.func.self_param(self.ctx.db()) {
             let params = self
                 .func
                 .assoc_fn_params(self.ctx.db())
@@ -77,17 +89,13 @@ impl<'a> FunctionRender<'a> {
                 .map(|p| p.ty().display(self.ctx.db()).to_string())
                 .join(", ");
             params
-        };
+        }
+    }
 
+    fn ty_display(&self) -> String {
         let ret_ty = self.func.ret_type(self.ctx.db());
-        let ret = if ret_ty.is_unit() {
-            // Omit the `-> ()` for unit return types
-            String::new()
-        } else {
-            format!(" -> {}", ret_ty.display(self.ctx.db()))
-        };
 
-        format!("fn({}){}", params, ret)
+        format!("-> {}", ret_ty.display(self.ctx.db()))
     }
 
     fn add_arg(&self, arg: &str, ty: &Type) -> String {
