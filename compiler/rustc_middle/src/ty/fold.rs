@@ -879,14 +879,14 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
                         if kind != bound_ty.kind {
                             bug!(
                                 "Mismatched type kinds: {:?} doesn't var in list {:?}",
-                                bound_ty.kind, list_var
+                                bound_ty.kind,
+                                list_var
                             );
                         }
                     }
-                    _ => bug!(
-                        "Mismatched bound variable kinds! Expected type, found {:?}",
-                        list_var
-                    ),
+                    _ => {
+                        bug!("Mismatched bound variable kinds! Expected type, found {:?}", list_var)
+                    }
                 }
             }
 
@@ -908,7 +908,9 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
                         if kind != br.kind {
                             bug!(
                                 "Mismatched region kinds: {:?} doesn't match var ({:?}) in list ({:?})",
-                                br.kind, list_var, self.bound_vars
+                                br.kind,
+                                list_var,
+                                self.bound_vars
                             );
                         }
                     }

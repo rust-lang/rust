@@ -3,8 +3,7 @@
 // revisions: legacy v0
 //[legacy]compile-flags: -Z symbol-mangling-version=legacy
     //[v0]compile-flags: -Z symbol-mangling-version=v0
-//[legacy]normalize-stderr-test: "method17h[\d\w]+" -> "method17SYMBOL_HASH"
-//[legacy]normalize-stderr-test: "method::h[\d\w]+" -> "method::SYMBOL_HASH"
+//[legacy]normalize-stderr-test: "h[\w]{16}E?\)" -> "<SYMBOL_HASH>)"
 
 #![feature(auto_traits, rustc_attrs)]
 #![allow(dead_code)]
