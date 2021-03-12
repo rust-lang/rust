@@ -3,6 +3,7 @@
 // from live codes are live, and everything else is dead.
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -577,7 +578,26 @@ impl DeadVisitor<'tcx> {
             self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
                 let def_id = self.tcx.hir().local_def_id(id);
                 let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
-                lint.build(&format!("{} is never {}: `{}`", descr, participle, name)).emit()
+
+                let prefixed = vec![(span, format!("_{}", name))];
+
+                let mut diag =
+                    lint.build(&format!("{} is never {}: `{}`", descr, participle, name));
+                diag.multipart_suggestion(
+                    "if this is intentional, prefix it with an underscore",
+                    prefixed,
+                    Applicability::MachineApplicable,
+                )
+                .note(&format!(
+                    "the leading underscore helps signal to the reader that the {} may still serve\n\
+                    a purpose even if it isn't used in a way that we can detect (e.g. the {}\nis \
+                    only used through FFI or used only for its effect when dropped)",
+                    descr, descr,
+                ));
+                // Force the note we added to the front, before any other subdiagnostics
+                diag.children.rotate_right(1);
+
+                diag.emit()
             });
         }
     }
