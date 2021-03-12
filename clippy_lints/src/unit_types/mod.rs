@@ -1,9 +1,10 @@
+mod utils;
+
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, MatchSource, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 
@@ -12,6 +13,8 @@ use if_chain::if_chain;
 use crate::utils::diagnostics::{span_lint, span_lint_and_then};
 use crate::utils::higher;
 use crate::utils::source::{indent_of, reindent_multiline, snippet_opt, snippet_with_macro_callsite};
+
+use utils::{is_unit, is_unit_literal};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for binding a unit value.
@@ -242,14 +245,6 @@ fn is_questionmark_desugar_marked_call(expr: &Expr<'_>) -> bool {
     } else {
         false
     }
-}
-
-fn is_unit(ty: Ty<'_>) -> bool {
-    matches!(ty.kind(), ty::Tuple(slice) if slice.is_empty())
-}
-
-fn is_unit_literal(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Tup(ref slice) if slice.is_empty())
 }
 
 fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Expr<'_>]) {
