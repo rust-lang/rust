@@ -70,7 +70,7 @@ pub struct CompletionItem {
     /// Note that Relevance ignores fuzzy match score. We compute Relevance for
     /// all possible items, and then separately build an ordered completion list
     /// based on relevance and fuzzy matching with the already typed identifier.
-    relevance: Relevance,
+    relevance: CompletionRelevance,
 
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
@@ -107,9 +107,11 @@ impl fmt::Debug for CompletionItem {
         if self.deprecated {
             s.field("deprecated", &true);
         }
-        if self.relevance.is_relevant() {
+
+        if self.relevance != CompletionRelevance::default() {
             s.field("relevance", &self.relevance);
         }
+
         if let Some(mutability) = &self.ref_match {
             s.field("ref_match", &format!("&{}", mutability.as_keyword_for_ref()));
         }
@@ -129,7 +131,7 @@ pub enum CompletionScore {
 }
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Default)]
-pub struct Relevance {
+pub struct CompletionRelevance {
     /// This is set in cases like these:
     ///
     /// ```
@@ -152,9 +154,34 @@ pub struct Relevance {
     pub exact_type_match: bool,
 }
 
-impl Relevance {
+impl CompletionRelevance {
+    /// Provides a relevance score. Higher values are more relevant.
+    ///
+    /// The absolute value of the relevance score is not meaningful, for
+    /// example a value of 0 doesn't mean "not relevant", rather
+    /// it means "least relevant". The score value should only be used
+    /// for relative ordering.
+    ///
+    /// See is_relevant if you need to make some judgement about score
+    /// in an absolute sense.
+    pub fn score(&self) -> u8 {
+        let mut score = 0;
+
+        if self.exact_name_match {
+            score += 1;
+        }
+        if self.exact_type_match {
+            score += 1;
+        }
+
+        score
+    }
+
+    /// Returns true when the score for this threshold is above
+    /// some threshold such that we think it is especially likely
+    /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self != &Relevance::default()
+        self.score() > 0
     }
 }
 
@@ -249,7 +276,7 @@ impl CompletionItem {
             text_edit: None,
             deprecated: false,
             trigger_call_info: None,
-            relevance: Relevance::default(),
+            relevance: CompletionRelevance::default(),
             ref_match: None,
             import_to_add: None,
         }
@@ -292,7 +319,7 @@ impl CompletionItem {
         self.deprecated
     }
 
-    pub fn relevance(&self) -> Relevance {
+    pub fn relevance(&self) -> CompletionRelevance {
         self.relevance
     }
 
@@ -300,8 +327,14 @@ impl CompletionItem {
         self.trigger_call_info
     }
 
-    pub fn ref_match(&self) -> Option<Mutability> {
-        self.ref_match
+    pub fn ref_match(&self) -> Option<(Mutability, CompletionRelevance)> {
+        // Relevance of the ref match should be the same as the original
+        // match, but with exact type match set because self.ref_match
+        // is only set if there is an exact type match.
+        let mut relevance = self.relevance;
+        relevance.exact_type_match = true;
+
+        self.ref_match.map(|mutability| (mutability, relevance))
     }
 
     pub fn import_to_add(&self) -> Option<&ImportEdit> {
@@ -349,7 +382,7 @@ pub(crate) struct Builder {
     text_edit: Option<TextEdit>,
     deprecated: bool,
     trigger_call_info: Option<bool>,
-    relevance: Relevance,
+    relevance: CompletionRelevance,
     ref_match: Option<Mutability>,
 }
 
@@ -457,7 +490,7 @@ impl Builder {
         self.deprecated = deprecated;
         self
     }
-    pub(crate) fn set_relevance(&mut self, relevance: Relevance) -> &mut Builder {
+    pub(crate) fn set_relevance(&mut self, relevance: CompletionRelevance) -> &mut Builder {
         self.relevance = relevance;
         self
     }

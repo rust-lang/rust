@@ -20,7 +20,7 @@ use ide_db::{
 use syntax::TextRange;
 
 use crate::{
-    item::{ImportEdit, Relevance},
+    item::{CompletionRelevance, ImportEdit},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind,
 };
 
@@ -322,9 +322,9 @@ impl<'a> Render<'a> {
     }
 }
 
-fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<Relevance> {
+fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionRelevance> {
     let (expected_name, expected_type) = ctx.expected_name_and_type()?;
-    let mut res = Relevance::default();
+    let mut res = CompletionRelevance::default();
     res.exact_type_match = ty == &expected_type;
     res.exact_name_match = name == &expected_name;
     Some(res)
@@ -338,7 +338,7 @@ mod tests {
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
-        CompletionKind, Relevance,
+        CompletionKind, CompletionRelevance,
     };
 
     fn check(ra_fixture: &str, expect: Expect) {
@@ -347,12 +347,14 @@ mod tests {
     }
 
     fn check_relevance(ra_fixture: &str, expect: Expect) {
-        fn display_relevance(relevance: Relevance) -> &'static str {
+        fn display_relevance(relevance: CompletionRelevance) -> &'static str {
             match relevance {
-                Relevance { exact_type_match: true, exact_name_match: true } => "[type+name]",
-                Relevance { exact_type_match: true, exact_name_match: false } => "[type]",
-                Relevance { exact_type_match: false, exact_name_match: true } => "[name]",
-                Relevance { exact_type_match: false, exact_name_match: false } => "[]",
+                CompletionRelevance { exact_type_match: true, exact_name_match: true } => {
+                    "[type+name]"
+                }
+                CompletionRelevance { exact_type_match: true, exact_name_match: false } => "[type]",
+                CompletionRelevance { exact_type_match: false, exact_name_match: true } => "[name]",
+                CompletionRelevance { exact_type_match: false, exact_name_match: false } => "[]",
             }
         }
 
@@ -975,7 +977,7 @@ fn main() {
                             Local,
                         ),
                         detail: "S",
-                        relevance: Relevance {
+                        relevance: CompletionRelevance {
                             exact_name_match: true,
                             exact_type_match: false,
                         },
