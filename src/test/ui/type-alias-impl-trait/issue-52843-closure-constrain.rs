@@ -10,7 +10,7 @@ use std::fmt::Debug;
 fn main() {
     type Opaque = impl Debug;
     fn _unused() -> Opaque { String::new() }
-    let null = || -> Opaque { 0 };
+    let null = || -> Opaque { 0 }; //[min_tait]~ ERROR: not permitted here
     //~^ ERROR: concrete type differs from previous defining opaque type use
     println!("{:?}", null());
 }

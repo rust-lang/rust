@@ -8,7 +8,7 @@ LL | #![cfg_attr(in_bindings, feature(impl_trait_in_bindings))]
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-75053.rs:53:38
+  --> $DIR/issue-75053.rs:52:38
    |
 LL |     type O;
    |     ------- `<Self as MyIndex<T>>::O` defined here

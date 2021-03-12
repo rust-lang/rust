@@ -12,12 +12,12 @@ type Bar = impl Send;
 const fn leak_free() -> Bar {
     7i32
 }
-const LEAK_FREE: Bar = leak_free();
+const LEAK_FREE: Bar = leak_free(); //[min_tait]~ ERROR not permitted here
 
 fn leak_free_test() {
     match todo!() {
         LEAK_FREE => (),
-        //~^ `impl Send` cannot be used in patterns
+        //[full_tait]~^ `impl Send` cannot be used in patterns
         _ => (),
     }
 }

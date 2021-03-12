@@ -4,10 +4,9 @@
 // Regression test for #80998.
 //
 // aux-build:metadata-sufficient-for-layout.rs
-// check-pass
 
 // revisions: min_tait full_tait
-#![feature(min_type_alias_impl_trait)]
+#![feature(min_type_alias_impl_trait, rustc_attrs)]
 #![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_bindings))]
 //[full_tait]~^ WARN incomplete
 //[full_tait]~| WARN incomplete
@@ -21,7 +20,10 @@ type F = impl Generator<(), Yield = (), Return = ()>;
 
 // Static queries the layout of the generator.
 static A: Option<F> = None;
+//[min_tait]~^ ERROR not permitted here
 
 fn f() -> F { metadata_sufficient_for_layout::g() }
+//[min_tait]~^ ERROR concrete type differs
 
-fn main() {}
+#[rustc_error]
+fn main() {} //[full_tait]~ ERROR

@@ -49,7 +49,6 @@ impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<Phantom1<T>> for Scope<U> {
 
 #[rustc_error]
 fn main() {
-    //[min_tait,full_tait]~^ ERROR rustc_error
-    let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
+    let _pos: Phantom1<DummyT<()>> = Scope::new().my_index(); //[min_tait,full_tait]~ ERROR not permitted here
     //[in_bindings]~^ ERROR type annotations needed
 }
