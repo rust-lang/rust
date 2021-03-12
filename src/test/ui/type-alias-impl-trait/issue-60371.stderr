@@ -5,7 +5,7 @@ LL |     type Item = impl Bug;
    |                 ^^^^^^^^
    |
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
-   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = help: add `#![feature(min_type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
   --> $DIR/issue-60371.rs:10:17

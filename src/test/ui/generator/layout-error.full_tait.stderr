@@ -1,0 +1,26 @@
+error[E0425]: cannot find value `Foo` in this scope
+  --> $DIR/layout-error.rs:25:17
+   |
+LL |         let a = Foo;
+   |                 ^^^ not found in this scope
+
+warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/layout-error.rs:8:32
+   |
+LL | #![cfg_attr(full_tait, feature(impl_trait_in_bindings, type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/layout-error.rs:8:56
+   |
+LL | #![cfg_attr(full_tait, feature(impl_trait_in_bindings, type_alias_impl_trait))]
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: aborting due to previous error; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0425`.

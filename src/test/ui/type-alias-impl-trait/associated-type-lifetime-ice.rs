@@ -7,7 +7,7 @@
 
 // Regression test for https://github.com/rust-lang/rust/issues/78450
 
-#![feature(type_alias_impl_trait)]
+#![feature(min_type_alias_impl_trait)]
 #![no_std]
 
 pub trait AssociatedImpl {

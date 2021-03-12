@@ -1,7 +1,7 @@
 // compile-flags: -Z mir-opt-level=3
 // build-pass
 
-#![feature(type_alias_impl_trait)]
+#![feature(min_type_alias_impl_trait)]
 
 use std::marker::PhantomData;
 

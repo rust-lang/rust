@@ -1,0 +1,81 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/inline-trait-and-foreign-items.rs:4:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+warning: `#[inline]` is ignored on constants
+  --> $DIR/inline-trait-and-foreign-items.rs:10:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/inline-trait-and-foreign-items.rs:7:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:14:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T;
+   |     ------- not a function or closure
+
+warning: `#[inline]` is ignored on constants
+  --> $DIR/inline-trait-and-foreign-items.rs:21:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:25:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T = Self;
+   |     -------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:28:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type U = impl Trait;
+   |     -------------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:33:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     static X: u32;
+   |     -------------- not a function or closure
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/inline-trait-and-foreign-items.rs:36:5
+   |
+LL |     #[inline]
+   |     ^^^^^^^^^
+LL |     type T;
+   |     ------- not a function or closure
+
+error: could not find defining uses
+  --> $DIR/inline-trait-and-foreign-items.rs:29:14
+   |
+LL |     type U = impl Trait;
+   |              ^^^^^^^^^^
+
+error: aborting due to 6 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0518`.

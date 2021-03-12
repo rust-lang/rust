@@ -1,9 +1,0 @@
-error[E0220]: associated type `Assoc` not found for `V`
-  --> $DIR/not_well_formed.rs:10:29
-   |
-LL | type Foo<V> = impl Trait<V::Assoc>;
-   |                             ^^^^^ associated type `Assoc` not found
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0220`.

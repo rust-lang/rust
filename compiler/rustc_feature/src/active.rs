@@ -638,6 +638,9 @@ declare_features! (
     /// Allows `pub` on `macro_rules` items.
     (active, pub_macro_rules, "1.52.0", Some(78855), None),
 
+    /// Allows the use of type alias impl trait in function return positions
+    (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
+
     /// Allows associated types in inherent impls.
     (active, inherent_associated_types, "1.52.0", Some(8995), None),
 
@@ -670,6 +673,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::capture_disjoint_fields,
     sym::const_generics_defaults,
     sym::inherent_associated_types,
+    sym::type_alias_impl_trait,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
