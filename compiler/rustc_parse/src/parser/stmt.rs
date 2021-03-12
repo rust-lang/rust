@@ -291,7 +291,7 @@ impl<'a> Parser<'a> {
         Ok(P(ast::Local { ty, pat, init, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
     }
 
-    /// Parses the RHS of a local variable declaration (e.g., '= 14;').
+    /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
     fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
@@ -306,6 +306,7 @@ impl<'a> Parser<'a> {
                     "=".to_string(),
                     Applicability::MaybeIncorrect,
                 )
+                .help("if you meant to overwrite, remove the `let` binding")
                 .emit();
                 self.bump();
                 true
