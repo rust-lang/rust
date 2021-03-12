@@ -10,7 +10,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 //
 // Converts an Iterator::for_each function into a for loop.
 //
-// ```rust
+// ```
 // fn main() {
 //     let vec = vec![(1, 2), (2, 3), (3, 4)];
 //     x.iter().for_each(|(x, y)| {
@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 // ->
-// ```rust
+// ```
 // fn main() {
 //     let vec = vec![(1, 2), (2, 3), (3, 4)];
 //     for (x, y) in x.iter() {

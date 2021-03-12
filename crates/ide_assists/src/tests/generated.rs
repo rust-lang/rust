@@ -206,6 +206,29 @@ const _: i32 = 0b1010;
 }
 
 #[test]
+fn doctest_convert_iter_for_each_to_for() {
+    check_doc_test(
+        "convert_iter_for_each_to_for",
+        r#####"
+fn main() {
+    let vec = vec![(1, 2), (2, 3), (3, 4)];
+    x.iter().for_each(|(x, y)| {
+        println!("x: {}, y: {}", x, y);
+    });
+}
+"#####,
+        r#####"
+fn main() {
+    let vec = vec![(1, 2), (2, 3), (3, 4)];
+    for (x, y) in x.iter() {
+        println!("x: {}, y: {}", x, y);
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_to_guarded_return() {
     check_doc_test(
         "convert_to_guarded_return",
