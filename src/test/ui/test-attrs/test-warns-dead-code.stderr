@@ -4,9 +4,10 @@ error: function is never used: `dead`
 LL | fn dead() {}
    |    ^^^^ help: if this is intentional, prefix it with an underscore: `_dead`
    |
-   = note: the leading underscore helps signal to the reader that the function may still serve
-           a purpose even if it isn't used in a way that we can detect (e.g. the function
-           is only used through FFI or used only for its effect when dropped)
+   = note: The leading underscore signals to the reader that while the function may not be used
+           by any Rust code, it still serves some other purpose that isn't detected by rustc.
+           (e.g. some values are used for their effect when dropped or used in FFI code
+           exclusively through raw pointers)
 note: the lint level is defined here
   --> $DIR/test-warns-dead-code.rs:3:9
    |
