@@ -2,8 +2,11 @@ error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:7:5
    |
 LL |     b: bool,
-   |     ^^^^^^^
+   |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_b`
    |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/lint-dead-code-4.rs:3:9
    |
@@ -14,7 +17,11 @@ error: variant is never constructed: `X`
   --> $DIR/lint-dead-code-4.rs:15:5
    |
 LL |     X,
-   |     ^
+   |     ^ help: if this is intentional, prefix it with an underscore: `_X`
+   |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 
 error: variant is never constructed: `Y`
   --> $DIR/lint-dead-code-4.rs:16:5
@@ -24,49 +31,81 @@ LL | |         a: String,
 LL | |         b: i32,
 LL | |         c: i32,
 LL | |     },
-   | |_____^
+   | |_____^ help: if this is intentional, prefix it with an underscore: `_Y`
+   |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 
 error: enum is never used: `ABC`
   --> $DIR/lint-dead-code-4.rs:24:6
    |
 LL | enum ABC {
-   |      ^^^
+   |      ^^^ help: if this is intentional, prefix it with an underscore: `_ABC`
+   |
+   = note: the leading underscore helps signal to the reader that the enum may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the enum
+           is only used through FFI or used only for its effect when dropped)
 
 error: variant is never constructed: `I`
   --> $DIR/lint-dead-code-4.rs:36:5
    |
 LL |     I,
-   |     ^
+   |     ^ help: if this is intentional, prefix it with an underscore: `_I`
+   |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:39:9
    |
 LL |         b: i32,
-   |         ^^^^^^
+   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:40:9
    |
 LL |         c: i32,
-   |         ^^^^^^
+   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_c`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: variant is never constructed: `K`
   --> $DIR/lint-dead-code-4.rs:42:5
    |
 LL |     K
-   |     ^
+   |     ^ help: if this is intentional, prefix it with an underscore: `_K`
+   |
+   = note: the leading underscore helps signal to the reader that the variant may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the variant
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `x`
   --> $DIR/lint-dead-code-4.rs:61:5
    |
 LL |     x: usize,
-   |     ^^^^^^^^
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:63:5
    |
 LL |     c: bool,
-   |     ^^^^^^^
+   |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_c`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: aborting due to 10 previous errors
 

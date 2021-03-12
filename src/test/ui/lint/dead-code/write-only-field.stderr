@@ -2,8 +2,11 @@ error: field is never read: `f`
   --> $DIR/write-only-field.rs:4:5
    |
 LL |     f: i32,
-   |     ^^^^^^
+   |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_f`
    |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 note: the lint level is defined here
   --> $DIR/write-only-field.rs:1:9
    |
@@ -14,31 +17,51 @@ error: field is never read: `sub`
   --> $DIR/write-only-field.rs:5:5
    |
 LL |     sub: Sub,
-   |     ^^^^^^^^
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sub`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `f`
   --> $DIR/write-only-field.rs:9:5
    |
 LL |     f: i32,
-   |     ^^^^^^
+   |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_f`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `y`
   --> $DIR/write-only-field.rs:28:9
    |
 LL |         y: bool,
-   |         ^^^^^^^
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_y`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `u`
   --> $DIR/write-only-field.rs:58:9
    |
 LL |         u: u32,
-   |         ^^^^^^
+   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_u`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: field is never read: `v`
   --> $DIR/write-only-field.rs:59:9
    |
 LL |         v: u32,
-   |         ^^^^^^
+   |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_v`
+   |
+   = note: the leading underscore helps signal to the reader that the field may still serve
+           a purpose even if it isn't used in a way that we can detect (e.g. the field
+           is only used through FFI or used only for its effect when dropped)
 
 error: aborting due to 6 previous errors
 
