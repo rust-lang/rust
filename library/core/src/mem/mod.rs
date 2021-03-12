@@ -812,9 +812,15 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
-pub fn replace<T>(dest: &mut T, mut src: T) -> T {
-    swap(dest, &mut src);
-    src
+pub fn replace<T>(dest: &mut T, src: T) -> T {
+    // SAFETY: We read from `dest` but directly write `src` into it afterwards,
+    // such that the old value is not duplicated. Nothing is dropped and
+    // nothing here can panic.
+    unsafe {
+        let result = ptr::read(dest);
+        ptr::write(dest, src);
+        result
+    }
 }
 
 /// Disposes of a value.
