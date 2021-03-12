@@ -297,11 +297,9 @@ fn postfix_snippet(
         let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());
         TextEdit::replace(delete_range, snippet.to_string())
     };
-    CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
-        .detail(detail)
-        .kind(CompletionItemKind::Snippet)
-        .snippet_edit(cap, edit)
-        .clone()
+    let mut item = CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label);
+    item.detail(detail).kind(CompletionItemKind::Snippet).snippet_edit(cap, edit);
+    item
 }
 
 #[cfg(test)]

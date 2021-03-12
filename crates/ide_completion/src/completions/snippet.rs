@@ -8,8 +8,9 @@ use crate::{
 };
 
 fn snippet(ctx: &CompletionContext, cap: SnippetCap, label: &str, snippet: &str) -> Builder {
-    let mut builder = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label);
-    builder.insert_snippet(cap, snippet).kind(CompletionItemKind::Snippet).clone()
+    let mut item = CompletionItem::new(CompletionKind::Snippet, ctx.source_range(), label);
+    item.insert_snippet(cap, snippet).kind(CompletionItemKind::Snippet);
+    item
 }
 
 pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionContext) {
@@ -34,7 +35,7 @@ pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionConte
         None => return,
     };
 
-    let mut test_module_builder = snippet(
+    let mut item = snippet(
         ctx,
         cap,
         "tmod (Test module)",
@@ -49,10 +50,10 @@ mod tests {
     }
 }",
     );
-    test_module_builder.lookup_by("tmod");
-    test_module_builder.add_to(acc);
+    item.lookup_by("tmod");
+    item.add_to(acc);
 
-    let mut test_function_builder = snippet(
+    let mut item = snippet(
         ctx,
         cap,
         "tfn (Test function)",
@@ -62,12 +63,11 @@ fn ${1:feature}() {
     $0
 }",
     );
-    test_function_builder.lookup_by("tfn");
-    test_function_builder.add_to(acc);
+    item.lookup_by("tfn");
+    item.add_to(acc);
 
-    let macro_rules_builder =
-        snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}");
-    macro_rules_builder.add_to(acc);
+    let item = snippet(ctx, cap, "macro_rules", "macro_rules! $1 {\n\t($2) => {\n\t\t$0\n\t};\n}");
+    item.add_to(acc);
 }
 
 #[cfg(test)]

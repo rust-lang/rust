@@ -145,34 +145,33 @@ impl<'a> Render<'a> {
     fn add_field(&mut self, field: hir::Field, ty: &Type) -> CompletionItem {
         let is_deprecated = self.ctx.is_deprecated(field);
         let name = field.name(self.ctx.db());
-        let mut builder = CompletionItem::new(
+        let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
             name.to_string(),
         );
-        builder
-            .kind(SymbolKind::Field)
+        item.kind(SymbolKind::Field)
             .detail(ty.display(self.ctx.db()).to_string())
             .set_documentation(field.docs(self.ctx.db()))
             .set_deprecated(is_deprecated);
 
         if let Some(relevance) = compute_relevance(&self.ctx, &ty, &name.to_string()) {
-            builder.set_relevance(relevance);
+            item.set_relevance(relevance);
         }
 
-        builder.build()
+        item.build()
     }
 
     fn add_tuple_field(&mut self, field: usize, ty: &Type) -> CompletionItem {
-        let mut builder = CompletionItem::new(
+        let mut item = CompletionItem::new(
             CompletionKind::Reference,
             self.ctx.source_range(),
             field.to_string(),
         );
 
-        builder.kind(SymbolKind::Field).detail(ty.display(self.ctx.db()).to_string());
+        item.kind(SymbolKind::Field).detail(ty.display(self.ctx.db()).to_string());
 
-        builder.build()
+        item.build()
     }
 
     fn render_resolution(

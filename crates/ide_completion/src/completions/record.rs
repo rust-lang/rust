@@ -22,13 +22,13 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                 let completion_text = completion_text
                     .strip_prefix(ctx.token.to_string().as_str())
                     .unwrap_or(completion_text);
-                let mut builder = CompletionItem::new(
+                let mut item = CompletionItem::new(
                     CompletionKind::Snippet,
                     ctx.source_range(),
                     "..Default::default()",
                 );
-                builder.insert_text(completion_text).kind(SymbolKind::Field);
-                acc.add(builder.build());
+                item.insert_text(completion_text).kind(SymbolKind::Field);
+                item.add_to(acc);
             }
 
             missing_fields
