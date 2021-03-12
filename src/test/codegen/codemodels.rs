@@ -1,7 +1,9 @@
+// only-x86_64
+
 // revisions: NOMODEL MODEL-SMALL MODEL-KERNEL MODEL-MEDIUM MODEL-LARGE
 //[NOMODEL] compile-flags:
 //[MODEL-SMALL] compile-flags: -C code-model=small
-//[MODEL-KERNEL] compile-flags: --target x86_64-unknown-linux-gnu -C code-model=kernel
+//[MODEL-KERNEL] compile-flags: -C code-model=kernel
 //[MODEL-MEDIUM] compile-flags: -C code-model=medium
 //[MODEL-LARGE] compile-flags: -C code-model=large
 
