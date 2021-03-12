@@ -220,12 +220,12 @@ pub(crate) fn completion_item(
         }
         // The relevance needs to be inverted to come up with a sort score
         // because the client will sort ascending.
-        let sort_score = relevance.score() ^ 0xFF;
-        // Zero pad the string to ensure values are sorted numerically
-        // even though the client is sorting alphabetically. Three
-        // characters is enough to fit the largest u8, which is the
-        // type of the relevance score.
-        res.sort_text = Some(format!("{:03}", sort_score));
+        let sort_score = relevance.score() ^ 0xFF_FF_FF_FF;
+        // Zero pad the string to ensure values can be properly sorted
+        // by the client. Hex format is used because it is easier to
+        // visually compare very large values, which the sort text
+        // tends to be since it is the opposite of the score.
+        res.sort_text = Some(format!("{:08x}", sort_score));
     }
 
     set_score(&mut lsp_item, item.relevance());
@@ -1117,13 +1117,13 @@ mod tests {
                 (
                     "&arg",
                     Some(
-                        "253",
+                        "fffffffd",
                     ),
                 ),
                 (
                     "arg",
                     Some(
-                        "254",
+                        "fffffffe",
                     ),
                 ),
             ]

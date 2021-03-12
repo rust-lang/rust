@@ -156,7 +156,7 @@ impl CompletionRelevance {
     ///
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
-    pub fn score(&self) -> u8 {
+    pub fn score(&self) -> u32 {
         let mut score = 0;
 
         if self.exact_name_match {
@@ -525,7 +525,7 @@ mod tests {
             .map(|r| (r.score(), r))
             .sorted_by_key(|(score, _r)| *score)
             .fold(
-                (u8::MIN, vec![vec![]]),
+                (u32::MIN, vec![vec![]]),
                 |(mut currently_collecting_score, mut out), (score, r)| {
                     if currently_collecting_score == score {
                         out.last_mut().unwrap().push(r);
