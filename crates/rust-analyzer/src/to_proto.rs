@@ -6,9 +6,10 @@ use std::{
 
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind,
-    Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind, Highlight, HlMod, HlPunct,
-    HlRange, HlTag, Indel, InlayHint, InlayKind, InsertTextFormat, Markup, NavigationTarget,
-    ReferenceAccess, RenameError, Runnable, Severity, SourceChange, TextEdit, TextRange, TextSize,
+    CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind,
+    Highlight, HlMod, HlPunct, HlRange, HlTag, Indel, InlayHint, InlayKind, InsertTextFormat,
+    Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange,
+    TextEdit, TextRange, TextSize,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -213,11 +214,21 @@ pub(crate) fn completion_item(
         ..Default::default()
     };
 
-    if item.relevance().is_relevant() {
-        lsp_item.preselect = Some(true);
-        // HACK: sort preselect items first
-        lsp_item.sort_text = Some(format!(" {}", item.label()));
+    fn set_score(res: &mut lsp_types::CompletionItem, relevance: CompletionRelevance) {
+        if relevance.is_relevant() {
+            res.preselect = Some(true);
+        }
+        // The relevance needs to be inverted to come up with a sort score
+        // because the client will sort ascending.
+        let sort_score = relevance.score() ^ 0xFF_FF_FF_FF;
+        // Zero pad the string to ensure values can be properly sorted
+        // by the client. Hex format is used because it is easier to
+        // visually compare very large values, which the sort text
+        // tends to be since it is the opposite of the score.
+        res.sort_text = Some(format!("{:08x}", sort_score));
     }
+
+    set_score(&mut lsp_item, item.relevance());
 
     if item.deprecated() {
         lsp_item.tags = Some(vec![lsp_types::CompletionItemTag::Deprecated])
@@ -228,10 +239,9 @@ pub(crate) fn completion_item(
     }
 
     let mut res = match item.ref_match() {
-        Some(mutability) => {
+        Some((mutability, relevance)) => {
             let mut lsp_item_with_ref = lsp_item.clone();
-            lsp_item.preselect = Some(true);
-            lsp_item.sort_text = Some(format!(" {}", item.label()));
+            set_score(&mut lsp_item_with_ref, relevance);
             lsp_item_with_ref.label =
                 format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
             if let Some(lsp_types::CompletionTextEdit::Edit(it)) = &mut lsp_item_with_ref.text_edit
@@ -1107,13 +1117,13 @@ mod tests {
                 (
                     "&arg",
                     Some(
-                        " arg",
+                        "fffffffd",
                     ),
                 ),
                 (
                     "arg",
                     Some(
-                        " arg",
+                        "fffffffe",
                     ),
                 ),
             ]

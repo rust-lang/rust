@@ -70,7 +70,7 @@ pub struct CompletionItem {
     /// Note that Relevance ignores fuzzy match score. We compute Relevance for
     /// all possible items, and then separately build an ordered completion list
     /// based on relevance and fuzzy matching with the already typed identifier.
-    relevance: Relevance,
+    relevance: CompletionRelevance,
 
     /// Indicates that a reference or mutable reference to this variable is a
     /// possible match.
@@ -107,9 +107,11 @@ impl fmt::Debug for CompletionItem {
         if self.deprecated {
             s.field("deprecated", &true);
         }
-        if self.relevance.is_relevant() {
+
+        if self.relevance != CompletionRelevance::default() {
             s.field("relevance", &self.relevance);
         }
+
         if let Some(mutability) = &self.ref_match {
             s.field("ref_match", &format!("&{}", mutability.as_keyword_for_ref()));
         }
@@ -120,16 +122,8 @@ impl fmt::Debug for CompletionItem {
     }
 }
 
-#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
-pub enum CompletionScore {
-    /// If only type match
-    TypeMatch,
-    /// If type and name match
-    TypeAndNameMatch,
-}
-
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Default)]
-pub struct Relevance {
+pub struct CompletionRelevance {
     /// This is set in cases like these:
     ///
     /// ```
@@ -152,9 +146,34 @@ pub struct Relevance {
     pub exact_type_match: bool,
 }
 
-impl Relevance {
+impl CompletionRelevance {
+    /// Provides a relevance score. Higher values are more relevant.
+    ///
+    /// The absolute value of the relevance score is not meaningful, for
+    /// example a value of 0 doesn't mean "not relevant", rather
+    /// it means "least relevant". The score value should only be used
+    /// for relative ordering.
+    ///
+    /// See is_relevant if you need to make some judgement about score
+    /// in an absolute sense.
+    pub fn score(&self) -> u32 {
+        let mut score = 0;
+
+        if self.exact_name_match {
+            score += 1;
+        }
+        if self.exact_type_match {
+            score += 1;
+        }
+
+        score
+    }
+
+    /// Returns true when the score for this threshold is above
+    /// some threshold such that we think it is especially likely
+    /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self != &Relevance::default()
+        self.score() > 0
     }
 }
 
@@ -249,7 +268,7 @@ impl CompletionItem {
             text_edit: None,
             deprecated: false,
             trigger_call_info: None,
-            relevance: Relevance::default(),
+            relevance: CompletionRelevance::default(),
             ref_match: None,
             import_to_add: None,
         }
@@ -292,7 +311,7 @@ impl CompletionItem {
         self.deprecated
     }
 
-    pub fn relevance(&self) -> Relevance {
+    pub fn relevance(&self) -> CompletionRelevance {
         self.relevance
     }
 
@@ -300,8 +319,14 @@ impl CompletionItem {
         self.trigger_call_info
     }
 
-    pub fn ref_match(&self) -> Option<Mutability> {
-        self.ref_match
+    pub fn ref_match(&self) -> Option<(Mutability, CompletionRelevance)> {
+        // Relevance of the ref match should be the same as the original
+        // match, but with exact type match set because self.ref_match
+        // is only set if there is an exact type match.
+        let mut relevance = self.relevance;
+        relevance.exact_type_match = true;
+
+        self.ref_match.map(|mutability| (mutability, relevance))
     }
 
     pub fn import_to_add(&self) -> Option<&ImportEdit> {
@@ -349,7 +374,7 @@ pub(crate) struct Builder {
     text_edit: Option<TextEdit>,
     deprecated: bool,
     trigger_call_info: Option<bool>,
-    relevance: Relevance,
+    relevance: CompletionRelevance,
     ref_match: Option<Mutability>,
 }
 
@@ -457,7 +482,7 @@ impl Builder {
         self.deprecated = deprecated;
         self
     }
-    pub(crate) fn set_relevance(&mut self, relevance: Relevance) -> &mut Builder {
+    pub(crate) fn set_relevance(&mut self, relevance: CompletionRelevance) -> &mut Builder {
         self.relevance = relevance;
         self
     }
@@ -472,5 +497,65 @@ impl Builder {
     pub(crate) fn ref_match(&mut self, mutability: Mutability) -> &mut Builder {
         self.ref_match = Some(mutability);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use itertools::Itertools;
+    use test_utils::assert_eq_text;
+
+    use super::CompletionRelevance;
+
+    /// Check that these are CompletionRelevance are sorted in ascending order
+    /// by their relevance score.
+    ///
+    /// We want to avoid making assertions about the absolute score of any
+    /// item, but we do want to assert whether each is >, <, or == to the
+    /// others.
+    ///
+    /// If provided vec![vec![a], vec![b, c], vec![d]], then this will assert:
+    ///     a.score < b.score == c.score < d.score
+    fn check_relevance_score_ordered(expected_relevance_order: Vec<Vec<CompletionRelevance>>) {
+        let expected = format!("{:#?}", &expected_relevance_order);
+
+        let actual_relevance_order = expected_relevance_order
+            .into_iter()
+            .flatten()
+            .map(|r| (r.score(), r))
+            .sorted_by_key(|(score, _r)| *score)
+            .fold(
+                (u32::MIN, vec![vec![]]),
+                |(mut currently_collecting_score, mut out), (score, r)| {
+                    if currently_collecting_score == score {
+                        out.last_mut().unwrap().push(r);
+                    } else {
+                        currently_collecting_score = score;
+                        out.push(vec![r]);
+                    }
+                    (currently_collecting_score, out)
+                },
+            )
+            .1;
+
+        let actual = format!("{:#?}", &actual_relevance_order);
+
+        assert_eq_text!(&expected, &actual);
+    }
+
+    #[test]
+    fn relevance_score() {
+        // This test asserts that the relevance score for these items is ascending, and
+        // that any items in the same vec have the same score.
+        let expected_relevance_order = vec![
+            vec![CompletionRelevance::default()],
+            vec![
+                CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },
+                CompletionRelevance { exact_type_match: true, ..CompletionRelevance::default() },
+            ],
+            vec![CompletionRelevance { exact_name_match: true, exact_type_match: true }],
+        ];
+
+        check_relevance_score_ordered(expected_relevance_order);
     }
 }
