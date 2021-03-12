@@ -2,6 +2,7 @@ error: internal compiler error: unexpected concrete region in borrowck: ReEarlyB
   --> $DIR/associated-type-lifetime-ice.rs:29:5
    |
 LL | /     fn f() -> Self::ImplTrait {
+LL | |
 LL | |         ()
 LL | |     }
    | |_____^

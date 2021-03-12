@@ -26,7 +26,8 @@ trait Associated {
 impl<'a, T: Associated<A = &'a ()>> AssociatedImpl for S<T> {
     type ImplTrait = impl core::fmt::Debug;
 
-    fn f() -> Self::ImplTrait { //~ ERROR unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
+    fn f() -> Self::ImplTrait {
+    //~^ ERROR unexpected concrete region in borrowck: ReEarlyBound(0, 'a)
         ()
     }
 }
