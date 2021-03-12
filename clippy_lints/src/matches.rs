@@ -1614,7 +1614,7 @@ where
 
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
-    use crate::utils::{match_qpath, match_trait_method, paths, snippet, span_lint_and_then};
+    use crate::utils::{is_trait_method, match_qpath, paths, snippet, span_lint_and_then};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
@@ -1679,7 +1679,7 @@ mod redundant_pattern_match {
             if keyword == "while";
             if let ExprKind::MethodCall(method_path, _, _, _) = op.kind;
             if method_path.ident.name == sym::next;
-            if match_trait_method(cx, op, &paths::ITERATOR);
+            if is_trait_method(cx, op, sym::Iterator);
             then {
                 return;
             }

@@ -1,9 +1,9 @@
-use crate::utils::{match_qpath, match_trait_method, paths, span_lint_and_sugg};
+use crate::utils::{is_trait_method, match_qpath, paths, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::{source_map::Span, sym};
 
 use super::FLAT_MAP_IDENTITY;
 
@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     flat_map_args: &'tcx [hir::Expr<'_>],
     flat_map_span: Span,
 ) {
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
+    if is_trait_method(cx, expr, sym::Iterator) {
         let arg_node = &flat_map_args[1].kind;
 
         let apply_lint = |message: &str| {

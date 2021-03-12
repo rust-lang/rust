@@ -4,6 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::Ty;
+use rustc_span::sym;
 
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 
@@ -13,7 +14,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
 
     if_chain! {
         if let Some(from_iter_id) = get_trait_def_id(cx, &paths::FROM_ITERATOR);
-        if let Some(iter_id) = get_trait_def_id(cx, &paths::ITERATOR);
+        if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
 
         if implements_trait(cx, ty, from_iter_id, &[]) && implements_trait(cx, arg_ty, iter_id, &[]);
         then {

@@ -1,4 +1,4 @@
-use crate::utils::{is_type_diagnostic_item, match_trait_method, paths, snippet, span_lint_and_sugg};
+use crate::utils::{is_trait_method, is_type_diagnostic_item, snippet, span_lint_and_sugg};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -10,7 +10,7 @@ use super::MAP_FLATTEN;
 /// lint use of `map().flatten()` for `Iterators` and 'Options'
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, map_args: &'tcx [hir::Expr<'_>]) {
     // lint if caller of `.map().flatten()` is an Iterator
-    if match_trait_method(cx, expr, &paths::ITERATOR) {
+    if is_trait_method(cx, expr, sym::Iterator) {
         let map_closure_ty = cx.typeck_results().expr_ty(&map_args[1]);
         let is_map_to_option = match map_closure_ty.kind() {
             ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
