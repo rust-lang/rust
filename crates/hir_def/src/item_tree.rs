@@ -209,18 +209,6 @@ impl ItemTree {
         }
     }
 
-    pub fn source<S: ItemTreeNode>(&self, db: &dyn DefDatabase, of: ItemTreeId<S>) -> S::Source {
-        // This unwrap cannot fail, since it has either succeeded above, or resulted in an empty
-        // ItemTree (in which case there is no valid `FileItemTreeId` to call this method with).
-        let root =
-            db.parse_or_expand(of.file_id).expect("parse_or_expand failed on constructed ItemTree");
-
-        let id = self[of.value].ast_id();
-        let map = db.ast_id_map(of.file_id);
-        let ptr = map.get(id);
-        ptr.to_node(&root)
-    }
-
     fn data(&self) -> &ItemTreeData {
         self.data.as_ref().expect("attempted to access data of empty ItemTree")
     }
