@@ -10,6 +10,22 @@ fn main() {
         None
     };
 
+    // Should issue an error when macros are used.
+    let _ = if matches!(true, true) {
+        println!("true!");
+        Some(matches!(true, false))
+    } else {
+        None
+    };
+
+    // Should issue an error. Binary expression `o < 32` should be parenthesized.
+    let x = Some(5);
+    let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
+
+    // Should issue an error. Unary expression `!x` should be parenthesized.
+    let x = true;
+    let _ = if !x { Some(0) } else { None };
+
     // Should not issue an error since the `else` block has a statement besides `None`.
     let _ = if foo() {
         println!("true!");

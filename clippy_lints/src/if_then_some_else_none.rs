@@ -82,12 +82,22 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
             if utils::match_qpath(els_call_qpath, &utils::paths::OPTION_NONE);
             then {
-                let cond_snip = utils::snippet(cx, cond.span, "[condition]");
-                let arg_snip = utils::snippet(cx, then_arg.span, "");
+                let cond_snip = utils::snippet_with_macro_callsite(cx, cond.span, "[condition]");
+                let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {
+                    format!("({})", cond_snip)
+                } else {
+                    cond_snip.into_owned()
+                };
+                let arg_snip = utils::snippet_with_macro_callsite(cx, then_arg.span, "");
+                let closure_body = if then_block.stmts.is_empty() {
+                    arg_snip.into_owned()
+                } else {
+                    format!("{{ /* snippet */ {} }}", arg_snip)
+                };
                 let help = format!(
-                    "consider using `bool::then` like: `{}.then(|| {{ /* snippet */ {} }})`",
+                    "consider using `bool::then` like: `{}.then(|| {})`",
                     cond_snip,
-                    arg_snip,
+                    closure_body,
                 );
                 utils::span_lint_and_help(
                     cx,
