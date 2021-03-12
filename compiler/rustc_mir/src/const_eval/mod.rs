@@ -87,9 +87,11 @@ fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(_) | ty::RawPtr(_) => None,
         ty::Ref(..) => unimplemented!("need to use deref_const"),
 
-        ty::Dynamic(..) => unimplemented!(
-            "for trait objects we must look at the vtable and figure out the real type"
-        ),
+        // Trait objects are not allowed in type level constants, as we have no concept for
+        // resolving their backing type, even if we can do that at const eval time. We may want to consider
+        // adding a `ValTree::DownCast(Ty<'tcx>, Box<ValTree>)` in the future, but I don't even know the
+        // questions such a concept would open up, so an RFC would probably be good for this.
+        ty::Dynamic(..) => None,
 
         ty::Slice(_) | ty::Str => {
             unimplemented!("need to find the backing data of the slice/str and recurse on that")
