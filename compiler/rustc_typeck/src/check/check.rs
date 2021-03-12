@@ -659,7 +659,8 @@ fn check_opaque_meets_bounds<'tcx>(
         // Checked when type checking the function containing them.
         hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => return,
         // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => {}
+        hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc | hir::OpaqueTyOrigin::TyAlias => {
+        }
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
