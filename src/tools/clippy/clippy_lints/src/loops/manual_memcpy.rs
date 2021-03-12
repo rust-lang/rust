@@ -203,8 +203,11 @@ struct MinifyingSugg<'a>(Sugg<'a>);
 
 impl<'a> MinifyingSugg<'a> {
     fn as_str(&self) -> &str {
-        let (Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s)) = &self.0;
-        s.as_ref()
+        // HACK: Don't sync to Clippy! Required because something with the `or_patterns` feature
+        // changed and this would now require parentheses.
+        match &self.0 {
+            Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) => s.as_ref(),
+        }
     }
 
     fn into_sugg(self) -> Sugg<'a> {
