@@ -94,7 +94,7 @@ impl StructData {
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
@@ -110,7 +110,7 @@ impl StructData {
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
         let cfg_options = db.crate_graph()[loc.container.krate].cfg_options.clone();
 
@@ -130,7 +130,7 @@ impl EnumData {
     pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
 
         let enum_ = &item_tree[loc.id.value];

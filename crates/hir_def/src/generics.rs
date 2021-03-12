@@ -97,43 +97,43 @@ impl GenericParams {
         let generics = match def {
             GenericDefId::FunctionId(id) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::StructId(id)) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::EnumId(id)) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::AdtId(AdtId::UnionId(id)) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::TraitId(id) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::TypeAliasId(id) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }
             GenericDefId::ImplId(id) => {
                 let id = id.lookup(db).id;
-                let tree = db.item_tree(id.file_id);
+                let tree = id.item_tree(db);
                 let item = &tree[id.value];
                 tree[item.generic_params].clone()
             }

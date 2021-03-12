@@ -951,21 +951,21 @@ impl DefCollector<'_> {
         let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
             if let ImportSource::ExternCrate(krate) = directive.import.source {
-                let item_tree = self.db.item_tree(krate.file_id);
+                let item_tree = krate.item_tree(self.db);
                 let extern_crate = &item_tree[krate.value];
 
                 diagnosed_extern_crates.insert(extern_crate.name.clone());
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
                     directive.module_id,
-                    InFile::new(krate.file_id, extern_crate.ast_id),
+                    InFile::new(krate.file_id(), extern_crate.ast_id),
                 ));
             }
         }
 
         for directive in &self.unresolved_imports {
             if let ImportSource::Import(import) = &directive.import.source {
-                let item_tree = self.db.item_tree(import.file_id);
+                let item_tree = import.item_tree(self.db);
                 let import_data = &item_tree[import.value];
 
                 match (import_data.path.segments().first(), &import_data.path.kind) {
@@ -979,7 +979,7 @@ impl DefCollector<'_> {
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
-                    InFile::new(import.file_id, import_data.ast_id),
+                    InFile::new(import.file_id(), import_data.ast_id),
                     import_data.index,
                 ));
             }
@@ -1055,7 +1055,7 @@ impl ModCollector<'_, '_> {
                             self.def_collector.db,
                             krate,
                             &self.item_tree,
-                            InFile::new(self.file_id, import_id),
+                            ItemTreeId::new(self.file_id, import_id),
                         ),
                         status: PartialResolvedImport::Unresolved,
                     })
@@ -1067,7 +1067,7 @@ impl ModCollector<'_, '_> {
                             self.def_collector.db,
                             krate,
                             &self.item_tree,
-                            InFile::new(self.file_id, import_id),
+                            ItemTreeId::new(self.file_id, import_id),
                         ),
                         status: PartialResolvedImport::Unresolved,
                     })

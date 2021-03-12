@@ -38,7 +38,7 @@ impl FunctionData {
         let krate = loc.container.module(db).krate;
         let crate_graph = db.crate_graph();
         let cfg_options = &crate_graph[krate].cfg_options;
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let func = &item_tree[loc.id.value];
 
         let enabled_params = func
@@ -89,7 +89,7 @@ impl TypeAliasData {
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
         let loc = typ.lookup(db);
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let typ = &item_tree[loc.id.value];
 
         Arc::new(TypeAliasData {
@@ -115,23 +115,23 @@ pub struct TraitData {
 impl TraitData {
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
         let tr_loc = tr.lookup(db);
-        let item_tree = db.item_tree(tr_loc.id.file_id);
+        let item_tree = tr_loc.id.item_tree(db);
         let tr_def = &item_tree[tr_loc.id.value];
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
         let is_unsafe = tr_def.is_unsafe;
         let module_id = tr_loc.container;
         let container = AssocContainerId::TraitId(tr);
-        let mut expander = Expander::new(db, tr_loc.id.file_id, module_id);
         let visibility = item_tree[tr_def.visibility].clone();
         let bounds = tr_def.bounds.clone();
+        let mut expander = Expander::new(db, tr_loc.id.file_id(), module_id);
 
         let items = collect_items(
             db,
             module_id,
             &mut expander,
             tr_def.items.iter().copied(),
-            tr_loc.id.file_id,
+            tr_loc.id.file_id(),
             container,
             100,
         );
@@ -167,21 +167,21 @@ impl ImplData {
         let _p = profile::span("impl_data_query");
         let impl_loc = id.lookup(db);
 
-        let item_tree = db.item_tree(impl_loc.id.file_id);
+        let item_tree = impl_loc.id.item_tree(db);
         let impl_def = &item_tree[impl_loc.id.value];
         let target_trait = impl_def.target_trait.map(|id| item_tree[id].clone());
         let target_type = item_tree[impl_def.target_type].clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container;
         let container = AssocContainerId::ImplId(id);
-        let mut expander = Expander::new(db, impl_loc.id.file_id, module_id);
+        let mut expander = Expander::new(db, impl_loc.id.file_id(), module_id);
 
         let items = collect_items(
             db,
             module_id,
             &mut expander,
             impl_def.items.iter().copied(),
-            impl_loc.id.file_id,
+            impl_loc.id.file_id(),
             container,
             100,
         );
@@ -202,7 +202,7 @@ pub struct ConstData {
 impl ConstData {
     pub(crate) fn const_data_query(db: &dyn DefDatabase, konst: ConstId) -> Arc<ConstData> {
         let loc = konst.lookup(db);
-        let item_tree = db.item_tree(loc.id.file_id);
+        let item_tree = loc.id.item_tree(db);
         let konst = &item_tree[loc.id.value];
 
         Arc::new(ConstData {
@@ -225,7 +225,7 @@ pub struct StaticData {
 impl StaticData {
     pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<StaticData> {
         let node = konst.lookup(db);
-        let item_tree = db.item_tree(node.id.file_id);
+        let item_tree = node.id.item_tree(db);
         let statik = &item_tree[node.id.value];
 
         Arc::new(StaticData {
