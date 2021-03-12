@@ -5,7 +5,7 @@ use ide_db::SymbolKind;
 use syntax::ast::Fn;
 
 use crate::{
-    item::{CompletionItem, CompletionItemKind, CompletionKind, ImportEdit},
+    item::{CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance, ImportEdit},
     render::{builder_ext::Params, RenderContext},
 };
 
@@ -54,6 +54,21 @@ impl<'a> FunctionRender<'a> {
             .detail(self.detail())
             .add_call_parens(self.ctx.completion, self.name, params)
             .add_import(import_to_add);
+
+        let mut relevance = CompletionRelevance::default();
+        if let Some(expected_type) = &self.ctx.completion.expected_type {
+            let ret_ty = self.func.ret_type(self.ctx.db());
+
+            // We don't ever consider a function which returns unit type to be an
+            // exact type match, since nearly always this is not meaningful to the
+            // user.
+            relevance.exact_type_match = &ret_ty == expected_type && !ret_ty.is_unit();
+        }
+        if let Some(expected_name) = &self.ctx.completion.expected_name {
+            relevance.exact_name_match =
+                expected_name == &self.func.name(self.ctx.db()).to_string();
+        }
+        item.set_relevance(relevance);
 
         item.build()
     }
