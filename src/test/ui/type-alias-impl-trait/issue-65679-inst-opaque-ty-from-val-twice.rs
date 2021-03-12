@@ -1,5 +1,4 @@
 // compile-flags: -Zsave-analysis
-// check-pass
 
 // revisions: min_tait full_tait
 #![feature(min_type_alias_impl_trait, rustc_attrs)]
@@ -16,7 +15,10 @@ type T = impl Sized;
 
 fn take(_: fn() -> T) {}
 
-fn main() {
+#[rustc_error]
+fn main() { //[full_tait]~ ERROR fatal error triggered by #[rustc_error]
     take(|| {});
+    //[min_tait]~^ ERROR not permitted here
     take(|| {});
+    //[min_tait]~^ ERROR not permitted here
 }

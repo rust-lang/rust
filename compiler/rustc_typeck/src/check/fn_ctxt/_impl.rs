@@ -26,11 +26,11 @@ use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, DefIdTree, GenericParamDefKind, ToPolyTraitRef, ToPredicate,
     Ty, UserType,
 };
-use rustc_session::lint;
-use rustc_span::hygiene::DesugaringKind;
+use rustc_session::{lint, parse::feature_err};
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{hygiene::DesugaringKind, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -362,6 +362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         parent_id: hir::HirId,
         value: T,
         value_span: Span,
+        feature: Option<Symbol>,
     ) -> T {
         let parent_def_id = self.tcx.hir().local_def_id(parent_id);
         debug!(
@@ -380,7 +381,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut opaque_types = self.opaque_types.borrow_mut();
         let mut opaque_types_vars = self.opaque_types_vars.borrow_mut();
+
         for (ty, decl) in opaque_type_map {
+            if let Some(feature) = feature {
+                if let hir::OpaqueTyOrigin::TyAlias = decl.origin {
+                    if !self.tcx.features().enabled(feature) {
+                        feature_err(
+                            &self.tcx.sess.parse_sess,
+                            feature,
+                            value_span,
+                            "type alias impl trait is not permitted here",
+                        )
+                        .emit();
+                    }
+                }
+            }
             let _ = opaque_types.insert(ty, decl);
             let _ = opaque_types_vars.insert(decl.concrete_ty, decl.opaque_type);
         }

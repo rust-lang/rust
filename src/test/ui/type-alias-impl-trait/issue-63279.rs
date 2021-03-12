@@ -8,7 +8,7 @@
 type Closure = impl FnOnce(); //~ ERROR: type mismatch resolving
 
 fn c() -> Closure {
-    || -> Closure { || () }
+    || -> Closure { || () } //[min_tait]~ ERROR: not permitted here
 }
 
 fn main() {}

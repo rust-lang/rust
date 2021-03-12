@@ -87,8 +87,26 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    let revealed_ret_ty =
-        fcx.instantiate_opaque_types_from_value(fn_id, declared_ret_ty, decl.output.span());
+    let feature = match tcx.hir().get(fn_id) {
+        Node::Item(hir::Item { kind: ItemKind::Fn(..), .. }) |
+        Node::ImplItem(hir::ImplItem {
+            kind: hir::ImplItemKind::Fn(..), ..
+        }) => None,
+        // I don't know if TAIT uses in trait declarations make sense at all
+        Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Fn(..),
+            ..
+        }) |
+        // Forbid TAIT in closure return position for now.
+        Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => Some(sym::type_alias_impl_trait),
+        node => bug!("Item being checked wasn't a function/closure: {:?}", node),
+    };
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_value(
+        fn_id,
+        declared_ret_ty,
+        decl.output.span(),
+        feature,
+    );
     debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());

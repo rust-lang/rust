@@ -13,7 +13,7 @@ fn define() -> Bar {
 type Foo2 = impl Debug;
 
 fn define2() {
-    let x = || -> Foo2 { 42 };
+    let x = || -> Foo2 { 42 }; //~ ERROR not permitted here
 }
 
 type Foo3 = impl Debug;
@@ -31,7 +31,7 @@ type Foo4 = impl Debug;
 
 fn define4() {
     let y: Foo4 = 42;
-    //~^ ERROR mismatched types
+    //~^ ERROR not permitted here
 }
 
 fn main() {}

@@ -7,11 +7,15 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
-error: fatal error triggered by #[rustc_error]
-  --> $DIR/issue-75053.rs:51:1
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/issue-75053.rs:52:15
    |
-LL | fn main() {
-   | ^^^^^^^^^
+LL |     let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error: aborting due to previous error; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0658`.
