@@ -1,5 +1,7 @@
 mod bind_instead_of_map;
 mod bytes_nth;
+mod chars_cmp;
+mod chars_next_cmp;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod expect_fun_call;
@@ -2024,7 +2026,7 @@ struct BinaryExprInfo<'a> {
 /// Checks for the `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
 fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExprInfo<'_>) {
     macro_rules! lint_with_both_lhs_and_rhs {
-        ($func:ident, $cx:expr, $info:ident) => {
+        ($func:expr, $cx:expr, $info:ident) => {
             if !$func($cx, $info) {
                 ::std::mem::swap(&mut $info.chain, &mut $info.other);
                 if $func($cx, $info) {
@@ -2034,67 +2036,18 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
         };
     }
 
-    lint_with_both_lhs_and_rhs!(lint_chars_next_cmp, cx, info);
+    lint_with_both_lhs_and_rhs!(chars_next_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(lint_chars_last_cmp, cx, info);
     lint_with_both_lhs_and_rhs!(lint_chars_next_cmp_with_unwrap, cx, info);
     lint_with_both_lhs_and_rhs!(lint_chars_last_cmp_with_unwrap, cx, info);
 }
 
-/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
-fn lint_chars_cmp(
-    cx: &LateContext<'_>,
-    info: &BinaryExprInfo<'_>,
-    chain_methods: &[&str],
-    lint: &'static Lint,
-    suggest: &str,
-) -> bool {
-    if_chain! {
-        if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Call(ref fun, ref arg_char) = info.other.kind;
-        if arg_char.len() == 1;
-        if let hir::ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(segment) = single_segment_path(qpath);
-        if segment.ident.name == sym::Some;
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0][0]).peel_refs();
-
-            if *self_ty.kind() != ty::Str {
-                return false;
-            }
-
-            span_lint_and_sugg(
-                cx,
-                lint,
-                info.expr.span,
-                &format!("you should use the `{}` method", suggest),
-                "like this",
-                format!("{}{}.{}({})",
-                        if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
-                        suggest,
-                        snippet_with_applicability(cx, arg_char[0].span, "..", &mut applicability)),
-                applicability,
-            );
-
-            return true;
-        }
-    }
-
-    false
-}
-
-/// Checks for the `CHARS_NEXT_CMP` lint.
-fn lint_chars_next_cmp<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp(cx, info, &["chars", "next"], CHARS_NEXT_CMP, "starts_with")
-}
-
 /// Checks for the `CHARS_LAST_CMP` lint.
 fn lint_chars_last_cmp<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
+    if chars_cmp::check(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
+        chars_cmp::check(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
