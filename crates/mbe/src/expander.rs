@@ -5,7 +5,7 @@
 mod matcher;
 mod transcriber;
 
-use smallvec::SmallVec;
+use rustc_hash::FxHashMap;
 use syntax::SmolStr;
 
 use crate::{ExpandError, ExpandResult};
@@ -96,7 +96,7 @@ pub(crate) fn expand_rules(
 /// many is not a plain `usize`, but an `&[usize]`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct Bindings {
-    inner: SmallVec<[(SmolStr, Binding); 4]>,
+    inner: FxHashMap<SmolStr, Binding>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

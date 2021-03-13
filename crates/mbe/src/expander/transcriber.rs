@@ -13,17 +13,13 @@ use crate::{
 
 impl Bindings {
     fn contains(&self, name: &str) -> bool {
-        self.inner.iter().any(|(n, _)| n == name)
+        self.inner.contains_key(name)
     }
 
     fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<&Fragment, ExpandError> {
-        let mut b: &Binding = self
-            .inner
-            .iter()
-            .find_map(|(n, b)| if n == name { Some(b) } else { None })
-            .ok_or_else(|| {
-                ExpandError::BindingError(format!("could not find binding `{}`", name))
-            })?;
+        let mut b: &Binding = self.inner.get(name).ok_or_else(|| {
+            ExpandError::BindingError(format!("could not find binding `{}`", name))
+        })?;
         for nesting_state in nesting.iter_mut() {
             nesting_state.hit = true;
             b = match b {
