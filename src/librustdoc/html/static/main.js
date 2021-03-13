@@ -1905,8 +1905,8 @@ function defocusSearchBar() {
                 len = itemTypes.length;
                 var lastPath = "";
                 for (i = 0; i < len; ++i) {
-		            // This object should have exactly the same set of fields as the "crateRow"
-		            // object defined above.
+                    // This object should have exactly the same set of fields as the "crateRow"
+                    // object defined above.
                     var row = {
                         crate: crate,
                         ty: itemTypes[i],
