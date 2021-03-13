@@ -140,7 +140,8 @@ impl<'tcx> ConstKind<'tcx> {
             let (param_env, substs) = param_env_and_substs.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, def, substs, promoted, None) {
+            match tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, None)
+            {
                 // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),
