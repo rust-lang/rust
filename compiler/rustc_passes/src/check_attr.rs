@@ -605,6 +605,16 @@ impl CheckAttrVisitor<'tcx> {
                             return false;
                         }
                     }
+                } else {
+                    self.tcx.struct_span_lint_hir(
+                        INVALID_DOC_ATTRIBUTES,
+                        hir_id,
+                        meta.span(),
+                        |lint| {
+                            lint.build(&format!("unknown `doc` attribute")).emit();
+                        },
+                    );
+                    return false;
                 }
             }
         }
