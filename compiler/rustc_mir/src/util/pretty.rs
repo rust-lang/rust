@@ -131,7 +131,7 @@ fn dump_matched_mir_node<'tcx, F>(
             Some(promoted) => write!(file, "::{:?}`", promoted)?,
         }
         writeln!(file, " {} {}", disambiguator, pass_name)?;
-        if let Some(ref layout) = body.generator_layout {
+        if let Some(ref layout) = body.generator_layout() {
             writeln!(file, "/* generator_layout = {:#?} */", layout)?;
         }
         writeln!(file)?;
@@ -289,19 +289,19 @@ pub fn write_mir_pretty<'tcx>(
             }
             Ok(())
         };
-        match tcx.hir().body_const_context(def_id.expect_local()) {
-            None => render_body(w, tcx.optimized_mir(def_id))?,
-            // For `const fn` we want to render the optimized MIR. If you want the mir used in
-            // ctfe, you can dump the MIR after the `Deaggregator` optimization pass.
-            Some(rustc_hir::ConstContext::ConstFn) => {
-                render_body(w, tcx.optimized_mir(def_id))?;
-                writeln!(w)?;
-                writeln!(w, "// MIR FOR CTFE")?;
-                // Do not use `render_body`, as that would render the promoteds again, but these
-                // are shared between mir_for_ctfe and optimized_mir
-                write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
-            }
-            Some(_) => render_body(w, tcx.mir_for_ctfe(def_id))?,
+
+        // For `const fn` we want to render both the optimized MIR and the MIR for ctfe.
+        if tcx.is_const_fn_raw(def_id) {
+            render_body(w, tcx.optimized_mir(def_id))?;
+            writeln!(w)?;
+            writeln!(w, "// MIR FOR CTFE")?;
+            // Do not use `render_body`, as that would render the promoteds again, but these
+            // are shared between mir_for_ctfe and optimized_mir
+            write_mir_fn(tcx, tcx.mir_for_ctfe(def_id), &mut |_, _| Ok(()), w)?;
+        } else {
+            let instance_mir =
+                tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)));
+            render_body(w, instance_mir)?;
         }
     }
     Ok(())
@@ -956,7 +956,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         write!(w, ": {} =", body.return_ty())?;
     }
 
-    if let Some(yield_ty) = body.yield_ty {
+    if let Some(yield_ty) = body.yield_ty() {
         writeln!(w)?;
         writeln!(w, "yields {}", yield_ty)?;
     }

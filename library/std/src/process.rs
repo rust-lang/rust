@@ -498,6 +498,10 @@ pub struct Command {
     inner: imp::Command,
 }
 
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for Command {}
+
 impl Command {
     /// Constructs a new `Command` for launching the program at
     /// path `program`, with the following default configuration:
@@ -881,7 +885,7 @@ impl Command {
     }
 
     /// Executes a command as a child process, waiting for it to finish and
-    /// collecting its exit status.
+    /// collecting its status.
     ///
     /// By default, stdin, stdout and stderr are inherited from the parent.
     ///
@@ -895,7 +899,7 @@ impl Command {
     ///                      .status()
     ///                      .expect("failed to execute process");
     ///
-    /// println!("process exited with: {}", status);
+    /// println!("process finished with: {}", status);
     ///
     /// assert!(status.success());
     /// ```
@@ -1364,16 +1368,26 @@ impl From<fs::File> for Stdio {
 
 /// Describes the result of a process after it has terminated.
 ///
-/// This `struct` is used to represent the exit status of a child process.
+/// This `struct` is used to represent the exit status or other termination of a child process.
 /// Child processes are created via the [`Command`] struct and their exit
 /// status is exposed through the [`status`] method, or the [`wait`] method
 /// of a [`Child`] process.
+///
+/// An `ExitStatus` represents every possible disposition of a process.  On Unix this
+/// is the **wait status**.  It is *not* simply an *exit status* (a value passed to `exit`).
+///
+/// For proper error reporting of failed processes, print the value of `ExitStatus` using its
+/// implementation of [`Display`](crate::fmt::Display).
 ///
 /// [`status`]: Command::status
 /// [`wait`]: Child::wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatus {}
 
 impl ExitStatus {
     /// Was termination successful? Signal termination is not considered a
@@ -1392,7 +1406,7 @@ impl ExitStatus {
     /// if status.success() {
     ///     println!("'projects/' directory created");
     /// } else {
-    ///     println!("failed to create 'projects/' directory");
+    ///     println!("failed to create 'projects/' directory: {}", status);
     /// }
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
@@ -1402,9 +1416,14 @@ impl ExitStatus {
 
     /// Returns the exit code of the process, if any.
     ///
-    /// On Unix, this will return `None` if the process was terminated
-    /// by a signal; `std::os::unix` provides an extension trait for
-    /// extracting the signal and other details from the `ExitStatus`.
+    /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
+    /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented the
+    /// runtime system (often, for example, 255, 254, 127 or 126).
+    ///
+    /// On Unix, this will return `None` if the process was terminated by a signal.
+    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt) is an
+    /// extension trait for extracting any such signal, and other details, from the `ExitStatus`.
     ///
     /// # Examples
     ///

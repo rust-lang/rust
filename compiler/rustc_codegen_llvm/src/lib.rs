@@ -351,12 +351,7 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
-
-            let split_dwarf_file = cgcx
-                .output_filenames
-                .split_dwarf_filename(cgcx.split_dwarf_kind, Some(name.to_str().unwrap()));
-            let tm_factory_config = TargetMachineFactoryConfig { split_dwarf_file };
-
+            let tm_factory_config = TargetMachineFactoryConfig::new(&cgcx, name.to_str().unwrap());
             let tm = match (cgcx.tm_factory)(tm_factory_config) {
                 Ok(m) => m,
                 Err(e) => {

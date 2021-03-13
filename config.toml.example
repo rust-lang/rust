@@ -290,6 +290,12 @@ changelog-seen = 2
 # tracking over time)
 #print-step-timings = false
 
+# Print out resource usage data for each rustbuild step, as defined by the Unix
+# struct rusage. (Note that this setting is completely unstable: the data it
+# captures, what platforms it supports, the format of its associated output, and
+# this setting's very existence, are all subject to change.)
+#print-step-rusage = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -357,6 +363,12 @@ changelog-seen = 2
 #       hours to build.
 #
 #debug = false
+
+# Whether to download the stage 1 and 2 compilers from CI.
+# This is mostly useful for tools; if you have changes to `compiler/` they will be ignored.
+#
+# FIXME: currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
+#download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
@@ -625,7 +637,9 @@ changelog-seen = 2
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` sysroot.
+# The root location of the `wasm32-wasi` sysroot. Only used for the
+# `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
+# create a `[target.wasm32-wasi]` section and move this field there.
 #wasi-root = "..."
 
 # Used in testing for configuring where the QEMU images are located, you

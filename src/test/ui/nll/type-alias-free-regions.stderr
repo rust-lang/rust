@@ -4,11 +4,11 @@ error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` d
 LL |         C { f: b }
    |         ^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 16:5...
-  --> $DIR/type-alias-free-regions.rs:16:5
+note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 16:24...
+  --> $DIR/type-alias-free-regions.rs:16:24
    |
 LL |     fn from_box(b: Box<B>) -> Self {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^
 note: ...so that the expression is assignable
   --> $DIR/type-alias-free-regions.rs:17:16
    |
@@ -35,11 +35,11 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |         C { f: Box::new(b.0) }
    |                ^^^^^^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 26:5...
-  --> $DIR/type-alias-free-regions.rs:26:5
+note: first, the lifetime cannot outlive the anonymous lifetime defined on the method body at 26:23...
+  --> $DIR/type-alias-free-regions.rs:26:23
    |
 LL |     fn from_tuple(b: (B,)) -> Self {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^
 note: ...so that the expression is assignable
   --> $DIR/type-alias-free-regions.rs:27:25
    |

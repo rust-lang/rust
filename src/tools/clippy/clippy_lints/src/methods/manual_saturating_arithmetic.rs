@@ -148,7 +148,7 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<M
     }
 
     if ty.is_signed() {
-        if let hir::ExprKind::Unary(hir::UnOp::UnNeg, val) = &expr.kind {
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, val) = &expr.kind {
             return check_lit(val, true);
         }
     }
@@ -163,7 +163,7 @@ enum Sign {
 }
 
 fn lit_sign(expr: &hir::Expr<'_>) -> Option<Sign> {
-    if let hir::ExprKind::Unary(hir::UnOp::UnNeg, inner) = &expr.kind {
+    if let hir::ExprKind::Unary(hir::UnOp::Neg, inner) = &expr.kind {
         if let hir::ExprKind::Lit(..) = &inner.kind {
             return Some(Sign::Neg);
         }

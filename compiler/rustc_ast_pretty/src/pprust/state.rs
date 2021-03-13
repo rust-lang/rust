@@ -9,7 +9,7 @@ use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use rustc_ast::{GenericArg, MacArgs};
+use rustc_ast::{GenericArg, MacArgs, ModKind};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -87,7 +87,6 @@ pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
-    is_expanded: bool,
 }
 
 crate const INDENT_UNIT: usize = 4;
@@ -103,12 +102,8 @@ pub fn print_crate<'a>(
     is_expanded: bool,
     edition: Edition,
 ) -> String {
-    let mut s = State {
-        s: pp::mk_printer(),
-        comments: Some(Comments::new(sm, filename, input)),
-        ann,
-        is_expanded,
-    };
+    let mut s =
+        State { s: pp::mk_printer(), comments: Some(Comments::new(sm, filename, input)), ann };
 
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
@@ -132,7 +127,10 @@ pub fn print_crate<'a>(
         }
     }
 
-    s.print_mod(&krate.module, &krate.attrs);
+    s.print_inner_attributes(&krate.attrs);
+    for item in &krate.items {
+        s.print_item(item);
+    }
     s.print_remaining_comments();
     s.ann.post(&mut s, AnnNode::Crate(krate));
     s.s.eof()
@@ -853,7 +851,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State { s: pp::mk_printer(), comments: None, ann: &NoAnn, is_expanded: false }
+        State { s: pp::mk_printer(), comments: None, ann: &NoAnn }
     }
 
     // Synthesizes a comment that was not textually present in the original source
@@ -891,13 +889,6 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(e), |e| e.span)
     }
 
-    pub fn print_mod(&mut self, _mod: &ast::Mod, attrs: &[ast::Attribute]) {
-        self.print_inner_attributes(attrs);
-        for item in &_mod.items {
-            self.print_item(item);
-        }
-    }
-
     crate fn print_foreign_mod(&mut self, nmod: &ast::ForeignMod, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
         for item in &nmod.items {
@@ -914,6 +905,7 @@ impl<'a> State<'a> {
 
     pub fn print_assoc_constraint(&mut self, constraint: &ast::AssocTyConstraint) {
         self.print_ident(constraint.ident);
+        constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
         self.s.space();
         match &constraint.kind {
             ast::AssocTyConstraintKind::Equality { ty } => {
@@ -1022,14 +1014,14 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::ForeignItemKind::Fn(def, sig, gen, body) => {
+            ast::ForeignItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
             ast::ForeignItemKind::Static(ty, mutbl, body) => {
                 let def = ast::Defaultness::Final;
                 self.print_item_const(ident, Some(*mutbl), ty, body.as_deref(), vis, def);
             }
-            ast::ForeignItemKind::TyAlias(def, generics, bounds, ty) => {
+            ast::ForeignItemKind::TyAlias(box ast::TyAliasKind(def, generics, bounds, ty)) => {
                 self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
             ast::ForeignItemKind::MacCall(m) => {
@@ -1134,27 +1126,33 @@ impl<'a> State<'a> {
             ast::ItemKind::Const(def, ref ty, ref body) => {
                 self.print_item_const(item.ident, None, ty, body.as_deref(), &item.vis, def);
             }
-            ast::ItemKind::Fn(def, ref sig, ref gen, ref body) => {
+            ast::ItemKind::Fn(box ast::FnKind(def, ref sig, ref gen, ref body)) => {
                 let body = body.as_deref();
                 self.print_fn_full(sig, item.ident, gen, &item.vis, def, body, &item.attrs);
             }
-            ast::ItemKind::Mod(ref _mod) => {
+            ast::ItemKind::Mod(unsafety, ref mod_kind) => {
                 self.head(self.to_string(|s| {
                     s.print_visibility(&item.vis);
-                    s.print_unsafety(_mod.unsafety);
+                    s.print_unsafety(unsafety);
                     s.word("mod");
                 }));
                 self.print_ident(item.ident);
 
-                if _mod.inline || self.is_expanded {
-                    self.nbsp();
-                    self.bopen();
-                    self.print_mod(_mod, &item.attrs);
-                    self.bclose(item.span);
-                } else {
-                    self.s.word(";");
-                    self.end(); // end inner head-block
-                    self.end(); // end outer head-block
+                match mod_kind {
+                    ModKind::Loaded(items, ..) => {
+                        self.nbsp();
+                        self.bopen();
+                        self.print_inner_attributes(&item.attrs);
+                        for item in items {
+                            self.print_item(item);
+                        }
+                        self.bclose(item.span);
+                    }
+                    ModKind::Unloaded => {
+                        self.s.word(";");
+                        self.end(); // end inner head-block
+                        self.end(); // end outer head-block
+                    }
                 }
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
@@ -1175,7 +1173,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.to_string());
                 self.end();
             }
-            ast::ItemKind::TyAlias(def, ref generics, ref bounds, ref ty) => {
+            ast::ItemKind::TyAlias(box ast::TyAliasKind(def, ref generics, ref bounds, ref ty)) => {
                 let ty = ty.as_deref();
                 self.print_associated_type(item.ident, generics, bounds, ty, &item.vis, def);
             }
@@ -1190,7 +1188,7 @@ impl<'a> State<'a> {
                 self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, item.ident, item.span, true);
             }
-            ast::ItemKind::Impl {
+            ast::ItemKind::Impl(box ast::ImplKind {
                 unsafety,
                 polarity,
                 defaultness,
@@ -1199,7 +1197,7 @@ impl<'a> State<'a> {
                 ref of_trait,
                 ref self_ty,
                 ref items,
-            } => {
+            }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -1233,7 +1231,13 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            ast::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
+            ast::ItemKind::Trait(box ast::TraitKind(
+                is_auto,
+                unsafety,
+                ref generics,
+                ref bounds,
+                ref trait_items,
+            )) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_unsafety(unsafety);
@@ -1305,6 +1309,9 @@ impl<'a> State<'a> {
                     true,
                     item.span,
                 );
+                if macro_def.body.need_semicolon() {
+                    self.word(";");
+                }
             }
         }
         self.ann.post(self, AnnNode::Item(item))
@@ -1453,13 +1460,13 @@ impl<'a> State<'a> {
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
-            ast::AssocItemKind::Fn(def, sig, gen, body) => {
+            ast::AssocItemKind::Fn(box ast::FnKind(def, sig, gen, body)) => {
                 self.print_fn_full(sig, ident, gen, vis, *def, body.as_deref(), attrs);
             }
             ast::AssocItemKind::Const(def, ty, body) => {
                 self.print_item_const(ident, None, ty, body.as_deref(), vis, *def);
             }
-            ast::AssocItemKind::TyAlias(def, generics, bounds, ty) => {
+            ast::AssocItemKind::TyAlias(box ast::TyAliasKind(def, generics, bounds, ty)) => {
                 self.print_associated_type(ident, generics, bounds, ty.as_deref(), vis, *def);
             }
             ast::AssocItemKind::MacCall(m) => {
@@ -1672,7 +1679,7 @@ impl<'a> State<'a> {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
         self.print_inner_attributes_inline(attrs);
-        self.commasep_exprs(Inconsistent, &exprs[..]);
+        self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
         self.end();
     }
@@ -1713,7 +1720,7 @@ impl<'a> State<'a> {
         self.print_inner_attributes_inline(attrs);
         self.commasep_cmnt(
             Consistent,
-            &fields[..],
+            fields,
             |s, field| {
                 s.print_outer_attributes(&field.attrs);
                 s.ibox(INDENT_UNIT);
@@ -1748,7 +1755,7 @@ impl<'a> State<'a> {
     fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
         self.popen();
         self.print_inner_attributes_inline(attrs);
-        self.commasep_exprs(Inconsistent, &exprs[..]);
+        self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
             self.s.word(",");
         }

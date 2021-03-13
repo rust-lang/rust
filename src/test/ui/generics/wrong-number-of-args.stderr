@@ -365,7 +365,7 @@ note: struct defined here, with at most 3 type parameters: `K`, `V`, `S`
 LL | pub struct HashMap<K, V, S = RandomState> {
    |            ^^^^^^^ -  -  -
 
-error[E0107]: missing generics for enum `std::result::Result`
+error[E0107]: missing generics for enum `Result`
   --> $DIR/wrong-number-of-args.rs:141:18
    |
 LL |         type A = Result;

@@ -645,7 +645,7 @@ impl EmitterWriter {
         margin: Margin,
     ) {
         // Tabs are assumed to have been replaced by spaces in calling code.
-        assert!(!source_string.contains('\t'));
+        debug_assert!(!source_string.contains('\t'));
         let line_len = source_string.len();
         // Create the source line we will highlight.
         let left = margin.left(line_len);
@@ -1713,7 +1713,8 @@ impl EmitterWriter {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
-            self.get_max_line_num(span, children).to_string().len()
+            let n = self.get_max_line_num(span, children);
+            num_decimal_digits(n)
         };
 
         match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
@@ -1939,6 +1940,30 @@ impl FileWithAnnotatedLines {
         }
         output
     }
+}
+
+// instead of taking the String length or dividing by 10 while > 0, we multiply a limit by 10 until
+// we're higher. If the loop isn't exited by the `return`, the last multiplication will wrap, which
+// is OK, because while we cannot fit a higher power of 10 in a usize, the loop will end anyway.
+// This is also why we need the max number of decimal digits within a `usize`.
+fn num_decimal_digits(num: usize) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    const MAX_DIGITS: usize = 20;
+
+    #[cfg(target_pointer_width = "32")]
+    const MAX_DIGITS: usize = 10;
+
+    #[cfg(target_pointer_width = "16")]
+    const MAX_DIGITS: usize = 5;
+
+    let mut lim = 10;
+    for num_digits in 1..MAX_DIGITS {
+        if num < lim {
+            return num_digits;
+        }
+        lim = lim.wrapping_mul(10);
+    }
+    MAX_DIGITS
 }
 
 fn replace_tabs(str: &str) -> String {

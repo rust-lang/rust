@@ -33,14 +33,14 @@ declare_lint_pass!(DeepCodeInspector => [DEEP_CODE_INSPECTION]);
 
 impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(item.hir_id())) {
             return;
         }
         print_item(cx, item);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        if !has_attr(cx.sess(), &item.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(item.hir_id())) {
             return;
         }
         println!("impl item `{}`", item.ident.name);
@@ -89,14 +89,14 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     //
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if !has_attr(cx.sess(), &expr.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(expr.hir_id)) {
             return;
         }
         print_expr(cx, expr, 0);
     }
 
     fn check_arm(&mut self, cx: &LateContext<'tcx>, arm: &'tcx hir::Arm<'_>) {
-        if !has_attr(cx.sess(), &arm.attrs) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(arm.hir_id)) {
             return;
         }
         print_pat(cx, &arm.pat, 1);
@@ -109,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'_>) {
-        if !has_attr(cx.sess(), stmt.kind.attrs(|id| cx.tcx.hir().item(id.id))) {
+        if !has_attr(cx.sess(), cx.tcx.hir().attrs(stmt.hir_id)) {
             return;
         }
         match stmt.kind {
@@ -370,7 +370,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
 }
 
 fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
-    let did = cx.tcx.hir().local_def_id(item.hir_id);
+    let did = item.def_id;
     println!("item `{}`", item.ident.name);
     match item.vis.node {
         hir::VisibilityKind::Public => println!("public"),
@@ -383,8 +383,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     }
     match item.kind {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
-            let def_id = cx.tcx.hir().local_def_id(item.hir_id);
-            if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(def_id) {
+            if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(did) {
                 let source = cx.tcx.used_crate_source(crate_id);
                 if let Some(ref src) = source.dylib {
                     println!("extern crate dylib source: {:?}", src.0);

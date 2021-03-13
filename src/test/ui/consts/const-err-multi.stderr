@@ -11,30 +11,41 @@ note: the lint level is defined here
    |
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:5:19
+  --> $DIR/const-err-multi.rs:6:19
    |
 LL | pub const B: i8 = A;
    | ------------------^-
    |                   |
    |                   referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:7:19
+  --> $DIR/const-err-multi.rs:9:19
    |
 LL | pub const C: u8 = A as u8;
    | ------------------^-------
    |                   |
    |                   referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:9:24
+  --> $DIR/const-err-multi.rs:12:24
    |
 LL | pub const D: i8 = 50 - A;
    | -----------------------^-
    |                        |
    |                        referenced constant has errors
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to 4 previous errors
 

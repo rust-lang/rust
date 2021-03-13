@@ -22,9 +22,11 @@ pub mod check_packed_ref;
 pub mod check_unsafety;
 pub mod cleanup_post_borrowck;
 pub mod const_debuginfo;
+pub mod const_goto;
 pub mod const_prop;
 pub mod coverage;
 pub mod deaggregator;
+pub mod deduplicate_blocks;
 pub mod dest_prop;
 pub mod dump_mir;
 pub mod early_otherwise_branch;
@@ -40,6 +42,7 @@ pub mod no_landing_pads;
 pub mod nrvo;
 pub mod promote_consts;
 pub mod remove_noop_landing_pads;
+pub mod remove_storage_markers;
 pub mod remove_unneeded_drops;
 pub mod required_consts;
 pub mod rustc_peek;
@@ -419,6 +422,19 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         tcx.ensure().mir_borrowck(def.did);
     }
 
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
+    use rustc_middle::hir::map::blocks::FnLikeNode;
+    let is_fn_like = FnLikeNode::from_node(tcx.hir().get(hir_id)).is_some();
+    if is_fn_like {
+        let did = def.did.to_def_id();
+        let def = ty::WithOptConstParam::unknown(did);
+
+        // Do not compute the mir call graph without said call graph actually being used.
+        if inline::is_enabled(tcx) {
+            let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
+        }
+    }
+
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
@@ -459,7 +475,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let mir_opt_level = tcx.sess.opts.debugging_opts.mir_opt_level;
+    let mir_opt_level = tcx.sess.mir_opt_level();
 
     // Lowering generator control-flow and variables has to happen before we do anything else
     // to them. We run some optimizations before that, because they may be harder to do on the state
@@ -477,6 +493,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     // The main optimizations that we do on MIR.
     let optimizations: &[&dyn MirPass<'tcx>] = &[
+        &remove_storage_markers::RemoveStorageMarkers,
+        &const_goto::ConstGoto,
         &remove_unneeded_drops::RemoveUnneededDrops,
         &match_branches::MatchBranchSimplification,
         // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
@@ -496,6 +514,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &const_debuginfo::ConstDebugInfo,
         &simplify::SimplifyLocals,
         &multiple_return_terminators::MultipleReturnTerminators,
+        &deduplicate_blocks::DeduplicateBlocks,
     ];
 
     // Optimizations to run even if mir optimizations have been disabled.

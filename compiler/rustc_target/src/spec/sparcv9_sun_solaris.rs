@@ -7,6 +7,7 @@ pub fn target() -> Target {
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
     // llvm calls this "v9"
     base.cpu = "v9".to_string();
+    base.vendor = "sun".to_string();
     base.max_atomic_width = Some(64);
 
     Target {

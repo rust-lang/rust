@@ -77,58 +77,94 @@ LL |         (1 | 1,) => {}
    |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:53:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:52:19
+   |
+LL |         (0 | 1) | 1 => {}
+   |                   ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:58:14
+   |
+LL |         0 | (0 | 0) => {}
+   |              ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:58:18
+   |
+LL |         0 | (0 | 0) => {}
+   |                  ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:66:13
+   |
+LL | /             Some(
+LL | |                 0 | 0) => {}
+   | |______________________^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:72:15
    |
 LL |             | 0
    |               ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:55:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:74:15
    |
 LL |             | 0] => {}
    |               ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:63:10
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:82:10
    |
 LL |         [1
    |          ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:75:10
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:94:10
    |
 LL |         [true
    |          ^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:82:36
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:101:36
    |
 LL |         (true | false, None | Some(true
    |                                    ^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:98:14
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:106:14
+   |
+LL |             (true
+   |              ^^^^
+...
+LL |         (true | false, None | Some(t_or_f!())) => {}
+   |                                    --------- in this macro invocation
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:117:14
    |
 LL |         Some(0
    |              ^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:117:19
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:136:19
    |
 LL |                 | false) => {}
    |                   ^^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:125:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:144:15
    |
 LL |             | true) => {}
    |               ^^^^
 
 error: unreachable pattern
-  --> $DIR/exhaustiveness-unreachable-pattern.rs:131:15
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:150:15
    |
 LL |             | true,
    |               ^^^^
 
-error: aborting due to 21 previous errors
+error: aborting due to 26 previous errors
 

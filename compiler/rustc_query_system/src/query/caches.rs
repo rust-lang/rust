@@ -1,5 +1,5 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::{QueryLookup, QueryState};
+use crate::query::plumbing::{QueryCacheStore, QueryLookup};
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
@@ -15,7 +15,7 @@ pub trait CacheSelector<K, V> {
 }
 
 pub trait QueryStorage: Default {
-    type Value;
+    type Value: Debug;
     type Stored: Clone;
 
     /// Store a value without putting it in the cache.
@@ -31,17 +31,15 @@ pub trait QueryCache: QueryStorage {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: Self::Key,
+        state: &'s QueryCacheStore<Self>,
+        key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup>
     where
-        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R,
-        OnMiss: FnOnce(Self::Key, QueryLookup<'_, D, Q, Self::Key, Self::Sharded>) -> R;
+        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
     fn complete(
         &self,
@@ -75,7 +73,7 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
+impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
 
@@ -89,29 +87,30 @@ impl<K: Eq + Hash, V: Clone> QueryStorage for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Clone + Debug,
-    V: Clone,
+    V: Clone + Debug,
 {
     type Key = K;
     type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: K,
+        state: &'s QueryCacheStore<Self>,
+        key: &K,
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
-        let lock = &mut *lookup.lock;
+        let (lookup, lock) = state.get_lookup(key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
-
-        if let Some((_, value)) = result { on_hit(&value.0, value.1) } else { on_miss(key, lookup) }
+        if let Some((_, value)) = result {
+            let hit_result = on_hit(&value.0, value.1);
+            Ok(hit_result)
+        } else {
+            Err(lookup)
+        }
     }
 
     #[inline]
@@ -156,7 +155,7 @@ impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     }
 }
 
-impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
+impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
 
@@ -171,31 +170,29 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
 where
     K: Eq + Hash + Clone + Debug,
+    V: Debug,
 {
     type Key = K;
     type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<D, Q, R, OnHit, OnMiss>(
+    fn lookup<'s, R, OnHit>(
         &self,
-        state: &QueryState<D, Q, Self>,
-        key: K,
+        state: &'s QueryCacheStore<Self>,
+        key: &K,
         on_hit: OnHit,
-        on_miss: OnMiss,
-    ) -> R
+    ) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
-        OnMiss: FnOnce(K, QueryLookup<'_, D, Q, K, Self::Sharded>) -> R,
     {
-        let mut lookup = state.get_lookup(&key);
-        let lock = &mut *lookup.lock;
-
-        let result = lock.cache.raw_entry().from_key_hashed_nocheck(lookup.key_hash, &key);
+        let (lookup, lock) = state.get_lookup(key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
-            on_hit(&&value.0, value.1)
+            let hit_result = on_hit(&&value.0, value.1);
+            Ok(hit_result)
         } else {
-            on_miss(key, lookup)
+            Err(lookup)
         }
     }
 

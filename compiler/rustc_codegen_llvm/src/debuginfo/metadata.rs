@@ -18,9 +18,8 @@ use crate::llvm::debuginfo::{
 };
 use crate::value::Value;
 
-use rustc_ast as ast;
+use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::const_cstr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -830,37 +829,37 @@ trait MsvcBasicName {
     fn msvc_basic_name(self) -> &'static str;
 }
 
-impl MsvcBasicName for ast::IntTy {
+impl MsvcBasicName for ty::IntTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::IntTy::Isize => "ptrdiff_t",
-            ast::IntTy::I8 => "__int8",
-            ast::IntTy::I16 => "__int16",
-            ast::IntTy::I32 => "__int32",
-            ast::IntTy::I64 => "__int64",
-            ast::IntTy::I128 => "__int128",
+            ty::IntTy::Isize => "ptrdiff_t",
+            ty::IntTy::I8 => "__int8",
+            ty::IntTy::I16 => "__int16",
+            ty::IntTy::I32 => "__int32",
+            ty::IntTy::I64 => "__int64",
+            ty::IntTy::I128 => "__int128",
         }
     }
 }
 
-impl MsvcBasicName for ast::UintTy {
+impl MsvcBasicName for ty::UintTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::UintTy::Usize => "size_t",
-            ast::UintTy::U8 => "unsigned __int8",
-            ast::UintTy::U16 => "unsigned __int16",
-            ast::UintTy::U32 => "unsigned __int32",
-            ast::UintTy::U64 => "unsigned __int64",
-            ast::UintTy::U128 => "unsigned __int128",
+            ty::UintTy::Usize => "size_t",
+            ty::UintTy::U8 => "unsigned __int8",
+            ty::UintTy::U16 => "unsigned __int16",
+            ty::UintTy::U32 => "unsigned __int32",
+            ty::UintTy::U64 => "unsigned __int64",
+            ty::UintTy::U128 => "unsigned __int128",
         }
     }
 }
 
-impl MsvcBasicName for ast::FloatTy {
+impl MsvcBasicName for ty::FloatTy {
     fn msvc_basic_name(self) -> &'static str {
         match self {
-            ast::FloatTy::F32 => "float",
-            ast::FloatTy::F64 => "double",
+            ty::FloatTy::F32 => "float",
+            ty::FloatTy::F64 => "double",
         }
     }
 }
@@ -980,7 +979,7 @@ pub fn compile_unit_metadata(
     // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
     // if multiple object files with the same `DW_AT_name` are linked together.
     // As a workaround we generate unique names for each object file. Those do
-    // not correspond to an actual source file but that should be harmless.
+    // not correspond to an actual source file but that is harmless.
     if tcx.sess.target.is_like_osx {
         name_in_debuginfo.push("@");
         name_in_debuginfo.push(codegen_unit_name);
@@ -993,14 +992,17 @@ pub fn compile_unit_metadata(
     let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
+    let work_dir = tcx.sess.working_dir.0.to_string_lossy();
     let flags = "\0";
-
     let out_dir = &tcx.output_filenames(LOCAL_CRATE).out_directory;
-    let split_name = tcx
-        .output_filenames(LOCAL_CRATE)
-        .split_dwarf_filename(tcx.sess.opts.debugging_opts.split_dwarf, Some(codegen_unit_name))
-        .unwrap_or_default();
-    let out_dir = out_dir.to_str().unwrap();
+    let split_name = if tcx.sess.target_can_use_split_dwarf() {
+        tcx.output_filenames(LOCAL_CRATE)
+            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
+            .map(|f| out_dir.join(f))
+    } else {
+        None
+    }
+    .unwrap_or_default();
     let split_name = split_name.to_str().unwrap();
 
     // FIXME(#60020):
@@ -1022,12 +1024,12 @@ pub fn compile_unit_metadata(
     assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
 
     unsafe {
-        let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
+        let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder,
             name_in_debuginfo.as_ptr().cast(),
             name_in_debuginfo.len(),
-            out_dir.as_ptr().cast(),
-            out_dir.len(),
+            work_dir.as_ptr().cast(),
+            work_dir.len(),
             llvm::ChecksumKind::None,
             ptr::null(),
             0,
@@ -1036,12 +1038,15 @@ pub fn compile_unit_metadata(
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
-            file_metadata,
+            compile_unit_file,
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr().cast(),
             0,
+            // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
+            // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
+            // output(s).
             split_name.as_ptr().cast(),
             split_name.len(),
             kind,
@@ -1070,7 +1075,7 @@ pub fn compile_unit_metadata(
                 gcov_cu_info.len() as c_uint,
             );
 
-            let llvm_gcov_ident = const_cstr!("llvm.gcov");
+            let llvm_gcov_ident = cstr!("llvm.gcov");
             llvm::LLVMAddNamedMetadataOperand(
                 debug_context.llmod,
                 llvm_gcov_ident.as_ptr(),
@@ -1088,7 +1093,7 @@ pub fn compile_unit_metadata(
             );
             llvm::LLVMAddNamedMetadataOperand(
                 debug_context.llmod,
-                const_cstr!("llvm.ident").as_ptr(),
+                cstr!("llvm.ident").as_ptr(),
                 llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
             );
         }
@@ -1412,7 +1417,7 @@ fn generator_layout_and_saved_local_names(
     def_id: DefId,
 ) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<Symbol>>) {
     let body = tcx.optimized_mir(def_id);
-    let generator_layout = body.generator_layout.as_ref().unwrap();
+    let generator_layout = body.generator_layout().unwrap();
     let mut generator_saved_local_names = IndexVec::from_elem(None, &generator_layout.field_tys);
 
     let state_arg = mir::Local::new(1);
@@ -1837,10 +1842,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
                     .span;
                 if !span.is_dummy() {
                     let loc = cx.lookup_debug_loc(span.lo());
-                    return Some(SourceInfo {
-                        file: file_metadata(cx, &loc.file),
-                        line: loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
-                    });
+                    return Some(SourceInfo { file: file_metadata(cx, &loc.file), line: loc.line });
                 }
             }
             _ => {}
@@ -2367,7 +2369,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIAr
     fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
         let mut names = generics
             .parent
-            .map_or(vec![], |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
+            .map_or_else(Vec::new, |def_id| get_parameter_names(cx, cx.tcx.generics_of(def_id)));
         names.extend(generics.params.iter().map(|param| param.name));
         names
     }
@@ -2479,7 +2481,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         let loc = cx.lookup_debug_loc(span.lo());
         (file_metadata(cx, &loc.file), loc.line)
     } else {
-        (unknown_file_metadata(cx), None)
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
@@ -2502,7 +2504,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
             linkage_name.as_ptr().cast(),
             linkage_name.len(),
             file_metadata,
-            line_number.unwrap_or(UNKNOWN_LINE_NUMBER),
+            line_number,
             type_metadata,
             is_local_to_unit,
             global,

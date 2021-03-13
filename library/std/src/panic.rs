@@ -12,10 +12,32 @@ use crate::panicking;
 use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
 use crate::rc::Rc;
+use crate::stream::Stream;
 use crate::sync::atomic;
 use crate::sync::{Arc, Mutex, RwLock};
 use crate::task::{Context, Poll};
 use crate::thread::Result;
+
+#[doc(hidden)]
+#[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
+#[allow_internal_unstable(libstd_sys_internals)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro panic_2015 {
+    () => ({
+        $crate::rt::begin_panic("explicit panic")
+    }),
+    ($msg:expr $(,)?) => ({
+        $crate::rt::begin_panic($msg)
+    }),
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
+    }),
+}
+
+#[doc(hidden)]
+#[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
+pub use core::panic::panic_2021;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use crate::panicking::{set_hook, take_hook};
@@ -340,6 +362,19 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
     }
 }
 
+#[unstable(feature = "async_stream", issue = "79024")]
+impl<S: Stream> Stream for AssertUnwindSafe<S> {
+    type Item = S::Item;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<S::Item>> {
+        unsafe { self.map_unchecked_mut(|x| &mut x.0) }.poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
 /// Invokes a closure, capturing the cause of an unwinding panic if one occurs.
 ///
 /// This function will return `Ok` with the closure's result if the closure
@@ -373,7 +408,7 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
 ///
-/// Also note that unwinding into Rust code with a foreign exception (e.g. a
+/// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
 ///
 /// # Examples

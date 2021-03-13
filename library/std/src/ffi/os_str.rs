@@ -71,10 +71,15 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsString {}
 
 /// Borrowed reference to an OS string (see [`OsString`]).
 ///
@@ -89,6 +94,7 @@ pub struct OsString {
 ///
 /// [`&str`]: str
 /// [conversions]: super#conversions
+#[cfg_attr(not(test), rustc_diagnostic_item = "OsStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `OsStr::from_inner` current implementation relies
@@ -99,6 +105,10 @@ pub struct OsString {
 pub struct OsStr {
     inner: Slice,
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for OsStr {}
 
 impl OsString {
     /// Constructs a new empty `OsString`.
@@ -304,8 +314,7 @@ impl OsString {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// If the current capacity is less than the lower limit, this is a no-op.
     ///
     /// # Examples
     ///
@@ -827,7 +836,7 @@ impl OsStr {
     /// assert!(!OsString::from("Ferrös").eq_ignore_ascii_case("FERRÖS"));
     /// ```
     #[unstable(feature = "osstring_ascii", issue = "70516")]
-    pub fn eq_ignore_ascii_case<S: ?Sized + AsRef<OsStr>>(&self, other: &S) -> bool {
+    pub fn eq_ignore_ascii_case<S: AsRef<OsStr>>(&self, other: S) -> bool {
         self.inner.eq_ignore_ascii_case(&other.as_ref().inner)
     }
 }

@@ -422,7 +422,7 @@ fn map_lib_features(
                         mf(Err($msg), file, i + 1);
                         continue;
                     }};
-                };
+                }
                 if let Some((ref name, ref mut f)) = becoming_feature {
                     if f.tracking_issue.is_none() {
                         f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);

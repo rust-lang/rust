@@ -1,4 +1,4 @@
-#![feature(start, box_syntax, alloc_system, core_intrinsics, alloc_prelude, alloc_error_handler)]
+#![feature(start, box_syntax, core_intrinsics, alloc_prelude, alloc_error_handler)]
 #![no_std]
 
 extern crate alloc;
@@ -11,7 +11,8 @@ use alloc_system::System;
 #[global_allocator]
 static ALLOC: System = System;
 
-#[link(name = "c")]
+#[cfg_attr(unix, link(name = "c"))]
+#[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
 extern "C" {
     fn puts(s: *const u8) -> i32;
 }

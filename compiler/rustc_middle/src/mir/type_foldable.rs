@@ -181,9 +181,11 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             AddressOf(mutability, place) => AddressOf(mutability, place.fold_with(folder)),
             Len(place) => Len(place.fold_with(folder)),
             Cast(kind, op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
-            BinaryOp(op, rhs, lhs) => BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
-            CheckedBinaryOp(op, rhs, lhs) => {
-                CheckedBinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder))
+            BinaryOp(op, box (rhs, lhs)) => {
+                BinaryOp(op, box (rhs.fold_with(folder), lhs.fold_with(folder)))
+            }
+            CheckedBinaryOp(op, box (rhs, lhs)) => {
+                CheckedBinaryOp(op, box (rhs.fold_with(folder), lhs.fold_with(folder)))
             }
             UnaryOp(op, val) => UnaryOp(op, val.fold_with(folder)),
             Discriminant(place) => Discriminant(place.fold_with(folder)),
@@ -227,7 +229,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 op.visit_with(visitor)?;
                 ty.visit_with(visitor)
             }
-            BinaryOp(_, ref rhs, ref lhs) | CheckedBinaryOp(_, ref rhs, ref lhs) => {
+            BinaryOp(_, box (ref rhs, ref lhs)) | CheckedBinaryOp(_, box (ref rhs, ref lhs)) => {
                 rhs.visit_with(visitor)?;
                 lhs.visit_with(visitor)
             }

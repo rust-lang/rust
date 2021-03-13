@@ -12,7 +12,7 @@ LL |     intrinsics::size_of::<T>()
 LL |     [u8; size_of::<T>() + 1]: ,
    |          -------------- inside `Inline::<dyn Debug>::{constant#0}` at $DIR/issue-80742.rs:23:10
 
-error[E0599]: no function or associated item named `new` found for struct `Inline<dyn Debug>` in the current scope
+error[E0599]: the function or associated item `new` exists for struct `Inline<dyn Debug>`, but its trait bounds were not satisfied
   --> $DIR/issue-80742.rs:31:36
    |
 LL | / struct Inline<T>
@@ -25,14 +25,14 @@ LL | | }
    | |_- function or associated item `new` not found for this
 ...
 LL |       let dst = Inline::<dyn Debug>::new(0);
-   |                                      ^^^ function or associated item not found in `Inline<dyn Debug>`
+   |                                      ^^^ function or associated item cannot be called on `Inline<dyn Debug>` due to unsatisfied trait bounds
    | 
   ::: $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    |
 LL |   pub trait Debug {
    |   --------------- doesn't satisfy `dyn Debug: Sized`
    |
-   = note: the method `new` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `dyn Debug: Sized`
 
 error[E0080]: evaluation of constant value failed

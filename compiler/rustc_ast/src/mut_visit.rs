@@ -28,7 +28,7 @@ pub trait ExpectOne<A: Array> {
 
 impl<A: Array> ExpectOne<A> for SmallVec<A> {
     fn expect_one(self, err: &'static str) -> A::Item {
-        assert!(self.len() == 1, err);
+        assert!(self.len() == 1, "{}", err);
         self.into_iter().next().unwrap()
     }
 }
@@ -168,10 +168,6 @@ pub trait MutVisitor: Sized {
 
     fn visit_ty_constraint(&mut self, t: &mut AssocTyConstraint) {
         noop_visit_ty_constraint(t, self);
-    }
-
-    fn visit_mod(&mut self, m: &mut Mod) {
-        noop_visit_mod(m, self);
     }
 
     fn visit_foreign_mod(&mut self, nm: &mut ForeignMod) {
@@ -912,15 +908,21 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ItemKind::Fn(_, sig, generics, body) => {
+        ItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visit_fn_sig(sig, vis);
             vis.visit_generics(generics);
             visit_opt(body, |body| vis.visit_block(body));
         }
-        ItemKind::Mod(m) => vis.visit_mod(m),
+        ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
+            ModKind::Loaded(items, _inline, inner_span) => {
+                vis.visit_span(inner_span);
+                items.flat_map_in_place(|item| vis.flat_map_item(item));
+            }
+            ModKind::Unloaded => {}
+        },
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::TyAlias(_, generics, bounds, ty) => {
+        ItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
             visit_opt(ty, |ty| vis.visit_ty(ty));
@@ -933,7 +935,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_variant_data(variant_data);
             vis.visit_generics(generics);
         }
-        ItemKind::Impl {
+        ItemKind::Impl(box ImplKind {
             unsafety: _,
             polarity: _,
             defaultness: _,
@@ -942,13 +944,13 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             of_trait,
             self_ty,
             items,
-        } => {
+        }) => {
             vis.visit_generics(generics);
             visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
             vis.visit_ty(self_ty);
             items.flat_map_in_place(|item| vis.flat_map_impl_item(item));
         }
-        ItemKind::Trait(_is_auto, _unsafety, generics, bounds, items) => {
+        ItemKind::Trait(box TraitKind(.., generics, bounds, items)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
             items.flat_map_in_place(|item| vis.flat_map_trait_item(item));
@@ -976,12 +978,12 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Fn(_, sig, generics, body) => {
+        AssocItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        AssocItemKind::TyAlias(_, generics, bounds, ty) => {
+        AssocItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
@@ -998,14 +1000,10 @@ pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
     vis.visit_asyncness(asyncness);
 }
 
-pub fn noop_visit_mod<T: MutVisitor>(module: &mut Mod, vis: &mut T) {
-    let Mod { inner, unsafety: _, items, inline: _ } = module;
-    vis.visit_span(inner);
-    items.flat_map_in_place(|item| vis.flat_map_item(item));
-}
-
+// FIXME: Avoid visiting the crate as a `Mod` item, flat map only the inner items if possible,
+// or make crate visiting first class if necessary.
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    visit_clobber(krate, |Crate { module, attrs, span, proc_macros }| {
+    visit_clobber(krate, |Crate { attrs, items, span, proc_macros }| {
         let item_vis =
             Visibility { kind: VisibilityKind::Public, span: span.shrink_to_lo(), tokens: None };
         let item = P(Item {
@@ -1014,19 +1012,20 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
             id: DUMMY_NODE_ID,
             vis: item_vis,
             span,
-            kind: ItemKind::Mod(module),
+            kind: ItemKind::Mod(Unsafe::No, ModKind::Loaded(items, Inline::Yes, span)),
             tokens: None,
         });
         let items = vis.flat_map_item(item);
 
         let len = items.len();
         if len == 0 {
-            let module = Mod { inner: span, unsafety: Unsafe::No, items: vec![], inline: true };
-            Crate { module, attrs: vec![], span, proc_macros }
+            Crate { attrs: vec![], items: vec![], span, proc_macros }
         } else if len == 1 {
             let Item { attrs, span, kind, .. } = items.into_iter().next().unwrap().into_inner();
             match kind {
-                ItemKind::Mod(module) => Crate { module, attrs, span, proc_macros },
+                ItemKind::Mod(_, ModKind::Loaded(items, ..)) => {
+                    Crate { attrs, items, span, proc_macros }
+                }
                 _ => panic!("visitor converted a module to not a module"),
             }
         } else {
@@ -1066,12 +1065,12 @@ pub fn noop_flat_map_foreign_item<T: MutVisitor>(
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        ForeignItemKind::Fn(_, sig, generics, body) => {
+        ForeignItemKind::Fn(box FnKind(_, sig, generics, body)) => {
             visitor.visit_generics(generics);
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        ForeignItemKind::TyAlias(_, generics, bounds, ty) => {
+        ForeignItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             visitor.visit_generics(generics);
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));

@@ -11,7 +11,6 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(array_value_iter)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
@@ -24,7 +23,7 @@
 
 #[macro_use]
 extern crate rustc_macros;
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 #[macro_use]
 extern crate rustc_data_structures;
 #[macro_use]

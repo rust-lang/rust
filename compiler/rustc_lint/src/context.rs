@@ -21,7 +21,9 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability};
+use rustc_errors::{
+    add_elided_lifetime_in_path_suggestion, struct_span_err, Applicability, SuggestionStyle,
+};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -32,13 +34,15 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
-use rustc_session::lint::BuiltinLintDiagnostics;
+use rustc_serialize::json::Json;
+use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_session::SessionLintStore;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::{symbol::Symbol, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi::LayoutOf;
+use tracing::debug;
 
 use std::cell::Cell;
 use std::slice;
@@ -85,6 +89,7 @@ impl SessionLintStore for LintStore {
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
+#[derive(Debug)]
 enum TargetLint {
     /// A direct lint target
     Id(LintId),
@@ -336,6 +341,20 @@ impl LintStore {
         }
     }
 
+    /// True if this symbol represents a lint group name.
+    pub fn is_lint_group(&self, lint_name: Symbol) -> bool {
+        debug!(
+            "is_lint_group(lint_name={:?}, lint_groups={:?})",
+            lint_name,
+            self.lint_groups.keys().collect::<Vec<_>>()
+        );
+        let lint_name_str = &*lint_name.as_str();
+        self.lint_groups.contains_key(&lint_name_str) || {
+            let warnings_name_str = crate::WARNINGS.name_lower();
+            lint_name_str == &*warnings_name_str
+        }
+    }
+
     /// Checks the name of a lint for its existence, and whether it was
     /// renamed or removed. Generates a DiagnosticBuilder containing a
     /// warning for renamed and removed lints. This is over both lint
@@ -452,7 +471,10 @@ impl LintStore {
             Some(&Id(ref id)) => {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
-            _ => CheckLintNameResult::NoLint(None),
+            Some(other) => {
+                tracing::debug!("got renamed lint {:?}", other);
+                CheckLintNameResult::NoLint(None)
+            }
         }
     }
 }
@@ -621,6 +643,33 @@ pub trait LintContext: Sized {
                     db.span_label(span, "ABI should be specified here");
                     db.help(&format!("the default ABI is {}", default_abi.name()));
                 }
+                BuiltinLintDiagnostics::LegacyDeriveHelpers(span) => {
+                    db.span_label(span, "the attribute is introduced here");
+                }
+                BuiltinLintDiagnostics::ExternDepSpec(krate, loc) => {
+                    let json = match loc {
+                        ExternDepSpec::Json(json) => {
+                            db.help(&format!("remove unnecessary dependency `{}`", krate));
+                            json
+                        }
+                        ExternDepSpec::Raw(raw) => {
+                            db.help(&format!("remove unnecessary dependency `{}` at `{}`", krate, raw));
+                            db.span_suggestion_with_style(
+                                DUMMY_SP,
+                                "raw extern location",
+                                raw.clone(),
+                                Applicability::Unspecified,
+                                SuggestionStyle::CompletelyHidden,
+                            );
+                            Json::String(raw)
+                        }
+                    };
+                    db.tool_only_suggestion_with_metadata(
+                        "json extern location",
+                        Applicability::Unspecified,
+                        json
+                    );
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
@@ -746,6 +795,14 @@ impl<'tcx> LateContext<'tcx> {
             hir::QPath::Resolved(_, ref path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
+                .filter(|typeck_results| typeck_results.hir_owner == id.owner)
+                .or_else(|| {
+                    if self.tcx.has_typeck_results(id.owner.to_def_id()) {
+                        Some(self.tcx.typeck(id.owner))
+                    } else {
+                        None
+                    }
+                })
                 .and_then(|typeck_results| typeck_results.type_dependent_def(id))
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
         }

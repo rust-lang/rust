@@ -24,8 +24,6 @@ pub enum TestResult {
     TrTimedFail,
 }
 
-unsafe impl Send for TestResult {}
-
 /// Creates a `TestResult` depending on the raw result of test execution
 /// and associated data.
 pub fn calc_result<'a>(
@@ -63,7 +61,7 @@ pub fn calc_result<'a>(
                 ))
             }
         }
-        (&ShouldPanic::Yes, Ok(())) => {
+        (&ShouldPanic::Yes, Ok(())) | (&ShouldPanic::YesWithMessage(_), Ok(())) => {
             TestResult::TrFailedMsg("test did not panic as expected".to_string())
         }
         _ if desc.allow_fail => TestResult::TrAllowedFail,

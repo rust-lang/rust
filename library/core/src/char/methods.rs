@@ -1,5 +1,6 @@
 //! impl char {}
 
+use crate::intrinsics::likely;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -331,14 +332,11 @@ impl char {
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
-
         // the code is split up here to improve execution speed for cases where
         // the `radix` is constant and 10 or smaller
-        let val = if radix <= 10 {
-            match self {
-                '0'..='9' => self as u32 - '0' as u32,
-                _ => return None,
-            }
+        let val = if likely(radix <= 10) {
+            // If not a digit, a number greater than radix will be created.
+            (self as u32).wrapping_sub('0' as u32)
         } else {
             match self {
                 '0'..='9' => self as u32 - '0' as u32,
@@ -571,8 +569,9 @@ impl char {
     /// assert_eq!(len, tokyo.len());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
-    pub fn len_utf8(self) -> usize {
+    pub const fn len_utf8(self) -> usize {
         len_utf8(self as u32)
     }
 
@@ -596,8 +595,9 @@ impl char {
     /// assert_eq!(len, 2);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_char_len_utf", since = "1.52.0")]
     #[inline]
-    pub fn len_utf16(self) -> usize {
+    pub const fn len_utf16(self) -> usize {
         let ch = self as u32;
         if (ch & 0xFFFF) == ch { 1 } else { 2 }
     }
@@ -1088,9 +1088,14 @@ impl char {
     /// [`make_ascii_uppercase()`]: #method.make_ascii_uppercase
     /// [`to_uppercase()`]: #method.to_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> char {
-        if self.is_ascii() { (*self as u8).to_ascii_uppercase() as char } else { *self }
+    pub const fn to_ascii_uppercase(&self) -> char {
+        if self.is_ascii_lowercase() {
+            (*self as u8).ascii_change_case_unchecked() as char
+        } else {
+            *self
+        }
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -1116,9 +1121,14 @@ impl char {
     /// [`make_ascii_lowercase()`]: #method.make_ascii_lowercase
     /// [`to_lowercase()`]: #method.to_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> char {
-        if self.is_ascii() { (*self as u8).to_ascii_lowercase() as char } else { *self }
+    pub const fn to_ascii_lowercase(&self) -> char {
+        if self.is_ascii_uppercase() {
+            (*self as u8).ascii_change_case_unchecked() as char
+        } else {
+            *self
+        }
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
@@ -1137,8 +1147,9 @@ impl char {
     /// assert!(!upper_a.eq_ignore_ascii_case(&lower_z));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &char) -> bool {
+    pub const fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
@@ -1555,7 +1566,7 @@ impl char {
 }
 
 #[inline]
-fn len_utf8(code: u32) -> usize {
+const fn len_utf8(code: u32) -> usize {
     if code < MAX_ONE_B {
         1
     } else if code < MAX_TWO_B {

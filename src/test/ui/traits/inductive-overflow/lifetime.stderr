@@ -1,0 +1,14 @@
+error[E0275]: overflow evaluating the requirement `Box<X<C<'_>>>: NotAuto`
+  --> $DIR/lifetime.rs:27:5
+   |
+LL | fn is_send<S: NotAuto>() {}
+   |               ------- required by this bound in `is_send`
+...
+LL |     is_send::<X<C<'static>>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: required because of the requirements on the impl of `NotAuto` for `X<C<'static>>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Zpolymorphize=on -Zmir-opt-level=3
+// compile-flags: -Zpolymorphize=on -Zmir-opt-level=4
 
 fn caller<T, U>() -> &'static usize {
     callee::<U>()

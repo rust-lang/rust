@@ -59,7 +59,7 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
         }
     }
 
-    for (name, &item) in WEAK_ITEMS_REFS.iter() {
+    for (name, item) in WEAK_ITEMS_REFS.clone().into_sorted_vector().into_iter() {
         if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
             if item == LangItem::PanicImpl {
                 tcx.sess.err("`#[panic_handler]` function required, but not found");
@@ -97,7 +97,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
         let check_name = |attr, sym| self.tcx.sess.check_name(attr, sym);
-        if let Some((lang_item, _)) = lang_items::extract(check_name, &i.attrs) {
+        let attrs = self.tcx.hir().attrs(i.hir_id());
+        if let Some((lang_item, _)) = lang_items::extract(check_name, attrs) {
             self.register(lang_item, i.span);
         }
         intravisit::walk_foreign_item(self, i)

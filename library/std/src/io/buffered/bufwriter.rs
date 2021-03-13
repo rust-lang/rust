@@ -117,7 +117,7 @@ impl<W: Write> BufWriter<W> {
     /// "successfully written" (by returning nonzero success values from
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
-    pub(super) fn flush_buf(&mut self) -> io::Result<()> {
+    pub(in crate::io) fn flush_buf(&mut self) -> io::Result<()> {
         /// Helper struct to ensure the buffer is updated after all the writes
         /// are complete. It tracks the number of written bytes and drains them
         /// all from the front of the buffer when dropped.
@@ -241,6 +241,18 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
         &self.buf
+    }
+
+    /// Returns a mutable reference to the internal buffer.
+    ///
+    /// This can be used to write data directly into the buffer without triggering writers
+    /// to the underlying writer.
+    ///
+    /// That the buffer is a `Vec` is an implementation detail.
+    /// Callers should not modify the capacity as there currently is no public API to do so
+    /// and thus any capacity changes would be unexpected by the user.
+    pub(in crate::io) fn buffer_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.buf
     }
 
     /// Returns the number of bytes the internal buffer can hold without flushing.

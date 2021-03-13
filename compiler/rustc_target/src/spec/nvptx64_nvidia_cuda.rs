@@ -49,10 +49,12 @@ pub fn target() -> Target {
             // create the tests for this.
             unsupported_abis: vec![
                 Abi::Cdecl,
-                Abi::Stdcall,
+                Abi::Stdcall { unwind: false },
+                Abi::Stdcall { unwind: true },
                 Abi::Fastcall,
                 Abi::Vectorcall,
-                Abi::Thiscall,
+                Abi::Thiscall { unwind: false },
+                Abi::Thiscall { unwind: true },
                 Abi::Aapcs,
                 Abi::Win64,
                 Abi::SysV64,

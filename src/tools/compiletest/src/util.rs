@@ -38,6 +38,7 @@ const OS_TABLE: &[(&str, &str)] = &[
 
 const ARCH_TABLE: &[(&str, &str)] = &[
     ("aarch64", "aarch64"),
+    ("aarch64_be", "aarch64"),
     ("amd64", "x86_64"),
     ("arm", "arm"),
     ("arm64", "aarch64"),
@@ -109,7 +110,11 @@ pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
 ];
 
+pub const HWASAN_SUPPORTED_TARGETS: &[&str] =
+    &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
+
 const BIG_ENDIAN: &[&str] = &[
+    "aarch64_be",
     "armebv7r",
     "mips",
     "mips64",
@@ -160,7 +165,9 @@ pub fn matches_env(triple: &str, name: &str) -> bool {
 }
 
 pub fn get_pointer_width(triple: &str) -> &'static str {
-    if (triple.contains("64") && !triple.ends_with("gnux32")) || triple.starts_with("s390x") {
+    if (triple.contains("64") && !triple.ends_with("gnux32") && !triple.ends_with("gnu_ilp32"))
+        || triple.starts_with("s390x")
+    {
         "64bit"
     } else if triple.starts_with("avr") {
         "16bit"

@@ -8,9 +8,9 @@ use crate::errors::MethodCallOnUnknownType;
 use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
-use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_infer::infer::canonical::OriginalQueryValues;
@@ -160,21 +160,21 @@ pub struct Pick<'tcx> {
     pub kind: PickKind<'tcx>,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
 
-    // Indicates that the source expression should be autoderef'd N times
-    //
-    // A = expr | *expr | **expr | ...
+    /// Indicates that the source expression should be autoderef'd N times
+    ///
+    ///     A = expr | *expr | **expr | ...
     pub autoderefs: usize,
 
-    // Indicates that an autoref is applied after the optional autoderefs
-    //
-    // B = A | &A | &mut A
+    /// Indicates that an autoref is applied after the optional autoderefs
+    ///
+    ///     B = A | &A | &mut A
     pub autoref: Option<hir::Mutability>,
 
-    // Indicates that the source expression should be "unsized" to a
-    // target type. This should probably eventually go away in favor
-    // of just coercing method receivers.
-    //
-    // C = B | unsize(B)
+    /// Indicates that the source expression should be "unsized" to a
+    /// target type. This should probably eventually go away in favor
+    /// of just coercing method receivers.
+    ///
+    ///     C = B | unsize(B)
     pub unsize: Option<Ty<'tcx>>,
 }
 
@@ -662,30 +662,30 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
             ty::Int(i) => {
                 let lang_def_id = match i {
-                    ast::IntTy::I8 => lang_items.i8_impl(),
-                    ast::IntTy::I16 => lang_items.i16_impl(),
-                    ast::IntTy::I32 => lang_items.i32_impl(),
-                    ast::IntTy::I64 => lang_items.i64_impl(),
-                    ast::IntTy::I128 => lang_items.i128_impl(),
-                    ast::IntTy::Isize => lang_items.isize_impl(),
+                    ty::IntTy::I8 => lang_items.i8_impl(),
+                    ty::IntTy::I16 => lang_items.i16_impl(),
+                    ty::IntTy::I32 => lang_items.i32_impl(),
+                    ty::IntTy::I64 => lang_items.i64_impl(),
+                    ty::IntTy::I128 => lang_items.i128_impl(),
+                    ty::IntTy::Isize => lang_items.isize_impl(),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Uint(i) => {
                 let lang_def_id = match i {
-                    ast::UintTy::U8 => lang_items.u8_impl(),
-                    ast::UintTy::U16 => lang_items.u16_impl(),
-                    ast::UintTy::U32 => lang_items.u32_impl(),
-                    ast::UintTy::U64 => lang_items.u64_impl(),
-                    ast::UintTy::U128 => lang_items.u128_impl(),
-                    ast::UintTy::Usize => lang_items.usize_impl(),
+                    ty::UintTy::U8 => lang_items.u8_impl(),
+                    ty::UintTy::U16 => lang_items.u16_impl(),
+                    ty::UintTy::U32 => lang_items.u32_impl(),
+                    ty::UintTy::U64 => lang_items.u64_impl(),
+                    ty::UintTy::U128 => lang_items.u128_impl(),
+                    ty::UintTy::Usize => lang_items.usize_impl(),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::Float(f) => {
                 let (lang_def_id1, lang_def_id2) = match f {
-                    ast::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-                    ast::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
+                    ty::FloatTy::F32 => (lang_items.f32_impl(), lang_items.f32_runtime_impl()),
+                    ty::FloatTy::F64 => (lang_items.f64_impl(), lang_items.f64_runtime_impl()),
                 };
                 self.assemble_inherent_impl_for_primitive(lang_def_id1);
                 self.assemble_inherent_impl_for_primitive(lang_def_id2);
@@ -1091,19 +1091,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .next()
     }
 
+    /// For each type `T` in the step list, this attempts to find a method where
+    /// the (transformed) self type is exactly `T`. We do however do one
+    /// transformation on the adjustment: if we are passing a region pointer in,
+    /// we will potentially *reborrow* it to a shorter lifetime. This allows us
+    /// to transparently pass `&mut` pointers, in particular, without consuming
+    /// them for their entire lifetime.
     fn pick_by_value_method(
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Option<PickResult<'tcx>> {
-        //! For each type `T` in the step list, this attempts to find a
-        //! method where the (transformed) self type is exactly `T`. We
-        //! do however do one transformation on the adjustment: if we
-        //! are passing a region pointer in, we will potentially
-        //! *reborrow* it to a shorter lifetime. This allows us to
-        //! transparently pass `&mut` pointers, in particular, without
-        //! consuming them for their entire lifetime.
-
         if step.unsize {
             return None;
         }
@@ -1168,7 +1166,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         //
                         // We suppress warning if we're picking the method only because it is a
                         // suggestion.
-                        self.emit_unstable_name_collision_hint(p, &unstable_candidates);
+                        self.emit_unstable_name_collision_hint(p, &unstable_candidates, self_ty);
                     }
                 }
                 return Some(pick);
@@ -1247,24 +1245,46 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         stable_pick: &Pick<'_>,
         unstable_candidates: &[(&Candidate<'tcx>, Symbol)],
+        self_ty: Ty<'tcx>,
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
             self.fcx.body_id,
             self.span,
             |lint| {
-                let mut diag = lint.build(
-                    "a method with this name may be added to the standard library in the future",
-                );
-                // FIXME: This should be a `span_suggestion` instead of `help`
-                // However `self.span` only
-                // highlights the method name, so we can't use it. Also consider reusing the code from
-                // `report_method_error()`.
-                diag.help(&format!(
-                    "call with fully qualified syntax `{}(...)` to keep using the current method",
-                    self.tcx.def_path_str(stable_pick.item.def_id),
+                let def_kind = stable_pick.item.kind.as_def_kind();
+                let mut diag = lint.build(&format!(
+                    "{} {} with this name may be added to the standard library in the future",
+                    def_kind.article(),
+                    def_kind.descr(stable_pick.item.def_id),
                 ));
-
+                match (stable_pick.item.kind, stable_pick.item.container) {
+                    (ty::AssocKind::Fn, _) => {
+                        // FIXME: This should be a `span_suggestion` instead of `help`
+                        // However `self.span` only
+                        // highlights the method name, so we can't use it. Also consider reusing
+                        // the code from `report_method_error()`.
+                        diag.help(&format!(
+                            "call with fully qualified syntax `{}(...)` to keep using the current \
+                             method",
+                            self.tcx.def_path_str(stable_pick.item.def_id),
+                        ));
+                    }
+                    (ty::AssocKind::Const, ty::AssocItemContainer::TraitContainer(def_id)) => {
+                        diag.span_suggestion(
+                            self.span,
+                            "use the fully qualified path to the associated const",
+                            format!(
+                                "<{} as {}>::{}",
+                                self_ty,
+                                self.tcx.def_path_str(def_id),
+                                stable_pick.item.ident
+                            ),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    _ => {}
+                }
                 if self.tcx.sess.is_nightly_build() {
                     for (candidate, feature) in unstable_candidates {
                         diag.help(&format!(
@@ -1696,7 +1716,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_item(def_id, name, Namespace::ValueNS)
-                    .map_or(Vec::new(), |x| vec![x])
+                    .map_or_else(Vec::new, |x| vec![x])
             }
         } else {
             self.tcx.associated_items(def_id).in_definition_order().copied().collect()

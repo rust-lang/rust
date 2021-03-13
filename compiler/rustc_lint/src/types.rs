@@ -168,25 +168,25 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
 // For `isize` & `usize`, be conservative with the warnings, so that the
 // warnings are consistent between 32- and 64-bit platforms.
-fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
+fn int_ty_range(int_ty: ty::IntTy) -> (i128, i128) {
     match int_ty {
-        ast::IntTy::Isize => (i64::MIN.into(), i64::MAX.into()),
-        ast::IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
-        ast::IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
-        ast::IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
-        ast::IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
-        ast::IntTy::I128 => (i128::MIN, i128::MAX),
+        ty::IntTy::Isize => (i64::MIN.into(), i64::MAX.into()),
+        ty::IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
+        ty::IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
+        ty::IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
+        ty::IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
+        ty::IntTy::I128 => (i128::MIN, i128::MAX),
     }
 }
 
-fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
+fn uint_ty_range(uint_ty: ty::UintTy) -> (u128, u128) {
     let max = match uint_ty {
-        ast::UintTy::Usize => u64::MAX.into(),
-        ast::UintTy::U8 => u8::MAX.into(),
-        ast::UintTy::U16 => u16::MAX.into(),
-        ast::UintTy::U32 => u32::MAX.into(),
-        ast::UintTy::U64 => u64::MAX.into(),
-        ast::UintTy::U128 => u128::MAX,
+        ty::UintTy::Usize => u64::MAX.into(),
+        ty::UintTy::U8 => u8::MAX.into(),
+        ty::UintTy::U16 => u16::MAX.into(),
+        ty::UintTy::U32 => u32::MAX.into(),
+        ty::UintTy::U64 => u64::MAX.into(),
+        ty::UintTy::U128 => u128::MAX,
     };
     (0, max)
 }
@@ -217,7 +217,11 @@ fn report_bin_hex_error(
     cx.struct_span_lint(OVERFLOWING_LITERALS, expr.span, |lint| {
         let (t, actually) = match ty {
             attr::IntType::SignedInt(t) => {
-                let actually = size.sign_extend(val) as i128;
+                let actually = if negative {
+                    -(size.sign_extend(val) as i128)
+                } else {
+                    size.sign_extend(val) as i128
+                };
                 (t.name_str(), actually.to_string())
             }
             attr::IntType::UnsignedInt(t) => {
@@ -225,12 +229,23 @@ fn report_bin_hex_error(
                 (t.name_str(), actually.to_string())
             }
         };
-        let mut err = lint.build(&format!("literal out of range for {}", t));
-        err.note(&format!(
-            "the literal `{}` (decimal `{}`) does not fit into \
-             the type `{}` and will become `{}{}`",
-            repr_str, val, t, actually, t
-        ));
+        let mut err = lint.build(&format!("literal out of range for `{}`", t));
+        if negative {
+            // If the value is negative,
+            // emits a note about the value itself, apart from the literal.
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}`",
+                repr_str, val, t
+            ));
+            err.note(&format!("and the value `-{}` will become `{}{}`", repr_str, actually, t));
+        } else {
+            err.note(&format!(
+                "the literal `{}` (decimal `{}`) does not fit into \
+                 the type `{}` and will become `{}{}`",
+                repr_str, val, t, actually, t
+            ));
+        }
         if let Some(sugg_ty) =
             get_type_suggestion(&cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
@@ -238,12 +253,12 @@ fn report_bin_hex_error(
                 let (sans_suffix, _) = repr_str.split_at(pos);
                 err.span_suggestion(
                     expr.span,
-                    &format!("consider using `{}` instead", sugg_ty),
+                    &format!("consider using the type `{}` instead", sugg_ty),
                     format!("{}{}", sans_suffix, sugg_ty),
                     Applicability::MachineApplicable,
                 );
             } else {
-                err.help(&format!("consider using `{}` instead", sugg_ty));
+                err.help(&format!("consider using the type `{}` instead", sugg_ty));
             }
         }
         err.emit();
@@ -258,8 +273,8 @@ fn report_bin_hex_error(
 //
 // No suggestion for: `isize`, `usize`.
 fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static str> {
-    use rustc_ast::IntTy::*;
-    use rustc_ast::UintTy::*;
+    use ty::IntTy::*;
+    use ty::UintTy::*;
     macro_rules! find_fit {
         ($ty:expr, $val:expr, $negative:expr,
          $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
@@ -302,7 +317,7 @@ fn lint_int_literal<'tcx>(
     type_limits: &TypeLimits,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
-    t: ast::IntTy,
+    t: ty::IntTy,
     v: u128,
 ) {
     let int_type = t.normalize(cx.sess().target.pointer_width);
@@ -314,7 +329,14 @@ fn lint_int_literal<'tcx>(
     // avoiding use of -min to prevent overflow/panic
     if (negative && v > max + 1) || (!negative && v > max) {
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-            report_bin_hex_error(cx, e, attr::IntType::SignedInt(t), repr_str, v, negative);
+            report_bin_hex_error(
+                cx,
+                e,
+                attr::IntType::SignedInt(ty::ast_int_ty(t)),
+                repr_str,
+                v,
+                negative,
+            );
             return;
         }
 
@@ -331,18 +353,23 @@ fn lint_int_literal<'tcx>(
         }
 
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
-            lint.build(&format!("literal out of range for `{}`", t.name_str()))
-                .note(&format!(
-                    "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
-                    cx.sess()
-                        .source_map()
-                        .span_to_snippet(lit.span)
-                        .expect("must get snippet from literal"),
-                    t.name_str(),
-                    min,
-                    max,
-                ))
-                .emit();
+            let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
+            err.note(&format!(
+                "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
+                cx.sess()
+                    .source_map()
+                    .span_to_snippet(lit.span)
+                    .expect("must get snippet from literal"),
+                t.name_str(),
+                min,
+                max,
+            ));
+            if let Some(sugg_ty) =
+                get_type_suggestion(&cx.typeck_results().node_type(e.hir_id), v, negative)
+            {
+                err.help(&format!("consider using the type `{}` instead", sugg_ty));
+            }
+            err.emit();
         });
     }
 }
@@ -351,7 +378,7 @@ fn lint_uint_literal<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
-    t: ast::UintTy,
+    t: ty::UintTy,
 ) {
     let uint_type = t.normalize(cx.sess().target.pointer_width);
     let (min, max) = uint_ty_range(uint_type);
@@ -391,7 +418,14 @@ fn lint_uint_literal<'tcx>(
             }
         }
         if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-            report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);
+            report_bin_hex_error(
+                cx,
+                e,
+                attr::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                repr_str,
+                lit_val,
+                false,
+            );
             return;
         }
         cx.struct_span_lint(OVERFLOWING_LITERALS, e.span, |lint| {
@@ -430,8 +464,8 @@ fn lint_literal<'tcx>(
         ty::Float(t) => {
             let is_infinite = match lit.node {
                 ast::LitKind::Float(v, _) => match t {
-                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                    ty::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                    ty::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
                 },
                 _ => bug!(),
             };
@@ -458,7 +492,7 @@ fn lint_literal<'tcx>(
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::UnNeg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != Some(e.hir_id) {
                     self.negated_expr_id = Some(expr.hir_id);
@@ -658,7 +692,7 @@ pub fn transparent_newtype_field<'a, 'tcx>(
 }
 
 /// Is type known to be non-null?
-crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
+fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKind) -> bool {
     let tcx = cx.tcx;
     match ty.kind() {
         ty::FnPtr(_) => true,
@@ -669,6 +703,12 @@ crate fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: C
 
             if marked_non_null {
                 return true;
+            }
+
+            // Types with a `#[repr(no_niche)]` attribute have their niche hidden.
+            // The attribute is used by the UnsafeCell for example (the only use so far).
+            if def.repr.hide_niche() {
+                return false;
             }
 
             for variant in &def.variants {
@@ -984,7 +1024,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using `u32` or `libc::wchar_t` instead".into()),
             },
 
-            ty::Int(ast::IntTy::I128) | ty::Uint(ast::UintTy::U128) => FfiUnsafe {
+            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => FfiUnsafe {
                 ty,
                 reason: "128-bit integers don't currently have a known stable ABI".into(),
                 help: None,
@@ -1242,15 +1282,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, it: &hir::ForeignItem<'_>) {
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
-        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id);
+        let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         if !vis.is_internal_abi(abi) {
             match it.kind {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
-                    vis.check_foreign_fn(it.hir_id, decl);
+                    vis.check_foreign_fn(it.hir_id(), decl);
                 }
                 hir::ForeignItemKind::Static(ref ty, _) => {
-                    vis.check_foreign_static(it.hir_id, ty.span);
+                    vis.check_foreign_static(it.hir_id(), ty.span);
                 }
                 hir::ForeignItemKind::Type => (),
             }
@@ -1288,8 +1328,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
-            let item_def_id = cx.tcx.hir().local_def_id(it.hir_id);
-            let t = cx.tcx.type_of(item_def_id);
+            let t = cx.tcx.type_of(it.def_id);
             let ty = cx.tcx.erase_regions(t);
             let layout = match cx.layout_of(ty) {
                 Ok(layout) => layout,

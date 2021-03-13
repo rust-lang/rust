@@ -3,13 +3,12 @@
 
 use crate::ty::{self, Ty};
 
-use rustc_ast as ast;
 use rustc_macros::HashStable;
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IntTy {
-    U(ast::UintTy),
+    U(ty::UintTy),
     I,
     CEnum,
     Bool,

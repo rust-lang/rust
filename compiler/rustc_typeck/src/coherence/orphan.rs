@@ -24,7 +24,6 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         // "Trait" impl
         if let hir::ItemKind::Impl(hir::Impl {
             generics, of_trait: Some(ref tr), self_ty, ..
@@ -32,13 +31,13 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
         {
             debug!(
                 "coherence2::orphan check: trait impl {}",
-                self.tcx.hir().node_to_string(item.hir_id)
+                self.tcx.hir().node_to_string(item.hir_id())
             );
-            let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
+            let trait_ref = self.tcx.impl_trait_ref(item.def_id).unwrap();
             let trait_def_id = trait_ref.def_id;
             let sm = self.tcx.sess.source_map();
             let sp = sm.guess_head_span(item.span);
-            match traits::orphan_check(self.tcx, def_id.to_def_id()) {
+            match traits::orphan_check(self.tcx, item.def_id.to_def_id()) {
                 Ok(()) => {}
                 Err(traits::OrphanCheckErr::NonLocalInputType(tys)) => {
                     let mut err = struct_span_err!(

@@ -67,7 +67,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
 
         match *kind {
             clean::ModuleItem(..) => ItemType::Module,
-            clean::ExternCrateItem(..) => ItemType::ExternCrate,
+            clean::ExternCrateItem { .. } => ItemType::ExternCrate,
             clean::ImportItem(..) => ItemType::Import,
             clean::StructItem(..) => ItemType::Struct,
             clean::UnionItem(..) => ItemType::Union,
@@ -119,6 +119,7 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Attr => ItemType::ProcAttribute,
             clean::TypeKind::Derive => ItemType::ProcDerive,
             clean::TypeKind::TraitAlias => ItemType::TraitAlias,
+            clean::TypeKind::Primitive => ItemType::Primitive,
         }
     }
 }
@@ -158,6 +159,6 @@ impl ItemType {
 
 impl fmt::Display for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
+        f.write_str(self.as_str())
     }
 }

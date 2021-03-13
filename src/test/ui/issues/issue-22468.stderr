@@ -2,7 +2,7 @@ error[E0618]: expected function, found `&str`
   --> $DIR/issue-22468.rs:3:13
    |
 LL |     let foo = "bar";
-   |         --- `&str` defined here
+   |         --- `foo` has type `&str`
 LL |     let x = foo("baz");
    |             ^^^-------
    |             |

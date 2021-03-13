@@ -5,14 +5,17 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
-use rustc_session::lint::{builtin, Level, Lint, LintId};
+use rustc_session::lint::{
+    builtin::{self, FORBIDDEN_LINT_GROUPS},
+    Level, Lint, LintId,
+};
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::{DesugaringKind, ExpnKind, MultiSpan};
 use rustc_span::{symbol, Span, Symbol, DUMMY_SP};
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
 pub enum LintLevelSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
@@ -48,11 +51,13 @@ impl LintLevelSource {
 /// A tuple of a lint level and its source.
 pub type LevelAndSource = (Level, LintLevelSource);
 
+#[derive(Debug)]
 pub struct LintLevelSets {
     pub list: Vec<LintSet>,
     pub lint_cap: Level,
 }
 
+#[derive(Debug)]
 pub enum LintSet {
     CommandLine {
         // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
@@ -87,7 +92,12 @@ impl LintLevelSets {
         // If we're about to issue a warning, check at the last minute for any
         // directives against the warnings "lint". If, for example, there's an
         // `allow(warnings)` in scope then we want to respect that instead.
-        if level == Level::Warn {
+        //
+        // We exempt `FORBIDDEN_LINT_GROUPS` from this because it specifically
+        // triggers in cases (like #80988) where you have `forbid(warnings)`,
+        // and so if we turned that into an error, it'd defeat the purpose of the
+        // future compatibility warning.
+        if level == Level::Warn && LintId::of(lint) != LintId::of(FORBIDDEN_LINT_GROUPS) {
             let (warnings_level, warnings_src) =
                 self.get_lint_id_level(LintId::of(builtin::WARNINGS), idx, aux);
             if let Some(configured_warning_level) = warnings_level {
@@ -139,6 +149,7 @@ impl LintLevelSets {
     }
 }
 
+#[derive(Debug)]
 pub struct LintLevelMap {
     pub sets: LintLevelSets,
     pub id_to_set: FxHashMap<HirId, u32>,
@@ -342,12 +353,12 @@ pub fn struct_lint_level<'s, 'd>(
                  it will become a hard error";
 
             let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-                "once this method is added to the standard library, \
-                 the ambiguity may cause an error or change in behavior!"
+                "once this associated item is added to the standard library, the ambiguity may \
+                 cause an error or change in behavior!"
                     .to_owned()
             } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-                "this borrowing pattern was not meant to be accepted, \
-                 and may become a hard error in the future"
+                "this borrowing pattern was not meant to be accepted, and may become a hard error \
+                 in the future"
                     .to_owned()
             } else if let Some(edition) = future_incompatible.edition {
                 format!("{} in the {} edition!", STANDARD_MESSAGE, edition)

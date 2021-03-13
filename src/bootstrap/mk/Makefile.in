@@ -45,6 +45,10 @@ check-aux:
 		src/tools/cargo \
 		src/tools/cargotest \
 		$(BOOTSTRAP_ARGS)
+check-aux-and-gui: check-aux
+	$(Q)$(BOOTSTRAP) test --stage 2 \
+		src/test/rustdoc-gui \
+		$(BOOTSTRAP_ARGS)
 check-bootstrap:
 	$(Q)$(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap_test.py
 dist:

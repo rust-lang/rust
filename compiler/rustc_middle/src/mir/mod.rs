@@ -61,12 +61,14 @@ pub trait HasLocalDecls<'tcx> {
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for LocalDecls<'tcx> {
+    #[inline]
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         self
     }
 }
 
 impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
+    #[inline]
     fn local_decls(&self) -> &LocalDecls<'tcx> {
         &self.local_decls
     }
@@ -144,6 +146,22 @@ impl<'tcx> MirSource<'tcx> {
     }
 }
 
+#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
+pub struct GeneratorInfo<'tcx> {
+    /// The yield type of the function, if it is a generator.
+    pub yield_ty: Option<Ty<'tcx>>,
+
+    /// Generator drop glue.
+    pub generator_drop: Option<Body<'tcx>>,
+
+    /// The layout of a generator. Produced by the state transformation.
+    pub generator_layout: Option<GeneratorLayout<'tcx>>,
+
+    /// If this is a generator then record the type of source expression that caused this generator
+    /// to be created.
+    pub generator_kind: GeneratorKind,
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct Body<'tcx> {
@@ -164,18 +182,7 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
-    /// The yield type of the function, if it is a generator.
-    pub yield_ty: Option<Ty<'tcx>>,
-
-    /// Generator drop glue.
-    pub generator_drop: Option<Box<Body<'tcx>>>,
-
-    /// The layout of a generator. Produced by the state transformation.
-    pub generator_layout: Option<GeneratorLayout<'tcx>>,
-
-    /// If this is a generator then record the type of source expression that caused this generator
-    /// to be created.
-    pub generator_kind: Option<GeneratorKind>,
+    pub generator: Option<Box<GeneratorInfo<'tcx>>>,
 
     /// Declarations of locals.
     ///
@@ -257,10 +264,14 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks,
             source_scopes,
-            yield_ty: None,
-            generator_drop: None,
-            generator_layout: None,
-            generator_kind,
+            generator: generator_kind.map(|generator_kind| {
+                Box::new(GeneratorInfo {
+                    yield_ty: None,
+                    generator_drop: None,
+                    generator_layout: None,
+                    generator_kind,
+                })
+            }),
             local_decls,
             user_type_annotations,
             arg_count,
@@ -287,16 +298,13 @@ impl<'tcx> Body<'tcx> {
             source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
             source_scopes: IndexVec::new(),
-            yield_ty: None,
-            generator_drop: None,
-            generator_layout: None,
+            generator: None,
             local_decls: IndexVec::new(),
             user_type_annotations: IndexVec::new(),
             arg_count: 0,
             spread_arg: None,
             span: DUMMY_SP,
             required_consts: Vec::new(),
-            generator_kind: None,
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
@@ -478,6 +486,26 @@ impl<'tcx> Body<'tcx> {
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(self)
     }
+
+    #[inline]
+    pub fn yield_ty(&self) -> Option<Ty<'tcx>> {
+        self.generator.as_ref().and_then(|generator| generator.yield_ty)
+    }
+
+    #[inline]
+    pub fn generator_layout(&self) -> Option<&GeneratorLayout<'tcx>> {
+        self.generator.as_ref().and_then(|generator| generator.generator_layout.as_ref())
+    }
+
+    #[inline]
+    pub fn generator_drop(&self) -> Option<&Body<'tcx>> {
+        self.generator.as_ref().and_then(|generator| generator.generator_drop.as_ref())
+    }
+
+    #[inline]
+    pub fn generator_kind(&self) -> Option<GeneratorKind> {
+        self.generator.as_ref().map(|generator| generator.generator_kind)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -594,7 +622,7 @@ impl SourceInfo {
 // Borrow kinds
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
+#[derive(Hash, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -923,7 +951,7 @@ pub struct LocalDecl<'tcx> {
 }
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics and for
@@ -962,8 +990,7 @@ impl<'tcx> LocalDecl<'tcx> {
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
-                })
-                | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
+                }) | BindingForm::ImplicitSelf(ImplicitSelfKind::Imm),
             )))
         )
     }
@@ -980,8 +1007,7 @@ impl<'tcx> LocalDecl<'tcx> {
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
-                })
-                | BindingForm::ImplicitSelf(_),
+                }) | BindingForm::ImplicitSelf(_),
             )))
         )
     }
@@ -1165,7 +1191,7 @@ pub struct BasicBlockData<'tcx> {
 }
 
 /// Information about an assertion failure.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
 pub enum AssertKind<O> {
     BoundsCheck { len: O, index: O },
     Overflow(BinOp, O, O),
@@ -1176,7 +1202,17 @@ pub enum AssertKind<O> {
     ResumedAfterPanic(GeneratorKind),
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    PartialOrd,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    TypeFoldable
+)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -1432,7 +1468,7 @@ pub struct Statement<'tcx> {
 }
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
@@ -1451,7 +1487,7 @@ impl Statement<'_> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
@@ -1505,12 +1541,24 @@ pub enum StatementKind<'tcx> {
     /// counter varible at runtime, each time the code region is executed.
     Coverage(Box<Coverage>),
 
+    /// Denotes a call to the intrinsic function copy_overlapping, where `src_dst` denotes the
+    /// memory being read from and written to(one field to save memory), and size
+    /// indicates how many bytes are being copied over.
+    CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
 
 impl<'tcx> StatementKind<'tcx> {
-    pub fn as_assign_mut(&mut self) -> Option<&mut Box<(Place<'tcx>, Rvalue<'tcx>)>> {
+    pub fn as_assign_mut(&mut self) -> Option<&mut (Place<'tcx>, Rvalue<'tcx>)> {
+        match self {
+            StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
             _ => None,
@@ -1519,7 +1567,7 @@ impl<'tcx> StatementKind<'tcx> {
 }
 
 /// Describes what kind of retag is to be performed.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, HashStable)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, Hash, HashStable)]
 pub enum RetagKind {
     /// The initial retag when entering a function.
     FnEntry,
@@ -1532,7 +1580,7 @@ pub enum RetagKind {
 }
 
 /// The `FakeReadCause` describes the type of pattern why a FakeRead statement exists.
-#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, HashStable, PartialEq)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, Hash, HashStable, PartialEq)]
 pub enum FakeReadCause {
     /// Inject a fake read of the borrowed input at the end of each guards
     /// code.
@@ -1574,7 +1622,7 @@ pub enum FakeReadCause {
     ForIndex,
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub struct LlvmInlineAsm<'tcx> {
     pub asm: hir::LlvmInlineAsmInner,
     pub outputs: Box<[Place<'tcx>]>,
@@ -1616,15 +1664,30 @@ impl Debug for Statement<'_> {
                     write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
+            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
+            }
             Nop => write!(fmt, "nop"),
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub struct Coverage {
     pub kind: CoverageKind,
     pub code_region: Option<CodeRegion>,
+}
+
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+pub struct CopyNonOverlapping<'tcx> {
+    pub src: Operand<'tcx>,
+    pub dst: Operand<'tcx>,
+    /// Number of elements to copy from src to dest, not bytes.
+    pub count: Operand<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1639,6 +1702,9 @@ pub struct Place<'tcx> {
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Place<'_>, 16);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
@@ -1709,7 +1775,7 @@ impl<V, T> ProjectionElem<V, T> {
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
@@ -1757,6 +1823,7 @@ impl<'tcx> Place<'tcx> {
         self.as_ref().as_local()
     }
 
+    #[inline]
     pub fn as_ref(&self) -> PlaceRef<'tcx> {
         PlaceRef { local: self.local, projection: &self.projection }
     }
@@ -1768,6 +1835,7 @@ impl<'tcx> Place<'tcx> {
     /// - (a.b, .c)
     ///
     /// Given a place without projections, the iterator is empty.
+    #[inline]
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
@@ -1917,7 +1985,7 @@ pub struct SourceScopeLocalData {
 
 /// These are values that can appear inside an rvalue. They are intentionally
 /// limited to prevent rvalues from being nested in one another.
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
     /// Copy: The value must be available for use afterwards.
     ///
@@ -1935,6 +2003,9 @@ pub enum Operand<'tcx> {
     /// Synthesizes a constant value.
     Constant(Box<Constant<'tcx>>),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Operand<'_>, 24);
 
 impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
@@ -2025,7 +2096,7 @@ impl<'tcx> Operand<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 /// Rvalues
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub enum Rvalue<'tcx> {
     /// x (either a move or copy, depending on type of x)
     Use(Operand<'tcx>),
@@ -2051,8 +2122,8 @@ pub enum Rvalue<'tcx> {
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
-    BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
-    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
+    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     NullaryOp(NullOp, Ty<'tcx>),
     UnaryOp(UnOp, Operand<'tcx>),
@@ -2071,13 +2142,16 @@ pub enum Rvalue<'tcx> {
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Rvalue<'_>, 40);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
     Misc,
     Pointer(PointerCast),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum AggregateKind<'tcx> {
     /// The type is of the element
     Array(Ty<'tcx>),
@@ -2094,7 +2168,10 @@ pub enum AggregateKind<'tcx> {
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(AggregateKind<'_>, 48);
+
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum BinOp {
     /// The `+` operator (addition)
     Add,
@@ -2139,7 +2216,7 @@ impl BinOp {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp {
     /// Returns the size of a value of that type
     SizeOf,
@@ -2147,7 +2224,7 @@ pub enum NullOp {
     Box,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
     Not,
@@ -2170,8 +2247,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
             }
-            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
-            CheckedBinaryOp(ref op, ref a, ref b) => {
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
@@ -2317,7 +2394,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are `==` in Rust. In
 /// particular, one must be wary of `NaN`!
 
-#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2451,7 +2528,7 @@ impl<'tcx> UserTypeProjections {
 /// * `let (x, _): T = ...` -- here, the `projs` vector would contain
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, PartialEq)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,

@@ -7,11 +7,11 @@ LL |         Dog { age: x } => {}
 help: include the missing field in the pattern
    |
 LL |         Dog { age: x, name } => {}
-   |                     ^^^^^^
+   |                     ^^^^^^^^
 help: if you don't care about this missing field, you can explicitly ignore it
    |
 LL |         Dog { age: x, .. } => {}
-   |                     ^^^^
+   |                     ^^^^^^
 
 error[E0027]: pattern does not mention field `age`
   --> $DIR/E0027.rs:15:9
@@ -22,11 +22,11 @@ LL |         Dog { name: x, } => {}
 help: include the missing field in the pattern
    |
 LL |         Dog { name: x, age } => {}
-   |                      ^^^^^
+   |                      ^^^^^^^
 help: if you don't care about this missing field, you can explicitly ignore it
    |
 LL |         Dog { name: x, .. } => {}
-   |                      ^^^^
+   |                      ^^^^^^
 
 error[E0027]: pattern does not mention field `age`
   --> $DIR/E0027.rs:19:9
@@ -37,11 +37,11 @@ LL |         Dog { name: x  , } => {}
 help: include the missing field in the pattern
    |
 LL |         Dog { name: x, age } => {}
-   |                      ^^^^^
+   |                      ^^^^^^^
 help: if you don't care about this missing field, you can explicitly ignore it
    |
 LL |         Dog { name: x, .. } => {}
-   |                      ^^^^
+   |                      ^^^^^^
 
 error[E0027]: pattern does not mention fields `name`, `age`
   --> $DIR/E0027.rs:22:9

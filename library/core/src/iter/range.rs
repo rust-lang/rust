@@ -1,7 +1,7 @@
 use crate::char;
 use crate::convert::TryFrom;
 use crate::mem;
-use crate::ops::{self, Add, Sub, Try};
+use crate::ops::{self, Try};
 
 use super::{FusedIterator, TrustedLen};
 
@@ -200,22 +200,26 @@ macro_rules! step_identical_methods {
         }
 
         #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
         fn forward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.
             if Self::forward_checked(start, n).is_none() {
-                let _ = Add::add(Self::MAX, 1);
+                let _ = Self::MAX + 1;
             }
             // Do wrapping math to allow e.g. `Step::forward(-128i8, 255)`.
             start.wrapping_add(n as Self)
         }
 
         #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
         fn backward(start: Self, n: usize) -> Self {
             // In debug builds, trigger a panic on overflow.
             // This should optimize completely out in release builds.
             if Self::backward_checked(start, n).is_none() {
-                let _ = Sub::sub(Self::MIN, 1);
+                let _ = Self::MIN - 1;
             }
             // Do wrapping math to allow e.g. `Step::backward(127i8, 255)`.
             start.wrapping_sub(n as Self)

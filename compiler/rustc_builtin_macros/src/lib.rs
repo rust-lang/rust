@@ -2,6 +2,8 @@
 //! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
@@ -22,9 +24,11 @@ mod asm;
 mod assert;
 mod cfg;
 mod cfg_accessible;
+mod cfg_eval;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod derive;
 mod deriving;
 mod env;
 mod format;
@@ -33,6 +37,7 @@ mod global_allocator;
 mod global_asm;
 mod llvm_asm;
 mod log_syntax;
+mod panic;
 mod source_util;
 mod test;
 mod trace_macros;
@@ -76,6 +81,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
+        core_panic: panic::expand_panic,
+        std_panic: panic::expand_panic,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
     }
@@ -83,6 +90,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register_attr! {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
+        cfg_eval: cfg_eval::expand,
+        derive: derive::Expander,
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,

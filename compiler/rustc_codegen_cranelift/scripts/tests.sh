@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -e
 
 source build/config.sh
-export CG_CLIF_INCR_CACHE_DISABLED=1
+source scripts/ext_config.sh
 MY_RUSTC="$RUSTC $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {
@@ -27,13 +27,16 @@ function no_sysroot_tests() {
     $MY_RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/mini_core_hello_world abc bcd
     # (echo "break set -n main"; echo "run"; sleep 1; echo "si -c 10"; sleep 1; echo "frame variable") | lldb -- ./target/out/mini_core_hello_world abc bcd
-
-    echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
-    $MY_RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target "$TARGET_TRIPLE"
-    $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
 }
 
 function base_sysroot_tests() {
+    echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
+    $MY_RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target "$TARGET_TRIPLE"
+    $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
+
+    echo "[AOT] alloc_system"
+    $MY_RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
+
     echo "[AOT] alloc_example"
     $MY_RUSTC example/alloc_example.rs --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/alloc_example

@@ -1,17 +1,17 @@
-error: symbol-name(_RNvXINICs4fqI2P2rA04_11issue_75326s_0pppEINtB5_3FooppENtB5_9Iterator24nextB5_)
-  --> $DIR/issue-75326.rs:43:5
+error: symbol-name(_RNvXINICs21hi0yVfW1J_11issue_75326s_0pppEINtB5_3FooppENtB5_9Iterator24nextB5_)
+  --> $DIR/issue-75326.rs:42:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<issue_75326[317d481089b8c8fe]::Foo<_, _> as issue_75326[317d481089b8c8fe]::Iterator2>::next)
-  --> $DIR/issue-75326.rs:43:5
+error: demangling(<issue_75326[17891616a171812d]::Foo<_, _> as issue_75326[17891616a171812d]::Iterator2>::next)
+  --> $DIR/issue-75326.rs:42:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(<issue_75326::Foo<_, _> as issue_75326::Iterator2>::next)
-  --> $DIR/issue-75326.rs:43:5
+  --> $DIR/issue-75326.rs:42:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^

@@ -48,6 +48,7 @@ impl EarlyProps {
         let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -98,6 +99,10 @@ impl EarlyProps {
                 }
 
                 if !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread") {
+                    props.ignore = true;
+                }
+
+                if !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress") {
                     props.ignore = true;
                 }
 
@@ -333,6 +338,8 @@ pub struct TestProps {
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
+    // If true, the stderr is expected to be different across bit-widths.
+    pub stderr_per_bitwidth: bool,
 }
 
 impl TestProps {
@@ -372,6 +379,7 @@ impl TestProps {
             rustfix_only_machine_applicable: false,
             assembly_output: None,
             should_ice: false,
+            stderr_per_bitwidth: false,
         }
     }
 
@@ -537,6 +545,10 @@ impl TestProps {
 
                 if self.assembly_output.is_none() {
                     self.assembly_output = config.parse_assembly_output(ln);
+                }
+
+                if !self.stderr_per_bitwidth {
+                    self.stderr_per_bitwidth = config.parse_stderr_per_bitwidth(ln);
                 }
             });
         }
@@ -772,6 +784,10 @@ impl Config {
 
     fn parse_ignore_pass(&self, line: &str) -> bool {
         self.parse_name_directive(line, "ignore-pass")
+    }
+
+    fn parse_stderr_per_bitwidth(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "stderr-per-bitwidth")
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {

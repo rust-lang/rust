@@ -16,7 +16,7 @@ fn main() {
         // FIXME(project-rfc-2229#24): Change this to be a destructure pattern
         // once this is fixed, to remove the warning.
         if let SingleVariant::Point(ref mut x, _) = point {
-            //~^ WARNING: irrefutable if-let pattern
+            //~^ WARNING: irrefutable `if let` pattern
             *x += 1;
         }
     };

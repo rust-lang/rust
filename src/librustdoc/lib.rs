@@ -9,13 +9,11 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(or_patterns)]
-#![feature(peekable_next_if)]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(once_cell)]
 #![feature(type_ascription)]
-#![feature(str_split_once)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![deny(rustc::internal)]
@@ -47,10 +45,12 @@ extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
+extern crate rustc_lint_defs;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_mir;
 extern crate rustc_parse;
+extern crate rustc_passes;
 extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span as rustc_span;
@@ -71,6 +71,24 @@ use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGro
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
+/// A macro to create a FxHashMap.
+///
+/// Example:
+///
+/// ```
+/// let letters = map!{"a" => "b", "c" => "d"};
+/// ```
+///
+/// Trailing commas are allowed.
+/// Commas between elements are required (even if the expression is a block).
+macro_rules! map {
+    ($( $key: expr => $val: expr ),* $(,)*) => {{
+        let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+        $( map.insert($key, $val); )*
+        map
+    }}
+}
+
 #[macro_use]
 mod externalfiles;
 
@@ -83,9 +101,11 @@ mod doctree;
 mod error;
 mod doctest;
 mod fold;
-crate mod formats;
+mod formats;
+// used by the error-index generator, so it needs to be public
 pub mod html;
 mod json;
+crate mod lint;
 mod markdown;
 mod passes;
 mod theme;
@@ -95,12 +115,86 @@ mod visit_lib;
 pub fn main() {
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
+
+    // When using CI artifacts (with `download_stage1 = true`), tracing is unconditionally built
+    // with `--features=static_max_level_info`, which disables almost all rustdoc logging. To avoid
+    // this, compile our own version of `tracing` that logs all levels.
+    // NOTE: this compiles both versions of tracing unconditionally, because
+    // - The compile time hit is not that bad, especially compared to rustdoc's incremental times, and
+    // - Otherwise, there's no warning that logging is being ignored when `download_stage1 = true`.
+    // NOTE: The reason this doesn't show double logging when `download_stage1 = false` and
+    // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
+    // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
+    init_logging();
     rustc_driver::init_env_logger("RUSTDOC_LOG");
+
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
         _ => Err(ErrorReported),
     });
     process::exit(exit_code);
+}
+
+fn init_logging() {
+    use std::io;
+
+    // FIXME remove these and use winapi 0.3 instead
+    // Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs, rustc_driver/lib.rs
+    #[cfg(unix)]
+    fn stdout_isatty() -> bool {
+        extern crate libc;
+        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    }
+
+    #[cfg(windows)]
+    fn stdout_isatty() -> bool {
+        extern crate winapi;
+        use winapi::um::consoleapi::GetConsoleMode;
+        use winapi::um::processenv::GetStdHandle;
+        use winapi::um::winbase::STD_OUTPUT_HANDLE;
+
+        unsafe {
+            let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+            let mut out = 0;
+            GetConsoleMode(handle, &mut out) != 0
+        }
+    }
+
+    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR") {
+        Ok(value) => match value.as_ref() {
+            "always" => true,
+            "never" => false,
+            "auto" => stdout_isatty(),
+            _ => early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "invalid log color value '{}': expected one of always, never, or auto",
+                    value
+                ),
+            ),
+        },
+        Err(std::env::VarError::NotPresent) => stdout_isatty(),
+        Err(std::env::VarError::NotUnicode(_value)) => early_error(
+            ErrorOutputType::default(),
+            "non-Unicode log color value: expected one of always, never, or auto",
+        ),
+    };
+    let filter = tracing_subscriber::EnvFilter::from_env("RUSTDOC_LOG");
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(io::stderr)
+        .with_indent_lines(true)
+        .with_ansi(color_logs)
+        .with_targets(true)
+        .with_wraparound(10)
+        .with_verbose_exit(true)
+        .with_verbose_entry(true)
+        .with_indent_amount(2);
+    #[cfg(parallel_compiler)]
+    let layer = layer.with_thread_ids(true).with_thread_names(true);
+
+    use tracing_subscriber::layer::SubscriberExt;
+    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
+    tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
 fn get_args() -> Option<Vec<String>> {
@@ -167,6 +261,14 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner", "ARGS")
+        }),
+        unstable("test-run-directory", |o| {
+            o.optopt(
+                "",
+                "test-run-directory",
+                "The working directory in which to run tests",
+                "PATH",
+            )
         }),
         stable("target", |o| o.optopt("", "target", "target triple to document", "TRIPLE")),
         stable("markdown-css", |o| {
@@ -415,6 +517,16 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt("", "test-builder", "The rustc-like binary to use as the test builder", "PATH")
         }),
         unstable("check", |o| o.optflag("", "check", "Run rustdoc checks")),
+        unstable("generate-redirect-map", |o| {
+            o.optflag(
+                "",
+                "generate-redirect-map",
+                "Generate JSON file at the top level instead of generating HTML redirection files",
+            )
+        }),
+        unstable("print", |o| {
+            o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
+        }),
     ]
 }
 
@@ -424,13 +536,16 @@ fn usage(argv0: &str) {
         (option.apply)(&mut options);
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
+    println!("    @path               Read newline separated options from `path`\n");
     println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
 }
 
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorReported>;
 
-fn main_args(args: &[String]) -> MainResult {
+fn main_args(at_args: &[String]) -> MainResult {
+    let args = rustc_driver::args::arg_expand_all(at_args);
+
     let mut options = getopts::Options::new();
     for option in opts() {
         (option.apply)(&mut options);
@@ -469,12 +584,12 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
 fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
-    render_info: config::RenderInfo,
+    cache: formats::cache::Cache,
     diag: &rustc_errors::Handler,
     edition: rustc_span::edition::Edition,
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, render_info, &diag, edition, tcx) {
+    match formats::run_format::<T>(krate, renderopts, cache, &diag, edition, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
@@ -543,7 +658,7 @@ fn main_options(options: config::Options) -> MainResult {
             let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).peek_mut();
 
             global_ctxt.enter(|tcx| {
-                let (mut krate, render_info, render_opts) = sess.time("run_global_ctxt", || {
+                let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(
                         tcx,
                         resolver,
@@ -555,7 +670,7 @@ fn main_options(options: config::Options) -> MainResult {
                 });
                 info!("finished with rustc");
 
-                krate.version = crate_version;
+                cache.crate_version = crate_version;
 
                 if show_coverage {
                     // if we ran coverage, bail early, we don't need to also generate docs at this point
@@ -570,21 +685,21 @@ fn main_options(options: config::Options) -> MainResult {
                 let (error_format, edition, debugging_options) = diag_opts;
                 let diag = core::new_handler(error_format, None, &debugging_options);
                 match output_format {
-                    None | Some(config::OutputFormat::Html) => sess.time("render_html", || {
+                    config::OutputFormat::Html => sess.time("render_html", || {
                         run_renderer::<html::render::Context<'_>>(
                             krate,
                             render_opts,
-                            render_info,
+                            cache,
                             &diag,
                             edition,
                             tcx,
                         )
                     }),
-                    Some(config::OutputFormat::Json) => sess.time("render_json", || {
+                    config::OutputFormat::Json => sess.time("render_json", || {
                         run_renderer::<json::JsonRenderer<'_>>(
                             krate,
                             render_opts,
-                            render_info,
+                            cache,
                             &diag,
                             edition,
                             tcx,

@@ -294,7 +294,49 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            _ => {}
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                let src_ty = src.ty(&self.body.local_decls, self.tcx);
+                let op_src_ty = if let Some(src_deref) = src_ty.builtin_deref(true) {
+                    src_deref.ty
+                } else {
+                    self.fail(
+                        location,
+                        format!("Expected src to be ptr in copy_nonoverlapping, got: {}", src_ty),
+                    );
+                    return;
+                };
+                let dst_ty = dst.ty(&self.body.local_decls, self.tcx);
+                let op_dst_ty = if let Some(dst_deref) = dst_ty.builtin_deref(true) {
+                    dst_deref.ty
+                } else {
+                    self.fail(
+                        location,
+                        format!("Expected dst to be ptr in copy_nonoverlapping, got: {}", dst_ty),
+                    );
+                    return;
+                };
+                // since CopyNonOverlapping is parametrized by 1 type,
+                // we only need to check that they are equal and not keep an extra parameter.
+                if op_src_ty != op_dst_ty {
+                    self.fail(location, format!("bad arg ({:?} != {:?})", op_src_ty, op_dst_ty));
+                }
+
+                let op_cnt_ty = count.ty(&self.body.local_decls, self.tcx);
+                if op_cnt_ty != self.tcx.types.usize {
+                    self.fail(location, format!("bad arg ({:?} != usize)", op_cnt_ty))
+                }
+            }
+            StatementKind::SetDiscriminant { .. }
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..)
+            | StatementKind::LlvmInlineAsm(..)
+            | StatementKind::Retag(_, _)
+            | StatementKind::Coverage(_)
+            | StatementKind::Nop => {}
         }
 
         self.super_statement(statement, location);

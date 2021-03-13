@@ -696,8 +696,8 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
     /// _0 = move _1;           // bb2
     /// ```
     /// In this case the two statements are equal iff
-    /// 1: _0 is an enum where the variant index 0 is fieldless, and
-    /// 2:  bb1 was targeted by a switch where the discriminant of _1 was switched on
+    /// - `_0` is an enum where the variant index 0 is fieldless, and
+    /// -  bb1 was targeted by a switch where the discriminant of `_1` was switched on
     fn statement_equality(
         &self,
         adt_matched_on: Place<'tcx>,

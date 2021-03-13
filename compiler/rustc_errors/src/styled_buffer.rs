@@ -15,7 +15,7 @@ impl StyledBuffer {
 
     pub fn render(&self) -> Vec<Vec<StyledString>> {
         // Tabs are assumed to have been replaced by spaces in calling code.
-        assert!(self.text.iter().all(|r| !r.contains(&'\t')));
+        debug_assert!(self.text.iter().all(|r| !r.contains(&'\t')));
 
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];

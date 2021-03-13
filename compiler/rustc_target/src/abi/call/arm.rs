@@ -45,14 +45,7 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 32 {
-        let unit = if bits <= 8 {
-            Reg::i8()
-        } else if bits <= 16 {
-            Reg::i16()
-        } else {
-            Reg::i32()
-        };
-        ret.cast_to(Uniform { unit, total: size });
+        ret.cast_to(Uniform { unit: Reg::i32(), total: size });
         return;
     }
     ret.make_indirect();

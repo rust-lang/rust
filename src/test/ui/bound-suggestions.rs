@@ -40,4 +40,29 @@ fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized {
     //~^ ERROR doesn't implement
 }
 
-pub fn main() { }
+trait Foo<T> {
+    const SIZE: usize = core::mem::size_of::<Self>();
+    //~^ ERROR the size for values of type `Self` cannot be known at compilation time
+}
+
+trait Bar: std::fmt::Display {
+    const SIZE: usize = core::mem::size_of::<Self>();
+    //~^ ERROR the size for values of type `Self` cannot be known at compilation time
+}
+
+trait Baz where Self: std::fmt::Display {
+    const SIZE: usize = core::mem::size_of::<Self>();
+    //~^ ERROR the size for values of type `Self` cannot be known at compilation time
+}
+
+trait Qux<T> where Self: std::fmt::Display {
+    const SIZE: usize = core::mem::size_of::<Self>();
+    //~^ ERROR the size for values of type `Self` cannot be known at compilation time
+}
+
+trait Bat<T>: std::fmt::Display {
+    const SIZE: usize = core::mem::size_of::<Self>();
+    //~^ ERROR the size for values of type `Self` cannot be known at compilation time
+}
+
+fn main() { }

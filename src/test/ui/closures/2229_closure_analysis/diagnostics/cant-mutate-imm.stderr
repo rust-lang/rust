@@ -1,0 +1,30 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/cant-mutate-imm.rs:1:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+error[E0594]: cannot assign to `z`, as it is not declared as mutable
+  --> $DIR/cant-mutate-imm.rs:13:9
+   |
+LL |     let z = (y, 10);
+   |         - help: consider changing this to be mutable: `mut z`
+...
+LL |         z.0.0.0 = 20;
+   |         ^^^^^^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `bx`, as it is not declared as mutable
+  --> $DIR/cant-mutate-imm.rs:25:9
+   |
+LL |     let bx = Box::new(x);
+   |         -- help: consider changing this to be mutable: `mut bx`
+...
+LL |         bx.0 = 20;
+   |         ^^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0594`.

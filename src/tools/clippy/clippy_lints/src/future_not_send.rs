@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         _: Span,
         hir_id: HirId,
     ) {
-        if let FnKind::Closure(_) = kind {
+        if let FnKind::Closure = kind {
             return;
         }
         let ret_ty = utils::return_ty(cx, hir_id);
@@ -92,13 +92,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                         |db| {
                             cx.tcx.infer_ctxt().enter(|infcx| {
                                 for FulfillmentError { obligation, .. } in send_errors {
-                                    infcx.maybe_note_obligation_cause_for_async_await(
-                                        db,
-                                        &obligation,
-                                    );
-                                    if let Trait(trait_pred, _) =
-                                        obligation.predicate.kind().skip_binder()
-                                    {
+                                    infcx.maybe_note_obligation_cause_for_async_await(db, &obligation);
+                                    if let Trait(trait_pred, _) = obligation.predicate.kind().skip_binder() {
                                         db.note(&format!(
                                             "`{}` doesn't implement `{}`",
                                             trait_pred.self_ty(),

@@ -5,7 +5,7 @@
 // ignore-emscripten no processes
 
 fn main() {
-    panic!({
+    panic!("{}", {
         while true {
             panic!("giraffe")
         }

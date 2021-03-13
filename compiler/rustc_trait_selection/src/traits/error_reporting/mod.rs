@@ -468,22 +468,21 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 trait_ref,
                                 obligation.cause.body_id,
                             );
-                        } else {
-                            if !have_alt_message {
-                                // Can't show anything else useful, try to find similar impls.
-                                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
-                                self.report_similar_impl_candidates(impl_candidates, &mut err);
-                            }
-                            // Changing mutability doesn't make a difference to whether we have
-                            // an `Unsize` impl (Fixes ICE in #71036)
-                            if !is_unsize {
-                                self.suggest_change_mut(
-                                    &obligation,
-                                    &mut err,
-                                    trait_ref,
-                                    points_at_arg,
-                                );
-                            }
+                        } else if !have_alt_message {
+                            // Can't show anything else useful, try to find similar impls.
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        }
+
+                        // Changing mutability doesn't make a difference to whether we have
+                        // an `Unsize` impl (Fixes ICE in #71036)
+                        if !is_unsize {
+                            self.suggest_change_mut(
+                                &obligation,
+                                &mut err,
+                                trait_ref,
+                                points_at_arg,
+                            );
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -820,7 +819,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 sig.decl
                     .inputs
                     .iter()
-                    .map(|arg| match arg.clone().kind {
+                    .map(|arg| match arg.kind {
                         hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
@@ -1190,9 +1189,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty, data.ty
                 );
 
-                let is_normalized_ty_expected = !matches!(obligation.cause.code, ObligationCauseCode::ItemObligation(_)
-                    | ObligationCauseCode::BindingObligation(_, _)
-                    | ObligationCauseCode::ObjectCastObligation(_));
+                let is_normalized_ty_expected = !matches!(
+                    obligation.cause.code,
+                    ObligationCauseCode::ItemObligation(_)
+                        | ObligationCauseCode::BindingObligation(_, _)
+                        | ObligationCauseCode::ObjectCastObligation(_)
+                );
 
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
@@ -1366,8 +1368,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
-                        let span =
-                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
+                        let span = TyCategory::from_ty(self.tcx, ty)
+                            .map(|(_, def_id)| self.tcx.def_span(def_id));
                         Some((ty.to_string(), span))
                     }
                 }
@@ -1587,8 +1589,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
             }
             ty::PredicateKind::Projection(data) => {
-                let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
-                let self_ty = trait_ref.skip_binder().self_ty();
+                let self_ty = data.projection_ty.self_ty();
                 let ty = data.ty;
                 if predicate.references_error() {
                     return;
@@ -1777,7 +1778,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                             multispan.push_span_label(
                                 sp,
                                 format!(
-                                    "...if indirection was used here: `Box<{}>`",
+                                    "...if indirection were used here: `Box<{}>`",
                                     param.name.ident(),
                                 ),
                             );

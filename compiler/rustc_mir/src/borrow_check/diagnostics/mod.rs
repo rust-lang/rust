@@ -215,6 +215,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 match elem {
                     ProjectionElem::Deref => {
+                        // FIXME(project-rfc_2229#36): print capture precisely here.
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
@@ -259,6 +260,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     ProjectionElem::Field(field, _ty) => {
                         autoderef = true;
 
+                        // FIXME(project-rfc_2229#36): print capture precisely here.
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();

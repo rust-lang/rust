@@ -6,11 +6,14 @@ LL | |     let slice: *const [u8] = mem::transmute((1usize, usize::MAX));
 LL | |     let _val = &*slice;
    | |                ^^^^^^^ invalid metadata in wide pointer: slice is bigger than largest supported object
 LL | |
+...  |
 LL | |
 LL | | } };
    | |____-
    |
    = note: `#[deny(const_err)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: aborting due to previous error
 

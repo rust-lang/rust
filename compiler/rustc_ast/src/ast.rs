@@ -486,8 +486,8 @@ pub struct WhereEqPredicate {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Crate {
-    pub module: Mod,
     pub attrs: Vec<Attribute>,
+    pub items: Vec<P<Item>>,
     pub span: Span,
     /// The order of items in the HIR is unrelated to the order of
     /// items in the AST. However, we generate proc macro harnesses
@@ -915,16 +915,6 @@ impl Stmt {
         }
     }
 
-    pub fn tokens_mut(&mut self) -> Option<&mut LazyTokenStream> {
-        match self.kind {
-            StmtKind::Local(ref mut local) => local.tokens.as_mut(),
-            StmtKind::Item(ref mut item) => item.tokens.as_mut(),
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens.as_mut(),
-            StmtKind::Empty => None,
-            StmtKind::MacCall(ref mut mac) => mac.tokens.as_mut(),
-        }
-    }
-
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,
@@ -1083,7 +1073,7 @@ pub struct Expr {
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Expr, 120);
 
 impl Expr {
@@ -1137,6 +1127,14 @@ impl Expr {
             )),
             _ => None,
         }
+    }
+
+    pub fn peel_parens(&self) -> &Expr {
+        let mut expr = self;
+        while let ExprKind::Paren(inner) = &expr.kind {
+            expr = &inner;
+        }
+        expr
     }
 
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
@@ -1979,7 +1977,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, PartialOrd, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2067,7 +2065,7 @@ pub struct InlineAsm {
 /// Inline assembly dialect.
 ///
 /// E.g., `"intel"` as in `llvm_asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Hash, HashStable_Generic)]
 pub enum LlvmAsmDialect {
     Att,
     Intel,
@@ -2299,21 +2297,22 @@ impl FnRetTy {
     }
 }
 
-/// Module declaration.
-///
-/// E.g., `mod foo;` or `mod foo { .. }`.
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+pub enum Inline {
+    Yes,
+    No,
+}
+
+/// Module item kind.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Mod {
-    /// A span from the first token past `{` to the last token until `}`.
-    /// For `mod foo;`, the inner span ranges from the first token
-    /// to the last token in the external file.
-    pub inner: Span,
-    /// `unsafe` keyword accepted syntactically for macro DSLs, but not
-    /// semantically by Rust.
-    pub unsafety: Unsafe,
-    pub items: Vec<P<Item>>,
-    /// `true` for `mod foo { .. }`; `false` for `mod foo;`.
-    pub inline: bool,
+pub enum ModKind {
+    /// Module with inlined definition `mod foo { ... }`,
+    /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
+    /// The inner span is from the first token past `{` to the last token until `}`,
+    /// or from the first to the last token in the loaded file.
+    Loaded(Vec<P<Item>>, Inline, Span),
+    /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
+    Unloaded,
 }
 
 /// Foreign module declaration.
@@ -2656,6 +2655,36 @@ impl Default for FnHeader {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TraitKind(
+    pub IsAuto,
+    pub Unsafe,
+    pub Generics,
+    pub GenericBounds,
+    pub Vec<P<AssocItem>>,
+);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TyAliasKind(pub Defaultness, pub Generics, pub GenericBounds, pub Option<P<Ty>>);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct ImplKind {
+    pub unsafety: Unsafe,
+    pub polarity: ImplPolarity,
+    pub defaultness: Defaultness,
+    pub constness: Const,
+    pub generics: Generics,
+
+    /// The trait being implemented, if any.
+    pub of_trait: Option<TraitRef>,
+
+    pub self_ty: P<Ty>,
+    pub items: Vec<P<AssocItem>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct FnKind(pub Defaultness, pub FnSig, pub Generics, pub Option<P<Block>>);
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with the optional *original* crate name if the crate was renamed.
     ///
@@ -2664,7 +2693,7 @@ pub enum ItemKind {
     /// A use declaration item (`use`).
     ///
     /// E.g., `use foo;`, `use foo::bar;` or `use foo::bar as FooBar;`.
-    Use(P<UseTree>),
+    Use(UseTree),
     /// A static item (`static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
@@ -2676,21 +2705,23 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
+    Fn(Box<FnKind>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
-    Mod(Mod),
+    /// `unsafe` keyword on modules is accepted syntactically for macro DSLs, but not
+    /// semantically by Rust.
+    Mod(Unsafe, ModKind),
     /// An external module (`extern`).
     ///
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
-    GlobalAsm(P<GlobalAsm>),
+    GlobalAsm(GlobalAsm),
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
+    TyAlias(Box<TyAliasKind>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2706,7 +2737,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafe, Generics, GenericBounds, Vec<P<AssocItem>>),
+    Trait(Box<TraitKind>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2714,19 +2745,7 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl {
-        unsafety: Unsafe,
-        polarity: ImplPolarity,
-        defaultness: Defaultness,
-        constness: Const,
-        generics: Generics,
-
-        /// The trait being implemented, if any.
-        of_trait: Option<TraitRef>,
-
-        self_ty: P<Ty>,
-        items: Vec<P<AssocItem>>,
-    },
+    Impl(Box<ImplKind>),
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -2735,6 +2754,9 @@ pub enum ItemKind {
     /// A macro definition.
     MacroDef(MacroDef),
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ItemKind, 112);
 
 impl ItemKind {
     pub fn article(&self) -> &str {
@@ -2770,14 +2792,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(_, _, generics, _)
-            | Self::TyAlias(_, generics, ..)
+            Self::Fn(box FnKind(_, _, generics, _))
+            | Self::TyAlias(box TyAliasKind(_, generics, ..))
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)
-            | Self::Trait(_, _, generics, ..)
+            | Self::Trait(box TraitKind(_, _, generics, ..))
             | Self::TraitAlias(generics, _)
-            | Self::Impl { generics, .. } => Some(generics),
+            | Self::Impl(box ImplKind { generics, .. }) => Some(generics),
             _ => None,
         }
     }
@@ -2800,17 +2822,22 @@ pub enum AssocItemKind {
     /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// An associated function.
-    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
+    Fn(Box<FnKind>),
     /// An associated type.
-    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
+    TyAlias(Box<TyAliasKind>),
     /// A macro expanding to associated items.
     MacCall(MacCall),
 }
 
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(AssocItemKind, 72);
+
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(def, ..) | Self::Fn(def, ..) | Self::TyAlias(def, ..) => def,
+            Self::Const(def, ..)
+            | Self::Fn(box FnKind(def, ..))
+            | Self::TyAlias(box TyAliasKind(def, ..)) => def,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2820,8 +2847,8 @@ impl From<AssocItemKind> for ItemKind {
     fn from(assoc_item_kind: AssocItemKind) -> ItemKind {
         match assoc_item_kind {
             AssocItemKind::Const(a, b, c) => ItemKind::Const(a, b, c),
-            AssocItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
-            AssocItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
+            AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
+            AssocItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2833,8 +2860,8 @@ impl TryFrom<ItemKind> for AssocItemKind {
     fn try_from(item_kind: ItemKind) -> Result<AssocItemKind, ItemKind> {
         Ok(match item_kind {
             ItemKind::Const(a, b, c) => AssocItemKind::Const(a, b, c),
-            ItemKind::Fn(a, b, c, d) => AssocItemKind::Fn(a, b, c, d),
-            ItemKind::TyAlias(a, b, c, d) => AssocItemKind::TyAlias(a, b, c, d),
+            ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
+            ItemKind::TyAlias(ty_alias_kind) => AssocItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             _ => return Err(item_kind),
         })
@@ -2846,20 +2873,23 @@ impl TryFrom<ItemKind> for AssocItemKind {
 pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
     Static(P<Ty>, Mutability, Option<P<Expr>>),
-    /// A foreign function.
-    Fn(Defaultness, FnSig, Generics, Option<P<Block>>),
-    /// A foreign type.
-    TyAlias(Defaultness, Generics, GenericBounds, Option<P<Ty>>),
+    /// An foreign function.
+    Fn(Box<FnKind>),
+    /// An foreign type.
+    TyAlias(Box<TyAliasKind>),
     /// A macro expanding to foreign items.
     MacCall(MacCall),
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
 
 impl From<ForeignItemKind> for ItemKind {
     fn from(foreign_item_kind: ForeignItemKind) -> ItemKind {
         match foreign_item_kind {
             ForeignItemKind::Static(a, b, c) => ItemKind::Static(a, b, c),
-            ForeignItemKind::Fn(a, b, c, d) => ItemKind::Fn(a, b, c, d),
-            ForeignItemKind::TyAlias(a, b, c, d) => ItemKind::TyAlias(a, b, c, d),
+            ForeignItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
+            ForeignItemKind::TyAlias(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             ForeignItemKind::MacCall(a) => ItemKind::MacCall(a),
         }
     }
@@ -2871,8 +2901,8 @@ impl TryFrom<ItemKind> for ForeignItemKind {
     fn try_from(item_kind: ItemKind) -> Result<ForeignItemKind, ItemKind> {
         Ok(match item_kind {
             ItemKind::Static(a, b, c) => ForeignItemKind::Static(a, b, c),
-            ItemKind::Fn(a, b, c, d) => ForeignItemKind::Fn(a, b, c, d),
-            ItemKind::TyAlias(a, b, c, d) => ForeignItemKind::TyAlias(a, b, c, d),
+            ItemKind::Fn(fn_kind) => ForeignItemKind::Fn(fn_kind),
+            ItemKind::TyAlias(ty_alias_kind) => ForeignItemKind::TyAlias(ty_alias_kind),
             ItemKind::MacCall(a) => ForeignItemKind::MacCall(a),
             _ => return Err(item_kind),
         })
@@ -2880,69 +2910,3 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
-
-pub trait HasTokens {
-    /// Called by `Parser::collect_tokens` to store the collected
-    /// tokens inside an AST node
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream);
-}
-
-impl<T: HasTokens + 'static> HasTokens for P<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        (**self).finalize_tokens(tokens);
-    }
-}
-
-impl<T: HasTokens> HasTokens for Option<T> {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        if let Some(inner) = self {
-            inner.finalize_tokens(tokens);
-        }
-    }
-}
-
-impl HasTokens for Attribute {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        match &mut self.kind {
-            AttrKind::Normal(_, attr_tokens) => {
-                if attr_tokens.is_none() {
-                    *attr_tokens = Some(tokens);
-                }
-            }
-            AttrKind::DocComment(..) => {
-                panic!("Called finalize_tokens on doc comment attr {:?}", self)
-            }
-        }
-    }
-}
-
-impl HasTokens for Stmt {
-    fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-        let stmt_tokens = match self.kind {
-            StmtKind::Local(ref mut local) => &mut local.tokens,
-            StmtKind::Item(ref mut item) => &mut item.tokens,
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => &mut expr.tokens,
-            StmtKind::Empty => return,
-            StmtKind::MacCall(ref mut mac) => &mut mac.tokens,
-        };
-        if stmt_tokens.is_none() {
-            *stmt_tokens = Some(tokens);
-        }
-    }
-}
-
-macro_rules! derive_has_tokens {
-    ($($ty:path),*) => { $(
-        impl HasTokens for $ty {
-            fn finalize_tokens(&mut self, tokens: LazyTokenStream) {
-                if self.tokens.is_none() {
-                    self.tokens = Some(tokens);
-                }
-            }
-        }
-    )* }
-}
-
-derive_has_tokens! {
-    Item, Expr, Ty, AttrItem, Visibility, Path, Block, Pat
-}

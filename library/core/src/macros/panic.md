@@ -10,22 +10,23 @@ tests. `panic!` is closely tied with the `unwrap` method of both
 `panic!` when they are set to [`None`] or [`Err`] variants.
 
 This macro is used to inject panic into a Rust thread, causing the thread to
-panic entirely. Each thread's panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
-and the single-argument form of the `panic!` macro will be the value which
-is transmitted.
+panic entirely. This macro panics with a string and uses the [`format!`] syntax
+for building the message.
+
+Each thread's panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
+which contains either a `&str` or `String` for regular `panic!()` invocations.
+To panic with a value of another other type, [`panic_any`] can be used.
 
 [`Result`] enum is often a better solution for recovering from errors than
 using the `panic!` macro. This macro should be used to avoid proceeding using
 incorrect values, such as from external sources. Detailed information about
 error handling is found in the [book].
 
-The multi-argument form of this macro panics with a string and has the
-[`format!`] syntax for building a string.
-
 See also the macro [`compile_error!`], for raising errors during compilation.
 
 [ounwrap]: Option::unwrap
 [runwrap]: Result::unwrap
+[`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
 [`format!`]: ../std/macro.format.html
@@ -42,6 +43,6 @@ program with code `101`.
 # #![allow(unreachable_code)]
 panic!();
 panic!("this is a terrible mistake!");
-panic!(4); // panic with the value of 4 to be collected elsewhere
 panic!("this is a {} {message}", "fancy", message = "message");
+std::panic::panic_any(4); // panic with the value of 4 to be collected elsewhere
 ```

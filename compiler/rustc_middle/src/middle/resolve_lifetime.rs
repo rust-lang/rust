@@ -68,7 +68,7 @@ pub type ObjectLifetimeDefault = Set1<Region>;
 
 /// Maps the id of each lifetime reference to the lifetime decl
 /// that it corresponds to.
-#[derive(Default, HashStable)]
+#[derive(Default, HashStable, Debug)]
 pub struct ResolveLifetimes {
     /// Maps from every use of a named (not anonymous) lifetime to a
     /// `Region` describing how that region is bound

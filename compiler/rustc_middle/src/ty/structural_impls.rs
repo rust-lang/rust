@@ -111,26 +111,9 @@ impl fmt::Debug for ty::FreeRegion {
     }
 }
 
-impl fmt::Debug for ty::Variance {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match *self {
-            ty::Covariant => "+",
-            ty::Contravariant => "-",
-            ty::Invariant => "o",
-            ty::Bivariant => "*",
-        })
-    }
-}
-
 impl fmt::Debug for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
-    }
-}
-
-impl fmt::Debug for ty::TyVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}t", self.index)
     }
 }
 
@@ -140,49 +123,9 @@ impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::IntVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}i", self.index)
-    }
-}
-
-impl fmt::Debug for ty::FloatVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "_#{}f", self.index)
-    }
-}
-
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "'_#{}r", self.index())
-    }
-}
-
-impl fmt::Debug for ty::InferTy {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            ty::TyVar(ref v) => v.fmt(f),
-            ty::IntVar(ref v) => v.fmt(f),
-            ty::FloatVar(ref v) => v.fmt(f),
-            ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
-            ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
-            ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v),
-        }
-    }
-}
-
-impl fmt::Debug for ty::IntVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            ty::IntType(ref v) => v.fmt(f),
-            ty::UintType(ref v) => v.fmt(f),
-        }
-    }
-}
-
-impl fmt::Debug for ty::FloatVarValue {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
 
@@ -274,7 +217,7 @@ TrivialTypeFoldableAndLiftImpls! {
     u64,
     String,
     crate::middle::region::Scope,
-    ::rustc_ast::FloatTy,
+    crate::ty::FloatTy,
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,

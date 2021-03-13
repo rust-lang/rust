@@ -102,6 +102,15 @@ message_on_add = """\
 """
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
 
+[notify-zulip."T-rustdoc"]
+required_labels = ["I-nominated"]
+zulip_stream = 266220 # #rustdoc
+topic = "nominated: #{number}"
+message_on_add = """\
+@*T-rustdoc* issue #{number} "{title}" has been nominated for `T-rustdoc` discussion.
+"""
+message_on_remove = "Issue #{number}'s nomination request has been removed."
+
 [github-releases]
 format = "rustc"
 project-name = "Rust"

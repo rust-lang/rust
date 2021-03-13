@@ -17,14 +17,14 @@ fn main() {
     println!("{bar:8} {foo:>8}", foo = "hello", bar = "world");
     println!("{number:>width$}", number = 1, width = 6);
     println!("{number:>0width$}", number = 1, width = 6);
+    println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
+    println!("10 / 4 is {}", 2.5);
+    println!("2 + 1 = {}", 3);
 
     // these should throw warnings
-    println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
     print!("Hello {}", "world");
     println!("Hello {} {}", world, "world");
     println!("Hello {}", "world");
-    println!("10 / 4 is {}", 2.5);
-    println!("2 + 1 = {}", 3);
 
     // positional args don't change the fact
     // that we're using a literal -- this should

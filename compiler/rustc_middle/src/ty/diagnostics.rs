@@ -1,8 +1,7 @@
 //! Diagnostics related methods for `TyS`.
 
-use crate::ty::sty::InferTy;
 use crate::ty::TyKind::*;
-use crate::ty::{TyCtxt, TyS};
+use crate::ty::{InferTy, TyCtxt, TyS};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -13,13 +12,17 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         matches!(
             self.kind(),
-            Bool | Char | Str | Int(_) | Uint(_) | Float(_)
-            | Infer(
-                InferTy::IntVar(_)
-                | InferTy::FloatVar(_)
-                | InferTy::FreshIntTy(_)
-                | InferTy::FreshFloatTy(_)
-            )
+            Bool | Char
+                | Str
+                | Int(_)
+                | Uint(_)
+                | Float(_)
+                | Infer(
+                    InferTy::IntVar(_)
+                        | InferTy::FloatVar(_)
+                        | InferTy::FreshIntTy(_)
+                        | InferTy::FreshFloatTy(_)
+                )
         )
     }
 
@@ -70,6 +73,36 @@ impl<'tcx> TyS<'tcx> {
                 | Projection(..)
         )
     }
+}
+
+pub fn suggest_arbitrary_trait_bound(
+    generics: &hir::Generics<'_>,
+    err: &mut DiagnosticBuilder<'_>,
+    param_name: &str,
+    constraint: &str,
+) -> bool {
+    let param = generics.params.iter().find(|p| p.name.ident().as_str() == param_name);
+    match (param, param_name) {
+        (Some(_), "Self") => return false,
+        _ => {}
+    }
+    // Suggest a where clause bound for a non-type paremeter.
+    let (action, prefix) = if generics.where_clause.predicates.is_empty() {
+        ("introducing a", " where ")
+    } else {
+        ("extending the", ", ")
+    };
+    err.span_suggestion_verbose(
+        generics.where_clause.tail_span_for_suggestion(),
+        &format!(
+            "consider {} `where` bound, but there might be an alternative better way to express \
+             this requirement",
+            action,
+        ),
+        format!("{}{}: {}", prefix, param_name, constraint),
+        Applicability::MaybeIncorrect,
+    );
+    true
 }
 
 /// Suggest restricting a type param with a new bound.
@@ -286,7 +319,7 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
                 self.0.push(ty);
-                let item = self.1.expect_item(item_id.id);
+                let item = self.1.item(item_id);
                 hir::intravisit::walk_item(self, item);
             }
             _ => {}

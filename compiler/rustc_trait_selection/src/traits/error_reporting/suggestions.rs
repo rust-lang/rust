@@ -17,8 +17,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::{
-    self, suggest_constraining_type_param, AdtKind, DefIdTree, Infer, InferTy, ToPredicate, Ty,
-    TyCtxt, TypeFoldable, WithConstness,
+    self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
+    Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -286,21 +286,32 @@ fn suggest_restriction(
         );
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
-        let (sp, suggestion) = match super_traits {
-            None => predicate_constraint(
+        let (sp, suggestion) = match (
+            generics
+                .params
+                .iter()
+                .filter(|p| {
+                    !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
+                })
+                .next(),
+            super_traits,
+        ) {
+            (_, None) => predicate_constraint(
                 generics,
                 trait_ref.without_const().to_predicate(tcx).to_string(),
             ),
-            Some((ident, bounds)) => match bounds {
-                [.., bound] => (
-                    bound.span().shrink_to_hi(),
-                    format!(" + {}", trait_ref.print_only_trait_path().to_string()),
-                ),
-                [] => (
-                    ident.span.shrink_to_hi(),
-                    format!(": {}", trait_ref.print_only_trait_path().to_string()),
-                ),
-            },
+            (None, Some((ident, []))) => (
+                ident.span.shrink_to_hi(),
+                format!(": {}", trait_ref.print_only_trait_path().to_string()),
+            ),
+            (_, Some((_, [.., bounds]))) => (
+                bounds.span().shrink_to_hi(),
+                format!(" + {}", trait_ref.print_only_trait_path().to_string()),
+            ),
+            (Some(_), Some((_, []))) => (
+                generics.span.shrink_to_hi(),
+                format!(": {}", trait_ref.print_only_trait_path().to_string()),
+            ),
         };
 
         err.span_suggestion_verbose(
@@ -323,7 +334,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
             ty::Projection(projection) => (false, Some(projection)),
-            _ => return,
+            _ => (false, None),
         };
 
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
@@ -442,6 +453,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Union(_, generics)
+                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        | hir::ItemKind::Impl(hir::Impl { generics, .. })
+                        | hir::ItemKind::Fn(_, generics, _)
+                        | hir::ItemKind::TyAlias(_, generics)
+                        | hir::ItemKind::TraitAlias(generics, _)
+                        | hir::ItemKind::OpaqueTy(hir::OpaqueTy { generics, .. }),
+                    ..
+                }) if !param_ty => {
+                    // Missing generic type parameter bound.
+                    let param_name = self_ty.to_string();
+                    let constraint = trait_ref.print_only_trait_path().to_string();
+                    if suggest_arbitrary_trait_bound(generics, &mut err, &param_name, &constraint) {
+                        return;
+                    }
+                }
                 hir::Node::Crate(..) => return,
 
                 _ => {}
@@ -888,8 +919,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // no return, suggest removal of semicolon on last statement.
                     // Once that is added, close #54771.
                     if let Some(ref stmt) = blk.stmts.last() {
-                        let sp = self.tcx.sess.source_map().end_point(stmt.span);
-                        err.span_label(sp, "consider removing this semicolon");
+                        if let hir::StmtKind::Semi(_) = stmt.kind {
+                            let sp = self.tcx.sess.source_map().end_point(stmt.span);
+                            err.span_label(sp, "consider removing this semicolon");
+                        }
                     }
                 }
             }
@@ -1090,7 +1123,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // This is currently not possible to trigger because E0038 takes precedence, but
                 // leave it in for completeness in case anything changes in an earlier stage.
                 err.note(&format!(
-                    "if trait `{}` was object safe, you could return a trait object",
+                    "if trait `{}` were object-safe, you could return a trait object",
                     trait_obj,
                 ));
             }
@@ -1868,22 +1901,25 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec(suggest_const_in_array_repeat_expressions) => {
+            ObligationCauseCode::RepeatVec(is_const_fn) => {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
-                if suggest_const_in_array_repeat_expressions {
-                    err.note(
-                        "this array initializer can be evaluated at compile-time, see issue \
-                         #49147 <https://github.com/rust-lang/rust/issues/49147> \
-                         for more information",
+
+                if is_const_fn {
+                    err.help(
+                        "consider creating a new `const` item and initializing it with the result \
+                        of the function call to be used in the repeat position, like \
+                        `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
                     );
-                    if tcx.sess.opts.unstable_features.is_nightly_build() {
-                        err.help(
-                            "add `#![feature(const_in_array_repeat_expressions)]` to the \
-                             crate attributes to enable",
-                        );
-                    }
+                }
+
+                if self.tcx.sess.is_nightly_build() && is_const_fn {
+                    err.help(
+                        "create an inline `const` block, see RFC \
+                        #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
+                        for more information",
+                    );
                 }
             }
             ObligationCauseCode::VariableType(hir_id) => {

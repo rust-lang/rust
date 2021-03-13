@@ -1,0 +1,20 @@
+error: inconsistent struct constructor
+  --> $DIR/inconsistent_struct_constructor.rs:25:9
+   |
+LL |         Foo { y, x, z };
+   |         ^^^^^^^^^^^^^^^ help: try: `Foo { x, y, z }`
+   |
+   = note: `-D clippy::inconsistent-struct-constructor` implied by `-D warnings`
+
+error: inconsistent struct constructor
+  --> $DIR/inconsistent_struct_constructor.rs:43:9
+   |
+LL | /         Foo {
+LL | |             z,
+LL | |             x,
+LL | |             ..Default::default()
+LL | |         };
+   | |_________^ help: try: `Foo { x, z, ..Default::default() }`
+
+error: aborting due to 2 previous errors
+

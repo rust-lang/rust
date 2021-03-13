@@ -26,7 +26,7 @@ pub struct EarlyOtherwiseBranch;
 
 impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 {
+        if tcx.sess.mir_opt_level() < 3 {
             return;
         }
         trace!("running EarlyOtherwiseBranch on {:?}", body.source);
@@ -91,8 +91,10 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 opt_to_apply.infos[0].first_switch_info.discr_used_in_switch;
             let not_equal_rvalue = Rvalue::BinaryOp(
                 not_equal,
-                Operand::Copy(Place::from(second_discriminant_temp)),
-                Operand::Copy(first_descriminant_place),
+                box (
+                    Operand::Copy(Place::from(second_discriminant_temp)),
+                    Operand::Copy(first_descriminant_place),
+                ),
             );
             patch.add_statement(
                 end_of_block_location,

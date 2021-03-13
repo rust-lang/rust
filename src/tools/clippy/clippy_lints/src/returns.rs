@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             if let Some(stmt) = block.stmts.iter().last();
             if let StmtKind::Local(local) = &stmt.kind;
             if local.ty.is_none();
-            if local.attrs.is_empty();
+            if cx.tcx.hir().attrs(local.hir_id).is_empty();
             if let Some(initexpr) = &local.init;
             if let PatKind::Binding(.., ident, _) = local.pat.kind;
             if let ExprKind::Path(qpath) = &retexpr.kind;
@@ -131,7 +131,16 @@ impl<'tcx> LateLintPass<'tcx> for Return {
         _: HirId,
     ) {
         match kind {
-            FnKind::Closure(_) => check_final_expr(cx, &body.value, Some(body.value.span), RetReplacement::Empty),
+            FnKind::Closure => {
+                // when returning without value in closure, replace this `return`
+                // with an empty block to prevent invalid suggestion (see #6501)
+                let replacement = if let ExprKind::Ret(None) = &body.value.kind {
+                    RetReplacement::Block
+                } else {
+                    RetReplacement::Empty
+                };
+                check_final_expr(cx, &body.value, Some(body.value.span), replacement)
+            },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(ref block, _) = body.value.kind {
                     check_block_return(cx, block);
@@ -168,7 +177,8 @@ fn check_final_expr<'tcx>(
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
             // allow `#[cfg(a)] return a; #[cfg(b)] return b;`
-            if !expr.attrs.iter().any(attr_is_cfg) {
+            let attrs = cx.tcx.hir().attrs(expr.hir_id);
+            if !attrs.iter().any(attr_is_cfg) {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {
                     emit_return_lint(

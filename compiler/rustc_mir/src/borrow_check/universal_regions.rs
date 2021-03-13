@@ -20,7 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyOwnerKind, HirId};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_infer::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
@@ -393,7 +393,7 @@ struct UniversalRegionsBuilder<'cx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-const FR: NLLRegionVariableOrigin = NLLRegionVariableOrigin::FreeRegion;
+const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
@@ -486,7 +486,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let root_empty = self
             .infcx
-            .next_nll_region_var(NLLRegionVariableOrigin::RootEmptyRegion)
+            .next_nll_region_var(NllRegionVariableOrigin::RootEmptyRegion)
             .to_region_vid();
 
         UniversalRegions {
@@ -647,7 +647,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 trait InferCtxtExt<'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         value: T,
     ) -> T
     where
@@ -655,7 +655,7 @@ trait InferCtxtExt<'tcx> {
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
         value: ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,
@@ -673,7 +673,7 @@ trait InferCtxtExt<'tcx> {
 impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         value: T,
     ) -> T
     where
@@ -684,7 +684,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
 
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
-        origin: NLLRegionVariableOrigin,
+        origin: NllRegionVariableOrigin,
         all_outlive_scope: LocalDefId,
         value: ty::Binder<T>,
         indices: &mut UniversalRegionIndices<'tcx>,

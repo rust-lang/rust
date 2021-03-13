@@ -1,9 +1,0 @@
-error[E0764]: mutable references are not allowed in statics
-  --> $DIR/read_from_static_mut_ref.rs:5:26
-   |
-LL | static OH_NO: &mut i32 = &mut 42;
-   |                          ^^^^^^^ `&mut` is only allowed in `const fn`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0764`.

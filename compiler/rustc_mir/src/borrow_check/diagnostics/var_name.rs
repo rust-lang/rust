@@ -12,7 +12,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,
-        upvars: &[Upvar],
+        upvars: &[Upvar<'tcx>],
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
         debug!("get_var_name_and_span_for_region(fr={:?})", fr);
@@ -21,6 +21,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("get_var_name_and_span_for_region: attempting upvar");
         self.get_upvar_index_for_region(tcx, fr)
             .map(|index| {
+                // FIXME(project-rfc-2229#8): Use place span for diagnostics
                 let (name, span) = self.get_upvar_name_and_span_for_region(tcx, upvars, index);
                 (Some(name), span)
             })
@@ -59,10 +60,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn get_upvar_name_and_span_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
-        upvars: &[Upvar],
+        upvars: &[Upvar<'tcx>],
         upvar_index: usize,
     ) -> (Symbol, Span) {
-        let upvar_hir_id = upvars[upvar_index].var_hir_id;
+        let upvar_hir_id = upvars[upvar_index].place.get_root_variable();
         debug!("get_upvar_name_and_span_for_region: upvar_hir_id={:?}", upvar_hir_id);
 
         let upvar_name = tcx.hir().name(upvar_hir_id);

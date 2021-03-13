@@ -457,7 +457,7 @@ impl AddNoMangleToMethod for Foo {
 #[rustc_clean(label="hir_owner", cfg="cfail2")]
 #[rustc_clean(label="hir_owner", cfg="cfail3")]
 impl AddNoMangleToMethod for Foo {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner", cfg="cfail2")]
     #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[no_mangle]
     fn add_no_mangle_to_method(&self) { }
@@ -478,7 +478,7 @@ impl MakeMethodInline for Foo {
 #[rustc_clean(label="hir_owner", cfg="cfail2")]
 #[rustc_clean(label="hir_owner", cfg="cfail3")]
 impl MakeMethodInline for Foo {
-    #[rustc_dirty(label="hir_owner", cfg="cfail2")]
+    #[rustc_clean(label="hir_owner", cfg="cfail2")]
     #[rustc_clean(label="hir_owner", cfg="cfail3")]
     #[inline]
     fn make_method_inline(&self) -> u8 { 0 }

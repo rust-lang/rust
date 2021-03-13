@@ -199,7 +199,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             }
 
             self.visit_local(&place_ref.local, context, location);
-            self.visit_projection(place_ref.local, place_ref.projection, context, location);
+            self.visit_projection(*place_ref, context, location);
         }
     }
 }

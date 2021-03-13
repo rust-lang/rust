@@ -5,7 +5,7 @@ LL |       } else {
    |  ____________^
 LL | |         //~ ERROR same body as `if` block
 LL | |         for _ in &[42] {
-LL | |             let foo: &Option<_> = &Some::<u8>(42);
+LL | |             let bar: &Option<_> = &Some::<u8>(42);
 ...  |
 LL | |         }
 LL | |     }
@@ -19,7 +19,7 @@ LL |       if true {
    |  _____________^
 LL | |         for _ in &[42] {
 LL | |             let foo: &Option<_> = &Some::<u8>(42);
-LL | |             if true {
+LL | |             if foo.is_some() {
 ...  |
 LL | |         }
 LL | |     } else {

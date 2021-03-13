@@ -47,12 +47,7 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn count(self) -> usize {
         // length in `char` is equal to the number of non-continuation bytes
-        let bytes_len = self.iter.len();
-        let mut cont_bytes = 0;
-        for &byte in self.iter {
-            cont_bytes += utf8_is_cont_byte(byte) as usize;
-        }
-        bytes_len - cont_bytes
+        self.iter.filter(|&&byte| !utf8_is_cont_byte(byte)).count()
     }
 
     #[inline]
@@ -326,10 +321,7 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// This macro generates a Clone impl for string pattern API

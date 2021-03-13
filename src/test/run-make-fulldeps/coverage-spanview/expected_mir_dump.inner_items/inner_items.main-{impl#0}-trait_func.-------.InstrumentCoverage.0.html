@@ -73,28 +73,28 @@ For revisions in Pull Requests (PR):
 41:13-41:41: @0[2]: _4 = CheckedAdd(((*_1).0: u32), _3)
 41:13-41:41: @1[0]: ((*_1).0: u32) = move (_4.0: u32)
 42:21-42:41: @1[4]: _6 = ((*_1).0: u32)
-42:13-42:42: @1.Call: _5 = in_func(move _6) -&gt; [return: bb2, unwind: bb3]
+42:13-42:42: @1.Call: _5 = main::in_func(move _6) -&gt; [return: bb2, unwind: bb3]
 40:45-43:10: @2[2]: _0 = const ()
 43:10-43:10: @2.Return: return"><span class="annotation">@0,1,2⦊</span>fn trait_func(&amp;mut self, incr: u32) {</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="41:37-41:41: @0[1]: _3 = _2
 41:13-41:41: @0[2]: _4 = CheckedAdd(((*_1).0: u32), _3)
 41:13-41:41: @1[0]: ((*_1).0: u32) = move (_4.0: u32)
 42:21-42:41: @1[4]: _6 = ((*_1).0: u32)
-42:13-42:42: @1.Call: _5 = in_func(move _6) -&gt; [return: bb2, unwind: bb3]
+42:13-42:42: @1.Call: _5 = main::in_func(move _6) -&gt; [return: bb2, unwind: bb3]
 40:45-43:10: @2[2]: _0 = const ()
 43:10-43:10: @2.Return: return">            self.in_struct_field += incr;</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="41:37-41:41: @0[1]: _3 = _2
 41:13-41:41: @0[2]: _4 = CheckedAdd(((*_1).0: u32), _3)
 41:13-41:41: @1[0]: ((*_1).0: u32) = move (_4.0: u32)
 42:21-42:41: @1[4]: _6 = ((*_1).0: u32)
-42:13-42:42: @1.Call: _5 = in_func(move _6) -&gt; [return: bb2, unwind: bb3]
+42:13-42:42: @1.Call: _5 = main::in_func(move _6) -&gt; [return: bb2, unwind: bb3]
 40:45-43:10: @2[2]: _0 = const ()
 43:10-43:10: @2.Return: return">            in_func(self.in_struct_field);</span></span>
 <span class="line"><span class="code even" style="--layer: 1" title="41:37-41:41: @0[1]: _3 = _2
 41:13-41:41: @0[2]: _4 = CheckedAdd(((*_1).0: u32), _3)
 41:13-41:41: @1[0]: ((*_1).0: u32) = move (_4.0: u32)
 42:21-42:41: @1[4]: _6 = ((*_1).0: u32)
-42:13-42:42: @1.Call: _5 = in_func(move _6) -&gt; [return: bb2, unwind: bb3]
+42:13-42:42: @1.Call: _5 = main::in_func(move _6) -&gt; [return: bb2, unwind: bb3]
 40:45-43:10: @2[2]: _0 = const ()
 43:10-43:10: @2.Return: return">        }<span class="annotation">⦉@0,1,2</span></span></span></span></div>
 </body>

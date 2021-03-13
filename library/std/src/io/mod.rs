@@ -482,7 +482,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// }
 /// ```
 ///
-/// Read from [`&str`] because [`&[u8]`][slice] implements `Read`:
+/// Read from [`&str`] because [`&[u8]`][prim@slice] implements `Read`:
 ///
 /// ```no_run
 /// # use std::io;
@@ -504,7 +504,6 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
 /// [`&str`]: prim@str
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
-/// [slice]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Read {
@@ -1671,7 +1670,7 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
+    /// #![feature(seek_stream_len)]
     /// use std::{
     ///     io::{self, Seek},
     ///     fs::File,
@@ -1685,7 +1684,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "59359")]
+    #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
         let old_pos = self.stream_position()?;
         let len = self.seek(SeekFrom::End(0))?;
@@ -1706,7 +1705,6 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// #![feature(seek_convenience)]
     /// use std::{
     ///     io::{self, BufRead, BufReader, Seek},
     ///     fs::File,
@@ -1723,7 +1721,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_convenience", issue = "59359")]
+    #[stable(feature = "seek_convenience", since = "1.51.0")]
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
@@ -2240,6 +2238,19 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 }
 
+impl<T, U> SizeHint for Chain<T, U> {
+    fn lower_bound(&self) -> usize {
+        SizeHint::lower_bound(&self.first) + SizeHint::lower_bound(&self.second)
+    }
+
+    fn upper_bound(&self) -> Option<usize> {
+        match (SizeHint::upper_bound(&self.first), SizeHint::upper_bound(&self.second)) {
+            (Some(first), Some(second)) => Some(first + second),
+            _ => None,
+        }
+    }
+}
+
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
 /// This struct is generally created by calling [`take`] on a reader.
@@ -2465,6 +2476,30 @@ impl<R: Read> Iterator for Bytes<R> {
                 Err(e) => Some(Err(e)),
             };
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        SizeHint::size_hint(&self.inner)
+    }
+}
+
+trait SizeHint {
+    fn lower_bound(&self) -> usize;
+
+    fn upper_bound(&self) -> Option<usize>;
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.lower_bound(), self.upper_bound())
+    }
+}
+
+impl<T> SizeHint for T {
+    default fn lower_bound(&self) -> usize {
+        0
+    }
+
+    default fn upper_bound(&self) -> Option<usize> {
+        None
     }
 }
 

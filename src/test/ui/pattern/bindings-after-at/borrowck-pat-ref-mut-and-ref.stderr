@@ -390,7 +390,7 @@ error[E0507]: cannot move out of `a` in pattern guard
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:111:66
    |
 LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
-   |                                                                  ^ move occurs because `a` has type `&mut std::result::Result<U, U>`, which does not implement the `Copy` trait
+   |                                                                  ^ move occurs because `a` has type `&mut Result<U, U>`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 
@@ -398,7 +398,7 @@ error[E0507]: cannot move out of `a` in pattern guard
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:111:66
    |
 LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
-   |                                                                  ^ move occurs because `a` has type `&mut std::result::Result<U, U>`, which does not implement the `Copy` trait
+   |                                                                  ^ move occurs because `a` has type `&mut Result<U, U>`, which does not implement the `Copy` trait
    |
    = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 

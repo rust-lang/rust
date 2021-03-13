@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on `Iterator`.
-            let b = i.next().map_or(String::new(), |t| t.to_string());
+            let b = i.next().map_or_else(String::new, |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
                 if tokens.len() > 2 && i == tokens.len() - 2 {
                     b.push_str(", or ");
@@ -662,7 +662,7 @@ impl<'a> Parser<'a> {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
                         SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_ty(),
+                        |p| p.parse_generic_arg(),
                     );
                     match x {
                         Ok((_, _, false)) => {
@@ -1104,7 +1104,7 @@ impl<'a> Parser<'a> {
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
             // Point at the end of the macro call when reaching end of macro arguments.
             (token::Eof, Some(_)) => {
-                let sp = self.sess.source_map().next_point(self.token.span);
+                let sp = self.sess.source_map().next_point(self.prev_token.span);
                 (sp, sp)
             }
             // We don't want to point at the following span after DUMMY_SP.
@@ -1654,7 +1654,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat(Some("argument name"))?;
+        let pat = self.parse_pat_no_top_alt(Some("argument name"))?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
@@ -1721,7 +1721,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
-                let sp = self.sess.source_map().next_point(self.token.span);
+                let sp = self.sess.source_map().next_point(self.prev_token.span);
                 (sp, format!("expected expression, found end of {}", origin))
             }
             _ => (

@@ -1,6 +1,6 @@
 #![feature(non_ascii_idents)]
 #![warn(clippy::enum_variant_names, clippy::pub_enum_variant_names)]
-#![allow(non_camel_case_types)]
+#![allow(non_camel_case_types, clippy::upper_case_acronyms)]
 
 enum FakeCallType {
     CALL,
@@ -131,6 +131,19 @@ enum Peek {
 pub enum NetworkLayer {
     Layer2,
     Layer3,
+}
+
+// should lint suggesting `IData`, not only `Data` (see #4639)
+enum IDataRequest {
+    PutIData(String),
+    GetIData(String),
+    DeleteUnpubIData(String),
+}
+
+enum HIDataRequest {
+    PutHIData(String),
+    GetHIData(String),
+    DeleteUnpubHIData(String),
 }
 
 fn main() {}

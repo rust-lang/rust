@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
@@ -14,7 +15,7 @@ use rustc_session::utils::NativeLibKind;
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
-use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor};
+use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target};
 
 use super::archive::ArchiveBuilder;
@@ -34,9 +35,11 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
 
-pub fn remove(sess: &Session, path: &Path) {
+pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
-        sess.err(&format!("failed to remove {}: {}", path.display(), e));
+        if e.kind() != io::ErrorKind::NotFound {
+            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+        }
     }
 }
 
@@ -99,9 +102,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         path.as_ref(),
                         target_cpu,
                     );
-                    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Split {
-                        link_dwarf_object(sess, &out_filename);
-                    }
                 }
             }
             if sess.opts.json_artifact_notifications {
@@ -115,11 +115,11 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         if !sess.opts.cg.save_temps {
             let remove_temps_from_module = |module: &CompiledModule| {
                 if let Some(ref obj) = module.object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
 
                 if let Some(ref obj) = module.dwarf_object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
             };
 
@@ -181,16 +181,16 @@ fn get_linker(
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
-                    "x86_64" => Some("x64".to_string()),
-                    "x86" => Some("x86".to_string()),
-                    "aarch64" => Some("arm64".to_string()),
-                    "arm" => Some("arm".to_string()),
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
                     // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");
@@ -711,7 +711,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             status.signal() == Some(libc::SIGILL)
         }
 
-        #[cfg(windows)]
+        #[cfg(not(unix))]
         fn is_illegal_instruction(_status: &ExitStatus) -> bool {
             false
         }
@@ -828,29 +828,43 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    // On macOS, debuggers need this utility to get run to do some munging of
-    // the symbols. Note, though, that if the object files are being preserved
-    // for their debug information there's no need for us to run dsymutil.
-    if sess.target.is_like_osx
-        && sess.opts.debuginfo != DebugInfo::None
-        && !preserve_objects_for_their_debuginfo(sess)
-    {
-        let prog = Command::new("dsymutil").arg(out_filename).output();
-        match prog {
-            Ok(prog) => {
-                if !prog.status.success() {
-                    let mut output = prog.stderr.clone();
-                    output.extend_from_slice(&prog.stdout);
-                    sess.struct_warn(&format!(
-                        "processing debug info with `dsymutil` failed: {}",
-                        prog.status
-                    ))
-                    .note(&escape_string(&output))
-                    .emit();
+    match sess.split_debuginfo() {
+        // If split debug information is disabled or located in individual files
+        // there's nothing to do here.
+        SplitDebuginfo::Off | SplitDebuginfo::Unpacked => {}
+
+        // If packed split-debuginfo is requested, but the final compilation
+        // doesn't actually have any debug information, then we skip this step.
+        SplitDebuginfo::Packed if sess.opts.debuginfo == DebugInfo::None => {}
+
+        // On macOS the external `dsymutil` tool is used to create the packed
+        // debug information. Note that this will read debug information from
+        // the objects on the filesystem which we'll clean up later.
+        SplitDebuginfo::Packed if sess.target.is_like_osx => {
+            let prog = Command::new("dsymutil").arg(out_filename).output();
+            match prog {
+                Ok(prog) => {
+                    if !prog.status.success() {
+                        let mut output = prog.stderr.clone();
+                        output.extend_from_slice(&prog.stdout);
+                        sess.struct_warn(&format!(
+                            "processing debug info with `dsymutil` failed: {}",
+                            prog.status
+                        ))
+                        .note(&escape_string(&output))
+                        .emit();
+                    }
                 }
+                Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
             }
-            Err(e) => sess.fatal(&format!("unable to run `dsymutil`: {}", e)),
         }
+
+        // On MSVC packed debug information is produced by the linker itself so
+        // there's no need to do anything else here.
+        SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
+
+        // ... and otherwise we're processing a `*.dwp` packed dwarf file.
+        SplitDebuginfo::Packed => link_dwarf_object(sess, &out_filename),
     }
 }
 
@@ -882,12 +896,28 @@ fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linke
     if sanitizer.contains(SanitizerSet::THREAD) {
         link_sanitizer_runtime(sess, linker, "tsan");
     }
+    if sanitizer.contains(SanitizerSet::HWADDRESS) {
+        link_sanitizer_runtime(sess, linker, "hwasan");
+    }
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
-    let default_sysroot = filesearch::get_or_default_sysroot();
-    let default_tlib =
-        filesearch::make_target_lib_path(&default_sysroot, sess.opts.target_triple.triple());
+    fn find_sanitizer_runtime(sess: &Session, filename: &String) -> PathBuf {
+        let session_tlib =
+            filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
+        let path = session_tlib.join(&filename);
+        if path.exists() {
+            return session_tlib;
+        } else {
+            let default_sysroot = filesearch::get_or_default_sysroot();
+            let default_tlib = filesearch::make_target_lib_path(
+                &default_sysroot,
+                sess.opts.target_triple.triple(),
+            );
+            return default_tlib;
+        }
+    }
+
     let channel = option_env!("CFG_RELEASE_CHANNEL")
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
@@ -898,10 +928,11 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
             // LLVM will link to `@rpath/*.dylib`, so we need to specify an
             // rpath to the library as well (the rpath should be absolute, see
             // PR #41352 for details).
-            let libname = format!("rustc{}_rt.{}", channel, name);
-            let rpath = default_tlib.to_str().expect("non-utf8 component in path");
+            let filename = format!("rustc{}_rt.{}", channel, name);
+            let path = find_sanitizer_runtime(&sess, &filename);
+            let rpath = path.to_str().expect("non-utf8 component in path");
             linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-            linker.link_dylib(Symbol::intern(&libname));
+            linker.link_dylib(Symbol::intern(&filename));
         }
         "aarch64-fuchsia"
         | "aarch64-unknown-linux-gnu"
@@ -909,7 +940,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         | "x86_64-unknown-freebsd"
         | "x86_64-unknown-linux-gnu" => {
             let filename = format!("librustc{}_rt.{}.a", channel, name);
-            let path = default_tlib.join(&filename);
+            let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
             linker.link_whole_rlib(&path);
         }
         _ => {}
@@ -1036,28 +1067,9 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
         return false;
     }
 
-    // Single mode keeps debuginfo in the same object file, but in such a way that it it skipped
-    // by the linker - so it's expected that when codegen units are linked together that this
-    // debuginfo would be lost without keeping around the temps.
-    if sess.opts.debugging_opts.split_dwarf == config::SplitDwarfKind::Single {
-        return true;
-    }
-
-    // If we're on OSX then the equivalent of split dwarf is turned on by
-    // default. The final executable won't actually have any debug information
-    // except it'll have pointers to elsewhere. Historically we've always run
-    // `dsymutil` to "link all the dwarf together" but this is actually sort of
-    // a bummer for incremental compilation! (the whole point of split dwarf is
-    // that you don't do this sort of dwarf link).
-    //
-    // Basically as a result this just means that if we're on OSX and we're
-    // *not* running dsymutil then the object files are the only source of truth
-    // for debug information, so we must preserve them.
-    if sess.target.is_like_osx {
-        return !sess.opts.debugging_opts.run_dsymutil;
-    }
-
-    false
+    // "unpacked" split debuginfo means that we leave object files as the
+    // debuginfo is found in the original object files themselves
+    sess.split_debuginfo() == SplitDebuginfo::Unpacked
 }
 
 pub fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
@@ -1186,7 +1198,7 @@ fn exec_linker(
     flush_linked_file(&output, out_filename)?;
     return output;
 
-    #[cfg(unix)]
+    #[cfg(not(windows))]
     fn flush_linked_file(_: &io::Result<Output>, _: &Path) -> io::Result<()> {
         Ok(())
     }
@@ -1224,6 +1236,11 @@ fn exec_linker(
     fn command_line_too_big(err: &io::Error) -> bool {
         const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
         err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn command_line_too_big(_: &io::Error) -> bool {
+        false
     }
 
     struct Escape<'a> {
@@ -2070,7 +2087,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or(Path::new("")),
+            parent.unwrap_or_else(|| Path::new("")),
         );
     }
 }
@@ -2181,6 +2198,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
         ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",
@@ -2197,8 +2215,13 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
             return;
         }
     };
-    let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
-    cmd.args(&["-arch", arch_name, "-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
+    if llvm_target.contains("macabi") {
+        cmd.args(&["-target", llvm_target])
+    } else {
+        let arch_name = llvm_target.split('-').next().expect("LLVM target must have a hyphen");
+        cmd.args(&["-arch", arch_name])
+    }
+    cmd.args(&["-isysroot", &sdk_root, "-Wl,-syslibroot", &sdk_root]);
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {

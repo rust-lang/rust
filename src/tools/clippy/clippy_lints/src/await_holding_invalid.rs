@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// other solution is to ensure the mutex is unlocked before calling await,
     /// either by introducing a scope or an explicit call to Drop::drop.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Will report false positive for explicitly dropped guards ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)).
     ///
     /// **Example:**
     ///
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// at runtime. Holding onto a `RefCell` ref across an `await` suspension point
     /// risks panics from a mutable ref shared while other refs are outstanding.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Will report false positive for explicitly dropped refs ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)).
     ///
     /// **Example:**
     ///

@@ -80,6 +80,7 @@
 ///     bar: f32,
 /// }
 /// ```
+#[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
@@ -173,9 +174,11 @@ macro_rules! default_impl {
         impl Default for $t {
             #[inline]
             #[doc = $doc]
-            fn default() -> $t { $v }
+            fn default() -> $t {
+                $v
+            }
         }
-    }
+    };
 }
 
 default_impl! { (), (), "Returns the default value of `()`" }

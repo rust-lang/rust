@@ -9,11 +9,11 @@ macro_rules! static_assert_size {
 #[macro_export]
 macro_rules! enum_from_u32 {
     ($(#[$attr:meta])* pub enum $name:ident {
-        $($variant:ident = $e:expr,)*
+        $($(#[$var_attr:meta])* $variant:ident = $e:expr,)*
     }) => {
         $(#[$attr])*
         pub enum $name {
-            $($variant = $e),*
+            $($(#[$var_attr])* $variant = $e),*
         }
 
         impl $name {
@@ -26,11 +26,11 @@ macro_rules! enum_from_u32 {
         }
     };
     ($(#[$attr:meta])* pub enum $name:ident {
-        $($variant:ident,)*
+        $($(#[$var_attr:meta])* $variant:ident,)*
     }) => {
         $(#[$attr])*
         pub enum $name {
-            $($variant,)*
+            $($(#[$var_attr])* $variant,)*
         }
 
         impl $name {

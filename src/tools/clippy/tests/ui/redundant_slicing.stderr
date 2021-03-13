@@ -1,0 +1,16 @@
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:6:15
+   |
+LL |     let err = &x[..];
+   |               ^^^^^^ help: use the original slice instead: `x`
+   |
+   = note: `-D clippy::redundant-slicing` implied by `-D warnings`
+
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:10:15
+   |
+LL |     let err = &(&v[..])[..];
+   |               ^^^^^^^^^^^^^ help: use the original slice instead: `(&v[..])`
+
+error: aborting due to 2 previous errors
+

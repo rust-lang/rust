@@ -194,7 +194,7 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 pub fn inline() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[inline]
 pub fn inline() {}
@@ -206,7 +206,7 @@ pub fn inline() {}
 pub fn inline_never() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[inline(never)]
 pub fn inline_never() {}
@@ -217,7 +217,7 @@ pub fn inline_never() {}
 pub fn no_mangle() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[no_mangle]
 pub fn no_mangle() {}
@@ -228,7 +228,7 @@ pub fn no_mangle() {}
 pub fn linkage() {}
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "hir_owner, hir_owner_nodes")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 #[linkage = "weak_odr"]
 pub fn linkage() {}

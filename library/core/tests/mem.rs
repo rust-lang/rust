@@ -152,6 +152,8 @@ fn uninit_array_assume_init() {
     let array = unsafe { MaybeUninit::array_assume_init(array) };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
+
+    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
 }
 
 #[test]
@@ -282,7 +284,6 @@ fn uninit_write_slice_cloned_no_drop() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn uninit_const_assume_init_read() {
     const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
     assert_eq!(FOO, 42);

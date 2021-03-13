@@ -3,6 +3,8 @@ error[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
    |
 LL |     let tick1 = || {
    |         ----- help: consider changing this to be mutable: `mut tick1`
+LL |         counter += 1;
+   |         ------- calling `tick1` requires mutable binding due to mutable borrow of `counter`
 ...
 LL |         tick1();
    |         ^^^^^ cannot borrow as mutable
@@ -12,6 +14,8 @@ error[E0596]: cannot borrow `tick2` as mutable, as it is not declared as mutable
    |
 LL |     let tick2 = || {
    |         ----- help: consider changing this to be mutable: `mut tick2`
+LL |         tick1();
+   |         ----- calling `tick2` requires mutable binding due to mutable borrow of `tick1`
 ...
 LL |     tick2();
    |     ^^^^^ cannot borrow as mutable

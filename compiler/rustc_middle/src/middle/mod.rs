@@ -7,7 +7,7 @@ pub mod lib_features {
     use rustc_data_structures::fx::{FxHashMap, FxHashSet};
     use rustc_span::symbol::Symbol;
 
-    #[derive(HashStable)]
+    #[derive(HashStable, Debug)]
     pub struct LibFeatures {
         // A map from feature to stabilisation version.
         pub stable: FxHashMap<Symbol, Symbol>,

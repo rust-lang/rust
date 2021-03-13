@@ -13,7 +13,7 @@ use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
 use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
-#[derive(Clone, HashStable, TyEncodable, TyDecodable)]
+#[derive(Clone, HashStable, TyEncodable, TyDecodable, Debug)]
 pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -44,7 +44,7 @@ pub enum ConstValue<'tcx> {
     },
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
 
 impl<'tcx> ConstValue<'tcx> {
@@ -96,7 +96,7 @@ impl<'tcx> ConstValue<'tcx> {
 }
 
 /// A `Scalar` represents an immediate, primitive value existing outside of a
-/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
+/// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 16 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, TyEncodable, TyDecodable, Hash)]
@@ -111,7 +111,7 @@ pub enum Scalar<Tag = ()> {
     Ptr(Pointer<Tag>),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Scalar, 24);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
@@ -509,7 +509,7 @@ pub enum ScalarMaybeUninit<Tag = ()> {
     Uninit,
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ScalarMaybeUninit, 24);
 
 impl<Tag> From<Scalar<Tag>> for ScalarMaybeUninit<Tag> {

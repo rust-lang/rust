@@ -79,7 +79,7 @@ impl<K: DepKind> DepNode<K> {
 
     pub fn construct<Ctxt, Key>(tcx: Ctxt, kind: K, arg: &Key) -> DepNode<K>
     where
-        Ctxt: crate::query::QueryContext<DepKind = K>,
+        Ctxt: super::DepContext<DepKind = K>,
         Key: DepNodeParams<Ctxt>,
     {
         let hash = arg.to_fingerprint(tcx);
@@ -87,7 +87,10 @@ impl<K: DepKind> DepNode<K> {
 
         #[cfg(debug_assertions)]
         {
-            if !kind.can_reconstruct_query_key() && tcx.debug_dep_node() {
+            if !kind.can_reconstruct_query_key()
+                && (tcx.sess().opts.debugging_opts.incremental_info
+                    || tcx.sess().opts.debugging_opts.query_dep_graph)
+            {
                 tcx.dep_graph().register_dep_node_debug_str(dep_node, || arg.to_debug_str(tcx));
             }
         }

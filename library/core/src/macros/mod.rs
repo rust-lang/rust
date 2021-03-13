@@ -1,21 +1,15 @@
-#[doc(include = "panic.md")]
+#[doc = include_str!("panic.md")]
 #[macro_export]
-#[allow_internal_unstable(core_panic, const_caller_location)]
+#[rustc_builtin_macro = "core_panic"]
+#[allow_internal_unstable(edition_panic)]
 #[stable(feature = "core", since = "1.6.0")]
 #[rustc_diagnostic_item = "core_panic_macro"]
 macro_rules! panic {
-    () => (
-        $crate::panic!("explicit panic")
-    );
-    ($msg:literal $(,)?) => (
-        $crate::panicking::panic($msg)
-    );
-    ($msg:expr $(,)?) => (
-        $crate::panicking::panic_str($msg)
-    );
-    ($fmt:expr, $($arg:tt)+) => (
-        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+))
-    );
+    // Expands to either `$crate::panic::panic_2015` or `$crate::panic::panic_2021`
+    // depending on the edition of the caller.
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
@@ -37,32 +31,30 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
-        match (&($left), &($right)) {
+        match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
+                    let kind = $crate::panicking::AssertKind::Eq;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left == right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
@@ -88,17 +80,17 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`"#, &*left_val, &*right_val)
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
                 }
             }
         }
@@ -107,14 +99,66 @@ macro_rules! assert_ne {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
+                    let kind = $crate::panicking::AssertKind::Ne;
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panic!(r#"assertion failed: `(left != right)`
-  left: `{:?}`,
- right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           $crate::format_args!($($arg)+))
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
+            }
+        }
+    });
+}
+
+/// Asserts that an expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// On panic, this macro will print the value of the expression with its
+/// debug representation.
+///
+/// Like [`assert!`], this macro has a second form, where a custom
+/// panic message can be provided.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(assert_matches)]
+///
+/// let a = 1u32.checked_add(2);
+/// let b = 1u32.checked_sub(2);
+/// assert_matches!(a, Some(_));
+/// assert_matches!(b, None);
+///
+/// let c = Ok("abc".to_string());
+/// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
+/// ```
+#[macro_export]
+#[unstable(feature = "assert_matches", issue = "82775")]
+#[allow_internal_unstable(core_panic)]
+macro_rules! assert_matches {
+    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
+        match $left {
+            $( $pattern )|+ $( if $guard )? => {}
+            ref left_val => {
+                $crate::panicking::assert_matches_failed(
+                    left_val,
+                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::option::Option::None
+                );
+            }
+        }
+    });
+    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+        match $left {
+            $( $pattern )|+ $( if $guard )? => {}
+            ref left_val => {
+                $crate::panicking::assert_matches_failed(
+                    left_val,
+                    $crate::stringify!($($pattern)|+ $(if $guard)?),
+                    $crate::option::Option::Some($crate::format_args!($($arg)+))
+                );
             }
         }
     });
@@ -216,6 +260,42 @@ macro_rules! debug_assert_eq {
 #[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
+}
+
+/// Asserts that an expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// On panic, this macro will print the value of the expression with its
+/// debug representation.
+///
+/// Unlike [`assert_matches!`], `debug_assert_matches!` statements are only
+/// enabled in non optimized builds by default. An optimized build will not
+/// execute `debug_assert_matches!` statements unless `-C debug-assertions` is
+/// passed to the compiler. This makes `debug_assert_matches!` useful for
+/// checks that are too expensive to be present in a release build but may be
+/// helpful during development. The result of expanding `debug_assert_matches!`
+/// is always type checked.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(assert_matches)]
+///
+/// let a = 1u32.checked_add(2);
+/// let b = 1u32.checked_sub(2);
+/// debug_assert_matches!(a, Some(_));
+/// debug_assert_matches!(b, None);
+///
+/// let c = Ok("abc".to_string());
+/// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
+/// ```
+#[macro_export]
+#[unstable(feature = "assert_matches", issue = "82775")]
+#[allow_internal_unstable(assert_matches)]
+macro_rules! debug_assert_matches {
+    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_matches!($($arg)*); })
 }
 
 /// Returns whether the given expression matches any of the given patterns.
@@ -800,6 +880,7 @@ pub(crate) mod builtin {
     #[macro_export]
     macro_rules! env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
+        ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
     }
 
     /// Optionally inspects an environment variable at compile time.
@@ -1192,7 +1273,8 @@ pub(crate) mod builtin {
     ///
     /// This macro has a second form, where a custom panic message can
     /// be provided with or without arguments for formatting. See [`std::fmt`]
-    /// for syntax for this form.
+    /// for syntax for this form. Expressions used as format arguments will only
+    /// be evaluated if the assertion fails.
     ///
     /// [`std::fmt`]: ../std/fmt/index.html
     ///
@@ -1218,7 +1300,7 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     #[rustc_diagnostic_item = "assert_macro"]
-    #[allow_internal_unstable(core_panic)]
+    #[allow_internal_unstable(core_panic, edition_panic)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
@@ -1308,6 +1390,14 @@ pub(crate) mod builtin {
         (false) => {{ /* compiler built-in */ }};
     }
 
+    /// Attribute macro used to apply derive macros.
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_builtin_macro]
+    pub macro derive($item:item) {
+        /* compiler built-in */
+    }
+
     /// Attribute macro applied to a function to turn it into a unit test.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(test, rustc_attrs)]
@@ -1359,6 +1449,18 @@ pub(crate) mod builtin {
     )]
     #[rustc_builtin_macro]
     pub macro cfg_accessible($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Expands all `#[cfg]` and `#[cfg_attr]` attributes in the code fragment it's applied to.
+    #[cfg(not(bootstrap))]
+    #[unstable(
+        feature = "cfg_eval",
+        issue = "82679",
+        reason = "`cfg_eval` is a recently implemented feature"
+    )]
+    #[rustc_builtin_macro]
+    pub macro cfg_eval($($tt:tt)*) {
         /* compiler built-in */
     }
 

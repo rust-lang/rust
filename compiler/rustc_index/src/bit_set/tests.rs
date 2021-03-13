@@ -1,6 +1,7 @@
 use super::*;
 
 extern crate test;
+use std::hint::black_box;
 use test::Bencher;
 
 #[test]
@@ -363,4 +364,37 @@ fn union_hybrid_sparse_full_small_domain(b: &mut Bencher) {
         let mut sparse = pre_sparse.clone();
         sparse.union(&dense);
     })
+}
+
+#[bench]
+fn bench_insert(b: &mut Bencher) {
+    let mut bs = BitSet::new_filled(99999usize);
+    b.iter(|| {
+        black_box(bs.insert(black_box(100u32)));
+    });
+}
+
+#[bench]
+fn bench_remove(b: &mut Bencher) {
+    let mut bs = BitSet::new_filled(99999usize);
+    b.iter(|| {
+        black_box(bs.remove(black_box(100u32)));
+    });
+}
+
+#[bench]
+fn bench_iter(b: &mut Bencher) {
+    let bs = BitSet::new_filled(99999usize);
+    b.iter(|| {
+        bs.iter().map(|b: usize| black_box(b)).for_each(drop);
+    });
+}
+
+#[bench]
+fn bench_intersect(b: &mut Bencher) {
+    let mut ba: BitSet<u32> = BitSet::new_filled(99999usize);
+    let bb = BitSet::new_filled(99999usize);
+    b.iter(|| {
+        ba.intersect(black_box(&bb));
+    });
 }

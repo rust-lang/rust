@@ -18,9 +18,10 @@
 
 #[warn(const_err)]
 const X: i32 = 1 / 0; //~WARN any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 fn main() {
     let x: &'static i32 = &X;
-    //~^ ERROR evaluation of constant expression failed
+    //~^ ERROR evaluation of constant value failed
     println!("x={}", x);
 }

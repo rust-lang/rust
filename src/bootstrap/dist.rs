@@ -68,7 +68,7 @@ impl Step for Docs {
         if !builder.config.docs {
             return None;
         }
-        builder.default_doc(None);
+        builder.default_doc(&[]);
 
         let dest = "share/doc/rust/html";
 
@@ -103,7 +103,7 @@ impl Step for RustcDocs {
         if !builder.config.compiler_docs {
             return None;
         }
-        builder.default_doc(None);
+        builder.default_doc(&[]);
 
         let mut tarball = Tarball::new(builder, "rustc-docs", &host.triple);
         tarball.set_product_name("Rustc Documentation");
@@ -642,6 +642,14 @@ impl Step for RustcDev {
             builder,
             &builder.src,
             &["compiler"],
+            &[],
+            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
+        );
+        // This particular crate is used as a build dependency of the above.
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &["src/build_helper"],
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );

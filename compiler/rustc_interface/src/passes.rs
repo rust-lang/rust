@@ -15,6 +15,7 @@ use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
+use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -27,13 +28,14 @@ use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
+use rustc_query_impl::Queries as TcxQueries;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
 use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{FileName, RealFileName};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
@@ -64,8 +66,8 @@ pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     }
 
     if sess.opts.debugging_opts.input_stats {
-        println!("Lines of code:             {}", sess.source_map().count_lines());
-        println!("Pre-expansion node count:  {}", count_nodes(&krate));
+        eprintln!("Lines of code:             {}", sess.source_map().count_lines());
+        eprintln!("Pre-expansion node count:  {}", count_nodes(&krate));
     }
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
@@ -211,8 +213,13 @@ pub fn register_plugins<'a>(
     Ok((krate, lint_store))
 }
 
-fn pre_expansion_lint(sess: &Session, lint_store: &LintStore, krate: &ast::Crate) {
-    sess.time("pre_AST_expansion_lint_checks", || {
+fn pre_expansion_lint(
+    sess: &Session,
+    lint_store: &LintStore,
+    krate: &ast::Crate,
+    crate_name: &str,
+) {
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", crate_name).run(|| {
         rustc_lint::check_ast_crate(
             sess,
             lint_store,
@@ -233,7 +240,7 @@ fn configure_and_expand_inner<'a>(
     metadata_loader: &'a MetadataLoaderDyn,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     tracing::trace!("configure_and_expand_inner");
-    pre_expansion_lint(sess, lint_store, &krate);
+    pre_expansion_lint(sess, lint_store, &krate, crate_name);
 
     let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
     rustc_builtin_macros::register_builtin_macros(&mut resolver);
@@ -295,7 +302,11 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let extern_mod_loaded = |k: &ast::Crate| pre_expansion_lint(sess, lint_store, k);
+        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
+            let krate = ast::Crate { attrs, items, span, proc_macros: vec![] };
+            pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
+            (krate.attrs, krate.items)
+        };
         let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
@@ -341,7 +352,7 @@ fn configure_and_expand_inner<'a>(
         rustc_builtin_macros::test_harness::inject(&sess, &mut resolver, &mut krate)
     });
 
-    if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
+    if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
         tracing::debug!("replacing bodies with loop {{}}");
         util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
     }
@@ -387,7 +398,7 @@ fn configure_and_expand_inner<'a>(
     // Done with macro expansion!
 
     if sess.opts.debugging_opts.input_stats {
-        println!("Post-expansion node count: {}", count_nodes(&krate));
+        eprintln!("Post-expansion node count: {}", count_nodes(&krate));
     }
 
     if sess.opts.debugging_opts.hir_stats {
@@ -731,19 +742,17 @@ pub static DEFAULT_EXTERN_QUERY_PROVIDERS: SyncLazy<Providers> = SyncLazy::new(|
     extern_providers
 });
 
-pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
+pub struct QueryContext<'tcx> {
+    gcx: &'tcx GlobalCtxt<'tcx>,
+}
 
 impl<'tcx> QueryContext<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        let icx = ty::tls::ImplicitCtxt::new(self.0);
+        let icx = ty::tls::ImplicitCtxt::new(self.gcx);
         ty::tls::enter_context(&icx, |_| f(icx.tcx))
-    }
-
-    pub fn print_stats(&mut self) {
-        self.enter(ty::query::print_stats)
     }
 }
 
@@ -755,6 +764,7 @@ pub fn create_global_ctxt<'tcx>(
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
+    queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
@@ -778,26 +788,33 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
+    let queries = {
+        let crates = resolver_outputs.cstore.crates_untracked();
+        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
+        providers[LOCAL_CRATE] = local_providers;
+        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
+    };
+
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(|| {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
-                local_providers,
-                extern_providers,
                 arena,
                 resolver_outputs,
                 krate,
                 defs,
                 dep_graph,
                 query_result_on_disk_cache,
+                queries.as_dyn(),
                 &crate_name,
                 &outputs,
             )
         })
     });
 
-    QueryContext(gcx)
+    QueryContext { gcx }
 }
 
 /// Runs the resolution, type-checking, region checking and other
@@ -824,12 +841,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    let local_def_id = tcx.hir().local_def_id(module);
-                    tcx.ensure().check_mod_loops(local_def_id);
-                    tcx.ensure().check_mod_attrs(local_def_id);
-                    tcx.ensure().check_mod_naked_functions(local_def_id);
-                    tcx.ensure().check_mod_unstable_api_usage(local_def_id);
-                    tcx.ensure().check_mod_const_bodies(local_def_id);
+                    tcx.ensure().check_mod_loops(module);
+                    tcx.ensure().check_mod_attrs(module);
+                    tcx.ensure().check_mod_naked_functions(module);
+                    tcx.ensure().check_mod_unstable_api_usage(module);
+                    tcx.ensure().check_mod_const_bodies(module);
                 });
             }
         );
@@ -854,10 +870,8 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                         // "not all control paths return a value" is reported here.
                         //
                         // maybe move the check to a MIR pass?
-                        let local_def_id = tcx.hir().local_def_id(module);
-
-                        tcx.ensure().check_mod_liveness(local_def_id);
-                        tcx.ensure().check_mod_intrinsics(local_def_id);
+                        tcx.ensure().check_mod_liveness(module);
+                        tcx.ensure().check_mod_intrinsics(module);
                     });
                 });
             }
@@ -919,7 +933,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             {
                 sess.time("privacy_checking_modules", || {
                     par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                        tcx.ensure().check_mod_privacy(tcx.hir().local_def_id(module));
+                        tcx.ensure().check_mod_privacy(module);
                     });
                 });
             }
@@ -976,7 +990,7 @@ fn encode_and_write_metadata(
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
         let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
-        if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
+        if let Err(e) = util::non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
         if tcx.sess.opts.json_artifact_notifications {

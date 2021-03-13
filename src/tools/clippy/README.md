@@ -98,6 +98,23 @@ If you want to run Clippy **only** on the given crate, use the `--no-deps` optio
 cargo clippy -p example -- --no-deps 
 ```
 
+### As a rustc replacement (`clippy-driver`)
+
+Clippy can also be used in projects that do not use cargo. To do so, you will need to replace
+your `rustc` compilation commands with `clippy-driver`. For example, if your project runs:
+
+```terminal
+rustc --edition 2018 -Cpanic=abort foo.rs
+```
+
+Then, to enable Clippy, you will need to call:
+
+```terminal
+clippy-driver --edition 2018 -Cpanic=abort foo.rs
+```
+
+Note that `rustc` will still run, i.e. it will still emit the output files it normally does.
+
 ### Travis CI
 
 You can add Clippy to Travis CI in the same way you use it locally:

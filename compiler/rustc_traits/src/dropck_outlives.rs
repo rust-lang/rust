@@ -80,7 +80,7 @@ fn dropck_outlives<'tcx>(
             let cause = ObligationCause::dummy();
             let mut constraints = DtorckConstraint::empty();
             while let Some((ty, depth)) = ty_stack.pop() {
-                info!(
+                debug!(
                     "{} kinds, {} overflows, {} ty_stack",
                     result.kinds.len(),
                     result.overflows.len(),

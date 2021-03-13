@@ -1,17 +1,15 @@
-use std::sync::Arc;
-
 use rustc_middle::ty::TyCtxt;
 use rustc_span::edition::Edition;
 
 use crate::clean;
-use crate::config::{RenderInfo, RenderOptions};
+use crate::config::RenderOptions;
 use crate::error::Error;
-use crate::formats::cache::{Cache, CACHE_KEY};
+use crate::formats::cache::Cache;
 
 /// Allows for different backends to rustdoc to be used with the `run_format()` function. Each
 /// backend renderer has hooks for initialization, documenting an item, entering and exiting a
 /// module, and cleanup/finalizing output.
-crate trait FormatRenderer<'tcx>: Clone {
+crate trait FormatRenderer<'tcx>: Sized {
     /// Gives a description of the renderer. Used for performance profiling.
     fn descr() -> &'static str;
 
@@ -20,22 +18,19 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        render_info: RenderInfo,
         edition: Edition,
-        cache: &mut Cache,
+        cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
 
+    /// Make a new renderer to render a child of the item currently being rendered.
+    fn make_child_renderer(&self) -> Self;
+
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
-    fn item(&mut self, item: clean::Item, cache: &Cache) -> Result<(), Error>;
+    fn item(&mut self, item: clean::Item) -> Result<(), Error>;
 
     /// Renders a module (should not handle recursing into children).
-    fn mod_item_in(
-        &mut self,
-        item: &clean::Item,
-        item_name: &str,
-        cache: &Cache,
-    ) -> Result<(), Error>;
+    fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
     fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
@@ -46,39 +41,26 @@ crate trait FormatRenderer<'tcx>: Clone {
     fn after_krate(
         &mut self,
         krate: &clean::Crate,
-        cache: &Cache,
         diag: &rustc_errors::Handler,
     ) -> Result<(), Error>;
+
+    fn cache(&self) -> &Cache;
 }
 
 /// Main method for rendering a crate.
 crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
-    render_info: RenderInfo,
+    cache: Cache,
     diag: &rustc_errors::Handler,
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
-    let (krate, mut cache) = tcx.sess.time("create_format_cache", || {
-        Cache::from_krate(
-            render_info.clone(),
-            options.document_private,
-            &options.extern_html_root_urls,
-            &options.output,
-            krate,
-        )
-    });
     let prof = &tcx.sess.prof;
 
     let (mut format_renderer, mut krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, render_info, edition, &mut cache, tcx))?;
-
-    let cache = Arc::new(cache);
-    // Freeze the cache now that the index has been built. Put an Arc into TLS for future
-    // parallelization opportunities
-    CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
+        .run(|| T::init(krate, options, edition, cache, tcx))?;
 
     let mut item = match krate.module.take() {
         Some(i) => i,
@@ -88,7 +70,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     item.name = Some(krate.name);
 
     // Render the crate documentation
-    let mut work = vec![(format_renderer.clone(), item)];
+    let mut work = vec![(format_renderer.make_child_renderer(), item)];
 
     let unknown = rustc_span::Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
@@ -101,22 +83,24 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             }
             let _timer = prof.generic_activity_with_arg("render_mod_item", name.as_str());
 
-            cx.mod_item_in(&item, &name, &cache)?;
+            cx.mod_item_in(&item, &name)?;
             let module = match *item.kind {
                 clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
                 _ => unreachable!(),
             };
             for it in module.items {
                 debug!("Adding {:?} to worklist", it.name);
-                work.push((cx.clone(), it));
+                work.push((cx.make_child_renderer(), it));
             }
 
             cx.mod_item_out(&name)?;
-        } else if item.name.is_some() {
+        // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
+        // cases. Use an explicit match instead.
+        } else if item.name.is_some() && !item.is_extern_crate() {
             prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
-                .run(|| cx.item(item, &cache))?;
+                .run(|| cx.item(item))?;
         }
     }
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(&krate, &cache, diag))
+        .run(|| format_renderer.after_krate(&krate, diag))
 }

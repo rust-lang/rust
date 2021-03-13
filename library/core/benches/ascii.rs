@@ -66,6 +66,8 @@ macro_rules! benches {
 use test::black_box;
 use test::Bencher;
 
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
+
 benches! {
     fn case00_alloc_only(_bytes: &mut [u8]) {}
 
@@ -204,7 +206,7 @@ benches! {
             }
         }
         for byte in bytes {
-            *byte &= !((is_ascii_lowercase(*byte) as u8) << 5)
+            *byte &= !((is_ascii_lowercase(*byte) as u8) * ASCII_CASE_MASK)
         }
     }
 
@@ -216,7 +218,7 @@ benches! {
             }
         }
         for byte in bytes {
-            *byte -= (is_ascii_lowercase(*byte) as u8) << 5
+            *byte -= (is_ascii_lowercase(*byte) as u8) * ASCII_CASE_MASK
         }
     }
 

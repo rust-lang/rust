@@ -1,8 +1,8 @@
-error[E0599]: no method named `clone` found for struct `Struct<A>` in the current scope
+error[E0599]: the method `clone` exists for struct `Struct<A>`, but its trait bounds were not satisfied
   --> $DIR/issue-69725.rs:7:32
    |
 LL |     let _ = Struct::<A>::new().clone();
-   |                                ^^^^^ method not found in `Struct<A>`
+   |                                ^^^^^ method cannot be called on `Struct<A>` due to unsatisfied trait bounds
    | 
   ::: $DIR/auxiliary/issue-69725.rs:2:1
    |
@@ -17,7 +17,7 @@ LL |     fn clone(&self) -> Self;
    |        the method is available for `Arc<Struct<A>>` here
    |        the method is available for `Rc<Struct<A>>` here
    |
-   = note: the method `clone` exists but the following trait bounds were not satisfied:
+   = note: the following trait bounds were not satisfied:
            `A: Clone`
            which is required by `Struct<A>: Clone`
 

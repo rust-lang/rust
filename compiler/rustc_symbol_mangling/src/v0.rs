@@ -1,4 +1,3 @@
-use rustc_ast::{FloatTy, IntTy, UintTy};
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -6,7 +5,7 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, FloatTy, Instance, IntTy, Ty, TyCtxt, TypeFoldable, UintTy};
 use rustc_target::spec::abi::Abi;
 
 use std::fmt::Write;
@@ -441,7 +440,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                     }
                     match sig.abi {
                         Abi::Rust => {}
-                        Abi::C => cx.push("KC"),
+                        Abi::C { unwind: false } => cx.push("KC"),
                         abi => {
                             cx.push("K");
                             let name = abi.name();
@@ -531,7 +530,7 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
                     if val < 0 {
                         neg = true;
                     }
-                    Some(val.wrapping_abs() as u128)
+                    Some(val.unsigned_abs())
                 })
             }
             _ => {

@@ -214,7 +214,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     #[inline]
     pub fn make_method_inline(&self) -> u8 { 0 }
@@ -431,7 +431,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
+    #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     #[no_mangle]
     pub fn add_no_mangle_to_method(&self) { }

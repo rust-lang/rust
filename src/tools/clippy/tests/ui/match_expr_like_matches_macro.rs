@@ -119,4 +119,66 @@ fn main() {
             _ => false,
         };
     }
+
+    {
+        // should print "z" in suggestion (#6503)
+        let z = &Some(3);
+        let _z = match &z {
+            Some(3) => true,
+            _ => false,
+        };
+    }
+
+    {
+        // this could also print "z" in suggestion..?
+        let z = Some(3);
+        let _z = match &z {
+            Some(3) => true,
+            _ => false,
+        };
+    }
+
+    {
+        enum AnEnum {
+            X,
+            Y,
+        }
+
+        fn foo(_x: AnEnum) {}
+
+        fn main() {
+            let z = AnEnum::X;
+            // we can't remove the reference here!
+            let _ = match &z {
+                AnEnum::X => true,
+                _ => false,
+            };
+            foo(z);
+        }
+    }
+
+    {
+        struct S(i32);
+
+        fn fun(_val: Option<S>) {}
+        let val = Some(S(42));
+        // we need the reference here because later val is consumed by fun()
+        let _res = match &val {
+            &Some(ref _a) => true,
+            _ => false,
+        };
+        fun(val);
+    }
+
+    {
+        struct S(i32);
+
+        fn fun(_val: Option<S>) {}
+        let val = Some(S(42));
+        let _res = match &val {
+            &Some(ref _a) => true,
+            _ => false,
+        };
+        fun(val);
+    }
 }

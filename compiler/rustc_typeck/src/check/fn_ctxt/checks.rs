@@ -372,13 +372,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // in C but we just error out instead and require explicit casts.
                 let arg_ty = self.structurally_resolved_type(arg.span, arg_ty);
                 match arg_ty.kind() {
-                    ty::Float(ast::FloatTy::F32) => {
+                    ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
                     }
-                    ty::Int(ast::IntTy::I8 | ast::IntTy::I16) | ty::Bool => {
+                    ty::Int(ty::IntTy::I8 | ty::IntTy::I16) | ty::Bool => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_int");
                     }
-                    ty::Uint(ast::UintTy::U8 | ast::UintTy::U16) => {
+                    ty::Uint(ty::UintTy::U8 | ty::UintTy::U16) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
@@ -407,8 +407,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
-            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
-            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
+            ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(ty::int_ty(t)),
+            ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(ty::uint_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
@@ -419,7 +419,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
             }
-            ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => tcx.mk_mach_float(t),
+            ast::LitKind::Float(_, ast::LitFloatType::Suffixed(t)) => {
+                tcx.mk_mach_float(ty::float_ty(t))
+            }
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Float(_) => Some(ty),
@@ -537,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.overwrite_local_ty_if_err(local, ty, pat_ty);
     }
 
-    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>) {
+    pub fn check_stmt(&self, stmt: &'tcx hir::Stmt<'tcx>, is_last: bool) {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.kind {
             hir::StmtKind::Item(..) => return,
@@ -559,11 +561,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(&expr, self.tcx.mk_unit(), |err| {
-                    self.suggest_semicolon_at_end(expr.span, err);
+                    if expr.can_have_side_effects() {
+                        self.suggest_semicolon_at_end(expr.span, err);
+                    }
                 });
             }
             hir::StmtKind::Semi(ref expr) => {
-                self.check_expr(&expr);
+                // All of this is equivalent to calling `check_expr`, but it is inlined out here
+                // in order to capture the fact that this `match` is the last statement in its
+                // function. This is done for better suggestions to remove the `;`.
+                let expectation = match expr.kind {
+                    hir::ExprKind::Match(..) if is_last => IsLast(stmt.span),
+                    _ => NoExpectation,
+                };
+                self.check_expr_with_expectation(expr, expectation);
             }
         }
 
@@ -622,8 +633,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = BreakableCtxt { coerce: Some(coerce), may_break: false };
 
         let (ctxt, ()) = self.with_breakable_ctxt(blk.hir_id, ctxt, || {
-            for s in blk.stmts {
-                self.check_stmt(s);
+            for (pos, s) in blk.stmts.iter().enumerate() {
+                self.check_stmt(s, blk.stmts.len() - 1 == pos);
             }
 
             // check the tail expression **without** holding the

@@ -21,6 +21,7 @@ use crate::sync::{MappedReadGuard, ReadGuard, RwLock};
 /// -- once the value is stolen -- it will never be read from again.
 //
 // FIXME(#41710): what is the best way to model linear queries?
+#[derive(Debug)]
 pub struct Steal<T> {
     value: RwLock<Option<T>>,
 }

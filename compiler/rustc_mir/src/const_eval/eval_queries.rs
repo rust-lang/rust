@@ -50,13 +50,13 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     let name =
         with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id())));
-    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+    let prom = cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
 
     ecx.push_stack_frame(
         cid.instance,
         body,
-        Some(ret.into()),
+        Some(&ret.into()),
         StackPopCleanup::None { cleanup: false },
     )?;
 
@@ -72,7 +72,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    intern_const_alloc_recursive(ecx, intern_kind, ret)?;
+    intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
@@ -105,7 +105,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
 /// type system.
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
-    op: OpTy<'tcx>,
+    op: &OpTy<'tcx>,
 ) -> ConstValue<'tcx> {
     // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
@@ -137,7 +137,7 @@ pub(super) fn op_to_const<'tcx>(
         op.try_as_mplace(ecx)
     };
 
-    let to_const_value = |mplace: MPlaceTy<'_>| match mplace.ptr {
+    let to_const_value = |mplace: &MPlaceTy<'_>| match mplace.ptr {
         Scalar::Ptr(ptr) => {
             let alloc = ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory();
             ConstValue::ByRef { alloc, offset: ptr.offset }
@@ -155,12 +155,12 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Ok(mplace) => to_const_value(mplace),
+        Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
         Err(imm) => match *imm {
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
-                ScalarMaybeUninit::Uninit => to_const_value(op.assert_mem_place(ecx)),
+                ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place(ecx)),
             },
             Immediate::ScalarPair(a, b) => {
                 let (data, start) = match a.check_init().unwrap() {
@@ -201,14 +201,14 @@ fn turn_into_const_value<'tcx>(
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
     // Turn this into a proper constant.
-    op_to_const(&ecx, mplace.into())
+    op_to_const(&ecx, &mplace.into())
 }
 
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    // see comment in const_eval_raw_provider for what we're doing here
+    // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
         key.param_env = key.param_env.with_user_facing();
@@ -230,7 +230,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         };
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
-            let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+            let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
             error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
         });
     }
@@ -298,6 +298,8 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         tcx.def_span(def.did),
         key.param_env,
         CompileTimeInterpreter::new(tcx.sess.const_eval_limit()),
+        // Statics (and promoteds inside statics) may access other statics, because unlike consts
+        // they do not have to behave "as if" they were evaluated at runtime.
         MemoryExtra { can_access_statics: is_static },
     );
 
@@ -305,83 +307,35 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
-            // errors in statics are always emitted as fatal errors
-            if is_static {
-                // Ensure that if the above error was either `TooGeneric` or `Reported`
-                // an error must be reported.
-                let v = err.report_as_error(
-                    ecx.tcx.at(ecx.cur_span()),
-                    "could not evaluate static initializer",
-                );
-
-                // If this is `Reveal:All`, then we need to make sure an error is reported but if
-                // this is `Reveal::UserFacing`, then it's expected that we could get a
-                // `TooGeneric` error. When we fall back to `Reveal::All`, then it will either
-                // succeed or we'll report this error then.
-                if key.param_env.reveal() == Reveal::All {
-                    tcx.sess.delay_span_bug(
-                        err.span,
-                        &format!("static eval failure did not emit an error: {:#?}", v),
-                    );
-                }
-
-                Err(v)
-            } else if let Some(def) = def.as_local() {
-                // constant defined in this crate, we can figure out a lint level!
-                match tcx.def_kind(def.did.to_def_id()) {
-                    // constants never produce a hard error at the definition site. Anything else is
-                    // a backwards compatibility hazard (and will break old versions of winapi for
-                    // sure)
-                    //
-                    // note that validation may still cause a hard error on this very same constant,
-                    // because any code that existed before validation could not have failed
-                    // validation thus preventing such a hard error from being a backwards
-                    // compatibility hazard
-                    DefKind::Const | DefKind::AssocConst => {
-                        let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-                        Err(err.report_as_lint(
-                            tcx.at(tcx.def_span(def.did)),
-                            "any use of this value will cause an error",
-                            hir_id,
-                            Some(err.span),
-                        ))
-                    }
-                    // promoting runtime code is only allowed to error if it references broken
-                    // constants any other kind of error will be reported to the user as a
-                    // deny-by-default lint
-                    _ => {
-                        if let Some(p) = cid.promoted {
-                            let span = tcx.promoted_mir_opt_const_arg(def.to_global())[p].span;
-                            if let err_inval!(ReferencedConstant) = err.error {
-                                Err(err.report_as_error(
-                                    tcx.at(span),
-                                    "evaluation of constant expression failed",
-                                ))
-                            } else {
-                                Err(err.report_as_lint(
-                                    tcx.at(span),
-                                    "reaching this expression at runtime will panic or abort",
-                                    tcx.hir().local_def_id_to_hir_id(def.did),
-                                    Some(err.span),
-                                ))
-                            }
-                        // anything else (array lengths, enum initializers, constant patterns) are
-                        // reported as hard errors
-                        } else {
-                            Err(err.report_as_error(
-                                ecx.tcx.at(ecx.cur_span()),
-                                "evaluation of constant value failed",
-                            ))
-                        }
-                    }
-                }
+            // Some CTFE errors raise just a lint, not a hard error; see
+            // <https://github.com/rust-lang/rust/issues/71800>.
+            let emit_as_lint = if let Some(def) = def.as_local() {
+                // (Associated) consts only emit a lint, since they might be unused.
+                matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
             } else {
-                // use of broken constant from other crate
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), "could not evaluate constant"))
+                // use of broken constant from other crate: always an error
+                false
+            };
+            if emit_as_lint {
+                let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
+                Err(err.report_as_lint(
+                    tcx.at(tcx.def_span(def.did)),
+                    "any use of this value will cause an error",
+                    hir_id,
+                    Some(err.span),
+                ))
+            } else {
+                let msg = if is_static {
+                    "could not evaluate static initializer"
+                } else {
+                    "evaluation of constant value failed"
+                };
+                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), msg))
             }
         }
         Ok(mplace) => {
-            // Since evaluation had no errors, valiate the resulting constant:
+            // Since evaluation had no errors, validate the resulting constant.
+            // This is a separate `try` block to provide more targeted error reporting.
             let validation = try {
                 let mut ref_tracking = RefTracking::new(mplace);
                 let mut inner = false;
@@ -394,12 +348,12 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         Some(_) => CtfeValidationMode::Regular, // a `static`
                         None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
                     };
-                    ecx.const_validate_operand(mplace.into(), path, &mut ref_tracking, mode)?;
+                    ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
                     inner = true;
                 }
             };
             if let Err(error) = validation {
-                // Validation failed, report an error
+                // Validation failed, report an error. This is always a hard error.
                 let err = ConstEvalErr::new(&ecx, error, None);
                 Err(err.struct_error(
                     ecx.tcx,

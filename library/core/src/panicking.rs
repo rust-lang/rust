@@ -91,3 +91,77 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
 }
+
+#[derive(Debug)]
+#[doc(hidden)]
+pub enum AssertKind {
+    Eq,
+    Ne,
+    Match,
+}
+
+/// Internal function for `assert_eq!` and `assert_ne!` macros
+#[cold]
+#[track_caller]
+#[doc(hidden)]
+pub fn assert_failed<T, U>(
+    kind: AssertKind,
+    left: &T,
+    right: &U,
+    args: Option<fmt::Arguments<'_>>,
+) -> !
+where
+    T: fmt::Debug + ?Sized,
+    U: fmt::Debug + ?Sized,
+{
+    assert_failed_inner(kind, &left, &right, args)
+}
+
+/// Internal function for `assert_match!`
+#[cold]
+#[track_caller]
+#[doc(hidden)]
+pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
+    left: &T,
+    right: &str,
+    args: Option<fmt::Arguments<'_>>,
+) -> ! {
+    // Use the Display implementation to display the pattern.
+    struct Pattern<'a>(&'a str);
+    impl fmt::Debug for Pattern<'_> {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fmt::Display::fmt(self.0, f)
+        }
+    }
+    assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);
+}
+
+/// Non-generic version of the above functions, to avoid code bloat.
+#[track_caller]
+fn assert_failed_inner(
+    kind: AssertKind,
+    left: &dyn fmt::Debug,
+    right: &dyn fmt::Debug,
+    args: Option<fmt::Arguments<'_>>,
+) -> ! {
+    let op = match kind {
+        AssertKind::Eq => "==",
+        AssertKind::Ne => "!=",
+        AssertKind::Match => "matches",
+    };
+
+    match args {
+        Some(args) => panic!(
+            r#"assertion failed: `(left {} right)`
+  left: `{:?}`,
+ right: `{:?}: {}`"#,
+            op, left, right, args
+        ),
+        None => panic!(
+            r#"assertion failed: `(left {} right)`
+  left: `{:?}`,
+ right: `{:?}`"#,
+            op, left, right,
+        ),
+    }
+}

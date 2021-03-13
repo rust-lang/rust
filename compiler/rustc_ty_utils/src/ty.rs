@@ -82,7 +82,7 @@ fn associated_item_from_trait_item_ref(
     parent_def_id: LocalDefId,
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
-    let def_id = tcx.hir().local_def_id(trait_item_ref.id.hir_id);
+    let def_id = trait_item_ref.id.def_id;
     let (kind, has_self) = match trait_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
         hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
@@ -105,7 +105,7 @@ fn associated_item_from_impl_item_ref(
     parent_def_id: LocalDefId,
     impl_item_ref: &hir::ImplItemRef<'_>,
 ) -> ty::AssocItem {
-    let def_id = tcx.hir().local_def_id(impl_item_ref.id.hir_id);
+    let def_id = impl_item_ref.id.def_id;
     let (kind, has_self) = match impl_item_ref.kind {
         hir::AssocItemKind::Const => (ty::AssocKind::Const, false),
         hir::AssocItemKind::Fn { has_self } => (ty::AssocKind::Fn, has_self),
@@ -130,7 +130,9 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
     let parent_item = tcx.hir().expect_item(parent_id);
     match parent_item.kind {
         hir::ItemKind::Impl(ref impl_) => {
-            if let Some(impl_item_ref) = impl_.items.iter().find(|i| i.id.hir_id == id) {
+            if let Some(impl_item_ref) =
+                impl_.items.iter().find(|i| i.id.def_id.to_def_id() == def_id)
+            {
                 let assoc_item =
                     associated_item_from_impl_item_ref(tcx, parent_def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -139,7 +141,9 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
         }
 
         hir::ItemKind::Trait(.., ref trait_item_refs) => {
-            if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.hir_id == id) {
+            if let Some(trait_item_ref) =
+                trait_item_refs.iter().find(|i| i.id.def_id.to_def_id() == def_id)
+            {
                 let assoc_item =
                     associated_item_from_trait_item_ref(tcx, parent_def_id, trait_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
@@ -196,17 +200,10 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     let item = tcx.hir().expect_item(id);
     match item.kind {
         hir::ItemKind::Trait(.., ref trait_item_refs) => tcx.arena.alloc_from_iter(
-            trait_item_refs
-                .iter()
-                .map(|trait_item_ref| trait_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
+            trait_item_refs.iter().map(|trait_item_ref| trait_item_ref.id.def_id.to_def_id()),
         ),
         hir::ItemKind::Impl(ref impl_) => tcx.arena.alloc_from_iter(
-            impl_
-                .items
-                .iter()
-                .map(|impl_item_ref| impl_item_ref.id)
-                .map(|id| tcx.hir().local_def_id(id.hir_id).to_def_id()),
+            impl_.items.iter().map(|impl_item_ref| impl_item_ref.id.def_id.to_def_id()),
         ),
         hir::ItemKind::TraitAlias(..) => &[],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
@@ -216,10 +213,6 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
 fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
     ty::AssociatedItems::new(items)
-}
-
-fn def_span(tcx: TyCtxt<'_>, def_id: DefId) -> Span {
-    tcx.hir().span_if_local(def_id).unwrap()
 }
 
 fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
@@ -488,6 +481,63 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     fn_like.asyncness()
 }
 
+/// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.
+#[instrument(level = "debug", skip(tcx))]
+pub fn conservative_is_privately_uninhabited_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env_and: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> bool {
+    let (param_env, ty) = param_env_and.into_parts();
+    match ty.kind() {
+        ty::Never => {
+            debug!("ty::Never =>");
+            true
+        }
+        ty::Adt(def, _) if def.is_union() => {
+            debug!("ty::Adt(def, _) if def.is_union() =>");
+            // For now, `union`s are never considered uninhabited.
+            false
+        }
+        ty::Adt(def, substs) => {
+            debug!("ty::Adt(def, _) if def.is_not_union() =>");
+            // Any ADT is uninhabited if either:
+            // (a) It has no variants (i.e. an empty `enum`);
+            // (b) Each of its variants (a single one in the case of a `struct`) has at least
+            //     one uninhabited field.
+            def.variants.iter().all(|var| {
+                var.fields.iter().any(|field| {
+                    let ty = tcx.type_of(field.did).subst(tcx, substs);
+                    tcx.conservative_is_privately_uninhabited(param_env.and(ty))
+                })
+            })
+        }
+        ty::Tuple(..) => {
+            debug!("ty::Tuple(..) =>");
+            ty.tuple_fields().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
+        }
+        ty::Array(ty, len) => {
+            debug!("ty::Array(ty, len) =>");
+            match len.try_eval_usize(tcx, param_env) {
+                Some(0) | None => false,
+                // If the array is definitely non-empty, it's uninhabited if
+                // the type of its elements is uninhabited.
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+            }
+        }
+        ty::Ref(..) => {
+            debug!("ty::Ref(..) =>");
+            // References to uninitialised memory is valid for any type, including
+            // uninhabited types, in unsafe code, so we treat all references as
+            // inhabited.
+            false
+        }
+        _ => {
+            debug!("_ =>");
+            false
+        }
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers {
         asyncness,
@@ -495,7 +545,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item_def_ids,
         associated_items,
         adt_sized_constraint,
-        def_span,
         def_ident_span,
         param_env,
         param_env_reveal_all_normalized,
@@ -506,6 +555,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,
+        conservative_is_privately_uninhabited: conservative_is_privately_uninhabited_raw,
         ..*providers
     };
 }

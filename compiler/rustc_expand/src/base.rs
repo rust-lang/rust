@@ -1,12 +1,12 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::module::DirectoryOwnership;
+use crate::module::DirOwnership;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Nonterminal};
-use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
+use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{self as ast, Attribute, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, HasAttrs, Stability};
+use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
+use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
@@ -44,7 +44,7 @@ pub enum Annotatable {
     Variant(ast::Variant),
 }
 
-impl HasAttrs for Annotatable {
+impl AstLike for Annotatable {
     fn attrs(&self) -> &[Attribute] {
         match *self {
             Annotatable::Item(ref item) => &item.attrs,
@@ -78,6 +78,24 @@ impl HasAttrs for Annotatable {
             Annotatable::Param(p) => p.visit_attrs(f),
             Annotatable::StructField(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
+        }
+    }
+
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        match self {
+            Annotatable::Item(item) => item.tokens_mut(),
+            Annotatable::TraitItem(trait_item) => trait_item.tokens_mut(),
+            Annotatable::ImplItem(impl_item) => impl_item.tokens_mut(),
+            Annotatable::ForeignItem(foreign_item) => foreign_item.tokens_mut(),
+            Annotatable::Stmt(stmt) => stmt.tokens_mut(),
+            Annotatable::Expr(expr) => expr.tokens_mut(),
+            Annotatable::Arm(arm) => arm.tokens_mut(),
+            Annotatable::Field(field) => field.tokens_mut(),
+            Annotatable::FieldPat(fp) => fp.tokens_mut(),
+            Annotatable::GenericParam(gp) => gp.tokens_mut(),
+            Annotatable::Param(p) => p.tokens_mut(),
+            Annotatable::StructField(sf) => sf.tokens_mut(),
+            Annotatable::Variant(v) => v.tokens_mut(),
         }
     }
 }
@@ -141,7 +159,10 @@ impl Annotatable {
     }
 
     crate fn into_tokens(self, sess: &ParseSess) -> TokenStream {
-        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::No)
+        // Tokens of an attribute target may be invalidated by some outer `#[derive]` performing
+        // "full configuration" (attributes following derives on the same item should be the most
+        // common case), that's why synthesizing tokens is allowed.
+        nt_to_tokenstream(&self.into_nonterminal(), sess, CanSynthesizeMissingTokens::Yes)
     }
 
     pub fn expect_item(self) -> P<ast::Item> {
@@ -232,25 +253,6 @@ impl Annotatable {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
-        }
-    }
-
-    pub fn derive_allowed(&self) -> bool {
-        match *self {
-            Annotatable::Stmt(ref stmt) => match stmt.kind {
-                ast::StmtKind::Item(ref item) => matches!(
-                    item.kind,
-                    ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..)
-                ),
-                _ => false,
-            },
-            Annotatable::Item(ref item) => match item.kind {
-                ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
-                    true
-                }
-                _ => false,
-            },
-            _ => false,
         }
     }
 }
@@ -772,8 +774,8 @@ impl SyntaxExtension {
         name: Symbol,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable = attr::allow_internal_unstable(sess, &attrs)
-            .map(|features| features.collect::<Vec<Symbol>>().into());
+        let allow_internal_unstable =
+            attr::allow_internal_unstable(sess, &attrs).collect::<Vec<Symbol>>();
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = sess.find_by_name(attrs, sym::macro_export) {
@@ -786,19 +788,26 @@ impl SyntaxExtension {
             .find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|a| a.value_str().unwrap_or(name));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
-        if const_stability.is_some() {
+        if let Some((_, sp)) = const_stability {
             sess.parse_sess
                 .span_diagnostic
-                .span_err(span, "macros cannot have const stability attributes");
+                .struct_span_err(sp, "macros cannot have const stability attributes")
+                .span_label(sp, "invalid const stability attribute")
+                .span_label(
+                    sess.source_map().guess_head_span(span),
+                    "const stability attribute affects this macro",
+                )
+                .emit();
         }
 
         SyntaxExtension {
             kind,
             span,
-            allow_internal_unstable,
+            allow_internal_unstable: (!allow_internal_unstable.is_empty())
+                .then(|| allow_internal_unstable.into()),
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability,
+            stability: stability.map(|(s, _)| s),
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,
@@ -854,12 +863,6 @@ impl SyntaxExtension {
     }
 }
 
-/// Result of resolving a macro invocation.
-pub enum InvocationRes {
-    Single(Lrc<SyntaxExtension>),
-    DeriveContainer(Vec<Lrc<SyntaxExtension>>),
-}
-
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
@@ -885,24 +888,53 @@ pub trait ResolverExpand {
         invoc: &Invocation,
         eager_expansion_root: ExpnId,
         force: bool,
-    ) -> Result<InvocationRes, Indeterminate>;
+    ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
 
     fn check_unused_macros(&mut self);
 
     /// Some parent node that is close enough to the given macro call.
-    fn lint_node_id(&mut self, expn_id: ExpnId) -> NodeId;
+    fn lint_node_id(&self, expn_id: ExpnId) -> NodeId;
 
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    /// Resolve paths inside the `#[derive(...)]` attribute with the given `ExpnId`.
+    fn resolve_derives(
+        &mut self,
+        expn_id: ExpnId,
+        derives: Vec<ast::Path>,
+        force: bool,
+    ) -> Result<(), Indeterminate>;
+    /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
+    /// back from resolver.
+    fn take_derive_resolutions(
+        &mut self,
+        expn_id: ExpnId,
+    ) -> Option<Vec<(Lrc<SyntaxExtension>, ast::Path)>>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ModuleData {
+    /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
     pub mod_path: Vec<Ident>,
-    pub directory: PathBuf,
+    /// Stack of paths to files loaded by out-of-line module items,
+    /// used to detect and report recursive module inclusions.
+    pub file_path_stack: Vec<PathBuf>,
+    /// Directory to search child module files in,
+    /// often (but not necessarily) the parent of the top file path on the `file_path_stack`.
+    pub dir_path: PathBuf,
+}
+
+impl ModuleData {
+    pub fn with_dir_path(&self, dir_path: PathBuf) -> ModuleData {
+        ModuleData {
+            mod_path: self.mod_path.clone(),
+            file_path_stack: self.file_path_stack.clone(),
+            dir_path,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -910,9 +942,12 @@ pub struct ExpansionData {
     pub id: ExpnId,
     pub depth: usize,
     pub module: Rc<ModuleData>,
-    pub directory_ownership: DirectoryOwnership,
+    pub dir_ownership: DirOwnership,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
+
+type OnExternModLoaded<'a> =
+    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
@@ -929,7 +964,9 @@ pub struct ExtCtxt<'a> {
     pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
     /// Called directly after having parsed an external `mod foo;` in expansion.
-    pub(super) extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+    ///
+    /// `Ident` is the module name.
+    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -937,7 +974,7 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: Option<&'a dyn Fn(&ast::Crate)>,
+        extern_mod_loaded: OnExternModLoaded<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
@@ -949,8 +986,8 @@ impl<'a> ExtCtxt<'a> {
             current_expansion: ExpansionData {
                 id: ExpnId::root(),
                 depth: 0,
-                module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
-                directory_ownership: DirectoryOwnership::Owned { relative: None },
+                module: Default::default(),
+                dir_ownership: DirOwnership::Owned { relative: None },
                 prior_type_ascription: None,
             },
             force_mode: false,
@@ -1049,6 +1086,10 @@ impl<'a> ExtCtxt<'a> {
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
+    }
+    pub fn def_site_path(&self, components: &[Symbol]) -> Vec<Ident> {
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
+        components.iter().map(|&s| Ident::new(s, def_site)).collect()
     }
 
     pub fn check_unused_macros(&mut self) {

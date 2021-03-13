@@ -29,7 +29,7 @@ pub(crate) fn const_caller_location(
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 
     let loc_place = ecx.alloc_caller_location(file, line, col);
-    if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, loc_place).is_err() {
+    if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
         bug!("intern_const_alloc_recursive should not error in this case")
     }
     ConstValue::Scalar(loc_place.ptr)
@@ -55,8 +55,8 @@ pub(crate) fn destructure_const<'tcx>(
             return mir::DestructuredConst { variant: None, fields: &[] };
         }
         ty::Adt(def, _) => {
-            let variant = ecx.read_discriminant(op).unwrap().1;
-            let down = ecx.operand_downcast(op, variant).unwrap();
+            let variant = ecx.read_discriminant(&op).unwrap().1;
+            let down = ecx.operand_downcast(&op, variant).unwrap();
             (def.variants[variant].fields.len(), Some(variant), down)
         }
         ty::Tuple(substs) => (substs.len(), None, op),
@@ -64,8 +64,8 @@ pub(crate) fn destructure_const<'tcx>(
     };
 
     let fields_iter = (0..field_count).map(|i| {
-        let field_op = ecx.operand_field(down, i).unwrap();
-        let val = op_to_const(&ecx, field_op);
+        let field_op = ecx.operand_field(&down, i).unwrap();
+        let val = op_to_const(&ecx, &field_op);
         ty::Const::from_value(tcx, val, field_op.layout.ty)
     });
     let fields = tcx.arena.alloc_from_iter(fields_iter);
@@ -81,7 +81,7 @@ pub(crate) fn deref_const<'tcx>(
     trace!("deref_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.const_to_op(val, None).unwrap();
-    let mplace = ecx.deref_operand(op).unwrap();
+    let mplace = ecx.deref_operand(&op).unwrap();
     if let Scalar::Ptr(ptr) = mplace.ptr {
         assert_eq!(
             ecx.memory.get_raw(ptr.alloc_id).unwrap().mutability,
@@ -106,5 +106,5 @@ pub(crate) fn deref_const<'tcx>(
         },
     };
 
-    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, mplace.into())), ty })
+    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
 }

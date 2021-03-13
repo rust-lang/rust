@@ -23,6 +23,7 @@ because that's clearly a non-descriptive name.
   - [Running rustfmt](#running-rustfmt)
   - [Debugging](#debugging)
   - [PR Checklist](#pr-checklist)
+  - [Adding configuration to a lint](#adding-configuration-to-a-lint)
   - [Cheatsheet](#cheatsheet)
 
 ## Setup
@@ -106,6 +107,9 @@ our lint, we need to commit the generated `.stderr` files, too. In general, you
 should only commit files changed by `cargo dev bless` for the
 specific lint you are creating/editing. Note that if the generated files are
 empty, they should be removed.
+
+Note that you can run multiple test files by specifying a comma separated list:
+`TESTNAME=foo_functions,test2,test3`.
 
 ### Cargo lints
 
@@ -288,7 +292,7 @@ the next section. Let's worry about the details later and emit our lint for
 
 Depending on how complex we want our lint message to be, we can choose from a
 variety of lint emission functions. They can all be found in
-[`clippy_lints/src/utils/diagnostics.rs`][diagnostics].
+[`clippy_utils/src/diagnostics.rs`][diagnostics].
 
 `span_lint_and_help` seems most appropriate in this case. It allows us to
 provide an extra help message and we can't really suggest a better name
@@ -317,7 +321,7 @@ When code or an identifier must appear in a message or label, it should be
 surrounded with single grave accents \`.
 
 [check_fn]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html#method.check_fn
-[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/diagnostics.rs
+[diagnostics]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/diagnostics.rs
 [the rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/diagnostics.html
 
 ## Adding the lint logic
@@ -526,6 +530,81 @@ Before submitting your PR make sure you followed all of the basic requirements:
 - \[ ] Added lint documentation
 - \[ ] Run `cargo dev fmt`
 
+## Adding configuration to a lint
+
+Clippy supports the configuration of lints values using a `clippy.toml` file in the workspace 
+directory. Adding a configuration to a lint can be useful for thresholds or to constrain some
+behavior that can be seen as a false positive for some users. Adding a configuration is done 
+in the following steps:
+
+1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
+    like this:
+    ```rust
+    /// Lint: LINT_NAME. <The configuration field doc comment>
+    (configuration_ident, "configuration_value": Type, DefaultValue),
+    ```
+    The configuration value and identifier should usually be the same. The doc comment will be 
+    automatically added to the lint documentation.
+2. Adding the configuration value to the lint impl struct:
+    1. This first requires the definition of a lint impl struct. Lint impl structs are usually 
+        generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
+        to add some kind of metadata to it:
+        ```rust
+        // Generated struct definition
+        declare_lint_pass!(StructName => [
+            LINT_NAME
+        ]);
+
+        // New manual definition struct
+        #[derive(Copy, Clone)]
+        pub struct StructName {}
+
+        impl_lint_pass!(StructName => [
+            LINT_NAME
+        ]);
+        ```
+    
+    2. Next add the configuration value and a corresponding creation method like this:
+        ```rust
+        #[derive(Copy, Clone)]
+        pub struct StructName {
+            configuration_ident: Type,
+        }
+
+        // ...
+
+        impl StructName {
+            pub fn new(configuration_ident: Type) -> Self {
+                Self {
+                    configuration_ident,
+                }
+            }
+        }
+        ```
+3. Passing the configuration value to the lint impl struct:
+
+    First find the struct construction in the [clippy_lints lib file](/clippy_lints/src/lib.rs). 
+    The configuration value is now cloned or copied into a local value that is then passed to the
+    impl struct like this:
+    ```rust
+    // Default generated registration:
+    store.register_*_pass(|| box module::StructName);
+
+    // New registration with configuration value
+    let configuration_ident = conf.configuration_ident.clone();
+    store.register_*_pass(move || box module::StructName::new(configuration_ident));
+    ```
+
+    Congratulations the work is almost done. The configuration value can now be accessed
+    in the linting code via `self.configuration_ident`.
+
+4. Adding tests:
+    1. The default configured value can be tested like any normal lint in [`tests/ui`](/tests/ui).
+    2. The configuration itself will be tested separately in [`tests/ui-toml`](/tests/ui-toml). 
+        Simply add a new subfolder with a fitting name. This folder contains a `clippy.toml` file 
+        with the configuration value and a rust file that should be linted by Clippy. The test can 
+        otherwise be written as usual.
+
 ## Cheatsheet
 
 Here are some pointers to things you are likely going to need for every lint:
@@ -557,7 +636,7 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/mod.rs
+[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
 [if_chain]: https://docs.rs/if_chain/*/if_chain/
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html

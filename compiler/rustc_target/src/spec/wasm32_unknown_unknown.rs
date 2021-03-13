@@ -26,11 +26,18 @@ pub fn target() -> Target {
     // For now this target just never has an entry symbol no matter the output
     // type, so unconditionally pass this.
     clang_args.push("-Wl,--no-entry".to_string());
-    options
-        .pre_link_args
-        .get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm))
-        .unwrap()
-        .push("--no-entry".to_string());
+
+    // Rust really needs a way for users to specify exports and imports in
+    // the source code. --export-dynamic isn't the right tool for this job,
+    // however it does have the side effect of automatically exporting a lot
+    // of symbols, which approximates what people want when compiling for
+    // wasm32-unknown-unknown expect, so use it for now.
+    clang_args.push("-Wl,--export-dynamic".to_string());
+
+    // Add the flags to wasm-ld's args too.
+    let lld_args = options.pre_link_args.get_mut(&LinkerFlavor::Lld(LldFlavor::Wasm)).unwrap();
+    lld_args.push("--no-entry".to_string());
+    lld_args.push("--export-dynamic".to_string());
 
     Target {
         llvm_target: "wasm32-unknown-unknown".to_string(),

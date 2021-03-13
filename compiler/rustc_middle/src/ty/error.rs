@@ -1,7 +1,7 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
+use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
-use rustc_ast as ast;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
 use rustc_errors::{pluralize, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -12,7 +12,6 @@ use rustc_target::spec::abi;
 
 use std::borrow::Cow;
 use std::fmt;
-use std::ops::Deref;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub struct ExpectedFound<T> {
@@ -48,7 +47,7 @@ pub enum TypeError<'tcx> {
 
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
-    FloatMismatch(ExpectedFound<ast::FloatTy>),
+    FloatMismatch(ExpectedFound<ty::FloatTy>),
     Traits(ExpectedFound<DefId>),
     VariadicMismatch(ExpectedFound<bool>),
 
@@ -229,12 +228,17 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(t, n) => {
-                let n = tcx.lift(n).unwrap();
-                match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    _ if t.is_simple_ty() => format!("array `{}`", self).into(),
-                    Some(n) => format!("array of {} element{}", n, pluralize!(n)).into(),
-                    None => "array".into(),
+                if t.is_simple_ty() {
+                    return format!("array `{}`", self).into();
                 }
+
+                let n = tcx.lift(n).unwrap();
+                if let ty::ConstKind::Value(v) = n.val {
+                    if let Some(n) = v.try_to_machine_usize(tcx) {
+                        return format!("array of {} element{}", n, pluralize!(n)).into();
+                    }
+                }
+                "array".into()
             }
             ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
@@ -265,7 +269,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 }
             }
             ty::Closure(..) => "closure".into(),
-            ty::Generator(..) => "generator".into(),
+            ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
             ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
@@ -283,7 +287,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn prefix_string(&self) -> Cow<'static, str> {
+    pub fn prefix_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Infer(_)
             | ty::Error(_)
@@ -309,7 +313,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
-            ty::Generator(..) => "generator".into(),
+            ty::Generator(def_id, ..) => tcx.generator_kind(def_id).unwrap().descr().into(),
             ty::GeneratorWitness(..) => "generator witness".into(),
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
@@ -401,14 +405,22 @@ impl<'tcx> TyCtxt<'tcx> {
                         {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
                             // FIXME: extract this logic for use in other diagnostics.
-                            let trait_ref = proj.trait_ref(self);
+                            let (trait_ref, assoc_substs) = proj.trait_ref_and_own_substs(self);
                             let path =
                                 self.def_path_str_with_substs(trait_ref.def_id, trait_ref.substs);
                             let item_name = self.item_name(proj.item_def_id);
+                            let item_args = self.format_generic_args(assoc_substs);
+
                             let path = if path.ends_with('>') {
-                                format!("{}, {} = {}>", &path[..path.len() - 1], item_name, p)
+                                format!(
+                                    "{}, {}{} = {}>",
+                                    &path[..path.len() - 1],
+                                    item_name,
+                                    item_args,
+                                    p
+                                )
                             } else {
-                                format!("{}<{} = {}>", path, item_name, p)
+                                format!("{}<{}{} = {}>", path, item_name, item_args, p)
                             };
                             note = !suggest_constraining_type_param(
                                 self,
@@ -535,7 +547,6 @@ impl<T> Trait<T> for X {
             TargetFeatureCast(def_id) => {
                 let attrs = self.get_attrs(*def_id);
                 let target_spans = attrs
-                    .deref()
                     .iter()
                     .filter(|attr| attr.has_name(sym::target_feature))
                     .map(|attr| attr.span);
@@ -557,7 +568,7 @@ impl<T> Trait<T> for X {
         ty: Ty<'tcx>,
     ) -> bool {
         let assoc = self.associated_item(proj_ty.item_def_id);
-        let trait_ref = proj_ty.trait_ref(self);
+        let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(self);
         if let Some(item) = self.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
@@ -591,6 +602,7 @@ impl<T> Trait<T> for X {
                             &trait_ref,
                             pred.bounds,
                             &assoc,
+                            assoc_substs,
                             ty,
                             msg,
                         ) {
@@ -608,6 +620,7 @@ impl<T> Trait<T> for X {
                             &trait_ref,
                             param.bounds,
                             &assoc,
+                            assoc_substs,
                             ty,
                             msg,
                         );
@@ -647,11 +660,14 @@ impl<T> Trait<T> for X {
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
-        let callable_scope = matches!(body_owner, Some(
+        let callable_scope = matches!(
+            body_owner,
+            Some(
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
-                | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
-                | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
-            ));
+                    | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
+                    | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
+            )
+        );
         let impl_comparison = matches!(
             cause_code,
             ObligationCauseCode::CompareImplMethodObligation { .. }
@@ -690,6 +706,7 @@ impl<T> Trait<T> for X {
                 db,
                 self.def_span(def_id),
                 &assoc,
+                proj_ty.trait_ref_and_own_substs(self).1,
                 values.found,
                 &msg,
             ) {
@@ -814,7 +831,7 @@ fn foo(&self) -> Self::T { String::new() }
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } = item.defaultness
                             {
-                                if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                                if self.type_of(item.id.def_id) == found {
                                     db.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -834,7 +851,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if self.type_of(self.hir().local_def_id(item.id.hir_id)) == found {
+                        if self.type_of(item.id.def_id) == found {
                             db.span_label(item.span, "expected this associated type");
                             return true;
                         }
@@ -854,6 +871,7 @@ fn foo(&self) -> Self::T { String::new() }
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: &ty::AssocItem,
+        assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: &str,
     ) -> bool {
@@ -863,7 +881,12 @@ fn foo(&self) -> Self::T { String::new() }
                 // Relate the type param against `T` in `<A as T>::Foo`.
                 ptr.trait_ref.trait_def_id() == Some(trait_ref.def_id)
                     && self.constrain_associated_type_structured_suggestion(
-                        db, ptr.span, assoc, ty, msg,
+                        db,
+                        ptr.span,
+                        assoc,
+                        assoc_substs,
+                        ty,
+                        msg,
                     )
             }
             _ => false,
@@ -877,6 +900,7 @@ fn foo(&self) -> Self::T { String::new() }
         db: &mut DiagnosticBuilder<'_>,
         span: Span,
         assoc: &ty::AssocItem,
+        assoc_substs: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
         msg: &str,
     ) -> bool {
@@ -888,11 +912,20 @@ fn foo(&self) -> Self::T { String::new() }
                 let span = Span::new(pos, pos, span.ctxt());
                 (span, format!(", {} = {}", assoc.ident, ty))
             } else {
-                (span.shrink_to_hi(), format!("<{} = {}>", assoc.ident, ty))
+                let item_args = self.format_generic_args(assoc_substs);
+                (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident, item_args, ty))
             };
             db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
             return true;
         }
         false
+    }
+
+    fn format_generic_args(self, args: &[ty::GenericArg<'tcx>]) -> String {
+        let mut item_args = String::new();
+        FmtPrinter::new(self, &mut item_args, hir::def::Namespace::TypeNS)
+            .path_generic_args(Ok, args)
+            .expect("could not write to `String`.");
+        item_args
     }
 }

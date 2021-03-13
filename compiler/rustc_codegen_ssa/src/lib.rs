@@ -9,6 +9,7 @@
 #![feature(or_patterns)]
 #![feature(associated_type_bounds)]
 #![recursion_limit = "256"]
+#![feature(box_syntax)]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that
@@ -160,13 +161,12 @@ pub struct CodegenResults {
 
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
-    crate::base::provide_both(providers);
+    crate::base::provide(providers);
     crate::target_features::provide(providers);
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     crate::back::symbol_export::provide_extern(providers);
-    crate::base::provide_both(providers);
 }
 
 /// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`

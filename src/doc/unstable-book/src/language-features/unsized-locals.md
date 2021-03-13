@@ -30,7 +30,7 @@ fn foo(_: dyn Any) {}
 
 The RFC still forbids the following unsized expressions:
 
-```rust,ignore
+```rust,compile_fail
 #![feature(unsized_locals)]
 
 use std::any::Any;
@@ -124,7 +124,7 @@ One of the objectives of this feature is to allow `Box<dyn FnOnce>`.
 
 The RFC also describes an extension to the array literal syntax: `[e; dyn n]`. In the syntax, `n` isn't necessarily a constant expression. The array is dynamically allocated on the stack and has the type of `[T]`, instead of `[T; n]`.
 
-```rust,ignore
+```rust,ignore (not-yet-implemented)
 #![feature(unsized_locals)]
 
 fn mergesort<T: Ord>(a: &mut [T]) {

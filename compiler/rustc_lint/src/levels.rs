@@ -5,7 +5,7 @@ use rustc_ast::attr;
 use rustc_ast::unwrap_or;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::{intravisit, HirId};
@@ -17,11 +17,15 @@ use rustc_middle::lint::{
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::{builtin, Level, Lint, LintId};
+use rustc_session::lint::{
+    builtin::{self, FORBIDDEN_LINT_GROUPS},
+    Level, Lint, LintId,
+};
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
+use tracing::debug;
 
 use std::cmp;
 
@@ -34,10 +38,10 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
 
     builder.levels.id_to_set.reserve(krate.exported_macros.len() + 1);
 
-    let push = builder.levels.push(&krate.item.attrs, &store, true);
+    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
-        builder.levels.register_id(macro_def.hir_id);
+        builder.levels.register_id(macro_def.hir_id());
     }
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
@@ -51,6 +55,7 @@ pub struct LintLevelsBuilder<'s> {
     id_to_set: FxHashMap<HirId, u32>,
     cur: u32,
     warn_about_weird_lints: bool,
+    store: &'s LintStore,
 }
 
 pub struct BuilderPush {
@@ -59,13 +64,14 @@ pub struct BuilderPush {
 }
 
 impl<'s> LintLevelsBuilder<'s> {
-    pub fn new(sess: &'s Session, warn_about_weird_lints: bool, store: &LintStore) -> Self {
+    pub fn new(sess: &'s Session, warn_about_weird_lints: bool, store: &'s LintStore) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
             sets: LintLevelSets::new(),
             cur: 0,
             id_to_set: Default::default(),
             warn_about_weird_lints,
+            store,
         };
         builder.process_command_line(sess, store);
         assert_eq!(builder.sets.list.len(), 1);
@@ -120,36 +126,75 @@ impl<'s> LintLevelsBuilder<'s> {
             if let (Level::Forbid, old_src) =
                 self.sets.get_lint_level(id.lint, self.cur, Some(&specs), &self.sess)
             {
-                let mut diag_builder = struct_span_err!(
-                    self.sess,
-                    src.span(),
-                    E0453,
-                    "{}({}) incompatible with previous forbid",
-                    level.as_str(),
-                    src.name(),
+                // Backwards compatibility check:
+                //
+                // We used to not consider `forbid(lint_group)`
+                // as preventing `allow(lint)` for some lint `lint` in
+                // `lint_group`. For now, issue a future-compatibility
+                // warning for this case.
+                let id_name = id.lint.name_lower();
+                let fcw_warning = match old_src {
+                    LintLevelSource::Default => false,
+                    LintLevelSource::Node(symbol, _, _) => self.store.is_lint_group(symbol),
+                    LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
+                };
+                debug!(
+                    "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
+                    fcw_warning, specs, old_src, id_name
                 );
-                diag_builder.span_label(src.span(), "overruled by previous forbid");
-                match old_src {
-                    LintLevelSource::Default => {
-                        diag_builder.note(&format!(
-                            "`forbid` lint level is the default for {}",
-                            id.to_string()
-                        ));
-                    }
-                    LintLevelSource::Node(_, forbid_source_span, reason) => {
-                        diag_builder.span_label(forbid_source_span, "`forbid` level set here");
-                        if let Some(rationale) = reason {
-                            diag_builder.note(&rationale.as_str());
+
+                let decorate_diag_builder = |mut diag_builder: DiagnosticBuilder<'_>| {
+                    diag_builder.span_label(src.span(), "overruled by previous forbid");
+                    match old_src {
+                        LintLevelSource::Default => {
+                            diag_builder.note(&format!(
+                                "`forbid` lint level is the default for {}",
+                                id.to_string()
+                            ));
+                        }
+                        LintLevelSource::Node(_, forbid_source_span, reason) => {
+                            diag_builder.span_label(forbid_source_span, "`forbid` level set here");
+                            if let Some(rationale) = reason {
+                                diag_builder.note(&rationale.as_str());
+                            }
+                        }
+                        LintLevelSource::CommandLine(_, _) => {
+                            diag_builder.note("`forbid` lint level was set on command line");
                         }
                     }
-                    LintLevelSource::CommandLine(_, _) => {
-                        diag_builder.note("`forbid` lint level was set on command line");
-                    }
+                    diag_builder.emit();
+                };
+                if !fcw_warning {
+                    let diag_builder = struct_span_err!(
+                        self.sess,
+                        src.span(),
+                        E0453,
+                        "{}({}) incompatible with previous forbid",
+                        level.as_str(),
+                        src.name(),
+                    );
+                    decorate_diag_builder(diag_builder);
+                } else {
+                    self.struct_lint(
+                        FORBIDDEN_LINT_GROUPS,
+                        Some(src.span().into()),
+                        |diag_builder| {
+                            let diag_builder = diag_builder.build(&format!(
+                                "{}({}) incompatible with previous forbid",
+                                level.as_str(),
+                                src.name(),
+                            ));
+                            decorate_diag_builder(diag_builder);
+                        },
+                    );
                 }
-                diag_builder.emit();
 
-                // Retain the forbid lint level
-                return;
+                // Retain the forbid lint level, unless we are
+                // issuing a FCW. In the FCW case, we want to
+                // respect the new setting.
+                if !fcw_warning {
+                    return;
+                }
             }
         }
         specs.insert(id, (level, src));
@@ -276,17 +321,18 @@ impl<'s> LintLevelsBuilder<'s> {
                     None
                 };
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
-                match store.check_lint_name(&name.as_str(), tool_name) {
+                let lint_result = store.check_lint_name(&name.as_str(), tool_name);
+                match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintLevelSource::Node(name, li.span(), reason);
-                        for &id in ids {
+                        for &id in *ids {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
                     }
 
                     CheckLintNameResult::Tool(result) => {
-                        match result {
+                        match *result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintLevelSource::Node(
@@ -298,7 +344,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     self.insert_spec(&mut specs, *id, (level, src));
                                 }
                             }
-                            Err((Some(ids), new_lint_name)) => {
+                            Err((Some(ids), ref new_lint_name)) => {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
@@ -347,21 +393,21 @@ impl<'s> LintLevelsBuilder<'s> {
 
                     CheckLintNameResult::Warning(msg, renamed) => {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                        let (level, src) =
+                        let (renamed_lint_level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
                         struct_lint_level(
                             self.sess,
                             lint,
-                            level,
+                            renamed_lint_level,
                             src,
                             Some(li.span().into()),
                             |lint| {
                                 let mut err = lint.build(&msg);
-                                if let Some(new_name) = renamed {
+                                if let Some(new_name) = &renamed {
                                     err.span_suggestion(
                                         li.span(),
                                         "use the new name",
-                                        new_name,
+                                        new_name.to_string(),
                                         Applicability::MachineApplicable,
                                     );
                                 }
@@ -397,6 +443,22 @@ impl<'s> LintLevelsBuilder<'s> {
                                 db.emit();
                             },
                         );
+                    }
+                }
+                // If this lint was renamed, apply the new lint instead of ignoring the attribute.
+                // This happens outside of the match because the new lint should be applied even if
+                // we don't warn about the name change.
+                if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
+                    // Ignore any errors or warnings that happen because the new name is inaccurate
+                    if let CheckLintNameResult::Ok(ids) =
+                        store.check_lint_name(&new_name, tool_name)
+                    {
+                        let src =
+                            LintLevelSource::Node(Symbol::intern(&new_name), li.span(), reason);
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            self.insert_spec(&mut specs, id, (level, src));
+                        }
                     }
                 }
             }
@@ -504,11 +566,12 @@ struct LintLevelMapBuilder<'a, 'tcx> {
 }
 
 impl LintLevelMapBuilder<'_, '_> {
-    fn with_lint_attrs<F>(&mut self, id: hir::HirId, attrs: &[ast::Attribute], f: F)
+    fn with_lint_attrs<F>(&mut self, id: hir::HirId, f: F)
     where
         F: FnOnce(&mut Self),
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
+        let attrs = self.tcx.hir().attrs(id);
         let push = self.levels.push(attrs, self.store, is_crate_hir);
         if push.changed {
             self.levels.register_id(id);
@@ -526,19 +589,19 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
+        self.with_lint_attrs(param.hir_id, |builder| {
             intravisit::walk_param(builder, param);
         });
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_item(builder, it);
         });
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_foreign_item(builder, it);
         })
     }
@@ -551,13 +614,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.with_lint_attrs(e.hir_id, &e.attrs, |builder| {
+        self.with_lint_attrs(e.hir_id, |builder| {
             intravisit::walk_expr(builder, e);
         })
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
-        self.with_lint_attrs(s.hir_id, &s.attrs, |builder| {
+        self.with_lint_attrs(s.hir_id, |builder| {
             intravisit::walk_struct_field(builder, s);
         })
     }
@@ -568,31 +631,31 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
-        self.with_lint_attrs(v.id, &v.attrs, |builder| {
+        self.with_lint_attrs(v.id, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
-        self.with_lint_attrs(l.hir_id, &l.attrs, |builder| {
+        self.with_lint_attrs(l.hir_id, |builder| {
             intravisit::walk_local(builder, l);
         })
     }
 
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        self.with_lint_attrs(a.hir_id, &a.attrs, |builder| {
+        self.with_lint_attrs(a.hir_id, |builder| {
             intravisit::walk_arm(builder, a);
         })
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |builder| {
+        self.with_lint_attrs(trait_item.hir_id(), |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |builder| {
+        self.with_lint_attrs(impl_item.hir_id(), |builder| {
             intravisit::walk_impl_item(builder, impl_item);
         });
     }

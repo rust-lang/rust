@@ -1,8 +1,11 @@
-error[E0764]: mutable references are not allowed in constants
+error[E0658]: mutable references are not allowed in constants
   --> $DIR/const-multi-ref.rs:6:13
    |
 LL |     let p = &mut a;
-   |             ^^^^^^ `&mut` is only allowed in `const fn`
+   |             ^^^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
   --> $DIR/const-multi-ref.rs:16:13
@@ -15,5 +18,4 @@ LL |     let p = &a;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0658, E0764.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0658`.

@@ -1,15 +1,16 @@
 #![feature(crate_visibility_modifier)]
 
+#[deny(unused_imports)]
 mod rank {
     pub use self::Professor::*;
-    //~^ ERROR enum is private and its variants cannot be re-exported
+    //~^ ERROR glob import doesn't reexport anything
     pub use self::Lieutenant::{JuniorGrade, Full};
-    //~^ ERROR variant `JuniorGrade` is private and cannot be re-exported
-    //~| ERROR variant `Full` is private and cannot be re-exported
+    //~^ ERROR `JuniorGrade` is private, and cannot be re-exported
+    //~| ERROR `Full` is private, and cannot be re-exported
     pub use self::PettyOfficer::*;
-    //~^ ERROR enum is private and its variants cannot be re-exported
+    //~^ ERROR glob import doesn't reexport anything
     pub use self::Crewman::*;
-    //~^ ERROR enum is private and its variants cannot be re-exported
+    //~^ ERROR glob import doesn't reexport anything
 
     enum Professor {
         Adjunct,

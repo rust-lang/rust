@@ -1,5 +1,5 @@
 // From rust:
-/* global resourcesSuffix, getSettingValue */
+/* global resourcesSuffix */
 
 var darkThemes = ["dark", "ayu"];
 var currentTheme = document.getElementById("themeStyle");
@@ -35,10 +35,12 @@ var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];
 
+// eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
 }
 
+// eslint-disable-next-line no-unused-vars
 function addClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
@@ -46,6 +48,7 @@ function addClass(elem, className) {
     elem.classList.add(className);
 }
 
+// eslint-disable-next-line no-unused-vars
 function removeClass(elem, className) {
     if (!elem || !elem.classList) {
         return;
@@ -81,39 +84,25 @@ function onEachLazy(lazyArray, func, reversed) {
         reversed);
 }
 
+// eslint-disable-next-line no-unused-vars
 function hasOwnProperty(obj, property) {
     return Object.prototype.hasOwnProperty.call(obj, property);
 }
 
-function usableLocalStorage() {
-    // Check if the browser supports localStorage at all:
-    if (typeof Storage === "undefined") {
-        return false;
-    }
-    // Check if we can access it; this access will fail if the browser
-    // preferences deny access to localStorage, e.g., to prevent storage of
-    // "cookies" (or cookie-likes, as is the case here).
-    try {
-        return window.localStorage !== null && window.localStorage !== undefined;
-    } catch(err) {
-        // Storage is supported, but browser preferences deny access to it.
-        return false;
-    }
-}
-
 function updateLocalStorage(name, value) {
-    if (usableLocalStorage()) {
-        localStorage[name] = value;
-    } else {
-        // No Web Storage support so we do nothing
+    try {
+        window.localStorage.setItem(name, value);
+    } catch(e) {
+        // localStorage is not accessible, do nothing
     }
 }
 
 function getCurrentValue(name) {
-    if (usableLocalStorage() && localStorage[name] !== undefined) {
-        return localStorage[name];
+    try {
+        return window.localStorage.getItem(name);
+    } catch(e) {
+        return null;
     }
-    return null;
 }
 
 function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
@@ -148,6 +137,8 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     }
 }
 
+// This function is called from "theme.js", generated in `html/render/mod.rs`.
+// eslint-disable-next-line no-unused-vars
 function useSystemTheme(value) {
     if (value === undefined) {
         value = true;
@@ -166,13 +157,13 @@ var updateSystemTheme = (function() {
     if (!window.matchMedia) {
         // fallback to the CSS computed value
         return function() {
-            let cssTheme = getComputedStyle(document.documentElement)
+            var cssTheme = getComputedStyle(document.documentElement)
                 .getPropertyValue('content');
 
             switchTheme(
                 currentTheme,
                 mainTheme,
-                JSON.parse(cssTheme) || light,
+                JSON.parse(cssTheme) || "light",
                 true
             );
         };

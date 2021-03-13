@@ -76,6 +76,86 @@ help: consider further restricting type parameter `X`
 LL | fn test_many_bounds_where<X>(x: X) where X: Sized, X: Sized, X: Debug {
    |                                                            ^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:44:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T>: Sized {
+   |             ^^^^^^^
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:49:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Bar: std::fmt::Display + Sized {
+   |                              ^^^^^^^
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:54:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Baz: Sized where Self: std::fmt::Display {
+   |          ^^^^^^^
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:59:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Qux<T>: Sized where Self: std::fmt::Display {
+   |             ^^^^^^^
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/bound-suggestions.rs:64:46
+   |
+LL |     const SIZE: usize = core::mem::size_of::<Self>();
+   |                                              ^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
+   |
+help: consider further restricting `Self`
+   |
+LL | trait Bat<T>: std::fmt::Display + Sized {
+   |                                 ^^^^^^^
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

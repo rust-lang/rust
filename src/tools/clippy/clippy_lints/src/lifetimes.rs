@@ -87,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id()).is_none();
             check_fn_inner(
                 cx,
                 &sig.decl,
@@ -375,7 +375,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         match ty.kind {
             TyKind::OpaqueDef(item, _) => {
                 let map = self.cx.tcx.hir();
-                let item = map.expect_item(item.id);
+                let item = map.item(item);
                 walk_item(self, item);
                 walk_ty(self, ty);
             },

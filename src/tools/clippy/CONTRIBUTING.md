@@ -46,11 +46,12 @@ first read the [Basics docs](doc/basics.md).**
 
 ### Finding something to fix/improve
 
-All issues on Clippy are mentored, if you want help with a bug just ask
-@Manishearth, @flip1995, @phansch or @yaahc.
+All issues on Clippy are mentored, if you want help simply ask @Manishearth, @flip1995, @phansch
+or @llogiq directly by mentioning them in the issue or over on [Zulip]. This list may be out of date.
+All currently active mentors can be found [here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
 
-Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy issues.
-If you want to work on an issue, please leave a comment so that we can assign it to you!
+Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
+issues. You can use `@rustbot claim` to assign the issue to yourself.
 
 There are also some abandoned PRs, marked with [`S-inactive-closed`].
 Pretty often these PRs are nearly completed and just need some extra steps
@@ -310,9 +311,18 @@ currently. Between writing new lints, fixing issues, reviewing pull requests and
 responding to issues there may not always be enough time to stay on top of it
 all.
 
-Our highest priority is fixing [crashes][l-crash] and [bugs][l-bug]. We don't
+Our highest priority is fixing [crashes][l-crash] and [bugs][l-bug], for example
+an ICE in a popular crate that many other crates depend on. We don't
 want Clippy to crash on your code and we want it to be as reliable as the
 suggestions from Rust compiler errors.
+
+We have prioritization labels and a sync-blocker label, which are described below.
+- [P-low][p-low]: Requires attention (fix/response/evaluation) by a team member but isn't urgent.
+- [P-medium][p-medium]: Should be addressed by a team member until the next sync.
+- [P-high][p-high]: Should be immediately addressed and will require an out-of-cycle sync or a backport.
+- [L-sync-blocker][l-sync-blocker]: An issue that "blocks" a sync. 
+Or rather: before the sync this should be addressed,
+e.g. by removing a lint again, so it doesn't hit beta/stable.
 
 ## Bors and Homu
 
@@ -327,6 +337,10 @@ commands [here][homu_instructions].
 [triage]: https://forge.rust-lang.org/release/triage-procedure.html
 [l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash
 [l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug
+[p-low]: https://github.com/rust-lang/rust-clippy/labels/P-low
+[p-medium]: https://github.com/rust-lang/rust-clippy/labels/P-medium
+[p-high]: https://github.com/rust-lang/rust-clippy/labels/P-high
+[l-sync-blocker]: https://github.com/rust-lang/rust-clippy/labels/L-sync-blocker
 [homu]: https://github.com/rust-lang/homu
 [homu_instructions]: https://bors.rust-lang.org/
 [homu_queue]: https://bors.rust-lang.org/queue/clippy

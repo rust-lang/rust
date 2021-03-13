@@ -8,12 +8,15 @@ use core::panic::PanicInfo;
 
 const Z: () = panic!("cheese");
 //~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 const Y: () = unreachable!();
 //~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 const X: () = unimplemented!();
 //~^ ERROR any use of this value will cause an error
+//~| WARN this was previously accepted by the compiler but is being phased out
 
 #[lang = "eh_personality"]
 fn eh() {}

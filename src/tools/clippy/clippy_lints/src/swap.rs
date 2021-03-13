@@ -199,7 +199,7 @@ fn check_for_slice<'a>(cx: &LateContext<'_>, lhs1: &'a Expr<'_>, lhs2: &'a Expr<
                 if matches!(ty.kind(), ty::Slice(_))
                     || matches!(ty.kind(), ty::Array(_, _))
                     || is_type_diagnostic_item(cx, ty, sym::vec_type)
-                    || is_type_diagnostic_item(cx, ty, sym!(vecdeque_type))
+                    || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
                 {
                     return Slice::Swappable(lhs1, idx1, idx2);
                 }

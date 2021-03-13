@@ -95,7 +95,7 @@ where
 
         // We purposefully do not call `super_place` here to avoid calling `visit_local` for this
         // place with one of the `Projection` variants of `PlaceContext`.
-        self.visit_projection(local, projection, context, location);
+        self.visit_projection(place.as_ref(), context, location);
 
         match DefUse::for_place(context) {
             // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.

@@ -60,6 +60,7 @@ pub struct Map<I, F> {
     iter: I,
     f: F,
 }
+
 impl<I, F> Map<I, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
@@ -188,10 +189,7 @@ unsafe impl<I, F> TrustedRandomAccess for Map<I, F>
 where
     I: TrustedRandomAccess,
 {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        true
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = true;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

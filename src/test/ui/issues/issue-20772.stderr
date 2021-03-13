@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing the supertraits of `T`
+error[E0391]: cycle detected when computing the super traits of `T` with associated type name `Item`
   --> $DIR/issue-20772.rs:1:1
    |
 LL | / trait T : Iterator<Item=Self::Item>
@@ -6,8 +6,8 @@ LL | |
 LL | | {}
    | |__^
    |
-   = note: ...which again requires computing the supertraits of `T`, completing the cycle
-note: cycle used when collecting item types in top-level module
+   = note: ...which again requires computing the super traits of `T` with associated type name `Item`, completing the cycle
+note: cycle used when computing the super traits of `T`
   --> $DIR/issue-20772.rs:1:1
    |
 LL | / trait T : Iterator<Item=Self::Item>

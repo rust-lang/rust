@@ -1,9 +1,6 @@
 fn main() {}
 
 struct CLI {
-    #[derive(parse())]
-    //~^ ERROR traits in `#[derive(...)]` don't accept arguments
-    //~| ERROR cannot find derive macro `parse` in this scope
+    #[derive(parse())] //~ ERROR expected non-macro attribute, found attribute macro
     path: (),
-    //~^ ERROR `derive` may only be applied to structs, enums and unions
 }

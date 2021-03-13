@@ -28,7 +28,7 @@ LL |         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:154:13
+  --> $DIR/let_and_return.rs:164:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding

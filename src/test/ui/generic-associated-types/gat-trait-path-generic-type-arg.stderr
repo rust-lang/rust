@@ -1,0 +1,32 @@
+error[E0403]: the name `T1` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/gat-trait-path-generic-type-arg.rs:11:12
+   |
+LL | impl <T, T1> Foo for T {
+   |          -- first use of `T1`
+LL |     type F<T1> = &[u8];
+   |            ^^ already used
+
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/gat-trait-path-generic-type-arg.rs:1:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/gat-trait-path-generic-type-arg.rs:11:18
+   |
+LL |     type F<T1> = &[u8];
+   |                  ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type F<'a, T1> = &'a [u8];
+   |            ^^^       ^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0106, E0403.
+For more information about an error, try `rustc --explain E0106`.

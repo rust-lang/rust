@@ -126,8 +126,8 @@ fn variant1() {
     // guess.
     let map = source.mapx(|x: &_| x);
     let filter = map.filterx(|x: &_| true);
-    //[migrate]~^ ERROR no method named `filterx`
-    //[nll]~^^ ERROR no method named `filterx`
+    //[migrate]~^ ERROR the method
+    //[nll]~^^ ERROR the method
 }
 
 fn variant2() {
@@ -139,8 +139,8 @@ fn variant2() {
     let map = source.mapx(identity);
     let filter = map.filterx(|x: &_| true);
     let count = filter.countx();
-    //[migrate]~^ ERROR no method named `countx`
-    //[nll]~^^ ERROR no method named `countx`
+    //[migrate]~^ ERROR the method
+    //[nll]~^^ ERROR the method
 }
 
 fn main() {}

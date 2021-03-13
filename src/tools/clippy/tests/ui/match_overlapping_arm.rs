@@ -57,6 +57,36 @@ fn overlapping() {
         _ => (),
     }
 
+    match 42 {
+        5..7 => println!("5 .. 7"),
+        0..10 => println!("0 .. 10"),
+        _ => (),
+    }
+
+    match 42 {
+        5..10 => println!("5 .. 10"),
+        0..=10 => println!("0 ... 10"),
+        _ => (),
+    }
+
+    match 42 {
+        0..14 => println!("0 .. 14"),
+        5..10 => println!("5 .. 10"),
+        _ => (),
+    }
+
+    match 42 {
+        5..14 => println!("5 .. 14"),
+        0..=10 => println!("0 ... 10"),
+        _ => (),
+    }
+
+    match 42 {
+        0..7 => println!("0 .. 7"),
+        0..=10 => println!("0 ... 10"),
+        _ => (),
+    }
+
     /*
     // FIXME(JohnTitor): uncomment this once rustfmt knows half-open patterns
     match 42 {

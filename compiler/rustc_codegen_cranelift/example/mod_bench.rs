@@ -1,7 +1,8 @@
 #![feature(start, box_syntax, core_intrinsics, lang_items)]
 #![no_std]
 
-#[link(name = "c")]
+#[cfg_attr(unix, link(name = "c"))]
+#[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
 extern {}
 
 #[panic_handler]

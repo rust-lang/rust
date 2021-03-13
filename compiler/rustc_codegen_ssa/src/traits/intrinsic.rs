@@ -20,9 +20,10 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
-    /// Normally, sideeffect is only emitted if -Zinsert-sideeffect is passed;
-    /// in some cases though we want to emit it regardless.
-    fn sideeffect(&mut self, unconditional: bool);
+    /// Emits a forced side effect.
+    ///
+    /// Currently has any effect only when LLVM versions prior to 12.0 are used as the backend.
+    fn sideeffect(&mut self);
     /// Trait method used to inject `va_start` on the "spoofed" `VaListImpl` in
     /// Rust defined C-variadic functions.
     fn va_start(&mut self, val: Self::Value) -> Self::Value;
