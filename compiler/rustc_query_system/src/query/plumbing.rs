@@ -76,10 +76,10 @@ impl<C: QueryCache> QueryCacheStore<C> {
     pub fn iter_results<R>(
         &self,
         f: impl for<'a> FnOnce(
-            Box<dyn Iterator<Item = (&'a C::Key, &'a C::Value, DepNodeIndex)> + 'a>,
+            &'a mut dyn Iterator<Item = (&'a C::Key, &'a C::Value, DepNodeIndex)>,
         ) -> R,
     ) -> R {
-        self.cache.iter(&self.shards, |shard| &mut *shard, f)
+        self.cache.iter(&self.shards, f)
     }
 }
 
