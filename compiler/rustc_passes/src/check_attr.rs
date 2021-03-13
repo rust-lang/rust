@@ -520,7 +520,7 @@ impl CheckAttrVisitor<'tcx> {
                 .struct_span_err(
                     meta.span(),
                     &format!(
-                        "`#![doc({} = \"...\")]` isn't allowed as a crate level attribute",
+                        "`#![doc({} = \"...\")]` isn't allowed as a crate-level attribute",
                         attr_name,
                     ),
                 )
@@ -559,7 +559,7 @@ impl CheckAttrVisitor<'tcx> {
                                 |lint| {
                                     lint.build(
                                         "`#![doc(test(...)]` is only allowed \
-                                         as a crate level attribute",
+                                         as a crate-level attribute",
                                     )
                                     .emit();
                                 },
