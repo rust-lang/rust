@@ -7,8 +7,8 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferenceVar, Scalar,
-    Substs, Ty, TypeWalk,
+    BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferenceVar, Interner,
+    Scalar, Substs, Ty, TyKind, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -49,8 +49,8 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
 
     fn do_canonicalize<T: TypeWalk>(&mut self, t: T, binders: DebruijnIndex) -> T {
         t.fold_binders(
-            &mut |ty, binders| match ty {
-                Ty::InferenceVar(var, kind) => {
+            &mut |ty, binders| match ty.interned(&Interner) {
+                &TyKind::InferenceVar(var, kind) => {
                     let inner = var.to_inner();
                     if self.var_stack.contains(&inner) {
                         // recursive type
@@ -66,7 +66,7 @@ impl<'a, 'b> Canonicalizer<'a, 'b> {
                     } else {
                         let root = self.ctx.table.var_unification_table.find(inner);
                         let position = self.add(InferenceVar::from_inner(root), kind);
-                        Ty::BoundVar(BoundVar::new(binders, position))
+                        TyKind::BoundVar(BoundVar::new(binders, position)).intern(&Interner)
                     }
                 }
                 _ => ty,
@@ -108,10 +108,10 @@ impl<T> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::BoundVar(bound) = ty {
+                if let &mut TyKind::BoundVar(bound) = &mut ty.0 {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
-                        *ty = Ty::InferenceVar(v, k);
+                        *ty = TyKind::InferenceVar(v, k).intern(&Interner);
                     }
                 }
             },
@@ -142,7 +142,7 @@ impl<T> Canonicalized<T> {
             // eagerly replace projections in the type; we may be getting types
             // e.g. from where clauses where this hasn't happened yet
             let ty = ctx.normalize_associated_types_in(ty.clone().subst_bound_vars(&new_vars));
-            ctx.table.unify(&Ty::InferenceVar(v, k), &ty);
+            ctx.table.unify(&TyKind::InferenceVar(v, k).intern(&Interner), &ty);
         }
     }
 }
@@ -166,7 +166,10 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
     // (kind of hacky)
     for (i, var) in vars.iter().enumerate() {
         if &*table.resolve_ty_shallow(var) == var {
-            table.unify(var, &Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i)));
+            table.unify(
+                var,
+                &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i)).intern(&Interner),
+            );
         }
     }
     Some(
@@ -196,11 +199,12 @@ impl TypeVariableTable {
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
         match kind {
-            _ if self.inner[iv.to_inner().0 as usize].diverging => Ty::Never,
-            TyVariableKind::General => Ty::Unknown,
-            TyVariableKind::Integer => Ty::Scalar(Scalar::Int(IntTy::I32)),
-            TyVariableKind::Float => Ty::Scalar(Scalar::Float(FloatTy::F64)),
+            _ if self.inner[iv.to_inner().0 as usize].diverging => TyKind::Never,
+            TyVariableKind::General => TyKind::Unknown,
+            TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
+            TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
         }
+        .intern(&Interner)
     }
 }
 
@@ -227,7 +231,7 @@ impl InferenceTable {
         self.type_variable_table.push(TypeVariableData { diverging });
         let key = self.var_unification_table.new_key(TypeVarValue::Unknown);
         assert_eq!(key.0 as usize, self.type_variable_table.inner.len() - 1);
-        Ty::InferenceVar(InferenceVar::from_inner(key), kind)
+        TyKind::InferenceVar(InferenceVar::from_inner(key), kind).intern(&Interner)
     }
 
     pub(crate) fn new_type_var(&mut self) -> Ty {
@@ -290,12 +294,12 @@ impl InferenceTable {
     }
 
     pub(super) fn unify_inner_trivial(&mut self, ty1: &Ty, ty2: &Ty, depth: usize) -> bool {
-        match (ty1, ty2) {
-            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
+        match (ty1.interned(&Interner), ty2.interned(&Interner)) {
+            (TyKind::Unknown, _) | (_, TyKind::Unknown) => true,
 
-            (Ty::Placeholder(p1), Ty::Placeholder(p2)) if *p1 == *p2 => true,
+            (TyKind::Placeholder(p1), TyKind::Placeholder(p2)) if *p1 == *p2 => true,
 
-            (Ty::Dyn(dyn1), Ty::Dyn(dyn2)) if dyn1.len() == dyn2.len() => {
+            (TyKind::Dyn(dyn1), TyKind::Dyn(dyn2)) if dyn1.len() == dyn2.len() => {
                 for (pred1, pred2) in dyn1.iter().zip(dyn2.iter()) {
                     if !self.unify_preds(pred1, pred2, depth + 1) {
                         return false;
@@ -305,16 +309,16 @@ impl InferenceTable {
             }
 
             (
-                Ty::InferenceVar(tv1, TyVariableKind::General),
-                Ty::InferenceVar(tv2, TyVariableKind::General),
+                TyKind::InferenceVar(tv1, TyVariableKind::General),
+                TyKind::InferenceVar(tv2, TyVariableKind::General),
             )
             | (
-                Ty::InferenceVar(tv1, TyVariableKind::Integer),
-                Ty::InferenceVar(tv2, TyVariableKind::Integer),
+                TyKind::InferenceVar(tv1, TyVariableKind::Integer),
+                TyKind::InferenceVar(tv2, TyVariableKind::Integer),
             )
             | (
-                Ty::InferenceVar(tv1, TyVariableKind::Float),
-                Ty::InferenceVar(tv2, TyVariableKind::Float),
+                TyKind::InferenceVar(tv1, TyVariableKind::Float),
+                TyKind::InferenceVar(tv2, TyVariableKind::Float),
             ) if self.type_variable_table.is_diverging(*tv1)
                 == self.type_variable_table.is_diverging(*tv2) =>
             {
@@ -326,24 +330,37 @@ impl InferenceTable {
             // The order of MaybeNeverTypeVar matters here.
             // Unifying MaybeNeverTypeVar and TypeVar will let the latter become MaybeNeverTypeVar.
             // Unifying MaybeNeverTypeVar and other concrete type will let the former become it.
-            (Ty::InferenceVar(tv, TyVariableKind::General), other)
-            | (other, Ty::InferenceVar(tv, TyVariableKind::General))
-            | (Ty::InferenceVar(tv, TyVariableKind::Integer), other @ Ty::Scalar(Scalar::Int(_)))
-            | (other @ Ty::Scalar(Scalar::Int(_)), Ty::InferenceVar(tv, TyVariableKind::Integer))
+            (TyKind::InferenceVar(tv, TyVariableKind::General), other)
+            | (other, TyKind::InferenceVar(tv, TyVariableKind::General))
             | (
-                Ty::InferenceVar(tv, TyVariableKind::Integer),
-                other @ Ty::Scalar(Scalar::Uint(_)),
+                TyKind::InferenceVar(tv, TyVariableKind::Integer),
+                other @ TyKind::Scalar(Scalar::Int(_)),
             )
             | (
-                other @ Ty::Scalar(Scalar::Uint(_)),
-                Ty::InferenceVar(tv, TyVariableKind::Integer),
+                other @ TyKind::Scalar(Scalar::Int(_)),
+                TyKind::InferenceVar(tv, TyVariableKind::Integer),
             )
-            | (Ty::InferenceVar(tv, TyVariableKind::Float), other @ Ty::Scalar(Scalar::Float(_)))
-            | (other @ Ty::Scalar(Scalar::Float(_)), Ty::InferenceVar(tv, TyVariableKind::Float)) =>
-            {
+            | (
+                TyKind::InferenceVar(tv, TyVariableKind::Integer),
+                other @ TyKind::Scalar(Scalar::Uint(_)),
+            )
+            | (
+                other @ TyKind::Scalar(Scalar::Uint(_)),
+                TyKind::InferenceVar(tv, TyVariableKind::Integer),
+            )
+            | (
+                TyKind::InferenceVar(tv, TyVariableKind::Float),
+                other @ TyKind::Scalar(Scalar::Float(_)),
+            )
+            | (
+                other @ TyKind::Scalar(Scalar::Float(_)),
+                TyKind::InferenceVar(tv, TyVariableKind::Float),
+            ) => {
                 // the type var is unknown since we tried to resolve it
-                self.var_unification_table
-                    .union_value(tv.to_inner(), TypeVarValue::Known(other.clone()));
+                self.var_unification_table.union_value(
+                    tv.to_inner(),
+                    TypeVarValue::Known(other.clone().intern(&Interner)),
+                );
                 true
             }
 
@@ -387,8 +404,8 @@ impl InferenceTable {
             if i > 0 {
                 cov_mark::hit!(type_var_resolves_to_int_var);
             }
-            match &*ty {
-                Ty::InferenceVar(tv, _) => {
+            match &ty.0 {
+                TyKind::InferenceVar(tv, _) => {
                     let inner = tv.to_inner();
                     match self.var_unification_table.inlined_probe_value(inner).known() {
                         Some(known_ty) => {
@@ -410,8 +427,8 @@ impl InferenceTable {
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
     fn resolve_ty_as_possible_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::InferenceVar(tv, kind) => {
+        ty.fold(&mut |ty| match ty.interned(&Interner) {
+            &TyKind::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
                     cov_mark::hit!(type_var_cycles_resolve_as_possible);
@@ -435,10 +452,10 @@ impl InferenceTable {
     }
 
     /// Resolves the type completely; type variables without known type are
-    /// replaced by Ty::Unknown.
+    /// replaced by TyKind::Unknown.
     fn resolve_ty_completely_inner(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::InferenceVar(tv, kind) => {
+        ty.fold(&mut |ty| match ty.interned(&Interner) {
+            &TyKind::InferenceVar(tv, kind) => {
                 let inner = tv.to_inner();
                 if tv_stack.contains(&inner) {
                     cov_mark::hit!(type_var_cycles_resolve_completely);

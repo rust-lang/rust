@@ -49,7 +49,7 @@ pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironmen
 
 pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariableKind};
 
-pub(crate) use crate::traits::chalk::Interner;
+pub use crate::traits::chalk::Interner;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -131,7 +131,7 @@ pub enum AliasTy {
 ///
 /// This should be cheap to clone.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum Ty {
+pub enum TyKind {
     /// Structures, enumerations and unions.
     Adt(AdtId<Interner>, Substs),
 
@@ -244,6 +244,21 @@ pub enum Ty {
     Unknown,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct Ty(TyKind);
+
+impl TyKind {
+    pub fn intern(self, _interner: &Interner) -> Ty {
+        Ty(self)
+    }
+}
+
+impl Ty {
+    pub fn interned(&self, _interner: &Interner) -> &TyKind {
+        &self.0
+    }
+}
+
 /// A list of substitutions for generic parameters.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Substs(Arc<[Ty]>);
@@ -292,7 +307,12 @@ impl Substs {
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub(crate) fn type_params_for_generics(generic_params: &Generics) -> Substs {
-        Substs(generic_params.iter().map(|(id, _)| Ty::Placeholder(id)).collect())
+        Substs(
+            generic_params
+                .iter()
+                .map(|(id, _)| TyKind::Placeholder(id).intern(&Interner))
+                .collect(),
+        )
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
@@ -307,7 +327,7 @@ impl Substs {
             generic_params
                 .iter()
                 .enumerate()
-                .map(|(idx, _)| Ty::BoundVar(BoundVar::new(debruijn, idx)))
+                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner))
                 .collect(),
         )
     }
@@ -355,11 +375,14 @@ impl SubstsBuilder {
     }
 
     pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
-        self.fill((starting_from..).map(|idx| Ty::BoundVar(BoundVar::new(debruijn, idx))))
+        self.fill(
+            (starting_from..)
+                .map(|idx| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
+        )
     }
 
     pub fn fill_with_unknown(self) -> Self {
-        self.fill(iter::repeat(Ty::Unknown))
+        self.fill(iter::repeat(TyKind::Unknown.intern(&Interner)))
     }
 
     pub fn fill(mut self, filler: impl Iterator<Item = Ty>) -> Self {
@@ -601,45 +624,52 @@ impl TypeWalk for CallableSig {
 
 impl Ty {
     pub fn unit() -> Self {
-        Ty::Tuple(0, Substs::empty())
+        TyKind::Tuple(0, Substs::empty()).intern(&Interner)
     }
 
     pub fn adt_ty(adt: hir_def::AdtId, substs: Substs) -> Ty {
-        Ty::Adt(AdtId(adt), substs)
+        TyKind::Adt(AdtId(adt), substs).intern(&Interner)
     }
 
     pub fn fn_ptr(sig: CallableSig) -> Self {
-        Ty::Function(FnPointer {
+        TyKind::Function(FnPointer {
             num_args: sig.params().len(),
             sig: FnSig { variadic: sig.is_varargs },
             substs: Substs(sig.params_and_return),
         })
+        .intern(&Interner)
     }
 
     pub fn builtin(builtin: BuiltinType) -> Self {
         match builtin {
-            BuiltinType::Char => Ty::Scalar(Scalar::Char),
-            BuiltinType::Bool => Ty::Scalar(Scalar::Bool),
-            BuiltinType::Str => Ty::Str,
-            BuiltinType::Int(t) => Ty::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))),
-            BuiltinType::Uint(t) => Ty::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))),
-            BuiltinType::Float(t) => Ty::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))),
+            BuiltinType::Char => TyKind::Scalar(Scalar::Char).intern(&Interner),
+            BuiltinType::Bool => TyKind::Scalar(Scalar::Bool).intern(&Interner),
+            BuiltinType::Str => TyKind::Str.intern(&Interner),
+            BuiltinType::Int(t) => {
+                TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(t))).intern(&Interner)
+            }
+            BuiltinType::Uint(t) => {
+                TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(t))).intern(&Interner)
+            }
+            BuiltinType::Float(t) => {
+                TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(t))).intern(&Interner)
+            }
         }
     }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
-        match self {
-            Ty::Ref(mutability, parameters) => Some((parameters.as_single(), *mutability)),
+        match self.interned(&Interner) {
+            TyKind::Ref(mutability, parameters) => Some((parameters.as_single(), *mutability)),
             _ => None,
         }
     }
 
     pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
-        match self {
-            Ty::Ref(mutability, parameters) => {
+        match self.interned(&Interner) {
+            TyKind::Ref(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::Ref, *mutability))
             }
-            Ty::Raw(mutability, parameters) => {
+            TyKind::Raw(mutability, parameters) => {
                 Some((parameters.as_single(), Rawness::RawPtr, *mutability))
             }
             _ => None,
@@ -649,7 +679,7 @@ impl Ty {
     pub fn strip_references(&self) -> &Ty {
         let mut t: &Ty = self;
 
-        while let Ty::Ref(_mutability, parameters) = t {
+        while let TyKind::Ref(_mutability, parameters) = t.interned(&Interner) {
             t = parameters.as_single();
         }
 
@@ -657,65 +687,69 @@ impl Ty {
     }
 
     pub fn as_adt(&self) -> Option<(hir_def::AdtId, &Substs)> {
-        match self {
-            Ty::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
+        match self.interned(&Interner) {
+            TyKind::Adt(AdtId(adt), parameters) => Some((*adt, parameters)),
             _ => None,
         }
     }
 
     pub fn as_tuple(&self) -> Option<&Substs> {
-        match self {
-            Ty::Tuple(_, substs) => Some(substs),
+        match self.interned(&Interner) {
+            TyKind::Tuple(_, substs) => Some(substs),
             _ => None,
         }
     }
 
     pub fn as_generic_def(&self) -> Option<GenericDefId> {
-        match *self {
-            Ty::Adt(AdtId(adt), ..) => Some(adt.into()),
-            Ty::FnDef(callable, ..) => Some(callable.into()),
-            Ty::AssociatedType(type_alias, ..) => Some(type_alias.into()),
-            Ty::ForeignType(type_alias, ..) => Some(type_alias.into()),
+        match *self.interned(&Interner) {
+            TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
+            TyKind::FnDef(callable, ..) => Some(callable.into()),
+            TyKind::AssociatedType(type_alias, ..) => Some(type_alias.into()),
+            TyKind::ForeignType(type_alias, ..) => Some(type_alias.into()),
             _ => None,
         }
     }
 
     pub fn is_never(&self) -> bool {
-        matches!(self, Ty::Never)
+        matches!(self.interned(&Interner), TyKind::Never)
     }
 
     pub fn is_unknown(&self) -> bool {
-        matches!(self, Ty::Unknown)
+        matches!(self.interned(&Interner), TyKind::Unknown)
     }
 
     pub fn equals_ctor(&self, other: &Ty) -> bool {
-        match (self, other) {
-            (Ty::Adt(adt, ..), Ty::Adt(adt2, ..)) => adt == adt2,
-            (Ty::Slice(_), Ty::Slice(_)) | (Ty::Array(_), Ty::Array(_)) => true,
-            (Ty::FnDef(def_id, ..), Ty::FnDef(def_id2, ..)) => def_id == def_id2,
-            (Ty::OpaqueType(ty_id, ..), Ty::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
-            (Ty::AssociatedType(ty_id, ..), Ty::AssociatedType(ty_id2, ..))
-            | (Ty::ForeignType(ty_id, ..), Ty::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
-            (Ty::Closure(def, expr, _), Ty::Closure(def2, expr2, _)) => {
+        match (self.interned(&Interner), other.interned(&Interner)) {
+            (TyKind::Adt(adt, ..), TyKind::Adt(adt2, ..)) => adt == adt2,
+            (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_), TyKind::Array(_)) => true,
+            (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
+            (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..))
+            | (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::Closure(def, expr, _), TyKind::Closure(def2, expr2, _)) => {
                 expr == expr2 && def == def2
             }
-            (Ty::Ref(mutability, ..), Ty::Ref(mutability2, ..))
-            | (Ty::Raw(mutability, ..), Ty::Raw(mutability2, ..)) => mutability == mutability2,
+            (TyKind::Ref(mutability, ..), TyKind::Ref(mutability2, ..))
+            | (TyKind::Raw(mutability, ..), TyKind::Raw(mutability2, ..)) => {
+                mutability == mutability2
+            }
             (
-                Ty::Function(FnPointer { num_args, sig, .. }),
-                Ty::Function(FnPointer { num_args: num_args2, sig: sig2, .. }),
+                TyKind::Function(FnPointer { num_args, sig, .. }),
+                TyKind::Function(FnPointer { num_args: num_args2, sig: sig2, .. }),
             ) => num_args == num_args2 && sig == sig2,
-            (Ty::Tuple(cardinality, _), Ty::Tuple(cardinality2, _)) => cardinality == cardinality2,
-            (Ty::Str, Ty::Str) | (Ty::Never, Ty::Never) => true,
-            (Ty::Scalar(scalar), Ty::Scalar(scalar2)) => scalar == scalar2,
+            (TyKind::Tuple(cardinality, _), TyKind::Tuple(cardinality2, _)) => {
+                cardinality == cardinality2
+            }
+            (TyKind::Str, TyKind::Str) | (TyKind::Never, TyKind::Never) => true,
+            (TyKind::Scalar(scalar), TyKind::Scalar(scalar2)) => scalar == scalar2,
             _ => false,
         }
     }
 
     /// If this is a `dyn Trait` type, this returns the `Trait` part.
     pub fn dyn_trait_ref(&self) -> Option<&TraitRef> {
-        match self {
-            Ty::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
+        match self.interned(&Interner) {
+            TyKind::Dyn(bounds) => bounds.get(0).and_then(|b| match b {
                 GenericPredicate::Implemented(trait_ref) => Some(trait_ref),
                 _ => None,
             }),
@@ -729,28 +763,28 @@ impl Ty {
     }
 
     fn builtin_deref(&self) -> Option<Ty> {
-        match self {
-            Ty::Ref(.., parameters) => Some(Ty::clone(parameters.as_single())),
-            Ty::Raw(.., parameters) => Some(Ty::clone(parameters.as_single())),
+        match self.interned(&Interner) {
+            TyKind::Ref(.., parameters) => Some(Ty::clone(parameters.as_single())),
+            TyKind::Raw(.., parameters) => Some(Ty::clone(parameters.as_single())),
             _ => None,
         }
     }
 
     pub fn as_fn_def(&self) -> Option<FunctionId> {
-        match self {
-            &Ty::FnDef(CallableDefId::FunctionId(func), ..) => Some(func),
+        match self.interned(&Interner) {
+            &TyKind::FnDef(CallableDefId::FunctionId(func), ..) => Some(func),
             _ => None,
         }
     }
 
     pub fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
-        match self {
-            Ty::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
-            Ty::FnDef(def, parameters) => {
+        match self.interned(&Interner) {
+            TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
+            TyKind::FnDef(def, parameters) => {
                 let sig = db.callable_item_signature(*def);
                 Some(sig.subst(&parameters))
             }
-            Ty::Closure(.., substs) => {
+            TyKind::Closure(.., substs) => {
                 let sig_param = &substs[0];
                 sig_param.callable_sig(db)
             }
@@ -763,18 +797,18 @@ impl Ty {
     /// `self` is `Option<_>` and the substs contain `u32`, we'll have
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(mut self, new_substs: Substs) -> Ty {
-        match &mut self {
-            Ty::Adt(_, substs)
-            | Ty::Slice(substs)
-            | Ty::Array(substs)
-            | Ty::Raw(_, substs)
-            | Ty::Ref(_, substs)
-            | Ty::FnDef(_, substs)
-            | Ty::Function(FnPointer { substs, .. })
-            | Ty::Tuple(_, substs)
-            | Ty::OpaqueType(_, substs)
-            | Ty::AssociatedType(_, substs)
-            | Ty::Closure(.., substs) => {
+        match &mut self.0 {
+            TyKind::Adt(_, substs)
+            | TyKind::Slice(substs)
+            | TyKind::Array(substs)
+            | TyKind::Raw(_, substs)
+            | TyKind::Ref(_, substs)
+            | TyKind::FnDef(_, substs)
+            | TyKind::Function(FnPointer { substs, .. })
+            | TyKind::Tuple(_, substs)
+            | TyKind::OpaqueType(_, substs)
+            | TyKind::AssociatedType(_, substs)
+            | TyKind::Closure(.., substs) => {
                 assert_eq!(substs.len(), new_substs.len());
                 *substs = new_substs;
             }
@@ -786,42 +820,42 @@ impl Ty {
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     pub fn substs(&self) -> Option<&Substs> {
-        match self {
-            Ty::Adt(_, substs)
-            | Ty::Slice(substs)
-            | Ty::Array(substs)
-            | Ty::Raw(_, substs)
-            | Ty::Ref(_, substs)
-            | Ty::FnDef(_, substs)
-            | Ty::Function(FnPointer { substs, .. })
-            | Ty::Tuple(_, substs)
-            | Ty::OpaqueType(_, substs)
-            | Ty::AssociatedType(_, substs)
-            | Ty::Closure(.., substs) => Some(substs),
+        match self.interned(&Interner) {
+            TyKind::Adt(_, substs)
+            | TyKind::Slice(substs)
+            | TyKind::Array(substs)
+            | TyKind::Raw(_, substs)
+            | TyKind::Ref(_, substs)
+            | TyKind::FnDef(_, substs)
+            | TyKind::Function(FnPointer { substs, .. })
+            | TyKind::Tuple(_, substs)
+            | TyKind::OpaqueType(_, substs)
+            | TyKind::AssociatedType(_, substs)
+            | TyKind::Closure(.., substs) => Some(substs),
             _ => None,
         }
     }
 
     pub fn substs_mut(&mut self) -> Option<&mut Substs> {
-        match self {
-            Ty::Adt(_, substs)
-            | Ty::Slice(substs)
-            | Ty::Array(substs)
-            | Ty::Raw(_, substs)
-            | Ty::Ref(_, substs)
-            | Ty::FnDef(_, substs)
-            | Ty::Function(FnPointer { substs, .. })
-            | Ty::Tuple(_, substs)
-            | Ty::OpaqueType(_, substs)
-            | Ty::AssociatedType(_, substs)
-            | Ty::Closure(.., substs) => Some(substs),
+        match &mut self.0 {
+            TyKind::Adt(_, substs)
+            | TyKind::Slice(substs)
+            | TyKind::Array(substs)
+            | TyKind::Raw(_, substs)
+            | TyKind::Ref(_, substs)
+            | TyKind::FnDef(_, substs)
+            | TyKind::Function(FnPointer { substs, .. })
+            | TyKind::Tuple(_, substs)
+            | TyKind::OpaqueType(_, substs)
+            | TyKind::AssociatedType(_, substs)
+            | TyKind::Closure(.., substs) => Some(substs),
             _ => None,
         }
     }
 
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
-        match self {
-            Ty::OpaqueType(opaque_ty_id, ..) => {
+        match self.interned(&Interner) {
+            TyKind::OpaqueType(opaque_ty_id, ..) => {
                 match opaque_ty_id {
                     OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
@@ -844,7 +878,7 @@ impl Ty {
                     OpaqueTyId::ReturnTypeImplTrait(..) => None,
                 }
             }
-            Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
+            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
                 let predicates = match opaque_ty.opaque_ty_id {
                     OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
@@ -860,7 +894,7 @@ impl Ty {
 
                 predicates.map(|it| it.value)
             }
-            Ty::Placeholder(id) => {
+            TyKind::Placeholder(id) => {
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
@@ -881,14 +915,14 @@ impl Ty {
     }
 
     pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
-        match self {
-            Ty::AssociatedType(type_alias_id, ..) => {
+        match self.interned(&Interner) {
+            TyKind::AssociatedType(type_alias_id, ..) => {
                 match type_alias_id.lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
             }
-            Ty::Alias(AliasTy::Projection(projection_ty)) => {
+            TyKind::Alias(AliasTy::Projection(projection_ty)) => {
                 match projection_ty.associated_ty.lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
@@ -908,13 +942,13 @@ pub trait TypeWalk {
     }
     /// Walk the type, counting entered binders.
     ///
-    /// `Ty::Bound` variables use DeBruijn indexing, which means that 0 refers
+    /// `TyKind::Bound` variables use DeBruijn indexing, which means that 0 refers
     /// to the innermost binder, 1 to the next, etc.. So when we want to
     /// substitute a certain bound variable, we can't just walk the whole type
     /// and blindly replace each instance of a certain index; when we 'enter'
     /// things that introduce new bound variables, we have to keep track of
     /// that. Currently, the only thing that introduces bound variables on our
-    /// side are `Ty::Dyn` and `Ty::Opaque`, which each introduce a bound
+    /// side are `TyKind::Dyn` and `TyKind::Opaque`, which each introduce a bound
     /// variable for the self type.
     fn walk_mut_binders(
         &mut self,
@@ -932,7 +966,7 @@ pub trait TypeWalk {
     {
         self.walk_mut_binders(
             &mut |ty_mut, binders| {
-                let ty = mem::replace(ty_mut, Ty::Unknown);
+                let ty = mem::replace(ty_mut, Ty(TyKind::Unknown));
                 *ty_mut = f(ty, binders);
             },
             binders,
@@ -945,13 +979,13 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, Ty::Unknown);
+            let ty = mem::replace(ty_mut, Ty(TyKind::Unknown));
             *ty_mut = f(ty);
         });
         self
     }
 
-    /// Substitutes `Ty::Bound` vars with the given substitution.
+    /// Substitutes `TyKind::Bound` vars with the given substitution.
     fn subst_bound_vars(self, substs: &Substs) -> Self
     where
         Self: Sized,
@@ -959,14 +993,14 @@ pub trait TypeWalk {
         self.subst_bound_vars_at_depth(substs, DebruijnIndex::INNERMOST)
     }
 
-    /// Substitutes `Ty::Bound` vars with the given substitution.
+    /// Substitutes `TyKind::Bound` vars with the given substitution.
     fn subst_bound_vars_at_depth(mut self, substs: &Substs, depth: DebruijnIndex) -> Self
     where
         Self: Sized,
     {
         self.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut Ty::BoundVar(bound) = ty {
+                if let &mut TyKind::BoundVar(bound) = &mut ty.0 {
                     if bound.debruijn >= binders {
                         *ty = substs.0[bound.index].clone().shift_bound_vars(binders);
                     }
@@ -977,17 +1011,17 @@ pub trait TypeWalk {
         self
     }
 
-    /// Shifts up debruijn indices of `Ty::Bound` vars by `n`.
+    /// Shifts up debruijn indices of `TyKind::Bound` vars by `n`.
     fn shift_bound_vars(self, n: DebruijnIndex) -> Self
     where
         Self: Sized,
     {
         self.fold_binders(
-            &mut |ty, binders| match ty {
-                Ty::BoundVar(bound) if bound.debruijn >= binders => {
-                    Ty::BoundVar(bound.shifted_in_from(n))
+            &mut |ty, binders| match &ty.0 {
+                TyKind::BoundVar(bound) if bound.debruijn >= binders => {
+                    TyKind::BoundVar(bound.shifted_in_from(n)).intern(&Interner)
                 }
-                ty => ty,
+                _ => ty,
             },
             DebruijnIndex::INNERMOST,
         )
@@ -996,18 +1030,18 @@ pub trait TypeWalk {
 
 impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self {
-            Ty::Alias(AliasTy::Projection(p_ty)) => {
+        match self.interned(&Interner) {
+            TyKind::Alias(AliasTy::Projection(p_ty)) => {
                 for t in p_ty.parameters.iter() {
                     t.walk(f);
                 }
             }
-            Ty::Alias(AliasTy::Opaque(o_ty)) => {
+            TyKind::Alias(AliasTy::Opaque(o_ty)) => {
                 for t in o_ty.parameters.iter() {
                     t.walk(f);
                 }
             }
-            Ty::Dyn(predicates) => {
+            TyKind::Dyn(predicates) => {
                 for p in predicates.iter() {
                     p.walk(f);
                 }
@@ -1028,16 +1062,16 @@ impl TypeWalk for Ty {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        match self {
-            Ty::Alias(AliasTy::Projection(p_ty)) => {
+        match &mut self.0 {
+            TyKind::Alias(AliasTy::Projection(p_ty)) => {
                 p_ty.parameters.walk_mut_binders(f, binders);
             }
-            Ty::Dyn(predicates) => {
+            TyKind::Dyn(predicates) => {
                 for p in make_mut_slice(predicates) {
                     p.walk_mut_binders(f, binders.shifted_in());
                 }
             }
-            Ty::Alias(AliasTy::Opaque(o_ty)) => {
+            TyKind::Alias(AliasTy::Opaque(o_ty)) => {
                 o_ty.parameters.walk_mut_binders(f, binders);
             }
             _ => {

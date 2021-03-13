@@ -9,7 +9,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{method_resolution, Substs, Ty, ValueTyDefId};
+use crate::{method_resolution, Interner, Substs, Ty, TyKind, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -144,7 +144,7 @@ impl<'a> InferenceContext<'a> {
                     remaining_segments_for_ty,
                     true,
                 );
-                if let Ty::Unknown = ty {
+                if let TyKind::Unknown = ty.interned(&Interner) {
                     return None;
                 }
 
@@ -209,7 +209,7 @@ impl<'a> InferenceContext<'a> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
-        if let Ty::Unknown = ty {
+        if let TyKind::Unknown = ty.interned(&Interner) {
             return None;
         }
 

@@ -20,13 +20,14 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     utils::generics,
     BoundVar, CallableDefId, CallableSig, DebruijnIndex, GenericPredicate, ProjectionPredicate,
-    ProjectionTy, Substs, TraitRef, Ty,
+    ProjectionTy, Substs, TraitRef, Ty, TyKind,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsAssocType,
     TypeAliasAsValue,
 };
 
+pub use self::interner::Interner;
 pub(crate) use self::interner::*;
 
 pub(super) mod tls;
@@ -90,7 +91,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             ty: &Ty,
             binders: &CanonicalVarKinds<Interner>,
         ) -> Option<chalk_ir::TyVariableKind> {
-            if let Ty::BoundVar(bv) = ty {
+            if let TyKind::BoundVar(bv) = ty.interned(&Interner) {
                 let binders = binders.as_slice(&Interner);
                 if bv.debruijn == DebruijnIndex::INNERMOST {
                     if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {
@@ -220,21 +221,25 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                     let impl_bound = GenericPredicate::Implemented(TraitRef {
                         trait_: future_trait,
                         // Self type as the first parameter.
-                        substs: Substs::single(Ty::BoundVar(BoundVar {
-                            debruijn: DebruijnIndex::INNERMOST,
-                            index: 0,
-                        })),
+                        substs: Substs::single(
+                            TyKind::BoundVar(BoundVar {
+                                debruijn: DebruijnIndex::INNERMOST,
+                                index: 0,
+                            })
+                            .intern(&Interner),
+                        ),
                     });
                     let proj_bound = GenericPredicate::Projection(ProjectionPredicate {
                         // The parameter of the opaque type.
-                        ty: Ty::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 }),
+                        ty: TyKind::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 })
+                            .intern(&Interner),
                         projection_ty: ProjectionTy {
                             associated_ty: future_output,
                             // Self type as the first parameter.
-                            parameters: Substs::single(Ty::BoundVar(BoundVar::new(
-                                DebruijnIndex::INNERMOST,
-                                0,
-                            ))),
+                            parameters: Substs::single(
+                                TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
+                                    .intern(&Interner),
+                            ),
                         },
                     });
                     let bound = OpaqueTyDatumBound {
@@ -263,7 +268,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
 
     fn hidden_opaque_type(&self, _id: chalk_ir::OpaqueTyId<Interner>) -> chalk_ir::Ty<Interner> {
         // FIXME: actually provide the hidden type; it is relevant for auto traits
-        Ty::Unknown.to_chalk(self.db)
+        TyKind::Unknown.intern(&Interner).to_chalk(self.db)
     }
 
     fn is_object_safe(&self, _trait_id: chalk_ir::TraitId<Interner>) -> bool {
@@ -391,7 +396,8 @@ pub(crate) fn associated_ty_data_query(
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
     let ctx = crate::TyLoweringContext::new(db, &resolver)
         .with_type_param_mode(crate::lower::TypeParamLoweringMode::Variable);
-    let self_ty = Ty::BoundVar(crate::BoundVar::new(crate::DebruijnIndex::INNERMOST, 0));
+    let self_ty =
+        TyKind::BoundVar(BoundVar::new(crate::DebruijnIndex::INNERMOST, 0)).intern(&Interner);
     let bounds = type_alias_data
         .bounds
         .iter()

@@ -19,8 +19,8 @@ use crate::{
     db::HirDatabase,
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Scalar, Substs,
-    TraitEnvironment, TraitRef, Ty, TypeWalk,
+    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Interner, Scalar, Substs,
+    TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -44,18 +44,20 @@ impl TyFingerprint {
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
     pub(crate) fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
-        let fp = match ty {
-            &Ty::Str => TyFingerprint::Str,
-            &Ty::Never => TyFingerprint::Never,
-            &Ty::Slice(..) => TyFingerprint::Slice,
-            &Ty::Array(..) => TyFingerprint::Array,
-            &Ty::Scalar(scalar) => TyFingerprint::Scalar(scalar),
-            &Ty::Adt(AdtId(adt), _) => TyFingerprint::Adt(adt),
-            &Ty::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
-            &Ty::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
-            &Ty::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
-            &Ty::Function(FnPointer { num_args, sig, .. }) => TyFingerprint::FnPtr(num_args, sig),
-            Ty::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
+        let fp = match *ty.interned(&Interner) {
+            TyKind::Str => TyFingerprint::Str,
+            TyKind::Never => TyFingerprint::Never,
+            TyKind::Slice(..) => TyFingerprint::Slice,
+            TyKind::Array(..) => TyFingerprint::Array,
+            TyKind::Scalar(scalar) => TyFingerprint::Scalar(scalar),
+            TyKind::Adt(AdtId(adt), _) => TyFingerprint::Adt(adt),
+            TyKind::Tuple(cardinality, _) => TyFingerprint::Tuple(cardinality),
+            TyKind::Raw(mutability, ..) => TyFingerprint::RawPtr(mutability),
+            TyKind::ForeignType(alias_id, ..) => TyFingerprint::ForeignType(alias_id),
+            TyKind::Function(FnPointer { num_args, sig, .. }) => {
+                TyFingerprint::FnPtr(num_args, sig)
+            }
+            TyKind::Dyn(_) => ty.dyn_trait().map(|trait_| TyFingerprint::Dyn(trait_))?,
             _ => return None,
         };
         Some(fp)
@@ -230,31 +232,31 @@ impl Ty {
 
         let mod_to_crate_ids = |module: ModuleId| Some(std::iter::once(module.krate()).collect());
 
-        let lang_item_targets = match self {
-            Ty::Adt(AdtId(def_id), _) => {
+        let lang_item_targets = match self.interned(&Interner) {
+            TyKind::Adt(AdtId(def_id), _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
-            Ty::ForeignType(type_alias_id) => {
+            TyKind::ForeignType(type_alias_id) => {
                 return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
             }
-            Ty::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
-            Ty::Scalar(Scalar::Char) => lang_item_crate!("char"),
-            Ty::Scalar(Scalar::Float(f)) => match f {
+            TyKind::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
+            TyKind::Scalar(Scalar::Char) => lang_item_crate!("char"),
+            TyKind::Scalar(Scalar::Float(f)) => match f {
                 // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
                 FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
                 FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
             },
-            &Ty::Scalar(Scalar::Int(t)) => {
+            &TyKind::Scalar(Scalar::Int(t)) => {
                 lang_item_crate!(primitive::int_ty_to_string(t))
             }
-            &Ty::Scalar(Scalar::Uint(t)) => {
+            &TyKind::Scalar(Scalar::Uint(t)) => {
                 lang_item_crate!(primitive::uint_ty_to_string(t))
             }
-            Ty::Str => lang_item_crate!("str_alloc", "str"),
-            Ty::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
-            Ty::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
-            Ty::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
-            Ty::Dyn(_) => {
+            TyKind::Str => lang_item_crate!("str_alloc", "str"),
+            TyKind::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
+            TyKind::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
+            TyKind::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
+            TyKind::Dyn(_) => {
                 return self.dyn_trait().and_then(|trait_| {
                     mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
                 });
@@ -430,7 +432,8 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: Ty::Ref(Mutability::Not, Substs::single(deref_chain[0].value.clone())),
+        value: TyKind::Ref(Mutability::Not, Substs::single(deref_chain[0].value.clone()))
+            .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &refed,
@@ -446,7 +449,8 @@ fn iterate_method_candidates_with_autoref(
     }
     let ref_muted = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: Ty::Ref(Mutability::Mut, Substs::single(deref_chain[0].value.clone())),
+        value: TyKind::Ref(Mutability::Mut, Substs::single(deref_chain[0].value.clone()))
+            .intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &ref_muted,
@@ -526,7 +530,7 @@ fn iterate_trait_method_candidates(
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    let env_traits = if let Ty::Placeholder(_) = self_ty.value {
+    let env_traits = if let TyKind::Placeholder(_) = self_ty.value.interned(&Interner) {
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         env.traits_in_scope_from_clauses(&self_ty.value)
             .flat_map(|t| all_super_traits(db.upcast(), t))
@@ -679,13 +683,13 @@ pub(crate) fn inherent_impl_substs(
 }
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
-/// num_vars_to_keep) by `Ty::Unknown`.
+/// num_vars_to_keep) by `TyKind::Unknown`.
 fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
     s.fold_binders(
         &mut |ty, binders| {
-            if let Ty::BoundVar(bound) = &ty {
+            if let TyKind::BoundVar(bound) = ty.interned(&Interner) {
                 if bound.index >= num_vars_to_keep && bound.debruijn >= binders {
-                    Ty::Unknown
+                    TyKind::Unknown.intern(&Interner)
                 } else {
                     ty
                 }
@@ -772,9 +776,11 @@ fn autoderef_method_receiver(
 ) -> Vec<Canonical<Ty>> {
     let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(Ty::Array(parameters)) = deref_chain.last().map(|ty| &ty.value) {
+    if let Some(TyKind::Array(parameters)) =
+        deref_chain.last().map(|ty| ty.value.interned(&Interner))
+    {
         let kinds = deref_chain.last().unwrap().kinds.clone();
-        let unsized_ty = Ty::Slice(parameters.clone());
+        let unsized_ty = TyKind::Slice(parameters.clone()).intern(&Interner);
         deref_chain.push(Canonical { value: unsized_ty, kinds })
     }
     deref_chain
