@@ -1942,6 +1942,18 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
     pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+        // SAFETY:
+        // - len is ignored and so never changed
+        let (init, spare, _) = unsafe { self.split_at_spare_mut_with_len() };
+        (init, spare)
+    }
+
+    /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
+    ///
+    /// This method is used to have unique access to all vec parts at once in `extend_from_within`.
+    unsafe fn split_at_spare_mut_with_len(
+        &mut self,
+    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
         let Range { start: ptr, end: spare_ptr } = self.as_mut_ptr_range();
         let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
         let spare_len = self.buf.capacity() - self.len;
@@ -1953,7 +1965,7 @@ impl<T, A: Allocator> Vec<T, A> {
             let initialized = slice::from_raw_parts_mut(ptr, self.len);
             let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
 
-            (initialized, spare)
+            (initialized, spare, &mut self.len)
         }
     }
 }
@@ -2165,22 +2177,23 @@ trait ExtendFromWithinSpec {
 
 impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
-        let initialized = {
-            let (this, spare) = self.split_at_spare_mut();
-
-            // SAFETY:
-            // - caller guaratees that src is a valid index
-            let to_clone = unsafe { this.get_unchecked(src) };
-
-            to_clone.iter().cloned().zip(spare.iter_mut()).map(|(e, s)| s.write(e)).count()
-        };
+        // SAFETY:
+        // - len is increased only after initializing elements
+        let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
 
         // SAFETY:
-        // - elements were just initialized
-        unsafe {
-            let new_len = self.len() + initialized;
-            self.set_len(new_len);
-        }
+        // - caller guaratees that src is a valid index
+        let to_clone = unsafe { this.get_unchecked(src) };
+
+        to_clone
+            .iter()
+            .cloned()
+            .zip(spare.iter_mut())
+            .map(|(src, dst)| dst.write(src))
+            // Note:
+            // - Element was just initialized with `MaybeUninit::write`, so it's ok to increace len
+            // - len is increased after each element to prevent leaks (see issue #82533)
+            .for_each(|_| *len += 1);
     }
 }
 

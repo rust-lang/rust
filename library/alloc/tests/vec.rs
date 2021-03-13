@@ -7,6 +7,7 @@ use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};
 
 struct DropCounter<'a> {
@@ -2099,4 +2100,45 @@ fn test_extend_from_within() {
     v.extend_from_within(..=1);
 
     assert_eq!(v, ["a", "b", "c", "b", "c", "a", "b"]);
+}
+
+// Regression test for issue #82533
+#[test]
+fn test_extend_from_within_panicing_clone() {
+    struct Panic<'dc> {
+        drop_count: &'dc AtomicU32,
+        aaaaa: bool,
+    }
+
+    impl Clone for Panic<'_> {
+        fn clone(&self) -> Self {
+            if self.aaaaa {
+                panic!("panic! at the clone");
+            }
+
+            Self { ..*self }
+        }
+    }
+
+    impl Drop for Panic<'_> {
+        fn drop(&mut self) {
+            self.drop_count.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    let count = core::sync::atomic::AtomicU32::new(0);
+    let mut vec = vec![
+        Panic { drop_count: &count, aaaaa: false },
+        Panic { drop_count: &count, aaaaa: true },
+        Panic { drop_count: &count, aaaaa: false },
+    ];
+
+    // This should clone&append one Panic{..} at the end, and then panic while
+    // cloning second Panic{..}. This means that `Panic::drop` should be called
+    // 4 times (3 for items already in vector, 1 for just appended).
+    //
+    // Previously just appended item was leaked, making drop_count = 3, instead of 4.
+    std::panic::catch_unwind(move || vec.extend_from_within(..)).unwrap_err();
+
+    assert_eq!(count.load(Ordering::SeqCst), 4);
 }
