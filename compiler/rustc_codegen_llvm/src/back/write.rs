@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::back::lto::ThinBuffer;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
@@ -166,8 +165,6 @@ pub fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    let mut features = llvm_util::handle_native_features(sess);
-    features.extend(attributes::llvm_target_features(sess).map(|s| s.to_owned()));
     let mut singlethread = sess.target.singlethread;
 
     // On the wasm target once the `atomics` feature is enabled that means that
@@ -182,7 +179,7 @@ pub fn target_machine_factory(
 
     let triple = SmallCStr::new(&sess.target.llvm_target);
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = features.join(",");
+    let features = llvm_util::llvm_global_features(sess).join(",");
     let features = CString::new(features).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
     let trap_unreachable =
