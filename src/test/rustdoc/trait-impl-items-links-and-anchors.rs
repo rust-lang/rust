@@ -60,6 +60,8 @@ impl MyTrait for MyStruct {
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//h4[@id="method.defaulted_override"]//a[@class="fnname"]/@href' ../trait_impl_items_links_and_anchors/trait.MyTrait.html#method.defaulted_override
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//h4[@id="method.defaulted_override"]//a[@class="anchor"]/@href' #method.defaulted_override
     fn defaulted_override(&self) {}
+    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//h4[@id="method.defaulted"]//a[@class="fnname"]/@href' ../trait_impl_items_links_and_anchors/trait.MyTrait.html#method.defaulted
+    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//h4[@id="method.defaulted"]//a[@class="anchor"]/@href' #method.defaulted
 }
 
 pub struct MyStruct;
