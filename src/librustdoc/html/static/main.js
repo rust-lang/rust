@@ -1852,6 +1852,9 @@ function defocusSearchBar() {
                 var crateSize = 0;
 
                 searchWords.push(crate);
+                // This object should have exactly the same set of fields as the "row"
+                // object defined below. Your JavaScript runtime will thank you.
+                // https://mathiasbynens.be/notes/shapes-ics
                 var crateRow = {
                     crate: crate,
                     ty: 1, // == ExternCrate
@@ -1902,6 +1905,8 @@ function defocusSearchBar() {
                 len = itemTypes.length;
                 var lastPath = "";
                 for (i = 0; i < len; ++i) {
+		            // This object should have exactly the same set of fields as the "crateRow"
+		            // object defined above.
                     var row = {
                         crate: crate,
                         ty: itemTypes[i],
