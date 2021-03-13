@@ -847,7 +847,7 @@ function defocusSearchBar() {
                 if (val.generics.length > 0) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
-                        var elems = {};
+                        var elems = Object.create(null);
                         var elength = object[GENERICS_DATA].length;
                         for (var x = 0; x < elength; ++x) {
                             elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
@@ -899,7 +899,7 @@ function defocusSearchBar() {
                         if (val.generics && val.generics.length !== 0) {
                             if (obj.length > GENERICS_DATA &&
                                   obj[GENERICS_DATA].length >= val.generics.length) {
-                                var elems = {};
+                                var elems = Object.create(null);
                                 len = obj[GENERICS_DATA].length;
                                 for (x = 0; x < len; ++x) {
                                     elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
