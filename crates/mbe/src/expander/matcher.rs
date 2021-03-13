@@ -59,6 +59,8 @@
 //! eof: [a $( a )* a b ·]
 //! ```
 
+use std::rc::Rc;
+
 use crate::{
     expander::{Binding, Bindings, Fragment},
     parser::{Op, OpDelimited, OpDelimitedIter, RepeatKind, Separator},
@@ -76,43 +78,15 @@ impl Bindings {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
         let tt = tt::Subtree::default().into();
-        self.inner.push((name.clone(), Binding::Fragment(Fragment::Tokens(tt))));
+        self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
     fn push_empty(&mut self, name: &SmolStr) {
-        self.inner.push((name.clone(), Binding::Empty));
-    }
-
-    fn push_nested(&mut self, idx: usize, nested: Bindings) -> Result<(), ExpandError> {
-        for (key, value) in nested.inner {
-            if self.get_mut(&key).is_none() {
-                self.inner.push((key.clone(), Binding::Nested(Vec::new())));
-            }
-            match self.get_mut(&key) {
-                Some(Binding::Nested(it)) => {
-                    // insert empty nested bindings before this one
-                    while it.len() < idx {
-                        it.push(Binding::Nested(vec![]));
-                    }
-                    it.push(value);
-                }
-                _ => {
-                    return Err(ExpandError::BindingError(format!(
-                        "could not find binding `{}`",
-                        key
-                    )));
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn get_mut(&mut self, name: &str) -> Option<&mut Binding> {
-        self.inner.iter_mut().find_map(|(n, b)| if n == name { Some(b) } else { None })
+        self.inner.insert(name.clone(), Binding::Empty);
     }
 
     fn bindings(&self) -> impl Iterator<Item = &Binding> {
-        self.inner.iter().map(|(_, b)| b)
+        self.inner.values()
     }
 }
 
@@ -163,6 +137,187 @@ pub(super) fn match_(pattern: &MetaTemplate, input: &tt::Subtree) -> Match {
 }
 
 #[derive(Debug, Clone)]
+enum BindingKind {
+    Empty(SmolStr),
+    Optional(SmolStr),
+    Fragment(SmolStr, Fragment),
+    Nested(usize, usize),
+}
+
+#[derive(Debug, Clone)]
+struct BindingsIdx(usize, usize);
+
+#[derive(Debug, Clone)]
+enum LinkNode<T> {
+    Node(T),
+    Parent { idx: usize, len: usize },
+}
+
+#[derive(Default)]
+struct BindingsBuilder {
+    nodes: Vec<Vec<LinkNode<Rc<BindingKind>>>>,
+    nested: Vec<Vec<LinkNode<usize>>>,
+}
+
+impl BindingsBuilder {
+    fn alloc(&mut self) -> BindingsIdx {
+        let idx = self.nodes.len();
+        self.nodes.push(Vec::with_capacity(8));
+        let nidx = self.nested.len();
+        self.nested.push(Vec::with_capacity(8));
+        BindingsIdx(idx, nidx)
+    }
+
+    fn copy(&mut self, bindings: &BindingsIdx) -> BindingsIdx {
+        let idx = copy_parent(bindings.0, &mut self.nodes);
+        let nidx = copy_parent(bindings.1, &mut self.nested);
+        return BindingsIdx(idx, nidx);
+
+        fn copy_parent<T>(idx: usize, target: &mut Vec<Vec<LinkNode<T>>>) -> usize
+        where
+            T: Clone,
+        {
+            let new_idx = target.len();
+            let len = target[idx].len();
+            if len < 4 {
+                target.push(target[idx].clone())
+            } else {
+                let mut item = Vec::with_capacity(8);
+                item.push(LinkNode::Parent { idx, len });
+                target.push(item);
+            }
+
+            new_idx
+        }
+    }
+
+    fn push_empty(&mut self, idx: &mut BindingsIdx, var: &SmolStr) {
+        self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Empty(var.clone()))));
+    }
+
+    fn push_optional(&mut self, idx: &mut BindingsIdx, var: &SmolStr) {
+        self.nodes[idx.0].push(LinkNode::Node(Rc::new(BindingKind::Optional(var.clone()))));
+    }
+
+    fn push_fragment(&mut self, idx: &mut BindingsIdx, var: &SmolStr, fragment: Fragment) {
+        self.nodes[idx.0]
+            .push(LinkNode::Node(Rc::new(BindingKind::Fragment(var.clone(), fragment))));
+    }
+
+    fn push_nested(&mut self, parent: &mut BindingsIdx, child: &BindingsIdx) {
+        let BindingsIdx(idx, nidx) = self.copy(&child);
+        self.nodes[parent.0].push(LinkNode::Node(Rc::new(BindingKind::Nested(idx, nidx))));
+    }
+
+    fn push_default(&mut self, idx: &mut BindingsIdx) {
+        self.nested[idx.1].push(LinkNode::Node(idx.0));
+        let new_idx = self.nodes.len();
+        self.nodes.push(Vec::with_capacity(8));
+        idx.0 = new_idx;
+    }
+
+    fn build(self, idx: &BindingsIdx) -> Bindings {
+        let mut bindings = Bindings::default();
+        self.build_recur(&mut bindings, self.nodes[idx.0].clone());
+        bindings
+    }
+
+    fn build_recur(&self, bindings: &mut Bindings, nodes: Vec<LinkNode<Rc<BindingKind>>>) {
+        for cmd in self.flatten_nodes(nodes) {
+            match &*cmd {
+                BindingKind::Empty(name) => {
+                    bindings.push_empty(name);
+                }
+                BindingKind::Optional(name) => {
+                    bindings.push_optional(name);
+                }
+                BindingKind::Fragment(name, fragment) => {
+                    bindings.inner.insert(name.clone(), Binding::Fragment(fragment.clone()));
+                }
+                BindingKind::Nested(idx, list) => {
+                    let list = self.flatten_nested(*idx, *list);
+
+                    for (idx, iter) in list.enumerate() {
+                        for (key, value) in &iter.inner {
+                            let bindings = bindings
+                                .inner
+                                .entry(key.clone())
+                                .or_insert_with(|| Binding::Nested(Vec::new()));
+
+                            if let Binding::Nested(it) = bindings {
+                                // insert empty nested bindings before this one
+                                while it.len() < idx {
+                                    it.push(Binding::Nested(Vec::new()));
+                                }
+                                it.push(value.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn flatten_nested_ref(&self, id: usize, len: usize) -> Vec<Vec<LinkNode<Rc<BindingKind>>>> {
+        self.nested[id]
+            .iter()
+            .take(len)
+            .map(|it| match it {
+                LinkNode::Node(id) => vec![self.nodes[*id].clone()],
+                LinkNode::Parent { idx, len } => self.flatten_nested_ref(*idx, *len),
+            })
+            .flatten()
+            .collect()
+    }
+
+    fn flatten_nested<'a>(
+        &'a self,
+        idx: usize,
+        list: usize,
+    ) -> impl Iterator<Item = Bindings> + 'a {
+        let last = self.nodes[idx].clone();
+        self.nested[list]
+            .iter()
+            .map(move |it| match *it {
+                LinkNode::Node(idx) => vec![self.nodes[idx].clone()],
+                LinkNode::Parent { idx, len } => self.flatten_nested_ref(idx, len),
+            })
+            .flatten()
+            .chain(std::iter::once(last))
+            .map(move |iter| {
+                let mut child_bindings = Bindings::default();
+                self.build_recur(&mut child_bindings, iter);
+                child_bindings
+            })
+    }
+
+    fn flatten_nodes_ref(&self, id: usize, len: usize) -> Vec<Rc<BindingKind>> {
+        self.nodes[id]
+            .iter()
+            .take(len)
+            .map(|it| match it {
+                LinkNode::Node(it) => vec![it.clone()],
+                LinkNode::Parent { idx, len } => self.flatten_nodes_ref(*idx, *len),
+            })
+            .flatten()
+            .collect()
+    }
+
+    fn flatten_nodes<'a>(
+        &'a self,
+        nodes: Vec<LinkNode<Rc<BindingKind>>>,
+    ) -> impl Iterator<Item = Rc<BindingKind>> + 'a {
+        nodes
+            .into_iter()
+            .map(move |it| match it {
+                LinkNode::Node(it) => vec![it],
+                LinkNode::Parent { idx, len } => self.flatten_nodes_ref(idx, len),
+            })
+            .flatten()
+    }
+}
+
+#[derive(Debug, Clone)]
 struct MatchState<'t> {
     /// The position of the "dot" in this matcher
     dot: OpDelimitedIter<'t>,
@@ -187,7 +342,7 @@ struct MatchState<'t> {
     sep_parsed: Option<usize>,
 
     /// Matched meta variables bindings
-    bindings: SmallVec<[Bindings; 4]>,
+    bindings: BindingsIdx,
 
     /// Cached result of meta variable parsing
     meta_result: Option<(TtIter<'t>, ExpandResult<Option<Fragment>>)>,
@@ -218,6 +373,7 @@ fn match_loop_inner<'t>(
     src: TtIter<'t>,
     stack: &[TtIter<'t>],
     res: &mut Match,
+    bindings_builder: &mut BindingsBuilder,
     cur_items: &mut SmallVec<[MatchState<'t>; 1]>,
     bb_items: &mut SmallVec<[MatchState<'t>; 1]>,
     next_items: &mut Vec<MatchState<'t>>,
@@ -251,12 +407,10 @@ fn match_loop_inner<'t>(
                     if item.sep_parsed.is_none() {
                         // Get the `up` matcher
                         let mut new_pos = *item.up.clone().unwrap();
+                        new_pos.bindings = bindings_builder.copy(&new_pos.bindings);
                         // Add matches from this repetition to the `matches` of `up`
-                        if let Some(bindings) = new_pos.bindings.last_mut() {
-                            for (i, b) in item.bindings.iter_mut().enumerate() {
-                                bindings.push_nested(i, b.clone()).unwrap();
-                            }
-                        }
+                        bindings_builder.push_nested(&mut new_pos.bindings, &item.bindings);
+
                         // Move the "dot" past the repetition in `up`
                         new_pos.dot.next();
                         new_pos.is_error = new_pos.is_error || item.is_error;
@@ -280,7 +434,7 @@ fn match_loop_inner<'t>(
                     else if item.sep_kind != Some(RepeatKind::ZeroOrOne) {
                         item.dot = item.dot.reset();
                         item.sep_parsed = None;
-                        item.bindings.push(Bindings::default());
+                        bindings_builder.push_default(&mut item.bindings);
                         cur_items.push(item);
                     }
                 } else {
@@ -298,12 +452,12 @@ fn match_loop_inner<'t>(
             OpDelimited::Op(Op::Repeat { tokens, kind, separator }) => {
                 if matches!(kind, RepeatKind::ZeroOrMore | RepeatKind::ZeroOrOne) {
                     let mut new_item = item.clone();
+                    new_item.bindings = bindings_builder.copy(&new_item.bindings);
                     new_item.dot.next();
                     let mut vars = Vec::new();
-                    let bindings = new_item.bindings.last_mut().unwrap();
                     collect_vars(&mut vars, tokens);
                     for var in vars {
-                        bindings.push_empty(&var);
+                        bindings_builder.push_empty(&mut new_item.bindings, &var);
                     }
                     cur_items.push(new_item);
                 }
@@ -314,7 +468,7 @@ fn match_loop_inner<'t>(
                     sep: separator.clone(),
                     sep_kind: Some(*kind),
                     sep_parsed: None,
-                    bindings: smallvec![Bindings::default()],
+                    bindings: bindings_builder.alloc(),
                     meta_result: None,
                     is_error: false,
                 })
@@ -339,7 +493,7 @@ fn match_loop_inner<'t>(
                                 item.meta_result = Some((fork, match_res));
                                 try_push!(bb_items, item);
                             } else {
-                                item.bindings.last_mut().unwrap().push_optional(name);
+                                bindings_builder.push_optional(&mut item.bindings, &name);
                                 item.dot.next();
                                 cur_items.push(item);
                             }
@@ -348,11 +502,11 @@ fn match_loop_inner<'t>(
                             res.add_err(err);
                             match match_res.value {
                                 Some(fragment) => {
-                                    item.bindings
-                                        .last_mut()
-                                        .unwrap()
-                                        .inner
-                                        .push((name.clone(), Binding::Fragment(fragment)));
+                                    bindings_builder.push_fragment(
+                                        &mut item.bindings,
+                                        &name,
+                                        fragment,
+                                    );
                                 }
                                 _ => {}
                             }
@@ -394,6 +548,8 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
     let mut res = Match::default();
     let mut error_reover_item = None;
 
+    let mut bindings_builder = BindingsBuilder::default();
+
     let mut cur_items = smallvec![MatchState {
         dot: pattern.iter_delimited(None),
         stack: Default::default(),
@@ -401,7 +557,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         sep: None,
         sep_kind: None,
         sep_parsed: None,
-        bindings: smallvec![Bindings::default()],
+        bindings: bindings_builder.alloc(),
         is_error: false,
         meta_result: None,
     }];
@@ -419,6 +575,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             src.clone(),
             &stack,
             &mut res,
+            &mut bindings_builder,
             &mut cur_items,
             &mut bb_items,
             &mut next_items,
@@ -428,9 +585,9 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         stdx::always!(cur_items.is_empty());
 
         if error_items.len() > 0 {
-            error_reover_item = error_items.pop();
+            error_reover_item = error_items.pop().map(|it| it.bindings);
         } else if eof_items.len() > 0 {
-            error_reover_item = Some(eof_items[0].clone());
+            error_reover_item = Some(eof_items[0].bindings.clone());
         }
 
         // We need to do some post processing after the `match_loop_inner`.
@@ -440,11 +597,11 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             if eof_items.len() == 1 {
                 // remove all errors, because it is the correct answer !
                 res = Match::default();
-                res.bindings = eof_items[0].bindings[0].clone();
+                res.bindings = bindings_builder.build(&eof_items[0].bindings);
             } else {
                 // Error recovery
                 if error_reover_item.is_some() {
-                    res.bindings = error_reover_item.unwrap().bindings[0].clone();
+                    res.bindings = bindings_builder.build(&error_reover_item.unwrap());
                 }
                 res.add_err(ExpandError::UnexpectedToken);
             }
@@ -467,8 +624,8 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             }
             res.add_err(err!("leftover tokens"));
 
-            if let Some(mut error_reover_item) = error_reover_item {
-                res.bindings = error_reover_item.bindings.remove(0);
+            if let Some(error_reover_item) = error_reover_item {
+                res.bindings = bindings_builder.build(&error_reover_item);
             }
             return res;
         }
@@ -494,12 +651,13 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
 
             if let Some(OpDelimited::Op(Op::Var { name, .. })) = item.dot.peek() {
                 let (iter, match_res) = item.meta_result.take().unwrap();
-                let bindings = item.bindings.last_mut().unwrap();
                 match match_res.value {
                     Some(fragment) => {
-                        bindings.inner.push((name.clone(), Binding::Fragment(fragment)));
+                        bindings_builder.push_fragment(&mut item.bindings, &name, fragment);
                     }
-                    None if match_res.err.is_none() => bindings.push_optional(name),
+                    None if match_res.err.is_none() => {
+                        bindings_builder.push_optional(&mut item.bindings, &name);
+                    }
                     _ => {}
                 }
                 if let Some(err) = match_res.err {

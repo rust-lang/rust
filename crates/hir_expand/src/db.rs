@@ -340,6 +340,8 @@ fn parse_macro_with_arg(
         None => return ExpandResult { value: None, err: result.err },
     };
 
+    log::debug!("expanded = {}", tt.as_debug_string());
+
     let fragment_kind = to_fragment_kind(db, macro_call_id);
 
     let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {

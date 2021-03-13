@@ -227,6 +227,53 @@ impl Subtree {
     }
 }
 
+impl Subtree {
+    /// A simple line string used for debugging
+    pub fn as_debug_string(&self) -> String {
+        let delim = match self.delimiter_kind() {
+            Some(DelimiterKind::Brace) => ("{", "}"),
+            Some(DelimiterKind::Bracket) => ("[", "]"),
+            Some(DelimiterKind::Parenthesis) => ("(", ")"),
+            None => (" ", " "),
+        };
+
+        let mut res = String::new();
+        res.push_str(delim.0);
+        let mut iter = self.token_trees.iter();
+        let mut last = None;
+        while let Some(child) = iter.next() {
+            let s = match child {
+                TokenTree::Leaf(it) => {
+                    let s = match it {
+                        Leaf::Literal(it) => it.text.to_string(),
+                        Leaf::Punct(it) => it.char.to_string(),
+                        Leaf::Ident(it) => it.text.to_string(),
+                    };
+                    match (it, last) {
+                        (Leaf::Ident(_), Some(&TokenTree::Leaf(Leaf::Ident(_)))) => {
+                            " ".to_string() + &s
+                        }
+                        (Leaf::Punct(_), Some(&TokenTree::Leaf(Leaf::Punct(punct)))) => {
+                            if punct.spacing == Spacing::Alone {
+                                " ".to_string() + &s
+                            } else {
+                                s
+                            }
+                        }
+                        _ => s,
+                    }
+                }
+                TokenTree::Subtree(it) => it.as_debug_string(),
+            };
+            res.push_str(&s);
+            last = Some(child);
+        }
+
+        res.push_str(delim.1);
+        res
+    }
+}
+
 pub mod buffer;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
