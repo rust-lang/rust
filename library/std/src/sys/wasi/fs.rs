@@ -650,13 +650,11 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                 );
                 return Err(io::Error::new(io::ErrorKind::Other, msg));
             }
-            let len = CStr::from_ptr(buf.as_ptr().cast()).to_bytes().len();
-            buf.set_len(len);
-            buf.shrink_to_fit();
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
 
             return Ok((
                 ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
-                PathBuf::from(OsString::from_vec(buf)),
+                PathBuf::from(OsString::from_vec(relative)),
             ));
         }
     }
