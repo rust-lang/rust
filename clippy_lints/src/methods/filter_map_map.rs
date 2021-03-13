@@ -7,12 +7,7 @@ use rustc_span::sym;
 use super::FILTER_MAP;
 
 /// lint use of `filter_map().map()` for `Iterators`
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx hir::Expr<'_>,
-    _filter_args: &'tcx [hir::Expr<'_>],
-    _map_args: &'tcx [hir::Expr<'_>],
-) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
     // lint if caller of `.filter_map().map()` is an Iterator
     if is_trait_method(cx, expr, sym::Iterator) {
         let msg = "called `filter_map(..).map(..)` on an `Iterator`";
