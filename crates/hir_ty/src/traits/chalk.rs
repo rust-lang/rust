@@ -401,7 +401,7 @@ pub(crate) fn associated_ty_data_query(
     let bounds = type_alias_data
         .bounds
         .iter()
-        .flat_map(|bound| GenericPredicate::from_type_bound(&ctx, bound, self_ty.clone()))
+        .flat_map(|bound| ctx.lower_type_bound(bound, self_ty.clone()))
         .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
         .map(|bound| make_binders(bound.shifted_in(&Interner), 0))
         .collect();

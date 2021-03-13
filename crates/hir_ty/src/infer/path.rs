@@ -40,7 +40,7 @@ impl<'a> InferenceContext<'a> {
             let ty = self.make_ty(type_ref);
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let ctx = crate::lower::TyLoweringContext::new(self.db, &resolver);
-            let (ty, _) = Ty::from_type_relative_path(&ctx, ty, None, remaining_segments_for_ty);
+            let (ty, _) = ctx.lower_ty_relative_path(ty, None, remaining_segments_for_ty);
             self.resolve_ty_assoc_item(
                 ty,
                 &path.segments().last().expect("path had at least one segment").name,
@@ -96,7 +96,7 @@ impl<'a> InferenceContext<'a> {
         // self_subst is just for the parent
         let parent_substs = self_subst.unwrap_or_else(Substs::empty);
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-        let substs = Ty::substs_from_path(&ctx, path, typable, true);
+        let substs = ctx.substs_from_path(path, typable, true);
         let full_substs = Substs::builder(substs.len())
             .use_parent_substs(&parent_substs)
             .fill(substs.0[parent_substs.len()..].iter().cloned())
@@ -126,7 +126,8 @@ impl<'a> InferenceContext<'a> {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
                 let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-                let trait_ref = TraitRef::from_resolved_path(&ctx, trait_, resolved_segment, None);
+                let trait_ref =
+                    ctx.lower_trait_ref_from_resolved_path(trait_, resolved_segment, None);
                 self.resolve_trait_assoc_item(trait_ref, segment, id)
             }
             (def, _) => {
@@ -137,8 +138,7 @@ impl<'a> InferenceContext<'a> {
                 let remaining_segments_for_ty =
                     remaining_segments.take(remaining_segments.len() - 1);
                 let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
-                let (ty, _) = Ty::from_partly_resolved_hir_path(
-                    &ctx,
+                let (ty, _) = ctx.lower_partly_resolved_path(
                     def,
                     resolved_segment,
                     remaining_segments_for_ty,
