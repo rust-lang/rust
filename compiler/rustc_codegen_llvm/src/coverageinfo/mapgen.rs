@@ -284,7 +284,7 @@ fn add_unreachable_coverage<'tcx>(
     let all_def_ids: DefIdSet =
         tcx.mir_keys(LOCAL_CRATE).iter().map(|local_def_id| local_def_id.to_def_id()).collect();
 
-    let (codegenned_def_ids, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let codegenned_def_ids = tcx.codegened_and_inlined_items(LOCAL_CRATE);
 
     let mut unreachable_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
     for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
