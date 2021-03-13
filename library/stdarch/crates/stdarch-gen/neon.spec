@@ -601,6 +601,15 @@ generate float64x*_t
 arm = vmul.
 generate float*_t
 
+/// Divide
+name = vdiv
+fn = simd_div
+a = 2.0, 6.0, 4.0, 10.0
+b = 1.0, 2.0, 1.0, 2.0
+validate 2.0, 3.0, 4.0, 5.0
+
+aarch64 = fdiv
+generate float*_t, float64x*_t
 
 /// Subtract
 name = vsub

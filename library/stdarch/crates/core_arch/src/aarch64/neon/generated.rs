@@ -1031,6 +1031,38 @@ pub unsafe fn vmulq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_mul(a, b)
 }
 
+/// Divide
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdiv_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    simd_div(a, b)
+}
+
+/// Divide
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdivq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    simd_div(a, b)
+}
+
+/// Divide
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdiv_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
+    simd_div(a, b)
+}
+
+/// Divide
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fdiv))]
+pub unsafe fn vdivq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    simd_div(a, b)
+}
+
 /// Subtract
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2109,6 +2141,42 @@ mod test {
         let b: f64x2 = f64x2::new(2.0, 3.0);
         let e: f64x2 = f64x2::new(2.0, 6.0);
         let r: f64x2 = transmute(vmulq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdiv_f32() {
+        let a: f32x2 = f32x2::new(2.0, 6.0);
+        let b: f32x2 = f32x2::new(1.0, 2.0);
+        let e: f32x2 = f32x2::new(2.0, 3.0);
+        let r: f32x2 = transmute(vdiv_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdivq_f32() {
+        let a: f32x4 = f32x4::new(2.0, 6.0, 4.0, 10.0);
+        let b: f32x4 = f32x4::new(1.0, 2.0, 1.0, 2.0);
+        let e: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
+        let r: f32x4 = transmute(vdivq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdiv_f64() {
+        let a: f64 = 2.0;
+        let b: f64 = 1.0;
+        let e: f64 = 2.0;
+        let r: f64 = transmute(vdiv_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdivq_f64() {
+        let a: f64x2 = f64x2::new(2.0, 6.0);
+        let b: f64x2 = f64x2::new(1.0, 2.0);
+        let e: f64x2 = f64x2::new(2.0, 3.0);
+        let r: f64x2 = transmute(vdivq_f64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
