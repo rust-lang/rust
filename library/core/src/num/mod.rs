@@ -814,6 +814,9 @@ macro_rules! doit {
 }
 doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
+const MULTIPLIER: &[u32] =
+    &[1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 1_000, 100, 10, 1];
+
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
@@ -846,37 +849,79 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     };
 
     let mut result = T::from_u32(0);
-    if is_positive {
-        // The number is positive
-        for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
-            };
-            result = match result.checked_add(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: PosOverflow }),
-            };
+    if radix == 10 {
+        // The cpu can reorder these adds as each mul isn't dependent
+        // on the previous answer.
+        let factors = &MULTIPLIER[MULTIPLIER.len() - src.len()..];
+        let mut idx = 0;
+        if is_positive {
+            // The number is positive
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
+                    Some(x) => x,
+                    None => return Err(PIE { kind: InvalidDigit }),
+                };
+                let x = match factors[idx].checked_mul(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: PosOverflow }),
+                };
+                result = match result.checked_add(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: PosOverflow }),
+                };
+                idx += 1;
+            }
+        } else {
+            // The number is negative
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
+                    Some(x) => x,
+                    None => return Err(PIE { kind: InvalidDigit }),
+                };
+                let x = match factors[idx].checked_mul(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: NegOverflow }),
+                };
+                result = match result.checked_sub(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: NegOverflow }),
+                };
+                idx += 1;
+            }
         }
     } else {
-        // The number is negative
-        for &c in digits {
-            let x = match (c as char).to_digit(radix) {
-                Some(x) => x,
-                None => return Err(PIE { kind: InvalidDigit }),
-            };
-            result = match result.checked_mul(radix) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
-            };
-            result = match result.checked_sub(x) {
-                Some(result) => result,
-                None => return Err(PIE { kind: NegOverflow }),
-            };
+        if is_positive {
+            // The number is positive
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
+                    Some(x) => x,
+                    None => return Err(PIE { kind: InvalidDigit }),
+                };
+                result = match result.checked_mul(radix) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: PosOverflow }),
+                };
+                result = match result.checked_add(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: PosOverflow }),
+                };
+            }
+        } else {
+            // The number is negative
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
+                    Some(x) => x,
+                    None => return Err(PIE { kind: InvalidDigit }),
+                };
+                result = match result.checked_mul(radix) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: NegOverflow }),
+                };
+                result = match result.checked_sub(x) {
+                    Some(result) => result,
+                    None => return Err(PIE { kind: NegOverflow }),
+                };
+            }
         }
     }
     Ok(result)
