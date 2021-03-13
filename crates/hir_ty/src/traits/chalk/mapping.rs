@@ -66,8 +66,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::Slice(substs[0].clone().to_chalk(db)).intern(&Interner)
             }
             TyKind::Str => chalk_ir::TyKind::Str.intern(&Interner),
-            TyKind::FnDef(callable_def, substs) => {
-                let id = callable_def.to_chalk(db);
+            TyKind::FnDef(id, substs) => {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::FnDef(id, substitution).intern(&Interner)
             }
@@ -201,7 +200,7 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Never => TyKind::Never,
 
             chalk_ir::TyKind::FnDef(fn_def_id, subst) => {
-                TyKind::FnDef(from_chalk(db, fn_def_id), from_chalk(db, subst))
+                TyKind::FnDef(fn_def_id, from_chalk(db, subst))
             }
 
             chalk_ir::TyKind::Closure(id, subst) => {

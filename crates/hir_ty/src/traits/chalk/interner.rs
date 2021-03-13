@@ -20,7 +20,6 @@ pub(crate) type ImplId = chalk_ir::ImplId<Interner>;
 pub(crate) type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
 pub(crate) type AssociatedTyValueId = chalk_solve::rust_ir::AssociatedTyValueId<Interner>;
 pub(crate) type AssociatedTyValue = chalk_solve::rust_ir::AssociatedTyValue<Interner>;
-pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
 pub(crate) type FnDefDatum = chalk_solve::rust_ir::FnDefDatum<Interner>;
 pub(crate) type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;

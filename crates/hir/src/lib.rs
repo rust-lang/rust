@@ -1715,10 +1715,7 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let def = match self.ty.value.interned(&Interner) {
-            &TyKind::FnDef(def, _) => Some(def),
-            _ => None,
-        };
+        let def = self.ty.value.callable_def(db);
 
         let sig = self.ty.value.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, def, is_bound_method: false })

@@ -19,7 +19,7 @@ use crate::{
     method_resolution, op,
     primitive::{self, UintTy},
     to_assoc_type_id,
-    traits::{FnTrait, InEnvironment},
+    traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, OpaqueTyId, Rawness,
     Scalar, Substs, TraitRef, Ty, TyKind,
@@ -932,8 +932,9 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        if let TyKind::FnDef(def, parameters) = callable_ty.interned(&Interner) {
-            let generic_predicates = self.db.generic_predicates((*def).into());
+        if let TyKind::FnDef(fn_def, parameters) = callable_ty.interned(&Interner) {
+            let def: CallableDefId = from_chalk(self.db, *fn_def);
+            let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {
                 let predicate = predicate.clone().subst(parameters);
                 if let Some(obligation) = Obligation::from_predicate(predicate) {

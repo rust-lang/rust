@@ -1064,7 +1064,10 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
 fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 /// Build the declared type of a const.
@@ -1107,7 +1110,10 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
     }
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
@@ -1132,7 +1138,10 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
     }
     let generics = generics(db.upcast(), def.parent.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {

@@ -53,6 +53,7 @@ pub use crate::traits::chalk::Interner;
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
+pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -182,7 +183,7 @@ pub enum TyKind {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(CallableDefId, Substs),
+    FnDef(FnDefId, Substs),
 
     /// The pointee of a string slice. Written as `str`.
     Str,
@@ -703,10 +704,12 @@ impl Ty {
         }
     }
 
-    pub fn as_generic_def(&self) -> Option<GenericDefId> {
+    pub fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
         match *self.interned(&Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
-            TyKind::FnDef(callable, ..) => Some(callable.into()),
+            TyKind::FnDef(callable, ..) => {
+                Some(db.lookup_intern_callable_def(callable.into()).into())
+            }
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
             TyKind::ForeignType(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
@@ -775,10 +778,18 @@ impl Ty {
         }
     }
 
-    pub fn as_fn_def(&self) -> Option<FunctionId> {
+    pub fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
         match self.interned(&Interner) {
-            &TyKind::FnDef(CallableDefId::FunctionId(func), ..) => Some(func),
+            &TyKind::FnDef(def, ..) => Some(db.lookup_intern_callable_def(def.into())),
             _ => None,
+        }
+    }
+
+    pub fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
+        if let Some(CallableDefId::FunctionId(func)) = self.callable_def(db) {
+            Some(func)
+        } else {
+            None
         }
     }
 
@@ -786,7 +797,8 @@ impl Ty {
         match self.interned(&Interner) {
             TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
             TyKind::FnDef(def, parameters) => {
-                let sig = db.callable_item_signature(*def);
+                let callable_def = db.lookup_intern_callable_def((*def).into());
+                let sig = db.callable_item_signature(callable_def);
                 Some(sig.subst(&parameters))
             }
             TyKind::Closure(.., substs) => {

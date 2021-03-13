@@ -85,7 +85,7 @@ fn walk_unsafe(
     let expr = &body.exprs[current];
     match expr {
         &Expr::Call { callee, .. } => {
-            if let Some(func) = infer[callee].as_fn_def() {
+            if let Some(func) = infer[callee].as_fn_def(db) {
                 if db.function_data(func).is_unsafe {
                     unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
                 }

@@ -12,8 +12,9 @@ use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, primitive, to_assoc_type_id,
-    utils::generics, AdtId, AliasTy, CallableDefId, CallableSig, GenericPredicate, Interner,
-    Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty, TyKind,
+    traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
+    GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar,
+    Substs, TraitRef, Ty, TyKind,
 };
 
 pub struct HirFormatter<'a> {
@@ -363,7 +364,7 @@ impl HirDisplay for Ty {
                 sig.hir_fmt(f)?;
             }
             TyKind::FnDef(def, parameters) => {
-                let def = *def;
+                let def = from_chalk(f.db, *def);
                 let sig = f.db.callable_item_signature(def).subst(parameters);
                 match def {
                     CallableDefId::FunctionId(ff) => {
@@ -431,7 +432,7 @@ impl HirDisplay for Ty {
                         || f.omit_verbose_types()
                     {
                         match self
-                            .as_generic_def()
+                            .as_generic_def(f.db)
                             .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
                             .filter(|defaults| !defaults.is_empty())
                         {

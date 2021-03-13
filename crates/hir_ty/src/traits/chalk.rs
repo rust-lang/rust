@@ -21,8 +21,8 @@ use crate::{
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
     to_assoc_type_id,
     utils::generics,
-    BoundVar, CallableDefId, CallableSig, DebruijnIndex, GenericPredicate, ProjectionPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TyKind,
+    BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, GenericPredicate,
+    ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TyKind,
 };
 use mapping::{
     convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
