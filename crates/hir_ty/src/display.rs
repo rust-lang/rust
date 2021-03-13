@@ -11,10 +11,10 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_foreign_def_id, primitive, to_assoc_type_id,
-    traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
-    GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar,
-    Substs, TraitRef, Ty, TyKind,
+    db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
+    to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId,
+    CallableSig, GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId,
+    ProjectionTy, Scalar, Substs, TraitRef, Ty, TyKind,
 };
 
 pub struct HirFormatter<'a> {
@@ -541,7 +541,8 @@ impl HirDisplay for Ty {
                     write!(f, "{{closure}}")?;
                 }
             }
-            TyKind::Placeholder(id) => {
+            TyKind::Placeholder(idx) => {
+                let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
                 let param_data = &generics.params.types[id.local_id];
                 match param_data.provenance {
@@ -549,8 +550,8 @@ impl HirDisplay for Ty {
                         write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
-                        let bounds = f.db.generic_predicates_for_param(*id);
-                        let substs = Substs::type_params_for_generics(&generics);
+                        let bounds = f.db.generic_predicates_for_param(id);
+                        let substs = Substs::type_params_for_generics(f.db, &generics);
                         write_bounds_like_dyn_trait_with_prefix(
                             "impl",
                             &bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(),

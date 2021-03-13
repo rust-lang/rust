@@ -1384,7 +1384,7 @@ impl TypeParam {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.parent.resolver(db.upcast());
         let krate = self.id.parent.module(db.upcast()).krate();
-        let ty = TyKind::Placeholder(self.id).intern(&Interner);
+        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id)).intern(&Interner);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 

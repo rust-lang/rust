@@ -54,6 +54,7 @@ pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub type FnDefId = chalk_ir::FnDefId<Interner>;
 pub type ClosureId = chalk_ir::ClosureId<Interner>;
+pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -220,7 +221,7 @@ pub enum TyKind {
     /// {}` when we're type-checking the body of that function. In this
     /// situation, we know this stands for *some* type, but don't know the exact
     /// type.
-    Placeholder(TypeParamId),
+    Placeholder(PlaceholderIndex),
 
     /// A bound type variable. This is used in various places: when representing
     /// some polymorphic type like the type of function `fn f<T>`, the type
@@ -310,11 +311,14 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn type_params_for_generics(generic_params: &Generics) -> Substs {
+    pub(crate) fn type_params_for_generics(
+        db: &dyn HirDatabase,
+        generic_params: &Generics,
+    ) -> Substs {
         Substs(
             generic_params
                 .iter()
-                .map(|(id, _)| TyKind::Placeholder(id).intern(&Interner))
+                .map(|(id, _)| TyKind::Placeholder(to_placeholder_idx(db, id)).intern(&Interner))
                 .collect(),
         )
     }
@@ -322,7 +326,7 @@ impl Substs {
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
     pub fn type_params(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substs {
         let params = generics(db.upcast(), def.into());
-        Substs::type_params_for_generics(&params)
+        Substs::type_params_for_generics(db, &params)
     }
 
     /// Return Substs that replace each parameter by a bound variable.
@@ -909,13 +913,14 @@ impl Ty {
 
                 predicates.map(|it| it.value)
             }
-            TyKind::Placeholder(id) => {
+            TyKind::Placeholder(idx) => {
+                let id = from_placeholder_idx(db, *idx);
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params.types[id.local_id];
                 match param_data.provenance {
                     hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
                         let predicates = db
-                            .generic_predicates_for_param(*id)
+                            .generic_predicates_for_param(id)
                             .into_iter()
                             .map(|pred| pred.value.clone())
                             .collect_vec();
@@ -1147,4 +1152,18 @@ pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
 
 pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
     salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeParamId {
+    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
+    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
+    db.lookup_intern_type_param_id(interned_id)
+}
+
+pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderIndex {
+    let interned_id = db.intern_type_param_id(id);
+    PlaceholderIndex {
+        ui: chalk_ir::UniverseIndex::ROOT,
+        idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
+    }
 }

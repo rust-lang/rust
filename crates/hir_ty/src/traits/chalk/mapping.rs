@@ -3,10 +3,7 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
-use chalk_ir::{
-    cast::Cast, fold::shift::Shift, interner::HasInterner, LifetimeData, PlaceholderIndex,
-    UniverseIndex,
-};
+use chalk_ir::{cast::Cast, fold::shift::Shift, interner::HasInterner, LifetimeData};
 use chalk_solve::rust_ir;
 
 use base_db::salsa::InternKey;
@@ -91,14 +88,7 @@ impl ToChalk for Ty {
                 .cast(&Interner)
                 .intern(&Interner)
             }
-            TyKind::Placeholder(id) => {
-                let interned_id = db.intern_type_param_id(id);
-                PlaceholderIndex {
-                    ui: UniverseIndex::ROOT,
-                    idx: interned_id.as_intern_id().as_usize(),
-                }
-                .to_ty::<Interner>(&Interner)
-            }
+            TyKind::Placeholder(idx) => idx.to_ty::<Interner>(&Interner),
             TyKind::BoundVar(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
             TyKind::InferenceVar(..) => panic!("uncanonicalized infer ty"),
             TyKind::Dyn(predicates) => {
@@ -128,13 +118,7 @@ impl ToChalk for Ty {
         match chalk.data(&Interner).kind.clone() {
             chalk_ir::TyKind::Error => TyKind::Unknown,
             chalk_ir::TyKind::Array(ty, _size) => TyKind::Array(Substs::single(from_chalk(db, ty))),
-            chalk_ir::TyKind::Placeholder(idx) => {
-                assert_eq!(idx.ui, UniverseIndex::ROOT);
-                let interned_id = crate::db::GlobalTypeParamId::from_intern_id(
-                    crate::salsa::InternId::from(idx.idx),
-                );
-                TyKind::Placeholder(db.lookup_intern_type_param_id(interned_id))
-            }
+            chalk_ir::TyKind::Placeholder(idx) => TyKind::Placeholder(idx),
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = proj.associated_ty_id;
                 let parameters = from_chalk(db, proj.substitution);

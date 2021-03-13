@@ -81,7 +81,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
     #[salsa::interned]
-    fn intern_type_param_id(&self, param_id: TypeParamId) -> GlobalTypeParamId;
+    fn intern_type_param_id(&self, param_id: TypeParamId) -> InternedTypeParamId;
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: OpaqueTyId) -> InternedOpaqueTyId;
     #[salsa::interned]
@@ -149,8 +149,8 @@ fn hir_database_is_object_safe() {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GlobalTypeParamId(salsa::InternId);
-impl_intern_key!(GlobalTypeParamId);
+pub struct InternedTypeParamId(salsa::InternId);
+impl_intern_key!(InternedTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedOpaqueTyId(salsa::InternId);

@@ -27,7 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
-    to_assoc_type_id,
+    to_assoc_type_id, to_placeholder_idx,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
@@ -249,7 +249,9 @@ impl Ty {
                                     data.provenance == TypeParamProvenance::ArgumentImplTrait
                                 })
                                 .nth(idx as usize)
-                                .map_or(TyKind::Unknown, |(id, _)| TyKind::Placeholder(id));
+                                .map_or(TyKind::Unknown, |(id, _)| {
+                                    TyKind::Placeholder(to_placeholder_idx(ctx.db, id))
+                                });
                             param.intern(&Interner)
                         } else {
                             TyKind::Unknown.intern(&Interner)
@@ -384,7 +386,9 @@ impl Ty {
                     ctx.resolver.generic_def().expect("generics in scope"),
                 );
                 match ctx.type_param_mode {
-                    TypeParamLoweringMode::Placeholder => TyKind::Placeholder(param_id),
+                    TypeParamLoweringMode::Placeholder => {
+                        TyKind::Placeholder(to_placeholder_idx(ctx.db, param_id))
+                    }
                     TypeParamLoweringMode::Variable => {
                         let idx = generics.param_idx(param_id).expect("matching generics");
                         TyKind::BoundVar(BoundVar::new(ctx.in_binders, idx))
@@ -396,7 +400,7 @@ impl Ty {
                 let generics = generics(ctx.db.upcast(), impl_id.into());
                 let substs = match ctx.type_param_mode {
                     TypeParamLoweringMode::Placeholder => {
-                        Substs::type_params_for_generics(&generics)
+                        Substs::type_params_for_generics(ctx.db, &generics)
                     }
                     TypeParamLoweringMode::Variable => {
                         Substs::bound_vars(&generics, ctx.in_binders)
@@ -408,7 +412,7 @@ impl Ty {
                 let generics = generics(ctx.db.upcast(), adt.into());
                 let substs = match ctx.type_param_mode {
                     TypeParamLoweringMode::Placeholder => {
-                        Substs::type_params_for_generics(&generics)
+                        Substs::type_params_for_generics(ctx.db, &generics)
                     }
                     TypeParamLoweringMode::Variable => {
                         Substs::bound_vars(&generics, ctx.in_binders)
@@ -689,8 +693,9 @@ impl GenericPredicate {
                         let generics = generics(ctx.db.upcast(), generic_def);
                         let param_id =
                             hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
+                        let placeholder = to_placeholder_idx(ctx.db, param_id);
                         match ctx.type_param_mode {
-                            TypeParamLoweringMode::Placeholder => TyKind::Placeholder(param_id),
+                            TypeParamLoweringMode::Placeholder => TyKind::Placeholder(placeholder),
                             TypeParamLoweringMode::Variable => {
                                 let idx = generics.param_idx(param_id).expect("matching generics");
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))

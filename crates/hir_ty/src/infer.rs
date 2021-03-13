@@ -454,7 +454,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substs::type_params_for_generics(&generics);
+                let substs = Substs::type_params_for_generics(self.db, &generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 match unresolved {
                     None => {
