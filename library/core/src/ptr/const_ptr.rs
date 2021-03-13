@@ -819,9 +819,10 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
@@ -837,9 +838,10 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
