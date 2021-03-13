@@ -149,6 +149,9 @@ fn inactive_via_cfg_attr() {
           #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
 
           #[cfg_attr(never, cfg(no))] fn g() {}
+
+          #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
         "#,
     );
 }
