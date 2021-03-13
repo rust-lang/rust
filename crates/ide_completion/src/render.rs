@@ -157,9 +157,7 @@ impl<'a> Render<'a> {
             .set_documentation(field.docs(self.ctx.db()))
             .set_deprecated(is_deprecated);
 
-        if let Some(relevance) = compute_relevance(&self.ctx, &ty, &name.to_string()) {
-            item.set_relevance(relevance);
-        }
+        item.set_relevance(compute_relevance(&self.ctx, &ty, &name.to_string()));
 
         item.build()
     }
@@ -254,9 +252,9 @@ impl<'a> Render<'a> {
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
 
-            if let Some(relevance) = compute_relevance(&self.ctx, &ty, &local_name) {
-                item.set_relevance(relevance);
-            }
+            let mut relevance = compute_relevance(&self.ctx, &ty, &local_name);
+            relevance.is_local = true;
+            item.set_relevance(relevance);
 
             if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
                 if ty != expected_type {
@@ -328,12 +326,15 @@ impl<'a> Render<'a> {
     }
 }
 
-fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionRelevance> {
-    let (expected_name, expected_type) = ctx.expected_name_and_type()?;
+fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> CompletionRelevance {
     let mut res = CompletionRelevance::default();
-    res.exact_type_match = ty == &expected_type;
-    res.exact_name_match = name == &expected_name;
-    Some(res)
+
+    if let Some((expected_name, expected_type)) = ctx.expected_name_and_type() {
+        res.exact_type_match = ty == &expected_type;
+        res.exact_name_match = name == &expected_name;
+    }
+
+    res
 }
 
 fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -> bool {
@@ -343,6 +344,7 @@ fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use itertools::Itertools;
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
@@ -355,15 +357,17 @@ mod tests {
     }
 
     fn check_relevance(ra_fixture: &str, expect: Expect) {
-        fn display_relevance(relevance: CompletionRelevance) -> &'static str {
-            match relevance {
-                CompletionRelevance { exact_type_match: true, exact_name_match: true } => {
-                    "[type+name]"
-                }
-                CompletionRelevance { exact_type_match: true, exact_name_match: false } => "[type]",
-                CompletionRelevance { exact_type_match: false, exact_name_match: true } => "[name]",
-                CompletionRelevance { exact_type_match: false, exact_name_match: false } => "[]",
-            }
+        fn display_relevance(relevance: CompletionRelevance) -> String {
+            let relevance_factors = vec![
+                (relevance.exact_type_match, "type"),
+                (relevance.exact_name_match, "name"),
+                (relevance.is_local, "local"),
+            ]
+            .into_iter()
+            .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
+            .join("+");
+
+            format!("[{}]", relevance_factors)
         }
 
         let actual = get_all_items(TEST_CONFIG, ra_fixture)
@@ -918,7 +922,7 @@ struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
-                lc world [type+name]
+                lc world [type+name+local]
                 st WorldSnapshot []
                 fn go(…) []
             "#]],
@@ -933,7 +937,7 @@ struct Foo;
 fn f(foo: &Foo) { f(foo, w$0) }
 "#,
             expect![[r#"
-                lc foo []
+                lc foo [local]
                 st Foo []
                 fn f(…) []
             "#]],
@@ -998,6 +1002,7 @@ fn main() {
                         relevance: CompletionRelevance {
                             exact_name_match: true,
                             exact_type_match: false,
+                            is_local: true,
                         },
                         ref_match: "&mut ",
                     },
@@ -1037,9 +1042,9 @@ fn main() {
 }
             "#,
             expect![[r#"
-                lc m []
-                lc t []
-                lc &t [type]
+                lc m [local]
+                lc t [local]
+                lc &t [type+local]
                 st T []
                 st S []
                 fn main() []
@@ -1091,9 +1096,9 @@ fn main() {
 }
             "#,
             expect![[r#"
-                lc m []
-                lc t []
-                lc &mut t [type]
+                lc m [local]
+                lc t [local]
+                lc &mut t [type+local]
                 tt DerefMut []
                 tt Deref []
                 fn foo(…) []
@@ -1102,5 +1107,23 @@ fn main() {
                 fn main() []
             "#]],
         )
+    }
+
+    #[test]
+    fn locals() {
+        check_relevance(
+            r#"
+fn foo(bar: u32) {
+    let baz = 0;
+
+    f$0
+}
+"#,
+            expect![[r#"
+                lc baz [local]
+                lc bar [local]
+                fn foo(…) []
+            "#]],
+        );
     }
 }
