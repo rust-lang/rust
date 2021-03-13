@@ -1840,18 +1840,22 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     where
         T: TypeFoldable<'tcx>,
     {
-        struct LateBoundRegionNameCollector<'a>(&'a mut FxHashSet<Symbol>);
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_> {
+        struct LateBoundRegionNameCollector<'a, 'tcx>(TyCtxt<'tcx>, &'a mut FxHashSet<Symbol>);
+        impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'a, 'tcx> {
+            fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+                self.0
+            }
+
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) = *r {
-                    self.0.insert(name);
+                    self.1.insert(name);
                 }
                 r.super_visit_with(self)
             }
         }
 
         self.used_region_names.clear();
-        let mut collector = LateBoundRegionNameCollector(&mut self.used_region_names);
+        let mut collector = LateBoundRegionNameCollector(self.tcx, &mut self.used_region_names);
         value.visit_with(&mut collector);
         self.region_index = 0;
     }

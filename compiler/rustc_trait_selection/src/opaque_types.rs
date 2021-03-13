@@ -442,6 +442,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
             for required_region in required_region_bounds {
                 concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+                    tcx,
                     op: |r| self.sub_regions(infer::CallReturn(span), required_region, r),
                 });
             }
@@ -510,6 +511,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx,
             op: |r| self.sub_regions(infer::CallReturn(span), least_region, r),
         });
     }
@@ -544,6 +546,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
+            tcx: self.tcx,
             op: |r| {
                 self.member_constraint(
                     opaque_type_def_id,
@@ -684,14 +687,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 //
 // We ignore any type parameters because impl trait values are assumed to
 // capture all the in-scope type parameters.
-struct ConstrainOpaqueTypeRegionVisitor<OP> {
+struct ConstrainOpaqueTypeRegionVisitor<'tcx, OP> {
+    tcx: TyCtxt<'tcx>,
     op: OP,
 }
 
-impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<OP>
+impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
+    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: &ty::Binder<T>,

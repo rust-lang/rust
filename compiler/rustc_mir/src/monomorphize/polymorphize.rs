@@ -178,7 +178,7 @@ fn mark_used_by_predicates<'tcx>(
             // Consider all generic params in a predicate as used if any other parameter in the
             // predicate is used.
             let any_param_used = {
-                let mut vis = HasUsedGenericParams { unused_parameters };
+                let mut vis = HasUsedGenericParams { tcx, unused_parameters };
                 predicate.visit_with(&mut vis).is_break()
             };
 
@@ -287,6 +287,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
     #[instrument(skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         if !c.has_param_types_or_consts() {
@@ -350,12 +353,17 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
 }
 
 /// Visitor used to check if a generic parameter is used.
-struct HasUsedGenericParams<'a> {
+struct HasUsedGenericParams<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     unused_parameters: &'a FiniteBitSet<u32>,
 }
 
-impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a> {
+impl<'a, 'tcx> TypeVisitor<'tcx> for HasUsedGenericParams<'a, 'tcx> {
     type BreakTy = ();
+
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
 
     #[instrument(skip(self))]
     fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {

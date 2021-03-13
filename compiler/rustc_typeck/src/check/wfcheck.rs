@@ -784,12 +784,15 @@ fn check_where_clauses<'tcx, 'fcx>(
         .predicates
         .iter()
         .flat_map(|&(pred, sp)| {
-            #[derive(Default)]
-            struct CountParams {
+            struct CountParams<'tcx> {
+                tcx: TyCtxt<'tcx>,
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
+            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams<'tcx> {
                 type BreakTy = ();
+                fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+                    self.tcx
+                }
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Param(param) = t.kind() {
@@ -809,7 +812,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                     c.super_visit_with(self)
                 }
             }
-            let mut param_count = CountParams::default();
+            let mut param_count = CountParams { tcx: fcx.tcx, params: FxHashSet::default() };
             let has_region = pred.visit_with(&mut param_count).is_break();
             let substituted_pred = pred.subst(fcx.tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)

@@ -183,6 +183,12 @@ pub trait TypeFolder<'tcx>: Sized {
 
 pub trait TypeVisitor<'tcx>: Sized {
     type BreakTy = !;
+    /// Supplies the `tcx` for an unevaluated anonymous constant in case its default substs
+    /// are not yet supplied.
+    ///
+    /// Visitors which do not look into these substs may leave this unimplemented, so be
+    /// careful when calling this method elsewhere.
+    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx>;
 
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
@@ -292,7 +298,8 @@ impl<'tcx> TyCtxt<'tcx> {
         value: &impl TypeFoldable<'tcx>,
         callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
-        struct RegionVisitor<F> {
+        struct RegionVisitor<'tcx, F> {
+            tcx: TyCtxt<'tcx>,
             /// The index of a binder *just outside* the things we have
             /// traversed. If we encounter a bound region bound by this
             /// binder or one outer to it, it appears free. Example:
@@ -314,11 +321,15 @@ impl<'tcx> TyCtxt<'tcx> {
             callback: F,
         }
 
-        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
+        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<'tcx, F>
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
             type BreakTy = ();
+
+            fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
 
             fn visit_binder<T: TypeFoldable<'tcx>>(
                 &mut self,
@@ -355,7 +366,9 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback }).is_break()
+        value
+            .visit_with(&mut RegionVisitor { tcx: self, outer_index: ty::INNERMOST, callback })
+            .is_break()
     }
 }
 
@@ -655,7 +668,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let mut collector = LateBoundRegionsCollector::new(just_constraint);
+        let mut collector = LateBoundRegionsCollector::new(self, just_constraint);
         let result = value.as_ref().skip_binder().visit_with(&mut collector);
         assert!(result.is_continue()); // should never have stopped early
         collector.regions
@@ -830,6 +843,10 @@ struct HasEscapingVarsVisitor {
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        bug!("tcx_for_anon_const_substs called for HasEscpaingVarsVisitor");
+    }
+
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -897,6 +914,9 @@ struct HasTypeFlagsVisitor {
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        bug!("tcx_for_anon_const_substs called for HasTypeFlagsVisitor");
+    }
 
     #[inline]
     fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
@@ -951,7 +971,8 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
 /// Collects all the late-bound regions at the innermost binding level
 /// into a hash set.
-struct LateBoundRegionsCollector {
+struct LateBoundRegionsCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
     regions: FxHashSet<ty::BoundRegionKind>,
 
@@ -965,9 +986,10 @@ struct LateBoundRegionsCollector {
     just_constrained: bool,
 }
 
-impl LateBoundRegionsCollector {
-    fn new(just_constrained: bool) -> Self {
+impl LateBoundRegionsCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
+            tcx,
             current_index: ty::INNERMOST,
             regions: Default::default(),
             just_constrained,
@@ -975,7 +997,11 @@ impl LateBoundRegionsCollector {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
+impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector<'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         self.current_index.shift_in(1);
         let result = t.super_visit_with(self);

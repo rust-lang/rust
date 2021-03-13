@@ -13,7 +13,7 @@ use rustc_middle::mir::{
     self, traversal,
     visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor as _},
 };
-use rustc_middle::ty::{self, fold::TypeVisitor, Ty};
+use rustc_middle::ty::{self, fold::TypeVisitor, Ty, TyCtxt};
 use rustc_mir::dataflow::{Analysis, AnalysisDomain, GenKill, GenKillAnalysis, ResultsCursor};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{BytePos, Span};
@@ -522,7 +522,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
                 self.possible_borrower.add(borrowed.local, lhs);
             },
             other => {
-                if ContainsRegion
+                if ContainsRegion(self.cx.tcx)
                     .visit_ty(place.ty(&self.body.local_decls, self.cx.tcx).ty)
                     .is_continue()
                 {
@@ -547,7 +547,7 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
             // If the call returns something with lifetimes,
             // let's conservatively assume the returned value contains lifetime of all the arguments.
             // For example, given `let y: Foo<'a> = foo(x)`, `y` is considered to be a possible borrower of `x`.
-            if ContainsRegion.visit_ty(&self.body.local_decls[*dest].ty).is_continue() {
+            if ContainsRegion(self.cx.tcx).visit_ty(&self.body.local_decls[*dest].ty).is_continue() {
                 return;
             }
 
@@ -563,12 +563,15 @@ impl<'a, 'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'a, 'tcx> {
     }
 }
 
-struct ContainsRegion;
+struct ContainsRegion<'tcx>(TyCtxt<'tcx>);
 
-impl TypeVisitor<'_> for ContainsRegion {
+impl<'tcx> TypeVisitor<'tcx> for ContainsRegion<'tcx> {
     type BreakTy = ();
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.0
+    }
 
-    fn visit_region(&mut self, _: ty::Region<'_>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         ControlFlow::BREAK
     }
 }

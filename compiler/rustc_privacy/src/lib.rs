@@ -178,6 +178,10 @@ where
 {
     type BreakTy = V::BreakTy;
 
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.def_id_visitor.tcx()
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
         // InternalSubsts are not visited here because they are visited below in `super_visit_with`.

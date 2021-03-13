@@ -2169,7 +2169,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             tcx,
             &mut predicates,
             trait_ref,
-            &mut cgp::parameters_for_impl(self_ty, trait_ref),
+            &mut cgp::parameters_for_impl(tcx, self_ty, trait_ref),
         );
     }
 

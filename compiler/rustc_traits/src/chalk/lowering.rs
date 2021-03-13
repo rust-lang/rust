@@ -803,7 +803,7 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
     tcx: TyCtxt<'tcx>,
     ty: Binder<T>,
 ) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
-    let mut bound_vars_collector = BoundVarsCollector::new();
+    let mut bound_vars_collector = BoundVarsCollector::new(tcx);
     ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
     let named_parameters: BTreeMap<DefId, u32> = bound_vars_collector
@@ -833,14 +833,16 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
 }
 
 crate struct BoundVarsCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     binder_index: ty::DebruijnIndex,
     crate parameters: BTreeMap<u32, chalk_ir::VariableKind<RustInterner<'tcx>>>,
     crate named_parameters: Vec<DefId>,
 }
 
 impl<'tcx> BoundVarsCollector<'tcx> {
-    crate fn new() -> Self {
+    crate fn new(tcx: TyCtxt<'tcx>) -> Self {
         BoundVarsCollector {
+            tcx,
             binder_index: ty::INNERMOST,
             parameters: BTreeMap::new(),
             named_parameters: vec![],
@@ -849,6 +851,9 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> ControlFlow<Self::BreakTy> {
         self.binder_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -1060,6 +1065,10 @@ impl PlaceholdersCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
+    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+        bug!("tcx_for_anon_const_substs called for PlaceholdersCollector");
+    }
+
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Placeholder(p) if p.universe == self.universe_index => {
