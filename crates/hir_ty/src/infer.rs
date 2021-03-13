@@ -228,7 +228,9 @@ impl<'a> InferenceContext<'a> {
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
             return_ty: TyKind::Unknown.intern(&Interner), // set in collect_fn_signature
-            trait_env: TraitEnvironment::lower(db, &resolver),
+            trait_env: owner
+                .as_generic_def_id()
+                .map_or_else(Default::default, |d| db.trait_environment(d)),
             db,
             owner,
             body: db.body(owner),

@@ -341,6 +341,16 @@ pub enum DefWithBodyId {
 
 impl_from!(FunctionId, ConstId, StaticId for DefWithBodyId);
 
+impl DefWithBodyId {
+    pub fn as_generic_def_id(self) -> Option<GenericDefId> {
+        match self {
+            DefWithBodyId::FunctionId(f) => Some(f.into()),
+            DefWithBodyId::StaticId(_) => None,
+            DefWithBodyId::ConstId(c) => Some(c.into()),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
