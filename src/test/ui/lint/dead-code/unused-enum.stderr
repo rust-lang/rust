@@ -4,10 +4,8 @@ error: struct is never constructed: `F`
 LL | struct F;
    |        ^ help: if this is intentional, prefix it with an underscore: `_F`
    |
-   = note: The leading underscore signals to the reader that while the struct may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this struct serves some other purpose
+           even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/unused-enum.rs:1:9
    |
@@ -21,10 +19,8 @@ error: struct is never constructed: `B`
 LL | struct B;
    |        ^ help: if this is intentional, prefix it with an underscore: `_B`
    |
-   = note: The leading underscore signals to the reader that while the struct may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this struct serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: enum is never used: `E`
   --> $DIR/unused-enum.rs:6:6
@@ -32,10 +28,8 @@ error: enum is never used: `E`
 LL | enum E {
    |      ^ help: if this is intentional, prefix it with an underscore: `_E`
    |
-   = note: The leading underscore signals to the reader that while the enum may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this enum serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: aborting due to 3 previous errors
 

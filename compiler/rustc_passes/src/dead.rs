@@ -506,6 +506,13 @@ fn find_live<'tcx>(
     symbol_visitor.live_symbols
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum ExtraNote {
+    /// Use this to provide some examples in the diagnostic of potential other purposes for a value
+    /// or field that is dead code
+    OtherPurposeExamples,
+}
+
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     live_symbols: FxHashSet<hir::HirId>,
@@ -573,6 +580,7 @@ impl DeadVisitor<'tcx> {
         span: rustc_span::Span,
         name: Symbol,
         participle: &str,
+        extra_note: Option<ExtraNote>,
     ) {
         if !name.as_str().starts_with('_') {
             self.tcx.struct_span_lint_hir(lint::builtin::DEAD_CODE, id, span, |lint| {
@@ -583,19 +591,26 @@ impl DeadVisitor<'tcx> {
 
                 let mut diag =
                     lint.build(&format!("{} is never {}: `{}`", descr, participle, name));
+
                 diag.multipart_suggestion(
                     "if this is intentional, prefix it with an underscore",
                     prefixed,
                     Applicability::MachineApplicable,
-                )
-                .note(&format!(
-                    "The leading underscore signals to the reader that while the {} may not be {}\n\
-                    by any Rust code, it still serves some other purpose that isn't detected by rustc.\n\
-                    (e.g. some values are used for their effect when dropped or used in FFI code\n\
-                    exclusively through raw pointers)",
-                    descr, participle,
-                ));
+                );
+
+                let mut note = format!(
+                    "the leading underscore signals that this {} serves some other \
+                    purpose\neven if it isn't used in a way that we can detect.",
+                    descr,
+                );
+                if matches!(extra_note, Some(ExtraNote::OtherPurposeExamples)) {
+                    note += " (e.g. for its effect\nwhen dropped or in foreign code)";
+                }
+
+                diag.note(&note);
+
                 // Force the note we added to the front, before any other subdiagnostics
+                // added in lint.build(...)
                 diag.children.rotate_right(1);
 
                 diag.emit()
@@ -644,7 +659,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) => "constructed", // Issue #52325
                 _ => "used",
             };
-            self.warn_dead_code(item.hir_id(), span, item.ident.name, participle);
+            self.warn_dead_code(item.hir_id(), span, item.ident.name, participle, None);
         } else {
             // Only continue if we didn't warn
             intravisit::walk_item(self, item);
@@ -658,7 +673,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         id: hir::HirId,
     ) {
         if self.should_warn_about_variant(&variant) {
-            self.warn_dead_code(variant.id, variant.span, variant.ident.name, "constructed");
+            self.warn_dead_code(variant.id, variant.span, variant.ident.name, "constructed", None);
         } else {
             intravisit::walk_variant(self, variant, g, id);
         }
@@ -666,14 +681,20 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
-            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used");
+            self.warn_dead_code(fi.hir_id(), fi.span, fi.ident.name, "used", None);
         }
         intravisit::walk_foreign_item(self, fi);
     }
 
     fn visit_field_def(&mut self, field: &'tcx hir::FieldDef<'tcx>) {
         if self.should_warn_about_field(&field) {
-            self.warn_dead_code(field.hir_id, field.span, field.ident.name, "read");
+            self.warn_dead_code(
+                field.hir_id,
+                field.span,
+                field.ident.name,
+                "read",
+                Some(ExtraNote::OtherPurposeExamples),
+            );
         }
         intravisit::walk_field_def(self, field);
     }
@@ -687,6 +708,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                         impl_item.span,
                         impl_item.ident.name,
                         "used",
+                        None,
                     );
                 }
                 self.visit_nested_body(body_id)
@@ -704,7 +726,13 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                     } else {
                         impl_item.ident.span
                     };
-                    self.warn_dead_code(impl_item.hir_id(), span, impl_item.ident.name, "used");
+                    self.warn_dead_code(
+                        impl_item.hir_id(),
+                        span,
+                        impl_item.ident.name,
+                        "used",
+                        None,
+                    );
                 }
                 self.visit_nested_body(body_id)
             }
