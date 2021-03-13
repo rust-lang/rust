@@ -843,6 +843,7 @@ function defocusSearchBar() {
             function checkGenerics(obj, val) {
                 // The names match, but we need to be sure that all generics kinda
                 // match as well.
+                var tmp_lev, elem_name;
                 if (val.generics.length > 0) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
@@ -864,8 +865,8 @@ function defocusSearchBar() {
                                 match = firstGeneric;
                                 lev = 0;
                             } else {
-                                for (var elem_name in elems) {
-                                    var tmp_lev = levenshtein(elem_name, firstGeneric);
+                                for (elem_name in elems) {
+                                    tmp_lev = levenshtein(elem_name, firstGeneric);
                                     if (tmp_lev < lev) {
                                         lev = tmp_lev;
                                         match = elem_name;
