@@ -18,6 +18,7 @@ use crate::{
     lower::lower_to_chalk_mutability,
     method_resolution, op,
     primitive::{self, UintTy},
+    to_assoc_type_id,
     traits::{FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
     AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, OpaqueTyId, Rawness,
@@ -97,8 +98,10 @@ impl<'a> InferenceContext<'a> {
         });
         if self.db.trait_solve(krate, goal.value).is_some() {
             self.obligations.push(implements_fn_trait);
-            let output_proj_ty =
-                crate::ProjectionTy { associated_ty: output_assoc_type, parameters: substs };
+            let output_proj_ty = crate::ProjectionTy {
+                associated_ty: to_assoc_type_id(output_assoc_type),
+                parameters: substs,
+            };
             let return_ty = self.normalize_projection_ty(output_proj_ty);
             Some((arg_tys, return_ty))
         } else {

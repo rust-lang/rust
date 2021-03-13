@@ -27,6 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
+    to_assoc_type_id,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
@@ -358,7 +359,7 @@ impl Ty {
                         Some((super_trait_ref, associated_ty)) => {
                             // FIXME handle type parameters on the segment
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty,
+                                associated_ty: to_assoc_type_id(associated_ty),
                                 parameters: super_trait_ref.substs,
                             }))
                             .intern(&Interner)
@@ -487,7 +488,7 @@ impl Ty {
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty,
+                                associated_ty: to_assoc_type_id(associated_ty),
                                 parameters: substs,
                             }))
                             .intern(&Interner),
@@ -753,7 +754,10 @@ fn assoc_type_bindings_from_type_bound<'a>(
                 None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
-            let projection_ty = ProjectionTy { associated_ty, parameters: super_trait_ref.substs };
+            let projection_ty = ProjectionTy {
+                associated_ty: to_assoc_type_id(associated_ty),
+                parameters: super_trait_ref.substs,
+            };
             let mut preds = SmallVec::with_capacity(
                 binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
             );

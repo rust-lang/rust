@@ -52,6 +52,7 @@ pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariabl
 pub use crate::traits::chalk::Interner;
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
+pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -70,7 +71,7 @@ pub struct OpaqueTy {
 /// trait and all its parameters are fully known.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ProjectionTy {
-    pub associated_ty: TypeAliasId,
+    pub associated_ty: AssocTypeId,
     pub parameters: Substs,
 }
 
@@ -80,7 +81,7 @@ impl ProjectionTy {
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match self.associated_ty.lookup(db.upcast()).container {
+        match from_assoc_type_id(self.associated_ty).lookup(db.upcast()).container {
             AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
@@ -141,7 +142,7 @@ pub enum TyKind {
     /// when we have tried to normalize a projection like `T::Item` but
     /// couldn't find a better representation.  In that case, we generate
     /// an **application type** like `(Iterator::Item)<T>`.
-    AssociatedType(TypeAliasId, Substs),
+    AssociatedType(AssocTypeId, Substs),
 
     /// a scalar type like `bool` or `u32`
     Scalar(Scalar),
@@ -706,7 +707,7 @@ impl Ty {
         match *self.interned(&Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
             TyKind::FnDef(callable, ..) => Some(callable.into()),
-            TyKind::AssociatedType(type_alias, ..) => Some(type_alias.into()),
+            TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
             TyKind::ForeignType(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
         }
@@ -920,14 +921,15 @@ impl Ty {
 
     pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
         match self.interned(&Interner) {
-            TyKind::AssociatedType(type_alias_id, ..) => {
-                match type_alias_id.lookup(db.upcast()).container {
+            TyKind::AssociatedType(id, ..) => {
+                match from_assoc_type_id(*id).lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
             }
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match projection_ty.associated_ty.lookup(db.upcast()).container {
+                match from_assoc_type_id(projection_ty.associated_ty).lookup(db.upcast()).container
+                {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
@@ -1121,10 +1123,18 @@ pub(crate) struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<GenericPredicate>>,
 }
 
-pub(crate) fn to_foreign_def_id(id: TypeAliasId) -> chalk_ir::ForeignDefId<Interner> {
+pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
     chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
 }
 
-pub(crate) fn from_foreign_def_id(id: chalk_ir::ForeignDefId<Interner>) -> TypeAliasId {
+pub fn from_foreign_def_id(id: ForeignDefId) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
+    chalk_ir::AssocTypeId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
     salsa::InternKey::from_intern_id(id.0)
 }

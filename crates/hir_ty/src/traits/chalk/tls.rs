@@ -4,8 +4,8 @@ use std::fmt;
 use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication};
 use itertools::Itertools;
 
-use super::{from_chalk, Interner, TypeAliasAsAssocType};
-use crate::{db::HirDatabase, CallableDefId};
+use super::{from_chalk, Interner};
+use crate::{db::HirDatabase, from_assoc_type_id, CallableDefId};
 use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
 
 pub(crate) use unsafe_tls::{set_current_program, with_current_program};
@@ -41,7 +41,7 @@ impl DebugContext<'_> {
         id: super::AssocTypeId,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_alias: TypeAliasId = from_chalk::<TypeAliasAsAssocType, _>(self.0, id).0;
+        let type_alias: TypeAliasId = from_assoc_type_id(id);
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             AssocContainerId::TraitId(t) => t,
@@ -75,8 +75,7 @@ impl DebugContext<'_> {
         projection_ty: &chalk_ir::ProjectionTy<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
-        let type_alias: TypeAliasId =
-            from_chalk::<TypeAliasAsAssocType, _>(self.0, projection_ty.associated_ty_id).0;
+        let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
             AssocContainerId::TraitId(t) => t,

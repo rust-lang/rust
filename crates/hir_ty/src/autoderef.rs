@@ -12,6 +12,7 @@ use log::{info, warn};
 
 use crate::{
     db::HirDatabase,
+    to_assoc_type_id,
     traits::{InEnvironment, Solution},
     utils::generics,
     BoundVar, Canonical, DebruijnIndex, Interner, Obligation, Substs, TraitRef, Ty, TyKind,
@@ -83,7 +84,7 @@ fn deref_by_trait(
     let projection = super::traits::ProjectionPredicate {
         ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len()))
             .intern(&Interner),
-        projection_ty: super::ProjectionTy { associated_ty: target, parameters },
+        projection_ty: super::ProjectionTy { associated_ty: to_assoc_type_id(target), parameters },
     };
 
     let obligation = super::Obligation::Projection(projection);
