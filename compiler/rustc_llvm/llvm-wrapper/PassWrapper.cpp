@@ -772,14 +772,18 @@ LLVMRustOptimizeWithNewPassManager(
   TargetMachine *TM = unwrap(TMRef);
   PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
 
-  // FIXME: MergeFunctions is not supported by NewPM yet.
-  (void) MergeFunctions;
 
   PipelineTuningOptions PTO;
   PTO.LoopUnrolling = UnrollLoops;
   PTO.LoopInterleaving = UnrollLoops;
   PTO.LoopVectorization = LoopVectorize;
   PTO.SLPVectorization = SLPVectorize;
+#if LLVM_VERSION_GE(12, 0)
+  PTO.MergeFunctions = MergeFunctions;
+#else
+  // MergeFunctions is not supported by NewPM in older LLVM versions.
+  (void) MergeFunctions;
+#endif
 
   // FIXME: We may want to expose this as an option.
   bool DebugPassManager = false;

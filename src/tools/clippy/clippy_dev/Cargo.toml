@@ -1,27 +1,17 @@
 [package]
 name = "clippy_dev"
 version = "0.0.1"
-authors = ["Philipp Hansch <dev@phansch.net>"]
+authors = ["The Rust Clippy Developers"]
 edition = "2018"
-
 
 [dependencies]
 bytecount = "0.6"
 clap = "2.33"
-flate2 = { version = "1.0.19", optional = true }
-fs_extra = { version = "1.2.0", optional = true }
 itertools = "0.9"
 opener = "0.4"
 regex = "1"
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
 shell-escape = "0.1"
-tar = { version = "0.4.30", optional = true }
-toml = { version = "0.5", optional = true }
-ureq = { version = "2.0.0-rc3", optional = true }
-rayon = { version = "1.5.0", optional = true }
 walkdir = "2"
 
 [features]
-lintcheck = ["flate2", "serde_json", "tar", "toml", "ureq", "serde", "fs_extra", "rayon"]
 deny-warnings = []

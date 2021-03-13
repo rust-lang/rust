@@ -188,7 +188,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         PTR_ARG,
                         arg.span,
                         "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                         with non-Vec-based slices.",
+                         with non-Vec-based slices",
                         |diag| {
                             if let Some(ref snippet) = get_only_generic_arg_snippet(cx, arg) {
                                 diag.span_suggestion(
@@ -217,7 +217,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         cx,
                         PTR_ARG,
                         arg.span,
-                        "writing `&String` instead of `&str` involves a new object where a slice will do.",
+                        "writing `&String` instead of `&str` involves a new object where a slice will do",
                         |diag| {
                             diag.span_suggestion(arg.span, "change this to", "&str".into(), Applicability::Unspecified);
                             for (clonespan, suggestion) in spans {
@@ -233,13 +233,13 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                         },
                     );
                 }
-            } else if match_type(cx, ty, &paths::PATH_BUF) {
+            } else if is_type_diagnostic_item(cx, ty, sym::PathBuf) {
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_path_buf()"), ("as_path", "")]) {
                     span_lint_and_then(
                         cx,
                         PTR_ARG,
                         arg.span,
-                        "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.",
+                        "writing `&PathBuf` instead of `&Path` involves a new object where a slice will do",
                         |diag| {
                             diag.span_suggestion(
                                 arg.span,
@@ -278,7 +278,7 @@ fn check_fn(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_id: HirId, opt_body_id: 
                                 cx,
                                 PTR_ARG,
                                 arg.span,
-                                "using a reference to `Cow` is not recommended.",
+                                "using a reference to `Cow` is not recommended",
                                 "change this to",
                                 "&".to_owned() + &r,
                                 Applicability::Unspecified,

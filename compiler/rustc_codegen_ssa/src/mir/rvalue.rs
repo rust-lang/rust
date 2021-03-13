@@ -325,7 +325,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                                 let er = scalar.valid_range_exclusive(bx.cx());
                                 if er.end != er.start
-                                    && scalar.valid_range.end() > scalar.valid_range.start()
+                                    && scalar.valid_range.end() >= scalar.valid_range.start()
                                 {
                                     // We want `table[e as usize ± k]` to not
                                     // have bound checks, and this is the most

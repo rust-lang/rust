@@ -18,6 +18,7 @@ because that's clearly a non-descriptive name.
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
+  - [Specifying the lint's minimum supported Rust version (msrv)](#specifying-the-lints-minimum-supported-rust-version-msrv)
   - [Author lint](#author-lint)
   - [Documentation](#documentation)
   - [Running rustfmt](#running-rustfmt)

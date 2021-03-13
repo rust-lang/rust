@@ -51,6 +51,7 @@ pub struct Config {
     pub submodules: bool,
     pub fast_submodules: bool,
     pub compiler_docs: bool,
+    pub docs_minification: bool,
     pub docs: bool,
     pub locked_deps: bool,
     pub vendor: bool,
@@ -362,6 +363,7 @@ struct Build {
     rustfmt: Option<PathBuf>,
     docs: Option<bool>,
     compiler_docs: Option<bool>,
+    docs_minification: Option<bool>,
     submodules: Option<bool>,
     fast_submodules: Option<bool>,
     gdb: Option<String>,
@@ -557,6 +559,7 @@ impl Config {
         config.submodules = true;
         config.fast_submodules = true;
         config.docs = true;
+        config.docs_minification = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
@@ -663,6 +666,7 @@ impl Config {
         config.python = build.python.map(PathBuf::from);
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
+        set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
         set(&mut config.fast_submodules, build.fast_submodules);

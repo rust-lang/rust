@@ -132,13 +132,13 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 }
 
                 let help_msg = match (range.start, range.end) {
-                    (None, Some(_)) => "Consider using `.get(..n)`or `.get_mut(..n)` instead",
-                    (Some(_), None) => "Consider using `.get(n..)` or .get_mut(n..)` instead",
-                    (Some(_), Some(_)) => "Consider using `.get(n..m)` or `.get_mut(n..m)` instead",
+                    (None, Some(_)) => "consider using `.get(..n)`or `.get_mut(..n)` instead",
+                    (Some(_), None) => "consider using `.get(n..)` or .get_mut(n..)` instead",
+                    (Some(_), Some(_)) => "consider using `.get(n..m)` or `.get_mut(n..m)` instead",
                     (None, None) => return, // [..] is ok.
                 };
 
-                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic.", None, help_msg);
+                span_lint_and_help(cx, INDEXING_SLICING, expr.span, "slicing may panic", None, help_msg);
             } else {
                 // Catchall non-range index, i.e., [n] or [n << m]
                 if let ty::Array(..) = ty.kind() {
@@ -153,9 +153,9 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     cx,
                     INDEXING_SLICING,
                     expr.span,
-                    "indexing may panic.",
+                    "indexing may panic",
                     None,
-                    "Consider using `.get(n)` or `.get_mut(n)` instead",
+                    "consider using `.get(n)` or `.get_mut(n)` instead",
                 );
             }
         }

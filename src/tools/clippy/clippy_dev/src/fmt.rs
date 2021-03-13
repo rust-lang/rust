@@ -54,6 +54,7 @@ pub fn run(check: bool, verbose: bool) {
         success &= cargo_fmt(context, project_root.as_path())?;
         success &= cargo_fmt(context, &project_root.join("clippy_dev"))?;
         success &= cargo_fmt(context, &project_root.join("rustc_tools_util"))?;
+        success &= cargo_fmt(context, &project_root.join("lintcheck"))?;
 
         for entry in WalkDir::new(project_root.join("tests")) {
             let entry = entry?;

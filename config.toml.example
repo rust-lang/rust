@@ -208,6 +208,11 @@ changelog-seen = 2
 # documentation.
 #docs = true
 
+# Flag to specify whether CSS, JavaScript, and HTML are minified when
+# docs are generated. JSON is always minified, because it's enormous,
+# and generated in already-minified form from the beginning.
+#docs-minification = true
+
 # Indicate whether the compiler should be documented in addition to the standard
 # library and facade crates.
 #compiler-docs = false
