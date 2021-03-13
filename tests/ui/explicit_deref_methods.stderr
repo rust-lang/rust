@@ -6,7 +6,7 @@ LL |     let b: &str = a.deref();
    |
    = note: `-D clippy::explicit-deref-methods` implied by `-D warnings`
 
-error: explicit `deref` method call
+error: explicit `deref_mut` method call
   --> $DIR/explicit_deref_methods.rs:32:23
    |
 LL |     let b: &mut str = a.deref_mut();

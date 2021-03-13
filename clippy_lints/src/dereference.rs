@@ -1,9 +1,9 @@
 use crate::utils::{get_parent_node, in_macro, is_allowed, peel_mid_ty_refs, snippet_with_context, span_lint_and_sugg};
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Destination, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, adjustment::Adjustment, Ty, TyCtxt, TyS, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
 
@@ -66,7 +66,7 @@ enum State {
 
 // A reference operation considered by this lint pass
 enum RefOp {
-    Method,
+    Method(Mutability),
     Deref,
     AddrOf,
 }
@@ -100,18 +100,10 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let parent = get_parent_node(cx.tcx, expr.hir_id);
-
-                let expr_adjustments = find_adjustments(cx.tcx, typeck, expr);
                 let expr_ty = typeck.expr_ty(expr);
-                let target_mut =
-                    if let ty::Ref(_, _, mutability) = *expr_adjustments.last().map_or(expr_ty, |a| a.target).kind() {
-                        mutability
-                    } else {
-                        Mutability::Not
-                    };
 
                 match kind {
-                    RefOp::Method
+                    RefOp::Method(target_mut)
                         if !is_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && is_linted_explicit_deref_position(parent, expr.hir_id) =>
                     {
@@ -133,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     _ => (),
                 }
             },
-            (Some((State::DerefMethod { ty_changed_count, .. }, data)), RefOp::Method) => {
+            (Some((State::DerefMethod { ty_changed_count, .. }, data)), RefOp::Method(_)) => {
                 self.state = Some((
                     State::DerefMethod {
                         ty_changed_count: if deref_method_same_type(typeck.expr_ty(expr), typeck.expr_ty(sub_expr)) {
@@ -173,9 +165,13 @@ fn try_parse_ref_op(
         ExprKind::AddrOf(BorrowKind::Ref, _, sub_expr) => return Some((RefOp::AddrOf, sub_expr)),
         _ => return None,
     };
-    (tcx.is_diagnostic_item(sym::deref_method, def_id)
-        || tcx.trait_of_item(def_id)? == tcx.lang_items().deref_mut_trait()?)
-    .then(|| (RefOp::Method, arg))
+    if tcx.is_diagnostic_item(sym::deref_method, def_id) {
+        Some((RefOp::Method(Mutability::Not), arg))
+    } else if tcx.trait_of_item(def_id)? == tcx.lang_items().deref_mut_trait()? {
+        Some((RefOp::Method(Mutability::Mut), arg))
+    } else {
+        None
+    }
 }
 
 // Checks whether the type for a deref call actually changed the type, not just the mutability of
@@ -188,48 +184,6 @@ fn deref_method_same_type(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
         // Not matching the previous pattern means the argument type is not a reference
         // This means that the type did change
         _ => false,
-    }
-}
-
-// Adjustments are sometimes made in the parent block rather than the expression itself.
-fn find_adjustments(
-    tcx: TyCtxt<'tcx>,
-    typeck: &'tcx TypeckResults<'_>,
-    expr: &'tcx Expr<'_>,
-) -> &'tcx [Adjustment<'tcx>] {
-    let map = tcx.hir();
-    let mut iter = map.parent_iter(expr.hir_id);
-    let mut prev = expr;
-
-    loop {
-        match typeck.expr_adjustments(prev) {
-            [] => (),
-            a => break a,
-        };
-
-        match iter.next().map(|(_, x)| x) {
-            Some(Node::Block(_)) => {
-                if let Some((_, Node::Expr(e))) = iter.next() {
-                    prev = e;
-                } else {
-                    // This shouldn't happen. Blocks are always contained in an expression.
-                    break &[];
-                }
-            },
-            Some(Node::Expr(&Expr {
-                kind: ExprKind::Break(Destination { target_id: Ok(id), .. }, _),
-                ..
-            })) => {
-                if let Some(Node::Expr(e)) = map.find(id) {
-                    prev = e;
-                    iter = map.parent_iter(id);
-                    continue;
-                }
-                // This shouldn't happen. The destination should definitely exist at this point.
-                break &[];
-            },
-            _ => break &[],
-        }
     }
 }
 
@@ -331,7 +285,10 @@ fn report(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: Stat
                 cx,
                 EXPLICIT_DEREF_METHODS,
                 data.span,
-                "explicit `deref` method call",
+                match data.target_mut {
+                    Mutability::Not => "explicit `deref` method call",
+                    Mutability::Mut => "explicit `deref_mut` method call",
+                },
                 "try this",
                 format!("{}{}{}", addr_of_str, deref_str, expr_str),
                 app,
