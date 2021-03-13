@@ -3,7 +3,7 @@ use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fs::File;
-use std::io::{self, BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::mem::MaybeUninit;
 use std::path::Path;
 use std::ptr;
@@ -683,22 +683,18 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
 pub struct FileDecoder {
     file: File,
-    buf: Box<[u8]>,
+    buf: Vec<u8>,
     pos: usize,
     cap: usize,
 }
 
 impl FileDecoder {
     #[inline]
-    pub fn new(file: BufReader<File>) -> Self {
+    pub fn new(file: File) -> Self {
         const CAP: usize = 8 * 1024;
         let mut buf = Vec::with_capacity(CAP);
         buf.resize(CAP, 0u8);
-        let old_buf = file.buffer();
-        let len = old_buf.len();
-        buf[..len].copy_from_slice(old_buf);
-        let file = file.into_inner();
-        FileDecoder { file, buf: buf.into(), pos: 0, cap: len }
+        FileDecoder { file, buf, pos: 0, cap: 0 }
     }
 
     #[inline]
@@ -708,14 +704,21 @@ impl FileDecoder {
     }
 
     #[inline]
-    pub fn read_all(self) -> Result<(Box<[u8]>, usize), io::Error> {
-        let mut file = self.file;
-        let start_pos = file.seek(SeekFrom::Current(0))?;
-        let start_pos = start_pos.try_into().unwrap();
-        file.seek(SeekFrom::Start(0))?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)?;
-        Ok((bytes.into(), start_pos))
+    pub fn read_all(self) -> Result<(Vec<u8>, usize), io::Error> {
+        let FileDecoder { mut file, mut buf, cap, pos } = self;
+        let file_pos = file.seek(SeekFrom::Current(0))?;
+        let file_pos: usize = file_pos.try_into().unwrap();
+        if file_pos == cap {
+            // We still have the beginning of the file on-buffer.
+            // Avoid dropping it and re-reading it.
+            buf.resize(cap, 0u8);
+            file.read_to_end(&mut buf)?;
+        } else {
+            file.seek(SeekFrom::Start(0))?;
+            buf.clear();
+            file.read_to_end(&mut buf)?;
+        }
+        Ok((buf, file_pos - cap + pos))
     }
 
     #[inline]
@@ -732,7 +735,7 @@ impl FileDecoder {
         }
     }
 
-    fn read_exact(&mut self, mut out: &mut [u8]) -> Result<(), io::Error> {
+    pub fn read_exact(&mut self, mut out: &mut [u8]) -> Result<(), io::Error> {
         loop {
             let len = out.len();
             if len == 0 {

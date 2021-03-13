@@ -7,8 +7,6 @@ use rustc_middle::ty::query::OnDiskCache;
 use rustc_serialize::opaque::FileDecoder;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_session::Session;
-use std::fs;
-use std::io::{self, Read, Seek};
 use std::path::Path;
 
 use super::data::*;
@@ -51,7 +49,7 @@ fn load_data(
     report_incremental_info: bool,
     path: &Path,
     nightly_build: bool,
-) -> LoadResult<io::BufReader<fs::File>> {
+) -> LoadResult<FileDecoder> {
     match file_format::read_file(report_incremental_info, path, nightly_build) {
         Ok(Some(file)) => LoadResult::Ok { data: file },
         Ok(None) => {
@@ -118,9 +116,8 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
         let work_products_path = work_products_path(sess);
         let load_result = load_data(report_incremental_info, &work_products_path, nightly_build);
 
-        if let LoadResult::Ok { data: file } = load_result {
+        if let LoadResult::Ok { data: mut work_product_decoder } = load_result {
             // Decode the list of work_products
-            let mut work_product_decoder = FileDecoder::new(file);
             let work_products: Vec<SerializedWorkProduct> =
                 RustcDecodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
                     let msg = format!(
@@ -165,8 +162,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
         match load_data(report_incremental_info, &path, nightly_build) {
             LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
             LoadResult::Error { message } => LoadResult::Error { message },
-            LoadResult::Ok { data: file } => {
-                let mut decoder = FileDecoder::new(file);
+            LoadResult::Ok { data: mut decoder } => {
                 let prev_commandline_args_hash = u64::decode(&mut decoder)
                     .expect("Error reading commandline arg hash from cached dep-graph");
 
@@ -213,11 +209,8 @@ pub fn load_query_result_cache<'a>(
         &query_cache_path(sess),
         sess.is_nightly_build(),
     ) {
-        LoadResult::Ok { data: mut file } => {
-            let start_pos = file.seek(io::SeekFrom::Current(0)).unwrap() as usize;
-            file.seek(io::SeekFrom::Start(0)).unwrap();
-            let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes).unwrap();
+        LoadResult::Ok { data: file } => {
+            let (bytes, start_pos) = file.read_all().unwrap();
             Some(OnDiskCache::new(sess, bytes, start_pos, definitions))
         }
         _ => Some(OnDiskCache::new_empty(sess.source_map())),
