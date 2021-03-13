@@ -859,7 +859,7 @@ function defocusSearchBar() {
                         for (x = 0; x < vlength; ++x) {
                             var lev = MAX_LEV_DISTANCE + 1;
                             var firstGeneric = getObjectNameFromId(val.generics[x]);
-                            var match = undefined;
+                            var match = null;
                             if (elems[firstGeneric]) {
                                 match = firstGeneric;
                                 lev = 0;
@@ -872,7 +872,7 @@ function defocusSearchBar() {
                                     }
                                 }
                             }
-                            if (match !== undefined) {
+                            if (match !== null) {
                                 elems[match] -= 1;
                                 if (elems[match] == 0) {
                                     delete elems[match];
