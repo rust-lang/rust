@@ -1015,6 +1015,90 @@ pub unsafe fn vcltzq_f64(a: float64x2_t) -> uint64x2_t {
     simd_lt(a, transmute(b))
 }
 
+/// Floating-point absolute compare greater than
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facgt))]
+pub unsafe fn vcagt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v1i64.v1f64")]
+        fn vcagt_f64_(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
+    }
+    vcagt_f64_(a, b)
+}
+
+/// Floating-point absolute compare greater than
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facgt))]
+pub unsafe fn vcagtq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facgt.v2i64.v2f64")]
+        fn vcagtq_f64_(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
+    }
+    vcagtq_f64_(a, b)
+}
+
+/// Floating-point absolute compare greater than or equal
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facge))]
+pub unsafe fn vcage_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v1i64.v1f64")]
+        fn vcage_f64_(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
+    }
+    vcage_f64_(a, b)
+}
+
+/// Floating-point absolute compare greater than or equal
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facge))]
+pub unsafe fn vcageq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.facge.v2i64.v2f64")]
+        fn vcageq_f64_(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
+    }
+    vcageq_f64_(a, b)
+}
+
+/// Floating-point absolute compare less than
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facgt))]
+pub unsafe fn vcalt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
+    vcagt_f64(b, a)
+}
+
+/// Floating-point absolute compare less than
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facgt))]
+pub unsafe fn vcaltq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
+    vcagtq_f64(b, a)
+}
+
+/// Floating-point absolute compare less than or equal
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facge))]
+pub unsafe fn vcale_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
+    vcage_f64(b, a)
+}
+
+/// Floating-point absolute compare less than or equal
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(facge))]
+pub unsafe fn vcaleq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
+    vcageq_f64(b, a)
+}
+
 /// Multiply
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2207,6 +2291,78 @@ mod test {
         let a: f64x2 = f64x2::new(-1.2, 0.0);
         let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
         let r: u64x2 = transmute(vcltzq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcagt_f64() {
+        let a: f64 = -1.2;
+        let b: f64 = -1.1;
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcagt_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcagtq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let b: f64x2 = f64x2::new(-1.1, 0.0);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0);
+        let r: u64x2 = transmute(vcagtq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcage_f64() {
+        let a: f64 = -1.2;
+        let b: f64 = -1.1;
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcage_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcageq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let b: f64x2 = f64x2::new(-1.1, 0.0);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vcageq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcalt_f64() {
+        let a: f64 = -1.2;
+        let b: f64 = -1.1;
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcalt_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcaltq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let b: f64x2 = f64x2::new(-1.1, 0.0);
+        let e: u64x2 = u64x2::new(0, 0);
+        let r: u64x2 = transmute(vcaltq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcale_f64() {
+        let a: f64 = -1.2;
+        let b: f64 = -1.1;
+        let e: u64x1 = u64x1::new(0);
+        let r: u64x1 = transmute(vcale_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcaleq_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 0.0);
+        let b: f64x2 = f64x2::new(-1.1, 0.0);
+        let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vcaleq_f64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

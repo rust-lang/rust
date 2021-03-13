@@ -288,6 +288,25 @@ extern "C" {
     #[cfg_attr(target_arch = "arm", link_name = "llvm.ctpop.v16i8")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctpop.v16i8")]
     fn vcntq_s8_(a: int8x16_t) -> int8x16_t;
+
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v8i8")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v8i8")]
+    fn vclz_s8_(a: int8x8_t) -> int8x8_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v16i8")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v16i8")]
+    fn vclzq_s8_(a: int8x16_t) -> int8x16_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v4i16")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v4i16")]
+    fn vclz_s16_(a: int16x4_t) -> int16x4_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v8i16")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v8i16")]
+    fn vclzq_s16_(a: int16x8_t) -> int16x8_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v2i32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v2i32")]
+    fn vclz_s32_(a: int32x2_t) -> int32x2_t;
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.ctlz.v4i32")]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.ctlz.v4i32")]
+    fn vclzq_s32_(a: int32x4_t) -> int32x4_t;
 }
 
 #[cfg(target_arch = "arm")]
@@ -9958,6 +9977,7 @@ mod tests {
         let r: u8x16 = transmute(vcntq_p8(transmute(a)));
         assert_eq!(r, e);
     }
+    #[simd_test(enable = "neon")]
     unsafe fn test_vrev16_s8() {
         let a = i8x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let r = i8x8::new(1, 0, 3, 2, 5, 4, 7, 6);
