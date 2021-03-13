@@ -833,11 +833,11 @@ function defocusSearchBar() {
                 };
             }
 
-            function getObjectFromId(id) {
+            function getObjectNameFromId(id) {
                 if (typeof id === "number") {
-                    return searchIndex[id];
+                    return searchIndex[id].name;
                 }
-                return {'name': id};
+                return id;
             }
 
             function checkGenerics(obj, val) {
@@ -854,9 +854,9 @@ function defocusSearchBar() {
                         var vlength = val.generics.length;
                         for (var y = 0; y < vlength; ++y) {
                             var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
-                            var firstGeneric = getObjectFromId(val.generics[y]).name;
+                            var firstGeneric = getObjectNameFromId(val.generics[y]);
                             for (var x = 0, elength = elems.length; x < elength; ++x) {
-                                var tmp_lev = levenshtein(getObjectFromId(elems[x]).name,
+                                var tmp_lev = levenshtein(getObjectNameFromId(elems[x]),
                                                                           firstGeneric);
                                 if (tmp_lev < lev.lev) {
                                     lev.lev = tmp_lev;
@@ -892,10 +892,10 @@ function defocusSearchBar() {
                                 len = val.generics.length;
                                 for (y = 0; allFound === true && y < len; ++y) {
                                     allFound = false;
-                                    firstGeneric = getObjectFromId(val.generics[y]).name;
+                                    firstGeneric = getObjectNameFromId(val.generics[y]);
                                     e_len = elems.length;
                                     for (x = 0; allFound === false && x < e_len; ++x) {
-                                        allFound = getObjectFromId(elems[x]).name === firstGeneric;
+                                        allFound = getObjectNameFromId(elems[x]) === firstGeneric;
                                     }
                                     if (allFound === true) {
                                         elems.splice(x - 1, 1);
