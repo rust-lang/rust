@@ -113,7 +113,7 @@ error[E0038]: the trait `assoc_const::C` cannot be made into an object
   --> $DIR/item-privacy.rs:101:5
    |
 LL |     C::A;
-   |     ^^^^ `assoc_const::C` cannot be made into an object
+   |     ^ `assoc_const::C` cannot be made into an object
    |
    = help: consider moving `C` to another trait
    = help: consider moving `B` to another trait
