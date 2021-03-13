@@ -933,7 +933,8 @@ pub fn drop<T>(_x: T) {}
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+#[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
+pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
     // If U has a higher alignment requirement, src may not be suitably aligned.
     if align_of::<U>() > align_of::<T>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
