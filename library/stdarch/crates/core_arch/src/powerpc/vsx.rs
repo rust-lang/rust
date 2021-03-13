@@ -75,12 +75,13 @@ mod sealed {
 /// Vector permute.
 #[inline]
 #[target_feature(enable = "vsx")]
-#[rustc_args_required_const(2)]
-pub unsafe fn vec_xxpermdi<T>(a: T, b: T, dm: u8) -> T
+//#[rustc_legacy_const_generics(2)]
+pub unsafe fn vec_xxpermdi<T, const DM: i32>(a: T, b: T) -> T
 where
     T: sealed::VectorPermDI,
 {
-    a.vec_xxpermdi(b, dm)
+    static_assert_imm2!(DM);
+    a.vec_xxpermdi(b, DM as u8)
 }
 
 #[cfg(test)]
@@ -102,10 +103,10 @@ mod tests {
                 let a: $longtype = mem::transmute($shorttype::new($($a),+, $($b),+));
                 let b = mem::transmute($shorttype::new($($c),+, $($d),+));
 
-                assert_eq!($shorttype::new($($a),+, $($c),+), mem::transmute(vec_xxpermdi(a, b, 0)));
-                assert_eq!($shorttype::new($($b),+, $($c),+), mem::transmute(vec_xxpermdi(a, b, 1)));
-                assert_eq!($shorttype::new($($a),+, $($d),+), mem::transmute(vec_xxpermdi(a, b, 2)));
-                assert_eq!($shorttype::new($($b),+, $($d),+), mem::transmute(vec_xxpermdi(a, b, 3)));
+                assert_eq!($shorttype::new($($a),+, $($c),+), mem::transmute(vec_xxpermdi::<_, 0>(a, b)));
+                assert_eq!($shorttype::new($($b),+, $($c),+), mem::transmute(vec_xxpermdi::<_, 1>(a, b)));
+                assert_eq!($shorttype::new($($a),+, $($d),+), mem::transmute(vec_xxpermdi::<_, 2>(a, b)));
+                assert_eq!($shorttype::new($($b),+, $($d),+), mem::transmute(vec_xxpermdi::<_, 3>(a, b)));
             }
         }
     }

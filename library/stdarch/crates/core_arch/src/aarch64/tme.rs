@@ -93,15 +93,11 @@ pub unsafe fn __tcommit() {
 /// [ARM TME Intrinsics](https://developer.arm.com/docs/101028/0010/transactional-memory-extension-tme-intrinsics).
 #[inline]
 #[target_feature(enable = "tme")]
-#[cfg_attr(test, assert_instr(tcancel, imm0 = 0x0))]
-#[rustc_args_required_const(0)]
-pub unsafe fn __tcancel(imm0: u64) {
-    macro_rules! call {
-        ($imm0:expr) => {
-            aarch64_tcancel($imm0)
-        };
-    }
-    constify_imm8!(imm0, call)
+#[cfg_attr(test, assert_instr(tcancel, IMM16 = 0x0))]
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __tcancel<const IMM16: u64>() {
+    static_assert!(IMM16: u64 where IMM16 <= 65535);
+    aarch64_tcancel(IMM16);
 }
 
 /// Tests if executing inside a transaction. If no transaction is currently executing,
@@ -160,7 +156,7 @@ mod tests {
             if code == _TMSTART_SUCCESS {
                 x += 1;
                 assert_eq!(x, i + 1);
-                tme::__tcancel(CANCEL_CODE);
+                tme::__tcancel::<CANCEL_CODE>();
                 break;
             }
         }
@@ -174,7 +170,7 @@ mod tests {
             let code = tme::__tstart();
             if code == _TMSTART_SUCCESS {
                 if tme::__ttest() == 2 {
-                    tme::__tcancel(CANCEL_CODE);
+                    tme::__tcancel::<CANCEL_CODE>();
                     break;
                 }
             }
