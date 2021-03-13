@@ -21,8 +21,8 @@ use crate::{
     to_assoc_type_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, OpaqueTyId, Rawness,
-    Scalar, Substs, TraitRef, Ty, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, Rawness, Scalar, Substs,
+    TraitRef, Ty, TyKind,
 };
 
 use super::{
@@ -179,7 +179,8 @@ impl<'a> InferenceContext<'a> {
                 // Use the first type parameter as the output type of future.
                 // existenail type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
                 let inner_ty = self.infer_expr(*body, &Expectation::none());
-                let opaque_ty_id = OpaqueTyId::AsyncBlockTypeImplTrait(self.owner, *body);
+                let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
+                let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                 TyKind::OpaqueType(opaque_ty_id, Substs::single(inner_ty)).intern(&Interner)
             }
             Expr::Loop { body, label } => {

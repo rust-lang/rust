@@ -54,6 +54,7 @@ pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
 pub type FnDefId = chalk_ir::FnDefId<Interner>;
 pub type ClosureId = chalk_ir::ClosureId<Interner>;
+pub type OpaqueTyId = chalk_ir::OpaqueTyId<Interner>;
 pub type PlaceholderIndex = chalk_ir::PlaceholderIndex;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -875,8 +876,8 @@ impl Ty {
     pub fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<GenericPredicate>> {
         match self.interned(&Interner) {
             TyKind::OpaqueType(opaque_ty_id, ..) => {
-                match opaque_ty_id {
-                    OpaqueTyId::AsyncBlockTypeImplTrait(def, _expr) => {
+                match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
+                    ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
                         if let Some(future_trait) = db
                             .lang_item(krate, "future_trait".into())
@@ -894,12 +895,13 @@ impl Ty {
                             None
                         }
                     }
-                    OpaqueTyId::ReturnTypeImplTrait(..) => None,
+                    ImplTraitId::ReturnTypeImplTrait(..) => None,
                 }
             }
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                let predicates = match opaque_ty.opaque_ty_id {
-                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                let predicates = match db.lookup_intern_impl_trait_id(opaque_ty.opaque_ty_id.into())
+                {
+                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
                             let data = (*it)
                                 .as_ref()
@@ -908,7 +910,7 @@ impl Ty {
                         })
                     }
                     // It always has an parameter for Future::Output type.
-                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => unreachable!(),
+                    ImplTraitId::AsyncBlockTypeImplTrait(..) => unreachable!(),
                 };
 
                 predicates.map(|it| it.value)
@@ -1123,7 +1125,7 @@ impl<T: TypeWalk> TypeWalk for Vec<T> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
-pub enum OpaqueTyId {
+pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, u16),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }

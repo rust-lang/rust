@@ -177,10 +177,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
 
     fn opaque_ty_data(&self, id: chalk_ir::OpaqueTyId<Interner>) -> Arc<OpaqueTyDatum> {
-        let interned_id = crate::db::InternedOpaqueTyId::from(id);
-        let full_id = self.db.lookup_intern_impl_trait_id(interned_id);
+        let full_id = self.db.lookup_intern_impl_trait_id(id.into());
         let bound = match full_id {
-            crate::OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+            crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                 let datas = self
                     .db
                     .return_type_impl_traits(func)
@@ -202,7 +201,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                 let num_vars = datas.num_binders;
                 make_binders(bound, num_vars)
             }
-            crate::OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
+            crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
                     .db
                     .lang_item(self.krate, "future_trait".into())

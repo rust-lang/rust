@@ -12,7 +12,7 @@ use la_arena::ArenaMap;
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
     traits::chalk,
-    Binders, CallableDefId, FnDefId, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
+    Binders, CallableDefId, FnDefId, GenericPredicate, ImplTraitId, InferenceResult, PolyFnSig,
     ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
@@ -83,7 +83,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_type_param_id(&self, param_id: TypeParamId) -> InternedTypeParamId;
     #[salsa::interned]
-    fn intern_impl_trait_id(&self, id: OpaqueTyId) -> InternedOpaqueTyId;
+    fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
 

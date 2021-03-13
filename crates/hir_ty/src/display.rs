@@ -13,7 +13,7 @@ use hir_expand::name::Name;
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId,
-    CallableSig, GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId,
+    CallableSig, GenericPredicate, ImplTraitId, Interner, Lifetime, Obligation, OpaqueTy,
     ProjectionTy, Scalar, Substs, TraitRef, Ty, TyKind,
 };
 
@@ -313,22 +313,26 @@ impl HirDisplay for Ty {
                     )?;
                 }
 
+                // FIXME: all this just to decide whether to use parentheses...
                 let datas;
                 let predicates = match t.interned(&Interner) {
                     TyKind::Dyn(predicates) if predicates.len() > 1 => {
                         Cow::Borrowed(predicates.as_ref())
                     }
-                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
-                        opaque_ty_id: OpaqueTyId::ReturnTypeImplTrait(func, idx),
-                        ref parameters,
-                    })) => {
-                        datas =
-                            f.db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data = (*datas)
-                            .as_ref()
-                            .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(parameters);
-                        Cow::Owned(bounds.value)
+                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, ref parameters })) => {
+                        let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty_id.into());
+                        if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
+                            datas =
+                                f.db.return_type_impl_traits(func)
+                                    .expect("impl trait id without data");
+                            let data = (*datas)
+                                .as_ref()
+                                .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
+                            let bounds = data.subst(parameters);
+                            Cow::Owned(bounds.value)
+                        } else {
+                            Cow::Borrowed(&[][..])
+                        }
                     }
                     _ => Cow::Borrowed(&[][..]),
                 };
@@ -499,8 +503,9 @@ impl HirDisplay for Ty {
                 write!(f, "{}", type_alias.name)?;
             }
             TyKind::OpaqueType(opaque_ty_id, parameters) => {
-                match opaque_ty_id {
-                    &OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                let impl_trait_id = f.db.lookup_intern_impl_trait_id((*opaque_ty_id).into());
+                match impl_trait_id {
+                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
@@ -510,7 +515,7 @@ impl HirDisplay for Ty {
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
-                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
+                    ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "impl Future<Output = ")?;
                         parameters[0].hir_fmt(f)?;
                         write!(f, ">")?;
@@ -566,8 +571,9 @@ impl HirDisplay for Ty {
             }
             TyKind::Alias(AliasTy::Projection(p_ty)) => p_ty.hir_fmt(f)?,
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                match opaque_ty.opaque_ty_id {
-                    OpaqueTyId::ReturnTypeImplTrait(func, idx) => {
+                let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty.opaque_ty_id.into());
+                match impl_trait_id {
+                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         let datas =
                             f.db.return_type_impl_traits(func).expect("impl trait id without data");
                         let data = (*datas)
@@ -576,7 +582,7 @@ impl HirDisplay for Ty {
                         let bounds = data.subst(&opaque_ty.parameters);
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                     }
-                    OpaqueTyId::AsyncBlockTypeImplTrait(..) => {
+                    ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                         write!(f, "{{async block}}")?;
                     }
                 };

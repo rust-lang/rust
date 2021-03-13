@@ -15,7 +15,7 @@ use crate::{
     primitive::UintTy,
     traits::{Canonical, Obligation},
     AliasTy, CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy,
-    OpaqueTyId, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitRef, Ty,
+    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -41,8 +41,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::AssociatedType(assoc_type_id, substitution).intern(&Interner)
             }
 
-            TyKind::OpaqueType(impl_trait_id, substs) => {
-                let id = impl_trait_id.to_chalk(db);
+            TyKind::OpaqueType(id, substs) => {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
             }
@@ -103,7 +102,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
             }
             TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                let opaque_ty_id = opaque_ty.opaque_ty_id.to_chalk(db);
+                let opaque_ty_id = opaque_ty.opaque_ty_id;
                 let substitution = opaque_ty.parameters.to_chalk(db);
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id,
@@ -125,9 +124,9 @@ impl ToChalk for Ty {
                 TyKind::Alias(AliasTy::Projection(ProjectionTy { associated_ty, parameters }))
             }
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
-                let impl_trait_id = from_chalk(db, opaque_ty.opaque_ty_id);
+                let opaque_ty_id = opaque_ty.opaque_ty_id;
                 let parameters = from_chalk(db, opaque_ty.substitution);
-                TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id: impl_trait_id, parameters }))
+                TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, parameters }))
             }
             chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,
@@ -165,7 +164,7 @@ impl ToChalk for Ty {
             }
 
             chalk_ir::TyKind::OpaqueType(opaque_type_id, subst) => {
-                TyKind::OpaqueType(from_chalk(db, opaque_type_id), from_chalk(db, subst))
+                TyKind::OpaqueType(opaque_type_id, from_chalk(db, subst))
             }
 
             chalk_ir::TyKind::Scalar(scalar) => TyKind::Scalar(scalar),
@@ -265,21 +264,6 @@ impl ToChalk for hir_def::TraitId {
 
     fn from_chalk(_db: &dyn HirDatabase, trait_id: TraitId) -> hir_def::TraitId {
         InternKey::from_intern_id(trait_id.0)
-    }
-}
-
-impl ToChalk for OpaqueTyId {
-    type Chalk = chalk_ir::OpaqueTyId<Interner>;
-
-    fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::OpaqueTyId<Interner> {
-        db.intern_impl_trait_id(self).into()
-    }
-
-    fn from_chalk(
-        db: &dyn HirDatabase,
-        opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
-    ) -> OpaqueTyId {
-        db.lookup_intern_impl_trait_id(opaque_ty_id.into())
     }
 }
 

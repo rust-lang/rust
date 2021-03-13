@@ -34,7 +34,7 @@ use crate::{
         make_mut_slice, variant_data,
     },
     AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, GenericPredicate,
-    OpaqueTy, OpaqueTyId, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
+    ImplTraitId, OpaqueTy, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
     ReturnTypeImplTraits, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
 };
 
@@ -228,14 +228,12 @@ impl Ty {
                             Some(GenericDefId::FunctionId(f)) => f,
                             _ => panic!("opaque impl trait lowering in non-function"),
                         };
-                        let impl_trait_id = OpaqueTyId::ReturnTypeImplTrait(func, idx);
+                        let impl_trait_id = ImplTraitId::ReturnTypeImplTrait(func, idx);
+                        let opaque_ty_id = ctx.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(ctx.db.upcast(), func.into());
                         let parameters = Substs::bound_vars(&generics, ctx.in_binders);
-                        TyKind::Alias(AliasTy::Opaque(OpaqueTy {
-                            opaque_ty_id: impl_trait_id,
-                            parameters,
-                        }))
-                        .intern(&Interner)
+                        TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, parameters }))
+                            .intern(&Interner)
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = ctx.impl_trait_counter.get();
