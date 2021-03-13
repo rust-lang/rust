@@ -280,7 +280,7 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
     trt_id.map_or(false, |trt_id| match_def_path(cx, trt_id, path))
 }
 
-/// Checks if the method call given in `expr` belongs to a trait or other container with a given
+/// Checks if the method call given in `def_id` belongs to a trait or other container with a given
 /// diagnostic item
 pub fn is_diagnostic_assoc_item(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
     cx.tcx
