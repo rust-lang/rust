@@ -253,11 +253,10 @@ export function ssr(ctx: Ctx): Cmd {
 export function serverVersion(ctx: Ctx): Cmd {
     return async () => {
         const { stdout } = spawnSync(ctx.serverPath, ["--version"], { encoding: "utf8" });
-        const commitHash = stdout.slice(`rust-analyzer `.length).trim();
-        const { releaseTag } = ctx.config.package;
+        const versionString = stdout.slice(`rust-analyzer `.length).trim();
 
         void vscode.window.showInformationMessage(
-            `rust-analyzer version: ${releaseTag ?? "unreleased"} (${commitHash})`
+            `rust-analyzer version: ${versionString}`
         );
     };
 }
