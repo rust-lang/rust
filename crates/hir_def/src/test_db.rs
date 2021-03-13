@@ -15,7 +15,7 @@ use rustc_hash::FxHashSet;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use test_utils::extract_annotations;
 
-use crate::{db::DefDatabase, nameres::DefMap, Lookup, ModuleDefId, ModuleId};
+use crate::{db::DefDatabase, nameres::DefMap, src::HasSource, Lookup, ModuleDefId, ModuleId};
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -115,14 +115,9 @@ impl TestDB {
             if file_id != position.file_id.into() {
                 continue;
             }
-            let root = self.parse_or_expand(file_id).unwrap();
-            let ast_map = self.ast_id_map(file_id);
-            let item_tree = self.item_tree(file_id);
             for decl in module.scope.declarations() {
                 if let ModuleDefId::FunctionId(it) = decl {
-                    let ast =
-                        ast_map.get(item_tree[it.lookup(self).id.value].ast_id).to_node(&root);
-                    let range = ast.syntax().text_range();
+                    let range = it.lookup(self).source(self).value.syntax().text_range();
 
                     if !range.contains(position.offset) {
                         continue;
