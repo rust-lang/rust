@@ -3657,4 +3657,42 @@ cosnt _: &str$0 = ""; }"#;
             "#]],
         );
     }
+
+    #[test]
+    fn hover_macro_expanded_function() {
+        check(
+            r#"
+struct S<'a, T>(&'a T);
+trait Clone {}
+macro_rules! foo {
+    () => {
+        fn bar<'t, T: Clone + 't>(s: &mut S<'t, T>, t: u32) -> *mut u32 where
+            't: 't + 't,
+            for<'a> T: Clone + 'a
+        { 0 as _ }
+    };
+}
+
+foo!();
+
+fn main() {
+    bar$0;
+}
+"#,
+            expect![[r#"
+                *bar*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                fn bar<'t, T: Clone + 't>(s: &mut S<'t, T>, t: u32) -> *mut u32
+                where
+                    't: 't + 't,
+                    for<'a> T: Clone + 'a,
+                ```
+            "#]],
+        )
+    }
 }
