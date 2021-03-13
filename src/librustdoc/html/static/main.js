@@ -1303,11 +1303,11 @@ function defocusSearchBar() {
 
                     if (searchWords[j].indexOf(split[i]) > -1 ||
                         searchWords[j].indexOf(val) > -1 ||
-                        searchWords[j].replace(/_/g, "").indexOf(val) > -1)
+                        ty.nameWithoutUnderscores.indexOf(val) > -1)
                     {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, ty.ty) && results[fullId] === undefined) {
-                            index = searchWords[j].replace(/_/g, "").indexOf(val);
+                            index = ty.nameWithoutUnderscores.indexOf(val);
                         }
                     }
                     if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
@@ -1860,6 +1860,7 @@ function defocusSearchBar() {
                     parent: undefined,
                     type: null,
                     id: "",
+                    nameWithoutUnderscores: crate.replace(/_/g, ""),
                 };
                 crateRow.id = generateId(crateRow);
                 searchIndex.push(crateRow);
@@ -1909,6 +1910,7 @@ function defocusSearchBar() {
                         parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                         type: itemFunctionSearchTypes[i],
                         id: "",
+                        nameWithoutUnderscores: itemNames[i].replace(/_/g, ""),
                     };
                     row.id = generateId(row);
                     searchIndex.push(row);
