@@ -1270,12 +1270,7 @@ impl<'a> Builder<'a> {
             // some code doesn't go through this `rustc` wrapper.
             lint_flags.push("-Wrust_2018_idioms");
             lint_flags.push("-Wunused_lifetimes");
-            // cfg(bootstrap): unconditionally enable this warning after the next beta bump
-            // This is currently disabled for the stage1 libstd, since build scripts
-            // will end up using the bootstrap compiler (which doesn't yet support this lint)
-            if compiler.stage != 0 && mode != Mode::Std {
-                lint_flags.push("-Wsemicolon_in_expressions_from_macros");
-            }
+            lint_flags.push("-Wsemicolon_in_expressions_from_macros");
 
             if self.config.deny_warnings {
                 lint_flags.push("-Dwarnings");
