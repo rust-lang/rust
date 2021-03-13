@@ -51,6 +51,10 @@ pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariabl
 
 pub use crate::traits::chalk::Interner;
 
+pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
+pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
+pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
     Parameter(LifetimeParamId),
@@ -68,7 +72,7 @@ pub struct OpaqueTy {
 /// trait and all its parameters are fully known.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ProjectionTy {
-    pub associated_ty: TypeAliasId,
+    pub associated_ty: AssocTypeId,
     pub parameters: Substs,
 }
 
@@ -78,7 +82,7 @@ impl ProjectionTy {
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match self.associated_ty.lookup(db.upcast()).container {
+        match from_assoc_type_id(self.associated_ty).lookup(db.upcast()).container {
             AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
@@ -139,7 +143,7 @@ pub enum TyKind {
     /// when we have tried to normalize a projection like `T::Item` but
     /// couldn't find a better representation.  In that case, we generate
     /// an **application type** like `(Iterator::Item)<T>`.
-    AssociatedType(TypeAliasId, Substs),
+    AssociatedType(AssocTypeId, Substs),
 
     /// a scalar type like `bool` or `u32`
     Scalar(Scalar),
@@ -179,7 +183,7 @@ pub enum TyKind {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(CallableDefId, Substs),
+    FnDef(FnDefId, Substs),
 
     /// The pointee of a string slice. Written as `str`.
     Str,
@@ -194,7 +198,7 @@ pub enum TyKind {
     Closure(DefWithBodyId, ExprId, Substs),
 
     /// Represents a foreign type declared in external blocks.
-    ForeignType(TypeAliasId),
+    ForeignType(ForeignDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -700,12 +704,14 @@ impl Ty {
         }
     }
 
-    pub fn as_generic_def(&self) -> Option<GenericDefId> {
+    pub fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
         match *self.interned(&Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
-            TyKind::FnDef(callable, ..) => Some(callable.into()),
-            TyKind::AssociatedType(type_alias, ..) => Some(type_alias.into()),
-            TyKind::ForeignType(type_alias, ..) => Some(type_alias.into()),
+            TyKind::FnDef(callable, ..) => {
+                Some(db.lookup_intern_callable_def(callable.into()).into())
+            }
+            TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
+            TyKind::ForeignType(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
         }
     }
@@ -724,8 +730,10 @@ impl Ty {
             (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_), TyKind::Array(_)) => true,
             (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
             (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
-            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..))
-            | (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
+                ty_id == ty_id2
+            }
+            (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
             (TyKind::Closure(def, expr, _), TyKind::Closure(def2, expr2, _)) => {
                 expr == expr2 && def == def2
             }
@@ -770,10 +778,18 @@ impl Ty {
         }
     }
 
-    pub fn as_fn_def(&self) -> Option<FunctionId> {
+    pub fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
         match self.interned(&Interner) {
-            &TyKind::FnDef(CallableDefId::FunctionId(func), ..) => Some(func),
+            &TyKind::FnDef(def, ..) => Some(db.lookup_intern_callable_def(def.into())),
             _ => None,
+        }
+    }
+
+    pub fn as_fn_def(&self, db: &dyn HirDatabase) -> Option<FunctionId> {
+        if let Some(CallableDefId::FunctionId(func)) = self.callable_def(db) {
+            Some(func)
+        } else {
+            None
         }
     }
 
@@ -781,7 +797,8 @@ impl Ty {
         match self.interned(&Interner) {
             TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
             TyKind::FnDef(def, parameters) => {
-                let sig = db.callable_item_signature(*def);
+                let callable_def = db.lookup_intern_callable_def((*def).into());
+                let sig = db.callable_item_signature(callable_def);
                 Some(sig.subst(&parameters))
             }
             TyKind::Closure(.., substs) => {
@@ -916,14 +933,15 @@ impl Ty {
 
     pub fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
         match self.interned(&Interner) {
-            TyKind::AssociatedType(type_alias_id, ..) => {
-                match type_alias_id.lookup(db.upcast()).container {
+            TyKind::AssociatedType(id, ..) => {
+                match from_assoc_type_id(*id).lookup(db.upcast()).container {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
             }
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match projection_ty.associated_ty.lookup(db.upcast()).container {
+                match from_assoc_type_id(projection_ty.associated_ty).lookup(db.upcast()).container
+                {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
@@ -1115,4 +1133,20 @@ pub struct ReturnTypeImplTraits {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<GenericPredicate>>,
+}
+
+pub fn to_foreign_def_id(id: TypeAliasId) -> ForeignDefId {
+    chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_foreign_def_id(id: ForeignDefId) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
+}
+
+pub fn to_assoc_type_id(id: TypeAliasId) -> AssocTypeId {
+    chalk_ir::AssocTypeId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
 }

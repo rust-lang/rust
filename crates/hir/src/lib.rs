@@ -51,7 +51,7 @@ use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
-    method_resolution,
+    method_resolution, to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
     InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs,
@@ -1683,7 +1683,10 @@ impl Type {
             .fill(args.iter().map(|t| t.ty.value.clone()))
             .build();
         let predicate = ProjectionPredicate {
-            projection_ty: ProjectionTy { associated_ty: alias.id, parameters: subst },
+            projection_ty: ProjectionTy {
+                associated_ty: to_assoc_type_id(alias.id),
+                parameters: subst,
+            },
             ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner),
         };
         let goal = Canonical {
@@ -1712,10 +1715,7 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let def = match self.ty.value.interned(&Interner) {
-            &TyKind::FnDef(def, _) => Some(def),
-            _ => None,
-        };
+        let def = self.ty.value.callable_def(db);
 
         let sig = self.ty.value.callable_sig(db)?;
         Some(Callable { ty: self.clone(), sig, def, is_bound_method: false })

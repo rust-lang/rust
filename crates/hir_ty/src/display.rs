@@ -11,7 +11,8 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    db::HirDatabase, primitive, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
+    db::HirDatabase, from_assoc_type_id, from_foreign_def_id, primitive, to_assoc_type_id,
+    traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
     GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar,
     Substs, TraitRef, Ty, TyKind,
 };
@@ -256,7 +257,7 @@ impl HirDisplay for ProjectionTy {
             f.write_joined(&self.parameters[1..], ", ")?;
             write!(f, ">")?;
         }
-        write!(f, ">::{}", f.db.type_alias_data(self.associated_ty).name)?;
+        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty)).name)?;
         Ok(())
     }
 }
@@ -363,7 +364,7 @@ impl HirDisplay for Ty {
                 sig.hir_fmt(f)?;
             }
             TyKind::FnDef(def, parameters) => {
-                let def = *def;
+                let def = from_chalk(f.db, *def);
                 let sig = f.db.callable_item_signature(def).subst(parameters);
                 match def {
                     CallableDefId::FunctionId(ff) => {
@@ -431,7 +432,7 @@ impl HirDisplay for Ty {
                         || f.omit_verbose_types()
                     {
                         match self
-                            .as_generic_def()
+                            .as_generic_def(f.db)
                             .map(|generic_def_id| f.db.generic_defaults(generic_def_id))
                             .filter(|defaults| !defaults.is_empty())
                         {
@@ -467,13 +468,14 @@ impl HirDisplay for Ty {
                     }
                 }
             }
-            TyKind::AssociatedType(type_alias, parameters) => {
+            TyKind::AssociatedType(assoc_type_id, parameters) => {
+                let type_alias = from_assoc_type_id(*assoc_type_id);
                 let trait_ = match type_alias.lookup(f.db.upcast()).container {
                     AssocContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
                 let trait_ = f.db.trait_data(trait_);
-                let type_alias_data = f.db.type_alias_data(*type_alias);
+                let type_alias_data = f.db.type_alias_data(type_alias);
 
                 // Use placeholder associated types when the target is test (https://rust-lang.github.io/chalk/book/clauses/type_equality.html#placeholder-associated-types)
                 if f.display_target.is_test() {
@@ -484,14 +486,16 @@ impl HirDisplay for Ty {
                         write!(f, ">")?;
                     }
                 } else {
-                    let projection_ty =
-                        ProjectionTy { associated_ty: *type_alias, parameters: parameters.clone() };
+                    let projection_ty = ProjectionTy {
+                        associated_ty: to_assoc_type_id(type_alias),
+                        parameters: parameters.clone(),
+                    };
 
                     projection_ty.hir_fmt(f)?;
                 }
             }
             TyKind::ForeignType(type_alias) => {
-                let type_alias = f.db.type_alias_data(*type_alias);
+                let type_alias = f.db.type_alias_data(from_foreign_def_id(*type_alias));
                 write!(f, "{}", type_alias.name)?;
             }
             TyKind::OpaqueType(opaque_ty_id, parameters) => {
@@ -697,7 +701,9 @@ fn write_bounds_like_dyn_trait(
                     write!(f, "<")?;
                     angle_open = true;
                 }
-                let type_alias = f.db.type_alias_data(projection_pred.projection_ty.associated_ty);
+                let type_alias = f.db.type_alias_data(from_assoc_type_id(
+                    projection_pred.projection_ty.associated_ty,
+                ));
                 write!(f, "{} = ", type_alias.name)?;
                 projection_pred.ty.hir_fmt(f)?;
             }
@@ -768,7 +774,10 @@ impl HirDisplay for GenericPredicate {
                 write!(
                     f,
                     ">::{} = ",
-                    f.db.type_alias_data(projection_pred.projection_ty.associated_ty).name,
+                    f.db.type_alias_data(from_assoc_type_id(
+                        projection_pred.projection_ty.associated_ty
+                    ))
+                    .name,
                 )?;
                 projection_pred.ty.hir_fmt(f)?;
             }

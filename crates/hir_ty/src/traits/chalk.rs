@@ -17,14 +17,15 @@ use super::ChalkContext;
 use crate::{
     db::HirDatabase,
     display::HirDisplay,
+    from_assoc_type_id,
     method_resolution::{TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    to_assoc_type_id,
     utils::generics,
-    BoundVar, CallableDefId, CallableSig, DebruijnIndex, GenericPredicate, ProjectionPredicate,
-    ProjectionTy, Substs, TraitRef, Ty, TyKind,
+    BoundVar, CallableDefId, CallableSig, DebruijnIndex, FnDefId, GenericPredicate,
+    ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TyKind,
 };
 use mapping::{
-    convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsAssocType,
-    TypeAliasAsValue,
+    convert_where_clauses, generic_predicate_to_inline_bound, make_binders, TypeAliasAsValue,
 };
 
 pub use self::interner::Interner;
@@ -234,7 +235,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                         ty: TyKind::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 })
                             .intern(&Interner),
                         projection_ty: ProjectionTy {
-                            associated_ty: future_output,
+                            associated_ty: to_assoc_type_id(future_output),
                             // Self type as the first parameter.
                             parameters: Substs::single(
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
@@ -383,7 +384,7 @@ pub(crate) fn associated_ty_data_query(
     id: AssocTypeId,
 ) -> Arc<AssociatedTyDatum> {
     debug!("associated_ty_data {:?}", id);
-    let type_alias: TypeAliasId = from_chalk::<TypeAliasAsAssocType, _>(db, id).0;
+    let type_alias: TypeAliasId = from_assoc_type_id(id);
     let trait_ = match type_alias.lookup(db.upcast()).container {
         AssocContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
@@ -438,10 +439,8 @@ pub(crate) fn trait_datum_query(
         fundamental: false,
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
-    let associated_ty_ids = trait_data
-        .associated_types()
-        .map(|type_alias| TypeAliasAsAssocType(type_alias).to_chalk(db))
-        .collect();
+    let associated_ty_ids =
+        trait_data.associated_types().map(|type_alias| to_assoc_type_id(type_alias)).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known =
         lang_attr(db.upcast(), trait_).and_then(|name| well_known_trait_from_lang_attr(&name));
@@ -623,7 +622,7 @@ fn type_alias_associated_ty_value(
     let value_bound = rust_ir::AssociatedTyValueBound { ty: ty.value.to_chalk(db) };
     let value = rust_ir::AssociatedTyValue {
         impl_id: impl_id.to_chalk(db),
-        associated_ty_id: TypeAliasAsAssocType(assoc_ty).to_chalk(db),
+        associated_ty_id: to_assoc_type_id(assoc_ty),
         value: make_binders(value_bound, ty.num_binders),
     };
     Arc::new(value)

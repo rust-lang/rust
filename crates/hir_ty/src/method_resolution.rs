@@ -9,7 +9,7 @@ use base_db::CrateId;
 use chalk_ir::Mutability;
 use hir_def::{
     lang_item::LangItemTarget, AssocContainerId, AssocItemId, FunctionId, GenericDefId, HasModule,
-    ImplId, Lookup, ModuleId, TraitId, TypeAliasId,
+    ImplId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -17,10 +17,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     autoderef,
     db::HirDatabase,
+    from_foreign_def_id,
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
-    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, InEnvironment, Interner, Scalar, Substs,
-    TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
+    AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, ForeignDefId, InEnvironment, Interner,
+    Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -35,7 +36,7 @@ pub enum TyFingerprint {
     Adt(hir_def::AdtId),
     Dyn(TraitId),
     Tuple(usize),
-    ForeignType(TypeAliasId),
+    ForeignType(ForeignDefId),
     FnPtr(usize, FnSig),
 }
 
@@ -236,8 +237,10 @@ impl Ty {
             TyKind::Adt(AdtId(def_id), _) => {
                 return mod_to_crate_ids(def_id.module(db.upcast()));
             }
-            TyKind::ForeignType(type_alias_id) => {
-                return mod_to_crate_ids(type_alias_id.lookup(db.upcast()).module(db.upcast()));
+            TyKind::ForeignType(id) => {
+                return mod_to_crate_ids(
+                    from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()),
+                );
             }
             TyKind::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
             TyKind::Scalar(Scalar::Char) => lang_item_crate!("char"),

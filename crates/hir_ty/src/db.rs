@@ -12,7 +12,7 @@ use la_arena::ArenaMap;
 use crate::{
     method_resolution::{InherentImpls, TraitImpls},
     traits::chalk,
-    Binders, CallableDefId, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
+    Binders, CallableDefId, FnDefId, GenericPredicate, InferenceResult, OpaqueTyId, PolyFnSig,
     ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
@@ -100,10 +100,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn impl_datum(&self, krate: CrateId, impl_id: chalk::ImplId) -> Arc<chalk::ImplDatum>;
 
     #[salsa::invoke(crate::traits::chalk::fn_def_datum_query)]
-    fn fn_def_datum(&self, krate: CrateId, fn_def_id: chalk::FnDefId) -> Arc<chalk::FnDefDatum>;
+    fn fn_def_datum(&self, krate: CrateId, fn_def_id: FnDefId) -> Arc<chalk::FnDefDatum>;
 
     #[salsa::invoke(crate::traits::chalk::fn_def_variance_query)]
-    fn fn_def_variance(&self, krate: CrateId, fn_def_id: chalk::FnDefId) -> chalk::Variances;
+    fn fn_def_variance(&self, krate: CrateId, fn_def_id: FnDefId) -> chalk::Variances;
 
     #[salsa::invoke(crate::traits::chalk::adt_variance_query)]
     fn adt_variance(&self, krate: CrateId, adt_id: chalk::AdtId) -> chalk::Variances;

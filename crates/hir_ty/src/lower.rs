@@ -27,6 +27,7 @@ use stdx::impl_from;
 
 use crate::{
     db::HirDatabase,
+    to_assoc_type_id,
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
@@ -358,7 +359,7 @@ impl Ty {
                         Some((super_trait_ref, associated_ty)) => {
                             // FIXME handle type parameters on the segment
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty,
+                                associated_ty: to_assoc_type_id(associated_ty),
                                 parameters: super_trait_ref.substs,
                             }))
                             .intern(&Interner)
@@ -487,7 +488,7 @@ impl Ty {
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty,
+                                associated_ty: to_assoc_type_id(associated_ty),
                                 parameters: substs,
                             }))
                             .intern(&Interner),
@@ -753,7 +754,10 @@ fn assoc_type_bindings_from_type_bound<'a>(
                 None => return SmallVec::<[GenericPredicate; 1]>::new(),
                 Some(t) => t,
             };
-            let projection_ty = ProjectionTy { associated_ty, parameters: super_trait_ref.substs };
+            let projection_ty = ProjectionTy {
+                associated_ty: to_assoc_type_id(associated_ty),
+                parameters: super_trait_ref.substs,
+            };
             let mut preds = SmallVec::with_capacity(
                 binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
             );
@@ -1060,7 +1064,10 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
 fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 /// Build the declared type of a const.
@@ -1103,7 +1110,10 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
     }
     let generics = generics(db.upcast(), def.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
@@ -1128,7 +1138,10 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
     }
     let generics = generics(db.upcast(), def.parent.into());
     let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
-    Binders::new(substs.len(), TyKind::FnDef(def.into(), substs).intern(&Interner))
+    Binders::new(
+        substs.len(),
+        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(&Interner),
+    )
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
@@ -1143,7 +1156,7 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     if db.type_alias_data(t).is_extern {
-        Binders::new(0, TyKind::ForeignType(t).intern(&Interner))
+        Binders::new(0, TyKind::ForeignType(crate::to_foreign_def_id(t)).intern(&Interner))
     } else {
         let substs = Substs::bound_vars(&generics, DebruijnIndex::INNERMOST);
         let type_ref = &db.type_alias_data(t).type_ref;
