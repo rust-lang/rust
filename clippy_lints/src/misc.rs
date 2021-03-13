@@ -1,3 +1,4 @@
+use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -17,9 +18,9 @@ use rustc_span::symbol::sym;
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_item_name, get_parent_expr, higher, implements_trait, in_constant, is_diagnostic_assoc_item, is_integer_const,
-    iter_input_pats, last_path_segment, match_qpath, snippet, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_lint_hir_and_then, unsext, SpanlessEq,
+    get_item_name, get_parent_expr, higher, in_constant, is_diagnostic_assoc_item, is_integer_const, iter_input_pats,
+    last_path_segment, match_qpath, snippet, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
+    span_lint_hir_and_then, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {

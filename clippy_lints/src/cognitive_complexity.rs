@@ -1,5 +1,6 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::Attribute;
 use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId};
@@ -9,7 +10,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, BytePos};
 
-use crate::utils::{is_type_diagnostic_item, snippet_opt, span_lint_and_help, LimitStack};
+use crate::utils::{snippet_opt, span_lint_and_help, LimitStack};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.

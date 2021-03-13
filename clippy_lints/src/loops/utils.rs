@@ -1,6 +1,5 @@
-use crate::utils::{
-    get_parent_expr, has_iter_method, implements_trait, is_integer_const, path_to_local, path_to_local_id, sugg,
-};
+use crate::utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
+use clippy_utils::ty::{has_iter_method, implements_trait};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;

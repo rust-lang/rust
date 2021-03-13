@@ -1,7 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{
-    differing_macro_contexts, eq_expr_value, is_type_diagnostic_item, snippet_with_applicability, span_lint_and_then,
-};
+use crate::utils::{differing_macro_contexts, eq_expr_value, snippet_with_applicability, span_lint_and_then};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};

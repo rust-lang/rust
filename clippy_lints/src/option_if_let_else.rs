@@ -1,7 +1,8 @@
 use crate::utils;
 use crate::utils::eager_or_lazy;
 use crate::utils::sugg::Sugg;
-use crate::utils::{is_type_diagnostic_item, paths, span_lint_and_sugg};
+use crate::utils::{paths, span_lint_and_sugg};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 
 use rustc_errors::Applicability;

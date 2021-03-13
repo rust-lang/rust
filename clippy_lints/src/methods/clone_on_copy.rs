@@ -1,4 +1,5 @@
-use crate::utils::{is_copy, span_lint_and_then, sugg};
+use crate::utils::{span_lint_and_then, sugg};
+use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

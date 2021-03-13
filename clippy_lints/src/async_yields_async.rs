@@ -1,4 +1,5 @@
-use crate::utils::{implements_trait, snippet, span_lint_and_then};
+use crate::utils::{snippet, span_lint_and_then};
+use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{AsyncGeneratorKind, Body, BodyId, ExprKind, GeneratorKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};

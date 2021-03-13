@@ -1,3 +1,4 @@
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -175,8 +176,8 @@ fn is_some_or_ok_call<'a>(
             let outer_ty = cx.typeck_results().expr_ty(expr);
 
             // Check if outer and inner type are Option
-            let outer_is_some = utils::is_type_diagnostic_item(cx, outer_ty, sym::option_type);
-            let inner_is_some = utils::is_type_diagnostic_item(cx, inner_ty, sym::option_type);
+            let outer_is_some = is_type_diagnostic_item(cx, outer_ty, sym::option_type);
+            let inner_is_some = is_type_diagnostic_item(cx, inner_ty, sym::option_type);
 
             // Check for Option MSRV
             let meets_option_msrv = utils::meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
@@ -185,8 +186,8 @@ fn is_some_or_ok_call<'a>(
             }
 
             // Check if outer and inner type are Result
-            let outer_is_result = utils::is_type_diagnostic_item(cx, outer_ty, sym::result_type);
-            let inner_is_result = utils::is_type_diagnostic_item(cx, inner_ty, sym::result_type);
+            let outer_is_result = is_type_diagnostic_item(cx, outer_ty, sym::result_type);
+            let inner_is_result = is_type_diagnostic_item(cx, inner_ty, sym::result_type);
 
             // Additional check: if the error type of the Result can be converted
             // via the From trait, then don't match

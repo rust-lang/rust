@@ -1,3 +1,4 @@
+use clippy_utils::ty::contains_ty;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -10,7 +11,7 @@ use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
-use crate::utils::{contains_ty, span_lint};
+use crate::utils::span_lint;
 
 #[derive(Copy, Clone)]
 pub struct BoxedLocal {

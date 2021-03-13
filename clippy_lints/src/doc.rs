@@ -1,7 +1,7 @@
 use crate::utils::{
-    implements_trait, is_entrypoint_fn, is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args,
-    return_ty, span_lint, span_lint_and_note,
+    is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty, span_lint, span_lint_and_note,
 };
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, FnKind, FnRetTy, ItemKind};

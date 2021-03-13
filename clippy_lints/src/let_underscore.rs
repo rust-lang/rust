@@ -1,3 +1,4 @@
+use clippy_utils::ty::{is_must_use_ty, match_type};
 use if_chain::if_chain;
 use rustc_hir::{Local, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -5,7 +6,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{is_must_use_func_call, is_must_use_ty, match_type, paths, span_lint_and_help};
+use crate::utils::{is_must_use_func_call, paths, span_lint_and_help};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `let _ = <expr>`
