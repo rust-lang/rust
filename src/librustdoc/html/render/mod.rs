@@ -1459,9 +1459,20 @@ fn render_impl(
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
+                    let source_id = trait_
+                        .and_then(|trait_| trait_
+                            .items.iter()
+                            .find(|item| item.name.map(|n| n.as_str().eq(&name.as_str())).unwrap_or(false))
+                        ).map(|item| format!("{}.{}", item.type_(), name));
                     write!(w, "<h4 id=\"{}\" class=\"{}{}{}\">", id, item_type, extra_class, in_trait_class);
                     w.write_str("<code>");
-                    render_assoc_item(w, item, link.anchor(&id), ItemType::Impl, cx);
+                    render_assoc_item(
+                        w,
+                        item,
+                        link.anchor(source_id.as_ref().unwrap_or(&id)),
+                        ItemType::Impl,
+                        cx
+                    );
                     w.write_str("</code>");
                     render_stability_since_raw(
                         w,
@@ -1476,14 +1487,15 @@ fn render_impl(
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = cx.derive_id(format!("{}.{}", ItemType::AssocType, name));
+                let source_id = format!("{}.{}", ItemType::AssocType, name);
+                let id = cx.derive_id(source_id.clone());
                 write!(w, "<h4 id=\"{}\" class=\"{}{}{}\"><code>", id, item_type, extra_class, in_trait_class);
                 assoc_type(
                     w,
                     item,
                     &Vec::new(),
                     Some(&tydef.type_),
-                    link.anchor(&id),
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     "",
                     cx.cache(),
                     tcx,
@@ -1493,9 +1505,18 @@ fn render_impl(
                 w.write_str("</h4>");
             }
             clean::AssocConstItem(ref ty, ref default) => {
-                let id = cx.derive_id(format!("{}.{}", item_type, name));
+                let source_id = format!("{}.{}", item_type, name);
+                let id = cx.derive_id(source_id.clone());
                 write!(w, "<h4 id=\"{}\" class=\"{}{}{}\"><code>", id, item_type, extra_class, in_trait_class);
-                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "", cx);
+                assoc_const(
+                    w,
+                    item,
+                    ty,
+                    default.as_ref(),
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                    "",
+                    cx
+                );
                 w.write_str("</code>");
                 render_stability_since_raw(
                     w,
@@ -1509,14 +1530,15 @@ fn render_impl(
                 w.write_str("</h4>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
-                let id = cx.derive_id(format!("{}.{}", item_type, name));
+                let source_id = format!("{}.{}", item_type, name);
+                let id = cx.derive_id(source_id.clone());
                 write!(w, "<h4 id=\"{}\" class=\"{}{}{}\"><code>", id, item_type, extra_class, in_trait_class);
                 assoc_type(
                     w,
                     item,
                     bounds,
                     default.as_ref(),
-                    link.anchor(&id),
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     "",
                     cx.cache(),
                     tcx,
@@ -1613,7 +1635,7 @@ fn render_impl(
                 true,
                 outer_version,
                 outer_const_version,
-                None,
+                Some(t),
                 show_def_docs,
             );
         }
