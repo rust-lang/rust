@@ -387,7 +387,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
                 return;
             },
-            TyKind::TraitObject(bounds, ref lt) => {
+            TyKind::TraitObject(bounds, ref lt, _) => {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }

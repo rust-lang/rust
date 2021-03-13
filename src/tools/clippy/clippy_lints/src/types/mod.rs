@@ -911,7 +911,7 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             // function types bring a lot of overhead
             TyKind::BareFn(ref bare) if bare.abi == Abi::Rust => (50 * self.nest, 1),
 
-            TyKind::TraitObject(ref param_bounds, _) => {
+            TyKind::TraitObject(ref param_bounds, ..) => {
                 let has_lifetime_parameters = param_bounds.iter().any(|bound| {
                     bound
                         .bound_generic_params

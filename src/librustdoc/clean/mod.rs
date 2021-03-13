@@ -1477,7 +1477,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 }
             }
             TyKind::Path(_) => clean_qpath(&self, cx),
-            TyKind::TraitObject(ref bounds, ref lifetime) => {
+            TyKind::TraitObject(ref bounds, ref lifetime, _) => {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, param_names: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..]
