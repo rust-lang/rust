@@ -682,7 +682,8 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn swap<T>(x: &mut T, y: &mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
     // constraints on `ptr::swap_nonoverlapping_one`
     unsafe {
