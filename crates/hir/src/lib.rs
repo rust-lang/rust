@@ -54,8 +54,8 @@ use hir_ty::{
     method_resolution, to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
-    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs,
-    TraitEnvironment, Ty, TyDefId, TyKind, TyVariableKind,
+    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, Ty,
+    TyDefId, TyKind, TyVariableKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -817,7 +817,7 @@ impl Function {
         let resolver = self.id.resolver(db.upcast());
         let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let environment = db.trait_environment(self.id.into());
         db.function_data(self.id)
             .params
             .iter()
@@ -1563,13 +1563,15 @@ impl Type {
         resolver: &Resolver,
         ty: Ty,
     ) -> Type {
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let environment =
+            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
         Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
-        let environment = TraitEnvironment::lower(db, &resolver);
+        let environment =
+            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
         Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 

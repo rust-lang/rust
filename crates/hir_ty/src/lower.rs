@@ -935,55 +935,55 @@ pub(crate) fn generic_predicates_for_param_recover(
     Arc::new([])
 }
 
-impl TraitEnvironment {
-    pub fn lower(db: &dyn HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
-        let ctx = TyLoweringContext::new(db, &resolver)
-            .with_type_param_mode(TypeParamLoweringMode::Placeholder);
-        let mut traits_in_scope = Vec::new();
-        let mut clauses = Vec::new();
-        for pred in resolver.where_predicates_in_scope() {
-            for pred in GenericPredicate::from_where_predicate(&ctx, pred) {
-                if pred.is_error() {
-                    continue;
-                }
-                if let GenericPredicate::Implemented(tr) = &pred {
-                    traits_in_scope.push((tr.self_ty().clone(), tr.trait_));
-                }
-                let program_clause: chalk_ir::ProgramClause<Interner> =
-                    pred.clone().to_chalk(db).cast(&Interner);
-                clauses.push(program_clause.into_from_env_clause(&Interner));
+pub(crate) fn trait_environment_query(
+    db: &dyn HirDatabase,
+    def: GenericDefId,
+) -> Arc<TraitEnvironment> {
+    let resolver = def.resolver(db.upcast());
+    let ctx = TyLoweringContext::new(db, &resolver)
+        .with_type_param_mode(TypeParamLoweringMode::Placeholder);
+    let mut traits_in_scope = Vec::new();
+    let mut clauses = Vec::new();
+    for pred in resolver.where_predicates_in_scope() {
+        for pred in GenericPredicate::from_where_predicate(&ctx, pred) {
+            if pred.is_error() {
+                continue;
             }
-        }
-
-        if let Some(def) = resolver.generic_def() {
-            let container: Option<AssocContainerId> = match def {
-                // FIXME: is there a function for this?
-                GenericDefId::FunctionId(f) => Some(f.lookup(db.upcast()).container),
-                GenericDefId::AdtId(_) => None,
-                GenericDefId::TraitId(_) => None,
-                GenericDefId::TypeAliasId(t) => Some(t.lookup(db.upcast()).container),
-                GenericDefId::ImplId(_) => None,
-                GenericDefId::EnumVariantId(_) => None,
-                GenericDefId::ConstId(c) => Some(c.lookup(db.upcast()).container),
-            };
-            if let Some(AssocContainerId::TraitId(trait_id)) = container {
-                // add `Self: Trait<T1, T2, ...>` to the environment in trait
-                // function default implementations (and hypothetical code
-                // inside consts or type aliases)
-                cov_mark::hit!(trait_self_implements_self);
-                let substs = Substs::type_params(db, trait_id);
-                let trait_ref = TraitRef { trait_: trait_id, substs };
-                let pred = GenericPredicate::Implemented(trait_ref);
-                let program_clause: chalk_ir::ProgramClause<Interner> =
-                    pred.clone().to_chalk(db).cast(&Interner);
-                clauses.push(program_clause.into_from_env_clause(&Interner));
+            if let GenericPredicate::Implemented(tr) = &pred {
+                traits_in_scope.push((tr.self_ty().clone(), tr.trait_));
             }
+            let program_clause: chalk_ir::ProgramClause<Interner> =
+                pred.clone().to_chalk(db).cast(&Interner);
+            clauses.push(program_clause.into_from_env_clause(&Interner));
         }
-
-        let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
-
-        Arc::new(TraitEnvironment { traits_from_clauses: traits_in_scope, env })
     }
+
+    let container: Option<AssocContainerId> = match def {
+        // FIXME: is there a function for this?
+        GenericDefId::FunctionId(f) => Some(f.lookup(db.upcast()).container),
+        GenericDefId::AdtId(_) => None,
+        GenericDefId::TraitId(_) => None,
+        GenericDefId::TypeAliasId(t) => Some(t.lookup(db.upcast()).container),
+        GenericDefId::ImplId(_) => None,
+        GenericDefId::EnumVariantId(_) => None,
+        GenericDefId::ConstId(c) => Some(c.lookup(db.upcast()).container),
+    };
+    if let Some(AssocContainerId::TraitId(trait_id)) = container {
+        // add `Self: Trait<T1, T2, ...>` to the environment in trait
+        // function default implementations (and hypothetical code
+        // inside consts or type aliases)
+        cov_mark::hit!(trait_self_implements_self);
+        let substs = Substs::type_params(db, trait_id);
+        let trait_ref = TraitRef { trait_: trait_id, substs };
+        let pred = GenericPredicate::Implemented(trait_ref);
+        let program_clause: chalk_ir::ProgramClause<Interner> =
+            pred.clone().to_chalk(db).cast(&Interner);
+        clauses.push(program_clause.into_from_env_clause(&Interner));
+    }
+
+    let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
+
+    Arc::new(TraitEnvironment { traits_from_clauses: traits_in_scope, env })
 }
 
 /// Resolve the where clause(s) of an item with generics.

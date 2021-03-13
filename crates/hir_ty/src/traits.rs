@@ -63,6 +63,15 @@ impl TraitEnvironment {
     }
 }
 
+impl Default for TraitEnvironment {
+    fn default() -> Self {
+        TraitEnvironment {
+            traits_from_clauses: Vec::new(),
+            env: chalk_ir::Environment::new(&Interner),
+        }
+    }
+}
+
 /// Something (usually a goal), along with an environment.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InEnvironment<T> {
