@@ -584,7 +584,8 @@ const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
