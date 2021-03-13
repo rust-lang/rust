@@ -14,6 +14,10 @@ fn should_lint() {
         acc += elem;
     }
 
+    for elem in [1, 2, 3].iter() {
+        acc += elem;
+    }
+
     let mut hash_map: HashMap<i32, i32> = HashMap::new();
     for (k, v) in hash_map.iter() {
         acc += k + v;
@@ -46,9 +50,28 @@ fn should_not_lint() {
     }
     v.iter().for_each(print);
 
+    // User defined type.
+    struct MyStruct {
+        v: Vec<i32>,
+    }
+    impl MyStruct {
+        fn iter(&self) -> impl Iterator<Item = &i32> {
+            self.v.iter()
+        }
+    }
+    let s = MyStruct { v: Vec::new() };
+    s.iter().for_each(|elem| {
+        acc += elem;
+    });
+
     // `for_each` follows long iterator chain.
-    v.iter().chain(v.iter()).for_each(|v| println!("{}", v));
+    v.iter().chain(v.iter()).for_each(|v| {
+        acc += v;
+    });
     v.as_slice().iter().for_each(|v| {
+        acc += v;
+    });
+    s.v.iter().for_each(|v| {
         acc += v;
     });
 
@@ -66,20 +89,6 @@ fn should_not_lint() {
         } else {
             println!("{}", v);
         }
-    });
-
-    // User defined type.
-    struct MyStruct {
-        v: Vec<i32>,
-    }
-    impl MyStruct {
-        fn iter(&self) -> impl Iterator<Item = &i32> {
-            self.v.iter()
-        }
-    }
-    let s = MyStruct { v: Vec::new() };
-    s.iter().for_each(|elem| {
-        acc += elem;
     });
 
     // Previously transformed iterator variable.

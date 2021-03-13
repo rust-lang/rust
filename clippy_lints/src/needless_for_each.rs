@@ -10,9 +10,7 @@ use rustc_span::{source_map::Span, sym, Symbol};
 
 use if_chain::if_chain;
 
-use crate::utils::{
-    has_iter_method, is_diagnostic_assoc_item, method_calls, snippet_with_applicability, span_lint_and_then,
-};
+use crate::utils::{has_iter_method, is_trait_method, snippet_with_applicability, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `for_each` that would be more simply written as a
@@ -41,7 +39,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub NEEDLESS_FOR_EACH,
-    restriction,
+    pedantic,
     "using `for_each` where a `for` loop would be simpler"
 }
 
@@ -55,22 +53,28 @@ impl LateLintPass<'_> for NeedlessForEach {
             _ => return,
         };
 
-        // Max depth is set to 3 because we need to check the method chain length is just two.
-        let (method_names, arg_lists, _) = method_calls(expr, 3);
-
         if_chain! {
-            // This assures the length of this method chain is two.
-            if let [for_each_args, iter_args] = arg_lists.as_slice();
-            if let Some(for_each_sym) = method_names.first();
-            if *for_each_sym == Symbol::intern("for_each");
-            if let Some(did) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-            if is_diagnostic_assoc_item(cx, did, sym::Iterator);
-            // Checks the type of the first method receiver is NOT a user defined type.
-            if has_iter_method(cx, cx.typeck_results().expr_ty(&iter_args[0])).is_some();
-            if let ExprKind::Closure(_, _, body_id, ..) = for_each_args[1].kind;
-            let body = cx.tcx.hir().body(body_id);
+            // Check the method name is `for_each`.
+            if let ExprKind::MethodCall(method_name, _, for_each_args, _) = expr.kind;
+            if method_name.ident.name == Symbol::intern("for_each");
+            // Check `for_each` is an associated function of `Iterator`.
+            if is_trait_method(cx, expr, sym::Iterator);
+            // Checks the receiver of `for_each` is also a method call.
+            if let Some(for_each_receiver) = for_each_args.get(0);
+            if let ExprKind::MethodCall(_, _, iter_args, _) = for_each_receiver.kind;
+            // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
+            // `v.foo().iter().for_each()` must be skipped.
+            if let Some(iter_receiver) = iter_args.get(0);
+            if matches!(
+                iter_receiver.kind,
+                ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
+            );
+            // Checks the type of the `iter` method receiver is NOT a user defined type.
+            if has_iter_method(cx, cx.typeck_results().expr_ty(&iter_receiver)).is_some();
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
+            if let ExprKind::Closure(_, _, body_id, ..) = for_each_args[1].kind;
+            let body = cx.tcx.hir().body(body_id);
             if let ExprKind::Block(..) = body.value.kind;
             then {
                 let mut ret_collector = RetCollector::default();
@@ -99,7 +103,7 @@ impl LateLintPass<'_> for NeedlessForEach {
                 )));
 
                 for span in &ret_collector.spans {
-                    suggs.push((*span, "return".to_string()));
+                    suggs.push((*span, "continue".to_string()));
                 }
 
                 span_lint_and_then(
