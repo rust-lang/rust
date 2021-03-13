@@ -802,7 +802,7 @@ impl Function {
         let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ret_type = &db.function_data(self.id).ret_type;
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = Ty::from_hir_ext(&ctx, ret_type).0;
+        let ty = ctx.lower_ty(ret_type);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
@@ -825,7 +825,7 @@ impl Function {
                 let ty = Type {
                     krate,
                     ty: InEnvironment {
-                        value: Ty::from_hir_ext(&ctx, type_ref).0,
+                        value: ctx.lower_ty(type_ref),
                         environment: environment.clone(),
                     },
                 };
@@ -1499,7 +1499,7 @@ impl Impl {
         let resolver = self.id.resolver(db.upcast());
         let krate = self.id.lookup(db.upcast()).container.krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = Ty::from_hir(&ctx, &impl_data.target_type);
+        let ty = ctx.lower_ty(&impl_data.target_type);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
