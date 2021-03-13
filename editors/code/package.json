@@ -203,6 +203,11 @@
                 "command": "rust-analyzer.openCargoToml",
                 "title": "Open Cargo.toml",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.peekTests",
+                "title": "Peek related tests",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [
@@ -1164,6 +1169,13 @@
                 {
                     "command": "rust-analyzer.openCargoToml",
                     "when": "inRustProject"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "rust-analyzer.peekTests",
+                    "when": "inRustProject",
+                    "group": "navigation@1000"
                 }
             ]
         }

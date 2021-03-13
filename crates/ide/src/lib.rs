@@ -447,6 +447,15 @@ impl Analysis {
         self.with_db(|db| runnables::runnables(db, file_id))
     }
 
+    /// Returns the set of tests for the given file position.
+    pub fn related_tests(
+        &self,
+        position: FilePosition,
+        search_scope: Option<SearchScope>,
+    ) -> Cancelable<Vec<Runnable>> {
+        self.with_db(|db| runnables::related_tests(db, position, search_scope))
+    }
+
     /// Computes syntax highlighting for the given file
     pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HlRange>> {
         self.with_db(|db| syntax_highlighting::highlight(db, file_id, None, false))

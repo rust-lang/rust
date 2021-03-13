@@ -72,6 +72,12 @@ export interface Runnable {
 }
 export const runnables = new lc.RequestType<RunnablesParams, Runnable[], void>("experimental/runnables");
 
+export interface TestInfo {
+    runnable: Runnable;
+}
+
+export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, TestInfo[], void>("rust-analyzer/relatedTests");
+
 export type InlayHint = InlayHint.TypeHint | InlayHint.ParamHint | InlayHint.ChainingHint;
 
 export namespace InlayHint {

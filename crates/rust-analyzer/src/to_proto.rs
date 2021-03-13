@@ -838,11 +838,10 @@ pub(crate) fn resolved_code_action(
 
 pub(crate) fn runnable(
     snap: &GlobalStateSnapshot,
-    file_id: FileId,
     runnable: Runnable,
 ) -> Result<lsp_ext::Runnable> {
     let config = snap.config.runnables();
-    let spec = CargoTargetSpec::for_file(snap, file_id)?;
+    let spec = CargoTargetSpec::for_file(snap, runnable.nav.file_id)?;
     let workspace_root = spec.as_ref().map(|it| it.workspace_root.clone());
     let target = spec.as_ref().map(|s| s.target.clone());
     let (cargo_args, executable_args) =
@@ -875,7 +874,7 @@ pub(crate) fn code_lens(
             let annotation_range = range(&line_index, annotation.range);
 
             let action = run.action();
-            let r = runnable(&snap, run.nav.file_id, run)?;
+            let r = runnable(&snap, run)?;
 
             let command = if debug {
                 command::debug_single(&r)

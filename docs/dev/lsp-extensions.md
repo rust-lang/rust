@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: d279d971d4f62cd7
+lsp_ext.rs hash: 4dfa8d7035f4aee7
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -579,3 +579,19 @@ This request is sent from client to server to open the current project's Cargo.t
 ```
 
 `experimental/openCargoToml` returns a single `Link` to the start of the `[package]` keyword.
+
+## Related tests
+
+This request is sent from client to server to get the list of tests for the specified position.
+
+**Method:** `rust-analyzer/relatedTests`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `TestInfo[]`
+
+```typescript
+interface TestInfo {
+    runnable: Runnable;
+}
+```
