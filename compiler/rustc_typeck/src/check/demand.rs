@@ -651,6 +651,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                         ) {
                             // For this suggestion to make sense, the type would need to be `Copy`.
+                            let expr_span = self.tcx.hir().span(expr.hir_id);
                             if let Ok(code) = sm.span_to_snippet(expr_span) {
                                 let message = if checked_ty.is_region_ptr() {
                                     "consider dereferencing the borrow"
