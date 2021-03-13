@@ -59,8 +59,8 @@ macro_rules! impl_float_reductions {
             /// Produces the sum of the lanes of the vector.
             #[inline]
             pub fn sum(self) -> $scalar {
-                // f32 SIMD sum is inaccurate on i586
-                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) && core::mem::size_of::<$scalar>() == 4 {
+                // LLVM sum is inaccurate on i586
+                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_slice().iter().sum()
                 } else {
                     unsafe { crate::intrinsics::simd_reduce_add_ordered(self, 0.) }
@@ -70,8 +70,8 @@ macro_rules! impl_float_reductions {
             /// Produces the sum of the lanes of the vector.
             #[inline]
             pub fn product(self) -> $scalar {
-                // f32 SIMD product is inaccurate on i586
-                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) && core::mem::size_of::<$scalar>() == 4 {
+                // LLVM product is inaccurate on i586
+                if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_slice().iter().product()
                 } else {
                     unsafe { crate::intrinsics::simd_reduce_mul_ordered(self, 1.) }
