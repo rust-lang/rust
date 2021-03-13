@@ -4,10 +4,9 @@ error: field is never read: `b`
 LL |     b: bool,
    |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_b`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 note: the lint level is defined here
   --> $DIR/lint-dead-code-4.rs:3:9
    |
@@ -20,10 +19,8 @@ error: variant is never constructed: `X`
 LL |     X,
    |     ^ help: if this is intentional, prefix it with an underscore: `_X`
    |
-   = note: The leading underscore signals to the reader that while the variant may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this variant serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: variant is never constructed: `Y`
   --> $DIR/lint-dead-code-4.rs:16:5
@@ -35,10 +32,8 @@ LL | |         c: i32,
 LL | |     },
    | |_____^ help: if this is intentional, prefix it with an underscore: `_Y`
    |
-   = note: The leading underscore signals to the reader that while the variant may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this variant serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: enum is never used: `ABC`
   --> $DIR/lint-dead-code-4.rs:24:6
@@ -46,10 +41,8 @@ error: enum is never used: `ABC`
 LL | enum ABC {
    |      ^^^ help: if this is intentional, prefix it with an underscore: `_ABC`
    |
-   = note: The leading underscore signals to the reader that while the enum may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this enum serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: variant is never constructed: `I`
   --> $DIR/lint-dead-code-4.rs:36:5
@@ -57,10 +50,8 @@ error: variant is never constructed: `I`
 LL |     I,
    |     ^ help: if this is intentional, prefix it with an underscore: `_I`
    |
-   = note: The leading underscore signals to the reader that while the variant may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this variant serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: field is never read: `b`
   --> $DIR/lint-dead-code-4.rs:39:9
@@ -68,10 +59,9 @@ error: field is never read: `b`
 LL |         b: i32,
    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_b`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:40:9
@@ -79,10 +69,9 @@ error: field is never read: `c`
 LL |         c: i32,
    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_c`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: variant is never constructed: `K`
   --> $DIR/lint-dead-code-4.rs:42:5
@@ -90,10 +79,8 @@ error: variant is never constructed: `K`
 LL |     K
    |     ^ help: if this is intentional, prefix it with an underscore: `_K`
    |
-   = note: The leading underscore signals to the reader that while the variant may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this variant serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: field is never read: `x`
   --> $DIR/lint-dead-code-4.rs:61:5
@@ -101,10 +88,9 @@ error: field is never read: `x`
 LL |     x: usize,
    |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_x`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `c`
   --> $DIR/lint-dead-code-4.rs:63:5
@@ -112,10 +98,9 @@ error: field is never read: `c`
 LL |     c: bool,
    |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_c`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: aborting due to 10 previous errors
 

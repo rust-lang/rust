@@ -4,10 +4,8 @@ error: struct is never constructed: `UnusedStruct`
 LL | struct UnusedStruct;
    |        ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_UnusedStruct`
    |
-   = note: The leading underscore signals to the reader that while the struct may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this struct serves some other purpose
+           even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/lint-dead-code-6.rs:1:9
    |
@@ -20,10 +18,8 @@ error: associated function is never used: `unused_impl_fn_1`
 LL |     fn unused_impl_fn_1() {
    |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_1`
    |
-   = note: The leading underscore signals to the reader that while the associated function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this associated function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: associated function is never used: `unused_impl_fn_2`
   --> $DIR/lint-dead-code-6.rs:9:8
@@ -31,10 +27,8 @@ error: associated function is never used: `unused_impl_fn_2`
 LL |     fn unused_impl_fn_2(var: i32) {
    |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_2`
    |
-   = note: The leading underscore signals to the reader that while the associated function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this associated function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: associated function is never used: `unused_impl_fn_3`
   --> $DIR/lint-dead-code-6.rs:13:8
@@ -42,10 +36,8 @@ error: associated function is never used: `unused_impl_fn_3`
 LL |     fn unused_impl_fn_3(
    |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_3`
    |
-   = note: The leading underscore signals to the reader that while the associated function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this associated function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: aborting due to 4 previous errors
 
