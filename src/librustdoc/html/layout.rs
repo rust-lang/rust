@@ -58,7 +58,7 @@ crate fn render<T: Print, S: Print>(
     {style_files}\
     <script id=\"default-settings\"{default_settings}></script>\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
-    <script src=\"{static_root_path}crates{suffix}.js\"></script>\
+    <script src=\"{root_path}crates{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
     {favicon}\
