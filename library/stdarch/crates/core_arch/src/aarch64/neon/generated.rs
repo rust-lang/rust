@@ -1189,6 +1189,32 @@ pub unsafe fn vrsqrteq_f64(a: float64x2_t) -> float64x2_t {
     vrsqrteq_f64_(a)
 }
 
+/// Reciprocal estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(frecpe))]
+pub unsafe fn vrecpe_f64(a: float64x1_t) -> float64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v1f64")]
+        fn vrecpe_f64_(a: float64x1_t) -> float64x1_t;
+    }
+    vrecpe_f64_(a)
+}
+
+/// Reciprocal estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(frecpe))]
+pub unsafe fn vrecpeq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v2f64")]
+        fn vrecpeq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrecpeq_f64_(a)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2337,6 +2363,22 @@ mod test {
         let a: f64x2 = f64x2::new(1.0, 2.0);
         let e: f64x2 = f64x2::new(0.998046875, 0.705078125);
         let r: f64x2 = transmute(vrsqrteq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrecpe_f64() {
+        let a: f64 = 4.0;
+        let e: f64 = 0.24951171875;
+        let r: f64 = transmute(vrecpe_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrecpeq_f64() {
+        let a: f64x2 = f64x2::new(4.0, 3.0);
+        let e: f64x2 = f64x2::new(0.24951171875, 0.3330078125);
+        let r: f64x2 = transmute(vrecpeq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 }

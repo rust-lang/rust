@@ -742,3 +742,16 @@ generate float64x*_t
 arm = vrsqrte
 link-arm = vrsqrte._EXT_
 generate float*_t
+
+/// Reciprocal estimate.
+name = vrecpe
+a = 4.0, 3.0, 2.0, 1.0
+validate 0.24951171875, 0.3330078125, 0.4990234375, 0.998046875
+
+aarch64 = frecpe
+link-aarch64 = frecpe._EXT_
+generate float64x*_t
+
+arm = vrecpe
+link-arm = vrecpe._EXT_
+generate float*_t

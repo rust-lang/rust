@@ -3381,6 +3381,38 @@ pub unsafe fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
 vrsqrteq_f32_(a)
 }
 
+/// Reciprocal estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
+pub unsafe fn vrecpe_f32(a: float32x2_t) -> float32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v2f32")]
+        fn vrecpe_f32_(a: float32x2_t) -> float32x2_t;
+    }
+vrecpe_f32_(a)
+}
+
+/// Reciprocal estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrecpe))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frecpe))]
+pub unsafe fn vrecpeq_f32(a: float32x4_t) -> float32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frecpe.v4f32")]
+        fn vrecpeq_f32_(a: float32x4_t) -> float32x4_t;
+    }
+vrecpeq_f32_(a)
+}
+
 #[cfg(test)]
 #[allow(overflowing_literals)]
 mod test {
@@ -6010,6 +6042,22 @@ mod test {
         let a: f32x4 = f32x4::new(1.0, 2.0, 3.0, 4.0);
         let e: f32x4 = f32x4::new(0.998046875, 0.705078125, 0.576171875, 0.4990234375);
         let r: f32x4 = transmute(vrsqrteq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrecpe_f32() {
+        let a: f32x2 = f32x2::new(4.0, 3.0);
+        let e: f32x2 = f32x2::new(0.24951171875, 0.3330078125);
+        let r: f32x2 = transmute(vrecpe_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrecpeq_f32() {
+        let a: f32x4 = f32x4::new(4.0, 3.0, 2.0, 1.0);
+        let e: f32x4 = f32x4::new(0.24951171875, 0.3330078125, 0.4990234375, 0.998046875);
+        let r: f32x4 = transmute(vrecpeq_f32(transmute(a)));
         assert_eq!(r, e);
     }
 }
