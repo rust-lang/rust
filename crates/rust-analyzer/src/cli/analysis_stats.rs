@@ -12,7 +12,7 @@ use hir::{
     AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
 };
 use hir_def::FunctionId;
-use hir_ty::{Ty, TypeWalk};
+use hir_ty::TypeWalk;
 use ide_db::base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt,
@@ -187,12 +187,12 @@ impl AnalysisStatsCmd {
             for (expr_id, _) in body.exprs.iter() {
                 let ty = &inference_result[expr_id];
                 num_exprs += 1;
-                if let Ty::Unknown = ty {
+                if ty.is_unknown() {
                     num_exprs_unknown += 1;
                 } else {
                     let mut is_partially_unknown = false;
                     ty.walk(&mut |ty| {
-                        if let Ty::Unknown = ty {
+                        if ty.is_unknown() {
                             is_partially_unknown = true;
                         }
                     });

@@ -54,8 +54,8 @@ use hir_ty::{
     method_resolution,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
-    InEnvironment, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitEnvironment,
-    Ty, TyDefId, TyVariableKind,
+    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs,
+    TraitEnvironment, Ty, TyDefId, TyKind, TyVariableKind,
 };
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
@@ -677,7 +677,7 @@ impl_from!(Struct, Union, Enum for Adt);
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
-        subst.iter().any(|ty| &ty.value == &Ty::Unknown)
+        subst.iter().any(|ty| ty.value.is_unknown())
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1012,7 +1012,7 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
-        subst.iter().any(|ty| &ty.value == &Ty::Unknown)
+        subst.iter().any(|ty| ty.value.is_unknown())
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -1384,7 +1384,7 @@ impl TypeParam {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.parent.resolver(db.upcast());
         let krate = self.id.parent.module(db.upcast()).krate();
-        let ty = Ty::Placeholder(self.id);
+        let ty = TyKind::Placeholder(self.id).intern(&Interner);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
@@ -1584,25 +1584,25 @@ impl Type {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(self.ty.value, Ty::Tuple(0, ..))
+        matches!(self.ty.value.interned(&Interner), TyKind::Tuple(0, ..))
     }
     pub fn is_bool(&self) -> bool {
-        matches!(self.ty.value, Ty::Scalar(Scalar::Bool))
+        matches!(self.ty.value.interned(&Interner), TyKind::Scalar(Scalar::Bool))
     }
 
     pub fn is_mutable_reference(&self) -> bool {
-        matches!(self.ty.value, Ty::Ref(hir_ty::Mutability::Mut, ..))
+        matches!(self.ty.value.interned(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
-        match &self.ty.value {
-            Ty::Ref(.., substs) => Some(self.derived(substs[0].clone())),
+        match &self.ty.value.interned(&Interner) {
+            TyKind::Ref(.., substs) => Some(self.derived(substs[0].clone())),
             _ => None,
         }
     }
 
     pub fn is_unknown(&self) -> bool {
-        matches!(self.ty.value, Ty::Unknown)
+        self.ty.value.is_unknown()
     }
 
     /// Checks that particular type `ty` implements `std::future::Future`.
@@ -1684,7 +1684,7 @@ impl Type {
             .build();
         let predicate = ProjectionPredicate {
             projection_ty: ProjectionTy { associated_ty: alias.id, parameters: subst },
-            ty: Ty::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)),
+            ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner),
         };
         let goal = Canonical {
             value: InEnvironment::new(
@@ -1712,8 +1712,8 @@ impl Type {
     }
 
     pub fn as_callable(&self, db: &dyn HirDatabase) -> Option<Callable> {
-        let def = match self.ty.value {
-            Ty::FnDef(def, _) => Some(def),
+        let def = match self.ty.value.interned(&Interner) {
+            &TyKind::FnDef(def, _) => Some(def),
             _ => None,
         };
 
@@ -1722,16 +1722,16 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.value, Ty::Closure { .. })
+        matches!(&self.ty.value.interned(&Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.value, Ty::FnDef(..) | Ty::Function { .. })
+        matches!(&self.ty.value.interned(&Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
-        let adt_id = match self.ty.value {
-            Ty::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
+        let adt_id = match self.ty.value.interned(&Interner) {
+            &TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
             _ => return false,
         };
 
@@ -1743,24 +1743,25 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.value, Ty::Raw(..))
+        matches!(&self.ty.value.interned(&Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
         return go(&self.ty.value);
 
         fn go(ty: &Ty) -> bool {
-            match ty {
-                Ty::Unknown => true,
-                _ => ty.substs().map_or(false, |substs| substs.iter().any(go)),
+            if ty.is_unknown() {
+                true
+            } else {
+                ty.substs().map_or(false, |substs| substs.iter().any(go))
             }
         }
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
-        let (variant_id, substs) = match self.ty.value {
-            Ty::Adt(hir_ty::AdtId(AdtId::StructId(s)), ref substs) => (s.into(), substs),
-            Ty::Adt(hir_ty::AdtId(AdtId::UnionId(u)), ref substs) => (u.into(), substs),
+        let (variant_id, substs) = match self.ty.value.interned(&Interner) {
+            &TyKind::Adt(hir_ty::AdtId(AdtId::StructId(s)), ref substs) => (s.into(), substs),
+            &TyKind::Adt(hir_ty::AdtId(AdtId::UnionId(u)), ref substs) => (u.into(), substs),
             _ => return Vec::new(),
         };
 
@@ -1775,7 +1776,7 @@ impl Type {
     }
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
-        if let Ty::Tuple(_, substs) = &self.ty.value {
+        if let TyKind::Tuple(_, substs) = &self.ty.value.interned(&Interner) {
             substs.iter().map(|ty| self.derived(ty.clone())).collect()
         } else {
             Vec::new()
@@ -1957,33 +1958,33 @@ impl Type {
 
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.value.strip_references();
-            match ty {
-                Ty::Adt(..) => {
+            match ty.interned(&Interner) {
+                TyKind::Adt(..) => {
                     cb(type_.derived(ty.clone()));
                 }
-                Ty::AssociatedType(..) => {
+                TyKind::AssociatedType(..) => {
                     if let Some(_) = ty.associated_type_parent_trait(db) {
                         cb(type_.derived(ty.clone()));
                     }
                 }
-                Ty::OpaqueType(..) => {
+                TyKind::OpaqueType(..) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
                 }
-                Ty::Alias(AliasTy::Opaque(opaque_ty)) => {
+                TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
 
                     walk_substs(db, type_, &opaque_ty.parameters, cb);
                 }
-                Ty::Placeholder(_) => {
+                TyKind::Placeholder(_) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
                 }
-                Ty::Dyn(bounds) => {
+                TyKind::Dyn(bounds) => {
                     walk_bounds(db, &type_.derived(ty.clone()), bounds.as_ref(), cb);
                 }
 

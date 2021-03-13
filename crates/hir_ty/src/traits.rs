@@ -10,7 +10,9 @@ use stdx::panic_context;
 
 use crate::{db::HirDatabase, DebruijnIndex, Substs};
 
-use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
+use super::{
+    Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TyKind, TypeWalk,
+};
 
 use self::chalk::{from_chalk, Interner, ToChalk};
 
@@ -132,7 +134,7 @@ pub(crate) fn trait_solve_query(
     log::info!("trait_solve_query({})", goal.value.value.display(db));
 
     if let Obligation::Projection(pred) = &goal.value.value {
-        if let Ty::BoundVar(_) = &pred.projection_ty.parameters[0] {
+        if let TyKind::BoundVar(_) = &pred.projection_ty.parameters[0].interned(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

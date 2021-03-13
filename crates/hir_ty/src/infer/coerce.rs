@@ -7,7 +7,7 @@
 use chalk_ir::{Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, traits::Solution, Obligation, Substs, TraitRef, Ty};
+use crate::{autoderef, traits::Solution, Interner, Obligation, Substs, TraitRef, Ty, TyKind};
 
 use super::{InEnvironment, InferenceContext};
 
@@ -33,7 +33,9 @@ impl<'a> InferenceContext<'a> {
         } else if self.coerce(ty2, ty1) {
             ty1.clone()
         } else {
-            if let (Ty::FnDef(..), Ty::FnDef(..)) = (ty1, ty2) {
+            if let (TyKind::FnDef(..), TyKind::FnDef(..)) =
+                (ty1.interned(&Interner), ty2.interned(&Interner))
+            {
                 cov_mark::hit!(coerce_fn_reification);
                 // Special case: two function types. Try to coerce both to
                 // pointers to have a chance at getting a match. See
@@ -51,13 +53,13 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
-        match (&from_ty, to_ty) {
+        match (from_ty.interned(&Interner), to_ty.interned(&Interner)) {
             // Never type will make type variable to fallback to Never Type instead of Unknown.
-            (Ty::Never, Ty::InferenceVar(tv, TyVariableKind::General)) => {
+            (TyKind::Never, TyKind::InferenceVar(tv, TyVariableKind::General)) => {
                 self.table.type_variable_table.set_diverging(*tv, true);
                 return true;
             }
-            (Ty::Never, _) => return true,
+            (TyKind::Never, _) => return true,
 
             // Trivial cases, this should go after `never` check to
             // avoid infer result type to be never
@@ -69,33 +71,33 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Pointer weakening and function to pointer
-        match (&mut from_ty, to_ty) {
+        match (&mut from_ty.0, to_ty.interned(&Interner)) {
             // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
-            (Ty::Raw(m1, ..), Ty::Raw(m2 @ Mutability::Not, ..))
-            | (Ty::Ref(m1, ..), Ty::Ref(m2 @ Mutability::Not, ..)) => {
+            (TyKind::Raw(m1, ..), TyKind::Raw(m2 @ Mutability::Not, ..))
+            | (TyKind::Ref(m1, ..), TyKind::Ref(m2 @ Mutability::Not, ..)) => {
                 *m1 = *m2;
             }
             // `&T` -> `*const T`
             // `&mut T` -> `*mut T`/`*const T`
-            (Ty::Ref(.., substs), &Ty::Raw(m2 @ Mutability::Not, ..))
-            | (Ty::Ref(Mutability::Mut, substs), &Ty::Raw(m2, ..)) => {
-                from_ty = Ty::Raw(m2, substs.clone());
+            (TyKind::Ref(.., substs), &TyKind::Raw(m2 @ Mutability::Not, ..))
+            | (TyKind::Ref(Mutability::Mut, substs), &TyKind::Raw(m2, ..)) => {
+                from_ty = TyKind::Raw(m2, substs.clone()).intern(&Interner);
             }
 
             // Illegal mutability conversion
-            (Ty::Raw(Mutability::Not, ..), Ty::Raw(Mutability::Mut, ..))
-            | (Ty::Ref(Mutability::Not, ..), Ty::Ref(Mutability::Mut, ..)) => return false,
+            (TyKind::Raw(Mutability::Not, ..), TyKind::Raw(Mutability::Mut, ..))
+            | (TyKind::Ref(Mutability::Not, ..), TyKind::Ref(Mutability::Mut, ..)) => return false,
 
             // `{function_type}` -> `fn()`
-            (Ty::FnDef(..), Ty::Function { .. }) => match from_ty.callable_sig(self.db) {
+            (TyKind::FnDef(..), TyKind::Function { .. }) => match from_ty.callable_sig(self.db) {
                 None => return false,
                 Some(sig) => {
                     from_ty = Ty::fn_ptr(sig);
                 }
             },
 
-            (Ty::Closure(.., substs), Ty::Function { .. }) => {
+            (TyKind::Closure(.., substs), TyKind::Function { .. }) => {
                 from_ty = substs[0].clone();
             }
 
@@ -107,9 +109,11 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Auto Deref if cannot coerce
-        match (&from_ty, to_ty) {
+        match (from_ty.interned(&Interner), to_ty.interned(&Interner)) {
             // FIXME: DerefMut
-            (Ty::Ref(_, st1), Ty::Ref(_, st2)) => self.unify_autoderef_behind_ref(&st1[0], &st2[0]),
+            (TyKind::Ref(_, st1), TyKind::Ref(_, st2)) => {
+                self.unify_autoderef_behind_ref(&st1[0], &st2[0])
+            }
 
             // Otherwise, normal unify
             _ => self.unify(&from_ty, to_ty),

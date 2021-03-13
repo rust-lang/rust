@@ -41,7 +41,8 @@ use super::{
     InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
-    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode, AliasTy,
+    db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
+    AliasTy, Interner, TyKind,
 };
 
 pub(crate) use unify::unify;
@@ -169,7 +170,7 @@ impl Index<ExprId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, expr: ExprId) -> &Ty {
-        self.type_of_expr.get(expr).unwrap_or(&Ty::Unknown)
+        self.type_of_expr.get(expr).unwrap_or(&Ty(TyKind::Unknown))
     }
 }
 
@@ -177,7 +178,7 @@ impl Index<PatId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, pat: PatId) -> &Ty {
-        self.type_of_pat.get(pat).unwrap_or(&Ty::Unknown)
+        self.type_of_pat.get(pat).unwrap_or(&Ty(TyKind::Unknown))
     }
 }
 
@@ -226,7 +227,7 @@ impl<'a> InferenceContext<'a> {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(),
             obligations: Vec::default(),
-            return_ty: Ty::Unknown, // set in collect_fn_signature
+            return_ty: TyKind::Unknown.intern(&Interner), // set in collect_fn_signature
             trait_env: TraitEnvironment::lower(db, &resolver),
             db,
             owner,
@@ -237,15 +238,19 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
+    fn err_ty(&self) -> Ty {
+        TyKind::Unknown.intern(&Interner)
+    }
+
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
         let mut result = std::mem::take(&mut self.result);
         for ty in result.type_of_expr.values_mut() {
-            let resolved = self.table.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
+            let resolved = self.table.resolve_ty_completely(ty.clone());
             *ty = resolved;
         }
         for ty in result.type_of_pat.values_mut() {
-            let resolved = self.table.resolve_ty_completely(mem::replace(ty, Ty::Unknown));
+            let resolved = self.table.resolve_ty_completely(ty.clone());
             *ty = resolved;
         }
         result
@@ -298,8 +303,8 @@ impl<'a> InferenceContext<'a> {
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
-        match ty {
-            Ty::Unknown => self.table.new_type_var(),
+        match ty.interned(&Interner) {
+            TyKind::Unknown => self.table.new_type_var(),
             _ => ty,
         }
     }
@@ -383,7 +388,7 @@ impl<'a> InferenceContext<'a> {
                 self.obligations.push(Obligation::Projection(projection));
                 self.resolve_ty_as_possible(ty)
             }
-            None => Ty::Unknown,
+            None => self.err_ty(),
         }
     }
 
@@ -395,8 +400,10 @@ impl<'a> InferenceContext<'a> {
     /// to do it as well.
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
         let ty = self.resolve_ty_as_possible(ty);
-        ty.fold(&mut |ty| match ty {
-            Ty::Alias(AliasTy::Projection(proj_ty)) => self.normalize_projection_ty(proj_ty),
+        ty.fold(&mut |ty| match ty.interned(&Interner) {
+            TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                self.normalize_projection_ty(proj_ty.clone())
+            }
             _ => ty,
         })
     }
@@ -412,7 +419,7 @@ impl<'a> InferenceContext<'a> {
     fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantId>) {
         let path = match path {
             Some(path) => path,
-            None => return (Ty::Unknown, None),
+            None => return (self.err_ty(), None),
         };
         let resolver = &self.resolver;
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
@@ -421,7 +428,7 @@ impl<'a> InferenceContext<'a> {
         let (resolution, unresolved) =
             match resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
-                None => return (Ty::Unknown, None),
+                None => return (self.err_ty(), None),
             };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
@@ -462,11 +469,11 @@ impl<'a> InferenceContext<'a> {
                             }
                         }
                         // FIXME potentially resolve assoc type
-                        (Ty::Unknown, None)
+                        (self.err_ty(), None)
                     }
                     Some(_) => {
                         // FIXME diagnostic
-                        (Ty::Unknown, None)
+                        (self.err_ty(), None)
                     }
                 }
             }
@@ -480,15 +487,15 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::AdtSelfType(_) => {
                 // FIXME this could happen in array size expressions, once we're checking them
-                (Ty::Unknown, None)
+                (self.err_ty(), None)
             }
             TypeNs::GenericParam(_) => {
                 // FIXME potentially resolve assoc type
-                (Ty::Unknown, None)
+                (self.err_ty(), None)
             }
             TypeNs::AdtId(AdtId::EnumId(_)) | TypeNs::BuiltinType(_) | TypeNs::TraitId(_) => {
                 // FIXME diagnostic
-                (Ty::Unknown, None)
+                (self.err_ty(), None)
             }
         };
 
@@ -500,7 +507,7 @@ impl<'a> InferenceContext<'a> {
                 result
             } else {
                 // FIXME diagnostic
-                (Ty::Unknown, None)
+                (TyKind::Unknown.intern(&Interner), None)
             }
         }
 
@@ -711,12 +718,12 @@ impl Expectation {
 
     /// This expresses no expectation on the type.
     fn none() -> Self {
-        Expectation { ty: Ty::Unknown, rvalue_hint: false }
+        Expectation { ty: TyKind::Unknown.intern(&Interner), rvalue_hint: false }
     }
 
     fn coercion_target(&self) -> &Ty {
         if self.rvalue_hint {
-            &Ty::Unknown
+            &Ty(TyKind::Unknown)
         } else {
             &self.ty
         }

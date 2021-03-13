@@ -227,7 +227,7 @@ use hir_def::{
 use la_arena::Idx;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{db::HirDatabase, AdtId, InferenceResult, Ty};
+use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, TyKind};
 
 #[derive(Debug, Clone, Copy)]
 /// Either a pattern from the source code being analyzed, represented as
@@ -626,13 +626,13 @@ pub(super) fn is_useful(
     // - enum with no variants
     // - `!` type
     // In those cases, no match arm is useful.
-    match cx.infer[cx.match_expr].strip_references() {
-        Ty::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
+    match cx.infer[cx.match_expr].strip_references().interned(&Interner) {
+        TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
             if cx.db.enum_data(*enum_id).variants.is_empty() {
                 return Ok(Usefulness::NotUseful);
             }
         }
-        Ty::Never => return Ok(Usefulness::NotUseful),
+        TyKind::Never => return Ok(Usefulness::NotUseful),
         _ => (),
     }
 
