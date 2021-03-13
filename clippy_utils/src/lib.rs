@@ -61,11 +61,11 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::Node;
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item,
-    ItemKind, LangItem, MatchSource, Param, Pat, PatKind, Path, PathSegment, QPath, TraitItem, TraitItemKind, TraitRef,
-    TyKind, Unsafety,
+    def, Arm, Block, Body, Constness, CrateItem, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs, GenericParam, HirId,
+    Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef, MatchSource, Node, Param, Pat,
+    PatKind, Path, PathSegment, QPath, Stmt, StructField, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
+    Variant, Visibility,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -78,7 +78,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::{self, ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{BytePos, Pos, Span, SyntaxContext, DUMMY_SP};
 use rustc_target::abi::Integer;
 use rustc_trait_selection::traits::query::normalize::AtExt;
@@ -852,26 +852,31 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 /// e.g. Given the expression `&vec![]`, getting a snippet from the span for `vec![]` as a HIR node
 /// would result in `box []`. If given the context of the address of expression, this function will
 /// correctly get a snippet of `vec![]`.
+///
+/// This will also return whether or not the snippet is a macro call.
 pub fn snippet_with_context(
     cx: &LateContext<'_>,
     span: Span,
     outer: SyntaxContext,
     default: &'a str,
     applicability: &mut Applicability,
-) -> Cow<'a, str> {
+) -> (Cow<'a, str>, bool) {
     let outer_span = hygiene::walk_chain(span, outer);
-    let span = if outer_span.ctxt() == outer {
-        outer_span
+    let (span, is_macro_call) = if outer_span.ctxt() == outer {
+        (outer_span, span.ctxt() != outer)
     } else {
         // The span is from a macro argument, and the outer context is the macro using the argument
         if *applicability != Applicability::Unspecified {
             *applicability = Applicability::MaybeIncorrect;
         }
         // TODO: get the argument span.
-        span
+        (span, false)
     };
 
-    snippet_with_applicability(cx, span, default, applicability)
+    (
+        snippet_with_applicability(cx, span, default, applicability),
+        is_macro_call,
+    )
 }
 
 /// Returns a new Span that extends the original Span to the first non-whitespace char of the first
@@ -1013,21 +1018,52 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
         .join("\n")
 }
 
+/// Gets the span of the node, if there is one.
+pub fn get_node_span(node: Node<'_>) -> Option<Span> {
+    match node {
+        Node::Param(Param { span, .. })
+        | Node::Item(Item { span, .. })
+        | Node::ForeignItem(ForeignItem { span, .. })
+        | Node::TraitItem(TraitItem { span, .. })
+        | Node::ImplItem(ImplItem { span, .. })
+        | Node::Variant(Variant { span, .. })
+        | Node::Field(StructField { span, .. })
+        | Node::Expr(Expr { span, .. })
+        | Node::Stmt(Stmt { span, .. })
+        | Node::PathSegment(PathSegment {
+            ident: Ident { span, .. },
+            ..
+        })
+        | Node::Ty(hir::Ty { span, .. })
+        | Node::TraitRef(TraitRef {
+            path: Path { span, .. },
+            ..
+        })
+        | Node::Binding(Pat { span, .. })
+        | Node::Pat(Pat { span, .. })
+        | Node::Arm(Arm { span, .. })
+        | Node::Block(Block { span, .. })
+        | Node::Local(Local { span, .. })
+        | Node::MacroDef(MacroDef { span, .. })
+        | Node::Lifetime(Lifetime { span, .. })
+        | Node::GenericParam(GenericParam { span, .. })
+        | Node::Visibility(Visibility { span, .. })
+        | Node::Crate(CrateItem { span, .. }) => Some(*span),
+        Node::Ctor(_) | Node::AnonConst(_) => None,
+    }
+}
+
+/// Gets the parent node, if any.
+pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
+    tcx.hir().parent_iter(id).next().map(|(_, node)| node)
+}
+
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    let map = &cx.tcx.hir();
-    let hir_id = e.hir_id;
-    let parent_id = map.get_parent_node(hir_id);
-    if hir_id == parent_id {
-        return None;
+    match get_parent_node(cx.tcx, e.hir_id) {
+        Some(Node::Expr(parent)) => Some(parent),
+        _ => None,
     }
-    map.find(parent_id).and_then(|node| {
-        if let Node::Expr(parent) = node {
-            Some(parent)
-        } else {
-            None
-        }
-    })
 }
 
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {

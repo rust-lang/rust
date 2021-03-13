@@ -129,7 +129,7 @@ impl LateLintPass<'_> for ManualMap {
             // Remove address-of expressions from the scrutinee. Either `as_ref` will be called, or
             // it's being passed by value.
             let scrutinee = peel_hir_expr_refs(scrutinee).0;
-            let scrutinee_str = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
+            let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
             let scrutinee_str =
                 if scrutinee.span.ctxt() == expr.span.ctxt() && scrutinee.precedence().order() < PREC_POSTFIX {
                     format!("({})", scrutinee_str)
@@ -160,7 +160,7 @@ impl LateLintPass<'_> for ManualMap {
                             "|{}{}| {}",
                             annotation,
                             some_binding,
-                            snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                            snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
                         )
                     },
                 }
@@ -168,8 +168,8 @@ impl LateLintPass<'_> for ManualMap {
                 // TODO: handle explicit reference annotations.
                 format!(
                     "|{}| {}",
-                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app),
-                    snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app)
+                    snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0,
+                    snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
                 )
             } else {
                 // Refutable bindings and mixed reference annotations can't be handled by `map`.
