@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                 match kind {
                     RefOp::Method(target_mut)
                         if !is_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
-                            && is_linted_explicit_deref_position(parent, expr.hir_id) =>
+                            && is_linted_explicit_deref_position(parent, expr.hir_id, expr.span) =>
                     {
                         self.state = Some((
                             State::DerefMethod {
@@ -189,9 +189,9 @@ fn deref_method_same_type(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
 
 // Checks whether the parent node is a suitable context for switching from a deref method to the
 // deref operator.
-fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
+fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, child_span: Span) -> bool {
     let parent = match parent {
-        Some(Node::Expr(e)) => e,
+        Some(Node::Expr(e)) if e.span.ctxt() == child_span.ctxt() => e,
         _ => return true,
     };
     match parent.kind {

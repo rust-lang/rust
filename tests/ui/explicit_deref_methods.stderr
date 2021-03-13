@@ -66,5 +66,11 @@ error: explicit `deref` method call
 LL |     let b = opt_a.unwrap().deref();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try this: `&*opt_a.unwrap()`
 
-error: aborting due to 11 previous errors
+error: explicit `deref` method call
+  --> $DIR/explicit_deref_methods.rs:79:31
+   |
+LL |     let b: &str = expr_deref!(a.deref());
+   |                               ^^^^^^^^^ help: try this: `&*a`
+
+error: aborting due to 12 previous errors
 
