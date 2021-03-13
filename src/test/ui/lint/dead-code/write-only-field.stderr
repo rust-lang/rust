@@ -4,10 +4,9 @@ error: field is never read: `f`
 LL |     f: i32,
    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_f`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 note: the lint level is defined here
   --> $DIR/write-only-field.rs:1:9
    |
@@ -20,10 +19,9 @@ error: field is never read: `sub`
 LL |     sub: Sub,
    |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_sub`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `f`
   --> $DIR/write-only-field.rs:9:5
@@ -31,10 +29,9 @@ error: field is never read: `f`
 LL |     f: i32,
    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_f`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `y`
   --> $DIR/write-only-field.rs:28:9
@@ -42,10 +39,9 @@ error: field is never read: `y`
 LL |         y: bool,
    |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_y`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `u`
   --> $DIR/write-only-field.rs:58:9
@@ -53,10 +49,9 @@ error: field is never read: `u`
 LL |         u: u32,
    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_u`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: field is never read: `v`
   --> $DIR/write-only-field.rs:59:9
@@ -64,10 +59,9 @@ error: field is never read: `v`
 LL |         v: u32,
    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_v`
    |
-   = note: The leading underscore signals to the reader that while the field may not be read
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this field serves some other purpose
+           even if it isn't used in a way that we can detect. (e.g. for its effect
+           when dropped or in foreign code)
 
 error: aborting due to 6 previous errors
 

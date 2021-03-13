@@ -4,10 +4,8 @@ error: function is never used: `dead_fn`
 LL | fn dead_fn() {}
    |    ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_dead_fn`
    |
-   = note: The leading underscore signals to the reader that while the function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this function serves some other purpose
+           even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/lint-dead-code-2.rs:2:9
    |
@@ -20,10 +18,8 @@ error: function is never used: `dead_fn2`
 LL | fn dead_fn2() {}
    |    ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_dead_fn2`
    |
-   = note: The leading underscore signals to the reader that while the function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: function is never used: `main`
   --> $DIR/lint-dead-code-2.rs:38:4
@@ -31,10 +27,8 @@ error: function is never used: `main`
 LL | fn main() {
    |    ^^^^ help: if this is intentional, prefix it with an underscore: `_main`
    |
-   = note: The leading underscore signals to the reader that while the function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 error: aborting due to 3 previous errors
 

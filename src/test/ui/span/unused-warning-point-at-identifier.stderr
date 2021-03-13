@@ -4,10 +4,8 @@ warning: enum is never used: `Enum`
 LL | enum Enum {
    |      ^^^^ help: if this is intentional, prefix it with an underscore: `_Enum`
    |
-   = note: The leading underscore signals to the reader that while the enum may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this enum serves some other purpose
+           even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/unused-warning-point-at-identifier.rs:3:9
    |
@@ -21,10 +19,8 @@ warning: struct is never constructed: `Struct`
 LL | struct Struct {
    |        ^^^^^^ help: if this is intentional, prefix it with an underscore: `_Struct`
    |
-   = note: The leading underscore signals to the reader that while the struct may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this struct serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 warning: function is never used: `func`
   --> $DIR/unused-warning-point-at-identifier.rs:19:4
@@ -32,10 +28,8 @@ warning: function is never used: `func`
 LL | fn func() -> usize {
    |    ^^^^ help: if this is intentional, prefix it with an underscore: `_func`
    |
-   = note: The leading underscore signals to the reader that while the function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 warning: function is never used: `func_complete_span`
   --> $DIR/unused-warning-point-at-identifier.rs:24:1
@@ -43,10 +37,8 @@ warning: function is never used: `func_complete_span`
 LL | func_complete_span()
    | ^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_func_complete_span`
    |
-   = note: The leading underscore signals to the reader that while the function may not be used
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this function serves some other purpose
+           even if it isn't used in a way that we can detect.
 
 warning: 4 warnings emitted
 

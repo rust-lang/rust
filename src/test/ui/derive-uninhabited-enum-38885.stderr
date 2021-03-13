@@ -4,10 +4,8 @@ warning: variant is never constructed: `Void`
 LL |     Void(Void),
    |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_Void`
    |
-   = note: The leading underscore signals to the reader that while the variant may not be constructed
-           by any Rust code, it still serves some other purpose that isn't detected by rustc.
-           (e.g. some values are used for their effect when dropped or used in FFI code
-           exclusively through raw pointers)
+   = note: the leading underscore signals that this variant serves some other purpose
+           even if it isn't used in a way that we can detect.
    = note: `-W dead-code` implied by `-W unused`
 
 warning: 1 warning emitted
