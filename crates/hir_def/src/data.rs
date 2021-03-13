@@ -251,7 +251,7 @@ fn collect_items(
         return Vec::new();
     }
 
-    let item_tree = db.item_tree(file_id);
+    let item_tree = db.file_item_tree(file_id);
     let crate_graph = db.crate_graph();
     let cfg_options = &crate_graph[module.krate].cfg_options;
 
@@ -292,7 +292,7 @@ fn collect_items(
                 if let Ok(res) = res {
                     if let Some((mark, mac)) = res.value {
                         let src: InFile<ast::MacroItems> = expander.to_source(mac);
-                        let item_tree = db.item_tree(src.file_id);
+                        let item_tree = db.file_item_tree(src.file_id);
                         let iter =
                             item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
                         items.extend(collect_items(

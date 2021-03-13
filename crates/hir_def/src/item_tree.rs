@@ -76,7 +76,7 @@ pub struct ItemTree {
 }
 
 impl ItemTree {
-    pub(crate) fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+    pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             if node.kind() == SyntaxKind::ERROR {
@@ -417,7 +417,7 @@ impl<N: ItemTreeNode> ItemTreeId<N> {
     }
 
     pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
-        db.item_tree(self.file)
+        db.file_item_tree(self.file)
     }
 }
 

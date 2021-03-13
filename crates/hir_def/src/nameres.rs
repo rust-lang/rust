@@ -213,7 +213,7 @@ impl DefMap {
     ) -> Option<Arc<DefMap>> {
         let block: BlockLoc = db.lookup_intern_block(block_id);
 
-        let item_tree = db.item_tree(block.ast_id.file_id);
+        let item_tree = db.file_item_tree(block.ast_id.file_id);
         if item_tree.inner_items_of_block(block.ast_id.value).is_empty() {
             return None;
         }

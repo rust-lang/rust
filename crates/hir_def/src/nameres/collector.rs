@@ -242,7 +242,7 @@ struct DefCollector<'a> {
 impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
-        let item_tree = self.db.item_tree(file_id.into());
+        let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
         if item_tree
@@ -263,7 +263,7 @@ impl DefCollector<'_> {
     }
 
     fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
-        let item_tree = self.db.item_tree(block.file_id);
+        let item_tree = self.db.file_item_tree(block.file_id);
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::BlockExpr { block };
         if item_tree
@@ -895,7 +895,7 @@ impl DefCollector<'_> {
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
-        let item_tree = self.db.item_tree(file_id);
+        let item_tree = self.db.file_item_tree(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
             def_collector: &mut *self,
@@ -1299,7 +1299,7 @@ impl ModCollector<'_, '_> {
                             Some((file_id, is_mod_rs)),
                             &self.item_tree[module.visibility],
                         );
-                        let item_tree = db.item_tree(file_id.into());
+                        let item_tree = db.file_item_tree(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             macro_depth: self.macro_depth,
