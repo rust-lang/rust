@@ -1082,7 +1082,7 @@ impl Deref for T {
 }
 
 impl DerefMut for T {
-    fn deref_mut(&self) -> &mut Self::Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
