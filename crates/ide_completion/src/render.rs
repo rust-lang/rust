@@ -327,18 +327,18 @@ impl<'a> Render<'a> {
 fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionRelevance> {
     let (expected_name, expected_type) = ctx.expected_name_and_type()?;
     let mut res = CompletionRelevance::default();
-    res.exact_type_match = ty == &expected_type
-        || autoderef_relevance(
-            ctx.db().upcast(),
-            ty,
-            expected_type.remove_ref().as_ref().unwrap_or(&expected_type),
-        );
+    res.exact_type_match = relevance_type_match(ctx.db().upcast(), ty, expected_type);
     res.exact_name_match = name == &expected_name;
     Some(res)
 }
 
-fn autoderef_relevance(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -> bool {
-    ty.autoderef(db).any(|deref_ty| &deref_ty == expected_type)
+fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: Type) -> bool {
+    if ty == &expected_type {
+        return true;
+    }
+
+    let ty_without_ref = expected_type.remove_ref().unwrap_or(expected_type);
+    ty.autoderef(db).any(|deref_ty| deref_ty == ty_without_ref)
 }
 
 #[cfg(test)]
@@ -1001,7 +1001,7 @@ fn main() {
 
     #[test]
     fn suggest_deref() {
-        check(
+        check_relevance(
             r#"
 #[lang = "deref"]
 trait Deref {
@@ -1030,82 +1030,13 @@ fn main() {
 }
             "#,
             expect![[r#"
-                [
-                    CompletionItem {
-                        label: "Deref",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "Deref",
-                        kind: SymbolKind(
-                            Trait,
-                        ),
-                    },
-                    CompletionItem {
-                        label: "S",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "S",
-                        kind: SymbolKind(
-                            Struct,
-                        ),
-                    },
-                    CompletionItem {
-                        label: "T",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "T",
-                        kind: SymbolKind(
-                            Struct,
-                        ),
-                    },
-                    CompletionItem {
-                        label: "foo(…)",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "foo(${1:s})$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "foo",
-                        detail: "-> ()",
-                        trigger_call_info: true,
-                    },
-                    CompletionItem {
-                        label: "m",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "m",
-                        kind: SymbolKind(
-                            Local,
-                        ),
-                        detail: "i32",
-                    },
-                    CompletionItem {
-                        label: "main()",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "main()$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "main",
-                        detail: "-> ()",
-                    },
-                    CompletionItem {
-                        label: "t",
-                        source_range: 293..293,
-                        delete: 293..293,
-                        insert: "t",
-                        kind: SymbolKind(
-                            Local,
-                        ),
-                        detail: "T",
-                        relevance: CompletionRelevance {
-                            exact_name_match: false,
-                            exact_type_match: true,
-                        },
-                    },
-                ]
+                lc t [type]
+                tt Deref []
+                st S []
+                st T []
+                fn foo(…) []
+                lc m []
+                fn main() []
             "#]],
         )
     }
