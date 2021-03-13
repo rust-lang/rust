@@ -846,26 +846,38 @@ function defocusSearchBar() {
                 if (val.generics.length > 0) {
                     if (obj.length > GENERICS_DATA &&
                           obj[GENERICS_DATA].length >= val.generics.length) {
-                        var elems = obj[GENERICS_DATA].slice(0);
+                        var elems = {};
+                        var elength = object[GENERICS_DATA].length;
+                        for (var x = 0; x < elength; ++x) {
+                            elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                        }
                         var total = 0;
                         var done = 0;
                         // We need to find the type that matches the most to remove it in order
                         // to move forward.
                         var vlength = val.generics.length;
-                        for (var y = 0; y < vlength; ++y) {
-                            var lev = { pos: -1, lev: MAX_LEV_DISTANCE + 1};
-                            var firstGeneric = getObjectNameFromId(val.generics[y]);
-                            for (var x = 0, elength = elems.length; x < elength; ++x) {
-                                var tmp_lev = levenshtein(getObjectNameFromId(elems[x]),
-                                                                          firstGeneric);
-                                if (tmp_lev < lev.lev) {
-                                    lev.lev = tmp_lev;
-                                    lev.pos = x;
+                        for (var x = 0; x < vlength; ++x) {
+                            var lev = MAX_LEV_DISTANCE + 1;
+                            var firstGeneric = getObjectNameFromId(val.generics[x]);
+                            var match = undefined;
+                            if (elems[firstGeneric]) {
+                                match = firstGeneric;
+                                lev = 0;
+                            } else {
+                                for (var elem_name in elems) {
+                                    var tmp_lev = levenshtein(elem_name, firstGeneric);
+                                    if (tmp_lev < lev) {
+                                        lev = tmp_lev;
+                                        match = elem_name;
+                                    }
                                 }
                             }
-                            if (lev.pos !== -1) {
-                                elems.splice(lev.pos, 1);
-                                total += lev.lev;
+                            if (match !== undefined) {
+                                elems[match] -= 1;
+                                if (elems[match] == 0) {
+                                    delete elems[match];
+                                }
+                                total += lev;
                                 done += 1;
                             } else {
                                 return MAX_LEV_DISTANCE + 1;
@@ -880,25 +892,27 @@ function defocusSearchBar() {
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                var len, x, y, e_len, firstGeneric;
+                var len, x, firstGeneric;
                 if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
                             if (obj.length > GENERICS_DATA &&
                                   obj[GENERICS_DATA].length >= val.generics.length) {
-                                var elems = obj[GENERICS_DATA].slice(0);
-                                var allFound = true;
+                                var elems = {};
+                                len = obj[GENERICS_DATA].length;
+                                for (x = 0; x < len; ++x) {
+                                    elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
+                                }
 
+                                var allFound = true;
                                 len = val.generics.length;
-                                for (y = 0; allFound === true && y < len; ++y) {
-                                    allFound = false;
-                                    firstGeneric = getObjectNameFromId(val.generics[y]);
-                                    e_len = elems.length;
-                                    for (x = 0; allFound === false && x < e_len; ++x) {
-                                        allFound = getObjectNameFromId(elems[x]) === firstGeneric;
-                                    }
-                                    if (allFound === true) {
-                                        elems.splice(x - 1, 1);
+                                for (x = 0; x < len; ++x) {
+                                    firstGeneric = getObjectNameFromId(val.generics[x]);
+                                    if (elems[firstGeneric]) {
+                                        elems[firstGeneric] -= 1;
+                                    } else {
+                                        allFound = false;
+                                        break;
                                     }
                                 }
                                 if (allFound === true) {
@@ -1066,13 +1080,6 @@ function defocusSearchBar() {
                 return false;
             }
 
-            function generateId(ty) {
-                if (ty.parent && ty.parent.name) {
-                    return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
-                }
-                return itemTypes[ty.ty] + ty.path + ty.name;
-            }
-
             function createAliasFromItem(item) {
                 return {
                     crate: item.crate,
@@ -1158,7 +1165,7 @@ function defocusSearchBar() {
                     in_args = findArg(searchIndex[i], val, true, typeFilter);
                     returned = checkReturned(searchIndex[i], val, true, typeFilter);
                     ty = searchIndex[i];
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     if (searchWords[i] === val.name
                         && typePassesFilter(typeFilter, searchIndex[i].ty)
@@ -1208,7 +1215,7 @@ function defocusSearchBar() {
                     if (!type) {
                         continue;
                     }
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
                     if (output.name === "*" || returned === true) {
@@ -1292,7 +1299,7 @@ function defocusSearchBar() {
                     var index = -1;
                     // we want lev results to go lower than others
                     lev = MAX_LEV_DISTANCE + 1;
-                    fullId = generateId(ty);
+                    fullId = ty.id;
 
                     if (searchWords[j].indexOf(split[i]) > -1 ||
                         searchWords[j].indexOf(val) > -1 ||
@@ -1825,6 +1832,13 @@ function defocusSearchBar() {
             showResults(execSearch(query, index, filterCrates));
         }
 
+        function generateId(ty) {
+            if (ty.parent && ty.parent.name) {
+                return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
+            }
+            return itemTypes[ty.ty] + ty.path + ty.name;
+        }
+
         function buildIndex(rawSearchIndex) {
             searchIndex = [];
             var searchWords = [];
@@ -1837,14 +1851,18 @@ function defocusSearchBar() {
                 var crateSize = 0;
 
                 searchWords.push(crate);
-                searchIndex.push({
+                var crateRow = {
                     crate: crate,
                     ty: 1, // == ExternCrate
                     name: crate,
                     path: "",
                     desc: rawSearchIndex[crate].doc,
+                    parent: undefined,
                     type: null,
-                });
+                    id: "",
+                };
+                crateRow.id = generateId(crateRow);
+                searchIndex.push(crateRow);
                 currentIndex += 1;
 
                 // an array of (Number) item types
@@ -1890,7 +1908,9 @@ function defocusSearchBar() {
                         desc: itemDescs[i],
                         parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                         type: itemFunctionSearchTypes[i],
+                        id: "",
                     };
+                    row.id = generateId(row);
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
