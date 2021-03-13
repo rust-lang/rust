@@ -126,7 +126,7 @@ use self::spec_extend::SpecExtend;
 
 mod spec_extend;
 
-/// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
+/// A contiguous growable array type, written as `Vec<T>` and pronounced 'vector'.
 ///
 /// # Examples
 ///
@@ -215,7 +215,7 @@ mod spec_extend;
 ///
 /// # Slicing
 ///
-/// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
+/// A `Vec` can be mutable. On the other hand, slices are read-only objects.
 /// To get a [slice][prim@slice], use [`&`]. Example:
 ///
 /// ```
@@ -352,7 +352,7 @@ mod spec_extend;
 /// not break, however: using `unsafe` code to write to the excess capacity,
 /// and then increasing the length to match, is always valid.
 ///
-/// `Vec` does not currently guarantee the order in which elements are dropped.
+/// Currently, `Vec` does not guarantee the order in which elements are dropped.
 /// The order has changed in the past and may change again.
 ///
 /// [`get`]: ../../std/vec/struct.Vec.html#method.get
