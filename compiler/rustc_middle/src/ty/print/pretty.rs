@@ -1949,12 +1949,17 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         debug!("prepare_late_bound_region_info(value: {:?})", value);
 
         struct LateBoundRegionNameCollector<'a, 'tcx> {
+            tcx: TyCtxt<'tcx>,
             used_region_names: &'a mut FxHashSet<Symbol>,
             type_collector: SsoHashSet<Ty<'tcx>>,
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
+
+            fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 debug!("LateBoundRegionNameCollector::visit_region(r: {:?}, address: {:p})", r, &r);
@@ -1979,6 +1984,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
         self.used_region_names.clear();
         let mut collector = LateBoundRegionNameCollector {
+            tcx: self.tcx,
             used_region_names: &mut self.used_region_names,
             type_collector: SsoHashSet::new(),
         };
