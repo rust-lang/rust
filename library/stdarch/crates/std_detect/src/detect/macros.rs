@@ -18,7 +18,7 @@ macro_rules! features {
                 };
             )*
             $(
-                ($bind_feature) => { $macro_name!($feature_impl); };
+                ($bind_feature) => { $macro_name!($feature_impl) };
             )*
             $(
                 ($nort_feature) => {
