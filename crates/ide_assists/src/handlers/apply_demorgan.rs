@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use syntax::ast::{self, AstNode};
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
@@ -30,19 +32,52 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         return None;
     }
 
-    let lhs = expr.lhs()?;
-    let lhs_range = lhs.syntax().text_range();
-    let not_lhs = invert_boolean_expression(&ctx.sema, lhs);
+    let mut expr = expr;
 
-    let rhs = expr.rhs()?;
-    let rhs_range = rhs.syntax().text_range();
-    let not_rhs = invert_boolean_expression(&ctx.sema, rhs);
+    // Walk up the tree while we have the same binary operator
+    while let Some(parent_expr) = expr.syntax().parent().and_then(ast::BinExpr::cast) {
+        if let Some(parent_op) = expr.op_kind() {
+            if parent_op == op {
+                expr = parent_expr
+            }
+        }
+    }
+
+    let mut expr_stack = vec![expr.clone()];
+    let mut terms = Vec::new();
+    let mut op_ranges = Vec::new();
+
+    // Find all the children with the same binary operator
+    while let Some(expr) = expr_stack.pop() {
+        let mut traverse_bin_expr_arm = |expr| {
+            if let ast::Expr::BinExpr(bin_expr) = expr {
+                if let Some(expr_op) = bin_expr.op_kind() {
+                    if expr_op == op {
+                        expr_stack.push(bin_expr);
+                    } else {
+                        terms.push(ast::Expr::BinExpr(bin_expr));
+                    }
+                } else {
+                    terms.push(ast::Expr::BinExpr(bin_expr));
+                }
+            } else {
+                terms.push(expr);
+            }
+        };
+
+        op_ranges.extend(expr.op_token().map(|t| t.text_range()));
+        traverse_bin_expr_arm(expr.lhs()?);
+        traverse_bin_expr_arm(expr.rhs()?);
+    }
 
     acc.add(
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
         |edit| {
+            terms.sort_by_key(|t| t.syntax().text_range().start());
+            let mut terms = VecDeque::from(terms);
+
             let paren_expr = expr.syntax().parent().and_then(|parent| ast::ParenExpr::cast(parent));
 
             let neg_expr = paren_expr
@@ -57,11 +92,18 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                     }
                 });
 
-            edit.replace(op_range, opposite_op);
+            for op_range in op_ranges {
+                edit.replace(op_range, opposite_op);
+            }
 
             if let Some(paren_expr) = paren_expr {
-                edit.replace(lhs_range, not_lhs.syntax().text());
-                edit.replace(rhs_range, not_rhs.syntax().text());
+                for term in terms {
+                    let range = term.syntax().text_range();
+                    let not_term = invert_boolean_expression(&ctx.sema, term);
+
+                    edit.replace(range, not_term.syntax().text());
+                }
+
                 if let Some(neg_expr) = neg_expr {
                     cov_mark::hit!(demorgan_double_negation);
                     edit.replace(neg_expr.op_token().unwrap().text_range(), "");
@@ -70,8 +112,25 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                     edit.replace(paren_expr.l_paren_token().unwrap().text_range(), "!(");
                 }
             } else {
-                edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
-                edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
+                if let Some(lhs) = terms.pop_front() {
+                    let lhs_range = lhs.syntax().text_range();
+                    let not_lhs = invert_boolean_expression(&ctx.sema, lhs);
+
+                    edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
+                }
+
+                if let Some(rhs) = terms.pop_back() {
+                    let rhs_range = rhs.syntax().text_range();
+                    let not_rhs = invert_boolean_expression(&ctx.sema, rhs);
+
+                    edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
+                }
+
+                for term in terms {
+                    let term_range = term.syntax().text_range();
+                    let not_term = invert_boolean_expression(&ctx.sema, term);
+                    edit.replace(term_range, not_term.syntax().text());
+                }
             }
         },
     )
@@ -177,6 +236,12 @@ fn f() {
     #[test]
     fn demorgan_general_case() {
         check_assist(apply_demorgan, "fn f() { x ||$0 x }", "fn f() { !(!x && !x) }")
+    }
+
+    #[test]
+    fn demorgan_multiple_terms() {
+        check_assist(apply_demorgan, "fn f() { x ||$0 y || z }", "fn f() { !(!x && !y && !z) }");
+        check_assist(apply_demorgan, "fn f() { x || y ||$0 z }", "fn f() { !(!x && !y && !z) }");
     }
 
     #[test]
