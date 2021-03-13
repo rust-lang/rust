@@ -6,4 +6,11 @@ fn foo(x: impl Debug, y: impl Debug) -> String {
     format!("{:?}", a)
 }
 
-fn main() { }
+trait S<T> {}
+
+fn much_universe<T: S<impl Debug>, U: IntoIterator<Item = impl Iterator<Item = impl Clone>>>(
+    _: impl Debug + Clone,
+) {
+}
+
+fn main() {}
