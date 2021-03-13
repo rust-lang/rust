@@ -1,7 +1,10 @@
 mod bind_instead_of_map;
 mod bytes_nth;
 mod chars_cmp;
+mod chars_cmp_with_unwrap;
+mod chars_last_cmp;
 mod chars_next_cmp;
+mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod expect_fun_call;
@@ -54,7 +57,7 @@ mod wrong_self_convention;
 mod zst_offset;
 
 use bind_instead_of_map::BindInsteadOfMap;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{
@@ -66,7 +69,7 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{TraitItem, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
@@ -2037,66 +2040,17 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
     }
 
     lint_with_both_lhs_and_rhs!(chars_next_cmp::check, cx, info);
-    lint_with_both_lhs_and_rhs!(lint_chars_last_cmp, cx, info);
-    lint_with_both_lhs_and_rhs!(lint_chars_next_cmp_with_unwrap, cx, info);
+    lint_with_both_lhs_and_rhs!(chars_last_cmp::check, cx, info);
+    lint_with_both_lhs_and_rhs!(chars_next_cmp_with_unwrap::check, cx, info);
     lint_with_both_lhs_and_rhs!(lint_chars_last_cmp_with_unwrap, cx, info);
-}
-
-/// Checks for the `CHARS_LAST_CMP` lint.
-fn lint_chars_last_cmp<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if chars_cmp::check(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
-        true
-    } else {
-        chars_cmp::check(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
-    }
-}
-
-/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
-fn lint_chars_cmp_with_unwrap<'tcx>(
-    cx: &LateContext<'tcx>,
-    info: &BinaryExprInfo<'_>,
-    chain_methods: &[&str],
-    lint: &'static Lint,
-    suggest: &str,
-) -> bool {
-    if_chain! {
-        if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Lit(ref lit) = info.other.kind;
-        if let ast::LitKind::Char(c) = lit.node;
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                lint,
-                info.expr.span,
-                &format!("you should use the `{}` method", suggest),
-                "like this",
-                format!("{}{}.{}('{}')",
-                        if info.eq { "" } else { "!" },
-                        snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
-                        suggest,
-                        c),
-                applicability,
-            );
-
-            true
-        } else {
-            false
-        }
-    }
-}
-
-/// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
-fn lint_chars_next_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
 fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
+    if chars_cmp_with_unwrap::check(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp_with_unwrap(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
+        chars_cmp_with_unwrap::check(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
