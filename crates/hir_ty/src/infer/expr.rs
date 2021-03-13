@@ -264,8 +264,9 @@ impl<'a> InferenceContext<'a> {
                     substs: Substs(sig_tys.clone().into()),
                 })
                 .intern(&Interner);
+                let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                 let closure_ty =
-                    TyKind::Closure(self.owner, tgt_expr, Substs::single(sig_ty)).intern(&Interner);
+                    TyKind::Closure(closure_id, Substs::single(sig_ty)).intern(&Interner);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to

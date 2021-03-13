@@ -27,9 +27,8 @@ use std::{iter, mem, ops::Deref, sync::Arc};
 
 use base_db::salsa;
 use hir_def::{
-    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, DefWithBodyId,
-    FunctionId, GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId,
-    TypeParamId,
+    builtin_type::BuiltinType, expr::ExprId, type_ref::Rawness, AssocContainerId, FunctionId,
+    GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use itertools::Itertools;
 
@@ -53,7 +52,8 @@ pub use crate::traits::chalk::Interner;
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
 pub type AssocTypeId = chalk_ir::AssocTypeId<Interner>;
-pub(crate) type FnDefId = chalk_ir::FnDefId<Interner>;
+pub type FnDefId = chalk_ir::FnDefId<Interner>;
+pub type ClosureId = chalk_ir::ClosureId<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
@@ -195,7 +195,7 @@ pub enum TyKind {
     ///
     /// The closure signature is stored in a `FnPtr` type in the first type
     /// parameter.
-    Closure(DefWithBodyId, ExprId, Substs),
+    Closure(ClosureId, Substs),
 
     /// Represents a foreign type declared in external blocks.
     ForeignType(ForeignDefId),
@@ -734,9 +734,7 @@ impl Ty {
                 ty_id == ty_id2
             }
             (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
-            (TyKind::Closure(def, expr, _), TyKind::Closure(def2, expr2, _)) => {
-                expr == expr2 && def == def2
-            }
+            (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
             (TyKind::Ref(mutability, ..), TyKind::Ref(mutability2, ..))
             | (TyKind::Raw(mutability, ..), TyKind::Raw(mutability2, ..)) => {
                 mutability == mutability2

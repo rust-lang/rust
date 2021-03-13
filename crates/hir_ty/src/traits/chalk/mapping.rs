@@ -72,10 +72,9 @@ impl ToChalk for Ty {
             }
             TyKind::Never => chalk_ir::TyKind::Never.intern(&Interner),
 
-            TyKind::Closure(def, expr, substs) => {
-                let closure_id = db.intern_closure((def, expr));
+            TyKind::Closure(closure_id, substs) => {
                 let substitution = substs.to_chalk(db);
-                chalk_ir::TyKind::Closure(closure_id.into(), substitution).intern(&Interner)
+                chalk_ir::TyKind::Closure(closure_id, substitution).intern(&Interner)
             }
 
             TyKind::Adt(adt_id, substs) => {
@@ -203,11 +202,7 @@ impl ToChalk for Ty {
                 TyKind::FnDef(fn_def_id, from_chalk(db, subst))
             }
 
-            chalk_ir::TyKind::Closure(id, subst) => {
-                let id: crate::db::ClosureId = id.into();
-                let (def, expr) = db.lookup_intern_closure(id);
-                TyKind::Closure(def, expr, from_chalk(db, subst))
-            }
+            chalk_ir::TyKind::Closure(id, subst) => TyKind::Closure(id, from_chalk(db, subst)),
 
             chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::ForeignType(foreign_def_id),
             chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME

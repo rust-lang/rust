@@ -716,14 +716,14 @@ impl From<crate::db::InternedOpaqueTyId> for OpaqueTyId {
     }
 }
 
-impl From<chalk_ir::ClosureId<Interner>> for crate::db::ClosureId {
+impl From<chalk_ir::ClosureId<Interner>> for crate::db::InternedClosureId {
     fn from(id: chalk_ir::ClosureId<Interner>) -> Self {
         Self::from_intern_id(id.0)
     }
 }
 
-impl From<crate::db::ClosureId> for chalk_ir::ClosureId<Interner> {
-    fn from(id: crate::db::ClosureId) -> Self {
+impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
+    fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
 }
