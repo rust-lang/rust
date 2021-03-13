@@ -125,12 +125,15 @@ public:
           continue;
         if (erased.count(inst_orig))
           continue;
-        auto inst = gutils->getNewFromOriginal(inst_orig);
-        for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
-          if (inst->getOperand(i) == iload) {
-            inst->setOperand(i, pn);
+        auto val = gutils->getNewFromOriginal(cast<Value>(inst_orig));
+        if (auto inst = dyn_cast<Instruction>(val)) {
+          for (unsigned i = 0; i < inst->getNumOperands(); ++i) {
+            if (inst->getOperand(i) == iload) {
+              inst->setOperand(i, pn);
+            }
           }
-        }
+        } else
+          assert(isa<Argument>(val));
       }
     }
 
@@ -345,6 +348,8 @@ public:
     Value *inst = newi;
 
     //! Store loads that need to be cached for use in reverse pass
+    assert(gutils->can_modref_map);
+    assert(gutils->can_modref_map->find(&LI) != gutils->can_modref_map->end());
     if (cache_reads_always ||
         (!cache_reads_never && gutils->can_modref_map->find(&LI)->second &&
          is_value_needed_in_reverse<Primal>(
@@ -352,7 +357,6 @@ public:
              oldUnreachable))) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&LI)->getNextNode());
       // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
-
       inst = gutils->cacheForReverse(BuilderZ, newi,
                                      getIndex(&LI, CacheType::Self));
       assert(inst->getType() == type);
@@ -3440,10 +3444,18 @@ public:
       if (Mode != DerivativeMode::Both) {
         if (is_value_needed_in_reverse<Primal>(
                 TR, gutils, orig, /*topLevel*/ Mode == DerivativeMode::Both,
-                oldUnreachable)) {
+                oldUnreachable) ||
+            hasMetadata(orig, "enzyme_fromstack")) {
 
-          gutils->cacheForReverse(BuilderZ, op,
-                                  getIndex(orig, CacheType::Self));
+          Value *nop = gutils->cacheForReverse(BuilderZ, op,
+                                               getIndex(orig, CacheType::Self));
+          if (Mode == DerivativeMode::Reverse &&
+              hasMetadata(orig, "enzyme_fromstack")) {
+            IRBuilder<> Builder2(call.getParent());
+            getReverseBuilder(Builder2);
+            freeKnownAllocation(Builder2, lookup(nop, Builder2), *called,
+                                gutils->TLI);
+          }
         } else if (Mode != DerivativeMode::Forward) {
           // Note that here we cannot simply replace with null as users who try
           // to find the shadow pointer will use the shadow of null rather than

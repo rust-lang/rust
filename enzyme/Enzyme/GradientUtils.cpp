@@ -831,7 +831,8 @@ endCheck:
     }
     assert(val->getName() != "<badref>");
     EmitWarning("NoUnwrap", inst->getDebugLoc(), oldFunc, inst->getParent(),
-                "Cannot unwrap ", *val);
+                "Cannot unwrap ", *val, " in ",
+                BuilderM.GetInsertBlock()->getName());
   }
   return nullptr;
 }
@@ -1341,16 +1342,18 @@ bool GradientUtils::legalRecompute(const Value *val,
     assert(phi->getNumIncomingValues() != 0);
     auto parent = phi->getParent();
     if (parent->getParent() == newFunc) {
-      if (LI.isLoopHeader(parent))
+      if (LI.isLoopHeader(parent)) {
         return false;
+      }
       for (auto &val : phi->incoming_values()) {
         if (isPotentialLastLoopValue(val, parent, LI))
           return false;
       }
       return true;
     } else if (parent->getParent() == oldFunc) {
-      if (OrigLI.isLoopHeader(parent))
+      if (OrigLI.isLoopHeader(parent)) {
         return false;
+      }
       for (auto &val : phi->incoming_values()) {
         if (isPotentialLastLoopValue(val, parent, OrigLI))
           return false;
@@ -2149,6 +2152,9 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
     invertedPointers[arg] = li;
     return lookupM(invertedPointers[arg], BuilderM);
   } else if (auto arg = dyn_cast<BinaryOperator>(oval)) {
+    if (!arg->getType()->isIntOrIntVectorTy()) {
+      llvm::errs() << *oval << "\n";
+    }
     assert(arg->getType()->isIntOrIntVectorTy());
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *val0 = nullptr;

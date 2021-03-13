@@ -279,8 +279,13 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   default:
     llvm_unreachable("unknown allocation function");
   }
-
   llvm::StringRef freename = TLI.getName(freefunc);
+  if (freefunc == LibFunc_free) {
+    freename = "free";
+    assert(freename == "free");
+    if (freename != "free")
+      llvm_unreachable("illegal free");
+  }
 
   Type *VoidTy = Type::getVoidTy(tofree->getContext());
   Type *IntPtrTy = Type::getInt8PtrTy(tofree->getContext());
@@ -293,7 +298,6 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   Value *freevalue =
       allocationfn.getParent()->getOrInsertFunction(freename, FT);
 #endif
-
   CallInst *freecall = cast<CallInst>(
 #if LLVM_VERSION_MAJOR >= 8
       CallInst::Create(FT, freevalue,

@@ -601,6 +601,7 @@ attributes #9 = { cold }
 
 ; CHECK-NEXT:   call void @diffesubcast(<2 x double>* %[[tmpi]], <2 x double>* {{(nonnull )?}}%[[tmpiipc]])
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccallmi]])
+; CHECK-NEXT:   tail call void @free(i8* %[[malloccall]])
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 

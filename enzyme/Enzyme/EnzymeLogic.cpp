@@ -88,16 +88,19 @@ bool is_load_uncacheable(
 struct CacheAnalysis {
   AAResults &AA;
   Function *oldFunc;
+  LoopInfo &OrigLI;
+  DominatorTree DT;
   TargetLibraryInfo &TLI;
   const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions;
   const std::map<Argument *, bool> &uncacheable_args;
   bool topLevel;
   std::map<Value *, bool> seen;
   CacheAnalysis(
-      AAResults &AA, Function *oldFunc, TargetLibraryInfo &TLI,
+      AAResults &AA, Function *oldFunc, LoopInfo &OrigLI,
+      TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, bool topLevel)
-      : AA(AA), oldFunc(oldFunc), TLI(TLI),
+      : AA(AA), oldFunc(oldFunc), OrigLI(OrigLI), DT(*oldFunc), TLI(TLI),
         unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), topLevel(topLevel) {}
 
@@ -127,19 +130,32 @@ struct CacheAnalysis {
       assert(found != uncacheable_args.end());
       if (found->second) {
         mustcache = true;
+        // EmitWarning("UncacheableOrigin", arg->getDebugLoc(), oldFunc,
+        // arg->getParent()->getEntryBlock(),
+        //            "origin arg may need caching ", *arg);
       }
     } else if (auto pn = dyn_cast<PHINode>(obj)) {
       seen[pn] = false;
       for (auto &val : pn->incoming_values()) {
         if (is_value_mustcache_from_origin(val)) {
           mustcache = true;
+          EmitWarning("UncacheableOrigin", pn->getDebugLoc(), oldFunc,
+                      pn->getParent(), "origin pn may need caching ", *pn);
           break;
         }
       }
     } else if (auto ci = dyn_cast<CastInst>(obj)) {
       mustcache = is_value_mustcache_from_origin(ci->getOperand(0));
+      if (mustcache) {
+        EmitWarning("UncacheableOrigin", ci->getDebugLoc(), oldFunc,
+                    ci->getParent(), "origin ci may need caching ", *ci);
+      }
     } else if (auto gep = dyn_cast<GetElementPtrInst>(obj)) {
       mustcache = is_value_mustcache_from_origin(gep->getPointerOperand());
+      if (mustcache) {
+        EmitWarning("UncacheableOrigin", gep->getDebugLoc(), oldFunc,
+                    gep->getParent(), "origin gep may need caching ", *gep);
+      }
     } else {
 
       // Pointer operands originating from call instructions that are not
@@ -154,35 +170,47 @@ struct CacheAnalysis {
         {
           if (castinst->isCast()) {
             if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              if (isAllocationFunction(*fn, TLI) ||
-                  isDeallocationFunction(*fn, TLI)) {
-                called = fn;
-              }
+              called = fn;
             }
           }
         }
         if (called && isCertainMallocOrFree(called)) {
+
         } else {
           // OP is a non malloc/free call so we need to cache
           mustcache = true;
+          EmitWarning("UncacheableOrigin", obj_op->getDebugLoc(), oldFunc,
+                      obj_op->getParent(), "origin call may need caching ",
+                      *obj_op);
         }
       } else if (isa<AllocaInst>(obj)) {
         // No change to modref if alloca
       } else if (isa<GlobalVariable>(obj)) {
         // In the absense of more fine-grained global info, assume object is
         // written to in a subseqent call unless this is "topLevel";
-        if (!topLevel)
+        if (!topLevel) {
           mustcache = true;
+        }
       } else if (auto sli = dyn_cast<LoadInst>(obj)) {
         // If obj is from a load instruction conservatively consider it
         // uncacheable if that load itself cannot be cached
         mustcache = is_load_uncacheable(*sli);
+        if (mustcache) {
+          EmitWarning("UncacheableOrigin", sli->getDebugLoc(), oldFunc,
+                      sli->getParent(), "origin load may need caching ", *sli);
+        }
       } else {
         // In absence of more information, assume that the underlying object for
         // pointer operand is uncacheable in caller.
         mustcache = true;
+        if (isa<Instruction>(obj))
+          EmitWarning("UncacheableOrigin",
+                      cast<Instruction>(obj)->getDebugLoc(), oldFunc,
+                      cast<Instruction>(obj)->getParent(),
+                      "unknown origin may need caching ", *obj);
       }
     }
+
     return seen[obj] = mustcache;
   }
 
@@ -210,14 +238,57 @@ struct CacheAnalysis {
           return false;
         }
 
-        if (writesToMemoryReadBy(AA, &li, inst2)) {
-          can_modref = true;
-          EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
-                      "Load may need caching ", li, " due to ", *inst2);
-          // Early exit
-          return true;
+        if (!writesToMemoryReadBy(AA, &li, inst2)) {
+          return false;
         }
-        return false;
+        if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
+          if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0) {
+            IntrinsicInst *other = nullptr;
+            allPredecessorsOf(II, [&](Instruction *p) {
+              if (auto I2 = dyn_cast<IntrinsicInst>(p)) {
+                if (I2->getIntrinsicID() == Intrinsic::nvvm_barrier0 &&
+                    I2 != II) {
+                  if (DT.dominates(I2, II)) {
+                    other = I2;
+                    return true;
+                  }
+                  return false;
+                }
+              }
+              return false;
+            });
+            if (other) {
+              allInstructionsBetween(OrigLI, other, II, [&](Instruction *mid) {
+                if (!mid->mayWriteToMemory())
+                  return false;
+
+                if (unnecessaryInstructions.count(mid)) {
+                  return false;
+                }
+
+                if (!writesToMemoryReadBy(AA, &li, mid)) {
+                  return false;
+                }
+
+                can_modref = true;
+                EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
+                            li.getParent(), "Load may need caching ", li,
+                            " due to ", *other, " via ", *other, " to ", *II);
+                return true;
+              });
+              if (can_modref)
+                return true;
+              else
+                return false;
+            }
+            llvm::errs() << " no dominating barrier of: " << *II << "\n";
+          }
+        }
+        can_modref = true;
+        EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc, li.getParent(),
+                    "Load may need caching ", li, " due to ", *inst2);
+        // Early exit
+        return true;
       });
     } else {
 
@@ -251,6 +322,13 @@ struct CacheAnalysis {
     if (!callsite_op->getCalledFunction())
       return {};
 
+    if (isMemFreeLibMFunction(callsite_op->getCalledFunction()->getName())) {
+      return {};
+    }
+
+    if (isCertainMallocOrFree(callsite_op->getCalledFunction())) {
+      return {};
+    }
     std::vector<Value *> args;
     std::vector<bool> args_safe;
 
@@ -272,6 +350,12 @@ struct CacheAnalysis {
 #endif
 
       bool init_safe = !is_value_mustcache_from_origin(obj);
+      if (!init_safe) {
+        EmitWarning("UncacheableOrigin", callsite_op->getDebugLoc(), oldFunc,
+                    callsite_op->getParent(), "Callsite ", *callsite_op,
+                    " arg ", i, " ", *callsite_op->getArgOperand(i),
+                    " uncacheable from origin ", *obj);
+      }
       args_safe.push_back(init_safe);
     }
 
@@ -290,14 +374,14 @@ struct CacheAnalysis {
         {
           if (castinst->isCast()) {
             if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-              if (isAllocationFunction(*fn, TLI) ||
-                  isDeallocationFunction(*fn, TLI)) {
-                called = fn;
-              }
+              called = fn;
             }
           }
         }
         if (called && isCertainMallocOrFree(called)) {
+          return false;
+        }
+        if (called && isMemFreeLibMFunction(called->getName())) {
           return false;
         }
       }
@@ -310,7 +394,8 @@ struct CacheAnalysis {
                 inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {
           EmitWarning("UncacheableArg", callsite_op->getDebugLoc(), oldFunc,
                       callsite_op->getParent(), "Callsite ", *callsite_op,
-                      " arg ", i, " uncacheable due to ", *inst2);
+                      " arg ", i, " ", *callsite_op->getArgOperand(i),
+                      " uncacheable due to ", *inst2);
           args_safe[i] = false;
         }
       }
@@ -1215,8 +1300,9 @@ const AugmentedReturn &CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(AA, gutils->oldFunc, TLI, unnecessaryInstructionsTmp,
-                   _uncacheable_argsPP, /*topLevel*/ false);
+  CacheAnalysis CA(AA, gutils->oldFunc, gutils->OrigLI, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
+                   /*topLevel*/ false);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
 
@@ -2333,8 +2419,8 @@ Function *CreatePrimalAndGradient(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(AA, gutils->oldFunc, TLI, unnecessaryInstructionsTmp,
-                   _uncacheable_argsPP, topLevel);
+  CacheAnalysis CA(AA, gutils->oldFunc, gutils->OrigLI, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP, topLevel);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
@@ -2686,6 +2772,8 @@ Function *CreatePrimalAndGradient(
 
   auto nf = gutils->newFunc;
   delete gutils;
-
+  if (EnzymePrint) {
+    llvm::errs() << *nf << "\n";
+  }
   return nf;
 }

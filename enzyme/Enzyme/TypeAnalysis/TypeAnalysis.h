@@ -50,9 +50,10 @@ static inline bool isMemFreeLibMFunction(llvm::StringRef str,
                                          llvm::Intrinsic::ID *ID = nullptr) {
   if (str.startswith("__") && str.endswith("_finite")) {
     str = str.substr(2, str.size() - 2 - 7);
-  }
-  if (str.startswith("__fd_") && str.endswith("_1")) {
+  } else if (str.startswith("__fd_") && str.endswith("_1")) {
     str = str.substr(5, str.size() - 5 - 2);
+  } else if (str.startswith("__nv_")) {
+    str = str.substr(5, str.size() - 5);
   }
   if (LIBM_FUNCTIONS.find(str.str()) != LIBM_FUNCTIONS.end()) {
     if (ID)

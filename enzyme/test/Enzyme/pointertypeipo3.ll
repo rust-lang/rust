@@ -165,6 +165,7 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   %7 = load i64, i64* %"arr'ipc"
 ; CHECK-NEXT:   store i64 0, i64* %"arr'ipc"
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
+; CHECK-NEXT:   tail call void @free(i8* %malloccall)
 ; CHECK-NEXT:   %8 = insertvalue { i64 } undef, i64 %7, 0
 ; CHECK-NEXT:   ret { i64 } %8
 ; CHECK-NEXT: }

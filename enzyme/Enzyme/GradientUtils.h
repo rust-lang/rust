@@ -367,7 +367,13 @@ public:
     return f->second;
   }
   Instruction *getNewFromOriginal(const Instruction *newinst) const {
-    return cast<Instruction>(getNewFromOriginal((Value *)newinst));
+    auto ninst = getNewFromOriginal((Value *)newinst);
+    if (!isa<Instruction>(ninst)) {
+      llvm::errs() << *oldFunc << "\n";
+      llvm::errs() << *newFunc << "\n";
+      llvm::errs() << *ninst << " - " << *newinst << "\n";
+    }
+    return cast<Instruction>(ninst);
   }
   BasicBlock *getNewFromOriginal(const BasicBlock *newinst) const {
     return cast<BasicBlock>(getNewFromOriginal((Value *)newinst));

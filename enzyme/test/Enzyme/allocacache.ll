@@ -538,6 +538,7 @@ attributes #11 = { alwaysinline cold }
 ; CHECK-NEXT:   %[[addW34:.+]] = fadd fast <2 x double> %[[lW34]], %m0diffeW34
 ; CHECK-NEXT:   store <2 x double> %[[addW34]], <2 x double>* %[[W34pipge]], align 16
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccallmi]])
+; CHECK-NEXT:   tail call void @free(i8* %[[malloccall]])
 ; CHECK-NEXT:   %[[inserted0:.+]] = insertvalue { double, double } undef, double %[[addbref]], 0
 ; CHECK-NEXT:   %[[inserted1:.+]] = insertvalue { double, double } %[[inserted0]], double %[[addb22]], 1
 ; CHECK-NEXT:   ret { double, double } %[[inserted1]]

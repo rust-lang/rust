@@ -302,6 +302,10 @@ static inline void UpgradeAllocasToMallocs(Function *NewF, bool topLevel) {
                      8),
         IRBuilder<>(insertBefore).CreateZExtOrTrunc(AI->getArraySize(), i64),
         nullptr, nam);
+    CallInst *CI = dyn_cast<CallInst>(rep);
+    if (auto C = dyn_cast<CastInst>(rep))
+      CI = cast<CallInst>(C->getOperand(0));
+    CI->setMetadata("enzyme_fromstack", MDNode::get(CI->getContext(), {}));
     assert(rep->getType() == AI->getType());
     AI->replaceAllUsesWith(rep);
     AI->eraseFromParent();
@@ -1418,6 +1422,42 @@ void optimizeIntermediate(GradientUtils *gutils, bool topLevel, Function *F) {
   SROA().run(*F, AM);
   EarlyCSEPass(/*memoryssa*/ true).run(*F, AM);
 #endif
+
+  for (Function &Impl : *F->getParent()) {
+    if (!Impl.hasFnAttribute("implements"))
+      continue;
+    const Attribute &A = Impl.getFnAttribute("implements");
+
+    const StringRef SpecificationName = A.getValueAsString();
+    Function *Specification = F->getParent()->getFunction(SpecificationName);
+    if (!Specification) {
+      LLVM_DEBUG(dbgs() << "Found implementation '" << Impl.getName()
+                        << "' but no matching specification with name '"
+                        << SpecificationName
+                        << "', potentially inlined and/or eliminated.\n");
+      continue;
+    }
+    LLVM_DEBUG(dbgs() << "Replace specification '" << Specification->getName()
+                      << "' with implementation '" << Impl.getName() << "'\n");
+
+    for (auto I = Specification->use_begin(), UE = Specification->use_end();
+         I != UE;) {
+      auto &use = *I;
+      ++I;
+      auto cext = ConstantExpr::getBitCast(&Impl, Specification->getType());
+      use.set(cext);
+      if (auto CI = dyn_cast<CallInst>(use.getUser())) {
+#if LLVM_VERSION_MAJOR >= 11
+        if (CI->getCalledOperand() == cext || CI->getCalledFunction() == &Impl)
+#else
+        if (CI->getCalledValue() == cext || CI->getCalledFunction() == &Impl)
+#endif
+        {
+          CI->setCallingConv(Impl.getCallingConv());
+        }
+      }
+    }
+  }
 
   PassManagerBuilder Builder;
   Builder.OptLevel = 2;
