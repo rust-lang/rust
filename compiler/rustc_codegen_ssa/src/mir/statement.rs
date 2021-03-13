@@ -112,7 +112,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx
             }
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(&mut bx, coverage.clone());
+                self.codegen_coverage(&mut bx, coverage.clone(), statement.source_info.scope);
                 bx
             }
             mir::StatementKind::CopyNonOverlapping(box mir::CopyNonOverlapping {

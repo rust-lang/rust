@@ -254,7 +254,7 @@ fn save_function_record(
 ///
 /// 1. The file name of an "Unreachable" function must match the file name of the existing
 ///    codegenned (covered) function to which the unreachable code regions will be added.
-/// 2. The function to which the unreachable code regions will be added must not be a genaric
+/// 2. The function to which the unreachable code regions will be added must not be a generic
 ///    function (must not have type parameters) because the coverage tools will get confused
 ///    if the codegenned function has more than one instantiation and additional `CodeRegion`s
 ///    attached to only one of those instantiations.
