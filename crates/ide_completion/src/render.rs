@@ -343,7 +343,6 @@ mod tests {
     use std::cmp::Reverse;
 
     use expect_test::{expect, Expect};
-    use hir::Mutability;
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
@@ -367,33 +366,39 @@ mod tests {
             }
         }
 
-        fn display_label(label: &str, mutability: Option<Mutability>) -> String {
-            let mutability_label = match mutability {
-                Some(Mutability::Shared) => "&",
-                Some(Mutability::Mut) => "&mut ",
-                None => "",
-            };
-
-            format!("{}{}", mutability_label, label)
-        }
-
         let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
         completions.sort_by_key(|it| {
-            (Reverse(it.ref_match().map(|m| m.1).unwrap_or(it.relevance())), it.label().to_string())
+            // (Reverse(it.ref_match().map(|m| m.1).unwrap_or(it.relevance())), it.label().to_string())
+            if let Some((mutability, relevance)) = it.ref_match() {
+                let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
+
+                Reverse((relevance, label))
+            } else {
+                Reverse((it.relevance(), it.label().to_string()))
+            }
         });
+
         let actual = completions
             .into_iter()
             .filter(|it| it.completion_kind == CompletionKind::Reference)
-            .map(|it| {
+            .flat_map(|it| {
+                let mut items = vec![];
+
                 let tag = it.kind().unwrap().tag();
-                let (mutability, relevance) = it
-                    .ref_match()
-                    .map(|(mutability, relevance)| (Some(mutability), relevance))
-                    .unwrap_or((None, it.relevance()));
-                let relevance = display_relevance(relevance);
-                format!("{} {} {}\n", tag, display_label(it.label(), mutability), relevance)
+                let relevance = display_relevance(it.relevance());
+                items.push(format!("{} {} {}\n", tag, it.label(), relevance));
+
+                if let Some((mutability, relevance)) = it.ref_match() {
+                    let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
+                    let relevance = display_relevance(relevance);
+
+                    items.push(format!("{} {} {}\n", tag, label, relevance));
+                }
+
+                items
             })
             .collect::<String>();
+
         expect.assert_eq(&actual);
     }
 
@@ -898,8 +903,8 @@ fn foo(a: A) { B { bar: f(a.$0) }; }
 "#,
             expect![[r#"
                 fd foo [type+name]
-                fd bar []
                 fd baz []
+                fd bar []
             "#]],
         );
         check_relevance(
@@ -925,9 +930,10 @@ struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
+                lc world [type+name]
                 lc &world [type+name]
-                st WorldSnapshot []
                 fn go(…) []
+                st WorldSnapshot []
             "#]],
         );
     }
@@ -940,9 +946,9 @@ struct Foo;
 fn f(foo: &Foo) { f(foo, w$0) }
 "#,
             expect![[r#"
-                st Foo []
-                fn f(…) []
                 lc foo []
+                fn f(…) []
+                st Foo []
             "#]],
         );
     }
@@ -1044,13 +1050,14 @@ fn main() {
 }
             "#,
             expect![[r#"
+                lc t []
                 lc &t [type]
-                tt Deref []
-                st S []
-                st T []
-                fn foo(…) []
-                lc m []
                 fn main() []
+                lc m []
+                fn foo(…) []
+                st T []
+                st S []
+                tt Deref []
             "#]],
         )
     }
@@ -1097,14 +1104,15 @@ fn main() {
 }
             "#,
             expect![[r#"
+                lc t []
                 lc &mut t [type]
-                tt Deref []
-                tt DerefMut []
-                st S []
-                st T []
-                fn foo(…) []
-                lc m []
                 fn main() []
+                lc m []
+                fn foo(…) []
+                st T []
+                st S []
+                tt DerefMut []
+                tt Deref []
             "#]],
         )
     }
