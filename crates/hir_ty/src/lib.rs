@@ -51,6 +51,8 @@ pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariabl
 
 pub use crate::traits::chalk::Interner;
 
+pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Lifetime {
     Parameter(LifetimeParamId),
@@ -194,7 +196,7 @@ pub enum TyKind {
     Closure(DefWithBodyId, ExprId, Substs),
 
     /// Represents a foreign type declared in external blocks.
-    ForeignType(TypeAliasId),
+    ForeignType(ForeignDefId),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     ///
@@ -705,7 +707,7 @@ impl Ty {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
             TyKind::FnDef(callable, ..) => Some(callable.into()),
             TyKind::AssociatedType(type_alias, ..) => Some(type_alias.into()),
-            TyKind::ForeignType(type_alias, ..) => Some(type_alias.into()),
+            TyKind::ForeignType(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
         }
     }
@@ -724,8 +726,10 @@ impl Ty {
             (TyKind::Slice(_), TyKind::Slice(_)) | (TyKind::Array(_), TyKind::Array(_)) => true,
             (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
             (TyKind::OpaqueType(ty_id, ..), TyKind::OpaqueType(ty_id2, ..)) => ty_id == ty_id2,
-            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..))
-            | (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
+            (TyKind::AssociatedType(ty_id, ..), TyKind::AssociatedType(ty_id2, ..)) => {
+                ty_id == ty_id2
+            }
+            (TyKind::ForeignType(ty_id, ..), TyKind::ForeignType(ty_id2, ..)) => ty_id == ty_id2,
             (TyKind::Closure(def, expr, _), TyKind::Closure(def2, expr2, _)) => {
                 expr == expr2 && def == def2
             }
@@ -1115,4 +1119,12 @@ pub struct ReturnTypeImplTraits {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct ReturnTypeImplTrait {
     pub(crate) bounds: Binders<Vec<GenericPredicate>>,
+}
+
+pub(crate) fn to_foreign_def_id(id: TypeAliasId) -> chalk_ir::ForeignDefId<Interner> {
+    chalk_ir::ForeignDefId(salsa::InternKey::as_intern_id(&id))
+}
+
+pub(crate) fn from_foreign_def_id(id: chalk_ir::ForeignDefId<Interner>) -> TypeAliasId {
+    salsa::InternKey::from_intern_id(id.0)
 }

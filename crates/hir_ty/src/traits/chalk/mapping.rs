@@ -51,11 +51,7 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::OpaqueType(id, substitution).intern(&Interner)
             }
 
-            TyKind::ForeignType(type_alias) => {
-                let foreign_type = TypeAliasAsForeignType(type_alias);
-                let foreign_type_id = foreign_type.to_chalk(db);
-                chalk_ir::TyKind::Foreign(foreign_type_id).intern(&Interner)
-            }
+            TyKind::ForeignType(id) => chalk_ir::TyKind::Foreign(id).intern(&Interner),
 
             TyKind::Scalar(scalar) => chalk_ir::TyKind::Scalar(scalar).intern(&Interner),
 
@@ -217,9 +213,7 @@ impl ToChalk for Ty {
                 TyKind::Closure(def, expr, from_chalk(db, subst))
             }
 
-            chalk_ir::TyKind::Foreign(foreign_def_id) => {
-                TyKind::ForeignType(from_chalk::<TypeAliasAsForeignType, _>(db, foreign_def_id).0)
-            }
+            chalk_ir::TyKind::Foreign(foreign_def_id) => TyKind::ForeignType(foreign_def_id),
             chalk_ir::TyKind::Generator(_, _) => unimplemented!(), // FIXME
             chalk_ir::TyKind::GeneratorWitness(_, _) => unimplemented!(), // FIXME
         }
@@ -349,20 +343,6 @@ impl ToChalk for TypeAliasAsAssocType {
 
     fn from_chalk(_db: &dyn HirDatabase, assoc_type_id: AssocTypeId) -> TypeAliasAsAssocType {
         TypeAliasAsAssocType(InternKey::from_intern_id(assoc_type_id.0))
-    }
-}
-
-pub(crate) struct TypeAliasAsForeignType(pub(crate) TypeAliasId);
-
-impl ToChalk for TypeAliasAsForeignType {
-    type Chalk = ForeignDefId;
-
-    fn to_chalk(self, _db: &dyn HirDatabase) -> ForeignDefId {
-        chalk_ir::ForeignDefId(self.0.as_intern_id())
-    }
-
-    fn from_chalk(_db: &dyn HirDatabase, foreign_def_id: ForeignDefId) -> TypeAliasAsForeignType {
-        TypeAliasAsForeignType(InternKey::from_intern_id(foreign_def_id.0))
     }
 }
 

@@ -11,9 +11,9 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    db::HirDatabase, primitive, utils::generics, AdtId, AliasTy, CallableDefId, CallableSig,
-    GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy, OpaqueTyId, ProjectionTy, Scalar,
-    Substs, TraitRef, Ty, TyKind,
+    db::HirDatabase, from_foreign_def_id, primitive, utils::generics, AdtId, AliasTy,
+    CallableDefId, CallableSig, GenericPredicate, Interner, Lifetime, Obligation, OpaqueTy,
+    OpaqueTyId, ProjectionTy, Scalar, Substs, TraitRef, Ty, TyKind,
 };
 
 pub struct HirFormatter<'a> {
@@ -491,7 +491,7 @@ impl HirDisplay for Ty {
                 }
             }
             TyKind::ForeignType(type_alias) => {
-                let type_alias = f.db.type_alias_data(*type_alias);
+                let type_alias = f.db.type_alias_data(from_foreign_def_id(*type_alias));
                 write!(f, "{}", type_alias.name)?;
             }
             TyKind::OpaqueType(opaque_ty_id, parameters) => {
