@@ -17,7 +17,7 @@ pub unsafe fn vabd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v1f64")]
-        fn vabd_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+        fn vabd_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
     vabd_f64_(a, b)
 }
@@ -30,7 +30,7 @@ pub unsafe fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fabd.v2f64")]
-        fn vabdq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+        fn vabdq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     vabdq_f64_(a, b)
 }
@@ -1087,7 +1087,7 @@ pub unsafe fn vmax_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v1f64")]
-        fn vmax_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+        fn vmax_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
     vmax_f64_(a, b)
 }
@@ -1100,7 +1100,7 @@ pub unsafe fn vmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmax.v2f64")]
-        fn vmaxq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+        fn vmaxq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     vmaxq_f64_(a, b)
 }
@@ -1113,7 +1113,7 @@ pub unsafe fn vmin_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v1f64")]
-        fn vmin_f64_(a: float64x1_t, a: float64x1_t) -> float64x1_t;
+        fn vmin_f64_(a: float64x1_t, b: float64x1_t) -> float64x1_t;
     }
     vmin_f64_(a, b)
 }
@@ -1126,9 +1126,67 @@ pub unsafe fn vminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmin.v2f64")]
-        fn vminq_f64_(a: float64x2_t, a: float64x2_t) -> float64x2_t;
+        fn vminq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
     vminq_f64_(a, b)
+}
+
+/// Calculates the square root of each lane.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fsqrt))]
+pub unsafe fn vsqrt_f32(a: float32x2_t) -> float32x2_t {
+    simd_fsqrt(a)
+}
+
+/// Calculates the square root of each lane.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fsqrt))]
+pub unsafe fn vsqrtq_f32(a: float32x4_t) -> float32x4_t {
+    simd_fsqrt(a)
+}
+
+/// Calculates the square root of each lane.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fsqrt))]
+pub unsafe fn vsqrt_f64(a: float64x1_t) -> float64x1_t {
+    simd_fsqrt(a)
+}
+
+/// Calculates the square root of each lane.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fsqrt))]
+pub unsafe fn vsqrtq_f64(a: float64x2_t) -> float64x2_t {
+    simd_fsqrt(a)
+}
+
+/// Reciprocal square-root estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(frsqrte))]
+pub unsafe fn vrsqrte_f64(a: float64x1_t) -> float64x1_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v1f64")]
+        fn vrsqrte_f64_(a: float64x1_t) -> float64x1_t;
+    }
+    vrsqrte_f64_(a)
+}
+
+/// Reciprocal square-root estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(frsqrte))]
+pub unsafe fn vrsqrteq_f64(a: float64x2_t) -> float64x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f64")]
+        fn vrsqrteq_f64_(a: float64x2_t) -> float64x2_t;
+    }
+    vrsqrteq_f64_(a)
 }
 
 #[cfg(test)]
@@ -2231,6 +2289,54 @@ mod test {
         let b: f64x2 = f64x2::new(0.0, 3.0);
         let e: f64x2 = f64x2::new(0.0, -2.0);
         let r: f64x2 = transmute(vminq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqrt_f32() {
+        let a: f32x2 = f32x2::new(4.0, 9.0);
+        let e: f32x2 = f32x2::new(2.0, 3.0);
+        let r: f32x2 = transmute(vsqrt_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqrtq_f32() {
+        let a: f32x4 = f32x4::new(4.0, 9.0, 16.0, 25.0);
+        let e: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
+        let r: f32x4 = transmute(vsqrtq_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqrt_f64() {
+        let a: f64 = 4.0;
+        let e: f64 = 2.0;
+        let r: f64 = transmute(vsqrt_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsqrtq_f64() {
+        let a: f64x2 = f64x2::new(4.0, 9.0);
+        let e: f64x2 = f64x2::new(2.0, 3.0);
+        let r: f64x2 = transmute(vsqrtq_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrsqrte_f64() {
+        let a: f64 = 1.0;
+        let e: f64 = 0.998046875;
+        let r: f64 = transmute(vrsqrte_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrsqrteq_f64() {
+        let a: f64x2 = f64x2::new(1.0, 2.0);
+        let e: f64x2 = f64x2::new(0.998046875, 0.705078125);
+        let r: f64x2 = transmute(vrsqrteq_f64(transmute(a)));
         assert_eq!(r, e);
     }
 }

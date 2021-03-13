@@ -3349,6 +3349,38 @@ pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 vminq_f32_(a, b)
 }
 
+/// Reciprocal square-root estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
+pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
+        fn vrsqrte_f32_(a: float32x2_t) -> float32x2_t;
+    }
+vrsqrte_f32_(a)
+}
+
+/// Reciprocal square-root estimate.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
+pub unsafe fn vrsqrteq_f32(a: float32x4_t) -> float32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v4f32")]
+        fn vrsqrteq_f32_(a: float32x4_t) -> float32x4_t;
+    }
+vrsqrteq_f32_(a)
+}
+
 #[cfg(test)]
 #[allow(overflowing_literals)]
 mod test {
@@ -5962,6 +5994,22 @@ mod test {
         let b: f32x4 = f32x4::new(0.0, 3.0, 2.0, 8.0);
         let e: f32x4 = f32x4::new(0.0, -2.0, 2.0, -4.0);
         let r: f32x4 = transmute(vminq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrsqrte_f32() {
+        let a: f32x2 = f32x2::new(1.0, 2.0);
+        let e: f32x2 = f32x2::new(0.998046875, 0.705078125);
+        let r: f32x2 = transmute(vrsqrte_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrsqrteq_f32() {
+        let a: f32x4 = f32x4::new(1.0, 2.0, 3.0, 4.0);
+        let e: f32x4 = f32x4::new(0.998046875, 0.705078125, 0.576171875, 0.4990234375);
+        let r: f32x4 = transmute(vrsqrteq_f32(transmute(a)));
         assert_eq!(r, e);
     }
 }

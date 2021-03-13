@@ -720,3 +720,25 @@ aarch64 = fmin
 link-arm = vmins._EXT_
 link-aarch64 = fmin._EXT_
 generate float*_t
+
+/// Calculates the square root of each lane.
+name = vsqrt
+fn = simd_fsqrt
+a = 4.0, 9.0, 16.0, 25.0
+validate 2.0, 3.0, 4.0, 5.0
+
+aarch64 = fsqrt
+generate float*_t, float64x*_t
+
+/// Reciprocal square-root estimate.
+name = vrsqrte
+a = 1.0, 2.0, 3.0, 4.0
+validate 0.998046875, 0.705078125, 0.576171875, 0.4990234375
+
+aarch64 = frsqrte
+link-aarch64 = frsqrte._EXT_
+generate float64x*_t
+
+arm = vrsqrte
+link-arm = vrsqrte._EXT_
+generate float*_t

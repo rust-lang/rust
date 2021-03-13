@@ -345,13 +345,20 @@ fn gen_aarch64(
             r#"#[allow(improper_ctypes)]
     extern "C" {{
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.{}")]
-        fn {}(a: {}, a: {}) -> {};
+        fn {}({}) -> {};
     }}
     "#,
             link_aarch64.replace("_EXT_", ext),
             current_fn,
-            in_t,
-            in_t,
+            match para_num {
+                1 => {
+                    format!("a: {}", in_t)
+                }
+                2 => {
+                    format!("a: {}, b: {}", in_t, in_t)
+                }
+                _ => unimplemented!("unknown para_num"),
+            },
             out_t
         )
     } else {
@@ -527,7 +534,7 @@ fn gen_arm(
         }
         String::new()
     } else {
-        if link_aarch64.is_none() || link_arm.is_none() {
+        if link_aarch64.is_none() && link_arm.is_none() {
             panic!(
                 "[{}] Either fn or link-arm and link-aarch have to be specified.",
                 name
@@ -544,14 +551,21 @@ fn gen_arm(
     extern "C" {{
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.{}")]
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.{}")]
-        fn {}(a: {}, b: {}) -> {};
+        fn {}({}) -> {};
     }}
 "#,
                 link_arm.replace("_EXT_", ext),
                 link_aarch64.replace("_EXT_", ext),
                 current_fn,
-                in_t,
-                in_t,
+                match para_num {
+                    1 => {
+                        format!("a: {}", in_t)
+                    }
+                    2 => {
+                        format!("a: {}, b: {}", in_t, in_t)
+                    }
+                    _ => unimplemented!("unknown para_num"),
+                },
                 out_t
             )
         } else {

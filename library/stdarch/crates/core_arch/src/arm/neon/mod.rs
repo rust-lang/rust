@@ -136,10 +136,6 @@ extern "C" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
 
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
-    fn frsqrte_v2f32(a: float32x2_t) -> float32x2_t;
-
     //uint32x2_t vqmovn_u64 (uint64x2_t a)
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v2i32")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqxtn.v2i32")]
@@ -2464,15 +2460,6 @@ pub unsafe fn vmovl_u16(a: uint16x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uxtl))]
 pub unsafe fn vmovl_u32(a: uint32x2_t) -> uint64x2_t {
     simd_cast(a)
-}
-
-/// Reciprocal square-root estimate.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
-pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
-    frsqrte_v2f32(a)
 }
 
 /// Vector bitwise not.
@@ -7903,14 +7890,6 @@ mod tests {
         let e = u64x2::new(1, 2);
         let a = u32x2::new(1, 2);
         let r: u64x2 = transmute(vmovl_u32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vrsqrt_f32() {
-        let a = f32x2::new(1.0, 2.0);
-        let e = f32x2::new(0.9980469, 0.7050781);
-        let r: f32x2 = transmute(vrsqrte_f32(transmute(a)));
         assert_eq!(r, e);
     }
 
