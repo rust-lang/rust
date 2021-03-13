@@ -899,13 +899,11 @@ impl<T> BinaryHeap<T> {
     /// ```
     /// #![feature(binary_heap_as_slice)]
     /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
-    /// let slice = heap.as_slice();
+    /// use std::io::{self, Write};
     ///
-    /// // Will print in some order
-    /// for x in slice {
-    ///     println!("{}", x);
-    /// }
+    /// let heap = BinaryHeap::from(vec![1, 2, 3, 4, 5, 6, 7]);
+    ///
+    /// io::sink().write(heap.as_slice()).unwrap();
     /// ```
     #[unstable(feature = "binary_heap_as_slice", issue = "82331")]
     pub fn as_slice(&self) -> &[T] {
