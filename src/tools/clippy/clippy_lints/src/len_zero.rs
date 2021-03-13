@@ -1,11 +1,17 @@
-use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{
+    get_item_name, get_parent_as_impl, is_allowed, snippet_with_applicability, span_lint, span_lint_and_sugg,
+    span_lint_and_then,
+};
+use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{AssocItemKind, BinOpKind, Expr, ExprKind, Impl, ImplItemRef, Item, ItemKind, TraitItemRef};
+use rustc_hir::{
+    def_id::DefId, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, ImplItem, ImplItemKind, ImplicitSelfKind, Item,
+    ItemKind, Mutability, Node, TraitItemRef, TyKind,
+};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, AssocKind, FnSig};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::{Span, Spanned, Symbol};
 
@@ -113,14 +119,38 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             return;
         }
 
-        match item.kind {
-            ItemKind::Trait(_, _, _, _, ref trait_items) => check_trait_items(cx, item, trait_items),
-            ItemKind::Impl(Impl {
-                of_trait: None,
-                items: ref impl_items,
-                ..
-            }) => check_impl_items(cx, item, impl_items),
-            _ => (),
+        if let ItemKind::Trait(_, _, _, _, ref trait_items) = item.kind {
+            check_trait_items(cx, item, trait_items);
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
+        if_chain! {
+            if item.ident.as_str() == "len";
+            if let ImplItemKind::Fn(sig, _) = &item.kind;
+            if sig.decl.implicit_self.has_implicit_self();
+            if cx.access_levels.is_exported(item.hir_id());
+            if matches!(sig.decl.output, FnRetTy::Return(_));
+            if let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id());
+            if imp.of_trait.is_none();
+            if let TyKind::Path(ty_path) = &imp.self_ty.kind;
+            if let Some(ty_id) = cx.qpath_res(ty_path, imp.self_ty.hir_id).opt_def_id();
+            if let Some(local_id) = ty_id.as_local();
+            let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
+            if !is_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
+            then {
+                let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
+                    Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
+                    Some(Node::Item(x)) => match x.kind {
+                        ItemKind::Struct(..) => (x.ident.name, "struct"),
+                        ItemKind::Enum(..) => (x.ident.name, "enum"),
+                        ItemKind::Union(..) => (x.ident.name, "union"),
+                        _ => (x.ident.name, "type"),
+                    }
+                    _ => return,
+                };
+                check_for_is_empty(cx, sig.span, sig.decl.implicit_self, ty_id, name, kind)
+            }
         }
     }
 
@@ -202,40 +232,94 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     }
 }
 
-fn check_impl_items(cx: &LateContext<'_>, item: &Item<'_>, impl_items: &[ImplItemRef<'_>]) {
-    fn is_named_self(cx: &LateContext<'_>, item: &ImplItemRef<'_>, name: &str) -> bool {
-        item.ident.name.as_str() == name
-            && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && cx.tcx.fn_sig(item.id.def_id).inputs().skip_binder().len() == 1
-            } else {
-                false
-            }
+/// Checks if the given signature matches the expectations for `is_empty`
+fn check_is_empty_sig(cx: &LateContext<'_>, sig: FnSig<'_>, self_kind: ImplicitSelfKind) -> bool {
+    match &**sig.inputs_and_output {
+        [arg, res] if *res == cx.tcx.types.bool => {
+            matches!(
+                (arg.kind(), self_kind),
+                (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
+                    | (ty::Ref(_, _, Mutability::Mut), ImplicitSelfKind::MutRef)
+            ) || (!arg.is_ref() && matches!(self_kind, ImplicitSelfKind::Imm | ImplicitSelfKind::Mut))
+        },
+        _ => false,
     }
+}
 
-    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
-        if cx.access_levels.is_exported(is_empty.id.hir_id()) {
-            return;
-        }
-        "a private"
-    } else {
-        "no corresponding"
+/// Checks if the given type has an `is_empty` method with the appropriate signature.
+fn check_for_is_empty(
+    cx: &LateContext<'_>,
+    span: Span,
+    self_kind: ImplicitSelfKind,
+    impl_ty: DefId,
+    item_name: Symbol,
+    item_kind: &str,
+) {
+    let is_empty = Symbol::intern("is_empty");
+    let is_empty = cx
+        .tcx
+        .inherent_impls(impl_ty)
+        .iter()
+        .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(is_empty))
+        .find(|item| item.kind == AssocKind::Fn);
+
+    let (msg, is_empty_span, self_kind) = match is_empty {
+        None => (
+            format!(
+                "{} `{}` has a public `len` method, but no `is_empty` method",
+                item_kind,
+                item_name.as_str(),
+            ),
+            None,
+            None,
+        ),
+        Some(is_empty)
+            if !cx
+                .access_levels
+                .is_exported(cx.tcx.hir().local_def_id_to_hir_id(is_empty.def_id.expect_local())) =>
+        {
+            (
+                format!(
+                    "{} `{}` has a public `len` method, but a private `is_empty` method",
+                    item_kind,
+                    item_name.as_str(),
+                ),
+                Some(cx.tcx.def_span(is_empty.def_id)),
+                None,
+            )
+        },
+        Some(is_empty)
+            if !(is_empty.fn_has_self_parameter
+                && check_is_empty_sig(cx, cx.tcx.fn_sig(is_empty.def_id).skip_binder(), self_kind)) =>
+        {
+            (
+                format!(
+                    "{} `{}` has a public `len` method, but the `is_empty` method has an unexpected signature",
+                    item_kind,
+                    item_name.as_str(),
+                ),
+                Some(cx.tcx.def_span(is_empty.def_id)),
+                Some(self_kind),
+            )
+        },
+        Some(_) => return,
     };
 
-    if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
-        if cx.access_levels.is_exported(i.id.hir_id()) {
-            let ty = cx.tcx.type_of(item.def_id);
-
-            span_lint(
-                cx,
-                LEN_WITHOUT_IS_EMPTY,
-                item.span,
-                &format!(
-                    "item `{}` has a public `len` method but {} `is_empty` method",
-                    ty, is_empty
-                ),
-            );
+    span_lint_and_then(cx, LEN_WITHOUT_IS_EMPTY, span, &msg, |db| {
+        if let Some(span) = is_empty_span {
+            db.span_note(span, "`is_empty` defined here");
         }
-    }
+        if let Some(self_kind) = self_kind {
+            db.note(&format!(
+                "expected signature: `({}self) -> bool`",
+                match self_kind {
+                    ImplicitSelfKind::ImmRef => "&",
+                    ImplicitSelfKind::MutRef => "&mut ",
+                    _ => "",
+                }
+            ));
+        }
+    });
 }
 
 fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>, op: &str, compare_to: u32) {

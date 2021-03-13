@@ -1,10 +1,11 @@
-use crate::utils::{match_type, paths, span_lint_and_sugg};
+use crate::utils::{is_type_diagnostic_item, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 use std::path::{Component, Path};
 
 declare_clippy_lint! {
@@ -46,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for PathBufPushOverwrite {
             if let ExprKind::MethodCall(ref path, _, ref args, _) = expr.kind;
             if path.ident.name == sym!(push);
             if args.len() == 2;
-            if match_type(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), &paths::PATH_BUF);
+            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), sym::PathBuf);
             if let Some(get_index_arg) = args.get(1);
             if let ExprKind::Lit(ref lit) = get_index_arg.kind;
             if let LitKind::Str(ref path_lit, _) = lit.node;

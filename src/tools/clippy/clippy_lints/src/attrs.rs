@@ -640,7 +640,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                     diag.span_suggestion(span, "try", sugg, Applicability::MaybeIncorrect);
 
                     if !unix_suggested && is_unix(os) {
-                        diag.help("Did you mean `unix`?");
+                        diag.help("did you mean `unix`?");
                         unix_suggested = true;
                     }
                 }

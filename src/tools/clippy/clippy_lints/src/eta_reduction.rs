@@ -10,6 +10,8 @@ use crate::utils::{
     implements_trait, is_adjusted, iter_input_pats, snippet_opt, span_lint_and_sugg, span_lint_and_then,
     type_is_unsafe_function,
 };
+use clippy_utils::higher;
+use clippy_utils::higher::VecArgs;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for closures which just call another function where
@@ -74,7 +76,10 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         match expr.kind {
             ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
                 for arg in args {
-                    check_closure(cx, arg)
+                    // skip `foo(macro!())`
+                    if arg.span.ctxt() == expr.span.ctxt() {
+                        check_closure(cx, arg)
+                    }
                 }
             },
             _ => (),
@@ -86,6 +91,23 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Closure(_, ref decl, eid, _, _) = expr.kind {
         let body = cx.tcx.hir().body(eid);
         let ex = &body.value;
+
+        if ex.span.ctxt() != expr.span.ctxt() {
+            if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
+                // replace `|| vec![]` with `Vec::new`
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_CLOSURE,
+                    expr.span,
+                    "redundant closure",
+                    "replace the closure with `Vec::new`",
+                    "std::vec::Vec::new".into(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            // skip `foo(|| macro!())`
+            return;
+        }
 
         if_chain!(
             if let ExprKind::Call(ref caller, ref args) = ex.kind;
@@ -107,11 +129,11 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.iter());
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |diag| {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(snippet) = snippet_opt(cx, caller.span) {
                         diag.span_suggestion(
                             expr.span,
-                            "remove closure as shown",
+                            "replace the closure with the function itself",
                             snippet,
                             Applicability::MachineApplicable,
                         );
@@ -141,8 +163,8 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     cx,
                     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
                     expr.span,
-                    "redundant closure found",
-                    "remove closure as shown",
+                    "redundant closure",
+                    "replace the closure with the method itself",
                     format!("{}::{}", name, path.ident.name),
                     Applicability::MachineApplicable,
                 );

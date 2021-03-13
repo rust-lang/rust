@@ -3,12 +3,7 @@ name = "clippy_lints"
 # begin automatic update
 version = "0.1.52"
 # end automatic update
-authors = [
-	"Manish Goregaokar <manishsmail@gmail.com>",
-	"Andre Bogus <bogusandre@gmail.com>",
-	"Georg Brandl <georg@python.org>",
-	"Martin Carton <cartonmartin@gmail.com>"
-]
+authors = ["The Rust Clippy Developers"]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -29,10 +24,10 @@ smallvec = { version = "1", features = ["union"] }
 toml = "0.5.3"
 unicode-normalization = "0.1"
 semver = "0.11"
-rustc-semver="1.1.0"
+rustc-semver = "1.1.0"
 # NOTE: cargo requires serde feat in its url dep
 # see <https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864>
-url = { version =  "2.1.0", features = ["serde"] }
+url = { version = "2.1.0", features = ["serde"] }
 quote = "1"
 syn = { version = "1", features = ["full"] }
 
@@ -40,3 +35,7 @@ syn = { version = "1", features = ["full"] }
 deny-warnings = []
 # build clippy with internal lints enabled, off by default
 internal-lints = ["clippy_utils/internal-lints"]
+
+[package.metadata.rust-analyzer]
+# This crate uses #[feature(rustc_private)]
+rustc_private = true

@@ -139,7 +139,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
                 self_type.to_string()
             ),
             None,
-            &format!("remove the inherent method from type `{}`", self_type.to_string())
+            &format!("remove the inherent method from type `{}`", self_type.to_string()),
         );
     } else {
         span_lint_and_help(
