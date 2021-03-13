@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 
 use if_chain::if_chain;
 
-use crate::utils::{numeric_literal::NumericLiteral, snippet_opt, span_lint, span_lint_and_sugg};
+use crate::utils::{numeric_literal::NumericLiteral, snippet_opt, span_lint_and_sugg};
 
 use super::UNNECESSARY_CAST;
 
@@ -46,7 +46,7 @@ pub(super) fn check(
             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
             _ => {
                 if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
-                    span_lint(
+                    span_lint_and_sugg(
                         cx,
                         UNNECESSARY_CAST,
                         expr.span,
@@ -54,6 +54,9 @@ pub(super) fn check(
                             "casting to the same type is unnecessary (`{}` -> `{}`)",
                             cast_from, cast_to
                         ),
+                        "try",
+                        literal_str,
+                        Applicability::MachineApplicable,
                     );
                     return true;
                 }
