@@ -856,7 +856,7 @@ function defocusSearchBar() {
                         // We need to find the type that matches the most to remove it in order
                         // to move forward.
                         var vlength = val.generics.length;
-                        for (var x = 0; x < vlength; ++x) {
+                        for (x = 0; x < vlength; ++x) {
                             var lev = MAX_LEV_DISTANCE + 1;
                             var firstGeneric = getObjectNameFromId(val.generics[x]);
                             var match = undefined;
