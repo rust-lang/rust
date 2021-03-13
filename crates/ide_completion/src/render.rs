@@ -253,12 +253,14 @@ impl<'a> Render<'a> {
 
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
+
             if let Some(relevance) = compute_relevance(&self.ctx, &ty, &local_name) {
                 item.set_relevance(relevance);
             }
+
             if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
                 if let Some(ty_without_ref) = expected_type.remove_ref() {
-                    if ty_without_ref == ty {
+                    if relevance_type_match(self.ctx.db().upcast(), &ty, &ty_without_ref) {
                         cov_mark::hit!(suggest_ref);
                         let mutability = if expected_type.is_mutable_reference() {
                             Mutability::Mut
@@ -327,18 +329,13 @@ impl<'a> Render<'a> {
 fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionRelevance> {
     let (expected_name, expected_type) = ctx.expected_name_and_type()?;
     let mut res = CompletionRelevance::default();
-    res.exact_type_match = relevance_type_match(ctx.db().upcast(), ty, expected_type);
+    res.exact_type_match = ty == &expected_type;
     res.exact_name_match = name == &expected_name;
     Some(res)
 }
 
-fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: Type) -> bool {
-    if ty == &expected_type {
-        return true;
-    }
-
-    let ty_without_ref = expected_type.remove_ref().unwrap_or(expected_type);
-    ty.autoderef(db).any(|deref_ty| deref_ty == ty_without_ref)
+fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -> bool {
+    ty == expected_type || ty.autoderef(db).any(|deref_ty| &deref_ty == expected_type)
 }
 
 #[cfg(test)]
@@ -346,6 +343,7 @@ mod tests {
     use std::cmp::Reverse;
 
     use expect_test::{expect, Expect};
+    use hir::Mutability;
 
     use crate::{
         test_utils::{check_edit, do_completion, get_all_items, TEST_CONFIG},
@@ -369,15 +367,31 @@ mod tests {
             }
         }
 
+        fn display_label(label: &str, mutability: Option<Mutability>) -> String {
+            let mutability_label = match mutability {
+                Some(Mutability::Shared) => "&",
+                Some(Mutability::Mut) => "&mut ",
+                None => "",
+            };
+
+            format!("{}{}", mutability_label, label)
+        }
+
         let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
-        completions.sort_by_key(|it| (Reverse(it.relevance()), it.label().to_string()));
+        completions.sort_by_key(|it| {
+            (Reverse(it.ref_match().map(|m| m.1).unwrap_or(it.relevance())), it.label().to_string())
+        });
         let actual = completions
             .into_iter()
             .filter(|it| it.completion_kind == CompletionKind::Reference)
             .map(|it| {
                 let tag = it.kind().unwrap().tag();
-                let relevance = display_relevance(it.relevance());
-                format!("{} {} {}\n", tag, it.label(), relevance)
+                let (mutability, relevance) = it
+                    .ref_match()
+                    .map(|(mutability, relevance)| (Some(mutability), relevance))
+                    .unwrap_or((None, it.relevance()));
+                let relevance = display_relevance(relevance);
+                format!("{} {} {}\n", tag, display_label(it.label(), mutability), relevance)
             })
             .collect::<String>();
         expect.assert_eq(&actual);
@@ -911,7 +925,7 @@ struct WorldSnapshot { _f: () };
 fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
-                lc world [type+name]
+                lc &world [type+name]
                 st WorldSnapshot []
                 fn go(…) []
             "#]],
@@ -990,7 +1004,7 @@ fn main() {
                         detail: "S",
                         relevance: CompletionRelevance {
                             exact_name_match: true,
-                            exact_type_match: true,
+                            exact_type_match: false,
                         },
                         ref_match: "&mut ",
                     },
@@ -1030,8 +1044,62 @@ fn main() {
 }
             "#,
             expect![[r#"
-                lc t [type]
+                lc &t [type]
                 tt Deref []
+                st S []
+                st T []
+                fn foo(…) []
+                lc m []
+                fn main() []
+            "#]],
+        )
+    }
+
+    #[test]
+    fn suggest_deref_mut() {
+        check_relevance(
+            r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+#[lang = "deref_mut"]
+pub trait DerefMut: Deref {
+    fn deref_mut(&mut self) -> &mut Self::Target;
+}
+
+struct S;
+struct T(S);
+
+impl Deref for T {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for T {
+    fn deref_mut(&self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+fn foo(s: &mut S) {}
+
+fn main() {
+    let t = T(S);
+    let m = 123;
+
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                lc &mut t [type]
+                tt Deref []
+                tt DerefMut []
                 st S []
                 st T []
                 fn foo(…) []
