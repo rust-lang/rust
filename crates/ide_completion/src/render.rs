@@ -10,8 +10,10 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
+use base_db::Upcast;
 use hir::{
-    AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
+    db::HirDatabase, AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability,
+    ScopeDef, Type,
 };
 use ide_db::{
     helpers::{item_name, SnippetCap},
@@ -325,9 +327,18 @@ impl<'a> Render<'a> {
 fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<CompletionRelevance> {
     let (expected_name, expected_type) = ctx.expected_name_and_type()?;
     let mut res = CompletionRelevance::default();
-    res.exact_type_match = ty == &expected_type;
+    res.exact_type_match = ty == &expected_type
+        || autoderef_relevance(
+            ctx.db().upcast(),
+            ty,
+            expected_type.remove_ref().as_ref().unwrap_or(&expected_type),
+        );
     res.exact_name_match = name == &expected_name;
     Some(res)
+}
+
+fn autoderef_relevance(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -> bool {
+    ty.autoderef(db).any(|deref_ty| &deref_ty == expected_type)
 }
 
 #[cfg(test)]
@@ -979,9 +990,120 @@ fn main() {
                         detail: "S",
                         relevance: CompletionRelevance {
                             exact_name_match: true,
-                            exact_type_match: false,
+                            exact_type_match: true,
                         },
                         ref_match: "&mut ",
+                    },
+                ]
+            "#]],
+        )
+    }
+
+    #[test]
+    fn suggest_deref() {
+        check(
+            r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct S;
+struct T(S);
+
+impl Deref for T {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn foo(s: &S) {}
+
+fn main() {
+    let t = T(S);
+    let m = 123;
+
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "Deref",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "Deref",
+                        kind: SymbolKind(
+                            Trait,
+                        ),
+                    },
+                    CompletionItem {
+                        label: "S",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "S",
+                        kind: SymbolKind(
+                            Struct,
+                        ),
+                    },
+                    CompletionItem {
+                        label: "T",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "T",
+                        kind: SymbolKind(
+                            Struct,
+                        ),
+                    },
+                    CompletionItem {
+                        label: "foo(…)",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "foo(${1:s})$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "-> ()",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "m",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "m",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "i32",
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "main()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "-> ()",
+                    },
+                    CompletionItem {
+                        label: "t",
+                        source_range: 293..293,
+                        delete: 293..293,
+                        insert: "t",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "T",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            exact_type_match: true,
+                        },
                     },
                 ]
             "#]],
