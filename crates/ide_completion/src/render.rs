@@ -259,15 +259,17 @@ impl<'a> Render<'a> {
             }
 
             if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
-                if let Some(ty_without_ref) = expected_type.remove_ref() {
-                    if relevance_type_match(self.ctx.db().upcast(), &ty, &ty_without_ref) {
-                        cov_mark::hit!(suggest_ref);
-                        let mutability = if expected_type.is_mutable_reference() {
-                            Mutability::Mut
-                        } else {
-                            Mutability::Shared
-                        };
-                        item.ref_match(mutability);
+                if ty != expected_type {
+                    if let Some(ty_without_ref) = expected_type.remove_ref() {
+                        if relevance_type_match(self.ctx.db().upcast(), &ty, &ty_without_ref) {
+                            cov_mark::hit!(suggest_ref);
+                            let mutability = if expected_type.is_mutable_reference() {
+                                Mutability::Mut
+                            } else {
+                                Mutability::Shared
+                            };
+                            item.ref_match(mutability);
+                        }
                     }
                 }
             }
@@ -340,8 +342,6 @@ fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -
 
 #[cfg(test)]
 mod tests {
-    use std::cmp::Reverse;
-
     use expect_test::{expect, Expect};
 
     use crate::{
@@ -366,19 +366,7 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
-        completions.sort_by_key(|it| {
-            // (Reverse(it.ref_match().map(|m| m.1).unwrap_or(it.relevance())), it.label().to_string())
-            if let Some((mutability, relevance)) = it.ref_match() {
-                let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
-
-                Reverse((relevance, label))
-            } else {
-                Reverse((it.relevance(), it.label().to_string()))
-            }
-        });
-
-        let actual = completions
+        let actual = get_all_items(TEST_CONFIG, ra_fixture)
             .into_iter()
             .filter(|it| it.completion_kind == CompletionKind::Reference)
             .flat_map(|it| {
@@ -868,9 +856,9 @@ fn test(bar: u32) { }
 fn foo(s: S) { test(s.$0) }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         );
     }
@@ -885,9 +873,9 @@ struct B { x: (), y: f32, bar: u32 }
 fn foo(a: A) { B { bar: a.$0 }; }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         )
     }
@@ -903,8 +891,8 @@ fn foo(a: A) { B { bar: f(a.$0) }; }
 "#,
             expect![[r#"
                 fd foo [type+name]
-                fd baz []
                 fd bar []
+                fd baz []
             "#]],
         );
         check_relevance(
@@ -915,9 +903,9 @@ fn f(foo: i64) {  }
 fn foo(a: A) { f(B { bar: a.$0 }); }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         );
     }
@@ -931,9 +919,8 @@ fn go(world: &WorldSnapshot) { go(w$0) }
 "#,
             expect![[r#"
                 lc world [type+name]
-                lc &world [type+name]
-                fn go(…) []
                 st WorldSnapshot []
+                fn go(…) []
             "#]],
         );
     }
@@ -947,8 +934,8 @@ fn f(foo: &Foo) { f(foo, w$0) }
 "#,
             expect![[r#"
                 lc foo []
-                fn f(…) []
                 st Foo []
+                fn f(…) []
             "#]],
         );
     }
@@ -1050,14 +1037,14 @@ fn main() {
 }
             "#,
             expect![[r#"
+                lc m []
                 lc t []
                 lc &t [type]
-                fn main() []
-                lc m []
-                fn foo(…) []
                 st T []
                 st S []
+                fn main() []
                 tt Deref []
+                fn foo(…) []
             "#]],
         )
     }
@@ -1104,15 +1091,15 @@ fn main() {
 }
             "#,
             expect![[r#"
+                lc m []
                 lc t []
                 lc &mut t [type]
-                fn main() []
-                lc m []
+                tt DerefMut []
+                tt Deref []
                 fn foo(…) []
                 st T []
                 st S []
-                tt DerefMut []
-                tt Deref []
+                fn main() []
             "#]],
         )
     }
