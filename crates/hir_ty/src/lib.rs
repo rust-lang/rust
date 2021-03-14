@@ -66,7 +66,7 @@ pub enum Lifetime {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct OpaqueTy {
     pub opaque_ty_id: OpaqueTyId,
-    pub parameters: Substs,
+    pub substitution: Substs,
 }
 
 /// A "projection" type corresponds to an (unnormalized)
@@ -903,7 +903,7 @@ impl Ty {
                             let data = (*it)
                                 .as_ref()
                                 .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                            data.subst(&opaque_ty.parameters)
+                            data.subst(&opaque_ty.substitution)
                         })
                     }
                     // It always has an parameter for Future::Output type.
@@ -1059,7 +1059,7 @@ impl TypeWalk for Ty {
                 }
             }
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                for t in o_ty.parameters.iter() {
+                for t in o_ty.substitution.iter() {
                     t.walk(f);
                 }
             }
@@ -1094,7 +1094,7 @@ impl TypeWalk for Ty {
                 }
             }
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                o_ty.parameters.walk_mut_binders(f, binders);
+                o_ty.substitution.walk_mut_binders(f, binders);
             }
             _ => {
                 if let Some(substs) = self.substs_mut() {

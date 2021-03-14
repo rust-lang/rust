@@ -87,6 +87,13 @@ impl ToChalk for Ty {
                 .cast(&Interner)
                 .intern(&Interner)
             }
+            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
+                let opaque_ty_id = opaque_ty.opaque_ty_id;
+                let substitution = opaque_ty.substitution.to_chalk(db);
+                chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy { opaque_ty_id, substitution })
+                    .cast(&Interner)
+                    .intern(&Interner)
+            }
             TyKind::Placeholder(idx) => idx.to_ty::<Interner>(&Interner),
             TyKind::BoundVar(idx) => chalk_ir::TyKind::BoundVar(idx).intern(&Interner),
             TyKind::InferenceVar(..) => panic!("uncanonicalized infer ty"),
@@ -100,15 +107,6 @@ impl ToChalk for Ty {
                     lifetime: LifetimeData::Static.intern(&Interner),
                 };
                 chalk_ir::TyKind::Dyn(bounded_ty).intern(&Interner)
-            }
-            TyKind::Alias(AliasTy::Opaque(opaque_ty)) => {
-                let opaque_ty_id = opaque_ty.opaque_ty_id;
-                let substitution = opaque_ty.parameters.to_chalk(db);
-                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
-                    opaque_ty_id,
-                    substitution,
-                }))
-                .intern(&Interner)
             }
             TyKind::Unknown => chalk_ir::TyKind::Error.intern(&Interner),
         }
@@ -129,7 +127,7 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
                 let opaque_ty_id = opaque_ty.opaque_ty_id;
                 let parameters = from_chalk(db, opaque_ty.substitution);
-                TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, parameters }))
+                TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, substitution: parameters }))
             }
             chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,

@@ -319,7 +319,10 @@ impl HirDisplay for Ty {
                     TyKind::Dyn(predicates) if predicates.len() > 1 => {
                         Cow::Borrowed(predicates.as_ref())
                     }
-                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, ref parameters })) => {
+                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
+                        opaque_ty_id,
+                        substitution: ref parameters,
+                    })) => {
                         let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty_id.into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             datas =
@@ -579,7 +582,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(&opaque_ty.parameters);
+                        let bounds = data.subst(&opaque_ty.substitution);
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {

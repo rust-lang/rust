@@ -230,8 +230,11 @@ impl<'a> TyLoweringContext<'a> {
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
                         let parameters = Substs::bound_vars(&generics, self.in_binders);
-                        TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, parameters }))
-                            .intern(&Interner)
+                        TyKind::Alias(AliasTy::Opaque(OpaqueTy {
+                            opaque_ty_id,
+                            substitution: parameters,
+                        }))
+                        .intern(&Interner)
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = self.impl_trait_counter.get();
