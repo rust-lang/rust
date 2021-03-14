@@ -865,6 +865,17 @@ impl EncodeContext<'a, 'tcx> {
                 self.encode_deprecation(def_id);
             }
         }
+        let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
+        for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
+            assert!(def_id.is_local());
+            if implementations.is_empty() {
+                continue;
+            }
+            record!(self.tables.inherent_impls[def_id] <- implementations.iter().map(|&def_id| {
+                assert!(def_id.is_local());
+                def_id.index
+            }));
+        }
     }
 
     fn encode_variances_of(&mut self, def_id: DefId) {
@@ -1237,18 +1248,6 @@ impl EncodeContext<'a, 'tcx> {
         }
     }
 
-    // Encodes the inherent implementations of a structure, enumeration, or trait.
-    fn encode_inherent_implementations(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_inherent_implementations({:?})", def_id);
-        let implementations = self.tcx.inherent_impls(def_id);
-        if !implementations.is_empty() {
-            record!(self.tables.inherent_impls[def_id] <- implementations.iter().map(|&def_id| {
-                assert!(def_id.is_local());
-                def_id.index
-            }));
-        }
-    }
-
     fn encode_stability(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_stability({:?})", def_id);
 
@@ -1459,7 +1458,6 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.impl_trait_ref[def_id] <- trait_ref);
             }
         }
-        self.encode_inherent_implementations(def_id);
         match item.kind {
             hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
@@ -1822,7 +1820,6 @@ impl EncodeContext<'a, 'tcx> {
         }
         self.encode_ident_span(def_id, nitem.ident);
         self.encode_item_type(def_id);
-        self.encode_inherent_implementations(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
             self.encode_variances_of(def_id);
