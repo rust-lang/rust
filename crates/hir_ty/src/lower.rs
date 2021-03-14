@@ -993,7 +993,7 @@ pub(crate) fn generic_defaults_query(
 
             // Each default can only refer to previous parameters.
             ty.walk_mut_binders(
-                &mut |ty, binders| match &mut ty.0 {
+                &mut |ty, binders| match ty.interned_mut() {
                     TyKind::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
                         if *index >= idx {
                             // type variable default referring to parameter coming

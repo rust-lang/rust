@@ -71,7 +71,7 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Pointer weakening and function to pointer
-        match (&mut from_ty.0, to_ty.interned(&Interner)) {
+        match (from_ty.interned_mut(), to_ty.interned(&Interner)) {
             // `*mut T` -> `*const T`
             // `&mut T` -> `&T`
             (TyKind::Raw(m1, ..), TyKind::Raw(m2 @ Mutability::Not, ..))

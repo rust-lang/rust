@@ -108,7 +108,7 @@ impl<T> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = &mut ty.0 {
+                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
                         *ty = TyKind::InferenceVar(v, k).intern(&Interner);
@@ -404,7 +404,7 @@ impl InferenceTable {
             if i > 0 {
                 cov_mark::hit!(type_var_resolves_to_int_var);
             }
-            match &ty.0 {
+            match ty.interned(&Interner) {
                 TyKind::InferenceVar(tv, _) => {
                     let inner = tv.to_inner();
                     match self.var_unification_table.inlined_probe_value(inner).known() {

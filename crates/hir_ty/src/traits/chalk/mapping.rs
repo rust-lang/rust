@@ -24,7 +24,7 @@ use super::*;
 impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
-        match self.0 {
+        match self.into_inner() {
             TyKind::Ref(m, parameters) => ref_to_chalk(db, m, parameters),
             TyKind::Array(parameters) => array_to_chalk(db, parameters),
             TyKind::Function(FnPointer { sig, substs, .. }) => {

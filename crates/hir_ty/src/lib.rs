@@ -248,17 +248,25 @@ pub enum TyKind {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Ty(TyKind);
+pub struct Ty(Arc<TyKind>);
 
 impl TyKind {
     pub fn intern(self, _interner: &Interner) -> Ty {
-        Ty(self)
+        Ty(Arc::new(self))
     }
 }
 
 impl Ty {
     pub fn interned(&self, _interner: &Interner) -> &TyKind {
         &self.0
+    }
+
+    pub fn interned_mut(&mut self) -> &mut TyKind {
+        Arc::make_mut(&mut self.0)
+    }
+
+    pub fn into_inner(self) -> TyKind {
+        Arc::try_unwrap(self.0).unwrap_or_else(|a| (*a).clone())
     }
 }
 
@@ -814,7 +822,7 @@ impl Ty {
     /// `self` is `Option<_>` and the substs contain `u32`, we'll have
     /// `Option<u32>` afterwards.)
     pub fn apply_substs(mut self, new_substs: Substs) -> Ty {
-        match &mut self.0 {
+        match self.interned_mut() {
             TyKind::Adt(_, substs)
             | TyKind::Slice(substs)
             | TyKind::Array(substs)
@@ -854,7 +862,7 @@ impl Ty {
     }
 
     pub fn substs_mut(&mut self) -> Option<&mut Substs> {
-        match &mut self.0 {
+        match self.interned_mut() {
             TyKind::Adt(_, substs)
             | TyKind::Slice(substs)
             | TyKind::Array(substs)
@@ -988,7 +996,7 @@ pub trait TypeWalk {
     {
         self.walk_mut_binders(
             &mut |ty_mut, binders| {
-                let ty = mem::replace(ty_mut, Ty(TyKind::Unknown));
+                let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
                 *ty_mut = f(ty, binders);
             },
             binders,
@@ -1001,7 +1009,7 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, Ty(TyKind::Unknown));
+            let ty = mem::replace(ty_mut, TyKind::Unknown.intern(&Interner));
             *ty_mut = f(ty);
         });
         self
@@ -1022,7 +1030,7 @@ pub trait TypeWalk {
     {
         self.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = &mut ty.0 {
+                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
                     if bound.debruijn >= binders {
                         *ty = substs.0[bound.index].clone().shift_bound_vars(binders);
                     }
@@ -1039,7 +1047,7 @@ pub trait TypeWalk {
         Self: Sized,
     {
         self.fold_binders(
-            &mut |ty, binders| match &ty.0 {
+            &mut |ty, binders| match ty.interned(&Interner) {
                 TyKind::BoundVar(bound) if bound.debruijn >= binders => {
                     TyKind::BoundVar(bound.shifted_in_from(n)).intern(&Interner)
                 }
@@ -1084,7 +1092,7 @@ impl TypeWalk for Ty {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        match &mut self.0 {
+        match self.interned_mut() {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
                 p_ty.substitution.walk_mut_binders(f, binders);
             }

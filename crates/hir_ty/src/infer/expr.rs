@@ -800,7 +800,7 @@ impl<'a> InferenceContext<'a> {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
             } else {
-                self.coerce(&Ty::unit(), expected.coercion_target());
+                self.coerce(&Ty::unit(), &expected.coercion_target());
                 Ty::unit()
             }
         };

@@ -158,11 +158,11 @@ impl<'a> InferenceContext<'a> {
                         if mutability != exp_mut {
                             // FIXME: emit type error?
                         }
-                        inner_ty
+                        inner_ty.clone()
                     }
-                    _ => &Ty(TyKind::Unknown),
+                    _ => self.result.standard_types.unknown.clone(),
                 };
-                let subty = self.infer_pat(*pat, expectation, default_bm);
+                let subty = self.infer_pat(*pat, &expectation, default_bm);
                 TyKind::Ref(mutability, Substs::single(subty)).intern(&Interner)
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
@@ -232,11 +232,11 @@ impl<'a> InferenceContext<'a> {
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
                     let inner_expected = match expected.as_adt() {
-                        Some((adt, substs)) if adt == box_adt => substs.as_single(),
-                        _ => &Ty(TyKind::Unknown),
+                        Some((adt, substs)) if adt == box_adt => substs.as_single().clone(),
+                        _ => self.result.standard_types.unknown.clone(),
                     };
 
-                    let inner_ty = self.infer_pat(*inner, inner_expected, default_bm);
+                    let inner_ty = self.infer_pat(*inner, &inner_expected, default_bm);
                     Ty::adt_ty(box_adt, Substs::single(inner_ty))
                 }
                 None => self.err_ty(),
