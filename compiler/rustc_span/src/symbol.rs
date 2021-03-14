@@ -1111,6 +1111,7 @@ symbols! {
         size_of,
         size_of_val,
         sized,
+        skip,
         slice,
         slice_alloc,
         slice_patterns,

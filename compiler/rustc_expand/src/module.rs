@@ -1,6 +1,6 @@
 use crate::base::ModuleData;
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Item};
+use rustc_ast::{token, Attribute, Inline, Item};
 use rustc_errors::{struct_span_err, DiagnosticBuilder};
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
@@ -83,29 +83,49 @@ crate fn mod_dir_path(
     attrs: &[Attribute],
     module: &ModuleData,
     mut dir_ownership: DirOwnership,
+    inline: Inline,
 ) -> (PathBuf, DirOwnership) {
-    if let Some(file_path) = mod_file_path_from_attr(sess, attrs, &module.dir_path) {
-        // For inline modules file path from `#[path]` is actually the directory path
-        // for historical reasons, so we don't pop the last segment here.
-        return (file_path, DirOwnership::Owned { relative: None });
-    }
+    match inline {
+        Inline::Yes => {
+            if let Some(file_path) = mod_file_path_from_attr(sess, attrs, &module.dir_path) {
+                // For inline modules file path from `#[path]` is actually the directory path
+                // for historical reasons, so we don't pop the last segment here.
+                return (file_path, DirOwnership::Owned { relative: None });
+            }
 
-    // We have to push on the current module name in the case of relative
-    // paths in order to ensure that any additional module paths from inline
-    // `mod x { ... }` come after the relative extension.
-    //
-    // For example, a `mod z { ... }` inside `x/y.rs` should set the current
-    // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-    let mut dir_path = module.dir_path.clone();
-    if let DirOwnership::Owned { relative } = &mut dir_ownership {
-        if let Some(ident) = relative.take() {
-            // Remove the relative offset.
+            // We have to push on the current module name in the case of relative
+            // paths in order to ensure that any additional module paths from inline
+            // `mod x { ... }` come after the relative extension.
+            //
+            // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+            // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+            let mut dir_path = module.dir_path.clone();
+            if let DirOwnership::Owned { relative } = &mut dir_ownership {
+                if let Some(ident) = relative.take() {
+                    // Remove the relative offset.
+                    dir_path.push(&*ident.as_str());
+                }
+            }
             dir_path.push(&*ident.as_str());
+
+            (dir_path, dir_ownership)
+        }
+        Inline::No => {
+            // FIXME: This is a subset of `parse_external_mod` without actual parsing,
+            // check whether the logic for unloaded, loaded and inline modules can be unified.
+            let file_path = mod_file_path(sess, ident, &attrs, &module.dir_path, dir_ownership)
+                .map(|mp| {
+                    dir_ownership = mp.dir_ownership;
+                    mp.file_path
+                })
+                .unwrap_or_default();
+
+            // Extract the directory path for submodules of the module.
+            let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
+
+            (dir_path, dir_ownership)
         }
     }
-    dir_path.push(&*ident.as_str());
-
-    (dir_path, dir_ownership)
 }
 
 fn mod_file_path<'a>(
