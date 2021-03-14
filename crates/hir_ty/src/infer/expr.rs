@@ -99,8 +99,8 @@ impl<'a> InferenceContext<'a> {
         if self.db.trait_solve(krate, goal.value).is_some() {
             self.obligations.push(implements_fn_trait);
             let output_proj_ty = crate::ProjectionTy {
-                associated_ty: to_assoc_type_id(output_assoc_type),
-                parameters: substs,
+                associated_ty_id: to_assoc_type_id(output_assoc_type),
+                substitution: substs,
             };
             let return_ty = self.normalize_projection_ty(output_proj_ty);
             Some((arg_tys, return_ty))
@@ -261,7 +261,7 @@ impl<'a> InferenceContext<'a> {
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = TyKind::Function(FnPointer {
                     num_args: sig_tys.len() - 1,
-                    sig: FnSig { variadic: false },
+                    sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
                     substs: Substs(sig_tys.clone().into()),
                 })
                 .intern(&Interner);

@@ -1686,8 +1686,8 @@ impl Type {
             .build();
         let predicate = ProjectionPredicate {
             projection_ty: ProjectionTy {
-                associated_ty: to_assoc_type_id(alias.id),
-                parameters: subst,
+                associated_ty_id: to_assoc_type_id(alias.id),
+                substitution: subst,
             },
             ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner),
         };
@@ -1979,7 +1979,7 @@ impl Type {
                         walk_bounds(db, &type_.derived(ty.clone()), &bounds, cb);
                     }
 
-                    walk_substs(db, type_, &opaque_ty.parameters, cb);
+                    walk_substs(db, type_, &opaque_ty.substitution, cb);
                 }
                 TyKind::Placeholder(_) => {
                     if let Some(bounds) = ty.impl_trait_bounds(db) {

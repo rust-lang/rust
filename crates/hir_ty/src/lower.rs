@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{cast::Cast, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -181,7 +181,7 @@ impl<'a> TyLoweringContext<'a> {
                 let substs = Substs(params.iter().map(|tr| self.lower_ty(tr)).collect());
                 TyKind::Function(FnPointer {
                     num_args: substs.len() - 1,
-                    sig: FnSig { variadic: *is_varargs },
+                    sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
                     substs,
                 })
                 .intern(&Interner)
@@ -230,8 +230,11 @@ impl<'a> TyLoweringContext<'a> {
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
                         let parameters = Substs::bound_vars(&generics, self.in_binders);
-                        TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, parameters }))
-                            .intern(&Interner)
+                        TyKind::Alias(AliasTy::Opaque(OpaqueTy {
+                            opaque_ty_id,
+                            substitution: parameters,
+                        }))
+                        .intern(&Interner)
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = self.impl_trait_counter.get();
@@ -357,8 +360,8 @@ impl<'a> TyLoweringContext<'a> {
                         Some((super_trait_ref, associated_ty)) => {
                             // FIXME handle type parameters on the segment
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty: to_assoc_type_id(associated_ty),
-                                parameters: super_trait_ref.substs,
+                                associated_ty_id: to_assoc_type_id(associated_ty),
+                                substitution: super_trait_ref.substs,
                             }))
                             .intern(&Interner)
                         }
@@ -478,8 +481,8 @@ impl<'a> TyLoweringContext<'a> {
                         // FIXME handle type parameters on the segment
                         return Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty: to_assoc_type_id(associated_ty),
-                                parameters: substs,
+                                associated_ty_id: to_assoc_type_id(associated_ty),
+                                substitution: substs,
                             }))
                             .intern(&Interner),
                         );
@@ -736,8 +739,8 @@ impl<'a> TyLoweringContext<'a> {
                     Some(t) => t,
                 };
                 let projection_ty = ProjectionTy {
-                    associated_ty: to_assoc_type_id(associated_ty),
-                    parameters: super_trait_ref.substs,
+                    associated_ty_id: to_assoc_type_id(associated_ty),
+                    substitution: super_trait_ref.substs,
                 };
                 let mut preds = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),

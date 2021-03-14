@@ -245,19 +245,19 @@ impl HirDisplay for ProjectionTy {
         }
 
         let trait_ = f.db.trait_data(self.trait_(f.db));
-        let first_parameter = self.parameters[0].into_displayable(
+        let first_parameter = self.substitution[0].into_displayable(
             f.db,
             f.max_size,
             f.omit_verbose_types,
             f.display_target,
         );
         write!(f, "<{} as {}", first_parameter, trait_.name)?;
-        if self.parameters.len() > 1 {
+        if self.substitution.len() > 1 {
             write!(f, "<")?;
-            f.write_joined(&self.parameters[1..], ", ")?;
+            f.write_joined(&self.substitution[1..], ", ")?;
             write!(f, ">")?;
         }
-        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty)).name)?;
+        write!(f, ">::{}", f.db.type_alias_data(from_assoc_type_id(self.associated_ty_id)).name)?;
         Ok(())
     }
 }
@@ -319,7 +319,10 @@ impl HirDisplay for Ty {
                     TyKind::Dyn(predicates) if predicates.len() > 1 => {
                         Cow::Borrowed(predicates.as_ref())
                     }
-                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy { opaque_ty_id, ref parameters })) => {
+                    &TyKind::Alias(AliasTy::Opaque(OpaqueTy {
+                        opaque_ty_id,
+                        substitution: ref parameters,
+                    })) => {
                         let impl_trait_id = f.db.lookup_intern_impl_trait_id(opaque_ty_id.into());
                         if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
                             datas =
@@ -491,8 +494,8 @@ impl HirDisplay for Ty {
                     }
                 } else {
                     let projection_ty = ProjectionTy {
-                        associated_ty: to_assoc_type_id(type_alias),
-                        parameters: parameters.clone(),
+                        associated_ty_id: to_assoc_type_id(type_alias),
+                        substitution: parameters.clone(),
                     };
 
                     projection_ty.hir_fmt(f)?;
@@ -579,7 +582,7 @@ impl HirDisplay for Ty {
                         let data = (*datas)
                             .as_ref()
                             .map(|rpit| rpit.impl_traits[idx as usize].bounds.clone());
-                        let bounds = data.subst(&opaque_ty.parameters);
+                        let bounds = data.subst(&opaque_ty.substitution);
                         write_bounds_like_dyn_trait_with_prefix("impl", &bounds.value, f)?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(..) => {
@@ -709,7 +712,7 @@ fn write_bounds_like_dyn_trait(
                     angle_open = true;
                 }
                 let type_alias = f.db.type_alias_data(from_assoc_type_id(
-                    projection_pred.projection_ty.associated_ty,
+                    projection_pred.projection_ty.associated_ty_id,
                 ));
                 write!(f, "{} = ", type_alias.name)?;
                 projection_pred.ty.hir_fmt(f)?;
@@ -782,7 +785,7 @@ impl HirDisplay for GenericPredicate {
                     f,
                     ">::{} = ",
                     f.db.type_alias_data(from_assoc_type_id(
-                        projection_pred.projection_ty.associated_ty
+                        projection_pred.projection_ty.associated_ty_id
                     ))
                     .name,
                 )?;
