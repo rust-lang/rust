@@ -1550,6 +1550,12 @@ impl<'tcx> TyCtxt<'tcx> {
             def_kind => (def_kind.article(), def_kind.descr(def_id)),
         }
     }
+
+    /// Returns the `CrateNum` of the crate that the given `extern crate` statement
+    /// resolves to.
+    pub fn extern_mod_stmt_cnum(self, id: LocalDefId) -> Option<CrateNum> {
+        self.extern_crate_map.get(&id).cloned()
+    }
 }
 
 /// A trait implemented for all `X<'a>` types that can be safely and
@@ -2755,7 +2761,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         let id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
         tcx.stability().local_deprecation_entry(id)
     };
-    providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
     providers.all_crate_nums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())

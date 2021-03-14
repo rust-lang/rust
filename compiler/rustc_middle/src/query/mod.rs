@@ -1277,10 +1277,6 @@ rustc_queries! {
     query item_children(def_id: DefId) -> &'tcx [Export<hir::HirId>] {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
-    query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
-        desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
-    }
-
     query get_lib_features(_: CrateNum) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
