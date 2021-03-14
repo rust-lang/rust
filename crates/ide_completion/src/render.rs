@@ -119,17 +119,10 @@ impl<'a> RenderContext<'a> {
         node.docs(self.db())
     }
 
+    // FIXME delete this method in favor of directly using the fields
+    // on CompletionContext
     fn expected_name_and_type(&self) -> Option<(String, Type)> {
-        if let Some(record_field) = &self.completion.record_field_syntax {
-            cov_mark::hit!(record_field_type_match);
-            let (struct_field, _local) = self.completion.sema.resolve_record_field(record_field)?;
-            Some((struct_field.name(self.db()).to_string(), struct_field.signature_ty(self.db())))
-        } else if let Some(active_parameter) = &self.completion.active_parameter {
-            cov_mark::hit!(active_param_type_match);
-            Some((active_parameter.name.clone(), active_parameter.ty.clone()))
-        } else {
-            None
-        }
+        Some((self.completion.expected_name.clone()?, self.completion.expected_type.clone()?))
     }
 }
 
@@ -852,7 +845,6 @@ fn foo(xs: Vec<i128>)
 
     #[test]
     fn active_param_relevance() {
-        cov_mark::check!(active_param_type_match);
         check_relevance(
             r#"
 struct S { foo: i64, bar: u32, baz: u32 }
@@ -869,7 +861,6 @@ fn foo(s: S) { test(s.$0) }
 
     #[test]
     fn record_field_relevances() {
-        cov_mark::check!(record_field_type_match);
         check_relevance(
             r#"
 struct A { foo: i64, bar: u32, baz: u32 }

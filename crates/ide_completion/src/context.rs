@@ -35,6 +35,7 @@ pub(crate) struct CompletionContext<'a> {
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
     pub(super) krate: Option<hir::Crate>,
+    pub(super) expected_name: Option<String>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
     pub(super) function_syntax: Option<ast::Fn>,
@@ -135,6 +136,7 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             krate,
+            expected_name: None,
             expected_type: None,
             name_ref_syntax: None,
             function_syntax: None,
@@ -290,23 +292,96 @@ impl<'a> CompletionContext<'a> {
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
     ) {
-        // FIXME: this is wrong in at least two cases:
-        //  * when there's no token `foo($0)`
-        //  * when there is a token, but it happens to have type of it's own
-        self.expected_type = self
-            .token
-            .ancestors()
-            .find_map(|node| {
-                let ty = match_ast! {
+        let expected = {
+            let mut node = self.token.parent();
+            loop {
+                let ret = match_ast! {
                     match node {
-                        ast::Pat(it) => self.sema.type_of_pat(&it),
-                        ast::Expr(it) => self.sema.type_of_expr(&it),
-                        _ => return None,
+                        ast::LetStmt(it) => {
+                            cov_mark::hit!(expected_type_let_with_leading_char);
+                            cov_mark::hit!(expected_type_let_without_leading_char);
+                            let ty = it.pat()
+                                .and_then(|pat| self.sema.type_of_pat(&pat));
+                            let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
+                                Some(ident.syntax().text().to_string())
+                            } else {
+                                None
+                            };
+
+                            (ty, name)
+                        },
+                        ast::ArgList(it) => {
+                            cov_mark::hit!(expected_type_fn_param_with_leading_char);
+                            cov_mark::hit!(expected_type_fn_param_without_leading_char);
+                            ActiveParameter::at_token(
+                                &self.sema,
+                                self.token.clone(),
+                            ).map(|ap| (Some(ap.ty), Some(ap.name)))
+                            .unwrap_or((None, None))
+                        },
+                        ast::RecordExprFieldList(it) => {
+                            cov_mark::hit!(expected_type_struct_field_without_leading_char);
+                            self.token.prev_sibling_or_token()
+                                .and_then(|se| se.into_node())
+                                .and_then(|node| ast::RecordExprField::cast(node))
+                                .and_then(|rf| self.sema.resolve_record_field(&rf))
+                                .map(|f|(
+                                    Some(f.0.signature_ty(self.db)),
+                                    Some(f.0.name(self.db).to_string()),
+                                ))
+                                .unwrap_or((None, None))
+                        },
+                        ast::RecordExprField(it) => {
+                            cov_mark::hit!(expected_type_struct_field_with_leading_char);
+                            self.sema
+                                .resolve_record_field(&it)
+                                .map(|f|(
+                                    Some(f.0.signature_ty(self.db)),
+                                    Some(f.0.name(self.db).to_string()),
+                                ))
+                                .unwrap_or((None, None))
+                        },
+                        ast::MatchExpr(it) => {
+                            cov_mark::hit!(expected_type_match_arm_without_leading_char);
+                            let ty = it.expr()
+                                .and_then(|e| self.sema.type_of_expr(&e));
+
+                            (ty, None)
+                        },
+                        ast::IdentPat(it) => {
+                            cov_mark::hit!(expected_type_if_let_with_leading_char);
+                            cov_mark::hit!(expected_type_if_let_without_leading_char);
+                            cov_mark::hit!(expected_type_match_arm_with_leading_char);
+                            let ty = self.sema.type_of_pat(&ast::Pat::from(it));
+
+                            (ty, None)
+                        },
+                        ast::Fn(it) => {
+                            cov_mark::hit!(expected_type_fn_ret_with_leading_char);
+                            cov_mark::hit!(expected_type_fn_ret_without_leading_char);
+                            let ty = self.token.ancestors()
+                                .find_map(|ancestor| ast::Expr::cast(ancestor))
+                                .and_then(|expr| self.sema.type_of_expr(&expr));
+
+                            (ty, None)
+                        },
+                        _ => {
+                            match node.parent() {
+                                Some(n) => {
+                                    node = n;
+                                    continue;
+                                },
+                                None => (None, None),
+                            }
+                        },
                     }
                 };
-                Some(ty)
-            })
-            .flatten();
+
+                break ret;
+            }
+        };
+        self.expected_type = expected.0;
+        self.expected_name = expected.1;
         self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
 
         // First, let's try to complete a reference to some declaration.
@@ -534,4 +609,198 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<ast::Path> {
     let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
     let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
     use_tree.path()
+}
+
+#[cfg(test)]
+mod tests {
+    use expect_test::{expect, Expect};
+    use hir::HirDisplay;
+
+    use crate::test_utils::{position, TEST_CONFIG};
+
+    use super::CompletionContext;
+
+    fn check_expected_type_and_name(ra_fixture: &str, expect: Expect) {
+        let (db, pos) = position(ra_fixture);
+        let completion_context = CompletionContext::new(&db, pos, &TEST_CONFIG).unwrap();
+
+        let ty = completion_context
+            .expected_type
+            .map(|t| t.display_test(&db).to_string())
+            .unwrap_or("?".to_owned());
+
+        let name = completion_context.expected_name.unwrap_or("?".to_owned());
+
+        expect.assert_eq(&format!("ty: {}, name: {}", ty, name));
+    }
+
+    #[test]
+    fn expected_type_let_without_leading_char() {
+        cov_mark::check!(expected_type_let_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    let x: u32 = $0;
+}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_let_with_leading_char() {
+        cov_mark::check!(expected_type_let_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    let x: u32 = c$0;
+}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_fn_param_without_leading_char() {
+        cov_mark::check!(expected_type_fn_param_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar($0);
+}
+
+fn bar(x: u32) {}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_fn_param_with_leading_char() {
+        cov_mark::check!(expected_type_fn_param_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar(c$0);
+}
+
+fn bar(x: u32) {}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_struct_field_without_leading_char() {
+        cov_mark::check!(expected_type_struct_field_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+struct Foo { a: u32 }
+fn foo() {
+    Foo { a: $0 };
+}
+"#,
+            expect![[r#"ty: u32, name: a"#]],
+        )
+    }
+
+    #[test]
+    fn expected_type_struct_field_with_leading_char() {
+        cov_mark::check!(expected_type_struct_field_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+struct Foo { a: u32 }
+fn foo() {
+    Foo { a: c$0 };
+}
+"#,
+            expect![[r#"ty: u32, name: a"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_match_arm_without_leading_char() {
+        cov_mark::check!(expected_type_match_arm_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+enum E { X }
+fn foo() {
+   match E::X { $0 }
+}
+"#,
+            expect![[r#"ty: E, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_match_arm_with_leading_char() {
+        cov_mark::check!(expected_type_match_arm_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+enum E { X }
+fn foo() {
+   match E::X { c$0 }
+}
+"#,
+            expect![[r#"ty: E, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_if_let_without_leading_char() {
+        cov_mark::check!(expected_type_if_let_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn foo() {
+    let f = Foo::Quux;
+    if let $0 = f { }
+}
+"#,
+            expect![[r#"ty: (), name: ?"#]],
+        ) // FIXME should be `ty: u32, name: ?`
+    }
+
+    #[test]
+    fn expected_type_if_let_with_leading_char() {
+        cov_mark::check!(expected_type_if_let_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn foo() {
+    let f = Foo::Quux;
+    if let c$0 = f { }
+}
+"#,
+            expect![[r#"ty: Foo, name: ?"#]],
+        )
+    }
+
+    #[test]
+    fn expected_type_fn_ret_without_leading_char() {
+        cov_mark::check!(expected_type_fn_ret_without_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() -> u32 {
+    $0
+}
+"#,
+            expect![[r#"ty: (), name: ?"#]],
+        ) // FIXME this should be `ty: u32, name: ?`
+    }
+
+    #[test]
+    fn expected_type_fn_ret_with_leading_char() {
+        cov_mark::check!(expected_type_fn_ret_with_leading_char);
+        check_expected_type_and_name(
+            r#"
+fn foo() -> u32 {
+    c$0
+}
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
+        )
+    }
 }
