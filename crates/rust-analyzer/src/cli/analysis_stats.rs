@@ -19,6 +19,7 @@ use ide_db::base_db::{
 };
 use itertools::Itertools;
 use oorandom::Rand32;
+use project_model::CargoConfig;
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use stdx::format_to;
@@ -46,6 +47,7 @@ pub struct AnalysisStatsCmd {
     pub memory_usage: bool,
     pub only: Option<String>,
     pub with_deps: bool,
+    pub no_sysroot: bool,
     pub path: PathBuf,
     pub load_output_dirs: bool,
     pub with_proc_macro: bool,
@@ -59,7 +61,8 @@ impl AnalysisStatsCmd {
         };
 
         let mut db_load_sw = self.stop_watch();
-        let cargo_config = Default::default();
+        let mut cargo_config = CargoConfig::default();
+        cargo_config.no_sysroot = self.no_sysroot;
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: self.load_output_dirs,
             with_proc_macro: self.with_proc_macro,

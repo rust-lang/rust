@@ -65,6 +65,8 @@ xflags::xflags! {
             optional -o, --only path: String
             /// Also analyze all dependencies.
             optional --with-deps
+            /// Don't load sysroot crates (`std`, `core` & friends).
+            optional --no-sysroot
 
             /// Load OUT_DIR values by running `cargo check` before analysis.
             optional --load-output-dirs
@@ -176,6 +178,7 @@ pub struct AnalysisStats {
     pub memory_usage: bool,
     pub only: Option<String>,
     pub with_deps: bool,
+    pub no_sysroot: bool,
     pub load_output_dirs: bool,
     pub with_proc_macro: bool,
 }
