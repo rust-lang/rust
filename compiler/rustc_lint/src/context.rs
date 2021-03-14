@@ -670,6 +670,9 @@ pub trait LintContext: Sized {
                         json
                     );
                 }
+                BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
+                    db.note(&note);
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));

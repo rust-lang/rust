@@ -266,6 +266,7 @@ pub enum BuiltinLintDiagnostics {
     PatternsInFnsWithoutBody(Span, Ident),
     LegacyDeriveHelpers(Span),
     ExternDepSpec(String, ExternDepSpec),
+    ProcMacroBackCompat(String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
