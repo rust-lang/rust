@@ -144,6 +144,21 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub exact_type_match: bool,
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// fn foo(bar: u32) {
+    ///     $0 // `bar` is local
+    /// }
+    /// ```
+    ///
+    /// ```
+    /// fn foo() {
+    ///     let bar = 0;
+    ///     $0 // `bar` is local
+    /// }
+    /// ```
+    pub is_local: bool,
 }
 
 impl CompletionRelevance {
@@ -163,6 +178,9 @@ impl CompletionRelevance {
             score += 1;
         }
         if self.exact_type_match {
+            score += 3;
+        }
+        if self.is_local {
             score += 1;
         }
 
@@ -551,9 +569,24 @@ mod tests {
             vec![CompletionRelevance::default()],
             vec![
                 CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },
-                CompletionRelevance { exact_type_match: true, ..CompletionRelevance::default() },
+                CompletionRelevance { is_local: true, ..CompletionRelevance::default() },
             ],
-            vec![CompletionRelevance { exact_name_match: true, exact_type_match: true }],
+            vec![CompletionRelevance {
+                exact_name_match: true,
+                is_local: true,
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance { exact_type_match: true, ..CompletionRelevance::default() }],
+            vec![CompletionRelevance {
+                exact_name_match: true,
+                exact_type_match: true,
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance {
+                exact_name_match: true,
+                exact_type_match: true,
+                is_local: true,
+            }],
         ];
 
         check_relevance_score_ordered(expected_relevance_order);
