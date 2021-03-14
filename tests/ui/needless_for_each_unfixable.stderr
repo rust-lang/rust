@@ -11,11 +11,6 @@ LL | |     });
    | |_______^
    |
    = note: `-D clippy::needless-for-each` implied by `-D warnings`
-note: replace `return` with `continue`
-  --> $DIR/needless_for_each_unfixable.rs:9:13
-   |
-LL |             return;
-   |             ^^^^^^
 help: try
    |
 LL |     for v in v.iter() {
@@ -25,6 +20,10 @@ LL |         } else {
 LL |             println!("{}", v);
 LL |         }
  ...
+help: try replacing `return` with `continue`
+   |
+LL |             continue;
+   |             ^^^^^^^^
 
 error: aborting due to previous error
 

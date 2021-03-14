@@ -103,6 +103,11 @@ fn should_not_lint() {
             acc += elem;
         }),
     }
+
+    // `for_each` is in a let bingind.
+    let _ = v.iter().for_each(|elem| {
+        acc += elem;
+    });
 }
 
 fn main() {}

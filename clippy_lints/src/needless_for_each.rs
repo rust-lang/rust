@@ -49,31 +49,28 @@ impl LateLintPass<'_> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         let expr = match stmt.kind {
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr,
-            StmtKind::Local(local) if local.init.is_some() => local.init.unwrap(),
             _ => return,
         };
 
         if_chain! {
             // Check the method name is `for_each`.
-            if let ExprKind::MethodCall(method_name, _, for_each_args, _) = expr.kind;
+            if let ExprKind::MethodCall(method_name, _, [for_each_recv, for_each_arg], _) = expr.kind;
             if method_name.ident.name == Symbol::intern("for_each");
             // Check `for_each` is an associated function of `Iterator`.
             if is_trait_method(cx, expr, sym::Iterator);
             // Checks the receiver of `for_each` is also a method call.
-            if let Some(for_each_receiver) = for_each_args.get(0);
-            if let ExprKind::MethodCall(_, _, iter_args, _) = for_each_receiver.kind;
+            if let ExprKind::MethodCall(_, _, [iter_recv], _) = for_each_recv.kind;
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
-            if let Some(iter_receiver) = iter_args.get(0);
             if matches!(
-                iter_receiver.kind,
+                iter_recv.kind,
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
             );
             // Checks the type of the `iter` method receiver is NOT a user defined type.
-            if has_iter_method(cx, cx.typeck_results().expr_ty(&iter_receiver)).is_some();
+            if has_iter_method(cx, cx.typeck_results().expr_ty(&iter_recv)).is_some();
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
-            if let ExprKind::Closure(_, _, body_id, ..) = for_each_args[1].kind;
+            if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
             let body = cx.tcx.hir().body(body_id);
             if let ExprKind::Block(..) = body.value.kind;
             then {
@@ -85,26 +82,27 @@ impl LateLintPass<'_> for NeedlessForEach {
                     return;
                 }
 
-                // We can't use `Applicability::MachineApplicable` when the closure contains `return`
-                // because `Diagnostic::multipart_suggestion` doesn't work with multiple overlapped
-                // spans.
-                let mut applicability = if ret_collector.spans.is_empty() {
-                    Applicability::MachineApplicable
+                let (mut applicability, ret_suggs) = if ret_collector.spans.is_empty() {
+                    (Applicability::MachineApplicable, None)
                 } else {
-                    Applicability::MaybeIncorrect
+                    (
+                        Applicability::MaybeIncorrect,
+                        Some(
+                            ret_collector
+                                .spans
+                                .into_iter()
+                                .map(|span| (span, "continue".to_string()))
+                                .collect(),
+                        ),
+                    )
                 };
 
-                let mut suggs = vec![];
-                suggs.push((stmt.span, format!(
+                let sugg = format!(
                     "for {} in {} {}",
                     snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability),
-                    snippet_with_applicability(cx, for_each_args[0].span, "..", &mut applicability),
+                    snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability),
                     snippet_with_applicability(cx, body.value.span, "..", &mut applicability),
-                )));
-
-                for span in &ret_collector.spans {
-                    suggs.push((*span, "continue".to_string()));
-                }
+                );
 
                 span_lint_and_then(
                     cx,
@@ -112,11 +110,9 @@ impl LateLintPass<'_> for NeedlessForEach {
                     stmt.span,
                     "needless use of `for_each`",
                     |diag| {
-                        diag.multipart_suggestion("try", suggs, applicability);
-                        // `Diagnostic::multipart_suggestion` ignores the second and subsequent overlapped spans,
-                        // so `span_note` is needed here even though `suggs` includes the replacements.
-                        for span in ret_collector.spans {
-                            diag.span_note(span, "replace `return` with `continue`");
+                        diag.span_suggestion(stmt.span, "try", sugg, applicability);
+                        if let Some(ret_suggs) = ret_suggs {
+                            diag.multipart_suggestion("try replacing `return` with `continue`", ret_suggs, applicability);
                         }
                     }
                 )
