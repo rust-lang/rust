@@ -13,7 +13,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    HirFileId, MacroCallId, MacroDefId, MacroDefKind,
+    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -1455,7 +1455,8 @@ impl ModCollector<'_, '_> {
         let mut ast_id = AstIdWithPath::new(self.file_id, mac.ast_id, mac.path.clone());
 
         // Case 1: try to resolve in legacy scope and expand macro_rules
-        if let Ok(Ok(macro_call_id)) = macro_call_as_call_id(
+        let mut error = None;
+        match macro_call_as_call_id(
             &ast_id,
             self.def_collector.db,
             self.def_collector.def_map.krate,
@@ -1468,16 +1469,28 @@ impl ModCollector<'_, '_> {
                     )
                 })
             },
-            &mut |_err| (),
+            &mut |err| error = Some(err),
         ) {
-            self.def_collector.unexpanded_macros.push(MacroDirective {
-                module_id: self.module_id,
-                ast_id,
-                legacy: Some(macro_call_id),
-                depth: self.macro_depth + 1,
-            });
+            Ok(Ok(macro_call_id)) => {
+                self.def_collector.unexpanded_macros.push(MacroDirective {
+                    module_id: self.module_id,
+                    ast_id,
+                    legacy: Some(macro_call_id),
+                    depth: self.macro_depth + 1,
+                });
 
-            return;
+                return;
+            }
+            Ok(Err(_)) => {
+                // Built-in macro failed eager expansion.
+                self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
+                    self.module_id,
+                    MacroCallKind::FnLike(ast_id.ast_id),
+                    error.map(|e| e.to_string()).unwrap_or_else(|| String::from("macro error")),
+                ));
+                return;
+            }
+            Err(UnresolvedMacro) => (),
         }
 
         // Case 2: resolve in module scope, expand during name resolution.
