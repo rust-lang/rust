@@ -360,6 +360,10 @@ pub(crate) fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     Span::new(lo, hi, SyntaxContext::root())
 }
 
+pub(crate) fn mk_sp_lo_plus_one(lo: BytePos) -> Span {
+    Span::new(lo, lo + BytePos(1), SyntaxContext::root())
+}
+
 // Returns `true` if the given span does not intersect with file lines.
 macro_rules! out_of_file_lines_range {
     ($self:ident, $span:expr) => {
