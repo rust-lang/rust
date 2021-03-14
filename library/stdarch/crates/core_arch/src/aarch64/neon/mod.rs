@@ -1512,6 +1512,14 @@ pub unsafe fn vcombine_p64(low: poly64x1_t, high: poly64x1_t) -> poly64x2_t {
     simd_shuffle2(low, high, [0, 1])
 }
 
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov))]
+pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
+    float64x1_t(simd_extract(a, 1))
+}
+
 /* FIXME: 16-bit float
 /// Vector combine
 #[inline]
@@ -3466,6 +3474,14 @@ mod tests {
     test_vcombine!(test_vcombine_u64 => vcombine_u64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_p64 => vcombine_p64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vget_high_f64() {
+        let a = f64x2::new(1.0, 2.0);
+        let e = f64x1::new(2.0);
+        let r: f64x1 = transmute(vget_high_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vceq_u64() {
