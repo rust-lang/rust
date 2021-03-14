@@ -44,6 +44,15 @@ pub(super) fn check(
                 lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
             },
             LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed) => {},
+            LitKind::Int(_, LitIntType::Signed(_) | LitIntType::Unsigned(_))
+            | LitKind::Float(_, LitFloatType::Suffixed(_))
+                if cast_from.kind() == cast_to.kind() =>
+            {
+                if let Some(src) = snippet_opt(cx, lit.span) {
+                    let num_lit = NumericLiteral::from_lit_kind(&src, &lit.node).unwrap();
+                    lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                }
+            },
             _ => {
                 if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
                     span_lint_and_sugg(
