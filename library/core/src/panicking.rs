@@ -154,7 +154,7 @@ fn assert_failed_inner(
         Some(args) => panic!(
             r#"assertion failed: `(left {} right)`
   left: `{:?}`,
- right: `{:?}: {}`"#,
+ right: `{:?}`: {}"#,
             op, left, right, args
         ),
         None => panic!(
