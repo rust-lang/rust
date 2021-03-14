@@ -1304,11 +1304,11 @@ function defocusSearchBar() {
 
                     if (searchWords[j].indexOf(split[i]) > -1 ||
                         searchWords[j].indexOf(val) > -1 ||
-                        ty.nameWithoutUnderscores.indexOf(val) > -1)
+                        ty.normalizedName.indexOf(val) > -1)
                     {
                         // filter type: ... queries
                         if (typePassesFilter(typeFilter, ty.ty) && results[fullId] === undefined) {
-                            index = ty.nameWithoutUnderscores.indexOf(val);
+                            index = ty.normalizedName.indexOf(val);
                         }
                     }
                     if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
@@ -1846,7 +1846,7 @@ function defocusSearchBar() {
                 var crateSize = 0;
 
                 searchWords.push(crate);
-                var nameWithoutUnderscores = crate.indexOf("_") === -1
+                var normalizedName = crate.indexOf("_") === -1
                     ? crate
                     : crate.replace(/_/g, "");
                 // This object should have exactly the same set of fields as the "row"
@@ -1861,7 +1861,7 @@ function defocusSearchBar() {
                     parent: undefined,
                     type: null,
                     id: id,
-                    nameWithoutUnderscores: nameWithoutUnderscores,
+                    normalizedName: normalizedName,
                 };
                 id += 1;
                 searchIndex.push(crateRow);
@@ -1904,9 +1904,16 @@ function defocusSearchBar() {
                 for (i = 0; i < len; ++i) {
                     // This object should have exactly the same set of fields as the "crateRow"
                     // object defined above.
-                    var nameWithoutUnderscores = itemNames[i].indexOf("_") === -1
-                        ? itemNames[i]
-                        : itemNames[i].replace(/_/g, "");
+                    if (typeof itemNames[i] === "string") {
+                        var word = itemNames[i].toLowerCase();
+                        searchWords.push(word);
+                    } else {
+                        var word = "";
+                        searchWords.push("");
+                    }
+                    var normalizedName = word.indexOf("_") === -1
+                        ? word
+                        : word.replace(/_/g, "");
                     var row = {
                         crate: crate,
                         ty: itemTypes[i],
@@ -1916,16 +1923,10 @@ function defocusSearchBar() {
                         parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                         type: itemFunctionSearchTypes[i],
                         id: id,
-                        nameWithoutUnderscores: nameWithoutUnderscores,
+                        normalizedName: normalizedName,
                     };
                     id += 1;
                     searchIndex.push(row);
-                    if (typeof row.name === "string") {
-                        var word = row.name.toLowerCase();
-                        searchWords.push(word);
-                    } else {
-                        searchWords.push("");
-                    }
                     lastPath = row.path;
                     crateSize += 1;
                 }
