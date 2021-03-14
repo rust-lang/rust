@@ -1343,7 +1343,9 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         match &mut fields {
             Fields::Vec(pats) => {
                 for (i, pat) in new_pats {
-                    pats[i] = pat
+                    if let Some(p) = pats.get_mut(i) {
+                        *p = pat;
+                    }
                 }
             }
             Fields::Filtered { fields, .. } => {
