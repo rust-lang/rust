@@ -34,13 +34,19 @@ error: lint `non_autolinks` has been renamed to `rustdoc::non_autolinks`
 LL | #![deny(non_autolinks)]
    |         ^^^^^^^^^^^^^ help: use the new name: `rustdoc::non_autolinks`
 
+error: lint `rustdoc` has been removed: use `rustdoc::all` instead
+  --> $DIR/unknown-renamed-lints.rs:15:9
+   |
+LL | #![deny(rustdoc)]
+   |         ^^^^^^^
+
 error: unknown lint: `rustdoc::intra_doc_link_resolution_failure`
-  --> $DIR/unknown-renamed-lints.rs:16:9
+  --> $DIR/unknown-renamed-lints.rs:19:9
    |
 LL | #![deny(rustdoc::intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Compilation failed, aborting rustdoc
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
