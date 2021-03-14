@@ -2297,7 +2297,7 @@ impl FnRetTy {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
 pub enum Inline {
     Yes,
     No,

@@ -1282,16 +1282,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let (file_path, dir_path, dir_ownership) = match mod_kind {
                     ModKind::Loaded(_, inline, _) => {
                         // Inline `mod foo { ... }`, but we still need to push directories.
-                        assert!(
-                            *inline == Inline::Yes,
-                            "`mod` item is loaded from a file for the second time"
-                        );
                         let (dir_path, dir_ownership) = mod_dir_path(
                             &self.cx.sess,
                             ident,
                             &attrs,
                             &self.cx.current_expansion.module,
                             self.cx.current_expansion.dir_ownership,
+                            *inline,
                         );
                         item.attrs = attrs;
                         (None, dir_path, dir_ownership)
@@ -1322,10 +1319,19 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         item.attrs = attrs;
                         if item.attrs.len() > old_attrs_len {
                             // If we loaded an out-of-line module and added some inner attributes,
-                            // then we need to re-configure it.
-                            // FIXME: Attributes also need to be recollected
-                            // for resolution and expansion.
+                            // then we need to re-configure it and re-collect attributes for
+                            // resolution and expansion.
                             item = configure!(self, item);
+
+                            if let Some(attr) = self.take_first_attr(&mut item) {
+                                return self
+                                    .collect_attr(
+                                        attr,
+                                        Annotatable::Item(item),
+                                        AstFragmentKind::Items,
+                                    )
+                                    .make_items();
+                            }
                         }
                         (Some(file_path), dir_path, dir_ownership)
                     }

@@ -6,7 +6,7 @@ use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BuiltinMacroState, Determinacy};
 use crate::{CrateLint, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
-use rustc_ast::{self as ast, NodeId};
+use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
@@ -14,6 +14,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
+use rustc_expand::base::Annotatable;
 use rustc_expand::base::{Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind};
@@ -153,6 +154,26 @@ crate fn registered_attrs_and_tools(
     (registered_attrs, registered_tools)
 }
 
+// Some feature gates for inner attributes are reported as lints for backward compatibility.
+fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bool {
+    match &path.segments[..] {
+        // `#![test]`
+        [seg] if seg.ident.name == sym::test => return true,
+        // `#![rustfmt::skip]` on out-of-line modules
+        [seg1, seg2] if seg1.ident.name == sym::rustfmt && seg2.ident.name == sym::skip => {
+            if let InvocationKind::Attr { item, .. } = &invoc.kind {
+                if let Annotatable::Item(item) = item {
+                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _)) = item.kind {
+                        return true;
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}
+
 impl<'a> ResolverExpand for Resolver<'a> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
@@ -267,6 +288,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
             parent_scope,
             node_id,
             force,
+            soft_custom_inner_attributes_gate(path, invoc),
         )?;
 
         let span = invoc.span();
@@ -440,6 +462,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         node_id: NodeId,
         force: bool,
+        soft_custom_inner_attributes_gate: bool,
     ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_path(path, Some(kind), parent_scope, true, force)
         {
@@ -507,7 +530,7 @@ impl<'a> Resolver<'a> {
                 Res::NonMacroAttr(..) => "custom inner attributes are unstable",
                 _ => unreachable!(),
             };
-            if path == &sym::test {
+            if soft_custom_inner_attributes_gate {
                 self.session.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
                 feature_err(&self.session.parse_sess, sym::custom_inner_attributes, path.span, msg)
