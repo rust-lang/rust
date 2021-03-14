@@ -712,16 +712,24 @@ pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
     std::fs::rename(src, dst)
 }
 
-// Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
-//
-// FIXME: Currently the `everybody_loops` transformation is not applied to:
-//  * `const fn`, due to issue #43636 that `loop` is not supported for const evaluation. We are
-//    waiting for miri to fix that.
-//  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
-//    Solving this may require `!` to implement every trait, which relies on the an even more
-//    ambitious form of the closed RFC #1637. See also [#34511].
-//
-// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
+/// Replaces function bodies with `loop {}` (an infinite loop). This gets rid of
+/// all semantic errors in the body while still satisfying the return type,
+/// except in certain cases, see below for more.
+///
+/// This pass is known as `everybody_loops`. Very punny.
+///
+/// As of March 2021, `everybody_loops` is only used for the
+/// `-Z unpretty=everybody_loops` debugging option.
+///
+/// FIXME: Currently the `everybody_loops` transformation is not applied to:
+///  * `const fn`; support could be added, but hasn't. Originally `const fn`
+///    was skipped due to issue #43636 that `loop` was not supported for
+///    const evaluation.
+///  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
+///    Solving this may require `!` to implement every trait, which relies on the an even more
+///    ambitious form of the closed RFC #1637. See also [#34511].
+///
+/// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
     nested_blocks: Option<Vec<ast::Block>>,

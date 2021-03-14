@@ -2737,6 +2737,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[doc(alias = "reverse")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self>
     where

@@ -71,11 +71,15 @@
 //!     .spawn()
 //!     .expect("failed to execute child");
 //!
-//! {
-//!     // limited borrow of stdin
-//!     let stdin = child.stdin.as_mut().expect("failed to get stdin");
+//! // If the child process fills its stdout buffer, it may end up
+//! // waiting until the parent reads the stdout, and not be able to
+//! // read stdin in the meantime, causing a deadlock.
+//! // Writing from another thread ensures that stdout is being read
+//! // at the same time, avoiding the problem.
+//! let mut stdin = child.stdin.take().expect("failed to get stdin");
+//! std::thread::spawn(move || {
 //!     stdin.write_all(b"test").expect("failed to write to stdin");
-//! }
+//! });
 //!
 //! let output = child
 //!     .wait_with_output()
@@ -1145,14 +1149,21 @@ impl Stdio {
     ///     .spawn()
     ///     .expect("Failed to spawn child process");
     ///
-    /// {
-    ///     let stdin = child.stdin.as_mut().expect("Failed to open stdin");
+    /// let mut stdin = child.stdin.take().expect("Failed to open stdin");
+    /// std::thread::spawn(move || {
     ///     stdin.write_all("Hello, world!".as_bytes()).expect("Failed to write to stdin");
-    /// }
+    /// });
     ///
     /// let output = child.wait_with_output().expect("Failed to read stdout");
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH");
     /// ```
+    ///
+    /// Writing more than a pipe buffer's worth of input to stdin without also reading
+    /// stdout and stderr at the same time may cause a deadlock.
+    /// This is an issue when running any program that doesn't guarantee that it reads
+    /// its entire stdin before writing more than a pipe buffer's worth of output.
+    /// The size of a pipe buffer varies on different targets.
+    ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio {
         Stdio(imp::Stdio::MakePipe)

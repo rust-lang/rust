@@ -12,6 +12,9 @@
 #![deny(non_autolinks)]
 //~^ ERROR renamed to `rustdoc::non_autolinks`
 
+#![deny(rustdoc)]
+//~^ ERROR removed: use `rustdoc::all` instead
+
 // Explicitly don't try to handle this case, it was never valid
 #![deny(rustdoc::intra_doc_link_resolution_failure)]
 //~^ ERROR unknown lint

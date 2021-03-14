@@ -175,8 +175,8 @@ crate fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
     lint_store.register_lints(&**RUSTDOC_LINTS);
     lint_store.register_group(
         true,
-        "rustdoc",
-        None,
+        "rustdoc::all",
+        Some("rustdoc"),
         RUSTDOC_LINTS.iter().map(|&lint| LintId::of(lint)).collect(),
     );
     for lint in &*RUSTDOC_LINTS {
