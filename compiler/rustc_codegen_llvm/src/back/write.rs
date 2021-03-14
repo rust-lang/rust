@@ -140,7 +140,7 @@ fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     }
 }
 
-fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
+pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
     match code_model {
         Some(CodeModel::Tiny) => llvm::CodeModel::Tiny,
         Some(CodeModel::Small) => llvm::CodeModel::Small,
