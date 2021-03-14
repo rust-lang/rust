@@ -253,6 +253,13 @@ fn very_obsolete() {}
 
 // region: Some region name
 // endregion
+
+// region: dontpanic
+mod m {
+fn f() {}
+// endregion
+fn g() {}
+}
 "#,
             expect![[r#"
                 [
@@ -464,6 +471,52 @@ fn very_obsolete() {}
                         node_range: 501..528,
                         kind: Region,
                         detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "m",
+                        navigation_range: 568..569,
+                        node_range: 543..606,
+                        kind: Module,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "dontpanic",
+                        navigation_range: 543..563,
+                        node_range: 543..563,
+                        kind: Region,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "f",
+                        navigation_range: 575..576,
+                        node_range: 572..581,
+                        kind: Function,
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "g",
+                        navigation_range: 598..599,
+                        node_range: 582..604,
+                        kind: Function,
+                        detail: Some(
+                            "fn()",
+                        ),
                         deprecated: false,
                     },
                 ]
