@@ -2,10 +2,12 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt, iter::successors};
+use std::{cell::RefCell, collections::VecDeque, fmt, iter::successors};
 
 use base_db::{FileId, FileRange};
+use either::Either;
 use hir_def::{
+    nameres::ModuleSource,
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
@@ -153,6 +155,28 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + '_ {
         self.imp.ancestors_at_offset_with_macros(node, offset)
+    }
+
+    /// Iterates all `ModuleDef`s and `Impl` blocks of the given file.
+    pub fn visit_file_defs(&self, file_id: FileId, cb: &mut dyn FnMut(Either<ModuleDef, Impl>)) {
+        let module = match self.to_module_def(file_id) {
+            Some(it) => it,
+            None => return,
+        };
+        let mut defs: VecDeque<_> = module.declarations(self.db).into();
+        while let Some(def) = defs.pop_front() {
+            if let ModuleDef::Module(submodule) = def {
+                if let ModuleSource::Module(_) = submodule.definition_source(self.db).value {
+                    defs.extend(submodule.declarations(self.db));
+                    submodule
+                        .impl_defs(self.db)
+                        .into_iter()
+                        .for_each(|impl_| cb(Either::Right(impl_)));
+                }
+            }
+            cb(Either::Left(def));
+        }
+        module.impl_defs(self.db).into_iter().for_each(|impl_| cb(Either::Right(impl_)));
     }
 
     /// Find a AstNode by offset inside SyntaxNode, if it is inside *Macrofile*,

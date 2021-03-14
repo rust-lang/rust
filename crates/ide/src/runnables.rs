@@ -2,6 +2,7 @@ use std::fmt;
 
 use ast::NameOwner;
 use cfg::CfgExpr;
+use either::Either;
 use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
@@ -102,13 +103,27 @@ impl Runnable {
 // |===
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
-    let module = match sema.to_module_def(file_id) {
-        None => return Vec::new(),
-        Some(it) => it,
-    };
 
     let mut res = Vec::new();
-    runnables_mod(&sema, &mut res, module);
+    sema.visit_file_defs(file_id, &mut |def| match def {
+        Either::Left(def) => {
+            let runnable = match def {
+                hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
+                hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
+                _ => None,
+            };
+            res.extend(runnable.or_else(|| module_def_doctest(&sema, def)))
+        }
+        Either::Right(impl_) => {
+            res.extend(impl_.items(db).into_iter().filter_map(|assoc| match assoc {
+                hir::AssocItem::Function(it) => {
+                    runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
+                }
+                hir::AssocItem::Const(it) => module_def_doctest(&sema, it.into()),
+                hir::AssocItem::TypeAlias(it) => module_def_doctest(&sema, it.into()),
+            }))
+        }
+    });
     res
 }
 
@@ -209,39 +224,6 @@ fn parent_test_module(sema: &Semantics<RootDatabase>, fn_def: &ast::Fn) -> Optio
             None
         }
     })
-}
-
-fn runnables_mod(sema: &Semantics<RootDatabase>, acc: &mut Vec<Runnable>, module: hir::Module) {
-    acc.extend(module.declarations(sema.db).into_iter().filter_map(|def| {
-        let runnable = match def {
-            hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
-            hir::ModuleDef::Function(it) => runnable_fn(&sema, it),
-            _ => None,
-        };
-        runnable.or_else(|| module_def_doctest(&sema, def))
-    }));
-
-    acc.extend(module.impl_defs(sema.db).into_iter().flat_map(|it| it.items(sema.db)).filter_map(
-        |def| match def {
-            hir::AssocItem::Function(it) => {
-                runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
-            }
-            hir::AssocItem::Const(it) => module_def_doctest(&sema, it.into()),
-            hir::AssocItem::TypeAlias(it) => module_def_doctest(&sema, it.into()),
-        },
-    ));
-
-    for def in module.declarations(sema.db) {
-        if let hir::ModuleDef::Module(submodule) = def {
-            match submodule.definition_source(sema.db).value {
-                hir::ModuleSource::Module(_) => runnables_mod(sema, acc, submodule),
-                hir::ModuleSource::SourceFile(_) => {
-                    cov_mark::hit!(dont_recurse_in_outline_submodules)
-                }
-                hir::ModuleSource::BlockExpr(_) => {} // inner items aren't runnable
-            }
-        }
-    }
 }
 
 pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) -> Option<Runnable> {
@@ -1178,7 +1160,6 @@ mod tests {
 
     #[test]
     fn dont_recurse_in_outline_submodules() {
-        cov_mark::check!(dont_recurse_in_outline_submodules);
         check(
             r#"
 //- /lib.rs
