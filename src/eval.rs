@@ -8,6 +8,7 @@ use log::info;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, layout::LayoutCx, TyCtxt};
 use rustc_target::abi::LayoutOf;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -189,6 +190,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Call start function.
     ecx.call_function(
         start_instance,
+        Abi::Rust,
         &[main_ptr.into(), argc.into(), argv.into()],
         Some(&ret_place.into()),
         StackPopCleanup::None { cleanup: true },

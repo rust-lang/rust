@@ -15,6 +15,7 @@ use log::trace;
 
 use rustc_middle::{mir, ty};
 use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use helpers::check_arg_count;
@@ -94,6 +95,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
         this.call_function(
             f_instance,
+            Abi::Rust,
             &[data.into()],
             Some(&ret_place),
             // Directly return to caller.
@@ -145,6 +147,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 f_instance,
+                Abi::Rust,
                 &[catch_unwind.data.into(), payload.into()],
                 Some(&ret_place),
                 // Directly return to caller of `try`.
@@ -174,6 +177,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let panic = ty::Instance::mono(this.tcx.tcx, panic);
         this.call_function(
             panic,
+            Abi::Rust,
             &[msg.to_ref()],
             None,
             StackPopCleanup::Goto { ret: None, unwind },
@@ -202,6 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let panic_bounds_check = ty::Instance::mono(this.tcx.tcx, panic_bounds_check);
                 this.call_function(
                     panic_bounds_check,
+                    Abi::Rust,
                     &[index.into(), len.into()],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
