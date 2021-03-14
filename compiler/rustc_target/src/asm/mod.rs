@@ -313,7 +313,7 @@ impl InlineAsmReg {
             Self::RiscV(r) => r.emit(out, arch, modifier),
             Self::Hexagon(r) => r.emit(out, arch, modifier),
             Self::Mips(r) => r.emit(out, arch, modifier),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmReg::Err"),
         }
     }
 
@@ -325,7 +325,7 @@ impl InlineAsmReg {
             Self::RiscV(_) => cb(self),
             Self::Hexagon(r) => r.overlapping_regs(|r| cb(Self::Hexagon(r))),
             Self::Mips(_) => cb(self),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmReg::Err"),
         }
     }
 }
@@ -386,7 +386,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Mips),
             Self::SpirV(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::SpirV),
             Self::Wasm(r) => r.suggest_class(arch, ty).map(InlineAsmRegClass::Wasm),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
 
@@ -411,7 +411,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.suggest_modifier(arch, ty),
             Self::SpirV(r) => r.suggest_modifier(arch, ty),
             Self::Wasm(r) => r.suggest_modifier(arch, ty),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
 
@@ -432,7 +432,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.default_modifier(arch),
             Self::SpirV(r) => r.default_modifier(arch),
             Self::Wasm(r) => r.default_modifier(arch),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
 
@@ -452,7 +452,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
 
@@ -489,7 +489,7 @@ impl InlineAsmRegClass {
             Self::Mips(r) => r.valid_modifiers(arch),
             Self::SpirV(r) => r.valid_modifiers(arch),
             Self::Wasm(r) => r.valid_modifiers(arch),
-            Self::Err => unreachable!(),
+            Self::Err => unreachable!("Use of InlineAsmRegClass::Err"),
         }
     }
 }
