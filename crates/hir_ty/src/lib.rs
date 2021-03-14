@@ -151,17 +151,17 @@ pub enum TyKind {
     Tuple(usize, Substs),
 
     /// An array with the given length. Written as `[T; n]`.
-    Array(Substs),
+    Array(Ty),
 
     /// The pointee of an array slice.  Written as `[T]`.
-    Slice(Substs),
+    Slice(Ty),
 
     /// A raw pointer. Written as `*mut T` or `*const T`
-    Raw(Mutability, Substs),
+    Raw(Mutability, Ty),
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(Mutability, Substs),
+    Ref(Mutability, Ty),
 
     /// This represents a placeholder for an opaque type in situations where we
     /// don't know the hidden type (i.e. currently almost always). This is
@@ -673,19 +673,15 @@ impl Ty {
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
         match self.interned(&Interner) {
-            TyKind::Ref(mutability, parameters) => Some((parameters.as_single(), *mutability)),
+            TyKind::Ref(mutability, ty) => Some((ty, *mutability)),
             _ => None,
         }
     }
 
     pub fn as_reference_or_ptr(&self) -> Option<(&Ty, Rawness, Mutability)> {
         match self.interned(&Interner) {
-            TyKind::Ref(mutability, parameters) => {
-                Some((parameters.as_single(), Rawness::Ref, *mutability))
-            }
-            TyKind::Raw(mutability, parameters) => {
-                Some((parameters.as_single(), Rawness::RawPtr, *mutability))
-            }
+            TyKind::Ref(mutability, ty) => Some((ty, Rawness::Ref, *mutability)),
+            TyKind::Raw(mutability, ty) => Some((ty, Rawness::RawPtr, *mutability)),
             _ => None,
         }
     }
@@ -693,8 +689,8 @@ impl Ty {
     pub fn strip_references(&self) -> &Ty {
         let mut t: &Ty = self;
 
-        while let TyKind::Ref(_mutability, parameters) = t.interned(&Interner) {
-            t = parameters.as_single();
+        while let TyKind::Ref(_mutability, ty) = t.interned(&Interner) {
+            t = ty;
         }
 
         t
@@ -780,8 +776,8 @@ impl Ty {
 
     fn builtin_deref(&self) -> Option<Ty> {
         match self.interned(&Interner) {
-            TyKind::Ref(.., parameters) => Some(Ty::clone(parameters.as_single())),
-            TyKind::Raw(.., parameters) => Some(Ty::clone(parameters.as_single())),
+            TyKind::Ref(.., ty) => Some(ty.clone()),
+            TyKind::Raw(.., ty) => Some(ty.clone()),
             _ => None,
         }
     }
@@ -817,40 +813,11 @@ impl Ty {
         }
     }
 
-    /// If this is a type with type parameters (an ADT or function), replaces
-    /// the `Substs` for these type parameters with the given ones. (So e.g. if
-    /// `self` is `Option<_>` and the substs contain `u32`, we'll have
-    /// `Option<u32>` afterwards.)
-    pub fn apply_substs(mut self, new_substs: Substs) -> Ty {
-        match self.interned_mut() {
-            TyKind::Adt(_, substs)
-            | TyKind::Slice(substs)
-            | TyKind::Array(substs)
-            | TyKind::Raw(_, substs)
-            | TyKind::Ref(_, substs)
-            | TyKind::FnDef(_, substs)
-            | TyKind::Function(FnPointer { substs, .. })
-            | TyKind::Tuple(_, substs)
-            | TyKind::OpaqueType(_, substs)
-            | TyKind::AssociatedType(_, substs)
-            | TyKind::Closure(.., substs) => {
-                assert_eq!(substs.len(), new_substs.len());
-                *substs = new_substs;
-            }
-            _ => (),
-        }
-        self
-    }
-
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     pub fn substs(&self) -> Option<&Substs> {
         match self.interned(&Interner) {
             TyKind::Adt(_, substs)
-            | TyKind::Slice(substs)
-            | TyKind::Array(substs)
-            | TyKind::Raw(_, substs)
-            | TyKind::Ref(_, substs)
             | TyKind::FnDef(_, substs)
             | TyKind::Function(FnPointer { substs, .. })
             | TyKind::Tuple(_, substs)
@@ -861,13 +828,9 @@ impl Ty {
         }
     }
 
-    pub fn substs_mut(&mut self) -> Option<&mut Substs> {
+    fn substs_mut(&mut self) -> Option<&mut Substs> {
         match self.interned_mut() {
             TyKind::Adt(_, substs)
-            | TyKind::Slice(substs)
-            | TyKind::Array(substs)
-            | TyKind::Raw(_, substs)
-            | TyKind::Ref(_, substs)
             | TyKind::FnDef(_, substs)
             | TyKind::Function(FnPointer { substs, .. })
             | TyKind::Tuple(_, substs)
@@ -1076,6 +1039,9 @@ impl TypeWalk for Ty {
                     p.walk(f);
                 }
             }
+            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
+                ty.walk(f);
+            }
             _ => {
                 if let Some(substs) = self.substs() {
                     for t in substs.iter() {
@@ -1103,6 +1069,9 @@ impl TypeWalk for Ty {
             }
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
                 o_ty.substitution.walk_mut_binders(f, binders);
+            }
+            TyKind::Slice(ty) | TyKind::Array(ty) | TyKind::Ref(_, ty) | TyKind::Raw(_, ty) => {
+                ty.walk_mut_binders(f, binders);
             }
             _ => {
                 if let Some(substs) = self.substs_mut() {

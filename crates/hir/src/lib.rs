@@ -1598,7 +1598,7 @@ impl Type {
 
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.value.interned(&Interner) {
-            TyKind::Ref(.., substs) => Some(self.derived(substs[0].clone())),
+            TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
             _ => None,
         }
     }
@@ -1752,10 +1752,30 @@ impl Type {
         return go(&self.ty.value);
 
         fn go(ty: &Ty) -> bool {
-            if ty.is_unknown() {
-                true
-            } else {
-                ty.substs().map_or(false, |substs| substs.iter().any(go))
+            match ty.interned(&Interner) {
+                TyKind::Unknown => true,
+
+                TyKind::Adt(_, substs)
+                | TyKind::AssociatedType(_, substs)
+                | TyKind::Tuple(_, substs)
+                | TyKind::OpaqueType(_, substs)
+                | TyKind::FnDef(_, substs)
+                | TyKind::Closure(_, substs) => substs.iter().any(go),
+
+                TyKind::Array(ty) | TyKind::Slice(ty) | TyKind::Raw(_, ty) | TyKind::Ref(_, ty) => {
+                    go(ty)
+                }
+
+                TyKind::Scalar(_)
+                | TyKind::Str
+                | TyKind::Never
+                | TyKind::Placeholder(_)
+                | TyKind::BoundVar(_)
+                | TyKind::InferenceVar(_, _)
+                | TyKind::Dyn(_)
+                | TyKind::Function(_)
+                | TyKind::Alias(_)
+                | TyKind::ForeignType(_) => false,
             }
         }
     }
@@ -1988,6 +2008,10 @@ impl Type {
                 }
                 TyKind::Dyn(bounds) => {
                     walk_bounds(db, &type_.derived(ty.clone()), bounds.as_ref(), cb);
+                }
+
+                TyKind::Ref(_, ty) | TyKind::Raw(_, ty) | TyKind::Array(ty) | TyKind::Slice(ty) => {
+                    walk_type(db, &type_.derived(ty.clone()), cb);
                 }
 
                 _ => {}

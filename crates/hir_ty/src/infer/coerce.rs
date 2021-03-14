@@ -111,9 +111,7 @@ impl<'a> InferenceContext<'a> {
         // Auto Deref if cannot coerce
         match (from_ty.interned(&Interner), to_ty.interned(&Interner)) {
             // FIXME: DerefMut
-            (TyKind::Ref(_, st1), TyKind::Ref(_, st2)) => {
-                self.unify_autoderef_behind_ref(&st1[0], &st2[0])
-            }
+            (TyKind::Ref(_, st1), TyKind::Ref(_, st2)) => self.unify_autoderef_behind_ref(st1, st2),
 
             // Otherwise, normal unify
             _ => self.unify(&from_ty, to_ty),
@@ -178,11 +176,7 @@ impl<'a> InferenceContext<'a> {
             // Stop when constructor matches.
             if from_ty.equals_ctor(&to_ty) {
                 // It will not recurse to `coerce`.
-                return match (from_ty.substs(), to_ty.substs()) {
-                    (Some(st1), Some(st2)) => self.table.unify_substs(st1, st2, 0),
-                    (None, None) => true,
-                    _ => false,
-                };
+                return self.table.unify(&from_ty, &to_ty);
             } else if self.table.unify_inner_trivial(&derefed_ty, &to_ty, 0) {
                 return true;
             }

@@ -25,8 +25,8 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty<Interner>;
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Ty<Interner> {
         match self.into_inner() {
-            TyKind::Ref(m, parameters) => ref_to_chalk(db, m, parameters),
-            TyKind::Array(parameters) => array_to_chalk(db, parameters),
+            TyKind::Ref(m, ty) => ref_to_chalk(db, m, ty),
+            TyKind::Array(ty) => array_to_chalk(db, ty),
             TyKind::Function(FnPointer { sig, substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.to_chalk(db).shifted_in(&Interner));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
@@ -54,13 +54,11 @@ impl ToChalk for Ty {
                 let substitution = substs.to_chalk(db);
                 chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
             }
-            TyKind::Raw(mutability, substs) => {
-                let ty = substs[0].clone().to_chalk(db);
+            TyKind::Raw(mutability, ty) => {
+                let ty = ty.to_chalk(db);
                 chalk_ir::TyKind::Raw(mutability, ty).intern(&Interner)
             }
-            TyKind::Slice(substs) => {
-                chalk_ir::TyKind::Slice(substs[0].clone().to_chalk(db)).intern(&Interner)
-            }
+            TyKind::Slice(ty) => chalk_ir::TyKind::Slice(ty.to_chalk(db)).intern(&Interner),
             TyKind::Str => chalk_ir::TyKind::Str.intern(&Interner),
             TyKind::FnDef(id, substs) => {
                 let substitution = substs.to_chalk(db);
@@ -114,7 +112,7 @@ impl ToChalk for Ty {
     fn from_chalk(db: &dyn HirDatabase, chalk: chalk_ir::Ty<Interner>) -> Self {
         match chalk.data(&Interner).kind.clone() {
             chalk_ir::TyKind::Error => TyKind::Unknown,
-            chalk_ir::TyKind::Array(ty, _size) => TyKind::Array(Substs::single(from_chalk(db, ty))),
+            chalk_ir::TyKind::Array(ty, _size) => TyKind::Array(from_chalk(db, ty)),
             chalk_ir::TyKind::Placeholder(idx) => TyKind::Placeholder(idx),
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = proj.associated_ty_id;
@@ -168,12 +166,10 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Tuple(cardinality, subst) => {
                 TyKind::Tuple(cardinality, from_chalk(db, subst))
             }
-            chalk_ir::TyKind::Raw(mutability, ty) => {
-                TyKind::Raw(mutability, Substs::single(from_chalk(db, ty)))
-            }
-            chalk_ir::TyKind::Slice(ty) => TyKind::Slice(Substs::single(from_chalk(db, ty))),
+            chalk_ir::TyKind::Raw(mutability, ty) => TyKind::Raw(mutability, from_chalk(db, ty)),
+            chalk_ir::TyKind::Slice(ty) => TyKind::Slice(from_chalk(db, ty)),
             chalk_ir::TyKind::Ref(mutability, _lifetime, ty) => {
-                TyKind::Ref(mutability, Substs::single(from_chalk(db, ty)))
+                TyKind::Ref(mutability, from_chalk(db, ty))
             }
             chalk_ir::TyKind::Str => TyKind::Str,
             chalk_ir::TyKind::Never => TyKind::Never,
@@ -197,17 +193,17 @@ impl ToChalk for Ty {
 fn ref_to_chalk(
     db: &dyn HirDatabase,
     mutability: chalk_ir::Mutability,
-    subst: Substs,
+    ty: Ty,
 ) -> chalk_ir::Ty<Interner> {
-    let arg = subst[0].clone().to_chalk(db);
+    let arg = ty.to_chalk(db);
     let lifetime = LifetimeData::Static.intern(&Interner);
     chalk_ir::TyKind::Ref(mutability, lifetime, arg).intern(&Interner)
 }
 
 /// We currently don't model constants, but Chalk does. So, we have to insert a
 /// fake constant here, because Chalks built-in logic may expect it to be there.
-fn array_to_chalk(db: &dyn HirDatabase, subst: Substs) -> chalk_ir::Ty<Interner> {
-    let arg = subst[0].clone().to_chalk(db);
+fn array_to_chalk(db: &dyn HirDatabase, ty: Ty) -> chalk_ir::Ty<Interner> {
+    let arg = ty.to_chalk(db);
     let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
     let const_ = chalk_ir::ConstData {
         ty: usize_ty,
