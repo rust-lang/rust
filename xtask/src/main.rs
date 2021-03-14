@@ -40,7 +40,6 @@ fn main() -> Result<()> {
             return Ok(());
         }
         flags::XtaskCmd::Install(cmd) => cmd.run(),
-        flags::XtaskCmd::Lint(_) => run_clippy(),
         flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
         flags::XtaskCmd::PreCache(cmd) => cmd.run(),
         flags::XtaskCmd::Release(cmd) => cmd.run(),
@@ -92,25 +91,6 @@ fn ensure_rustfmt() -> Result<()> {
              Please run `rustup component add rustfmt --toolchain stable` to install it.",
         )
     }
-    Ok(())
-}
-
-fn run_clippy() -> Result<()> {
-    if cmd!("cargo clippy --version").read().is_err() {
-        bail!(
-            "Failed run cargo clippy. \
-            Please run `rustup component add clippy` to install it.",
-        )
-    }
-
-    let allowed_lints = "
-        -A clippy::collapsible_if
-        -A clippy::needless_pass_by_value
-        -A clippy::nonminimal_bool
-        -A clippy::redundant_pattern_matching
-    "
-    .split_ascii_whitespace();
-    cmd!("cargo clippy --all-features --all-targets -- {allowed_lints...}").run()?;
     Ok(())
 }
 

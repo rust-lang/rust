@@ -27,7 +27,6 @@ xflags::xflags! {
             optional --jemalloc
         }
 
-        cmd lint {}
         cmd fuzz-tests {}
         cmd pre-cache {}
 
@@ -63,7 +62,6 @@ pub struct Xtask {
 pub enum XtaskCmd {
     Help(Help),
     Install(Install),
-    Lint(Lint),
     FuzzTests(FuzzTests),
     PreCache(PreCache),
     Release(Release),
