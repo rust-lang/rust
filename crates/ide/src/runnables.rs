@@ -2,7 +2,7 @@ use std::fmt;
 
 use ast::NameOwner;
 use cfg::CfgExpr;
-use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
+use hir::{AsAssocItem, HasAttrs, HasSource, HirDisplay, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
@@ -340,11 +340,21 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
             // FIXME: this also looks very wrong
             if let Some(assoc_def) = assoc_def {
                 if let hir::AssocItemContainer::Impl(imp) = assoc_def.container(sema.db) {
-                    if let Some(adt) = imp.target_ty(sema.db).as_adt() {
-                        let name = adt.name(sema.db).to_string();
+                    let ty = imp.target_ty(sema.db);
+                    if let Some(adt) = ty.as_adt() {
+                        let name = adt.name(sema.db);
                         let idx = path.rfind(':').map_or(0, |idx| idx + 1);
                         let (prefix, suffix) = path.split_at(idx);
-                        return format!("{}{}::{}", prefix, name, suffix);
+                        let mut ty_params = ty.type_parameters().peekable();
+                        let params = if ty_params.peek().is_some() {
+                            format!(
+                                "<{}>",
+                                ty_params.format_with(", ", |ty, cb| cb(&ty.display(sema.db)))
+                            )
+                        } else {
+                            String::new()
+                        };
+                        return format!("{}{}{}::{}", prefix, name, params, suffix);
                     }
                 }
             }
@@ -1403,6 +1413,43 @@ mod tests {
                     cfg: None,
                 },
             ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn doc_test_type_params() {
+        check(
+            r#"
+//- /lib.rs
+$0
+struct Foo<T, U>;
+
+impl<T, U> Foo<T, U> {
+    /// ```rust
+    /// ````
+    fn t() {}
+}
+"#,
+            &[&DOCTEST],
+            expect![[r#"
+                [
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 47..85,
+                            name: "t",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "Foo<T, U>::t",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
             "#]],
         );
     }
