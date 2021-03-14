@@ -1285,7 +1285,6 @@ dependencies = [
  "regex",
  "rustc-ap-rustc_ast",
  "rustc-ap-rustc_ast_pretty",
- "rustc-ap-rustc_attr",
  "rustc-ap-rustc_data_structures",
  "rustc-ap-rustc_errors",
  "rustc-ap-rustc_expand",

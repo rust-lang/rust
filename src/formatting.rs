@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
-use rustc_ast::ast;
+use rustc_ast::{ast, AstLike};
 use rustc_span::Span;
 
 use self::newline_style::apply_newline_style;

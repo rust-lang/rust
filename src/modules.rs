@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
-use rustc_ast::attr::HasAttrs;
 use rustc_ast::visit::Visitor;
+use rustc_ast::AstLike;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
 use thiserror::Error;
@@ -54,7 +54,7 @@ impl<'a> Module<'a> {
     }
 }
 
-impl<'a> HasAttrs for Module<'a> {
+impl<'a> AstLike for Module<'a> {
     fn attrs(&self) -> &[ast::Attribute] {
         &self.inner_attr
     }

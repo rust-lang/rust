@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use rustc_ast::{ast, attr::HasAttrs, token::DelimToken, visit};
+use rustc_ast::{ast, token::DelimToken, visit, AstLike};
 use rustc_span::{symbol, BytePos, Pos, Span, DUMMY_SP};
 
 use crate::attr::*;
