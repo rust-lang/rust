@@ -597,13 +597,10 @@ impl CheckAttrVisitor<'tcx> {
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
-                                    let msg = if let Ok(snippet) =
-                                        self.tcx.sess.source_map().span_to_snippet(i_meta.path.span)
-                                    {
-                                        format!("unknown `doc` attribute `{}`", snippet,)
-                                    } else {
-                                        String::from("unknown `doc` attribute")
-                                    };
+                                    let msg = format!(
+                                        "unknown `doc` attribute `{}`",
+                                        rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
+                                    );
                                     lint.build(&msg).emit();
                                 },
                             );
