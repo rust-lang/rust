@@ -1852,6 +1852,9 @@ function defocusSearchBar() {
                 var crateSize = 0;
 
                 searchWords.push(crate);
+                var nameWithoutUnderscores = crate.indexOf("_") === -1
+                    ? crate
+                    : crate.replace(/_/g, "");
                 // This object should have exactly the same set of fields as the "row"
                 // object defined below. Your JavaScript runtime will thank you.
                 // https://mathiasbynens.be/notes/shapes-ics
@@ -1864,7 +1867,7 @@ function defocusSearchBar() {
                     parent: undefined,
                     type: null,
                     id: "",
-                    nameWithoutUnderscores: crate.replace(/_/g, ""),
+                    nameWithoutUnderscores: nameWithoutUnderscores,
                 };
                 crateRow.id = generateId(crateRow);
                 searchIndex.push(crateRow);
@@ -1907,6 +1910,9 @@ function defocusSearchBar() {
                 for (i = 0; i < len; ++i) {
                     // This object should have exactly the same set of fields as the "crateRow"
                     // object defined above.
+                    var nameWithoutUnderscores = itemNames[i].indexOf("_") === -1
+                        ? itemNames[i]
+                        : itemNames[i].replace(/_/g, "");
                     var row = {
                         crate: crate,
                         ty: itemTypes[i],
@@ -1916,7 +1922,7 @@ function defocusSearchBar() {
                         parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                         type: itemFunctionSearchTypes[i],
                         id: "",
-                        nameWithoutUnderscores: itemNames[i].replace(/_/g, ""),
+                        nameWithoutUnderscores: nameWithoutUnderscores,
                     };
                     row.id = generateId(row);
                     searchIndex.push(row);
