@@ -1232,7 +1232,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box as_conversions::AsConversions);
     store.register_late_pass(|| box let_underscore::LetUnderscore);
     store.register_late_pass(|| box atomic_ordering::AtomicOrdering);
-    store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports);
+    store.register_early_pass(|| box single_component_path_imports::SingleComponentPathImports::default());
     let max_fn_params_bools = conf.max_fn_params_bools;
     let max_struct_bools = conf.max_struct_bools;
     store.register_early_pass(move || box excessive_bools::ExcessiveBools::new(max_struct_bools, max_fn_params_bools));
