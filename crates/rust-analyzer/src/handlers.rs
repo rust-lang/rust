@@ -11,7 +11,7 @@ use ide::{
     AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, Query,
     RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
 };
-use ide_db::{StructureNodeKind, SymbolKind};
+use ide_db::SymbolKind;
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
