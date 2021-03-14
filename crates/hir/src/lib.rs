@@ -29,6 +29,8 @@ mod has_source;
 pub mod diagnostics;
 pub mod db;
 
+mod display;
+
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
@@ -50,7 +52,6 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
-    display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution::{self, TyFingerprint},
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
@@ -1412,19 +1413,6 @@ impl TypeParam {
     }
 }
 
-impl HirDisplay for TypeParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        write!(f, "{}", self.name(f.db))?;
-        let bounds = f.db.generic_predicates_for_param(self.id);
-        let substs = Substs::type_params(f.db, self.id.parent);
-        let predicates = bounds.iter().cloned().map(|b| b.subst(&substs)).collect::<Vec<_>>();
-        if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
-        }
-        Ok(())
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LifetimeParam {
     pub(crate) id: LifetimeParamId,
@@ -2051,12 +2039,6 @@ impl Type {
         }
 
         walk_type(db, self, &mut cb);
-    }
-}
-
-impl HirDisplay for Type {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        self.ty.value.hir_fmt(f)
     }
 }
 
