@@ -74,6 +74,7 @@ fn try_main() -> Result<()> {
             memory_usage: cmd.memory_usage,
             only: cmd.only,
             with_deps: cmd.with_deps,
+            no_sysroot: cmd.no_sysroot,
             path: cmd.path,
             load_output_dirs: cmd.load_output_dirs,
             with_proc_macro: cmd.with_proc_macro,
