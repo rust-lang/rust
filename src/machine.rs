@@ -430,6 +430,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
         ecx.call_function(
             malloc,
+            Abi::Rust,
             &[size.into(), align.into()],
             Some(dest),
             // Don't do anything when we are done. The `statement()` function will increment

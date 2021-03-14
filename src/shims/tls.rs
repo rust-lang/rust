@@ -9,6 +9,7 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty;
 use rustc_target::abi::{Size, HasDataLayout};
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -244,6 +245,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
         this.call_function(
             thread_callback,
+            Abi::System { unwind: false },
             &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
             Some(&ret_place),
             StackPopCleanup::None { cleanup: true },
@@ -266,6 +268,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 instance,
+                Abi::C { unwind: false },
                 &[data.into()],
                 Some(&ret_place),
                 StackPopCleanup::None { cleanup: true },
@@ -306,6 +309,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit, this).into();
             this.call_function(
                 instance,
+                Abi::C { unwind: false },
                 &[ptr.into()],
                 Some(&ret_place),
                 StackPopCleanup::None { cleanup: true },
