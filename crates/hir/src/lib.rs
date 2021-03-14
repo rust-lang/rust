@@ -822,7 +822,8 @@ impl Function {
         db.function_data(self.id)
             .params
             .iter()
-            .map(|type_ref| {
+            .enumerate()
+            .map(|(idx, type_ref)| {
                 let ty = Type {
                     krate,
                     ty: InEnvironment {
@@ -830,7 +831,7 @@ impl Function {
                         environment: environment.clone(),
                     },
                 };
-                Param { ty }
+                Param { func: self, ty, idx }
             })
             .collect()
     }
@@ -893,12 +894,24 @@ impl From<hir_ty::Mutability> for Access {
 
 #[derive(Debug)]
 pub struct Param {
+    func: Function,
+    /// The index in parameter list, including self parameter.
+    idx: usize,
     ty: Type,
 }
 
 impl Param {
     pub fn ty(&self) -> &Type {
         &self.ty
+    }
+
+    pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {
+        let params = self.func.source(db)?.value.param_list()?;
+        if params.self_param().is_some() {
+            params.params().nth(self.idx.checked_sub(1)?)?.pat()
+        } else {
+            params.params().nth(self.idx)?.pat()
+        }
     }
 }
 

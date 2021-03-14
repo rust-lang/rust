@@ -5,7 +5,13 @@ use std::{borrow::Cow, fmt};
 use arrayvec::ArrayVec;
 use chalk_ir::Mutability;
 use hir_def::{
-    db::DefDatabase, find_path, generics::TypeParamProvenance, item_scope::ItemInNs,
+    db::DefDatabase,
+    find_path,
+    generics::TypeParamProvenance,
+    item_scope::ItemInNs,
+    path::{GenericArg, Path, PathKind},
+    type_ref::{TypeBound, TypeRef},
+    visibility::Visibility,
     AssocContainerId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
@@ -232,7 +238,7 @@ where
 
 const TYPE_HINT_TRUNCATION: &str = "…";
 
-impl HirDisplay for &Ty {
+impl<T: HirDisplay> HirDisplay for &'_ T {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
     }
@@ -761,12 +767,6 @@ impl HirDisplay for TraitRef {
     }
 }
 
-impl HirDisplay for &GenericPredicate {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        HirDisplay::hir_fmt(*self, f)
-    }
-}
-
 impl HirDisplay for GenericPredicate {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         if f.should_truncate() {
@@ -822,6 +822,193 @@ impl HirDisplay for Obligation {
                 proj.ty.hir_fmt(f)?;
                 write!(f, ")")
             }
+        }
+    }
+}
+
+pub fn write_visibility(
+    module_id: ModuleId,
+    vis: Visibility,
+    f: &mut HirFormatter,
+) -> Result<(), HirDisplayError> {
+    match vis {
+        Visibility::Public => write!(f, "pub "),
+        Visibility::Module(vis_id) => {
+            let def_map = module_id.def_map(f.db.upcast());
+            let root_module_id = def_map.module_id(def_map.root());
+            if vis_id == module_id {
+                // pub(self) or omitted
+                Ok(())
+            } else if root_module_id == vis_id {
+                write!(f, "pub(crate) ")
+            } else if module_id.containing_module(f.db.upcast()) == Some(vis_id) {
+                write!(f, "pub(super) ")
+            } else {
+                write!(f, "pub(in ...) ")
+            }
+        }
+    }
+}
+
+impl HirDisplay for TypeRef {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            TypeRef::Never => write!(f, "!")?,
+            TypeRef::Placeholder => write!(f, "_")?,
+            TypeRef::Tuple(elems) => {
+                write!(f, "(")?;
+                f.write_joined(elems, ", ")?;
+                if elems.len() == 1 {
+                    write!(f, ",")?;
+                }
+                write!(f, ")")?;
+            }
+            TypeRef::Path(path) => path.hir_fmt(f)?,
+            TypeRef::RawPtr(inner, mutability) => {
+                let mutability = match mutability {
+                    hir_def::type_ref::Mutability::Shared => "*const ",
+                    hir_def::type_ref::Mutability::Mut => "*mut ",
+                };
+                write!(f, "{}", mutability)?;
+                inner.hir_fmt(f)?;
+            }
+            TypeRef::Reference(inner, lifetime, mutability) => {
+                let mutability = match mutability {
+                    hir_def::type_ref::Mutability::Shared => "",
+                    hir_def::type_ref::Mutability::Mut => "mut ",
+                };
+                write!(f, "&")?;
+                if let Some(lifetime) = lifetime {
+                    write!(f, "{} ", lifetime.name)?;
+                }
+                write!(f, "{}", mutability)?;
+                inner.hir_fmt(f)?;
+            }
+            TypeRef::Array(inner) => {
+                write!(f, "[")?;
+                inner.hir_fmt(f)?;
+                // FIXME: Array length?
+                write!(f, "; _]")?;
+            }
+            TypeRef::Slice(inner) => {
+                write!(f, "[")?;
+                inner.hir_fmt(f)?;
+                write!(f, "]")?;
+            }
+            TypeRef::Fn(tys, is_varargs) => {
+                // FIXME: Function pointer qualifiers.
+                write!(f, "fn(")?;
+                f.write_joined(&tys[..tys.len() - 1], ", ")?;
+                if *is_varargs {
+                    write!(f, "{}...", if tys.len() == 1 { "" } else { ", " })?;
+                }
+                write!(f, ")")?;
+                let ret_ty = tys.last().unwrap();
+                match ret_ty {
+                    TypeRef::Tuple(tup) if tup.is_empty() => {}
+                    _ => {
+                        write!(f, " -> ")?;
+                        ret_ty.hir_fmt(f)?;
+                    }
+                }
+            }
+            TypeRef::ImplTrait(bounds) => {
+                write!(f, "impl ")?;
+                f.write_joined(bounds, " + ")?;
+            }
+            TypeRef::DynTrait(bounds) => {
+                write!(f, "dyn ")?;
+                f.write_joined(bounds, " + ")?;
+            }
+            TypeRef::Error => write!(f, "{{error}}")?,
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for TypeBound {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            TypeBound::Path(path) => path.hir_fmt(f),
+            TypeBound::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
+            TypeBound::Error => write!(f, "{{error}}"),
+        }
+    }
+}
+
+impl HirDisplay for Path {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match (self.type_anchor(), self.kind()) {
+            (Some(anchor), _) => {
+                write!(f, "<")?;
+                anchor.hir_fmt(f)?;
+                write!(f, ">")?;
+            }
+            (_, PathKind::Plain) => {}
+            (_, PathKind::Abs) => write!(f, "::")?,
+            (_, PathKind::Crate) => write!(f, "crate")?,
+            (_, PathKind::Super(0)) => write!(f, "self")?,
+            (_, PathKind::Super(n)) => {
+                write!(f, "super")?;
+                for _ in 0..*n {
+                    write!(f, "::super")?;
+                }
+            }
+            (_, PathKind::DollarCrate(_)) => write!(f, "{{extern_crate}}")?,
+        }
+
+        for (seg_idx, segment) in self.segments().iter().enumerate() {
+            if seg_idx != 0 {
+                write!(f, "::")?;
+            }
+            write!(f, "{}", segment.name)?;
+            if let Some(generic_args) = segment.args_and_bindings {
+                // We should be in type context, so format as `Foo<Bar>` instead of `Foo::<Bar>`.
+                // Do we actually format expressions?
+                write!(f, "<")?;
+                let mut first = true;
+                for arg in &generic_args.args {
+                    if first {
+                        first = false;
+                        if generic_args.has_self_type {
+                            // FIXME: Convert to `<Ty as Trait>` form.
+                            write!(f, "Self = ")?;
+                        }
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    arg.hir_fmt(f)?;
+                }
+                for binding in &generic_args.bindings {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", binding.name)?;
+                    match &binding.type_ref {
+                        Some(ty) => {
+                            write!(f, " = ")?;
+                            ty.hir_fmt(f)?
+                        }
+                        None => {
+                            write!(f, ": ")?;
+                            f.write_joined(&binding.bounds, " + ")?;
+                        }
+                    }
+                }
+                write!(f, ">")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for GenericArg {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            GenericArg::Type(ty) => ty.hir_fmt(f),
+            GenericArg::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
         }
     }
 }

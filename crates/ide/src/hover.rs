@@ -354,7 +354,7 @@ fn hover_for_definition(
                 },
                 mod_path,
             ),
-            ModuleDef::Function(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Function(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it, mod_path),
             ModuleDef::Adt(Adt::Union(it)) => from_def_source(db, it, mod_path),
             ModuleDef::Adt(Adt::Enum(it)) => from_def_source(db, it, mod_path),
@@ -382,6 +382,14 @@ fn hover_for_definition(
             GenericParam::ConstParam(it) => from_def_source(db, it, None),
         },
     };
+
+    fn from_hir_fmt<D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
+    where
+        D: HasAttrs + HirDisplay,
+    {
+        let label = def.display(db).to_string();
+        from_def_source_labeled(db, def, Some(label), mod_path)
+    }
 
     fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
     where
