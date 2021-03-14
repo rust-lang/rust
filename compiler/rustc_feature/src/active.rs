@@ -670,6 +670,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::capture_disjoint_fields,
     sym::const_generics_defaults,
     sym::inherent_associated_types,
+    sym::rustc_insignificant_dtor,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
