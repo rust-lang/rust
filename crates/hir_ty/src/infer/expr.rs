@@ -261,7 +261,7 @@ impl<'a> InferenceContext<'a> {
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = TyKind::Function(FnPointer {
                     num_args: sig_tys.len() - 1,
-                    sig: FnSig { variadic: false },
+                    sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
                     substs: Substs(sig_tys.clone().into()),
                 })
                 .intern(&Interner);

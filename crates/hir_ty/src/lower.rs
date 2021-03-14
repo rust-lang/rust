@@ -8,7 +8,7 @@
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{cast::Cast, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
     builtin_type::BuiltinType,
@@ -181,7 +181,7 @@ impl<'a> TyLoweringContext<'a> {
                 let substs = Substs(params.iter().map(|tr| self.lower_ty(tr)).collect());
                 TyKind::Function(FnPointer {
                     num_args: substs.len() - 1,
-                    sig: FnSig { variadic: *is_varargs },
+                    sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
                     substs,
                 })
                 .intern(&Interner)

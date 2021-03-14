@@ -84,7 +84,10 @@ fn deref_by_trait(
     let projection = super::traits::ProjectionPredicate {
         ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, ty.value.kinds.len()))
             .intern(&Interner),
-        projection_ty: super::ProjectionTy { associated_ty_id: to_assoc_type_id(target), substitution: parameters },
+        projection_ty: super::ProjectionTy {
+            associated_ty_id: to_assoc_type_id(target),
+            substitution: parameters,
+        },
     };
 
     let obligation = super::Obligation::Projection(projection);

@@ -46,7 +46,7 @@ pub use lower::{
 };
 pub use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
-pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Scalar, TyVariableKind};
+pub use chalk_ir::{AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind};
 
 pub use crate::traits::chalk::Interner;
 
@@ -105,10 +105,7 @@ impl TypeWalk for ProjectionTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub struct FnSig {
-    pub variadic: bool,
-}
+pub type FnSig = chalk_ir::FnSig<Interner>;
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct FnPointer {
@@ -643,7 +640,7 @@ impl Ty {
     pub fn fn_ptr(sig: CallableSig) -> Self {
         TyKind::Function(FnPointer {
             num_args: sig.params().len(),
-            sig: FnSig { variadic: sig.is_varargs },
+            sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
             substs: Substs(sig.params_and_return),
         })
         .intern(&Interner)
@@ -945,7 +942,9 @@ impl Ty {
                 }
             }
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match from_assoc_type_id(projection_ty.associated_ty_id).lookup(db.upcast()).container
+                match from_assoc_type_id(projection_ty.associated_ty_id)
+                    .lookup(db.upcast())
+                    .container
                 {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,

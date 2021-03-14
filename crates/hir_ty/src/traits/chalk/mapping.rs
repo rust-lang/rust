@@ -14,7 +14,7 @@ use crate::{
     from_assoc_type_id,
     primitive::UintTy,
     traits::{Canonical, Obligation},
-    AliasTy, CallableDefId, FnPointer, FnSig, GenericPredicate, InEnvironment, OpaqueTy,
+    AliasTy, CallableDefId, FnPointer, GenericPredicate, InEnvironment, OpaqueTy,
     ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitRef, Ty,
 };
 
@@ -27,11 +27,11 @@ impl ToChalk for Ty {
         match self.0 {
             TyKind::Ref(m, parameters) => ref_to_chalk(db, m, parameters),
             TyKind::Array(parameters) => array_to_chalk(db, parameters),
-            TyKind::Function(FnPointer { sig: FnSig { variadic }, substs, .. }) => {
+            TyKind::Function(FnPointer { sig, substs, .. }) => {
                 let substitution = chalk_ir::FnSubst(substs.to_chalk(db).shifted_in(&Interner));
                 chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                     num_binders: 0,
-                    sig: chalk_ir::FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic },
+                    sig,
                     substitution,
                 })
                 .intern(&Interner)
@@ -121,7 +121,10 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = proj.associated_ty_id;
                 let parameters = from_chalk(db, proj.substitution);
-                TyKind::Alias(AliasTy::Projection(ProjectionTy { associated_ty_id: associated_ty, substitution: parameters }))
+                TyKind::Alias(AliasTy::Projection(ProjectionTy {
+                    associated_ty_id: associated_ty,
+                    substitution: parameters,
+                }))
             }
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
                 let opaque_ty_id = opaque_ty.opaque_ty_id;
@@ -130,7 +133,7 @@ impl ToChalk for Ty {
             }
             chalk_ir::TyKind::Function(chalk_ir::FnPointer {
                 num_binders,
-                sig: chalk_ir::FnSig { variadic, .. },
+                sig,
                 substitution,
                 ..
             }) => {
@@ -139,11 +142,7 @@ impl ToChalk for Ty {
                     db,
                     substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
                 );
-                TyKind::Function(FnPointer {
-                    num_args: (substs.len() - 1),
-                    sig: FnSig { variadic },
-                    substs,
-                })
+                TyKind::Function(FnPointer { num_args: (substs.len() - 1), sig, substs })
             }
             chalk_ir::TyKind::BoundVar(idx) => TyKind::BoundVar(idx),
             chalk_ir::TyKind::InferenceVar(_iv, _kind) => TyKind::Unknown,
