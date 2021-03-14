@@ -2,7 +2,7 @@
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
 use syntax::SmolStr;
-use tt::Delimiter;
+use tt::{Delimiter, Subtree};
 
 use super::ExpandResult;
 use crate::{
@@ -175,7 +175,10 @@ fn expand_repeat(
         counter += 1;
         if counter == limit {
             log::warn!("expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}", template, ctx);
-            break;
+            return ExpandResult {
+                value: Fragment::Tokens(Subtree::default().into()),
+                err: Some(ExpandError::Other("Expand exceed limit".to_string())),
+            };
         }
 
         if e.is_some() {
