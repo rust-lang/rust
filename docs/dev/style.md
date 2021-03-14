@@ -91,8 +91,8 @@ But many users read changelogs.
 We don't enforce Clippy.
 A number of default lints have high false positive rate.
 Selectively patching false-positives with `allow(clippy)` is considered worse than not using Clippy at all.
-There's `cargo xtask lint` command which runs a subset of low-FPR lints.
-Careful tweaking of `xtask lint` is welcome.
+There's a `cargo lint` command which runs a subset of low-FPR lints.
+Careful tweaking of `lint` is welcome.
 Of course, applying Clippy suggestions is welcome as long as they indeed improve the code.
 
 **Rationale:** see [rust-lang/clippy#5537](https://github.com/rust-lang/rust-clippy/issues/5537).
