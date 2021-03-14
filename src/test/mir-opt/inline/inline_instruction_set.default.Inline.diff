@@ -36,7 +36,6 @@
 -     }
 - 
 -     bb3: {
-+         _3 = const ();                   // scope 1 at $DIR/inline-instruction-set.rs:53:5: 53:30
           StorageDead(_3);                 // scope 0 at $DIR/inline-instruction-set.rs:53:30: 53:31
           _0 = const ();                   // scope 0 at $DIR/inline-instruction-set.rs:50:18: 54:2
           return;                          // scope 0 at $DIR/inline-instruction-set.rs:54:2: 54:2
