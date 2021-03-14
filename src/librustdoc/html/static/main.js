@@ -1833,18 +1833,12 @@ function defocusSearchBar() {
             showResults(execSearch(query, index, filterCrates));
         }
 
-        function generateId(ty) {
-            if (ty.parent && ty.parent.name) {
-                return itemTypes[ty.ty] + ty.path + ty.parent.name + ty.name;
-            }
-            return itemTypes[ty.ty] + ty.path + ty.name;
-        }
-
         function buildIndex(rawSearchIndex) {
             searchIndex = [];
             var searchWords = [];
             var i;
             var currentIndex = 0;
+            var id = 0;
 
             for (var crate in rawSearchIndex) {
                 if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
@@ -1866,10 +1860,10 @@ function defocusSearchBar() {
                     desc: rawSearchIndex[crate].doc,
                     parent: undefined,
                     type: null,
-                    id: "",
+                    id: id,
                     nameWithoutUnderscores: nameWithoutUnderscores,
                 };
-                crateRow.id = generateId(crateRow);
+                id += 1;
                 searchIndex.push(crateRow);
                 currentIndex += 1;
 
@@ -1921,10 +1915,10 @@ function defocusSearchBar() {
                         desc: itemDescs[i],
                         parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                         type: itemFunctionSearchTypes[i],
-                        id: "",
+                        id: id,
                         nameWithoutUnderscores: nameWithoutUnderscores,
                     };
-                    row.id = generateId(row);
+                    id += 1;
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
