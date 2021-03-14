@@ -3,6 +3,7 @@ use crate::utils::{
     get_parent_expr, is_allowed, match_function_call, method_calls, paths, span_lint, span_lint_and_help,
     span_lint_and_sugg,
 };
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -204,7 +205,6 @@ declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        use crate::utils::{snippet, snippet_with_applicability};
         use rustc_ast::LitKind;
 
         if_chain! {

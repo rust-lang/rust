@@ -1,4 +1,5 @@
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_sugg};
+use crate::utils::{match_qpath, paths, span_lint_and_sugg};
+use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

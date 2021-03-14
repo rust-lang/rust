@@ -1,5 +1,6 @@
 use crate::utils::ptr::get_spans;
-use crate::utils::{get_trait_def_id, is_self, multispan_sugg, paths, snippet, snippet_opt, span_lint_and_then};
+use crate::utils::{get_trait_def_id, is_self, multispan_sugg, paths, span_lint_and_then};
+use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;

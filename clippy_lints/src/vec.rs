@@ -1,6 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::rustc_target::abi::LayoutOf;
-use crate::utils::{higher, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{higher, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

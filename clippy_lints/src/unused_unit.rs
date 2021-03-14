@@ -1,3 +1,4 @@
+use clippy_utils::source::position_before_rarrow;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit::FnKind;
@@ -7,7 +8,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
 
-use crate::utils::{position_before_rarrow, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unit (`()`) expressions that can be removed.

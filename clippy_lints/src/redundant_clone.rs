@@ -1,6 +1,5 @@
-use crate::utils::{
-    fn_has_unsatisfiable_preds, match_def_path, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
-};
+use crate::utils::{fn_has_unsatisfiable_preds, match_def_path, paths, span_lint_hir, span_lint_hir_and_then};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, walk_ptrs_ty_depth};
 use if_chain::if_chain;
 use rustc_data_structures::{fx::FxHashMap, transitive_relation::TransitiveRelation};

@@ -1,6 +1,7 @@
 use crate::consts::constant_simple;
 use crate::utils;
 use crate::utils::{path_to_local_id, sugg};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -105,12 +106,12 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             None
         };
         if let Some(or_arm) = applicable_or_arm(match_arms);
-        if let Some(or_body_snippet) = utils::snippet_opt(cx, or_arm.body.span);
-        if let Some(indent) = utils::indent_of(cx, expr.span);
+        if let Some(or_body_snippet) = snippet_opt(cx, or_arm.body.span);
+        if let Some(indent) = indent_of(cx, expr.span);
         if constant_simple(cx, cx.typeck_results(), or_arm.body).is_some();
         then {
             let reindented_or_body =
-                utils::reindent_multiline(or_body_snippet.into(), true, Some(indent));
+                reindent_multiline(or_body_snippet.into(), true, Some(indent));
             utils::span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,

@@ -1,7 +1,8 @@
 use super::{
     get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP,
 };
-use crate::utils::{get_enclosing_block, is_integer_const, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{get_enclosing_block, is_integer_const, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr};

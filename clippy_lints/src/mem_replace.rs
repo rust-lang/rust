@@ -1,7 +1,9 @@
 use crate::utils::{
-    in_macro, match_def_path, match_qpath, meets_msrv, paths, snippet, snippet_with_applicability, span_lint_and_help,
-    span_lint_and_sugg, span_lint_and_then,
+    in_macro, match_def_path, match_qpath, meets_msrv, paths, span_lint_and_help, span_lint_and_sugg,
+    span_lint_and_then,
 };
+use clippy_utils::is_diagnostic_assoc_item;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -12,8 +14,6 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
-
-use clippy_utils::is_diagnostic_assoc_item;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `mem::replace()` on an `Option` with

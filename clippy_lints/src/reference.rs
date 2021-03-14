@@ -1,5 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{in_macro, snippet_opt, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{in_macro, span_lint_and_sugg};
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;

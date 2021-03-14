@@ -1,4 +1,5 @@
-use crate::utils::{is_trait_method, meets_msrv, snippet, span_lint, span_lint_and_sugg};
+use crate::utils::{is_trait_method, meets_msrv, span_lint, span_lint_and_sugg};
+use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

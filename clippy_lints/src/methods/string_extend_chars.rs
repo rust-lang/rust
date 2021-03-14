@@ -1,4 +1,5 @@
-use crate::utils::{method_chain_args, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{method_chain_args, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

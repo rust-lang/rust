@@ -1,3 +1,4 @@
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::match_type;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -8,7 +9,7 @@ use rustc_span::source_map::Spanned;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calculation of subsecond microseconds or milliseconds

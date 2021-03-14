@@ -1,9 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{
-    eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, snippet, span_lint_and_then,
-};
-
+use crate::utils::{eq_expr_value, higher, match_def_path, meets_msrv, multispan_sugg, paths, span_lint_and_then};
+use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;

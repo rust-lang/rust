@@ -1,6 +1,5 @@
-use crate::utils::{
-    indent_of, match_qpath, path_to_local_id, paths, reindent_multiline, snippet_opt, span_lint_and_sugg,
-};
+use crate::utils::{match_qpath, path_to_local_id, paths, span_lint_and_sugg};
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

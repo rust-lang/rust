@@ -1,6 +1,5 @@
-use crate::utils::{
-    is_trait_method, path_to_local_id, remove_blocks, snippet_with_applicability, span_lint_and_sugg, strip_pat_refs,
-};
+use crate::utils::{is_trait_method, path_to_local_id, remove_blocks, span_lint_and_sugg, strip_pat_refs};
+use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;

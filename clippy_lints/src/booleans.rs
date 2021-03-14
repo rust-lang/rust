@@ -1,6 +1,5 @@
-use crate::utils::{
-    eq_expr_value, get_trait_def_id, in_macro, paths, snippet_opt, span_lint_and_sugg, span_lint_and_then,
-};
+use crate::utils::{eq_expr_value, get_trait_def_id, in_macro, paths, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;

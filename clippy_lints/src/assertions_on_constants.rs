@@ -1,5 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, snippet_opt, span_lint_and_help};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_panic_call, span_lint_and_help};
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};

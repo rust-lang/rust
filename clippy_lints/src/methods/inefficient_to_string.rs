@@ -1,5 +1,6 @@
 use super::INEFFICIENT_TO_STRING;
-use crate::utils::{match_def_path, paths, snippet_with_applicability, span_lint_and_then};
+use crate::utils::{match_def_path, paths, span_lint_and_then};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, walk_ptrs_ty_depth};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
