@@ -234,9 +234,9 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
                         ty: TyKind::BoundVar(BoundVar { debruijn: DebruijnIndex::ONE, index: 0 })
                             .intern(&Interner),
                         projection_ty: ProjectionTy {
-                            associated_ty: to_assoc_type_id(future_output),
+                            associated_ty_id: to_assoc_type_id(future_output),
                             // Self type as the first parameter.
-                            parameters: Substs::single(
+                            substitution: Substs::single(
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
                                     .intern(&Interner),
                             ),

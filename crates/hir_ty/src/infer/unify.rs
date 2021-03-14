@@ -381,11 +381,11 @@ impl InferenceTable {
                 self.unify_substs(&tr1.substs, &tr2.substs, depth + 1)
             }
             (GenericPredicate::Projection(proj1), GenericPredicate::Projection(proj2))
-                if proj1.projection_ty.associated_ty == proj2.projection_ty.associated_ty =>
+                if proj1.projection_ty.associated_ty_id == proj2.projection_ty.associated_ty_id =>
             {
                 self.unify_substs(
-                    &proj1.projection_ty.parameters,
-                    &proj2.projection_ty.parameters,
+                    &proj1.projection_ty.substitution,
+                    &proj2.projection_ty.substitution,
                     depth + 1,
                 ) && self.unify_inner(&proj1.ty, &proj2.ty, depth + 1)
             }

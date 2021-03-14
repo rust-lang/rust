@@ -78,8 +78,8 @@ impl ToChalk for Ty {
                 chalk_ir::TyKind::Adt(adt_id, substitution).intern(&Interner)
             }
             TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                let associated_ty_id = proj_ty.associated_ty;
-                let substitution = proj_ty.parameters.to_chalk(db);
+                let associated_ty_id = proj_ty.associated_ty_id;
+                let substitution = proj_ty.substitution.to_chalk(db);
                 chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
                     associated_ty_id,
                     substitution,
@@ -121,7 +121,7 @@ impl ToChalk for Ty {
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(proj)) => {
                 let associated_ty = proj.associated_ty_id;
                 let parameters = from_chalk(db, proj.substitution);
-                TyKind::Alias(AliasTy::Projection(ProjectionTy { associated_ty, parameters }))
+                TyKind::Alias(AliasTy::Projection(ProjectionTy { associated_ty_id: associated_ty, substitution: parameters }))
             }
             chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(opaque_ty)) => {
                 let opaque_ty_id = opaque_ty.opaque_ty_id;
@@ -372,8 +372,8 @@ impl ToChalk for ProjectionTy {
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::ProjectionTy<Interner> {
         chalk_ir::ProjectionTy {
-            associated_ty_id: self.associated_ty,
-            substitution: self.parameters.to_chalk(db),
+            associated_ty_id: self.associated_ty_id,
+            substitution: self.substitution.to_chalk(db),
         }
     }
 
@@ -382,8 +382,8 @@ impl ToChalk for ProjectionTy {
         projection_ty: chalk_ir::ProjectionTy<Interner>,
     ) -> ProjectionTy {
         ProjectionTy {
-            associated_ty: projection_ty.associated_ty_id,
-            parameters: from_chalk(db, projection_ty.substitution),
+            associated_ty_id: projection_ty.associated_ty_id,
+            substitution: from_chalk(db, projection_ty.substitution),
         }
     }
 }
@@ -533,24 +533,24 @@ pub(super) fn generic_predicate_to_inline_bound(
             Some(rust_ir::InlineBound::TraitBound(trait_bound))
         }
         GenericPredicate::Projection(proj) => {
-            if &proj.projection_ty.parameters[0] != self_ty {
+            if &proj.projection_ty.substitution[0] != self_ty {
                 return None;
             }
-            let trait_ = match from_assoc_type_id(proj.projection_ty.associated_ty)
+            let trait_ = match from_assoc_type_id(proj.projection_ty.associated_ty_id)
                 .lookup(db.upcast())
                 .container
             {
                 AssocContainerId::TraitId(t) => t,
                 _ => panic!("associated type not in trait"),
             };
-            let args_no_self = proj.projection_ty.parameters[1..]
+            let args_no_self = proj.projection_ty.substitution[1..]
                 .iter()
                 .map(|ty| ty.clone().to_chalk(db).cast(&Interner))
                 .collect();
             let alias_eq_bound = rust_ir::AliasEqBound {
                 value: proj.ty.clone().to_chalk(db),
                 trait_bound: rust_ir::TraitBound { trait_id: trait_.to_chalk(db), args_no_self },
-                associated_ty_id: proj.projection_ty.associated_ty,
+                associated_ty_id: proj.projection_ty.associated_ty_id,
                 parameters: Vec::new(), // FIXME we don't support generic associated types yet
             };
             Some(rust_ir::InlineBound::AliasEqBound(alias_eq_bound))

@@ -385,8 +385,8 @@ impl<'a> InferenceContext<'a> {
                 let projection = ProjectionPredicate {
                     ty: ty.clone(),
                     projection_ty: ProjectionTy {
-                        associated_ty: to_assoc_type_id(res_assoc_ty),
-                        parameters: substs,
+                        associated_ty_id: to_assoc_type_id(res_assoc_ty),
+                        substitution: substs,
                     },
                 };
                 self.obligations.push(Obligation::Trait(trait_ref));

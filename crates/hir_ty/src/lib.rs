@@ -74,17 +74,17 @@ pub struct OpaqueTy {
 /// trait and all its parameters are fully known.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ProjectionTy {
-    pub associated_ty: AssocTypeId,
-    pub parameters: Substs,
+    pub associated_ty_id: AssocTypeId,
+    pub substitution: Substs,
 }
 
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef { trait_: self.trait_(db), substs: self.parameters.clone() }
+        TraitRef { trait_: self.trait_(db), substs: self.substitution.clone() }
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match from_assoc_type_id(self.associated_ty).lookup(db.upcast()).container {
+        match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
             AssocContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
@@ -93,7 +93,7 @@ impl ProjectionTy {
 
 impl TypeWalk for ProjectionTy {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        self.parameters.walk(f);
+        self.substitution.walk(f);
     }
 
     fn walk_mut_binders(
@@ -101,7 +101,7 @@ impl TypeWalk for ProjectionTy {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        self.parameters.walk_mut_binders(f, binders);
+        self.substitution.walk_mut_binders(f, binders);
     }
 }
 
@@ -945,7 +945,7 @@ impl Ty {
                 }
             }
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match from_assoc_type_id(projection_ty.associated_ty).lookup(db.upcast()).container
+                match from_assoc_type_id(projection_ty.associated_ty_id).lookup(db.upcast()).container
                 {
                     AssocContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
@@ -1055,7 +1055,7 @@ impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self.interned(&Interner) {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                for t in p_ty.parameters.iter() {
+                for t in p_ty.substitution.iter() {
                     t.walk(f);
                 }
             }
@@ -1087,7 +1087,7 @@ impl TypeWalk for Ty {
     ) {
         match &mut self.0 {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                p_ty.parameters.walk_mut_binders(f, binders);
+                p_ty.substitution.walk_mut_binders(f, binders);
             }
             TyKind::Dyn(predicates) => {
                 for p in make_mut_slice(predicates) {

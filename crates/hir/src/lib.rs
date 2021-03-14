@@ -1686,8 +1686,8 @@ impl Type {
             .build();
         let predicate = ProjectionPredicate {
             projection_ty: ProjectionTy {
-                associated_ty: to_assoc_type_id(alias.id),
-                parameters: subst,
+                associated_ty_id: to_assoc_type_id(alias.id),
+                substitution: subst,
             },
             ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner),
         };
