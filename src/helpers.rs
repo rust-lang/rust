@@ -181,11 +181,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mut callee_args = this.frame().body.args_iter();
         for arg in args {
             let callee_arg = this.local_place(
-                callee_args.next().expect("callee has fewer arguments than expected"),
+                callee_args.next().ok_or_else(||
+                    err_ub_format!("callee has fewer arguments than expected")
+                )?
             )?;
             this.write_immediate(*arg, &callee_arg)?;
         }
-        assert_eq!(callee_args.next(), None, "callee has more arguments than expected");
+        if callee_args.next().is_some() {
+            throw_ub_format!("callee has more arguments than expected");
+        }
 
         Ok(())
     }
