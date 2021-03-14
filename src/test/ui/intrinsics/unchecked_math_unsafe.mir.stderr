@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/unchecked_math_unsafe.rs:5:15
+  --> $DIR/unchecked_math_unsafe.rs:8:15
    |
 LL |     let add = std::intrinsics::unchecked_add(x, y);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
@@ -7,7 +7,7 @@ LL |     let add = std::intrinsics::unchecked_add(x, y);
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/unchecked_math_unsafe.rs:6:15
+  --> $DIR/unchecked_math_unsafe.rs:9:15
    |
 LL |     let sub = std::intrinsics::unchecked_sub(x, y);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
@@ -15,7 +15,7 @@ LL |     let sub = std::intrinsics::unchecked_sub(x, y);
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/unchecked_math_unsafe.rs:7:15
+  --> $DIR/unchecked_math_unsafe.rs:10:15
    |
 LL |     let mul = std::intrinsics::unchecked_mul(x, y);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
