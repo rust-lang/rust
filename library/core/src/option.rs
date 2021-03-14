@@ -150,7 +150,7 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    fmt, hint, mem,
+    hint, mem,
     ops::{self, Deref, DerefMut},
 };
 
@@ -1121,90 +1121,6 @@ impl<T: Clone> Option<&mut T> {
     }
 }
 
-impl<T: fmt::Debug> Option<T> {
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a panic message including the
-    /// passed message, and the content of the [`Some`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).expect_none("duplicate key");
-    /// }
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(option_expect_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).expect_none("duplicate key");
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_expect_none", reason = "newly added", issue = "62633")]
-    pub fn expect_none(self, msg: &str) {
-        if let Some(val) = self {
-            expect_none_failed(msg, &val);
-        }
-    }
-
-    /// Consumes `self` while expecting [`None`] and returning nothing.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is a [`Some`], with a custom panic message provided
-    /// by the [`Some`]'s value.
-    ///
-    /// [`Some(v)`]: Some
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut squares = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will not panic, since all keys are unique.
-    ///     squares.insert(i, i * i).unwrap_none();
-    /// }
-    /// ```
-    ///
-    /// ```should_panic
-    /// #![feature(option_unwrap_none)]
-    ///
-    /// use std::collections::HashMap;
-    /// let mut sqrts = HashMap::new();
-    /// for i in -10..=10 {
-    ///     // This will panic, since both negative and positive `i` will
-    ///     // insert the same `i * i` key, returning the old `Some(i)`.
-    ///     sqrts.insert(i * i, i).unwrap_none();
-    /// }
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[unstable(feature = "option_unwrap_none", reason = "newly added", issue = "62633")]
-    pub fn unwrap_none(self) {
-        if let Some(val) = self {
-            expect_none_failed("called `Option::unwrap_none()` on a `Some` value", &val);
-        }
-    }
-}
-
 impl<T: Default> Option<T> {
     /// Returns the contained [`Some`] value or a default
     ///
@@ -1319,14 +1235,6 @@ impl<T, E> Option<Result<T, E>> {
 #[track_caller]
 fn expect_failed(msg: &str) -> ! {
     panic!("{}", msg)
-}
-
-// This is a separate function to reduce the code size of .expect_none() itself.
-#[inline(never)]
-#[cold]
-#[track_caller]
-fn expect_none_failed(msg: &str, value: &dyn fmt::Debug) -> ! {
-    panic!("{}: {:?}", msg, value)
 }
 
 /////////////////////////////////////////////////////////////////////////////
