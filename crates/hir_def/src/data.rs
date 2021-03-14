@@ -9,7 +9,7 @@ use crate::{
     attr::Attrs,
     body::Expander,
     db::DefDatabase,
-    item_tree::{AssocItem, ItemTreeId, ModItem},
+    item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem},
     type_ref::{TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -26,9 +26,9 @@ pub struct FunctionData {
     /// can be called as a method.
     pub has_self_param: bool,
     pub has_body: bool,
-    pub is_unsafe: bool,
+    pub qualifier: FunctionQualifier,
+    pub is_in_extern_block: bool,
     pub is_varargs: bool,
-    pub is_extern: bool,
     pub visibility: RawVisibility,
 }
 
@@ -46,9 +46,9 @@ impl FunctionData {
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
-            is_unsafe: func.is_unsafe,
+            qualifier: func.qualifier.clone(),
+            is_in_extern_block: func.is_in_extern_block,
             is_varargs: func.is_varargs,
-            is_extern: func.is_extern,
             visibility: item_tree[func.visibility].clone(),
         })
     }

@@ -91,7 +91,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
 
     fn validate_func(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        if data.is_extern {
+        if data.is_in_extern_block {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }

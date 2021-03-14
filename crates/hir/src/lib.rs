@@ -844,7 +844,7 @@ impl Function {
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_unsafe
+        db.function_data(self.id).qualifier.is_unsafe
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
