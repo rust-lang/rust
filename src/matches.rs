@@ -19,7 +19,7 @@ use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
-    semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
+    mk_sp_lo_plus_one, semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
 };
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
@@ -163,17 +163,14 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
 fn collect_beginning_verts(
     context: &RewriteContext<'_>,
     arms: &[ast::Arm],
-    span: Span,
 ) -> Vec<Option<BytePos>> {
-    let mut beginning_verts = Vec::with_capacity(arms.len());
-    let mut lo = context.snippet_provider.span_after(span, "{");
-    for arm in arms {
-        let hi = arm.pat.span.lo();
-        let missing_span = mk_sp(lo, hi);
-        beginning_verts.push(context.snippet_provider.opt_span_before(missing_span, "|"));
-        lo = arm.span().hi();
-    }
-    beginning_verts
+    arms.iter()
+        .map(|a| {
+            context
+                .snippet_provider
+                .opt_span_before(mk_sp_lo_plus_one(a.pat.span.lo()), "|")
+        })
+        .collect()
 }
 
 fn rewrite_match_arms(
@@ -191,7 +188,7 @@ fn rewrite_match_arms(
     let is_last_iter = repeat(false)
         .take(arm_len.saturating_sub(1))
         .chain(repeat(true));
-    let beginning_verts = collect_beginning_verts(context, arms, span);
+    let beginning_verts = collect_beginning_verts(context, arms);
     let items = itemize_list(
         context.snippet_provider,
         arms.iter()
