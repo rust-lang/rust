@@ -597,11 +597,14 @@ impl CheckAttrVisitor<'tcx> {
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
-                                    lint.build(&format!(
-                                        "unknown `doc` attribute `{}`",
-                                        i_meta.name_or_empty()
-                                    ))
-                                    .emit();
+                                    let msg = if let Ok(snippet) =
+                                        self.tcx.sess.source_map().span_to_snippet(i_meta.path.span)
+                                    {
+                                        format!("unknown `doc` attribute `{}`", snippet,)
+                                    } else {
+                                        String::from("unknown `doc` attribute")
+                                    };
+                                    lint.build(&msg).emit();
                                 },
                             );
                             is_valid = false;
@@ -613,7 +616,7 @@ impl CheckAttrVisitor<'tcx> {
                         hir_id,
                         meta.span(),
                         |lint| {
-                            lint.build(&format!("unknown `doc` attribute")).emit();
+                            lint.build(&format!("invalid `doc` attribute")).emit();
                         },
                     );
                     is_valid = false;
