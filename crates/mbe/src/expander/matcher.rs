@@ -162,9 +162,9 @@ struct BindingsBuilder {
 impl BindingsBuilder {
     fn alloc(&mut self) -> BindingsIdx {
         let idx = self.nodes.len();
-        self.nodes.push(Vec::with_capacity(8));
+        self.nodes.push(Vec::new());
         let nidx = self.nested.len();
-        self.nested.push(Vec::with_capacity(8));
+        self.nested.push(Vec::new());
         BindingsIdx(idx, nidx)
     }
 
@@ -182,11 +182,8 @@ impl BindingsBuilder {
             if len < 4 {
                 target.push(target[idx].clone())
             } else {
-                let mut item = Vec::with_capacity(8);
-                item.push(LinkNode::Parent { idx, len });
-                target.push(item);
+                target.push(vec![LinkNode::Parent { idx, len }]);
             }
-
             new_idx
         }
     }
@@ -212,19 +209,22 @@ impl BindingsBuilder {
     fn push_default(&mut self, idx: &mut BindingsIdx) {
         self.nested[idx.1].push(LinkNode::Node(idx.0));
         let new_idx = self.nodes.len();
-        self.nodes.push(Vec::with_capacity(8));
+        self.nodes.push(Vec::new());
         idx.0 = new_idx;
     }
 
     fn build(self, idx: &BindingsIdx) -> Bindings {
         let mut bindings = Bindings::default();
-        self.build_recur(&mut bindings, self.nodes[idx.0].clone());
+        self.build_inner(&mut bindings, &self.nodes[idx.0]);
         bindings
     }
 
-    fn build_recur(&self, bindings: &mut Bindings, nodes: Vec<LinkNode<Rc<BindingKind>>>) {
-        for cmd in self.flatten_nodes(nodes) {
-            match &*cmd {
+    fn build_inner(&self, bindings: &mut Bindings, link_nodes: &Vec<LinkNode<Rc<BindingKind>>>) {
+        let mut nodes = Vec::new();
+        self.collect_nodes(&link_nodes, &mut nodes);
+
+        for cmd in nodes {
+            match &**cmd {
                 BindingKind::Empty(name) => {
                     bindings.push_empty(name);
                 }
@@ -234,10 +234,11 @@ impl BindingsBuilder {
                 BindingKind::Fragment(name, fragment) => {
                     bindings.inner.insert(name.clone(), Binding::Fragment(fragment.clone()));
                 }
-                BindingKind::Nested(idx, list) => {
-                    let list = self.flatten_nested(*idx, *list);
+                BindingKind::Nested(idx, nested_idx) => {
+                    let mut nested_nodes = Vec::new();
+                    self.collect_nested(*idx, *nested_idx, &mut nested_nodes);
 
-                    for (idx, iter) in list.enumerate() {
+                    for (idx, iter) in nested_nodes.into_iter().enumerate() {
                         for (key, value) in &iter.inner {
                             let bindings = bindings
                                 .inner
@@ -258,62 +259,55 @@ impl BindingsBuilder {
         }
     }
 
-    fn flatten_nested_ref(&self, id: usize, len: usize) -> Vec<Vec<LinkNode<Rc<BindingKind>>>> {
-        self.nested[id]
-            .iter()
-            .take(len)
-            .map(|it| match it {
-                LinkNode::Node(id) => vec![self.nodes[*id].clone()],
-                LinkNode::Parent { idx, len } => self.flatten_nested_ref(*idx, *len),
-            })
-            .flatten()
-            .collect()
-    }
-
-    fn flatten_nested<'a>(
+    fn collect_nested_ref<'a>(
         &'a self,
-        idx: usize,
-        list: usize,
-    ) -> impl Iterator<Item = Bindings> + 'a {
-        let last = self.nodes[idx].clone();
-        self.nested[list]
-            .iter()
-            .map(move |it| match *it {
-                LinkNode::Node(idx) => vec![self.nodes[idx].clone()],
-                LinkNode::Parent { idx, len } => self.flatten_nested_ref(idx, len),
-            })
-            .flatten()
-            .chain(std::iter::once(last))
-            .map(move |iter| {
-                let mut child_bindings = Bindings::default();
-                self.build_recur(&mut child_bindings, iter);
-                child_bindings
-            })
+        id: usize,
+        len: usize,
+        nested_refs: &mut Vec<&'a Vec<LinkNode<Rc<BindingKind>>>>,
+    ) {
+        self.nested[id].iter().take(len).for_each(|it| match it {
+            LinkNode::Node(id) => nested_refs.push(&self.nodes[*id]),
+            LinkNode::Parent { idx, len } => self.collect_nested_ref(*idx, *len, nested_refs),
+        });
     }
 
-    fn flatten_nodes_ref(&self, id: usize, len: usize) -> Vec<Rc<BindingKind>> {
-        self.nodes[id]
-            .iter()
-            .take(len)
-            .map(|it| match it {
-                LinkNode::Node(it) => vec![it.clone()],
-                LinkNode::Parent { idx, len } => self.flatten_nodes_ref(*idx, *len),
-            })
-            .flatten()
-            .collect()
+    fn collect_nested(&self, idx: usize, nested_idx: usize, nested: &mut Vec<Bindings>) {
+        let last = &self.nodes[idx];
+        let mut nested_refs = Vec::new();
+        self.nested[nested_idx].iter().for_each(|it| match *it {
+            LinkNode::Node(idx) => nested_refs.push(&self.nodes[idx]),
+            LinkNode::Parent { idx, len } => self.collect_nested_ref(idx, len, &mut nested_refs),
+        });
+        nested_refs.push(last);
+
+        nested_refs.into_iter().for_each(|iter| {
+            let mut child_bindings = Bindings::default();
+            self.build_inner(&mut child_bindings, &iter);
+            nested.push(child_bindings)
+        })
     }
 
-    fn flatten_nodes<'a>(
+    fn collect_nodes_ref<'a>(
         &'a self,
-        nodes: Vec<LinkNode<Rc<BindingKind>>>,
-    ) -> impl Iterator<Item = Rc<BindingKind>> + 'a {
-        nodes
-            .into_iter()
-            .map(move |it| match it {
-                LinkNode::Node(it) => vec![it],
-                LinkNode::Parent { idx, len } => self.flatten_nodes_ref(idx, len),
-            })
-            .flatten()
+        id: usize,
+        len: usize,
+        nodes: &mut Vec<&'a Rc<BindingKind>>,
+    ) {
+        self.nodes[id].iter().take(len).for_each(|it| match it {
+            LinkNode::Node(it) => nodes.push(it),
+            LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
+        });
+    }
+
+    fn collect_nodes<'a>(
+        &'a self,
+        link_nodes: &'a Vec<LinkNode<Rc<BindingKind>>>,
+        nodes: &mut Vec<&'a Rc<BindingKind>>,
+    ) {
+        link_nodes.into_iter().for_each(|it| match it {
+            LinkNode::Node(it) => nodes.push(it),
+            LinkNode::Parent { idx, len } => self.collect_nodes_ref(*idx, *len, nodes),
+        });
     }
 }
 
