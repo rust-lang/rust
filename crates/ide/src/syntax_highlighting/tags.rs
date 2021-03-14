@@ -107,7 +107,6 @@ impl HlTag {
                 SymbolKind::ValueParam => "value_param",
                 SymbolKind::SelfParam => "self_keyword",
                 SymbolKind::Impl => "self_type",
-                SymbolKind::Region => "region",
             },
             HlTag::Attribute => "attribute",
             HlTag::BoolLiteral => "bool_literal",

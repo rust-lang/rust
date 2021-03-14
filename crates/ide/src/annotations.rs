@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange, SourceDatabase},
-    RootDatabase, SymbolKind,
+    RootDatabase, StructureNodeKind, SymbolKind,
 };
 use syntax::TextRange;
 
@@ -80,15 +80,17 @@ pub(crate) fn annotations(
         .filter(|node| {
             matches!(
                 node.kind,
-                SymbolKind::Trait
-                    | SymbolKind::Struct
-                    | SymbolKind::Enum
-                    | SymbolKind::Union
-                    | SymbolKind::Const
+                StructureNodeKind::SymbolKind(SymbolKind::Trait)
+                    | StructureNodeKind::SymbolKind(SymbolKind::Struct)
+                    | StructureNodeKind::SymbolKind(SymbolKind::Enum)
+                    | StructureNodeKind::SymbolKind(SymbolKind::Union)
+                    | StructureNodeKind::SymbolKind(SymbolKind::Const)
             )
         })
         .for_each(|node| {
-            if config.annotate_impls && node.kind != SymbolKind::Const {
+            if config.annotate_impls
+                && node.kind != StructureNodeKind::SymbolKind(SymbolKind::Const)
+            {
                 annotations.push(Annotation {
                     range: node.node_range,
                     kind: AnnotationKind::HasImpls {

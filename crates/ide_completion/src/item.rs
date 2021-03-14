@@ -225,7 +225,6 @@ impl CompletionItemKind {
                 SymbolKind::Local => "lc",
                 SymbolKind::Macro => "ma",
                 SymbolKind::Module => "md",
-                SymbolKind::Region => "rn",
                 SymbolKind::SelfParam => "sp",
                 SymbolKind::Static => "sc",
                 SymbolKind::Struct => "st",

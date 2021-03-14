@@ -11,7 +11,7 @@ use ide::{
     Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange,
     TextEdit, TextRange, TextSize,
 };
-use ide_db::SymbolKind;
+use ide_db::{StructureNodeKind, SymbolKind};
 use itertools::Itertools;
 use serde_json::to_value;
 
@@ -60,7 +60,13 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::ValueParam
         | SymbolKind::Label => lsp_types::SymbolKind::Variable,
         SymbolKind::Union => lsp_types::SymbolKind::Struct,
-        SymbolKind::Region => lsp_types::SymbolKind::Namespace,
+    }
+}
+
+pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolKind {
+    match kind {
+        StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
+        StructureNodeKind::Region => lsp_types::SymbolKind::Namespace,
     }
 }
 
@@ -118,7 +124,6 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Local => lsp_types::CompletionItemKind::Variable,
             SymbolKind::Macro => lsp_types::CompletionItemKind::Method,
             SymbolKind::Module => lsp_types::CompletionItemKind::Module,
-            SymbolKind::Region => lsp_types::CompletionItemKind::Keyword,
             SymbolKind::SelfParam => lsp_types::CompletionItemKind::Value,
             SymbolKind::Static => lsp_types::CompletionItemKind::Value,
             SymbolKind::Struct => lsp_types::CompletionItemKind::Struct,
@@ -430,7 +435,6 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::TypeAlias => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Trait => lsp_types::SemanticTokenType::INTERFACE,
             SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
-            SymbolKind::Region => lsp_types::SemanticTokenType::NAMESPACE,
         },
         HlTag::BuiltinType => semantic_tokens::BUILTIN_TYPE,
         HlTag::None => semantic_tokens::GENERIC,
