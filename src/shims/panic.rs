@@ -45,7 +45,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         trace!("miri_start_panic: {:?}", this.frame().instance);
         // Make sure we only start unwinding when this matches our panic strategy.
-        assert_eq!(this.tcx.sess.panic_strategy(), PanicStrategy::Unwind);
+        if this.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+            throw_ub_format!("unwinding despite panic=abort");
+        }
 
         // Get the raw pointer stored in arg[0] (the panic payload).
         let &[ref payload] = check_arg_count(args)?;
