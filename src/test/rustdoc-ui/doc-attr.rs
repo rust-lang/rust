@@ -8,3 +8,18 @@
 //~^ ERROR unknown `doc` attribute
 //~^^ WARN
 pub fn foo() {}
+
+#[doc(123)]
+//~^ ERROR unknown `doc` attribute
+//~| WARN
+#[doc("hello", "bar")]
+//~^ ERROR unknown `doc` attribute
+//~| WARN
+//~| ERROR unknown `doc` attribute
+//~| WARN
+#[doc(foo::bar, crate::bar::baz = "bye")]
+//~^ ERROR unknown `doc` attribute
+//~| WARN
+//~| ERROR unknown `doc` attribute
+//~| WARN
+fn bar() {}
