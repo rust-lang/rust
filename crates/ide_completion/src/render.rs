@@ -10,8 +10,10 @@ pub(crate) mod type_alias;
 
 mod builder_ext;
 
+use base_db::Upcast;
 use hir::{
-    AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability, ScopeDef, Type,
+    db::HirDatabase, AsAssocItem, Documentation, HasAttrs, HirDisplay, ModuleDef, Mutability,
+    ScopeDef, Type,
 };
 use ide_db::{
     helpers::{item_name, SnippetCap},
@@ -251,19 +253,23 @@ impl<'a> Render<'a> {
 
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(self.ctx.db());
+
             if let Some(relevance) = compute_relevance(&self.ctx, &ty, &local_name) {
                 item.set_relevance(relevance);
             }
+
             if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
-                if let Some(ty_without_ref) = expected_type.remove_ref() {
-                    if ty_without_ref == ty {
-                        cov_mark::hit!(suggest_ref);
-                        let mutability = if expected_type.is_mutable_reference() {
-                            Mutability::Mut
-                        } else {
-                            Mutability::Shared
-                        };
-                        item.ref_match(mutability);
+                if ty != expected_type {
+                    if let Some(ty_without_ref) = expected_type.remove_ref() {
+                        if relevance_type_match(self.ctx.db().upcast(), &ty, &ty_without_ref) {
+                            cov_mark::hit!(suggest_ref);
+                            let mutability = if expected_type.is_mutable_reference() {
+                                Mutability::Mut
+                            } else {
+                                Mutability::Shared
+                            };
+                            item.ref_match(mutability);
+                        }
                     }
                 }
             }
@@ -330,10 +336,12 @@ fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> Option<Compl
     Some(res)
 }
 
+fn relevance_type_match(db: &dyn HirDatabase, ty: &Type, expected_type: &Type) -> bool {
+    ty == expected_type || ty.autoderef(db).any(|deref_ty| &deref_ty == expected_type)
+}
+
 #[cfg(test)]
 mod tests {
-    use std::cmp::Reverse;
-
     use expect_test::{expect, Expect};
 
     use crate::{
@@ -358,17 +366,27 @@ mod tests {
             }
         }
 
-        let mut completions = get_all_items(TEST_CONFIG, ra_fixture);
-        completions.sort_by_key(|it| (Reverse(it.relevance()), it.label().to_string()));
-        let actual = completions
+        let actual = get_all_items(TEST_CONFIG, ra_fixture)
             .into_iter()
             .filter(|it| it.completion_kind == CompletionKind::Reference)
-            .map(|it| {
+            .flat_map(|it| {
+                let mut items = vec![];
+
                 let tag = it.kind().unwrap().tag();
                 let relevance = display_relevance(it.relevance());
-                format!("{} {} {}\n", tag, it.label(), relevance)
+                items.push(format!("{} {} {}\n", tag, it.label(), relevance));
+
+                if let Some((mutability, relevance)) = it.ref_match() {
+                    let label = format!("&{}{}", mutability.as_keyword_for_ref(), it.label());
+                    let relevance = display_relevance(relevance);
+
+                    items.push(format!("{} {} {}\n", tag, label, relevance));
+                }
+
+                items
             })
             .collect::<String>();
+
         expect.assert_eq(&actual);
     }
 
@@ -838,9 +856,9 @@ fn test(bar: u32) { }
 fn foo(s: S) { test(s.$0) }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         );
     }
@@ -855,9 +873,9 @@ struct B { x: (), y: f32, bar: u32 }
 fn foo(a: A) { B { bar: a.$0 }; }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         )
     }
@@ -885,9 +903,9 @@ fn f(foo: i64) {  }
 fn foo(a: A) { f(B { bar: a.$0 }); }
 "#,
             expect![[r#"
+                fd foo []
                 fd bar [type+name]
                 fd baz [type]
-                fd foo []
             "#]],
         );
     }
@@ -915,9 +933,9 @@ struct Foo;
 fn f(foo: &Foo) { f(foo, w$0) }
 "#,
             expect![[r#"
+                lc foo []
                 st Foo []
                 fn f(…) []
-                lc foo []
             "#]],
         );
     }
@@ -984,6 +1002,104 @@ fn main() {
                         ref_match: "&mut ",
                     },
                 ]
+            "#]],
+        )
+    }
+
+    #[test]
+    fn suggest_deref() {
+        check_relevance(
+            r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct S;
+struct T(S);
+
+impl Deref for T {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn foo(s: &S) {}
+
+fn main() {
+    let t = T(S);
+    let m = 123;
+
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                lc m []
+                lc t []
+                lc &t [type]
+                st T []
+                st S []
+                fn main() []
+                tt Deref []
+                fn foo(…) []
+            "#]],
+        )
+    }
+
+    #[test]
+    fn suggest_deref_mut() {
+        check_relevance(
+            r#"
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+#[lang = "deref_mut"]
+pub trait DerefMut: Deref {
+    fn deref_mut(&mut self) -> &mut Self::Target;
+}
+
+struct S;
+struct T(S);
+
+impl Deref for T {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for T {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+fn foo(s: &mut S) {}
+
+fn main() {
+    let t = T(S);
+    let m = 123;
+
+    foo($0);
+}
+            "#,
+            expect![[r#"
+                lc m []
+                lc t []
+                lc &mut t [type]
+                tt DerefMut []
+                tt Deref []
+                fn foo(…) []
+                st T []
+                st S []
+                fn main() []
             "#]],
         )
     }
