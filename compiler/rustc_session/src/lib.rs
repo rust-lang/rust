@@ -1,6 +1,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(once_cell)]
 #![feature(or_patterns)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate bitflags;

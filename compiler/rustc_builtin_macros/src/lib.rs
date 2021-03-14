@@ -11,6 +11,7 @@
 #![feature(or_patterns)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
+#![recursion_limit = "256"]
 
 extern crate proc_macro;
 
