@@ -438,31 +438,6 @@ impl<'a> TokenStreamLowering<'a> {
     }
 }
 
-struct ImplTraitTypeIdVisitor<'a> {
-    ids: &'a mut SmallVec<[NodeId; 1]>,
-}
-
-impl Visitor<'_> for ImplTraitTypeIdVisitor<'_> {
-    fn visit_ty(&mut self, ty: &Ty) {
-        match ty.kind {
-            TyKind::Typeof(_) | TyKind::BareFn(_) => return,
-
-            TyKind::ImplTrait(id, _) => self.ids.push(id),
-            _ => {}
-        }
-        visit::walk_ty(self, ty);
-    }
-
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &PathSegment) {
-        if let Some(ref p) = path_segment.args {
-            if let GenericArgs::Parenthesized(_) = **p {
-                return;
-            }
-        }
-        visit::walk_path_segment(self, path_span, path_segment)
-    }
-}
-
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
         /// Full-crate AST visitor that inserts into a fresh
