@@ -11,14 +11,15 @@ use object::read::{File as BinaryFile, Object, ObjectSection};
 use snap::read::FrameDecoder as SnapDecoder;
 
 #[derive(Debug)]
-pub(crate) struct RustCInfo {
-    pub(crate) version: (usize, usize, usize),
-    pub(crate) channel: String,
-    pub(crate) commit: String,
-    pub(crate) date: String,
+pub struct RustCInfo {
+    pub version: (usize, usize, usize),
+    pub channel: String,
+    pub commit: String,
+    pub date: String,
 }
 
-pub(crate) fn read_info(dylib_path: &Path) -> io::Result<RustCInfo> {
+/// Read rustc dylib information
+pub fn read_dylib_info(dylib_path: &Path) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
             io::Error::new(io::ErrorKind::InvalidData, $e)
