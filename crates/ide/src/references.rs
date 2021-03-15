@@ -29,7 +29,7 @@ use crate::{display::TryToNav, FilePosition, NavigationTarget};
 
 #[derive(Debug, Clone)]
 pub struct ReferenceSearchResult {
-    pub declaration: Declaration,
+    pub declaration: Option<Declaration>,
     pub references: FxHashMap<FileId, Vec<(TextRange, Option<ReferenceAccess>)>>,
 }
 
@@ -91,10 +91,10 @@ pub(crate) fn find_all_refs(
             _ => {}
         }
     }
-    let nav = def.try_to_nav(sema.db)?;
-    let decl_range = nav.focus_or_full_range();
-
-    let declaration = Declaration { nav, access: decl_access(&def, &syntax, decl_range) };
+    let declaration = def.try_to_nav(sema.db).map(|nav| {
+        let decl_range = nav.focus_or_full_range();
+        Declaration { nav, access: decl_access(&def, &syntax, decl_range) }
+    });
     let references = usages
         .into_iter()
         .map(|(file_id, refs)| {
@@ -1004,8 +1004,7 @@ impl Foo {
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 
         let mut actual = String::new();
-        {
-            let decl = refs.declaration;
+        if let Some(decl) = refs.declaration {
             format_to!(actual, "{}", decl.nav.debug_render());
             if let Some(access) = decl.access {
                 format_to!(actual, " {:?}", access)
@@ -1255,6 +1254,19 @@ fn main() {
                 FileId(0) 54..55
                 FileId(0) 97..98
                 FileId(0) 101..102
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_primitives() {
+        check(
+            r#"
+fn foo(_: bool) -> bo$0ol { true }
+"#,
+            expect![[r#"
+                FileId(0) 10..14
+                FileId(0) 19..23
             "#]],
         );
     }

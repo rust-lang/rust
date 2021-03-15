@@ -6,7 +6,7 @@
 
 use std::{convert::TryInto, mem};
 
-use base_db::{FileId, FileRange, SourceDatabaseExt};
+use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{DefWithBody, HasSource, Module, ModuleSource, Semantics, Visibility};
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
@@ -134,6 +134,20 @@ impl IntoIterator for SearchScope {
 impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
         let _p = profile::span("search_scope");
+
+        if let Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)) = self {
+            let mut res = FxHashMap::default();
+
+            let graph = db.crate_graph();
+            for krate in graph.iter() {
+                let root_file = graph[krate].root_file_id;
+                let source_root_id = db.file_source_root(root_file);
+                let source_root = db.source_root(source_root_id);
+                res.extend(source_root.iter().map(|id| (id, None)));
+            }
+            return SearchScope::new(res);
+        }
+
         let module = match self.module(db) {
             Some(it) => it,
             None => return SearchScope::empty(),
