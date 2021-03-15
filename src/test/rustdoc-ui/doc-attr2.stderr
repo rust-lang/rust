@@ -1,4 +1,4 @@
-error: `#![doc(test(...)]` is only allowed as a crate level attribute
+error: `#![doc(test(...)]` is only allowed as a crate-level attribute
   --> $DIR/doc-attr2.rs:4:7
    |
 LL | #[doc(test(no_crate_inject))]
@@ -13,7 +13,7 @@ LL | #![deny(warnings)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
 
-error: `#![doc(test(...)]` is only allowed as a crate level attribute
+error: `#![doc(test(...)]` is only allowed as a crate-level attribute
   --> $DIR/doc-attr2.rs:9:12
    |
 LL |     #![doc(test(no_crate_inject))]

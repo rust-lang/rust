@@ -10,7 +10,7 @@ error: `#[doc(keyword = "...")]` can only be used on modules
 LL | #[doc(keyword = "hall")]
    |       ^^^^^^^^^^^^^^^^
 
-error: `#![doc(keyword = "...")]` isn't allowed as a crate level attribute
+error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
   --> $DIR/doc_keyword.rs:4:8
    |
 LL | #![doc(keyword = "hello")]
