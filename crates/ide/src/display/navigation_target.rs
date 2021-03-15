@@ -3,7 +3,9 @@
 use std::fmt;
 
 use either::Either;
-use hir::{AssocItem, Documentation, FieldSource, HasAttrs, HasSource, InFile, ModuleSource};
+use hir::{
+    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay, InFile, ModuleSource,
+};
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabase},
     symbol_index::FileSymbolKind,
@@ -98,7 +100,7 @@ impl NavigationTarget {
                 SymbolKind::Module,
             );
             res.docs = module.attrs(db).docs();
-            res.description = src.value.short_label();
+            res.description = Some(module.display(db).to_string());
             return res;
         }
         module.to_nav(db)
@@ -251,8 +253,8 @@ impl ToNavFromAst for hir::Trait {
 
 impl<D> TryToNav for D
 where
-    D: HasSource + ToNavFromAst + Copy + HasAttrs,
-    D::Ast: ast::NameOwner + ShortLabel,
+    D: HasSource + ToNavFromAst + Copy + HasAttrs + HirDisplay,
+    D::Ast: ast::NameOwner,
 {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
@@ -262,7 +264,7 @@ where
             D::KIND,
         );
         res.docs = self.docs(db);
-        res.description = src.value.short_label();
+        res.description = Some(self.display(db).to_string());
         Some(res)
     }
 }
@@ -317,7 +319,7 @@ impl TryToNav for hir::Field {
                 let mut res =
                     NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field);
                 res.docs = self.docs(db);
-                res.description = it.short_label();
+                res.description = Some(self.display(db).to_string());
                 res
             }
             FieldSource::Pos(it) => {
