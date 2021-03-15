@@ -100,7 +100,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:160:28
    |
 LL |     let _: Alias4<isize> = Alias4::Some(1);
-   |                            ^^^^^^^^^^^^
+   |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:160:12
@@ -124,7 +124,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:166:28
    |
 LL |     let _: Alias4<isize> = Alias4::Some(0);
-   |                            ^^^^^^^^^^^^
+   |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
   --> $DIR/generics-default-stability.rs:166:12
@@ -136,7 +136,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:171:28
    |
 LL |     let _: Alias5<isize> = Alias5::Some(1);
-   |                            ^^^^^^^^^^^^
+   |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:171:12
@@ -160,7 +160,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:178:28
    |
 LL |     let _: Alias5<isize> = Alias5::Some(0);
-   |                            ^^^^^^^^^^^^
+   |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
   --> $DIR/generics-default-stability.rs:178:12
