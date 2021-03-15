@@ -71,8 +71,8 @@
 -         StorageDead(_9);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:34: 16:35
 -         StorageDead(_11);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
 -         StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
+-         _0 = const ();                   // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
 +         StorageDead(_2);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
-          _0 = const ();                   // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:12:11: 17:2
           return;                          // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:17:2: 17:2
       }
   }

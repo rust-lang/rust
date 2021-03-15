@@ -14,7 +14,6 @@
           StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
           _3 = move _1;                    // scope 0 at $DIR/remove_unneeded_drops.rs:21:10: 21:11
-          _2 = const ();                   // scope 1 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
           drop(_3) -> [return: bb2, unwind: bb1]; // scope 1 at $DIR/remove_unneeded_drops.rs:21:5: 21:12
       }
   

@@ -5,22 +5,25 @@
       debug bar => _1;                     // in scope 0 at $DIR/matches_reduce_branches.rs:7:8: 7:11
       let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:7:25: 7:25
       let mut _2: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
++     let mut _3: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
   
       bb0: {
           _2 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
-          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
-      }
-  
-      bb1: {
-          _0 = const ();                   // scope 0 at $DIR/matches_reduce_branches.rs:10:6: 10:6
-          goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:8:5: 10:6
-      }
-  
-      bb2: {
-          goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-      }
-  
-      bb3: {
+-         switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
+-     }
+- 
+-     bb1: {
+-         goto -> bb3;                     // scope 0 at $DIR/matches_reduce_branches.rs:8:5: 10:6
+-     }
+- 
+-     bb2: {
+-         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
+-     }
+- 
+-     bb3: {
++         StorageLive(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
++         _3 = move _2;                    // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
++         StorageDead(_3);                 // scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
           return;                          // scope 0 at $DIR/matches_reduce_branches.rs:11:2: 11:2
       }
   }
