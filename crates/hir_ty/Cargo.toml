@@ -10,7 +10,7 @@ edition = "2018"
 doctest = false
 
 [dependencies]
-cov-mark = "1.1"
+cov-mark = { version = "1.1", features = ["thread-local"] }
 itertools = "0.10.0"
 arrayvec = "0.5.1"
 smallvec = "1.2.0"
@@ -31,7 +31,7 @@ profile = { path = "../profile", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 
 [dev-dependencies]
-test_utils = { path = "../test_utils"  }
+test_utils = { path = "../test_utils" }
 expect-test = "1.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
