@@ -1,6 +1,6 @@
 #![allow(unused_assignments, dead_code)]
 
-// require-rust-edition-2018
+// compile-flags: --edition=2018
 
 async fn c(x: u8) -> u8 {
     if x == 8 {
