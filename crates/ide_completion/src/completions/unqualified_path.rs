@@ -6,7 +6,7 @@ use syntax::AstNode;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.is_trivial_path || ctx.is_pat_binding_or_const) {
+    if !ctx.is_trivial_path {
         return;
     }
     if ctx.record_lit_syntax.is_some()
@@ -21,10 +21,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
             acc.add_qualified_enum_variant(ctx, variant, path)
         });
-    }
-
-    if ctx.is_pat_binding_or_const {
-        return;
     }
 
     ctx.scope.process_all_names(&mut |name, res| {
@@ -609,66 +605,6 @@ fn main() { $0 }
     }
 
     #[test]
-    fn completes_enum_variant_matcharm() {
-        check(
-            r#"
-enum Foo { Bar, Baz, Quux }
-
-fn main() {
-    let foo = Foo::Quux;
-    match foo { Qu$0 }
-}
-"#,
-            expect![[r#"
-                ev Foo::Bar  ()
-                ev Foo::Baz  ()
-                ev Foo::Quux ()
-                en Foo
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_enum_variant_matcharm_ref() {
-        check(
-            r#"
-enum Foo { Bar, Baz, Quux }
-
-fn main() {
-    let foo = Foo::Quux;
-    match &foo { Qu$0 }
-}
-"#,
-            expect![[r#"
-                ev Foo::Bar  ()
-                ev Foo::Baz  ()
-                ev Foo::Quux ()
-                en Foo
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_enum_variant_iflet() {
-        check(
-            r#"
-enum Foo { Bar, Baz, Quux }
-
-fn main() {
-    let foo = Foo::Quux;
-    if let Qu$0 = foo { }
-}
-"#,
-            expect![[r#"
-                ev Foo::Bar  ()
-                ev Foo::Baz  ()
-                ev Foo::Quux ()
-                en Foo
-            "#]],
-        )
-    }
-
-    #[test]
     fn completes_enum_variant_basic_expr() {
         check(
             r#"
@@ -696,28 +632,6 @@ fn f() -> m::E { V$0 }
                 ev m::E::V ()
                 md m
                 fn f()     -> E
-            "#]],
-        )
-    }
-
-    #[test]
-    fn completes_enum_variant_impl() {
-        check(
-            r#"
-enum Foo { Bar, Baz, Quux }
-impl Foo {
-    fn foo() { match Foo::Bar { Q$0 } }
-}
-"#,
-            expect![[r#"
-                ev Self::Bar  ()
-                ev Self::Baz  ()
-                ev Self::Quux ()
-                ev Foo::Bar   ()
-                ev Foo::Baz   ()
-                ev Foo::Quux  ()
-                sp Self
-                en Foo
             "#]],
         )
     }

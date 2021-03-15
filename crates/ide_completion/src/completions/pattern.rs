@@ -11,10 +11,13 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         return;
     }
 
-    if let Some(ty) = &ctx.expected_type {
-        super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
-            acc.add_qualified_variant_pat(ctx, variant, path)
-        });
+    if !ctx.is_irrefutable_pat_binding {
+        if let Some(ty) = ctx.expected_type.as_ref() {
+            super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
+                acc.add_qualified_variant_pat(ctx, variant, path.clone());
+                acc.add_qualified_enum_variant(ctx, variant, path);
+            });
+        }
     }
 
     // FIXME: ideally, we should look at the type we are matching against and
@@ -85,7 +88,7 @@ static FOO: E = E::X;
 struct Bar { f: u32 }
 
 fn foo() {
-   match E::X { $0 }
+   match E::X { a$0 }
 }
 "#,
             expect![[r#"
@@ -106,10 +109,11 @@ macro_rules! m { ($e:expr) => { $e } }
 enum E { X }
 
 fn foo() {
-   m!(match E::X { $0 })
+   m!(match E::X { a$0 })
 }
 "#,
             expect![[r#"
+                ev E::X  ()
                 en E
                 ma m!(…) macro_rules! m
             "#]],
@@ -129,7 +133,7 @@ static FOO: E = E::X;
 struct Bar { f: u32 }
 
 fn foo() {
-   let $0
+   let a$0
 }
 "#,
             expect![[r#"
@@ -147,7 +151,7 @@ enum E { X }
 static FOO: E = E::X;
 struct Bar { f: u32 }
 
-fn foo($0) {
+fn foo(a$0) {
 }
 "#,
             expect![[r#"
@@ -163,7 +167,7 @@ fn foo($0) {
 struct Bar { f: u32 }
 
 fn foo() {
-   let $0
+   let a$0
 }
 "#,
             expect![[r#"
@@ -179,7 +183,7 @@ fn foo() {
 struct Foo { bar: String, baz: String }
 struct Bar(String, String);
 struct Baz;
-fn outer($0) {}
+fn outer(a$0) {}
 "#,
             expect![[r#"
                 bn Foo Foo { bar$1, baz$2 }: Foo$0
@@ -196,7 +200,7 @@ struct Foo { bar: String, baz: String }
 struct Bar(String, String);
 struct Baz;
 fn outer() {
-    let $0
+    let a$0
 }
 "#,
             expect![[r#"
@@ -215,7 +219,7 @@ struct Bar(String, String);
 struct Baz;
 fn outer() {
     match () {
-        $0
+        a$0
     }
 }
 "#,
@@ -239,7 +243,7 @@ use foo::*;
 
 fn outer() {
     match () {
-        $0
+        a$0
     }
 }
 "#,
@@ -258,7 +262,7 @@ fn outer() {
 struct Foo(i32);
 fn main() {
     match Foo(92) {
-        $0(92) => (),
+        a$0(92) => (),
     }
 }
 "#,
@@ -281,7 +285,7 @@ struct Foo(i32);
 impl Foo {
     fn foo() {
         match () {
-            $0
+            a$0
         }
     }
 }
@@ -311,6 +315,88 @@ impl Foo {
             expect![[r#"
                 bn Self::Bar Self::Bar { baz$1 }$0
                 bn Foo::Bar  Foo::Bar { baz$1 }$0
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_matcharm() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn main() {
+    let foo = Foo::Quux;
+    match foo { Qu$0 }
+}
+"#,
+            expect![[r#"
+                ev Foo::Bar  ()
+                ev Foo::Baz  ()
+                ev Foo::Quux ()
+                en Foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_matcharm_ref() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn main() {
+    let foo = Foo::Quux;
+    match &foo { Qu$0 }
+}
+"#,
+            expect![[r#"
+                ev Foo::Bar  ()
+                ev Foo::Baz  ()
+                ev Foo::Quux ()
+                en Foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_iflet() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+
+fn main() {
+    let foo = Foo::Quux;
+    if let Qu$0 = foo { }
+}
+"#,
+            expect![[r#"
+                ev Foo::Bar  ()
+                ev Foo::Baz  ()
+                ev Foo::Quux ()
+                en Foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn completes_enum_variant_impl() {
+        check(
+            r#"
+enum Foo { Bar, Baz, Quux }
+impl Foo {
+    fn foo() { match Foo::Bar { Q$0 } }
+}
+"#,
+            expect![[r#"
+                ev Self::Bar  ()
+                ev Self::Baz  ()
+                ev Self::Quux ()
+                ev Foo::Bar   ()
+                ev Foo::Baz   ()
+                ev Foo::Quux  ()
+                sp Self
+                en Foo
             "#]],
         )
     }
