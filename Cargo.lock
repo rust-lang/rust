@@ -4247,6 +4247,7 @@ name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
+ "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
