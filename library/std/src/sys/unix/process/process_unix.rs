@@ -51,41 +51,35 @@ impl Command {
         // a lock any more because the parent won't do anything and the child is
         // in its own process. Thus the parent drops the lock guard while the child
         // forgets it to avoid unlocking it on a new thread, which would be invalid.
-        let (env_lock, result) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
+        let (env_lock, pid) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
 
-        let pid = unsafe {
-            match result {
-                0 => {
-                    mem::forget(env_lock);
-                    drop(input);
-                    let Err(err) = self.do_exec(theirs, envp.as_ref());
-                    let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
-                    let errno = errno.to_be_bytes();
-                    let bytes = [
-                        errno[0],
-                        errno[1],
-                        errno[2],
-                        errno[3],
-                        CLOEXEC_MSG_FOOTER[0],
-                        CLOEXEC_MSG_FOOTER[1],
-                        CLOEXEC_MSG_FOOTER[2],
-                        CLOEXEC_MSG_FOOTER[3],
-                    ];
-                    // pipe I/O up to PIPE_BUF bytes should be atomic, and then
-                    // we want to be sure we *don't* run at_exit destructors as
-                    // we're being torn down regardless
-                    rtassert!(output.write(&bytes).is_ok());
-                    libc::_exit(1)
-                }
-                n => {
-                    drop(env_lock);
-                    n
-                }
-            }
-        };
+        if pid == 0 {
+            mem::forget(env_lock);
+            drop(input);
+            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
+            let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
+            let errno = errno.to_be_bytes();
+            let bytes = [
+                errno[0],
+                errno[1],
+                errno[2],
+                errno[3],
+                CLOEXEC_MSG_FOOTER[0],
+                CLOEXEC_MSG_FOOTER[1],
+                CLOEXEC_MSG_FOOTER[2],
+                CLOEXEC_MSG_FOOTER[3],
+            ];
+            // pipe I/O up to PIPE_BUF bytes should be atomic, and then
+            // we want to be sure we *don't* run at_exit destructors as
+            // we're being torn down regardless
+            rtassert!(output.write(&bytes).is_ok());
+            unsafe { libc::_exit(1) }
+        }
+
+        drop(env_lock);
+        drop(output);
 
         let mut p = Process { pid, status: None };
-        drop(output);
         let mut bytes = [0; 8];
 
         // loop to handle EINTR
