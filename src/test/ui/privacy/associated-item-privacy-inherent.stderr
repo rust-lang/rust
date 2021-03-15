@@ -222,7 +222,7 @@ error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-inherent.rs:101:9
    |
 LL |         Pub::CONST;
-   |         ^^^^^^^^^^ private type
+   |         ^^^ private type
 ...
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
