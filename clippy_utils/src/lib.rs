@@ -173,13 +173,9 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// By only considering immutable bindings, we guarantee that the returned expression represents the
 /// value of the binding wherever it is referenced.
 ///
-/// Example:
-/// ```ignore
-/// let abc = 1;
-/// //        ^ output
-/// dbg!(abc)
-/// //   ^^^ input
-/// ```
+/// Example: For `let x = 1`, if the `HirId` of `x` is provided, the `Expr` `1` is returned.
+/// Note: If you have an expression that references a binding `x`, use `path_to_local` to get the
+/// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
     if_chain! {
