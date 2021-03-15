@@ -431,6 +431,10 @@ impl HirDisplay for Module {
         // FIXME: Module doesn't have visibility saved in data.
         match self.name(f.db) {
             Some(name) => write!(f, "mod {}", name),
+            None if self.crate_root(f.db) == *self => match self.krate().display_name(f.db) {
+                Some(name) => write!(f, "extern crate {}", name),
+                None => write!(f, "extern crate {{unknown}}"),
+            },
             None => write!(f, "mod {{unnamed}}"),
         }
     }
