@@ -191,6 +191,8 @@ pub mod known {
         filter_map,
         next,
         iter_mut,
+        len,
+        is_empty,
         // Builtin macros
         file,
         column,
