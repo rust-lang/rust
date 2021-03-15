@@ -136,12 +136,6 @@ fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum StructureNodeKind {
-    SymbolKind(SymbolKind),
-    Region,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SymbolKind {
     Const,
     ConstParam,

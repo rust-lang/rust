@@ -9,9 +9,8 @@ use ide::{
     CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind,
     Highlight, HlMod, HlPunct, HlRange, HlTag, Indel, InlayHint, InlayKind, InsertTextFormat,
     Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange,
-    TextEdit, TextRange, TextSize,
+    StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
-use ide_db::{StructureNodeKind, SymbolKind};
 use itertools::Itertools;
 use serde_json::to_value;
 

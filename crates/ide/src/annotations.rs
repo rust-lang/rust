@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange, SourceDatabase},
-    RootDatabase, StructureNodeKind, SymbolKind,
+    RootDatabase, SymbolKind,
 };
 use syntax::TextRange;
 
@@ -11,7 +11,7 @@ use crate::{
     goto_implementation::goto_implementation,
     references::find_all_refs,
     runnables::{runnables, Runnable},
-    NavigationTarget, RunnableKind,
+    NavigationTarget, RunnableKind, StructureNodeKind,
 };
 
 // Feature: Annotations
