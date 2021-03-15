@@ -31,6 +31,7 @@ use hir_def::{
     GenericDefId, HasModule, LifetimeParamId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use itertools::Itertools;
+use smallvec::SmallVec;
 
 use crate::{
     db::HirDatabase,
@@ -272,7 +273,7 @@ impl Ty {
 
 /// A list of substitutions for generic parameters.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Substs(Arc<[Ty]>);
+pub struct Substs(SmallVec<[Ty; 2]>);
 
 impl TypeWalk for Substs {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -286,19 +287,27 @@ impl TypeWalk for Substs {
         f: &mut impl FnMut(&mut Ty, DebruijnIndex),
         binders: DebruijnIndex,
     ) {
-        for t in make_mut_slice(&mut self.0) {
+        for t in &mut self.0 {
             t.walk_mut_binders(f, binders);
         }
     }
 }
 
 impl Substs {
+    pub fn interned(&self, _: &Interner) -> &[Ty] {
+        &self.0
+    }
+
     pub fn empty() -> Substs {
-        Substs(Arc::new([]))
+        Substs(SmallVec::new())
     }
 
     pub fn single(ty: Ty) -> Substs {
-        Substs(Arc::new([ty]))
+        Substs({
+            let mut v = SmallVec::new();
+            v.push(ty);
+            v
+        })
     }
 
     pub fn prefix(&self, n: usize) -> Substs {
@@ -314,6 +323,10 @@ impl Substs {
             panic!("expected substs of len 1, got {:?}", self);
         }
         &self.0[0]
+    }
+
+    pub fn from_iter(_interner: &Interner, elements: impl IntoIterator<Item = Ty>) -> Self {
+        Substs(elements.into_iter().collect())
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
@@ -600,13 +613,13 @@ impl CallableSig {
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
-            params_and_return: Arc::clone(&fn_ptr.substs.0),
+            params_and_return: fn_ptr.substs.interned(&Interner).iter().cloned().collect(),
             is_varargs: fn_ptr.sig.variadic,
         }
     }
 
     pub fn from_substs(substs: &Substs) -> CallableSig {
-        CallableSig { params_and_return: Arc::clone(&substs.0), is_varargs: false }
+        CallableSig { params_and_return: substs.iter().cloned().collect(), is_varargs: false }
     }
 
     pub fn params(&self) -> &[Ty] {
@@ -649,7 +662,7 @@ impl Ty {
         TyKind::Function(FnPointer {
             num_args: sig.params().len(),
             sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
-            substs: Substs(sig.params_and_return),
+            substs: Substs::from_iter(&Interner, sig.params_and_return.iter().cloned()),
         })
         .intern(&Interner)
     }

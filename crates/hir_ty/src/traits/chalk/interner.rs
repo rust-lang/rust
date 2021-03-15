@@ -5,6 +5,7 @@ use super::tls;
 use base_db::salsa::InternId;
 use chalk_ir::{GenericArg, Goal, GoalData};
 use hir_def::TypeAliasId;
+use smallvec::SmallVec;
 use std::{fmt, sync::Arc};
 
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
@@ -33,7 +34,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
-    type InternedSubstitution = Vec<GenericArg<Self>>;
+    type InternedSubstitution = SmallVec<[GenericArg<Self>; 2]>;
     type InternedProgramClause = Arc<chalk_ir::ProgramClauseData<Self>>;
     type InternedProgramClauses = Arc<[chalk_ir::ProgramClause<Self>]>;
     type InternedQuantifiedWhereClauses = Vec<chalk_ir::QuantifiedWhereClause<Self>>;
@@ -265,13 +266,13 @@ impl chalk_ir::interner::Interner for Interner {
     fn intern_substitution<E>(
         &self,
         data: impl IntoIterator<Item = Result<GenericArg<Self>, E>>,
-    ) -> Result<Vec<GenericArg<Self>>, E> {
+    ) -> Result<Self::InternedSubstitution, E> {
         data.into_iter().collect()
     }
 
     fn substitution_data<'a>(
         &self,
-        substitution: &'a Vec<GenericArg<Self>>,
+        substitution: &'a Self::InternedSubstitution,
     ) -> &'a [GenericArg<Self>] {
         substitution
     }
