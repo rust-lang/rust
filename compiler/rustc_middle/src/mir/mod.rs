@@ -12,6 +12,7 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
+
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -30,6 +31,9 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
+
+use either::Either;
+
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter, Write};
@@ -501,6 +505,16 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
         Location { block: bb, statement_index: self[bb].statements.len() }
+    }
+
+    pub fn stmt_at(&self, location: Location) -> Either<&Statement<'tcx>, &Terminator<'tcx>> {
+        let Location { block, statement_index } = location;
+        let block_data = &self.basic_blocks[block];
+        block_data
+            .statements
+            .get(statement_index)
+            .map(Either::Left)
+            .unwrap_or_else(|| Either::Right(block_data.terminator()))
     }
 
     #[inline]
