@@ -11,7 +11,7 @@ use rustc_macros::HashStable;
 /// `AllocId`s point to equal values. So we may end up with different representations for
 /// two constants whose value is `&42`. Furthermore any kind of struct that has padding will
 /// have arbitrary values within that padding, even if the values of the struct are the same.
-/// 
+///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of values of itself.
 pub enum ValTree<'tcx> {
