@@ -192,13 +192,14 @@ declare_clippy_lint! {
     /// **What it does:** Checks for methods with certain name prefixes and which
     /// doesn't match how self is taken. The actual rules are:
     ///
-    /// |Prefix |`self` taken          |
-    /// |-------|----------------------|
-    /// |`as_`  |`&self` or `&mut self`|
-    /// |`from_`| none                 |
-    /// |`into_`|`self`                |
-    /// |`is_`  |`&self` or none       |
-    /// |`to_`  |`&self`               |
+    /// |Prefix |Postfix     |`self` taken          |
+    /// |-------|------------|----------------------|
+    /// |`as_`  | none       |`&self` or `&mut self`|
+    /// |`from_`| none       | none                 |
+    /// |`into_`| none       |`self`                |
+    /// |`is_`  | none       |`&self` or none       |
+    /// |`to_`  | `_mut`     |`&mut &self`          |
+    /// |`to_`  | not `_mut` |`&self`               |
     ///
     /// **Why is this bad?** Consistency breeds readability. If you follow the
     /// conventions, your users won't be surprised that they, e.g., need to supply a
