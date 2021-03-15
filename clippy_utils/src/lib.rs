@@ -62,10 +62,10 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    def, Arm, Block, Body, Constness, CrateItem, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs, GenericParam, HirId,
-    Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef, MatchSource, Node, Param, Pat,
-    PatKind, Path, PathSegment, QPath, Stmt, StructField, TraitItem, TraitItemKind, TraitRef, TyKind, Unsafety,
-    Variant, Visibility,
+    def, Arm, BindingAnnotation, Block, Body, Constness, CrateItem, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs,
+    GenericParam, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, Lifetime, Local, MacroDef,
+    MatchSource, Node, Param, Pat, PatKind, Path, PathSegment, QPath, Stmt, StructField, TraitItem, TraitItemKind,
+    TraitRef, TyKind, Unsafety, Variant, Visibility,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -136,6 +136,58 @@ macro_rules! extract_msrv_attr {
 #[must_use]
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt() != lhs.ctxt()
+}
+
+/// If the given expression is a local binding, find the initializer expression.
+/// If that initializer expression is another local binding, find its initializer again.
+/// This process repeats as long as possible (but usually no more than once). Initializer
+/// expressions with adjustments are ignored. If this is not desired, use [`find_binding_init`]
+/// instead.
+///
+/// Examples:
+/// ```ignore
+/// let abc = 1;
+/// //        ^ output
+/// let def = abc;
+/// dbg!(def)
+/// //   ^^^ input
+///
+/// // or...
+/// let abc = 1;
+/// let def = abc + 2;
+/// //        ^^^^^^^ output
+/// dbg!(def)
+/// //   ^^^ input
+/// ```
+pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
+    while let Some(init) = path_to_local(expr)
+        .and_then(|id| find_binding_init(cx, id))
+        .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
+    {
+        expr = init;
+    }
+    expr
+}
+
+/// Finds the initializer expression for a local binding. Returns `None` if the binding is mutable.
+/// By only considering immutable bindings, we guarantee that the returned expression represents the
+/// value of the binding wherever it is referenced.
+///
+/// Example: For `let x = 1`, if the `HirId` of `x` is provided, the `Expr` `1` is returned.
+/// Note: If you have an expression that references a binding `x`, use `path_to_local` to get the
+/// canonical binding `HirId`.
+pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
+    let hir = cx.tcx.hir();
+    if_chain! {
+        if let Some(Node::Binding(pat)) = hir.find(hir_id);
+        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::Unannotated, ..));
+        let parent = hir.get_parent_node(hir_id);
+        if let Some(Node::Local(local)) = hir.find(parent);
+        then {
+            return local.init;
+        }
+    }
+    None
 }
 
 /// Returns `true` if the given `NodeId` is inside a constant context

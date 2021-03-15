@@ -1739,7 +1739,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 unnecessary_filter_map::check(cx, expr, arg_lists[0]);
                 filter_map_identity::check(cx, expr, arg_lists[0], method_spans[0]);
             },
-            ["count", "map"] => suspicious_map::check(cx, expr),
+            ["count", "map"] => suspicious_map::check(cx, expr, arg_lists[1], arg_lists[0]),
             ["assume_init"] => uninit_assumed_init::check(cx, &arg_lists[0][0], expr),
             ["unwrap_or", arith @ ("checked_add" | "checked_sub" | "checked_mul")] => {
                 manual_saturating_arithmetic::check(cx, expr, &arg_lists, &arith["checked_".len()..])
