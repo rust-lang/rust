@@ -1498,16 +1498,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        ty::Unevaluated { def, substs, promoted }: ty::Unevaluated<'tcx>,
+        unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let mut original_values = OriginalQueryValues::default();
-        let canonical = self.canonicalize_query((param_env, substs), &mut original_values);
+        let canonical = self.canonicalize_query((param_env, unevaluated), &mut original_values);
 
-        let (param_env, substs) = canonical.value;
+        let (param_env, unevaluated) = canonical.value;
         // The return value is the evaluated value which doesn't contain any reference to inference
         // variables, thus we don't need to substitute back the original values.
-        self.tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, span)
+        self.tcx.const_eval_resolve(param_env, unevaluated, span)
     }
 
     /// If `typ` is a type variable of some kind, resolve it one level

@@ -14,8 +14,14 @@ use rustc_target::abi::Size;
 #[derive(Hash, HashStable)]
 pub struct Unevaluated<'tcx> {
     pub def: ty::WithOptConstParam<DefId>,
-    pub substs: SubstsRef<'tcx>,
+    pub non_default_substs: Option<SubstsRef<'tcx>>,
     pub promoted: Option<Promoted>,
+}
+
+impl<'tcx> Unevaluated<'tcx> {
+    pub fn substs(self, tcx: TyCtxt<'tcx>) -> SubstsRef<'tcx> {
+        self.non_default_substs.unwrap_or_else(|| tcx.default_anon_const_substs(self.def.did))
+    }
 }
 
 /// Represents a constant in Rust.
@@ -102,7 +108,7 @@ impl<'tcx> ConstKind<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> Option<Result<ConstValue<'tcx>, ErrorReported>> {
-        if let ConstKind::Unevaluated(Unevaluated { def, substs, promoted }) = self {
+        if let ConstKind::Unevaluated(unevaluated) = self {
             use crate::mir::interpret::ErrorHandled;
 
             // HACK(eddyb) this erases lifetimes even though `const_eval_resolve`
@@ -111,29 +117,35 @@ impl<'tcx> ConstKind<'tcx> {
             // Note that we erase regions *before* calling `with_reveal_all_normalized`,
             // so that we don't try to invoke this query with
             // any region variables.
-            let param_env_and_substs = tcx
+            let param_env_and = tcx
                 .erase_regions(param_env)
                 .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(substs));
+                .and(tcx.erase_regions(unevaluated));
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed
             // when the expression doesn't depend on any parameters.
             // FIXME(eddyb, skinny121) pass `InferCtxt` into here when it's available, so that
             // we can call `infcx.const_eval_resolve` which handles inference variables.
-            let param_env_and_substs = if param_env_and_substs.needs_infer() {
-                tcx.param_env(def.did).and(InternalSubsts::identity_for_item(tcx, def.did))
+            let param_env_and = if param_env_and.needs_infer() {
+                tcx.param_env(unevaluated.def.did).and(ty::Unevaluated {
+                    def: unevaluated.def,
+                    non_default_substs: Some(InternalSubsts::identity_for_item(
+                        tcx,
+                        unevaluated.def.did,
+                    )),
+                    promoted: unevaluated.promoted,
+                })
             } else {
-                param_env_and_substs
+                param_env_and
             };
 
             // FIXME(eddyb) maybe the `const_eval_*` methods should take
-            // `ty::ParamEnvAnd<SubstsRef>` instead of having them separate.
-            let (param_env, substs) = param_env_and_substs.into_parts();
+            // `ty::ParamEnvAnd` instead of having them separate.
+            let (param_env, unevaluated) = param_env_and.into_parts();
             // try to resolve e.g. associated constants to their definition on an impl, and then
             // evaluate the const.
-            match tcx.const_eval_resolve(param_env, ty::Unevaluated { def, substs, promoted }, None)
-            {
+            match tcx.const_eval_resolve(param_env, unevaluated, None) {
                 // NOTE(eddyb) `val` contains no lifetimes/types/consts,
                 // and we use the original type, so nothing from `substs`
                 // (which may be identity substs, see above),

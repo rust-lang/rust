@@ -93,6 +93,10 @@ rustc_queries! {
         desc { |tcx| "computing the optional const parameter of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    query default_anon_const_substs(key: DefId) -> SubstsRef<'tcx> {
+        desc { |tcx| "computing the default generic arguments for `{}`", tcx.def_path_str(key) }
+    }
+
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
         desc { |tcx| "computing type of `{}`", tcx.def_path_str(key) }

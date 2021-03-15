@@ -590,7 +590,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if tcx.features().const_evaluatable_checked && !relation.visit_ct_substs() =>
         {
-            if tcx.try_unify_abstract_consts(((au.def, au.substs), (bu.def, bu.substs))) {
+            if tcx.try_unify_abstract_consts(((au.def, au.substs(tcx)), (bu.def, bu.substs(tcx)))) {
                 Ok(a.val)
             } else {
                 Err(TypeError::ConstMismatch(expected_found(relation, a, b)))
@@ -603,11 +603,14 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
         (ty::ConstKind::Unevaluated(au), ty::ConstKind::Unevaluated(bu))
             if au.def == bu.def && au.promoted == bu.promoted =>
         {
-            let substs =
-                relation.relate_with_variance(ty::Variance::Invariant, au.substs, bu.substs)?;
+            let substs = relation.relate_with_variance(
+                ty::Variance::Invariant,
+                au.substs(tcx),
+                bu.substs(tcx),
+            )?;
             Ok(ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: au.def,
-                substs,
+                non_default_substs: Some(substs),
                 promoted: au.promoted,
             }))
         }

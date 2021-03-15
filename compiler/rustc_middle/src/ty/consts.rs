@@ -1,6 +1,5 @@
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::{LitToConstInput, Scalar};
-use crate::ty::subst::InternalSubsts;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::{ParamEnv, ParamEnvAnd};
 use rustc_errors::ErrorReported;
@@ -98,7 +97,7 @@ impl<'tcx> Const<'tcx> {
             }
             _ => ty::ConstKind::Unevaluated(ty::Unevaluated {
                 def: def.to_global(),
-                substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
+                non_default_substs: None,
                 promoted: None,
             }),
         };

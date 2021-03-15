@@ -343,7 +343,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         self.param_env,
                         ty::Unevaluated {
                             def: ty::WithOptConstParam::unknown(def_id),
-                            substs,
+                            non_default_substs: Some(substs),
                             promoted: None,
                         },
                         None,

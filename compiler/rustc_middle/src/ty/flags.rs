@@ -295,7 +295,8 @@ impl FlagComputation {
     }
 
     fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'tcx>) {
-        self.add_substs(ct.substs);
+        // TODO
+        self.add_substs(ct.non_default_substs.unwrap());
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }
 

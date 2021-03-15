@@ -246,7 +246,7 @@ where
     };
 
     // Check the qualifs of the value of `const` items.
-    if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) =
+    if let ty::ConstKind::Unevaluated(ty::Unevaluated { def, non_default_substs: _, promoted }) =
         constant.literal.val
     {
         assert!(promoted.is_none());

@@ -694,7 +694,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                                 let lhs = mk_const(self.tcx().mk_const(ty::Const {
                                     val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                                         def: ty::WithOptConstParam::unknown(did),
-                                        substs,
+                                        non_default_substs: Some(substs),
                                         promoted: None,
                                     }),
                                     ty: var_ty,
@@ -892,7 +892,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                     literal: self.tcx.mk_const(ty::Const {
                         val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                             def: ty::WithOptConstParam::unknown(def_id),
-                            substs,
+                            non_default_substs: Some(substs),
                             promoted: None,
                         }),
                         ty: self.typeck_results().node_type(expr.hir_id),

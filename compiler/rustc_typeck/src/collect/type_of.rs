@@ -7,7 +7,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
+use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, SubstsRef};
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::Ident;
@@ -248,6 +248,10 @@ fn get_path_containing_arg_in_pat<'hir>(
         _ => true,
     });
     arg_path
+}
+
+pub(super) fn default_anon_const_substs(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
+    InternalSubsts::identity_for_item(tcx, def_id)
 }
 
 pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {

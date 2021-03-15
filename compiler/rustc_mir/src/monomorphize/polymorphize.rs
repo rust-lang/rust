@@ -302,21 +302,24 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.unused_parameters.clear(param.index);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted: Some(p)})
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, non_default_substs: _, promoted: Some(p)})
                 // Avoid considering `T` unused when constants are of the form:
                 //   `<Self as Foo<T>>::foo::promoted[p]`
                 if self.def_id == def.did && !self.tcx.generics_of(def.did).has_self =>
             {
                 // If there is a promoted, don't look at the substs - since it will always contain
                 // the generic parameters, instead, traverse the promoted MIR.
+                //
+                // FIXME(lcnr): This seems incorrect if we get the promoted by inlining.
+                // We have to consider its substs in that case.
                 let promoted = self.tcx.promoted_mir(def.did);
                 self.visit_body(&promoted[p]);
                 ControlFlow::CONTINUE
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: None })
-                if self.tcx.def_kind(def.did) == DefKind::AnonConst =>
+            ty::ConstKind::Unevaluated(uv)
+                if self.tcx.def_kind(uv.def.did) == DefKind::AnonConst =>
             {
-                self.visit_child_body(def.did, substs);
+                self.visit_child_body(uv.def.did, uv.substs(self.tcx));
                 ControlFlow::CONTINUE
             }
             _ => c.super_visit_with(self),

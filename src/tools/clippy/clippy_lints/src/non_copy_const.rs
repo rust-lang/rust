@@ -185,7 +185,7 @@ fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: D
             cx.param_env,
             ty::Unevaluated {
                 def: ty::WithOptConstParam::unknown(def_id),
-                substs,
+                non_default_substs: Some(substs),
                 promoted: None
             },
             None

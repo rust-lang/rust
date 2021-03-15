@@ -1031,13 +1031,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
         match self {
             ty::ConstKind::Infer(ic) => ty::ConstKind::Infer(ic.fold_with(folder)),
             ty::ConstKind::Param(p) => ty::ConstKind::Param(p.fold_with(folder)),
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
-                ty::ConstKind::Unevaluated(ty::Unevaluated {
-                    def,
-                    substs: substs.fold_with(folder),
-                    promoted,
-                })
-            }
+            ty::ConstKind::Unevaluated(uv) => ty::ConstKind::Unevaluated(uv.fold_with(folder)),
             ty::ConstKind::Value(_)
             | ty::ConstKind::Bound(..)
             | ty::ConstKind::Placeholder(..)
@@ -1049,7 +1043,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
         match *self {
             ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
             ty::ConstKind::Param(p) => p.visit_with(visitor),
-            ty::ConstKind::Unevaluated(ct) => ct.substs.visit_with(visitor),
+            ty::ConstKind::Unevaluated(uv) => uv.visit_with(visitor),
             ty::ConstKind::Value(_)
             | ty::ConstKind::Bound(..)
             | ty::ConstKind::Placeholder(_)
@@ -1065,5 +1059,19 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+        ty::Unevaluated {
+            def: self.def,
+            non_default_substs: Some(self.substs(folder.tcx()).fold_with(folder)),
+            promoted: self.promoted,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.substs(visitor.tcx_for_anon_const_substs()).visit_with(visitor)
     }
 }
