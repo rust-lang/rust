@@ -166,13 +166,11 @@ pub(crate) fn codegen_int_binop<'tcx>(
         BinOp::Shl => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
             let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             fx.bcx.ins().ishl(lhs, actual_shift)
         }
         BinOp::Shr => {
             let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
             let actual_shift = fx.bcx.ins().band_imm(rhs, i64::from(lhs_ty.bits() - 1));
-            let actual_shift = clif_intcast(fx, actual_shift, types::I8, false);
             if signed {
                 fx.bcx.ins().sshr(lhs, actual_shift)
             } else {
