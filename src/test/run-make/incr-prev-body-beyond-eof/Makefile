@@ -1,3 +1,5 @@
+# ignore-none no-std is not supported
+
 include ../../run-make-fulldeps/tools.mk
 
 # Tests that we don't ICE during incremental compilation after modifying a
