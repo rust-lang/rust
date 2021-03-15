@@ -6,6 +6,7 @@
 
 mod fixes;
 mod field_shorthand;
+mod unlinked_file;
 
 use std::cell::RefCell;
 
@@ -22,6 +23,7 @@ use syntax::{
     SyntaxNode, SyntaxNodePtr, TextRange,
 };
 use text_edit::TextEdit;
+use unlinked_file::UnlinkedFile;
 
 use crate::{FileId, Label, SourceChange};
 
@@ -156,6 +158,18 @@ pub(crate) fn diagnostics(
                 .with_code(Some(d.code())),
             );
         })
+        .on::<UnlinkedFile, _>(|d| {
+            // Override severity and mark as unused.
+            res.borrow_mut().push(
+                Diagnostic::hint(
+                    sema.diagnostics_display_range(d.display_source()).range,
+                    d.message(),
+                )
+                .with_unused(true)
+                .with_fix(d.fix(&sema))
+                .with_code(Some(d.code())),
+            );
+        })
         .on::<hir::diagnostics::UnresolvedProcMacro, _>(|d| {
             // Use more accurate position if available.
             let display_range = d
@@ -200,13 +214,7 @@ pub(crate) fn diagnostics(
     match sema.to_module_def(file_id) {
         Some(m) => m.diagnostics(db, &mut sink),
         None => {
-            res.borrow_mut().push(
-                Diagnostic::hint(
-                    parse.tree().syntax().text_range(),
-                    "file not included in module tree".to_string(),
-                )
-                .with_unused(true),
-            );
+            sink.push(UnlinkedFile { file_id, node: SyntaxNodePtr::new(&parse.tree().syntax()) });
         }
     }
 
@@ -315,6 +323,17 @@ mod tests {
             fix.fix_trigger_range,
             file_position.offset
         );
+    }
+
+    /// Checks that there's a diagnostic *without* fix at `$0`.
+    fn check_no_fix(ra_fixture: &str) {
+        let (analysis, file_position) = fixture::position(ra_fixture);
+        let diagnostic = analysis
+            .diagnostics(&DiagnosticsConfig::default(), file_position.file_id)
+            .unwrap()
+            .pop()
+            .unwrap();
+        assert!(diagnostic.fix.is_none(), "got a fix when none was expected: {:?}", diagnostic);
     }
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
@@ -984,5 +1003,133 @@ impl TestStruct {
         assert_eq!(diagnostics.len(), 1);
 
         check_fix(input, expected);
+    }
+
+    #[test]
+    fn unlinked_file_prepend_first_item() {
+        cov_mark::check!(unlinked_file_prepend_before_first_item);
+        check_fix(
+            r#"
+//- /main.rs
+fn f() {}
+//- /foo.rs
+$0
+"#,
+            r#"
+mod foo;
+
+fn f() {}
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_append_mod() {
+        cov_mark::check!(unlinked_file_append_to_existing_mods);
+        check_fix(
+            r#"
+//- /main.rs
+//! Comment on top
+
+mod preexisting;
+
+mod preexisting2;
+
+struct S;
+
+mod preexisting_bottom;)
+//- /foo.rs
+$0
+"#,
+            r#"
+//! Comment on top
+
+mod preexisting;
+
+mod preexisting2;
+mod foo;
+
+struct S;
+
+mod preexisting_bottom;)
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_insert_in_empty_file() {
+        cov_mark::check!(unlinked_file_empty_file);
+        check_fix(
+            r#"
+//- /main.rs
+//- /foo.rs
+$0
+"#,
+            r#"
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_old_style_modrs() {
+        check_fix(
+            r#"
+//- /main.rs
+mod submod;
+//- /submod/mod.rs
+// in mod.rs
+//- /submod/foo.rs
+$0
+"#,
+            r#"
+// in mod.rs
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_new_style_mod() {
+        check_fix(
+            r#"
+//- /main.rs
+mod submod;
+//- /submod.rs
+//- /submod/foo.rs
+$0
+"#,
+            r#"
+mod foo;
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_cfg_off() {
+        cov_mark::check!(unlinked_file_skip_fix_when_mod_already_exists);
+        check_no_fix(
+            r#"
+//- /main.rs
+#[cfg(never)]
+mod foo;
+
+//- /foo.rs
+$0
+"#,
+        );
+    }
+
+    #[test]
+    fn unlinked_file_with_cfg_on() {
+        check_no_diagnostics(
+            r#"
+//- /main.rs
+#[cfg(not(never))]
+mod foo;
+
+//- /foo.rs
+"#,
+        );
     }
 }
