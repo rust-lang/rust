@@ -1,0 +1,43 @@
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:8:45
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
+   |                                             ^^^^^^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:17:46
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
+   |                                              ^^^^^^^^^^^^
+
+error[E0277]: `U` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:12:33
+   |
+LL | type Underconstrained<T: std::fmt::Debug> = impl 'static;
+   |                          --------------- required by this bound in `Underconstrained`
+...
+LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
+   |                                 ^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+help: consider restricting type parameter `U`
+   |
+LL | fn underconstrained<U: Debug>(_: U) -> Underconstrained<U> {
+   |                      ^^^^^^^
+
+error[E0277]: `V` doesn't implement `Debug`
+  --> $DIR/generic_underconstrained2.rs:21:43
+   |
+LL | type Underconstrained2<T: std::fmt::Debug> = impl 'static;
+   |                           --------------- required by this bound in `Underconstrained2`
+...
+LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
+   |                                           ^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+help: consider restricting type parameter `V`
+   |
+LL | fn underconstrained2<U, V: Debug>(_: U, _: V) -> Underconstrained2<V> {
+   |                          ^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
