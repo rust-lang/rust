@@ -110,7 +110,7 @@ fn const_to_valtree_inner<'tcx>(
 
             let variant = ecx.read_discriminant(&place.into()).unwrap().1;
 
-            branches(def.variants[variant].fields.len(), Some(variant))
+            branches(def.variants[variant].fields.len(), def.is_enum().then_some(variant))
         }
 
         ty::Never
