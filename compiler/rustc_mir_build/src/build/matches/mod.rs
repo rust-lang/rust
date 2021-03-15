@@ -97,8 +97,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scrutinee_place =
             unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span,));
 
-        let mut arm_candidates =
-            self.create_match_candidates(scrutinee_place.clone(), &arms.clone());
+        let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
 
         let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
         let mut candidates =
@@ -244,8 +243,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let body = arm.body;
-
                     // `try_upvars_resolved` may fail if it is unable to resolve the given
                     // `PlaceBuilder` inside a closure. In this case, we don't want to include
                     // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
@@ -264,7 +261,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .try_upvars_resolved(this.tcx, this.typeck_results)
                     {
                         scrutinee_place =
-                            scrutinee_builder.clone().into_place(this.tcx, this.typeck_results);
+                            scrutinee_builder.into_place(this.tcx, this.typeck_results);
                         opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
                     }
                     let scope = this.declare_bindings(
@@ -524,9 +521,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         if let Ok(match_pair_resolved) =
                             initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
                         {
-                            let place = match_pair_resolved
-                                .clone()
-                                .into_place(self.tcx, self.typeck_results);
+                            let place =
+                                match_pair_resolved.into_place(self.tcx, self.typeck_results);
                             *match_place = Some(place);
                         }
                     } else {
@@ -1480,7 +1476,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             TestKind::Switch { adt_def: _, ref mut variants } => {
                 for candidate in candidates.iter() {
-                    if !self.add_variants_to_switch(&match_place.clone(), candidate, variants) {
+                    if !self.add_variants_to_switch(&match_place, candidate, variants) {
                         break;
                     }
                 }
@@ -1493,8 +1489,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Ok(match_place_resolved) =
                 match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
             {
-                let resolved_place =
-                    match_place_resolved.clone().into_place(self.tcx, self.typeck_results);
+                let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results);
                 fb.insert(resolved_place);
             }
         }
@@ -1577,7 +1572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             target_blocks
         };
 
-        self.perform_test(block, match_place.clone(), &test, make_target_blocks);
+        self.perform_test(block, match_place, &test, make_target_blocks);
     }
 
     /// Determine the fake borrows that are needed from a set of places that
@@ -1811,9 +1806,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
                 Guard::IfLet(pat, scrutinee) => {
                     let scrutinee_span = scrutinee.span;
-                    let scrutinee_place_builder = unpack!(
-                        block = self.lower_scrutinee(block, scrutinee.clone(), scrutinee_span)
-                    );
+                    let scrutinee_place_builder =
+                        unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span));
                     let mut guard_candidate =
                         Candidate::new(scrutinee_place_builder.clone(), &pat, false);
                     let wildcard = Pat::wildcard_from_ty(pat.ty);
@@ -1827,12 +1821,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     let mut opt_scrutinee_place: Option<(Option<&Place<'tcx>>, Span)> = None;
                     let scrutinee_place: Place<'tcx>;
-                    if let Ok(scrutinee_builder) = scrutinee_place_builder
-                        .clone()
-                        .try_upvars_resolved(self.tcx, self.typeck_results)
+                    if let Ok(scrutinee_builder) =
+                        scrutinee_place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
                     {
                         scrutinee_place =
-                            scrutinee_builder.clone().into_place(self.tcx, self.typeck_results);
+                            scrutinee_builder.into_place(self.tcx, self.typeck_results);
                         opt_scrutinee_place = Some((Some(&scrutinee_place), scrutinee_span));
                     }
                     self.declare_bindings(

@@ -455,28 +455,19 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                 );
 
                 // Convert the closure fake reads, if any, from hir `Place` to ExprRef
-                let fake_reads = match self.typeck_results().closure_fake_reads.get(&def_id) {
+                let fake_reads = match self.typeck_results.closure_fake_reads.get(&def_id) {
                     Some(fake_reads) => fake_reads
                         .iter()
                         .map(|(place, cause, hir_id)| {
-                            (
-                                self.arena
-                                    .alloc(self.convert_captured_hir_place(expr, place.clone())),
-                                *cause,
-                                *hir_id,
-                            )
+                            let expr = self.convert_captured_hir_place(expr, place.clone());
+                            let expr_ref: &'thir Expr<'thir, 'tcx> = self.arena.alloc(expr);
+                            (expr_ref, *cause, *hir_id)
                         })
                         .collect(),
                     None => Vec::new(),
                 };
 
-                ExprKind::Closure {
-                    closure_id: def_id,
-                    substs,
-                    upvars,
-                    movability,
-                    fake_reads: fake_reads,
-                }
+                ExprKind::Closure { closure_id: def_id, substs, upvars, movability, fake_reads }
             }
 
             hir::ExprKind::Path(ref qpath) => {

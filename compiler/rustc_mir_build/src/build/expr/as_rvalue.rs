@@ -165,7 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, movability, fake_reads } => {
+            ExprKind::Closure { closure_id, substs, upvars, movability, ref fake_reads } => {
                 // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
                 // and push the fake reads.
                 // This must come before creating the operands. This is required in case
@@ -179,7 +179,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //     match x { _ => () } // fake read of `x`
                 // };
                 // ```
-
                 // FIXME(RFC2229): Remove feature gate once diagnostics are improved
                 if this.tcx.features().capture_disjoint_fields {
                     for (thir_place, cause, hir_id) in fake_reads.into_iter() {
@@ -193,8 +192,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 place_builder_resolved.into_place(this.tcx, this.typeck_results);
                             this.cfg.push_fake_read(
                                 block,
-                                this.source_info(this.tcx.hir().span(hir_id)),
-                                cause,
+                                this.source_info(this.tcx.hir().span(*hir_id)),
+                                *cause,
                                 mir_place,
                             );
                         }
