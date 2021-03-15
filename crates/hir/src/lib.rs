@@ -1488,7 +1488,7 @@ impl Impl {
     pub fn all_for_type(db: &dyn HirDatabase, Type { krate, ty }: Type) -> Vec<Impl> {
         let def_crates = match ty.value.def_crates(db, krate) {
             Some(def_crates) => def_crates,
-            None => return vec![],
+            None => return Vec::new(),
         };
 
         let filter = |impl_def: &Impl| {
@@ -1498,16 +1498,11 @@ impl Impl {
         };
 
         let mut all = Vec::new();
-        def_crates.iter().for_each(|&id| {
+        def_crates.into_iter().for_each(|id| {
             all.extend(db.inherent_impls_in_crate(id).all_impls().map(Self::from).filter(filter))
         });
         let fp = TyFingerprint::for_impl(&ty.value);
-        for id in def_crates
-            .iter()
-            .flat_map(|&id| Crate { id }.reverse_dependencies(db))
-            .map(|Crate { id }| id)
-            .chain(def_crates.iter().copied())
-        {
+        for id in db.crate_graph().iter() {
             match fp {
                 Some(fp) => all.extend(
                     db.trait_impls_in_crate(id).for_self_ty(fp).map(Self::from).filter(filter),
