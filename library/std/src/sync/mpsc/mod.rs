@@ -374,22 +374,22 @@ pub struct Iter<'a, T: 'a> {
 /// use std::thread;
 /// use std::time::Duration;
 ///
-/// let (sender, receiver) = channel();
+/// let (tx, rx) = channel();
 ///
 /// // Nothing is in the buffer yet
-/// assert!(receiver.try_iter().next().is_none());
+/// assert!(rx.try_iter().next().is_none());
 /// println!("Nothing in the buffer...");
 ///
 /// thread::spawn(move || {
-///     sender.send(1).unwrap();
-///     sender.send(2).unwrap();
-///     sender.send(3).unwrap();
+///     tx.send(1).unwrap();
+///     tx.send(2).unwrap();
+///     tx.send(3).unwrap();
 /// });
 ///
 /// println!("Going to sleep...");
 /// thread::sleep(Duration::from_secs(2)); // block for two seconds
 ///
-/// for x in receiver.try_iter() {
+/// for x in rx.try_iter() {
 ///     println!("Got: {}", x);
 /// }
 /// ```
@@ -445,21 +445,21 @@ pub struct IntoIter<T> {
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 ///
-/// let (sender, receiver) = channel();
-/// let sender2 = sender.clone();
+/// let (tx, rx) = channel();
+/// let tx2 = tx.clone();
 ///
-/// // First thread owns sender
+/// // First thread owns tx
 /// thread::spawn(move || {
-///     sender.send(1).unwrap();
+///     tx.send(1).unwrap();
 /// });
 ///
-/// // Second thread owns sender2
+/// // Second thread owns tx2
 /// thread::spawn(move || {
-///     sender2.send(2).unwrap();
+///     tx2.send(2).unwrap();
 /// });
 ///
-/// let msg = receiver.recv().unwrap();
-/// let msg2 = receiver.recv().unwrap();
+/// let msg = rx.recv().unwrap();
+/// let msg2 = rx.recv().unwrap();
 ///
 /// assert_eq!(3, msg + msg2);
 /// ```
@@ -492,33 +492,33 @@ impl<T> !Sync for Sender<T> {}
 /// use std::thread;
 ///
 /// // Create a sync_channel with buffer size 2
-/// let (sync_sender, receiver) = sync_channel(2);
-/// let sync_sender2 = sync_sender.clone();
+/// let (tx, rx) = sync_channel(2);
+/// let tx2 = tx.clone();
 ///
-/// // First thread owns sync_sender
+/// // First thread owns tx
 /// thread::spawn(move || {
-///     sync_sender.send(1).unwrap();
-///     sync_sender.send(2).unwrap();
+///     tx.send(1).unwrap();
+///     tx.send(2).unwrap();
 /// });
 ///
-/// // Second thread owns sync_sender2
+/// // Second thread owns tx2
 /// thread::spawn(move || {
-///     sync_sender2.send(3).unwrap();
+///     tx2.send(3).unwrap();
 ///     // thread will now block since the buffer is full
 ///     println!("Thread unblocked!");
 /// });
 ///
 /// let mut msg;
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = rx.recv().unwrap();
 /// println!("message {} received", msg);
 ///
 /// // "Thread unblocked!" will be printed now
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = rx.recv().unwrap();
 /// println!("message {} received", msg);
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = rx.recv().unwrap();
 ///
 /// println!("message {} received", msg);
 /// ```
@@ -662,18 +662,18 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 ///
-/// let (sender, receiver) = channel();
+/// let (tx, rx) = channel();
 ///
 /// // Spawn off an expensive computation
 /// thread::spawn(move|| {
 /// #   fn expensive_computation() {}
-///     sender.send(expensive_computation()).unwrap();
+///     tx.send(expensive_computation()).unwrap();
 /// });
 ///
 /// // Do some useful work for awhile
 ///
 /// // Let's see what that answer was
-/// println!("{:?}", receiver.recv().unwrap());
+/// println!("{:?}", rx.recv().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -710,18 +710,18 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// use std::sync::mpsc::sync_channel;
 /// use std::thread;
 ///
-/// let (sender, receiver) = sync_channel(1);
+/// let (tx, rx) = sync_channel(1);
 ///
 /// // this returns immediately
-/// sender.send(1).unwrap();
+/// tx.send(1).unwrap();
 ///
 /// thread::spawn(move|| {
 ///     // this will block until the previous message has been received
-///     sender.send(2).unwrap();
+///     tx.send(2).unwrap();
 /// });
 ///
-/// assert_eq!(receiver.recv().unwrap(), 1);
-/// assert_eq!(receiver.recv().unwrap(), 2);
+/// assert_eq!(rx.recv().unwrap(), 1);
+/// assert_eq!(rx.recv().unwrap(), 2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
@@ -900,17 +900,17 @@ impl<T> SyncSender<T> {
     /// use std::thread;
     ///
     /// // Create a rendezvous sync_channel with buffer size 0
-    /// let (sync_sender, receiver) = sync_channel(0);
+    /// let (tx, rx) = sync_channel(0);
     ///
     /// thread::spawn(move || {
     ///    println!("sending message...");
-    ///    sync_sender.send(1).unwrap();
+    ///    tx.send(1).unwrap();
     ///    // Thread is now blocked until the message is received
     ///
     ///    println!("...message received!");
     /// });
     ///
-    /// let msg = receiver.recv().unwrap();
+    /// let msg = rx.recv().unwrap();
     /// assert_eq!(1, msg);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -937,32 +937,32 @@ impl<T> SyncSender<T> {
     /// use std::thread;
     ///
     /// // Create a sync_channel with buffer size 1
-    /// let (sync_sender, receiver) = sync_channel(1);
-    /// let sync_sender2 = sync_sender.clone();
+    /// let (tx, rx) = sync_channel(1);
+    /// let tx2 = tx.clone();
     ///
-    /// // First thread owns sync_sender
+    /// // First thread owns tx
     /// thread::spawn(move || {
-    ///     sync_sender.send(1).unwrap();
-    ///     sync_sender.send(2).unwrap();
+    ///     tx.send(1).unwrap();
+    ///     tx.send(2).unwrap();
     ///     // Thread blocked
     /// });
     ///
-    /// // Second thread owns sync_sender2
+    /// // Second thread owns tx2
     /// thread::spawn(move || {
     ///     // This will return an error and send
     ///     // no message if the buffer is full
-    ///     let _ = sync_sender2.try_send(3);
+    ///     let _ = tx2.try_send(3);
     /// });
     ///
     /// let mut msg;
-    /// msg = receiver.recv().unwrap();
+    /// msg = rx.recv().unwrap();
     /// println!("message {} received", msg);
     ///
-    /// msg = receiver.recv().unwrap();
+    /// msg = rx.recv().unwrap();
     /// println!("message {} received", msg);
     ///
     /// // Third message may have never been sent
-    /// match receiver.try_recv() {
+    /// match rx.try_recv() {
     ///     Ok(msg) => println!("message {} received", msg),
     ///     Err(_) => println!("the third message was never sent"),
     /// }
@@ -1379,25 +1379,25 @@ impl<T> Receiver<T> {
     /// use std::thread;
     /// use std::time::Duration;
     ///
-    /// let (sender, receiver) = channel();
+    /// let (tx, rx) = channel();
     ///
     /// // nothing is in the buffer yet
-    /// assert!(receiver.try_iter().next().is_none());
+    /// assert!(rx.try_iter().next().is_none());
     ///
     /// thread::spawn(move || {
     ///     thread::sleep(Duration::from_secs(1));
-    ///     sender.send(1).unwrap();
-    ///     sender.send(2).unwrap();
-    ///     sender.send(3).unwrap();
+    ///     tx.send(1).unwrap();
+    ///     tx.send(2).unwrap();
+    ///     tx.send(3).unwrap();
     /// });
     ///
     /// // nothing is in the buffer yet
-    /// assert!(receiver.try_iter().next().is_none());
+    /// assert!(rx.try_iter().next().is_none());
     ///
     /// // block for two seconds
     /// thread::sleep(Duration::from_secs(2));
     ///
-    /// let mut iter = receiver.try_iter();
+    /// let mut iter = rx.try_iter();
     /// assert_eq!(iter.next(), Some(1));
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(3));
