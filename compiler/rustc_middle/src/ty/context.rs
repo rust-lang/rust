@@ -385,7 +385,7 @@ impl<'tcx> Interner for TyInterner<'tcx> {
     }
 
     fn def_path_hash_to_def_id(self, hash: Self::DefPathHash) -> Option<Self::DefId> {
-        self.tcx.queries.on_disk_cache.as_ref().unwrap().def_path_hash_to_def_id(self.tcx, hash)
+        self.tcx.on_disk_cache.as_ref().unwrap().def_path_hash_to_def_id(self.tcx, hash)
     }
 }
 
