@@ -78,7 +78,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
-        self.try_to_scalar()?.to_int().ok()
+        Some(self.try_to_scalar()?.assert_int())
     }
 
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
@@ -367,13 +367,16 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.to_int()?.to_bits(target_size).map_err(|size| {
-            err_ub!(ScalarSizeMismatch {
-                target_size: target_size.bytes(),
-                data_size: size.bytes(),
-            })
-            .into()
-        })
+        match self {
+            Scalar::Int(int) => int.to_bits(target_size).map_err(|size| {
+                err_ub!(ScalarSizeMismatch {
+                    target_size: target_size.bytes(),
+                    data_size: size.bytes(),
+                })
+                .into()
+            }),
+            Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
+        }
     }
 
     #[inline(always)]
@@ -383,7 +386,10 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline]
     pub fn assert_int(self) -> ScalarInt {
-        self.to_int().expect("expected an int but got an abstract pointer")
+        match self {
+            Scalar::Ptr(_) => bug!("expected an int but got an abstract pointer"),
+            Scalar::Int(int) => int,
+        }
     }
 
     #[inline]
@@ -515,14 +521,6 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     #[inline(always)]
     fn from(ptr: Pointer<Tag>) -> Self {
         Scalar::Ptr(ptr)
-    }
-}
-
-impl TryFrom<Scalar> for ScalarInt {
-    type Error = super::InterpErrorInfo<'static>;
-    #[inline]
-    fn try_from(scalar: Scalar) -> InterpResult<'static, Self> {
-        scalar.to_int()
     }
 }
 
