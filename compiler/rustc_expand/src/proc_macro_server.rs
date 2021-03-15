@@ -2,16 +2,21 @@ use crate::base::ExtCtxt;
 
 use rustc_ast as ast;
 use rustc_ast::token;
+use rustc_ast::token::Nonterminal;
+use rustc_ast::token::NtIdent;
 use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
 use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::Diagnostic;
+use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
+use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
+use rustc_span::hygiene::ExpnKind;
 use rustc_span::symbol::{self, kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};
@@ -174,9 +179,7 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                if let Some((name, is_raw)) =
-                    nt.ident_name_compatibility_hack(span, sess.source_map())
-                {
+                if let Some((name, is_raw)) = ident_name_compatibility_hack(&nt, span, sess) {
                     TokenTree::Ident(Ident::new(sess, name.name, is_raw, name.span))
                 } else {
                     let stream = nt_to_tokenstream(&nt, sess, CanSynthesizeMissingTokens::No);
@@ -710,4 +713,63 @@ impl server::Span for Rustc<'_> {
     fn source_text(&mut self, span: Self::Span) -> Option<String> {
         self.sess.source_map().span_to_snippet(span).ok()
     }
+}
+
+// See issue #74616 for details
+fn ident_name_compatibility_hack(
+    nt: &Nonterminal,
+    orig_span: Span,
+    sess: &ParseSess,
+) -> Option<(rustc_span::symbol::Ident, bool)> {
+    if let NtIdent(ident, is_raw) = nt {
+        if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
+            let source_map = sess.source_map();
+            let filename = source_map.span_to_filename(orig_span);
+            if let FileName::Real(RealFileName::Named(path)) = filename {
+                let matches_prefix = |prefix, filename| {
+                    // Check for a path that ends with 'prefix*/src/<filename>'
+                    let mut iter = path.components().rev();
+                    iter.next().and_then(|p| p.as_os_str().to_str()) == Some(filename)
+                        && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
+                        && iter
+                            .next()
+                            .and_then(|p| p.as_os_str().to_str())
+                            .map_or(false, |p| p.starts_with(prefix))
+                };
+
+                let time_macros_impl =
+                    macro_name == sym::impl_macros && matches_prefix("time-macros-impl", "lib.rs");
+                if time_macros_impl
+                    || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
+                {
+                    let snippet = source_map.span_to_snippet(orig_span);
+                    if snippet.as_deref() == Ok("$name") {
+                        if time_macros_impl {
+                            sess.buffer_lint_with_diagnostic(
+                                &PROC_MACRO_BACK_COMPAT,
+                                orig_span,
+                                ast::CRATE_NODE_ID,
+                                "using an old version of `time-macros-impl`",
+                                BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                "the `time-macros-impl` crate will stop compiling in futures version of Rust. \
+                                Please update to the latest version of the `time` crate to avoid breakage".to_string())
+                            );
+                        }
+                        return Some((*ident, *is_raw));
+                    }
+                }
+
+                if macro_name == sym::tuple_from_req
+                    && (matches_prefix("actix-web", "extract.rs")
+                        || matches_prefix("actori-web", "extract.rs"))
+                {
+                    let snippet = source_map.span_to_snippet(orig_span);
+                    if snippet.as_deref() == Ok("$T") {
+                        return Some((*ident, *is_raw));
+                    }
+                }
+            }
+        }
+    }
+    None
 }
