@@ -233,7 +233,13 @@ impl HirDisplay for ConstParam {
 
 fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
-    if params.lifetimes.is_empty() && params.types.is_empty() && params.consts.is_empty() {
+    if params.lifetimes.is_empty()
+        && params.consts.is_empty()
+        && params
+            .types
+            .iter()
+            .all(|(_, param)| !matches!(param.provenance, TypeParamProvenance::TypeParamList))
+    {
         return Ok(());
     }
     write!(f, "<")?;
