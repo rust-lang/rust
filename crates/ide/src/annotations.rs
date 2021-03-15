@@ -2,6 +2,7 @@ use either::Either;
 use hir::{HasSource, Semantics};
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange},
+    helpers::visit_file_defs,
     RootDatabase,
 };
 use syntax::{ast::NameOwner, AstNode, TextRange, TextSize};
@@ -75,7 +76,7 @@ pub(crate) fn annotations(
         }
     }
 
-    Semantics::new(db).visit_file_defs(file_id, &mut |def| match def {
+    visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
         Either::Left(def) => {
             let node = match def {
                 hir::ModuleDef::Const(konst) => {

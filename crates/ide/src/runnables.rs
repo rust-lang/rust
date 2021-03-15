@@ -8,6 +8,7 @@ use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
     defs::Definition,
+    helpers::visit_file_defs,
     search::SearchScope,
     RootDatabase, SymbolKind,
 };
@@ -105,7 +106,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
 
     let mut res = Vec::new();
-    sema.visit_file_defs(file_id, &mut |def| match def {
+    visit_file_defs(&sema, file_id, &mut |def| match def {
         Either::Left(def) => {
             let runnable = match def {
                 hir::ModuleDef::Module(it) => runnable_mod(&sema, it),
