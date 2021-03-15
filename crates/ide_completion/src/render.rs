@@ -118,12 +118,6 @@ impl<'a> RenderContext<'a> {
     fn docs(&self, node: impl HasAttrs) -> Option<Documentation> {
         node.docs(self.db())
     }
-
-    // FIXME delete this method in favor of directly using the fields
-    // on CompletionContext
-    fn expected_name_and_type(&self) -> Option<(String, Type)> {
-        Some((self.completion.expected_name.clone()?, self.completion.expected_type.clone()?))
-    }
 }
 
 /// Generic renderer for completion items.
@@ -249,8 +243,8 @@ impl<'a> Render<'a> {
             relevance.is_local = true;
             item.set_relevance(relevance);
 
-            if let Some((_expected_name, expected_type)) = self.ctx.expected_name_and_type() {
-                if ty != expected_type {
+            if let Some(expected_type) = self.ctx.completion.expected_type.as_ref() {
+                if &ty != expected_type {
                     if let Some(ty_without_ref) = expected_type.remove_ref() {
                         if relevance_type_match(self.ctx.db().upcast(), &ty, &ty_without_ref) {
                             cov_mark::hit!(suggest_ref);
@@ -322,10 +316,8 @@ impl<'a> Render<'a> {
 fn compute_relevance(ctx: &RenderContext, ty: &Type, name: &str) -> CompletionRelevance {
     let mut res = CompletionRelevance::default();
 
-    if let Some((expected_name, expected_type)) = ctx.expected_name_and_type() {
-        res.exact_type_match = ty == &expected_type;
-        res.exact_name_match = name == &expected_name;
-    }
+    res.exact_type_match = Some(ty) == ctx.completion.expected_type.as_ref();
+    res.exact_name_match = Some(name) == ctx.completion.expected_name.as_deref();
 
     res
 }
