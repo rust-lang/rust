@@ -6,7 +6,7 @@ use proc_macro_api::ListMacrosTask;
 use std::str::FromStr;
 use test_utils::assert_eq_text;
 
-mod fixtures {
+pub mod fixtures {
     use cargo_metadata::Message;
     use std::path::PathBuf;
     use std::process::Command;

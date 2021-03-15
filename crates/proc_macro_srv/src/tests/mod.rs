@@ -56,3 +56,10 @@ DummyTrait [CustomDerive]"#,
         &res
     );
 }
+
+#[test]
+fn test_version_check() {
+    let path = fixtures::dylib_path("proc_macro_test", "0.0.0");
+    let info = proc_macro_api::read_dylib_info(&path).unwrap();
+    assert!(info.version.1 >= 50);
+}

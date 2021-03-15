@@ -23,6 +23,7 @@ use tt::{SmolStr, Subtree};
 use crate::process::{ProcMacroProcessSrv, ProcMacroProcessThread};
 
 pub use rpc::{ExpansionResult, ExpansionTask, ListMacrosResult, ListMacrosTask, ProcMacroKind};
+pub use version::{read_dylib_info, RustCInfo};
 
 #[derive(Debug, Clone)]
 struct ProcMacroProcessExpander {
@@ -76,7 +77,7 @@ impl ProcMacroClient {
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
-        match version::read_info(dylib_path) {
+        match version::read_dylib_info(dylib_path) {
             Ok(info) => {
                 if info.version.0 < 1 || info.version.1 < 47 {
                     eprintln!("proc-macro {} built by {:#?} is not supported by Rust Analyzer, please update your rust version.", dylib_path.to_string_lossy(), info);
