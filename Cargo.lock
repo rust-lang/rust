@@ -486,6 +486,7 @@ dependencies = [
  "log",
  "profile",
  "rustc-hash",
+ "smallvec",
  "stdx",
  "syntax",
  "tt",

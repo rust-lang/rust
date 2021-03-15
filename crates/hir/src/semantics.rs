@@ -259,6 +259,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn to_module_def(&self, file: FileId) -> Option<Module> {
+        self.imp.to_module_def(file).next()
+    }
+
+    pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.imp.to_module_def(file)
     }
 
@@ -537,8 +541,8 @@ impl<'db> SemanticsImpl<'db> {
         f(&mut ctx)
     }
 
-    fn to_module_def(&self, file: FileId) -> Option<Module> {
-        self.with_ctx(|ctx| ctx.file_to_def(file)).map(Module::from)
+    fn to_module_def(&self, file: FileId) -> impl Iterator<Item = Module> {
+        self.with_ctx(|ctx| ctx.file_to_def(file)).into_iter().map(Module::from)
     }
 
     fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
