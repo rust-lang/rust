@@ -563,6 +563,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         }
                     }
                 }
+            } else if err_code == &rustc_errors::error_code!(E0412) {
+                if let Some(correct) = Self::likely_rust_type(path) {
+                    err.span_suggestion(
+                        span,
+                        "perhaps you intended to use this type",
+                        correct.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         }
 
@@ -1241,6 +1250,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
             _ => None,
         }
+    }
+
+    // Returns the name of the Rust type approximately corresponding to
+    // a type name in another programming language.
+    fn likely_rust_type(path: &[Segment]) -> Option<Symbol> {
+        let name = path[path.len() - 1].ident.as_str();
+        // Common Java types
+        Some(match &*name {
+            "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
+            "short" => sym::i16,
+            "boolean" => sym::bool,
+            "int" => sym::i32,
+            "long" => sym::i64,
+            "float" => sym::f32,
+            "double" => sym::f64,
+            _ => return None,
+        })
     }
 
     /// Only used in a specific case of type ascription suggestions
