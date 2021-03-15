@@ -84,19 +84,18 @@ fn const_to_valtree_inner<'tcx>(
             Some(ty::ValTree::Leaf(val.assert_int()))
         }
 
-        // Raw pointers are not allowed in type level constants, as raw pointers cannot be treated
-        // like references. If we looked behind the raw pointer, we may be breaking the meaning of
-        // the raw pointer. Equality on raw pointers is performed on the pointer and not on the pointee,
-        // and we cannot guarantee any kind of pointer stability in the type system.
+        // Raw pointers are not allowed in type level constants, as raw pointers compare equal if
+        // their addresses are equal. Since we cannot guarantee any kind of pointer stability in
+        // the type system.
         // Technically we could allow function pointers, but they are not guaranteed to be the
         // same as the function pointers at runtime.
         ty::FnPtr(_) | ty::RawPtr(_) => None,
         ty::Ref(..) => unimplemented!("need to use deref_const"),
 
         // Trait objects are not allowed in type level constants, as we have no concept for
-        // resolving their backing type, even if we can do that at const eval time. We may want to consider
-        // adding a `ValTree::DownCast(Ty<'tcx>, Box<ValTree>)` in the future, but I don't even know the
-        // questions such a concept would open up, so an RFC would probably be good for this.
+        // resolving their backing type, even if we can do that at const eval time. We may
+        // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
+        // but it is unclear if this is useful.
         ty::Dynamic(..) => None,
 
         ty::Slice(_) | ty::Str => {
@@ -107,8 +106,7 @@ fn const_to_valtree_inner<'tcx>(
 
         ty::Adt(def, _) => {
             if def.variants.is_empty() {
-                // Uninhabited
-                return None;
+                bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
             let variant = ecx.read_discriminant(&place.into()).unwrap().1;
