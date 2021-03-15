@@ -71,7 +71,7 @@ pub use crate::{
     diagnostics::{Diagnostic, DiagnosticsConfig, Fix, Severity},
     display::navigation_target::NavigationTarget,
     expand_macro::ExpandedMacro,
-    file_structure::StructureNode,
+    file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
@@ -101,7 +101,7 @@ pub use ide_db::{
     search::{ReferenceAccess, SearchScope},
     source_change::{FileSystemEdit, SourceChange},
     symbol_index::Query,
-    RootDatabase,
+    RootDatabase, SymbolKind,
 };
 pub use ide_ssr::SsrError;
 pub use syntax::{TextRange, TextSize};

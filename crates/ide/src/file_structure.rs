@@ -1,4 +1,4 @@
-use ide_db::{StructureNodeKind, SymbolKind};
+use ide_db::SymbolKind;
 use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
     match_ast, AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange,
@@ -14,6 +14,12 @@ pub struct StructureNode {
     pub kind: StructureNodeKind,
     pub detail: Option<String>,
     pub deprecated: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum StructureNodeKind {
+    SymbolKind(SymbolKind),
+    Region,
 }
 
 // Feature: File Structure
