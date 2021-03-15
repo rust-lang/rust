@@ -1538,13 +1538,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
         impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
             fn drop(&mut self) {
-                /* This code gets executed either at the end of `dedup_by` or
-                 * when `same_bucket` panics */
+                /* This code gets executed when `same_bucket` panics */
 
-                /* SAFETY (if finishing successfully): self.read == len, so
-                 * no data is copied and length is set correctly */
-
-                /* SAFETY (if panicing): invariant guarantees that `read - write`
+                /* SAFETY: invariant guarantees that `read - write`
                  * and `len - read` never overflow and that the copy is always
                  * in-bounds. */
                 unsafe {
@@ -1553,7 +1549,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
                     /* How many items were left when `same_bucket` paniced.
                      * Basically vec[read..].len() */
-                    let items_left = len - self.read;
+                    let items_left = len.wrapping_sub(self.read);
 
                     /* Pointer to first item in vec[write..write+items_left] slice */
                     let dropped_ptr = ptr.add(self.write);
@@ -1566,7 +1562,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
                     /* How many items have been already dropped
                      * Basically vec[read..write].len() */
-                    let dropped = self.read - self.write;
+                    let dropped = self.read.wrapping_sub(self.write);
 
                     self.vec.set_len(len - dropped);
                 }
@@ -1574,7 +1570,6 @@ impl<T, A: Allocator> Vec<T, A> {
         }
 
         let mut gap = FillGapOnDrop { read: 1, write: 1, vec: self };
-
         let ptr = gap.vec.as_mut_ptr();
 
         /* Drop items while going through Vec, it should be more efficient than
@@ -1593,8 +1588,9 @@ impl<T, A: Allocator> Vec<T, A> {
                 } else {
                     let write_ptr = ptr.add(gap.write);
 
-                    /* Looks like doing just `copy` can be faster than
-                     * conditional `copy_nonoverlapping` */
+                    /* Because `read_ptr` can be equal to `write_ptr`, we either
+                     * have to use `copy` or conditional `copy_nonoverlapping`.
+                     * Looks like the first option is faster. */
                     ptr::copy(read_ptr, write_ptr, 1);
 
                     /* We have filled that place, so go further */
