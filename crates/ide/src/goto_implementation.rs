@@ -1,6 +1,9 @@
-use hir::{Crate, Impl, Semantics};
-use ide_db::RootDatabase;
-use syntax::{algo::find_node_at_offset, ast, AstNode};
+use hir::{Impl, Semantics};
+use ide_db::{
+    defs::{Definition, NameClass, NameRefClass},
+    RootDatabase,
+};
+use syntax::{ast, AstNode};
 
 use crate::{display::TryToNav, FilePosition, NavigationTarget, RangeInfo};
 
@@ -21,55 +24,42 @@ pub(crate) fn goto_implementation(
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax().clone();
 
-    let krate = sema.to_module_def(position.file_id)?.krate();
-
-    if let Some(nominal_def) = find_node_at_offset::<ast::Adt>(&syntax, position.offset) {
-        return Some(RangeInfo::new(
-            nominal_def.syntax().text_range(),
-            impls_for_def(&sema, &nominal_def, krate)?,
-        ));
-    } else if let Some(trait_def) = find_node_at_offset::<ast::Trait>(&syntax, position.offset) {
-        return Some(RangeInfo::new(
-            trait_def.syntax().text_range(),
-            impls_for_trait(&sema, &trait_def, krate)?,
-        ));
-    }
-
-    None
-}
-
-fn impls_for_def(
-    sema: &Semantics<RootDatabase>,
-    node: &ast::Adt,
-    krate: Crate,
-) -> Option<Vec<NavigationTarget>> {
-    let ty = match node {
-        ast::Adt::Struct(def) => sema.to_def(def)?.ty(sema.db),
-        ast::Adt::Enum(def) => sema.to_def(def)?.ty(sema.db),
-        ast::Adt::Union(def) => sema.to_def(def)?.ty(sema.db),
+    let node = sema.find_node_at_offset_with_descend(&syntax, position.offset)?;
+    let def = match &node {
+        ast::NameLike::Name(name) => {
+            NameClass::classify(&sema, name).map(|class| class.referenced_or_defined(sema.db))
+        }
+        ast::NameLike::NameRef(name_ref) => {
+            NameRefClass::classify(&sema, name_ref).map(|class| class.referenced(sema.db))
+        }
+        ast::NameLike::Lifetime(_) => None,
+    }?;
+    let def = match def {
+        Definition::ModuleDef(def) => def,
+        _ => return None,
     };
-
-    let impls = Impl::all_in_crate(sema.db, krate);
-
-    Some(
-        impls
-            .into_iter()
-            .filter(|impl_def| ty.is_equal_for_find_impls(&impl_def.target_ty(sema.db)))
-            .filter_map(|imp| imp.try_to_nav(sema.db))
-            .collect(),
-    )
+    let navs = match def {
+        hir::ModuleDef::Trait(trait_) => impls_for_trait(&sema, trait_),
+        hir::ModuleDef::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
+        hir::ModuleDef::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
+        hir::ModuleDef::BuiltinType(builtin) => {
+            let module = sema.to_module_def(position.file_id)?;
+            impls_for_ty(&sema, builtin.ty(sema.db, module))
+        }
+        _ => return None,
+    };
+    Some(RangeInfo { range: node.syntax().text_range(), info: navs })
 }
 
-fn impls_for_trait(
-    sema: &Semantics<RootDatabase>,
-    node: &ast::Trait,
-    krate: Crate,
-) -> Option<Vec<NavigationTarget>> {
-    let tr = sema.to_def(node)?;
+fn impls_for_ty(sema: &Semantics<RootDatabase>, ty: hir::Type) -> Vec<NavigationTarget> {
+    Impl::all_for_type(sema.db, ty).into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect()
+}
 
-    let impls = Impl::for_trait(sema.db, krate, tr);
-
-    Some(impls.into_iter().filter_map(|imp| imp.try_to_nav(sema.db)).collect())
+fn impls_for_trait(sema: &Semantics<RootDatabase>, trait_: hir::Trait) -> Vec<NavigationTarget> {
+    Impl::all_for_trait(sema.db, trait_)
+        .into_iter()
+        .filter_map(|imp| imp.try_to_nav(sema.db))
+        .collect()
 }
 
 #[cfg(test)]
@@ -223,6 +213,50 @@ mod marker {
 }
 #[rustc_builtin_macro]
 macro Copy {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_implementation_type_alias() {
+        check(
+            r#"
+struct Foo;
+
+type Bar$0 = Foo;
+
+impl Foo {}
+   //^^^
+impl Bar {}
+   //^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_implementation_adt_generic() {
+        check(
+            r#"
+struct Foo$0<T>;
+
+impl<T> Foo<T> {}
+      //^^^^^^
+impl Foo<str> {}
+   //^^^^^^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_implementation_builtin() {
+        check(
+            r#"
+//- /lib.rs crate:main deps:core
+fn foo(_: bool$0) {{}}
+//- /libcore.rs crate:core
+#[lang = "bool"]
+impl bool {}
+   //^^^^
 "#,
         );
     }

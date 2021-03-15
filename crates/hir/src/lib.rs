@@ -51,7 +51,8 @@ use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
-    method_resolution, to_assoc_type_id,
+    method_resolution::{self, TyFingerprint},
+    to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
     InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, Ty,
@@ -695,8 +696,8 @@ impl Adt {
         }
     }
 
-    pub fn krate(self, db: &dyn HirDatabase) -> Option<Crate> {
-        Some(self.module(db).krate())
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1018,8 +1019,8 @@ impl TypeAlias {
         Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
     }
 
-    pub fn krate(self, db: &dyn HirDatabase) -> Option<Crate> {
-        Some(self.module(db).krate())
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 
     pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
@@ -1482,9 +1483,44 @@ impl Impl {
 
         inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
     }
-    pub fn for_trait(db: &dyn HirDatabase, krate: Crate, trait_: Trait) -> Vec<Impl> {
-        let impls = db.trait_impls_in_crate(krate.id);
-        impls.for_trait(trait_.id).map(Self::from).collect()
+
+    pub fn all_for_type(db: &dyn HirDatabase, Type { krate, ty }: Type) -> Vec<Impl> {
+        let def_crates = match ty.value.def_crates(db, krate) {
+            Some(def_crates) => def_crates,
+            None => return Vec::new(),
+        };
+
+        let filter = |impl_def: &Impl| {
+            let target_ty = impl_def.target_ty(db);
+            let rref = target_ty.remove_ref();
+            ty.value.equals_ctor(rref.as_ref().map_or(&target_ty.ty.value, |it| &it.ty.value))
+        };
+
+        let mut all = Vec::new();
+        def_crates.into_iter().for_each(|id| {
+            all.extend(db.inherent_impls_in_crate(id).all_impls().map(Self::from).filter(filter))
+        });
+        let fp = TyFingerprint::for_impl(&ty.value);
+        for id in db.crate_graph().iter() {
+            match fp {
+                Some(fp) => all.extend(
+                    db.trait_impls_in_crate(id).for_self_ty(fp).map(Self::from).filter(filter),
+                ),
+                None => all
+                    .extend(db.trait_impls_in_crate(id).all_impls().map(Self::from).filter(filter)),
+            }
+        }
+        all
+    }
+
+    pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
+        let krate = trait_.module(db).krate();
+        let mut all = Vec::new();
+        for Crate { id } in krate.reverse_dependencies(db).into_iter().chain(Some(krate)) {
+            let impls = db.trait_impls_in_crate(id);
+            all.extend(impls.for_trait(trait_.id).map(Self::from))
+        }
+        all
     }
 
     // FIXME: the return type is wrong. This should be a hir version of
@@ -1930,12 +1966,6 @@ impl Type {
 
     pub fn as_associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<Trait> {
         self.ty.value.associated_type_parent_trait(db).map(Into::into)
-    }
-
-    // FIXME: provide required accessors such that it becomes implementable from outside.
-    pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
-        let rref = other.remove_ref();
-        self.ty.value.equals_ctor(rref.as_ref().map_or(&other.ty.value, |it| &it.ty.value))
     }
 
     fn derived(&self, ty: Ty) -> Type {

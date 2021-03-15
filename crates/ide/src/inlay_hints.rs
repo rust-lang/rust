@@ -219,7 +219,7 @@ fn hint_iterator(
     let strukt = std::iter::successors(Some(ty.clone()), |ty| ty.remove_ref())
         .last()
         .and_then(|strukt| strukt.as_adt())?;
-    let krate = strukt.krate(db)?;
+    let krate = strukt.krate(db);
     if krate != famous_defs.core()? {
         return None;
     }

@@ -44,7 +44,7 @@ impl TyFingerprint {
     /// Creates a TyFingerprint for looking up an impl. Only certain types can
     /// have impls: if we have some `struct S`, we can have an `impl S`, but not
     /// `impl &S`. Hence, this will return `None` for reference types and such.
-    pub(crate) fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
+    pub fn for_impl(ty: &Ty) -> Option<TyFingerprint> {
         let fp = match *ty.interned(&Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
@@ -139,6 +139,14 @@ impl TraitImpls {
                 vec.extend(impls);
             }
         }
+    }
+
+    /// Queries all trait impls for the given type.
+    pub fn for_self_ty(&self, fp: TyFingerprint) -> impl Iterator<Item = ImplId> + '_ {
+        self.map
+            .values()
+            .flat_map(move |impls| impls.get(&None).into_iter().chain(impls.get(&Some(fp))))
+            .flat_map(|it| it.iter().copied())
     }
 
     /// Queries all impls of the given trait.
