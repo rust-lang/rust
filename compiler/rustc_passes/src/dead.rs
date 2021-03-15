@@ -285,11 +285,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
             }
-            hir::ExprKind::Assign(ref left, ref right, ..) => {
-                self.handle_assign(left);
-                self.visit_expr(right);
-                return;
-            }
             hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.hir_id);
             }
