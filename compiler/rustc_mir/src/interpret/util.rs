@@ -21,8 +21,8 @@ where
     impl<'tcx> TypeVisitor<'tcx> for UsedParamsNeedSubstVisitor<'tcx> {
         type BreakTy = FoundParam;
 
-        fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-            self.tcx
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            Some(self.tcx)
         }
 
         fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {

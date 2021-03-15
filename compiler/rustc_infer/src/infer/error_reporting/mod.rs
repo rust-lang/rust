@@ -1517,8 +1517,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
-            fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx> {
-                self.tcx
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.tcx)
             }
 
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

@@ -737,10 +737,9 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
-                assert_eq!(promoted, None);
+            ty::ConstKind::Unevaluated(uv) if self.tcx().lazy_normalization() => {
+                assert_eq!(uv.promoted, None);
+                let substs = uv.substs(self.tcx());
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,
                     ty::VarianceDiagInfo::default(),
@@ -749,7 +748,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 )?;
                 Ok(self.tcx().mk_const(ty::Const {
                     ty: c.ty,
-                    val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
+                    val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(uv.def, substs)),
                 }))
             }
             _ => relate::super_relate_consts(self, c, c),
@@ -971,10 +970,9 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-                if self.tcx().lazy_normalization() =>
-            {
-                assert_eq!(promoted, None);
+            ty::ConstKind::Unevaluated(uv) if self.tcx().lazy_normalization() => {
+                assert_eq!(uv.promoted, None);
+                let substs = uv.substs(self.tcx());
                 let substs = self.relate_with_variance(
                     ty::Variance::Invariant,
                     ty::VarianceDiagInfo::default(),
@@ -983,7 +981,7 @@ impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                 )?;
                 Ok(self.tcx().mk_const(ty::Const {
                     ty: c.ty,
-                    val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
+                    val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(uv.def, substs)),
                 }))
             }
             _ => relate::super_relate_consts(self, c, c),

@@ -815,8 +815,8 @@ fn check_where_clauses<'tcx, 'fcx>(
             }
             impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams<'tcx> {
                 type BreakTy = ();
-                fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-                    self.tcx
+                fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                    Some(self.tcx)
                 }
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

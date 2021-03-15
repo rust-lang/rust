@@ -60,8 +60,8 @@ struct ParameterCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

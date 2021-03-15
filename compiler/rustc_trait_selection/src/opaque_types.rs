@@ -630,8 +630,8 @@ impl<'tcx, OP> TypeVisitor<'tcx> for ConstrainOpaqueTypeRegionVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(

@@ -192,9 +192,11 @@ pub trait TypeVisitor<'tcx>: Sized {
     /// Supplies the `tcx` for an unevaluated anonymous constant in case its default substs
     /// are not yet supplied.
     ///
-    /// Visitors which do not look into these substs may leave this unimplemented, so be
-    /// careful when calling this method elsewhere.
-    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx>;
+    /// Visitors which do not look into these substs may return `None` here, in which case
+    /// `super_visit_with` completely skips the default substs. Incorrectly returning
+    /// `None` can very quickly lead to ICE or other critical bugs, so be careful and
+    /// try to return an actual `tcx` if at all possible.
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>>;
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
@@ -336,8 +338,8 @@ impl<'tcx> TyCtxt<'tcx> {
         {
             type BreakTy = ();
 
-            fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-                self.tcx
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.tcx)
             }
 
             fn visit_binder<T: TypeFoldable<'tcx>>(
@@ -788,8 +790,9 @@ impl<'tcx> ValidateBoundVars<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     type BreakTy = ();
 
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        bug!("default anon const substs can't contain bound vars");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // Anonymous constants do not contain bound vars in their substs by default.
+        None
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
@@ -1006,8 +1009,9 @@ struct HasEscapingVarsVisitor {
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        bug!("tcx_for_anon_const_substs called for HasEscpaingVarsVisitor");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // Anonymous constants do not contain bound vars in their substs by default.
+        None
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
@@ -1080,8 +1084,13 @@ struct HasTypeFlagsVisitor {
 
 impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        bug!("tcx_for_anon_const_substs called for HasTypeFlagsVisitor");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // TypeFlagsVisitor must not look into the default anon const substs
+        // as that would cause cycle errors, but we do care about them for
+        // some flags.
+        //
+        // We therefore have to be very careful here.
+        None
     }
 
     #[inline]
@@ -1164,8 +1173,8 @@ impl LateBoundRegionsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(

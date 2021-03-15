@@ -927,20 +927,21 @@ pub trait PrettyPrinter<'tcx>:
         }
 
         match ct.val {
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }) => {
-                if let Some(promoted) = promoted {
-                    p!(print_value_path(def.did, substs));
+            ty::ConstKind::Unevaluated(uv) => {
+                if let Some(promoted) = uv.promoted {
+                    let substs = uv.substs_.unwrap();
+                    p!(print_value_path(uv.def.did, substs));
                     p!(write("::{:?}", promoted));
                 } else {
-                    match self.tcx().def_kind(def.did) {
+                    let tcx = self.tcx();
+                    match tcx.def_kind(uv.def.did) {
                         DefKind::Static | DefKind::Const | DefKind::AssocConst => {
-                            p!(print_value_path(def.did, substs))
+                            p!(print_value_path(uv.def.did, uv.substs(tcx)))
                         }
                         _ => {
-                            if def.is_local() {
-                                let span = self.tcx().def_span(def.did);
-                                if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span)
-                                {
+                            if uv.def.is_local() {
+                                let span = tcx.def_span(uv.def.did);
+                                if let Ok(snip) = tcx.sess.source_map().span_to_snippet(span) {
                                     p!(write("{}", snip))
                                 } else {
                                     print_underscore!()
@@ -1957,8 +1958,8 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
 
-            fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-                self.tcx
+            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                Some(self.tcx)
             }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {

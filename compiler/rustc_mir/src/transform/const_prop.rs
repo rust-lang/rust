@@ -483,7 +483,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Promoteds must lint and not error as the user didn't ask for them
                             ConstKind::Unevaluated(ty::Unevaluated {
                                 def: _,
-                                substs: _,
+                                substs_: _,
                                 promoted: Some(_),
                             }) => true,
                             // Out of backwards compatibility we cannot report hard errors in unused
