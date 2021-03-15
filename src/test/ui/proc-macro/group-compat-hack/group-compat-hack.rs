@@ -24,7 +24,8 @@ mod no_version {
     }
 
     struct Foo;
-    impl_macros!(Foo);
+    impl_macros!(Foo); //~ WARN  using an old version
+                       //~| WARN this was previously
     arrays!(Foo);
     other!(Foo);
 }
@@ -40,7 +41,8 @@ mod with_version {
     }
 
     struct Foo;
-    impl_macros!(Foo);
+    impl_macros!(Foo); //~  WARN using an old version
+                       //~| WARN this was previously
     arrays!(Foo);
     other!(Foo);
 }

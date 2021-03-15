@@ -1,0 +1,70 @@
+warning: using an old version of `time-macros-impl`
+  --> $DIR/time-macros-impl/src/lib.rs:5:32
+   |
+LL |         #[my_macro] struct One($name);
+   |                                ^^^^^
+   | 
+  ::: $DIR/group-compat-hack.rs:27:5
+   |
+LL |     impl_macros!(Foo);
+   |     ------------------ in this macro invocation
+   |
+   = note: `#[warn(proc_macro_back_compat)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: using an old version of `time-macros-impl`
+  --> $DIR/time-macros-impl-0.1.0/src/lib.rs:5:32
+   |
+LL |         #[my_macro] struct One($name);
+   |                                ^^^^^
+   | 
+  ::: $DIR/group-compat-hack.rs:44:5
+   |
+LL |     impl_macros!(Foo);
+   |     ------------------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage date: None, diagnostic:
+warning: using an old version of `time-macros-impl`
+  --> $DIR/time-macros-impl/src/lib.rs:5:32
+   |
+LL |         #[my_macro] struct One($name);
+   |                                ^^^^^
+   | 
+  ::: $DIR/group-compat-hack.rs:27:5
+   |
+LL |     impl_macros!(Foo);
+   |     ------------------ in this macro invocation
+   |
+   = note: `#[warn(proc_macro_back_compat)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage date: None, diagnostic:
+warning: using an old version of `time-macros-impl`
+  --> $DIR/time-macros-impl-0.1.0/src/lib.rs:5:32
+   |
+LL |         #[my_macro] struct One($name);
+   |                                ^^^^^
+   | 
+  ::: $DIR/group-compat-hack.rs:44:5
+   |
+LL |     impl_macros!(Foo);
+   |     ------------------ in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
