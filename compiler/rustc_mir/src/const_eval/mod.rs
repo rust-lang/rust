@@ -69,10 +69,11 @@ fn const_to_valtree_inner<'tcx>(
             let field = ecx.mplace_field(&place, i).unwrap();
             const_to_valtree_inner(ecx, &field)
         });
+        // For enums, we preped their variant index before the variant's fields so we can figure out
+        // the variant again when just seeing a valtree.
+        let branches = variant.into_iter().chain(fields);
         Some(ty::ValTree::Branch(
-            ecx.tcx
-                .arena
-                .alloc_from_iter(variant.into_iter().chain(fields).collect::<Option<Vec<_>>>()?),
+            ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?),
         ))
     };
     match place.layout.ty.kind() {
