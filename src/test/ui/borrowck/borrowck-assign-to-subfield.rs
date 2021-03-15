@@ -1,6 +1,5 @@
 // run-pass
 // pretty-expanded FIXME #23616
-#![allow(dead_code)]
 
 pub fn main() {
     struct A {
