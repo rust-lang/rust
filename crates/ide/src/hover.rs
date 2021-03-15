@@ -653,7 +653,9 @@ fn main() { let foo_test = fo$0o(); }
                 ```
 
                 ```rust
-                pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str
+                pub fn foo<'a, T>(b: &'a T) -> &'a str
+                where
+                    T: AsRef<str>,
                 ```
             "#]],
         );
@@ -861,7 +863,7 @@ fn main() { So$0me(12); }
                 ```
 
                 ```rust
-                Some
+                Some(T)
                 ```
             "#]],
         );
@@ -927,7 +929,7 @@ fn main() {
                 ```
 
                 ```rust
-                Some
+                Some(T)
                 ```
 
                 ---
@@ -1424,13 +1426,14 @@ fn bar() { fo$0o(); }
                 ```
             "#]],
         );
+        // Top level `pub(crate)` will be displayed as no visibility.
         check(
-            r#"pub(crate) async unsafe extern "C" fn foo$0() {}"#,
+            r#"mod m { pub(crate) async unsafe extern "C" fn foo$0() {} }"#,
             expect![[r#"
                 *foo*
 
                 ```rust
-                test
+                test::m
                 ```
 
                 ```rust
@@ -1472,11 +1475,18 @@ extern crate st$0d;
 //! abc123
             "#,
             expect![[r#"
-            *std*
-            Standard library for this test
+                *std*
 
-            Printed?
-            abc123
+                ```rust
+                extern crate std
+                ```
+
+                ---
+
+                Standard library for this test
+
+                Printed?
+                abc123
             "#]],
         );
         check(
@@ -1490,11 +1500,18 @@ extern crate std as ab$0c;
 //! abc123
             "#,
             expect![[r#"
-            *abc*
-            Standard library for this test
+                *abc*
 
-            Printed?
-            abc123
+                ```rust
+                extern crate std
+                ```
+
+                ---
+
+                Standard library for this test
+
+                Printed?
+                abc123
             "#]],
         );
     }
@@ -2004,7 +2021,7 @@ enum E {
                 ```
 
                 ```rust
-                V
+                V { field: i32 }
                 ```
 
                 ---
@@ -2400,7 +2417,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                                     focus_range: 24..25,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2446,7 +2463,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                                     focus_range: 24..25,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2588,7 +2605,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2685,7 +2702,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2698,7 +2715,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 22..25,
                                     name: "Bar",
                                     kind: Trait,
-                                    description: "trait Bar",
+                                    description: "trait Bar<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2802,7 +2819,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                     focus_range: 19..22,
                                     name: "Bar",
                                     kind: Trait,
-                                    description: "trait Bar",
+                                    description: "trait Bar<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2899,7 +2916,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2949,7 +2966,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 49..50,
                                     name: "B",
                                     kind: Struct,
-                                    description: "struct B",
+                                    description: "struct B<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3025,7 +3042,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3073,7 +3090,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                     focus_range: 6..15,
                                     name: "ImplTrait",
                                     kind: Trait,
-                                    description: "trait ImplTrait",
+                                    description: "trait ImplTrait<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3086,7 +3103,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                     focus_range: 50..51,
                                     name: "B",
                                     kind: Struct,
-                                    description: "struct B",
+                                    description: "struct B<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3099,7 +3116,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                     focus_range: 28..36,
                                     name: "DynTrait",
                                     kind: Trait,
-                                    description: "trait DynTrait",
+                                    description: "trait DynTrait<T>",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3565,6 +3582,17 @@ mod foo$0;
 "#,
             expect![[r#"
                 *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                mod foo
+                ```
+
+                ---
+
                 For the horde!
             "#]],
         );
@@ -3589,7 +3617,7 @@ use foo::bar::{self$0};
                 ```
 
                 ```rust
-                pub mod bar
+                mod bar
                 ```
 
                 ---
@@ -3670,8 +3698,9 @@ fn main() {
                 ```
 
                 ```rust
-                fn bar<'t, T: Clone + 't>(s: &mut S<'t, T>, t: u32) -> *mut u32
+                fn bar<'t, T>(s: &mut S<'t, T>, t: u32) -> *mut u32
                 where
+                    T: Clone + 't,
                     't: 't + 't,
                     for<'a> T: Clone + 'a,
                 ```
