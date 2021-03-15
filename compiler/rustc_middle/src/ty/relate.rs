@@ -423,9 +423,9 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                     let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
                     let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
                     match (sz_a, sz_b) {
-                        (Some(sz_a_val), Some(sz_b_val)) => Err(TypeError::FixedArraySize(
-                            expected_found(relation, sz_a_val, sz_b_val),
-                        )),
+                        (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
+                            TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),
+                        ),
                         _ => Err(err),
                     }
                 }
