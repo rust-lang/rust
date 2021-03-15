@@ -289,7 +289,7 @@ pub(crate) fn handle_document_symbol(
         let doc_symbol = lsp_types::DocumentSymbol {
             name: symbol.label,
             detail: symbol.detail,
-            kind: to_proto::symbol_kind(symbol.kind),
+            kind: to_proto::structure_node_kind(symbol.kind),
             tags: Some(tags),
             deprecated: Some(symbol.deprecated),
             range: to_proto::range(&line_index, symbol.node_range),

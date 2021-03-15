@@ -1,7 +1,8 @@
-use ide_db::SymbolKind;
+use ide_db::{StructureNodeKind, SymbolKind};
 use syntax::{
     ast::{self, AttrsOwner, GenericParamsOwner, NameOwner},
-    match_ast, AstNode, SourceFile, SyntaxNode, TextRange, WalkEvent,
+    match_ast, AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange,
+    WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -10,7 +11,7 @@ pub struct StructureNode {
     pub label: String,
     pub navigation_range: TextRange,
     pub node_range: TextRange,
-    pub kind: SymbolKind,
+    pub kind: StructureNodeKind,
     pub detail: Option<String>,
     pub deprecated: bool,
 }
@@ -32,17 +33,29 @@ pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
-    for event in file.syntax().preorder() {
+    for event in file.syntax().preorder_with_tokens() {
         match event {
-            WalkEvent::Enter(node) => {
+            WalkEvent::Enter(NodeOrToken::Node(node)) => {
                 if let Some(mut symbol) = structure_node(&node) {
                     symbol.parent = stack.last().copied();
                     stack.push(res.len());
                     res.push(symbol);
                 }
             }
-            WalkEvent::Leave(node) => {
+            WalkEvent::Leave(NodeOrToken::Node(node)) => {
                 if structure_node(&node).is_some() {
+                    stack.pop().unwrap();
+                }
+            }
+            WalkEvent::Enter(NodeOrToken::Token(token)) => {
+                if let Some(mut symbol) = structure_token(token) {
+                    symbol.parent = stack.last().copied();
+                    stack.push(res.len());
+                    res.push(symbol);
+                }
+            }
+            WalkEvent::Leave(NodeOrToken::Token(token)) => {
+                if structure_token(token).is_some() {
                     stack.pop().unwrap();
                 }
             }
@@ -52,14 +65,14 @@ pub(crate) fn file_structure(file: &SourceFile) -> Vec<StructureNode> {
 }
 
 fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
-    fn decl<N: NameOwner + AttrsOwner>(node: N, kind: SymbolKind) -> Option<StructureNode> {
+    fn decl<N: NameOwner + AttrsOwner>(node: N, kind: StructureNodeKind) -> Option<StructureNode> {
         decl_with_detail(&node, None, kind)
     }
 
     fn decl_with_type_ref<N: NameOwner + AttrsOwner>(
         node: &N,
         type_ref: Option<ast::Type>,
-        kind: SymbolKind,
+        kind: StructureNodeKind,
     ) -> Option<StructureNode> {
         let detail = type_ref.map(|type_ref| {
             let mut detail = String::new();
@@ -72,7 +85,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
     fn decl_with_detail<N: NameOwner + AttrsOwner>(
         node: &N,
         detail: Option<String>,
-        kind: SymbolKind,
+        kind: StructureNodeKind,
     ) -> Option<StructureNode> {
         let name = node.name()?;
 
@@ -120,18 +133,18 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     collapse_ws(ret_type.syntax(), &mut detail);
                 }
 
-                decl_with_detail(&it, Some(detail), SymbolKind::Function)
+                decl_with_detail(&it, Some(detail), StructureNodeKind::SymbolKind(SymbolKind::Function))
             },
-            ast::Struct(it) => decl(it, SymbolKind::Struct),
-            ast::Union(it) => decl(it, SymbolKind::Union),
-            ast::Enum(it) => decl(it, SymbolKind::Enum),
-            ast::Variant(it) => decl(it, SymbolKind::Variant),
-            ast::Trait(it) => decl(it, SymbolKind::Trait),
-            ast::Module(it) => decl(it, SymbolKind::Module),
-            ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::TypeAlias),
-            ast::RecordField(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Field),
-            ast::Const(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Const),
-            ast::Static(it) => decl_with_type_ref(&it, it.ty(), SymbolKind::Static),
+            ast::Struct(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Struct)),
+            ast::Union(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Union)),
+            ast::Enum(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Enum)),
+            ast::Variant(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Variant)),
+            ast::Trait(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Trait)),
+            ast::Module(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Module)),
+            ast::TypeAlias(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::TypeAlias)),
+            ast::RecordField(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Field)),
+            ast::Const(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Const)),
+            ast::Static(it) => decl_with_type_ref(&it, it.ty(), StructureNodeKind::SymbolKind(SymbolKind::Static)),
             ast::Impl(it) => {
                 let target_type = it.self_ty()?;
                 let target_trait = it.trait_();
@@ -147,16 +160,36 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     label,
                     navigation_range: target_type.syntax().text_range(),
                     node_range: it.syntax().text_range(),
-                    kind: SymbolKind::Impl,
+                    kind: StructureNodeKind::SymbolKind(SymbolKind::Impl),
                     detail: None,
                     deprecated: false,
                 };
                 Some(node)
             },
-            ast::MacroRules(it) => decl(it, SymbolKind::Macro),
+            ast::MacroRules(it) => decl(it, StructureNodeKind::SymbolKind(SymbolKind::Macro)),
             _ => None,
         }
     }
+}
+
+fn structure_token(token: SyntaxToken) -> Option<StructureNode> {
+    if let Some(comment) = ast::Comment::cast(token) {
+        let text = comment.text().trim();
+
+        if let Some(region_name) = text.strip_prefix("// region:").map(str::trim) {
+            return Some(StructureNode {
+                parent: None,
+                label: region_name.to_string(),
+                navigation_range: comment.syntax().text_range(),
+                node_range: comment.syntax().text_range(),
+                kind: StructureNodeKind::Region,
+                detail: None,
+                deprecated: false,
+            });
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -217,6 +250,16 @@ fn obsolete() {}
 
 #[deprecated(note = "for awhile")]
 fn very_obsolete() {}
+
+// region: Some region name
+// endregion
+
+// region: dontpanic
+mod m {
+fn f() {}
+// endregion
+fn g() {}
+}
 "#,
             expect![[r#"
                 [
@@ -225,7 +268,9 @@ fn very_obsolete() {}
                         label: "Foo",
                         navigation_range: 8..11,
                         node_range: 1..26,
-                        kind: Struct,
+                        kind: SymbolKind(
+                            Struct,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -236,7 +281,9 @@ fn very_obsolete() {}
                         label: "x",
                         navigation_range: 18..19,
                         node_range: 18..24,
-                        kind: Field,
+                        kind: SymbolKind(
+                            Field,
+                        ),
                         detail: Some(
                             "i32",
                         ),
@@ -247,7 +294,9 @@ fn very_obsolete() {}
                         label: "m",
                         navigation_range: 32..33,
                         node_range: 28..158,
-                        kind: Module,
+                        kind: SymbolKind(
+                            Module,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -258,7 +307,9 @@ fn very_obsolete() {}
                         label: "bar1",
                         navigation_range: 43..47,
                         node_range: 40..52,
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         detail: Some(
                             "fn()",
                         ),
@@ -271,7 +322,9 @@ fn very_obsolete() {}
                         label: "bar2",
                         navigation_range: 60..64,
                         node_range: 57..81,
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         detail: Some(
                             "fn<T>(t: T) -> T",
                         ),
@@ -284,7 +337,9 @@ fn very_obsolete() {}
                         label: "bar3",
                         navigation_range: 89..93,
                         node_range: 86..156,
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         detail: Some(
                             "fn<A, B>(a: A, b: B) -> Vec< u32 >",
                         ),
@@ -295,7 +350,9 @@ fn very_obsolete() {}
                         label: "E",
                         navigation_range: 165..166,
                         node_range: 160..180,
-                        kind: Enum,
+                        kind: SymbolKind(
+                            Enum,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -306,7 +363,9 @@ fn very_obsolete() {}
                         label: "X",
                         navigation_range: 169..170,
                         node_range: 169..170,
-                        kind: Variant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -317,7 +376,9 @@ fn very_obsolete() {}
                         label: "Y",
                         navigation_range: 172..173,
                         node_range: 172..178,
-                        kind: Variant,
+                        kind: SymbolKind(
+                            Variant,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -326,7 +387,9 @@ fn very_obsolete() {}
                         label: "T",
                         navigation_range: 186..187,
                         node_range: 181..193,
-                        kind: TypeAlias,
+                        kind: SymbolKind(
+                            TypeAlias,
+                        ),
                         detail: Some(
                             "()",
                         ),
@@ -337,7 +400,9 @@ fn very_obsolete() {}
                         label: "S",
                         navigation_range: 201..202,
                         node_range: 194..213,
-                        kind: Static,
+                        kind: SymbolKind(
+                            Static,
+                        ),
                         detail: Some(
                             "i32",
                         ),
@@ -348,7 +413,9 @@ fn very_obsolete() {}
                         label: "C",
                         navigation_range: 220..221,
                         node_range: 214..232,
-                        kind: Const,
+                        kind: SymbolKind(
+                            Const,
+                        ),
                         detail: Some(
                             "i32",
                         ),
@@ -359,7 +426,9 @@ fn very_obsolete() {}
                         label: "impl E",
                         navigation_range: 239..240,
                         node_range: 234..243,
-                        kind: Impl,
+                        kind: SymbolKind(
+                            Impl,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -368,7 +437,9 @@ fn very_obsolete() {}
                         label: "impl fmt::Debug for E",
                         navigation_range: 265..266,
                         node_range: 245..269,
-                        kind: Impl,
+                        kind: SymbolKind(
+                            Impl,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -377,7 +448,9 @@ fn very_obsolete() {}
                         label: "mc",
                         navigation_range: 284..286,
                         node_range: 271..303,
-                        kind: Macro,
+                        kind: SymbolKind(
+                            Macro,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -386,7 +459,9 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 334..339,
                         node_range: 305..356,
-                        kind: Macro,
+                        kind: SymbolKind(
+                            Macro,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -395,7 +470,9 @@ fn very_obsolete() {}
                         label: "mcexp",
                         navigation_range: 387..392,
                         node_range: 358..409,
-                        kind: Macro,
+                        kind: SymbolKind(
+                            Macro,
+                        ),
                         detail: None,
                         deprecated: false,
                     },
@@ -404,7 +481,9 @@ fn very_obsolete() {}
                         label: "obsolete",
                         navigation_range: 428..436,
                         node_range: 411..441,
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         detail: Some(
                             "fn()",
                         ),
@@ -415,11 +494,74 @@ fn very_obsolete() {}
                         label: "very_obsolete",
                         navigation_range: 481..494,
                         node_range: 443..499,
-                        kind: Function,
+                        kind: SymbolKind(
+                            Function,
+                        ),
                         detail: Some(
                             "fn()",
                         ),
                         deprecated: true,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "Some region name",
+                        navigation_range: 501..528,
+                        node_range: 501..528,
+                        kind: Region,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: None,
+                        label: "m",
+                        navigation_range: 568..569,
+                        node_range: 543..606,
+                        kind: SymbolKind(
+                            Module,
+                        ),
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "dontpanic",
+                        navigation_range: 543..563,
+                        node_range: 543..563,
+                        kind: Region,
+                        detail: None,
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "f",
+                        navigation_range: 575..576,
+                        node_range: 572..581,
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: false,
+                    },
+                    StructureNode {
+                        parent: Some(
+                            20,
+                        ),
+                        label: "g",
+                        navigation_range: 598..599,
+                        node_range: 582..604,
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        detail: Some(
+                            "fn()",
+                        ),
+                        deprecated: false,
                     },
                 ]
             "#]],

@@ -11,7 +11,7 @@ use ide::{
     Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity, SourceChange,
     TextEdit, TextRange, TextSize,
 };
-use ide_db::SymbolKind;
+use ide_db::{StructureNodeKind, SymbolKind};
 use itertools::Itertools;
 use serde_json::to_value;
 
@@ -60,6 +60,13 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::ValueParam
         | SymbolKind::Label => lsp_types::SymbolKind::Variable,
         SymbolKind::Union => lsp_types::SymbolKind::Struct,
+    }
+}
+
+pub(crate) fn structure_node_kind(kind: StructureNodeKind) -> lsp_types::SymbolKind {
+    match kind {
+        StructureNodeKind::SymbolKind(symbol) => symbol_kind(symbol),
+        StructureNodeKind::Region => lsp_types::SymbolKind::Namespace,
     }
 }
 
