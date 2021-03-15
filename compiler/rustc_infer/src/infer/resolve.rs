@@ -127,8 +127,8 @@ impl<'a, 'tcx> UnresolvedTypeFinder<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'tcx> {
     type BreakTy = (Ty<'tcx>, Option<Span>);
 
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.infcx.tcx)
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

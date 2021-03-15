@@ -479,8 +479,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 pub(super) struct TraitObjectVisitor(pub(super) FxHashSet<DefId>);
 
 impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
-    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx> {
-        bug!("tcx_for_anon_const_substs called for TraitObjectVisitor");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // The default anon const substs cannot include
+        // trait objects, so we don't have to bother looking.
+        None
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

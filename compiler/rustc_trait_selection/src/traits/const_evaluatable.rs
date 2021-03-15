@@ -155,11 +155,8 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // and hopefully soon change this to an error.
     //
     // See #74595 for more details about this.
-    let concrete = infcx.const_eval_resolve(
-        param_env,
-        ty::Unevaluated { def, substs, promoted: None },
-        Some(span),
-    );
+    let concrete =
+        infcx.const_eval_resolve(param_env, ty::Unevaluated::new(def, substs), Some(span));
 
     if concrete.is_ok() && substs.has_param_types_or_consts() {
         match infcx.tcx.def_kind(def.did) {
@@ -217,9 +214,7 @@ impl AbstractConst<'tcx> {
         ct: &ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         match ct.val {
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: _ }) => {
-                AbstractConst::new(tcx, def, substs)
-            }
+            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.def, uv.substs(tcx)),
             ty::ConstKind::Error(_) => Err(ErrorReported),
             _ => Ok(None),
         }

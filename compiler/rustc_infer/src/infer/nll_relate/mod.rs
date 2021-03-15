@@ -765,8 +765,8 @@ struct ScopeInstantiator<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
-    fn tcx_for_anon_const_substs<'a>(&'a self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(

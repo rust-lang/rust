@@ -850,8 +850,8 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.tcx
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.tcx)
     }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
@@ -1072,8 +1072,9 @@ impl PlaceholdersCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        bug!("tcx_for_anon_const_substs called for PlaceholdersCollector");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // Anon const substs do not contain placeholders by default.
+        None
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {

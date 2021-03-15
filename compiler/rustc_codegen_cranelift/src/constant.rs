@@ -129,13 +129,13 @@ pub(crate) fn codegen_constant<'tcx>(
     };
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
-        ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
-            if fx.tcx.is_static(def.did) =>
+        ConstKind::Unevaluated(uv)
+            if fx.tcx.is_static(uv.def.did) =>
         {
-            assert!(substs.is_empty());
-            assert!(promoted.is_none());
+            assert!(uv.substs(fx.tcx).is_empty());
+            assert!(uv.promoted.is_none());
 
-            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty)).to_cvalue(fx);
+            return codegen_static_ref(fx, uv.def.did, fx.layout_of(const_.ty)).to_cvalue(fx);
         }
         ConstKind::Unevaluated(unevaluated) => {
             match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {

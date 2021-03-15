@@ -54,8 +54,9 @@ impl<'tcx> BoundVarsCollector<'tcx> {
 impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     type BreakTy = ();
 
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        bug!("default anon const substs can't be bound vars");
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        // Anon const substs do not contain bound vars by default.
+        None
     }
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,

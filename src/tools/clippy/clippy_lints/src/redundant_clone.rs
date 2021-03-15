@@ -705,8 +705,8 @@ struct ContainsRegion<'tcx>(TyCtxt<'tcx>);
 
 impl<'tcx> TypeVisitor<'tcx> for ContainsRegion<'tcx> {
     type BreakTy = ();
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.0
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.0)
     }
 
     fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
