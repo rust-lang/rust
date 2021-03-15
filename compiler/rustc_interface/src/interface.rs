@@ -181,7 +181,11 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
     );
 
     if let Some(parse_sess_created) = config.parse_sess_created {
-        parse_sess_created(&mut Lrc::get_mut(&mut sess).unwrap().parse_sess);
+        parse_sess_created(
+            &mut Lrc::get_mut(&mut sess)
+                .expect("create_session() should never share the returned session")
+                .parse_sess,
+        );
     }
 
     let compiler = Compiler {
