@@ -1631,6 +1631,13 @@ impl Type {
         matches!(self.ty.value.interned(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
     }
 
+    pub fn is_usize(&self) -> bool {
+        matches!(
+            self.ty.value.interned(&Interner),
+            TyKind::Scalar(Scalar::Uint(hir_ty::primitive::UintTy::Usize))
+        )
+    }
+
     pub fn remove_ref(&self) -> Option<Type> {
         match &self.ty.value.interned(&Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),

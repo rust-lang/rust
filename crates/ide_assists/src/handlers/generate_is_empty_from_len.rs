@@ -1,7 +1,7 @@
 use hir::{known, HasSource, Name};
 use syntax::{
     ast::{self, NameOwner},
-    AstNode, TextRange,
+    AstNode,
 };
 
 use crate::{
@@ -51,12 +51,19 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext)
     }
 
     let impl_ = fn_node.syntax().ancestors().find_map(ast::Impl::cast)?;
+    let len_fn = get_impl_method(ctx, &impl_, &known::len)?;
+    if !len_fn.ret_type(ctx.sema.db).is_usize() {
+        cov_mark::hit!(len_fn_different_return_type);
+        return None;
+    }
+
     if get_impl_method(ctx, &impl_, &known::is_empty).is_some() {
         cov_mark::hit!(is_empty_already_implemented);
         return None;
     }
 
-    let range = get_text_range_of_len_function(ctx, &impl_)?;
+    let node = len_fn.source(ctx.sema.db)?;
+    let range = node.syntax().value.text_range();
 
     acc.add(
         AssistId("generate_is_empty_from_len", AssistKind::Generate),
@@ -87,13 +94,6 @@ fn get_impl_method(
     let ty = impl_def.target_ty(db);
     let traits_in_scope = scope.traits_in_scope();
     ty.iterate_method_candidates(db, krate, &traits_in_scope, Some(fn_name), |_, func| Some(func))
-}
-
-fn get_text_range_of_len_function(ctx: &AssistContext, impl_: &ast::Impl) -> Option<TextRange> {
-    let db = ctx.sema.db;
-    let func = get_impl_method(ctx, impl_, &known::len)?;
-    let node = func.source(db)?;
-    Some(node.syntax().value.text_range())
 }
 
 #[cfg(test)]
@@ -151,6 +151,23 @@ impl MyStruct {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn len_fn_different_return_type() {
+        cov_mark::check!(len_fn_different_return_type);
+        check_assist_not_applicable(
+            generate_is_empty_from_len,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    p$0ub fn len(&self) -> u32 {
+        self.data.len()
     }
 }
 "#,
