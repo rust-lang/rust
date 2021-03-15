@@ -350,7 +350,6 @@ impl<'a> CompletionContext<'a> {
                         },
                         ast::IdentPat(it) => {
                             cov_mark::hit!(expected_type_if_let_with_leading_char);
-                            cov_mark::hit!(expected_type_if_let_without_leading_char);
                             cov_mark::hit!(expected_type_match_arm_with_leading_char);
                             let ty = self.sema.type_of_pat(&ast::Pat::from(it));
 
@@ -748,7 +747,6 @@ fn foo() {
 
     #[test]
     fn expected_type_if_let_without_leading_char() {
-        cov_mark::check!(expected_type_if_let_without_leading_char);
         check_expected_type_and_name(
             r#"
 enum Foo { Bar, Baz, Quux }
