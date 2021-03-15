@@ -11,11 +11,9 @@ use crate::tokenstream::TokenTree;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_span::hygiene::ExpnKind;
-use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, edition::Edition, FileName, RealFileName, Span, DUMMY_SP};
+use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::{fmt, mem};
 
@@ -812,52 +810,6 @@ impl Nonterminal {
             }
         }
         false
-    }
-
-    // See issue #74616 for details
-    pub fn ident_name_compatibility_hack(
-        &self,
-        orig_span: Span,
-        source_map: &SourceMap,
-    ) -> Option<(Ident, bool)> {
-        if let NtIdent(ident, is_raw) = self {
-            if let ExpnKind::Macro(_, macro_name) = orig_span.ctxt().outer_expn_data().kind {
-                let filename = source_map.span_to_filename(orig_span);
-                if let FileName::Real(RealFileName::Named(path)) = filename {
-                    let matches_prefix = |prefix, filename| {
-                        // Check for a path that ends with 'prefix*/src/<filename>'
-                        let mut iter = path.components().rev();
-                        iter.next().and_then(|p| p.as_os_str().to_str()) == Some(filename)
-                            && iter.next().and_then(|p| p.as_os_str().to_str()) == Some("src")
-                            && iter
-                                .next()
-                                .and_then(|p| p.as_os_str().to_str())
-                                .map_or(false, |p| p.starts_with(prefix))
-                    };
-
-                    if (macro_name == sym::impl_macros
-                        && matches_prefix("time-macros-impl", "lib.rs"))
-                        || (macro_name == sym::arrays && matches_prefix("js-sys", "lib.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$name") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
-
-                    if macro_name == sym::tuple_from_req
-                        && (matches_prefix("actix-web", "extract.rs")
-                            || matches_prefix("actori-web", "extract.rs"))
-                    {
-                        let snippet = source_map.span_to_snippet(orig_span);
-                        if snippet.as_deref() == Ok("$T") {
-                            return Some((*ident, *is_raw));
-                        }
-                    }
-                }
-            }
-        }
-        None
     }
 }
 

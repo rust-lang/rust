@@ -6,7 +6,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use crate::{declare_lint, declare_lint_pass};
+use crate::{declare_lint, declare_lint_pass, FutureBreakage};
 use rustc_span::edition::Edition;
 
 declare_lint! {
@@ -2955,6 +2955,7 @@ declare_lint_pass! {
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         DISJOINT_CAPTURE_DROP_REORDER,
         LEGACY_DERIVE_HELPERS,
+        PROC_MACRO_BACK_COMPAT,
     ]
 }
 
@@ -3080,5 +3081,55 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #82730 <https://github.com/rust-lang/rust/issues/82730>",
         edition: None,
+    };
+}
+
+declare_lint! {
+    /// The `proc_macro_back_compat` lint detects uses of old versions of certain
+    /// proc-macro crates, which have hardcoded workarounds in the compiler.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs-dependency)
+    ///
+    /// use time_macros_impl::impl_macros;
+    /// struct Foo;
+    /// impl_macros!(Foo);
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: using an old version of `time-macros-impl`
+    ///   ::: $DIR/group-compat-hack.rs:27:5
+    ///    |
+    /// LL |     impl_macros!(Foo);
+    ///    |     ------------------ in this macro invocation
+    ///    |
+    ///    = note: `#[warn(proc_macro_back_compat)]` on by default
+    ///    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+    ///    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
+    ///    = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Eventually, the backwards-compatibility hacks present in the compiler will be removed,
+    /// causing older versions of certain crates to stop compiling.
+    /// This is a [future-incompatible] lint to ease the transition to an error.
+    /// See [issue #83125] for more details.
+    ///
+    /// [issue #83125]: https://github.com/rust-lang/rust/issues/83125
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub PROC_MACRO_BACK_COMPAT,
+    Warn,
+    "detects usage of old versions of certain proc-macro crates",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #83125 <https://github.com/rust-lang/rust/issues/83125>",
+        edition: None,
+        future_breakage: Some(FutureBreakage {
+            date: None
+        })
     };
 }
