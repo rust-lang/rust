@@ -582,6 +582,8 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
+    ///
+    /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
     pub fn sub(
         &mut self,
         level: Level,
