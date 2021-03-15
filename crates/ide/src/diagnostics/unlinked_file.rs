@@ -19,9 +19,9 @@ use crate::Fix;
 use super::fixes::DiagnosticWithFix;
 
 #[derive(Debug)]
-pub struct UnlinkedFile {
-    pub file_id: FileId,
-    pub node: SyntaxNodePtr,
+pub(crate) struct UnlinkedFile {
+    pub(crate) file_id: FileId,
+    pub(crate) node: SyntaxNodePtr,
 }
 
 impl Diagnostic for UnlinkedFile {
