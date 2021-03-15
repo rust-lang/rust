@@ -382,14 +382,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn to_int(self) -> InterpResult<'tcx, ScalarInt> {
-        match self {
-            Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
-            Scalar::Int(int) => Ok(int),
-        }
-    }
-
-    #[inline]
     pub fn assert_int(self) -> ScalarInt {
         self.to_int().expect("expected an int but got an abstract pointer")
     }

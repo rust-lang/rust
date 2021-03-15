@@ -26,8 +26,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         let ct = self.monomorphize(constant.literal);
         let ct = match ct {
-            mir::ConstantSource::Ty(ct) => ct,
-            mir::ConstantSource::Val(val, _) => return Ok(val),
+            mir::ConstantKind::Ty(ct) => ct,
+            mir::ConstantKind::Val(val, _) => return Ok(val),
         };
         match ct.val {
             ty::ConstKind::Unevaluated(def, substs, promoted) => self

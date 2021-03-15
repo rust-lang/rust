@@ -347,18 +347,18 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstantSource<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ConstantKind<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         match self {
-            ConstantSource::Ty(c) => ConstantSource::Ty(c.fold_with(folder)),
-            ConstantSource::Val(v, t) => ConstantSource::Val(v, t.fold_with(folder)),
+            ConstantKind::Ty(c) => ConstantKind::Ty(c.fold_with(folder)),
+            ConstantKind::Val(v, t) => ConstantKind::Val(v, t.fold_with(folder)),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         match *self {
-            ConstantSource::Ty(c) => c.visit_with(visitor),
-            ConstantSource::Val(_, t) => t.visit_with(visitor),
+            ConstantKind::Ty(c) => c.visit_with(visitor),
+            ConstantKind::Val(_, t) => t.visit_with(visitor),
         }
     }
 }

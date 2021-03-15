@@ -13,9 +13,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantSource, Local,
-    LocalDecl, LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope,
-    SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantKind, Local, LocalDecl,
+    LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -489,14 +489,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
-                        ConstantSource::Ty(ct) => match ct.val {
+                        ConstantKind::Ty(ct) => match ct.val {
                             // Promoteds must lint and not error as the user didn't ask for them
                             ConstKind::Unevaluated(_, _, Some(_)) => true,
                             // Out of backwards compatibility we cannot report hard errors in unused
                             // generic functions using associated constants of the generic parameters.
                             _ => c.literal.needs_subst(),
                         },
-                        ConstantSource::Val(_, ty) => ty.needs_subst(),
+                        ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
@@ -818,7 +818,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
             match c.literal {
-                ConstantSource::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
+                ConstantKind::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
                 _ => {
                     trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
                     return;

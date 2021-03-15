@@ -573,12 +573,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     crate fn mir_const_to_op(
         &self,
-        val: &mir::ConstantSource<'tcx>,
+        val: &mir::ConstantKind<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val {
-            mir::ConstantSource::Ty(ct) => self.const_to_op(ct, layout),
-            mir::ConstantSource::Val(val, ty) => self.const_val_to_op(*val, ty, None),
+            mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, None),
         }
     }
 

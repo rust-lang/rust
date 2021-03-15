@@ -450,8 +450,8 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                     self.push(&format!("+ user_ty: {:?}", user_ty));
                 }
                 match literal {
-                    ConstantSource::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
-                    ConstantSource::Val(val, ty) => {
+                    ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
+                    ConstantKind::Val(val, ty) => {
                         self.push(&format!("+ literal: {:?}, {}", val, ty))
                     }
                 }

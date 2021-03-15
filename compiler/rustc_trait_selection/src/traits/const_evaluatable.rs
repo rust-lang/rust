@@ -378,8 +378,8 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 Ok(self.locals[local])
             }
             mir::Operand::Constant(ct) => match ct.literal {
-                mir::ConstantSource::Ty(ct) => Ok(self.add_node(Node::Leaf(ct), span)),
-                mir::ConstantSource::Val(..) => self.error(Some(span), "unsupported constant")?,
+                mir::ConstantKind::Ty(ct) => Ok(self.add_node(Node::Leaf(ct), span)),
+                mir::ConstantKind::Val(..) => self.error(Some(span), "unsupported constant")?,
             },
         }
     }

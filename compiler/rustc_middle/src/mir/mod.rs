@@ -2033,7 +2033,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ConstantSource::Ty(ty::Const::zero_sized(tcx, ty)),
+            literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
         })
     }
 
@@ -2064,7 +2064,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ConstantSource::Val(val.into(), ty),
+            literal: ConstantKind::Val(val.into(), ty),
         })
     }
 
@@ -2406,11 +2406,11 @@ pub struct Constant<'tcx> {
     /// Needed for NLL to impose user-given type constraints.
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
-    pub literal: ConstantSource<'tcx>,
+    pub literal: ConstantKind<'tcx>,
 }
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
-pub enum ConstantSource<'tcx> {
+pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
     Ty(&'tcx ty::Const<'tcx>),
     /// This constant cannot go back into the type system, as it represents
@@ -2436,33 +2436,33 @@ impl Constant<'tcx> {
     }
 }
 
-impl From<&'tcx ty::Const<'tcx>> for ConstantSource<'tcx> {
+impl From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
     fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
         Self::Ty(ct)
     }
 }
 
-impl ConstantSource<'tcx> {
+impl ConstantKind<'tcx> {
     /// Returns `None` if the constant is not trivially safe for use in the type system.
     pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
         match self {
-            ConstantSource::Ty(c) => Some(c),
-            ConstantSource::Val(..) => None,
+            ConstantKind::Ty(c) => Some(c),
+            ConstantKind::Val(..) => None,
         }
     }
 
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantSource::Ty(c) => c.ty,
-            ConstantSource::Val(_, ty) => ty,
+            ConstantKind::Ty(c) => c.ty,
+            ConstantKind::Val(_, ty) => ty,
         }
     }
 
     #[inline]
     pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantSource::Ty(c) => c.val.try_to_value(),
-            ConstantSource::Val(val, _) => Some(val),
+            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Val(val, _) => Some(val),
         }
     }
 
@@ -2709,8 +2709,8 @@ impl<'tcx> Display for Constant<'tcx> {
             _ => write!(fmt, "const ")?,
         }
         match self.literal {
-            ConstantSource::Ty(c) => pretty_print_const(c, fmt, true),
-            ConstantSource::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+            ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
+            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
         }
     }
 }

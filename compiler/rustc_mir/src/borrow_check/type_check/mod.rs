@@ -315,7 +315,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         } else {
             let tcx = self.tcx();
             let maybe_uneval = match constant.literal {
-                ConstantSource::Ty(ct) => match ct.val {
+                ConstantKind::Ty(ct) => match ct.val {
                     ty::ConstKind::Unevaluated(def, substs, promoted) => {
                         Some((def, substs, promoted))
                     }
