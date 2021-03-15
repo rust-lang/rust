@@ -726,6 +726,8 @@ fn doctest_generate_is_empty_from_len() {
     check_doc_test(
         "generate_is_empty_from_len",
         r#####"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     p$0ub fn len(&self) -> usize {
         self.data.len()
@@ -733,6 +735,8 @@ impl MyStruct {
 }
 "#####,
         r#####"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     pub fn len(&self) -> usize {
         self.data.len()

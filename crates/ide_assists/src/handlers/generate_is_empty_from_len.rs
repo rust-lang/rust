@@ -1,4 +1,4 @@
-use hir::{AssocItem, HasSource, Impl};
+use hir::{known, HasSource, Name};
 use syntax::{
     ast::{self, NameOwner},
     AstNode, TextRange,
@@ -14,6 +14,8 @@ use crate::{
 // Generates is_empty implementation from the len method.
 //
 // ```
+// struct MyStruct { data: Vec<String> }
+//
 // impl MyStruct {
 //     p$0ub fn len(&self) -> usize {
 //         self.data.len()
@@ -22,6 +24,8 @@ use crate::{
 // ```
 // ->
 // ```
+// struct MyStruct { data: Vec<String> }
+//
 // impl MyStruct {
 //     pub fn len(&self) -> usize {
 //         self.data.len()
@@ -46,60 +50,50 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext)
         return None;
     }
 
-    let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
-    let impl_def = ctx.sema.to_def(&impl_)?;
-    if is_empty_implemented(ctx, &impl_def) {
+    let impl_ = fn_node.syntax().ancestors().find_map(ast::Impl::cast)?;
+    if get_impl_method(ctx, &impl_, &known::is_empty).is_some() {
         cov_mark::hit!(is_empty_already_implemented);
         return None;
     }
 
-    let range = get_text_range_of_len_function(ctx, &impl_def)?;
+    let range = get_text_range_of_len_function(ctx, &impl_)?;
 
     acc.add(
         AssistId("generate_is_empty_from_len", AssistKind::Generate),
         "Generate a is_empty impl from a len function",
         range,
         |builder| {
-            let code = get_is_empty_code();
+            let code = r#"
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }"#
+            .to_string();
             builder.insert(range.end(), code)
         },
     )
 }
 
-fn get_function_from_impl(ctx: &AssistContext, impl_def: &Impl, name: &str) -> Option<AssocItem> {
+fn get_impl_method(
+    ctx: &AssistContext,
+    impl_: &ast::Impl,
+    fn_name: &Name,
+) -> Option<hir::Function> {
     let db = ctx.sema.db;
-    impl_def.items(db).into_iter().filter(|item| matches!(item, AssocItem::Function(_value))).find(
-        |func| match func.name(db) {
-            Some(fn_name) => fn_name.to_string() == name,
-            None => false,
-        },
-    )
+    let impl_def: hir::Impl = ctx.sema.to_def(impl_)?;
+
+    let scope = ctx.sema.scope(impl_.syntax());
+    let krate = impl_def.module(db).krate();
+    let ty = impl_def.target_ty(db);
+    let traits_in_scope = scope.traits_in_scope();
+    ty.iterate_method_candidates(db, krate, &traits_in_scope, Some(fn_name), |_, func| Some(func))
 }
 
-fn is_empty_implemented(ctx: &AssistContext, impl_def: &Impl) -> bool {
-    get_function_from_impl(ctx, impl_def, "is_empty").is_some()
-}
-
-fn get_text_range_of_len_function(ctx: &AssistContext, impl_def: &Impl) -> Option<TextRange> {
+fn get_text_range_of_len_function(ctx: &AssistContext, impl_: &ast::Impl) -> Option<TextRange> {
     let db = ctx.sema.db;
-    let len_fn = get_function_from_impl(ctx, impl_def, "len")?;
-
-    let mut range = None;
-    if let AssocItem::Function(node) = len_fn {
-        let node = node.source(db)?;
-        range = Some(node.syntax().value.text_range());
-    }
-
-    range
-}
-
-fn get_is_empty_code() -> String {
-    r#"
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }"#
-    .to_string()
+    let func = get_impl_method(ctx, impl_, &known::len)?;
+    let node = func.source(db)?;
+    Some(node.syntax().value.text_range())
 }
 
 #[cfg(test)]
@@ -114,6 +108,8 @@ mod tests {
         check_assist_not_applicable(
             generate_is_empty_from_len,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     p$0ub fn test(&self) -> usize {
             self.data.len()
@@ -129,6 +125,8 @@ impl MyStruct {
         check_assist_not_applicable(
             generate_is_empty_from_len,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     p$0ub fn len(&self, _i: bool) -> usize {
         self.data.len()
@@ -144,6 +142,8 @@ impl MyStruct {
         check_assist_not_applicable(
             generate_is_empty_from_len,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     p$0ub fn len(&self) -> usize {
         self.data.len()
@@ -162,6 +162,8 @@ impl MyStruct {
         check_assist(
             generate_is_empty_from_len,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     p$0ub fn len(&self) -> usize {
         self.data.len()
@@ -169,6 +171,8 @@ impl MyStruct {
 }
 "#,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     pub fn len(&self) -> usize {
         self.data.len()
@@ -187,6 +191,8 @@ impl MyStruct {
         check_assist(
             generate_is_empty_from_len,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     pub fn new() -> Self {
         Self { data: 0 }
@@ -197,11 +203,13 @@ impl MyStruct {
     }
 
     pub fn work(&self) -> Option<usize> {
-        // do some work
+
     }
 }
 "#,
             r#"
+struct MyStruct { data: Vec<String> }
+
 impl MyStruct {
     pub fn new() -> Self {
         Self { data: 0 }
@@ -216,7 +224,29 @@ impl MyStruct {
     }
 
     pub fn work(&self) -> Option<usize> {
-        // do some work
+
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn multiple_impls() {
+        check_assist_not_applicable(
+            generate_is_empty_from_len,
+            r#"
+struct MyStruct { data: Vec<String> }
+
+impl MyStruct {
+    p$0ub fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
+impl MyStruct {
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 "#,
