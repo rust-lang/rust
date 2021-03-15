@@ -24,7 +24,7 @@ use hir_ty::{
 };
 use syntax::{
     ast::{self, AstNode},
-    AstPtr, SyntaxNode, TextRange, TextSize,
+    SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
@@ -161,26 +161,8 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         field: &ast::RecordExprField,
     ) -> Option<(Field, Option<Local>)> {
-        let expr_id = {
-            let record_lit = field.parent_record_lit();
-            let record_lit_expr = self.expr_id(db, &ast::Expr::from(record_lit))?;
-            let body = self.body.as_ref()?;
-            let body_source_map = self.body_source_map.as_ref()?;
-            match &body[record_lit_expr] {
-                hir_def::expr::Expr::RecordLit { fields, .. } => {
-                    let field_ptr = InFile::new(self.file_id, AstPtr::new(field));
-                    fields.iter().enumerate().find_map(|(i, f)| {
-                        let ptr = body_source_map.field_syntax(record_lit_expr, i);
-                        if ptr == field_ptr {
-                            Some(f.expr)
-                        } else {
-                            None
-                        }
-                    })?
-                }
-                _ => return None,
-            }
-        };
+        let expr_id =
+            self.body_source_map.as_ref()?.node_field(InFile::new(self.file_id, field))?;
 
         let local = if field.name_ref().is_some() {
             None

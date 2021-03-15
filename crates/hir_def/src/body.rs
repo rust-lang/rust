@@ -253,11 +253,18 @@ pub type LabelSource = InFile<LabelPtr>;
 pub struct BodySourceMap {
     expr_map: FxHashMap<ExprSource, ExprId>,
     expr_map_back: ArenaMap<ExprId, Result<ExprSource, SyntheticSyntax>>,
+
     pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, Result<PatSource, SyntheticSyntax>>,
+
     label_map: FxHashMap<LabelSource, LabelId>,
     label_map_back: ArenaMap<LabelId, LabelSource>,
-    field_map: FxHashMap<(ExprId, usize), InFile<AstPtr<ast::RecordExprField>>>,
+
+    /// We don't create explicit nodes for record fields (`S { record_field: 92 }`).
+    /// Instead, we use id of expression (`92`) to identify the field.
+    field_map: FxHashMap<InFile<AstPtr<ast::RecordExprField>>, ExprId>,
+    field_map_back: FxHashMap<ExprId, InFile<AstPtr<ast::RecordExprField>>>,
+
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
@@ -337,6 +344,8 @@ impl Index<LabelId> for Body {
     }
 }
 
+// FIXME: Change `node_` prefix to something more reasonable.
+// Perhaps `expr_syntax` and `expr_id`?
 impl BodySourceMap {
     pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
         self.expr_map_back[expr].clone()
@@ -375,8 +384,12 @@ impl BodySourceMap {
         self.label_map.get(&src).cloned()
     }
 
-    pub fn field_syntax(&self, expr: ExprId, field: usize) -> InFile<AstPtr<ast::RecordExprField>> {
-        self.field_map[&(expr, field)].clone()
+    pub fn field_syntax(&self, expr: ExprId) -> InFile<AstPtr<ast::RecordExprField>> {
+        self.field_map_back[&expr].clone()
+    }
+    pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
+        let src = node.map(|it| AstPtr::new(it));
+        self.field_map.get(&src).cloned()
     }
 
     pub(crate) fn add_diagnostics(&self, _db: &dyn DefDatabase, sink: &mut DiagnosticSink<'_>) {

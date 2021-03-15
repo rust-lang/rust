@@ -784,7 +784,7 @@ mod diagnostics {
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {
-        NoSuchField { expr: ExprId, field: usize },
+        NoSuchField { expr: ExprId },
         BreakOutsideOfLoop { expr: ExprId },
     }
 
@@ -796,9 +796,9 @@ mod diagnostics {
             sink: &mut DiagnosticSink,
         ) {
             match self {
-                InferenceDiagnostic::NoSuchField { expr, field } => {
+                InferenceDiagnostic::NoSuchField { expr } => {
                     let (_, source_map) = db.body_with_source_map(owner);
-                    let field = source_map.field_syntax(*expr, *field);
+                    let field = source_map.field_syntax(*expr);
                     sink.push(NoSuchField { file: field.file_id, field: field.value })
                 }
                 InferenceDiagnostic::BreakOutsideOfLoop { expr } => {

@@ -405,14 +405,13 @@ impl<'a> InferenceContext<'a> {
                 let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| variant_data(self.db.upcast(), it));
-                for (field_idx, field) in fields.iter().enumerate() {
+                for field in fields.iter() {
                     let field_def =
                         variant_data.as_ref().and_then(|it| match it.field(&field.name) {
                             Some(local_id) => Some(FieldId { parent: def_id.unwrap(), local_id }),
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                    expr: tgt_expr,
-                                    field: field_idx,
+                                    expr: field.expr,
                                 });
                                 None
                             }
