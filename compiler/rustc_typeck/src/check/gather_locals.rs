@@ -4,7 +4,7 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::PatKind;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::Ty;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_trait_selection::traits;
 use std::mem;
 
@@ -58,11 +58,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
 
-                let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
-                    self.fcx.instantiate_opaque_types_from_value(self.parent_id, o_ty, ty.span)
-                } else {
-                    o_ty
-                };
+                let revealed_ty = self.fcx.instantiate_opaque_types_from_value(
+                    self.parent_id,
+                    o_ty,
+                    ty.span,
+                    Some(sym::impl_trait_in_bindings),
+                );
 
                 let c_ty =
                     self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(revealed_ty));

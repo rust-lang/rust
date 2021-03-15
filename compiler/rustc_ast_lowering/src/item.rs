@@ -342,7 +342,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ty,
                     ImplTraitContext::OtherOpaqueTy {
                         capturable_lifetimes: &mut FxHashSet::default(),
-                        origin: hir::OpaqueTyOrigin::Misc,
+                        origin: hir::OpaqueTyOrigin::TyAlias,
                     },
                 );
                 let generics = self.lower_generics(gen, ImplTraitContext::disallowed());
@@ -918,7 +918,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ty,
                             ImplTraitContext::OtherOpaqueTy {
                                 capturable_lifetimes: &mut FxHashSet::default(),
-                                origin: hir::OpaqueTyOrigin::Misc,
+                                origin: hir::OpaqueTyOrigin::TyAlias,
                             },
                         );
                         hir::ImplItemKind::TyAlias(ty)

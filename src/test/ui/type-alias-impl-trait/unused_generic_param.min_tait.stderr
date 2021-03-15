@@ -1,0 +1,14 @@
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:9:28
+   |
+LL | type PartiallyDefined<T> = impl 'static;
+   |                            ^^^^^^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:16:29
+   |
+LL | type PartiallyDefined2<T> = impl 'static;
+   |                             ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
