@@ -97,7 +97,7 @@ impl Diagnostic for UnresolvedImport {
 
 // Diagnostic: unresolved-macro-call
 //
-// This diagnostic is triggered if rust-analyzer is unable to resolove path to a
+// This diagnostic is triggered if rust-analyzer is unable to resolve the path to a
 // macro in a macro invocation.
 #[derive(Debug)]
 pub struct UnresolvedMacroCall {

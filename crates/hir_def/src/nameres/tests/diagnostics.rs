@@ -155,3 +155,48 @@ fn inactive_via_cfg_attr() {
         "#,
     );
 }
+
+#[test]
+fn unresolved_legacy_scope_macro() {
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          macro_rules! m { () => {} }
+
+          m!();
+          m2!();
+        //^^^^^^ unresolved macro call
+        "#,
+    );
+}
+
+#[test]
+fn unresolved_module_scope_macro() {
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          mod mac {
+            #[macro_export]
+            macro_rules! m { () => {} }
+          }
+
+          self::m!();
+          self::m2!();
+        //^^^^^^^^^^^^ unresolved macro call
+        "#,
+    );
+}
+
+#[test]
+fn builtin_macro_fails_expansion() {
+    check_diagnostics(
+        r#"
+        //- /lib.rs
+          #[rustc_builtin_macro]
+          macro_rules! include { () => {} }
+
+          include!("doesntexist");
+        //^^^^^^^^^^^^^^^^^^^^^^^^ could not convert tokens
+        "#,
+    );
+}
