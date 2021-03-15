@@ -5,9 +5,9 @@ use crate::llvm::{self, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
+use cstr::cstr;
 use libc::c_uint;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::const_cstr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
@@ -419,9 +419,9 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                             .all(|&byte| byte == 0);
 
                     let sect_name = if all_bytes_are_zero {
-                        const_cstr!("__DATA,__thread_bss")
+                        cstr!("__DATA,__thread_bss")
                     } else {
-                        const_cstr!("__DATA,__thread_data")
+                        cstr!("__DATA,__thread_data")
                     };
                     llvm::LLVMSetSection(g, sect_name.as_ptr());
                 }

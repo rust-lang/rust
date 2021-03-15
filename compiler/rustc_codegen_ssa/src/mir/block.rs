@@ -146,24 +146,6 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
         }
     }
-
-    // Generate sideeffect intrinsic if jumping to any of the targets can form
-    // a loop.
-    fn maybe_sideeffect<Bx: BuilderMethods<'a, 'tcx>>(
-        &self,
-        mir: &'tcx mir::Body<'tcx>,
-        bx: &mut Bx,
-        targets: &[mir::BasicBlock],
-    ) {
-        if bx.tcx().sess.opts.debugging_opts.insert_sideeffect {
-            if targets.iter().any(|&target| {
-                target <= self.bb
-                    && target.start_location().is_predecessor_of(self.bb.start_location(), mir)
-            }) {
-                bx.sideeffect(false);
-            }
-        }
-    }
 }
 
 /// Codegen implementations for some terminator variants.
@@ -198,8 +180,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let discr = self.codegen_operand(&mut bx, &discr);
         // `switch_ty` is redundant, sanity-check that.
         assert_eq!(discr.layout.ty, switch_ty);
-        helper.maybe_sideeffect(self.mir, &mut bx, targets.all_targets());
-
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
             // If there are two targets (one conditional, one fallback), emit br instead of switch
@@ -308,7 +288,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -337,7 +316,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => (bx.get_fn_addr(drop_fn), FnAbi::of_instance(&bx, drop_fn, &[])),
         };
-        helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
         helper.do_call(
             self,
             &mut bx,
@@ -379,7 +357,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -390,7 +367,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
         let panic_block = self.new_block("panic");
-        helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
         if expected {
             bx.cond_br(cond, lltarget, panic_block.llbb());
         } else {
@@ -491,9 +467,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fn_abi = FnAbi::of_instance(bx, instance, &[]);
                 let llfn = bx.get_fn_addr(instance);
 
-                if let Some((_, target)) = destination.as_ref() {
-                    helper.maybe_sideeffect(self.mir, bx, &[*target]);
-                }
                 // Codegen the actual panic invoke/call.
                 helper.do_call(
                     self,
@@ -507,7 +480,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 // a NOP
                 let target = destination.as_ref().unwrap().1;
-                helper.maybe_sideeffect(self.mir, bx, &[target]);
                 helper.funclet_br(self, bx, target)
             }
             true
@@ -551,7 +523,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let &(_, target) = destination.as_ref().unwrap();
-            helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
             helper.funclet_br(self, &mut bx, target);
             return;
         }
@@ -586,7 +557,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if let Some(destination_ref) = destination.as_ref() {
                 let &(dest, target) = destination_ref;
                 self.codegen_transmute(&mut bx, &args[0], dest);
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
                 helper.funclet_br(self, &mut bx, target);
             } else {
                 // If we are trying to transmute to an uninhabited type,
@@ -634,74 +604,77 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     location.val.store(&mut bx, tmp);
                 }
                 self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-
-                helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
                 helper.funclet_br(self, &mut bx, *target);
             }
             return;
         }
 
-        if intrinsic.is_some() && intrinsic != Some(sym::drop_in_place) {
-            let intrinsic = intrinsic.unwrap();
-            let dest = match ret_dest {
-                _ if fn_abi.ret.is_indirect() => llargs[0],
-                ReturnDest::Nothing => {
-                    bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
-                }
-                ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
-                ReturnDest::DirectOperand(_) => {
-                    bug!("Cannot use direct operand with an intrinsic call")
-                }
-            };
-
-            let args: Vec<_> = args
-                .iter()
-                .enumerate()
-                .map(|(i, arg)| {
-                    // The indices passed to simd_shuffle* in the
-                    // third argument must be constant. This is
-                    // checked by const-qualification, which also
-                    // promotes any complex rvalues to constants.
-                    if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
-                        if let mir::Operand::Constant(constant) = arg {
-                            let c = self.eval_mir_constant(constant);
-                            let (llval, ty) = self.simd_shuffle_indices(
-                                &bx,
-                                constant.span,
-                                constant.literal.ty,
-                                c,
-                            );
-                            return OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) };
-                        } else {
-                            span_bug!(span, "shuffle indices must be constant");
-                        }
+        match intrinsic {
+            None | Some(sym::drop_in_place) => {}
+            Some(sym::copy_nonoverlapping) => unreachable!(),
+            Some(intrinsic) => {
+                let dest = match ret_dest {
+                    _ if fn_abi.ret.is_indirect() => llargs[0],
+                    ReturnDest::Nothing => {
+                        bx.const_undef(bx.type_ptr_to(bx.arg_memory_ty(&fn_abi.ret)))
                     }
+                    ReturnDest::IndirectOperand(dst, _) | ReturnDest::Store(dst) => dst.llval,
+                    ReturnDest::DirectOperand(_) => {
+                        bug!("Cannot use direct operand with an intrinsic call")
+                    }
+                };
 
-                    self.codegen_operand(&mut bx, arg)
-                })
-                .collect();
+                let args: Vec<_> = args
+                    .iter()
+                    .enumerate()
+                    .map(|(i, arg)| {
+                        // The indices passed to simd_shuffle* in the
+                        // third argument must be constant. This is
+                        // checked by const-qualification, which also
+                        // promotes any complex rvalues to constants.
+                        if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
+                            if let mir::Operand::Constant(constant) = arg {
+                                let c = self.eval_mir_constant(constant);
+                                let (llval, ty) = self.simd_shuffle_indices(
+                                    &bx,
+                                    constant.span,
+                                    constant.literal.ty,
+                                    c,
+                                );
+                                return OperandRef {
+                                    val: Immediate(llval),
+                                    layout: bx.layout_of(ty),
+                                };
+                            } else {
+                                span_bug!(span, "shuffle indices must be constant");
+                            }
+                        }
 
-            Self::codegen_intrinsic_call(
-                &mut bx,
-                *instance.as_ref().unwrap(),
-                &fn_abi,
-                &args,
-                dest,
-                span,
-            );
+                        self.codegen_operand(&mut bx, arg)
+                    })
+                    .collect();
 
-            if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                Self::codegen_intrinsic_call(
+                    &mut bx,
+                    *instance.as_ref().unwrap(),
+                    &fn_abi,
+                    &args,
+                    dest,
+                    span,
+                );
+
+                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                    self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                }
+
+                if let Some((_, target)) = *destination {
+                    helper.funclet_br(self, &mut bx, target);
+                } else {
+                    bx.unreachable();
+                }
+
+                return;
             }
-
-            if let Some((_, target)) = *destination {
-                helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
-                helper.funclet_br(self, &mut bx, target);
-            } else {
-                bx.unreachable();
-            }
-
-            return;
         }
 
         // Split the rust-call tupled arguments off.
@@ -709,7 +682,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let (tup, args) = args.split_last().unwrap();
             (args, Some(tup))
         } else {
-            (&args[..], None)
+            (args, None)
         };
 
         'make_args: for (i, arg) in first_args.iter().enumerate() {
@@ -811,9 +784,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => span_bug!(span, "no llfn for call"),
         };
 
-        if let Some((_, target)) = destination.as_ref() {
-            helper.maybe_sideeffect(self.mir, &mut bx, &[*target]);
-        }
         helper.do_call(
             self,
             &mut bx,
@@ -963,22 +933,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::TerminatorKind::Goto { target } => {
                 if bb == target {
-                    // This is an unconditional branch back to this same basic
-                    // block. That means we have something like a `loop {}`
-                    // statement. Currently LLVM miscompiles this because it
-                    // assumes forward progress. We want to prevent this in all
-                    // cases, but that has a fairly high cost to compile times
-                    // currently. Instead, try to handle this specific case
-                    // which comes up commonly in practice (e.g., in embedded
-                    // code).
+                    // This is an unconditional branch back to this same basic block. That means we
+                    // have something like a `loop {}` statement. LLVM versions before 12.0
+                    // miscompile this because they assume forward progress. For older versions
+                    // try to handle just this specific case which comes up commonly in practice
+                    // (e.g., in embedded code).
                     //
-                    // The `true` here means we insert side effects regardless
-                    // of -Zinsert-sideeffect being passed on unconditional
-                    // branching to the same basic block.
-                    bx.sideeffect(true);
-                } else {
-                    helper.maybe_sideeffect(self.mir, &mut bx, &[target]);
+                    // NB: the `sideeffect` currently checks for the LLVM version used internally.
+                    bx.sideeffect();
                 }
+
                 helper.funclet_br(self, &mut bx, target);
             }
 

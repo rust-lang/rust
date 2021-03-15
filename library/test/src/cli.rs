@@ -51,14 +51,8 @@ fn optgroups() -> getopts::Options {
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
-        .optflag("h", "help", "Display this message (longer with --help)")
-        .optopt(
-            "",
-            "logfile",
-            "Write logs to the specified file instead \
-             of stdout",
-            "PATH",
-        )
+        .optflag("h", "help", "Display this message")
+        .optopt("", "logfile", "Write logs to the specified file", "PATH")
         .optflag(
             "",
             "nocapture",

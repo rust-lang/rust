@@ -118,14 +118,19 @@ use astconv::AstConv;
 use bounds::Bounds;
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0045,
-            "C-variadic function must have C or cdecl calling convention"
-        );
-        err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
+    match (decl.c_variadic, abi) {
+        // The function has the correct calling convention, or isn't a "C-variadic" function.
+        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl) => {}
+        // The function is a "C-variadic" function with an incorrect calling convention.
+        (true, _) => {
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0045,
+                "C-variadic function must have C or cdecl calling convention"
+            );
+            err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
+        }
     }
 }
 
@@ -201,7 +206,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
                         error = true;
                     }
 
-                    for attr in it.attrs {
+                    let attrs = tcx.hir().attrs(main_id);
+                    for attr in attrs {
                         if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
@@ -300,7 +306,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                         error = true;
                     }
 
-                    for attr in it.attrs {
+                    let attrs = tcx.hir().attrs(start_id);
+                    for attr in attrs {
                         if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
@@ -369,7 +376,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.track_errors(|| {
         tcx.sess.time("type_collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
+                tcx.ensure().collect_mod_item_types(module);
             }
         });
     })?;
@@ -401,7 +408,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
     tcx.sess.time("item_types_checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(module);
         }
     });
 

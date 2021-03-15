@@ -222,7 +222,7 @@ impl Validator<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator_kind.is_some() {
+        if is_async_fn(self.ccx) || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -515,7 +515,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         // Special-case reborrows to be more like a copy of a reference.
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match kind {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
@@ -530,21 +530,21 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                         }
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
             Rvalue::AddressOf(mutbl, place) => {
-                if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
+                if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
                     let ctx = match mutbl {
                         Mutability::Not => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
                         }
                         Mutability::Mut => PlaceContext::MutatingUse(MutatingUseContext::AddressOf),
                     };
-                    self.visit_local(&place.local, ctx, location);
-                    self.visit_projection(place.local, reborrowed_proj, ctx, location);
+                    self.visit_local(&reborrowed_place_ref.local, ctx, location);
+                    self.visit_projection(reborrowed_place_ref, ctx, location);
                     return;
                 }
             }
@@ -684,8 +684,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
+            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -808,6 +808,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
@@ -819,7 +820,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, .. } => {
+            TerminatorKind::Call { func, args, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 
@@ -881,9 +882,17 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
-
                 if is_lang_panic_fn(tcx, callee) {
                     self.check_op(ops::Panic);
+
+                    // const-eval of the `begin_panic` fn assumes the argument is `&str`
+                    if Some(callee) == tcx.lang_items().begin_panic_fn() {
+                        match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                            ty::Ref(_, ty, _) if ty.is_str() => (),
+                            _ => self.check_op(ops::PanicNonStr),
+                        }
+                    }
+
                     return;
                 }
 
@@ -1039,7 +1048,7 @@ fn place_as_reborrow(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     place: Place<'tcx>,
-) -> Option<&'a [PlaceElem<'tcx>]> {
+) -> Option<PlaceRef<'tcx>> {
     match place.as_ref().last_projection() {
         Some((place_base, ProjectionElem::Deref)) => {
             // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
@@ -1048,13 +1057,14 @@ fn place_as_reborrow(
                 None
             } else {
                 // Ensure the type being derefed is a reference and not a raw pointer.
-                //
                 // This is sufficient to prevent an access to a `static mut` from being marked as a
                 // reborrow, even if the check above were to disappear.
                 let inner_ty = place_base.ty(body, tcx).ty;
-                match inner_ty.kind() {
-                    ty::Ref(..) => Some(place_base.projection),
-                    _ => None,
+
+                if let ty::Ref(..) = inner_ty.kind() {
+                    return Some(place_base);
+                } else {
+                    return None;
                 }
             }
         }

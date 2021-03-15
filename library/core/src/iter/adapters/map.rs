@@ -189,10 +189,7 @@ unsafe impl<I, F> TrustedRandomAccess for Map<I, F>
 where
     I: TrustedRandomAccess,
 {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        true
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = true;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

@@ -1,7 +1,7 @@
 [package]
 name = "rustc_tools_util"
 version = "0.2.0"
-authors = ["Matthias Krüger <matthias.krueger@famsik.de>"]
+authors = ["The Rust Clippy Developers"]
 description = "small helper to generate version information for git packages"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"

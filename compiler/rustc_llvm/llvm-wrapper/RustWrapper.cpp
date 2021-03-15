@@ -207,6 +207,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::InaccessibleMemOnly;
   case SanitizeHWAddress:
     return Attribute::SanitizeHWAddress;
+  case WillReturn:
+    return Attribute::WillReturn;
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -263,6 +265,17 @@ extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
   Call->addAttribute(Index, Attr);
 }
 
+extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr, unsigned Index,
+                                                 LLVMTypeRef Ty) {
+  CallBase *Call = unwrap<CallBase>(Instr);
+#if LLVM_VERSION_GE(12, 0)
+  Attribute Attr = Attribute::getWithStructRetType(Call->getContext(), unwrap(Ty));
+#else
+  Attribute Attr = Attribute::get(Call->getContext(), Attribute::StructRet);
+#endif
+  Call->addAttribute(Index, Attr);
+}
+
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   Function *A = unwrap<Function>(Fn);
@@ -301,6 +314,17 @@ extern "C" void LLVMRustAddByValAttr(LLVMValueRef Fn, unsigned Index,
                                      LLVMTypeRef Ty) {
   Function *F = unwrap<Function>(Fn);
   Attribute Attr = Attribute::getWithByValType(F->getContext(), unwrap(Ty));
+  F->addAttribute(Index, Attr);
+}
+
+extern "C" void LLVMRustAddStructRetAttr(LLVMValueRef Fn, unsigned Index,
+                                         LLVMTypeRef Ty) {
+  Function *F = unwrap<Function>(Fn);
+#if LLVM_VERSION_GE(12, 0)
+  Attribute Attr = Attribute::getWithStructRetType(F->getContext(), unwrap(Ty));
+#else
+  Attribute Attr = Attribute::get(F->getContext(), Attribute::StructRet);
+#endif
   F->addAttribute(Index, Attr);
 }
 
@@ -1007,12 +1031,19 @@ LLVMRustDICompositeTypeReplaceArrays(LLVMRustDIBuilderRef Builder,
 
 extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
-                                     LLVMMetadataRef Scope,
+                                     LLVMMetadataRef ScopeRef,
                                      LLVMMetadataRef InlinedAt) {
-  DebugLoc debug_loc = DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(Scope),
+#if LLVM_VERSION_GE(12, 0)
+  MDNode *Scope = unwrapDIPtr<MDNode>(ScopeRef);
+  DILocation *Loc = DILocation::get(
+      Scope->getContext(), Line, Column, Scope,
+      unwrapDIPtr<MDNode>(InlinedAt));
+  return wrap(Loc);
+#else
+  DebugLoc debug_loc = DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(ScopeRef),
                                      unwrapDIPtr<MDNode>(InlinedAt));
-
   return wrap(debug_loc.getAsMDNode());
+#endif
 }
 
 extern "C" int64_t LLVMRustDIBuilderCreateOpDeref() {
@@ -1262,6 +1293,10 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
     return LLVMScalableVectorTypeKind;
   case Type::BFloatTyID:
     return LLVMBFloatTypeKind;
+#endif
+#if LLVM_VERSION_GE(12, 0)
+  case Type::X86_AMXTyID:
+    return LLVMX86_AMXTypeKind;
 #endif
   }
   report_fatal_error("Unhandled TypeID.");
@@ -1708,11 +1743,23 @@ LLVMRustBuildVectorReduceMax(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) 
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMin(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
-   return wrap(unwrap(B)->CreateFPMinReduce(unwrap(Src), NoNaN));
+#if LLVM_VERSION_GE(12, 0)
+  Instruction *I = unwrap(B)->CreateFPMinReduce(unwrap(Src));
+  I->setHasNoNaNs(NoNaN);
+  return wrap(I);
+#else
+  return wrap(unwrap(B)->CreateFPMinReduce(unwrap(Src), NoNaN));
+#endif
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
+#if LLVM_VERSION_GE(12, 0)
+  Instruction *I = unwrap(B)->CreateFPMaxReduce(unwrap(Src));
+  I->setHasNoNaNs(NoNaN);
+  return wrap(I);
+#else
   return wrap(unwrap(B)->CreateFPMaxReduce(unwrap(Src), NoNaN));
+#endif
 }
 
 extern "C" LLVMValueRef

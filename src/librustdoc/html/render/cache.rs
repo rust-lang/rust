@@ -4,7 +4,7 @@ use std::path::Path;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use serde::Serialize;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean::types::{
     FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, TypeKind, WherePredicate,
@@ -133,19 +133,67 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         .map(|module| module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)))
         .unwrap_or_default();
 
-    #[derive(Serialize)]
     struct CrateData<'a> {
         doc: String,
-        #[serde(rename = "i")]
         items: Vec<&'a IndexItem>,
-        #[serde(rename = "p")]
         paths: Vec<(ItemType, String)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
-        #[serde(rename = "a")]
-        #[serde(skip_serializing_if = "BTreeMap::is_empty")]
         aliases: &'a BTreeMap<String, Vec<usize>>,
+    }
+
+    impl<'a> Serialize for CrateData<'a> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let has_aliases = !self.aliases.is_empty();
+            let mut crate_data =
+                serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
+            crate_data.serialize_field("doc", &self.doc)?;
+            crate_data.serialize_field(
+                "t",
+                &self.items.iter().map(|item| &item.ty).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "n",
+                &self.items.iter().map(|item| &item.name).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "q",
+                &self.items.iter().map(|item| &item.path).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "d",
+                &self.items.iter().map(|item| &item.desc).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "i",
+                &self
+                    .items
+                    .iter()
+                    .map(|item| {
+                        assert_eq!(
+                            item.parent.is_some(),
+                            item.parent_idx.is_some(),
+                            "`{}` is missing idx",
+                            item.name
+                        );
+                        item.parent_idx.map(|x| x + 1).unwrap_or(0)
+                    })
+                    .collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "f",
+                &self.items.iter().map(|item| &item.search_type).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field("p", &self.paths)?;
+            if has_aliases {
+                crate_data.serialize_field("a", &self.aliases)?;
+            }
+            crate_data.end()
+        }
     }
 
     // Collect the index into a string

@@ -14,11 +14,7 @@ fn test_end_of_fn() -> bool {
 
 #[allow(clippy::needless_bool)]
 fn test_if_block() -> bool {
-    if true {
-        true
-    } else {
-        false
-    }
+    if true { true } else { false }
 }
 
 #[rustfmt::skip]

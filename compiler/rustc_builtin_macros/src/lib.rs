@@ -11,6 +11,7 @@
 #![feature(or_patterns)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
+#![recursion_limit = "256"]
 
 extern crate proc_macro;
 
@@ -24,6 +25,7 @@ mod asm;
 mod assert;
 mod cfg;
 mod cfg_accessible;
+mod cfg_eval;
 mod compile_error;
 mod concat;
 mod concat_idents;
@@ -89,6 +91,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     register_attr! {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
+        cfg_eval: cfg_eval::expand,
         derive: derive::Expander,
         global_allocator: global_allocator::expand,
         test: test::expand_test,

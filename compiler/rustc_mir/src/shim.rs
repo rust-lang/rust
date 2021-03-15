@@ -134,7 +134,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     // Check if this is a generator, if so, return the drop glue for it
     if let Some(&ty::Generator(gen_def_id, substs, _)) = ty.map(|ty| ty.kind()) {
-        let body = &**tcx.optimized_mir(gen_def_id).generator_drop.as_ref().unwrap();
+        let body = tcx.optimized_mir(gen_def_id).generator_drop().unwrap();
         return body.clone().subst(tcx, substs);
     }
 
@@ -463,7 +463,7 @@ impl CloneShimBuilder<'tcx> {
         let cond = self.make_place(Mutability::Mut, tcx.types.bool);
         let compute_cond = self.make_statement(StatementKind::Assign(box (
             cond,
-            Rvalue::BinaryOp(BinOp::Ne, Operand::Copy(end), Operand::Copy(beg)),
+            Rvalue::BinaryOp(BinOp::Ne, box (Operand::Copy(end), Operand::Copy(beg))),
         )));
 
         // `if end != beg { goto loop_body; } else { goto loop_end; }`
@@ -536,8 +536,7 @@ impl CloneShimBuilder<'tcx> {
             Place::from(beg),
             Rvalue::BinaryOp(
                 BinOp::Add,
-                Operand::Copy(Place::from(beg)),
-                Operand::Constant(self.make_usize(1)),
+                box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
             ),
         )))];
         self.block(statements, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
@@ -590,8 +589,7 @@ impl CloneShimBuilder<'tcx> {
             Place::from(beg),
             Rvalue::BinaryOp(
                 BinOp::Add,
-                Operand::Copy(Place::from(beg)),
-                Operand::Constant(self.make_usize(1)),
+                box (Operand::Copy(Place::from(beg)), Operand::Constant(self.make_usize(1))),
             ),
         )));
         self.block(vec![statement], TerminatorKind::Goto { target: BasicBlock::new(6) }, true);

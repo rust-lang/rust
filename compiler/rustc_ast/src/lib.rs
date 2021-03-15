@@ -40,8 +40,8 @@ pub mod util {
 }
 
 pub mod ast;
+pub mod ast_like;
 pub mod attr;
-pub mod crate_disambiguator;
 pub mod entry;
 pub mod expand;
 pub mod mut_visit;
@@ -52,6 +52,7 @@ pub mod tokenstream;
 pub mod visit;
 
 pub use self::ast::*;
+pub use self::ast_like::AstLike;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 

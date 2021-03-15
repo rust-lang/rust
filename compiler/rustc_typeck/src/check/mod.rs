@@ -1062,7 +1062,10 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
         E0533,
         "expected unit struct, unit variant or constant, found {}{}",
         res.descr(),
-        tcx.sess.source_map().span_to_snippet(span).map_or(String::new(), |s| format!(" `{}`", s)),
+        tcx.sess
+            .source_map()
+            .span_to_snippet(span)
+            .map_or_else(|_| String::new(), |s| format!(" `{}`", s)),
     )
     .emit();
 }

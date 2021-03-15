@@ -1,27 +1,3 @@
-use crate::dep_graph::SerializedDepNodeIndex;
-use crate::mir::interpret::{GlobalId, LitToConstInput};
-use crate::traits;
-use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
-};
-use crate::ty::query::queries;
-use crate::ty::subst::{GenericArg, SubstsRef};
-use crate::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
-use rustc_query_system::query::QueryDescription;
-
-use rustc_span::symbol::Symbol;
-
-fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
-    }
-}
-
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -85,6 +61,15 @@ rustc_queries! {
         desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
+    /// Gives access to the HIR attributes inside the HIR owner `key`.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query hir_attrs(key: LocalDefId) -> rustc_middle::hir::AttributeMap<'tcx> {
+        eval_always
+        desc { |tcx| "HIR owner attributes in `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
     /// Computes the `DefId` of the corresponding const parameter in case the `key` is a
     /// const argument and returns `None` otherwise.
     ///
@@ -125,11 +110,6 @@ rustc_queries! {
         desc { |tcx| "computing generics of `{}`", tcx.def_path_str(key) }
         storage(ArenaCacheSelector<'tcx>)
         cache_on_disk_if { key.is_local() }
-        load_cached(tcx, id) {
-            let generics: Option<ty::Generics> = tcx.queries.on_disk_cache.as_ref()
-                                                    .and_then(|c| c.try_load_query_result(tcx, id));
-            generics
-        }
     }
 
     /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
@@ -702,8 +682,8 @@ rustc_queries! {
         cache_on_disk_if { true }
         load_cached(tcx, id) {
             let typeck_results: Option<ty::TypeckResults<'tcx>> = tcx
-                .queries.on_disk_cache.as_ref()
-                .and_then(|c| c.try_load_query_result(tcx, id));
+                .on_disk_cache.as_ref()
+                .and_then(|c| c.try_load_query_result(*tcx, id));
 
             typeck_results.map(|x| &*tcx.arena.alloc(x))
         }
@@ -956,7 +936,7 @@ rustc_queries! {
     /// Passing in any other crate will cause an ICE.
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
-    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<hir::HirId>> {
+    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
@@ -985,7 +965,7 @@ rustc_queries! {
         desc { |tcx| "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
-    /// Like `param_env`, but returns the `ParamEnv in `Reveal::All` mode.
+    /// Like `param_env`, but returns the `ParamEnv` in `Reveal::All` mode.
     /// Prefer this over `tcx.param_env(def_id).with_reveal_all_normalized(tcx)`,
     /// as this method is more efficient.
     query param_env_reveal_all_normalized(def_id: DefId) -> ty::ParamEnv<'tcx> {
@@ -1631,5 +1611,15 @@ rustc_queries! {
 
     query normalize_opaque_types(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
         desc { "normalizing opaque types in {:?}", key }
+    }
+
+    /// Checks whether a type is definitely uninhabited. This is
+    /// conservative: for some types that are uninhabited we return `false`,
+    /// but we only return `true` for types that are definitely uninhabited.
+    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
+    /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
+    /// size, to account for partial initialisation. See #49298 for details.)
+    query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
+        desc { "conservatively checking if {:?} is privately uninhabited", key }
     }
 }

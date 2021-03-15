@@ -321,10 +321,7 @@ unsafe impl TrustedLen for Bytes<'_> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 /// This macro generates a Clone impl for string pattern API

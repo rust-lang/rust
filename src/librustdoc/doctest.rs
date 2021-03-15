@@ -26,8 +26,8 @@ use std::str;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::core::init_lints;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
+use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
 #[derive(Clone, Default)]
@@ -44,11 +44,14 @@ crate struct TestOptions {
 crate fn run(options: Options) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
-    let invalid_codeblock_attributes_name = rustc_lint::builtin::INVALID_CODEBLOCK_ATTRIBUTES.name;
+    let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
-    // In addition to those specific lints, we also need to allow those given through
-    // command line, otherwise they'll get ignored and we don't want that.
-    let allowed_lints = vec![invalid_codeblock_attributes_name.to_owned()];
+    // See core::create_config for what's going on here.
+    let allowed_lints = vec![
+        invalid_codeblock_attributes_name.to_owned(),
+        lint::builtin::UNKNOWN_LINTS.name.to_owned(),
+        lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_owned(),
+    ];
 
     let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
         if lint.name == invalid_codeblock_attributes_name {
@@ -92,7 +95,8 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
-        register_lints: None,
+        parse_sess_created: None,
+        register_lints: Some(box crate::lint::register_lints),
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
@@ -103,25 +107,27 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 
     let tests = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            let lower_to_hir = queries.lower_to_hir()?;
+            let _lower_to_hir = queries.lower_to_hir()?;
 
-            let mut opts = scrape_test_config(lower_to_hir.peek().0);
-            opts.display_warnings |= options.display_warnings;
-            let enable_per_target_ignores = options.enable_per_target_ignores;
-            let mut collector = Collector::new(
-                queries.crate_name()?.peek().to_string(),
-                options,
-                false,
-                opts,
-                Some(compiler.session().parse_sess.clone_source_map()),
-                None,
-                enable_per_target_ignores,
-            );
-
+            let crate_name = queries.crate_name()?.peek().to_string();
             let mut global_ctxt = queries.global_ctxt()?.take();
 
-            global_ctxt.enter(|tcx| {
+            let collector = global_ctxt.enter(|tcx| {
                 let krate = tcx.hir().krate();
+                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+
+                let mut opts = scrape_test_config(crate_attrs);
+                opts.display_warnings |= options.display_warnings;
+                let enable_per_target_ignores = options.enable_per_target_ignores;
+                let mut collector = Collector::new(
+                    crate_name,
+                    options,
+                    false,
+                    opts,
+                    Some(compiler.session().parse_sess.clone_source_map()),
+                    None,
+                    enable_per_target_ignores,
+                );
 
                 let mut hir_collector = HirCollector {
                     sess: compiler.session(),
@@ -134,13 +140,14 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
                 };
                 hir_collector.visit_testable(
                     "".to_string(),
-                    &krate.item.attrs,
                     CRATE_HIR_ID,
                     krate.item.span,
                     |this| {
                         intravisit::walk_crate(this, krate);
                     },
                 );
+
+                collector
             });
             compiler.session().abort_if_errors();
 
@@ -165,15 +172,13 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(krate: &::rustc_hir::Crate<'_>) -> TestOptions {
+fn scrape_test_config(attrs: &[ast::Attribute]) -> TestOptions {
     use rustc_ast_pretty::pprust;
 
     let mut opts =
         TestOptions { no_crate_inject: false, display_warnings: false, attrs: Vec::new() };
 
-    let test_attrs: Vec<_> = krate
-        .item
-        .attrs
+    let test_attrs: Vec<_> = attrs
         .iter()
         .filter(|a| a.has_name(sym::doc))
         .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
@@ -988,11 +993,11 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
-        attrs: &[ast::Attribute],
         hir_id: HirId,
         sp: Span,
         nested: F,
     ) {
+        let attrs = self.tcx.hir().attrs(hir_id);
         let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs, None);
         if let Some(ref cfg) = attrs.cfg {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
@@ -1050,25 +1055,25 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
             item.ident.to_string()
         };
 
-        self.visit_testable(name, &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(name, item.hir_id(), item.span, |this| {
             intravisit::walk_item(this, item);
         });
     }
 
     fn visit_trait_item(&mut self, item: &'hir hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_trait_item(this, item);
         });
     }
 
     fn visit_impl_item(&mut self, item: &'hir hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_impl_item(this, item);
         });
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), &item.attrs, item.hir_id, item.span, |this| {
+        self.visit_testable(item.ident.to_string(), item.hir_id(), item.span, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -1079,13 +1084,13 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         g: &'hir hir::Generics<'_>,
         item_id: hir::HirId,
     ) {
-        self.visit_testable(v.ident.to_string(), &v.attrs, v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
-        self.visit_testable(f.ident.to_string(), &f.attrs, f.hir_id, f.span, |this| {
+        self.visit_testable(f.ident.to_string(), f.hir_id, f.span, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }
@@ -1093,8 +1098,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     fn visit_macro_def(&mut self, macro_def: &'hir hir::MacroDef<'_>) {
         self.visit_testable(
             macro_def.ident.to_string(),
-            &macro_def.attrs,
-            macro_def.hir_id,
+            macro_def.hir_id(),
             macro_def.span,
             |_| (),
         );

@@ -11,6 +11,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(box_patterns)]
 #![feature(bool_to_option)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(format_args_capture)]
 #![feature(nll)]
@@ -23,11 +24,13 @@ use Determinacy::*;
 
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::ptr::P;
 use rustc_ast::unwrap_or;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, NodeId};
 use rustc_ast::{Crate, CRATE_NODE_ID};
-use rustc_ast::{ItemKind, Path};
+use rustc_ast::{Expr, ExprKind, LitKind};
+use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -59,6 +62,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
+use std::ops::ControlFlow;
 use std::{cmp, fmt, iter, ptr};
 use tracing::debug;
 
@@ -150,6 +154,12 @@ impl<'a> ParentScope<'a> {
             derives: &[],
         }
     }
+}
+
+#[derive(Copy, Debug, Clone)]
+enum ImplTraitContext {
+    Existential,
+    Universal(LocalDefId),
 }
 
 #[derive(Eq)]
@@ -283,28 +293,21 @@ struct UsePlacementFinder {
 impl UsePlacementFinder {
     fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        visit::walk_crate(&mut finder, krate);
+        if let ControlFlow::Continue(..) = finder.check_mod(&krate.items, CRATE_NODE_ID) {
+            visit::walk_crate(&mut finder, krate);
+        }
         (finder.span, finder.found_use)
     }
-}
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
-    fn visit_mod(
-        &mut self,
-        module: &'tcx ast::Mod,
-        _: Span,
-        _: &[ast::Attribute],
-        node_id: NodeId,
-    ) {
+    fn check_mod(&mut self, items: &[P<ast::Item>], node_id: NodeId) -> ControlFlow<()> {
         if self.span.is_some() {
-            return;
+            return ControlFlow::Break(());
         }
         if node_id != self.target_module {
-            visit::walk_mod(self, module);
-            return;
+            return ControlFlow::Continue(());
         }
         // find a use statement
-        for item in &module.items {
+        for item in items {
             match item.kind {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
@@ -312,7 +315,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if !item.span.from_expansion() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
-                        return;
+                        return ControlFlow::Break(());
                     }
                 }
                 // don't place use before extern crate
@@ -337,6 +340,18 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 }
             }
         }
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_item(&mut self, item: &'tcx ast::Item) {
+        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
+            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
+                return;
+            }
+        }
+        visit::walk_item(self, item);
     }
 }
 
@@ -980,13 +995,16 @@ pub struct Resolver<'a> {
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
-    /// we know what parent node that fragment should be attached to thanks to this table.
-    invocation_parents: FxHashMap<ExpnId, LocalDefId>,
+    /// we know what parent node that fragment should be attached to thanks to this table,
+    /// and how the `impl Trait` fragments were introduced.
+    invocation_parents: FxHashMap<ExpnId, (LocalDefId, ImplTraitContext)>,
 
     next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
+
+    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1066,6 +1084,10 @@ impl ResolverAstLowering for Resolver<'_> {
 
     fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {
         self.cstore().item_generics_num_lifetimes(def_id, sess)
+    }
+
+    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        self.legacy_const_generic_args(expr)
     }
 
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
@@ -1190,7 +1212,7 @@ impl<'a> Resolver<'a> {
         node_id_to_def_id.insert(CRATE_NODE_ID, root);
 
         let mut invocation_parents = FxHashMap::default();
-        invocation_parents.insert(ExpnId::root(), root);
+        invocation_parents.insert(ExpnId::root(), (root, ImplTraitContext::Existential));
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = session
             .opts
@@ -1308,6 +1330,7 @@ impl<'a> Resolver<'a> {
             invocation_parents,
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
+            legacy_const_generic_args: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1406,7 +1429,7 @@ impl<'a> Resolver<'a> {
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
-            match ctxt.outer_expn().expn_data().macro_def_id {
+            match ctxt.outer_expn_data().macro_def_id {
                 Some(def_id) => return def_id,
                 None => ctxt.remove_mark(),
             };
@@ -2417,8 +2440,10 @@ impl<'a> Resolver<'a> {
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
-                        } else {
+                        } else if self.session.edition() == Edition::Edition2015 {
                             (format!("maybe a missing crate `{}`?", ident), None)
+                        } else {
+                            (format!("could not find `{}` in the crate root", ident), None)
                         }
                     } else if i == 0 {
                         if ident
@@ -2434,10 +2459,16 @@ impl<'a> Resolver<'a> {
                         }
                     } else {
                         let parent = path[i - 1].ident.name;
-                        let parent = if parent == kw::PathRoot {
-                            "crate root".to_owned()
-                        } else {
-                            format!("`{}`", parent)
+                        let parent = match parent {
+                            // ::foo is mounted at the crate root for 2015, and is the extern
+                            // prelude for 2018+
+                            kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
+                                "the list of imported crates".to_owned()
+                            }
+                            kw::PathRoot | kw::Crate => "the crate root".to_owned(),
+                            _ => {
+                                format!("`{}`", parent)
+                            }
                         };
 
                         let mut msg = format!("could not find `{}` in {}", ident, parent);
@@ -3299,6 +3330,61 @@ impl<'a> Resolver<'a> {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if let Some(def_id) = def_id.as_local() { Some(self.def_id_to_span[def_id]) } else { None }
+    }
+
+    /// Checks if an expression refers to a function marked with
+    /// `#[rustc_legacy_const_generics]` and returns the argument index list
+    /// from the attribute.
+    pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
+        if let ExprKind::Path(None, path) = &expr.kind {
+            // Don't perform legacy const generics rewriting if the path already
+            // has generic arguments.
+            if path.segments.last().unwrap().args.is_some() {
+                return None;
+            }
+
+            let partial_res = self.partial_res_map.get(&expr.id)?;
+            if partial_res.unresolved_segments() != 0 {
+                return None;
+            }
+
+            if let Res::Def(def::DefKind::Fn, def_id) = partial_res.base_res() {
+                // We only support cross-crate argument rewriting. Uses
+                // within the same crate should be updated to use the new
+                // const generics style.
+                if def_id.is_local() {
+                    return None;
+                }
+
+                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                    return v.clone();
+                }
+
+                let parse_attrs = || {
+                    let attrs = self.cstore().item_attrs(def_id, self.session);
+                    let attr = attrs
+                        .iter()
+                        .find(|a| self.session.check_name(a, sym::rustc_legacy_const_generics))?;
+                    let mut ret = vec![];
+                    for meta in attr.meta_item_list()? {
+                        match meta.literal()?.kind {
+                            LitKind::Int(a, _) => {
+                                ret.push(a as usize);
+                            }
+                            _ => panic!("invalid arg index"),
+                        }
+                    }
+                    Some(ret)
+                };
+
+                // Cache the lookup to avoid parsing attributes for an iterm
+                // multiple times.
+                let ret = parse_attrs();
+                self.legacy_const_generic_args.insert(def_id, ret.clone());
+                return ret;
+            }
+        }
+        None
     }
 }
 

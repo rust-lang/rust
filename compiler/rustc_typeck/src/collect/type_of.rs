@@ -1,4 +1,3 @@
-use crate::errors::AssocTypeOnInherentImpl;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
@@ -294,7 +293,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             }
             ImplItemKind::TyAlias(ref ty) => {
                 if tcx.impl_trait_ref(tcx.hir().get_parent_did(hir_id).to_def_id()).is_none() {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
                 icx.to_ty(ty)
@@ -582,26 +581,23 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if def_id.to_def_id() != self.def_id {
-                self.check(def_id);
+            if it.def_id.to_def_id() != self.def_id {
+                self.check(it.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if def_id.to_def_id() != self.def_id {
-                self.check(def_id);
+            if it.def_id.to_def_id() != self.def_id {
+                self.check(it.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
-            let def_id = self.tcx.hir().local_def_id(it.hir_id);
-            self.check(def_id);
+            self.check(it.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
@@ -726,11 +722,12 @@ fn infer_placeholder_type(
                 format!("{}: {}", item_ident, ty),
                 Applicability::MachineApplicable,
             )
-            .emit();
+            .emit_unless(ty.references_error());
         }
         None => {
             let mut diag = bad_placeholder_type(tcx, vec![span]);
-            if !matches!(ty.kind(), ty::Error(_)) {
+
+            if !ty.references_error() {
                 diag.span_suggestion(
                     span,
                     "replace `_` with the correct type",
@@ -738,6 +735,7 @@ fn infer_placeholder_type(
                     Applicability::MaybeIncorrect,
                 );
             }
+
             diag.emit();
         }
     }
@@ -749,6 +747,16 @@ fn infer_placeholder_type(
     })
 }
 
-fn report_assoc_ty_on_inherent_impl(tcx: TyCtxt<'_>, span: Span) {
-    tcx.sess.emit_err(AssocTypeOnInherentImpl { span });
+fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
+    if !tcx.features().inherent_associated_types {
+        use rustc_session::parse::feature_err;
+        use rustc_span::symbol::sym;
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::inherent_associated_types,
+            span,
+            "inherent associated types are unstable",
+        )
+        .emit();
+    }
 }

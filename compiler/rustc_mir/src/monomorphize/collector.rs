@@ -1013,13 +1013,12 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             | hir::ItemKind::Union(_, ref generics) => {
                 if generics.params.is_empty() {
                     if self.mode == MonoItemCollectionMode::Eager {
-                        let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         debug!(
                             "RootCollector: ADT drop-glue for {}",
-                            self.tcx.def_path_str(def_id.to_def_id())
+                            self.tcx.def_path_str(item.def_id.to_def_id())
                         );
 
-                        let ty = Instance::new(def_id.to_def_id(), InternalSubsts::empty())
+                        let ty = Instance::new(item.def_id.to_def_id(), InternalSubsts::empty())
                             .ty(self.tcx, ty::ParamEnv::reveal_all());
                         visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                     }
@@ -1028,29 +1027,28 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
             hir::ItemKind::GlobalAsm(..) => {
                 debug!(
                     "RootCollector: ItemKind::GlobalAsm({})",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id(item.hir_id).to_def_id())
+                    self.tcx.def_path_str(item.def_id.to_def_id())
                 );
-                self.output.push(dummy_spanned(MonoItem::GlobalAsm(item.hir_id)));
+                self.output.push(dummy_spanned(MonoItem::GlobalAsm(item.item_id())));
             }
             hir::ItemKind::Static(..) => {
-                let def_id = self.tcx.hir().local_def_id(item.hir_id).to_def_id();
-                debug!("RootCollector: ItemKind::Static({})", self.tcx.def_path_str(def_id));
-                self.output.push(dummy_spanned(MonoItem::Static(def_id)));
+                debug!(
+                    "RootCollector: ItemKind::Static({})",
+                    self.tcx.def_path_str(item.def_id.to_def_id())
+                );
+                self.output.push(dummy_spanned(MonoItem::Static(item.def_id.to_def_id())));
             }
             hir::ItemKind::Const(..) => {
                 // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
 
                 // but even just declaring them must collect the items they refer to
-                let def_id = self.tcx.hir().local_def_id(item.hir_id);
-
-                if let Ok(val) = self.tcx.const_eval_poly(def_id.to_def_id()) {
+                if let Ok(val) = self.tcx.const_eval_poly(item.def_id.to_def_id()) {
                     collect_const_value(self.tcx, val, &mut self.output);
                 }
             }
             hir::ItemKind::Fn(..) => {
-                let def_id = self.tcx.hir().local_def_id(item.hir_id);
-                self.push_if_root(def_id);
+                self.push_if_root(item.def_id);
             }
         }
     }
@@ -1062,8 +1060,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         if let hir::ImplItemKind::Fn(hir::FnSig { .. }, _) = ii.kind {
-            let def_id = self.tcx.hir().local_def_id(ii.hir_id);
-            self.push_if_root(def_id);
+            self.push_if_root(ii.def_id);
         }
     }
 
@@ -1156,14 +1153,12 @@ fn create_mono_items_for_default_impls<'tcx>(
                 }
             }
 
-            let impl_def_id = tcx.hir().local_def_id(item.hir_id);
-
             debug!(
                 "create_mono_items_for_default_impls(item={})",
-                tcx.def_path_str(impl_def_id.to_def_id())
+                tcx.def_path_str(item.def_id.to_def_id())
             );
 
-            if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+            if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id) {
                 let param_env = ty::ParamEnv::reveal_all();
                 let trait_ref = tcx.normalize_erasing_regions(param_env, trait_ref);
                 let overridden_methods: FxHashSet<_> =

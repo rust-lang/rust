@@ -513,32 +513,33 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let id = id.expect_local();
         let tables = tcx.typeck(id);
         let hir_id = tcx.hir().local_def_id_to_hir_id(id);
-        let (span, place) = &tables.closure_kind_origins()[hir_id];
-        let reason = if let PlaceBase::Upvar(upvar_id) = place.base {
-            let upvar = ty::place_to_string_for_capture(tcx, place);
-            match tables.upvar_capture(upvar_id) {
-                ty::UpvarCapture::ByRef(ty::UpvarBorrow {
-                    kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
-                    ..
-                }) => {
-                    format!("mutable borrow of `{}`", upvar)
+        if let Some((span, place)) = tables.closure_kind_origins().get(hir_id) {
+            let reason = if let PlaceBase::Upvar(upvar_id) = place.base {
+                let upvar = ty::place_to_string_for_capture(tcx, place);
+                match tables.upvar_capture(upvar_id) {
+                    ty::UpvarCapture::ByRef(ty::UpvarBorrow {
+                        kind: ty::BorrowKind::MutBorrow | ty::BorrowKind::UniqueImmBorrow,
+                        ..
+                    }) => {
+                        format!("mutable borrow of `{}`", upvar)
+                    }
+                    ty::UpvarCapture::ByValue(_) => {
+                        format!("possible mutation of `{}`", upvar)
+                    }
+                    val => bug!("upvar `{}` borrowed, but not mutably: {:?}", upvar, val),
                 }
-                ty::UpvarCapture::ByValue(_) => {
-                    format!("possible mutation of `{}`", upvar)
-                }
-                val => bug!("upvar `{}` borrowed, but not mutably: {:?}", upvar, val),
-            }
-        } else {
-            bug!("not an upvar")
-        };
-        err.span_label(
-            *span,
-            format!(
-                "calling `{}` requires mutable binding due to {}",
-                self.describe_place(the_place_err).unwrap(),
-                reason
-            ),
-        );
+            } else {
+                bug!("not an upvar")
+            };
+            err.span_label(
+                *span,
+                format!(
+                    "calling `{}` requires mutable binding due to {}",
+                    self.describe_place(the_place_err).unwrap(),
+                    reason
+                ),
+            );
+        }
     }
 
     // Attempt to search similar mutable associated items for suggestion.

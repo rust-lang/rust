@@ -80,14 +80,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 // we convert the move in the comparison statement to a copy.
 
                 // unwrap is safe as we know this statement is an assign
-                let box (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
+                let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
 
                 use Operand::*;
                 match rhs {
-                    Rvalue::BinaryOp(_, ref mut left @ Move(_), Constant(_)) => {
+                    Rvalue::BinaryOp(_, box (ref mut left @ Move(_), Constant(_))) => {
                         *left = Copy(opt.to_switch_on);
                     }
-                    Rvalue::BinaryOp(_, Constant(_), ref mut right @ Move(_)) => {
+                    Rvalue::BinaryOp(_, box (Constant(_), ref mut right @ Move(_))) => {
                         *right = Copy(opt.to_switch_on);
                     }
                     _ => (),
@@ -166,7 +166,10 @@ impl<'a, 'tcx> OptimizationFinder<'a, 'tcx> {
                             if *lhs == place_switched_on =>
                         {
                             match rhs {
-                                Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), left, right) => {
+                                Rvalue::BinaryOp(
+                                    op @ (BinOp::Eq | BinOp::Ne),
+                                    box (left, right),
+                                ) => {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
                                         find_branch_value_info(left, right)?;
 

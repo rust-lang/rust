@@ -66,7 +66,7 @@ Other features provided by lang items include:
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
 - stack unwinding and general failure; the `eh_personality`,
-  `panic` and `panic_bounds_checks` lang items.
+  `panic` and `panic_bounds_check` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in

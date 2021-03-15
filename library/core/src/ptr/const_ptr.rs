@@ -48,6 +48,17 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
+    /// Decompose a (possibly wide) pointer into is address and metadata components.
+    ///
+    /// The pointer can be later reconstructed with [`from_raw_parts`].
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "ptr_metadata", issue = "81513")]
+    #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
+    #[inline]
+    pub const fn to_raw_parts(self) -> (*const (), <T as super::Pointee>::Metadata) {
+        (self.cast(), metadata(self))
+    }
+
     /// Returns `None` if the pointer is null, or else returns a shared reference to
     /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
     /// must be used instead.
@@ -309,25 +320,31 @@ impl<T: ?Sized> *const T {
     /// * Both pointers must be *derived from* a pointer to the same object.
     ///   (See below for an example.)
     ///
-    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
-    ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
     ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
     /// * The distance being in bounds cannot rely on "wrapping around" the address space.
     ///
-    /// The compiler and standard library generally try to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    /// Rust types are never larger than `isize::MAX` and Rust allocations never wrap around the
+    /// address space, so two pointers within some value of any Rust type `T` will always satisfy
+    /// the last two conditions. The standard library also generally ensures that allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec` and `Box` ensure they
+    /// never allocate more than `isize::MAX` bytes, so `ptr_into_vec.offset_from(vec.as_ptr())`
+    /// always satisfies the last two conditions.
     ///
-    /// Most platforms fundamentally can't even construct such an allocation.
+    /// Most platforms fundamentally can't even construct such a large allocation.
     /// For instance, no known 64-bit platform can ever serve a request
     /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
+    /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
+    /// such large allocations either.)
+    ///
+    /// [`add`]: #method.add
     ///
     /// # Panics
     ///
@@ -905,9 +922,14 @@ impl<T> *const [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-        // Only `std` can make this guarantee.
-        unsafe { Repr { rust: self }.raw }.len
+        #[cfg(bootstrap)]
+        {
+            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
+            // Only `std` can make this guarantee.
+            unsafe { Repr { rust: self }.raw }.len
+        }
+        #[cfg(not(bootstrap))]
+        metadata(self)
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -995,8 +1017,6 @@ impl<T> *const [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
-    /// [`NonNull::dangling()`]: NonNull::dangling
-    /// [`pointer::offset`]: ../std/primitive.pointer.html#method.offset
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {

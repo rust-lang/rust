@@ -1,6 +1,7 @@
 use crate::convert::TryInto;
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::mem;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -45,15 +46,14 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process.
-        let result = unsafe {
-            let _env_lock = sys::os::env_read_lock();
-            cvt(libc::fork())?
-        };
+        // in its own process. Thus the parent drops the lock guard while the child
+        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        let (env_lock, result) = unsafe { (sys::os::env_lock(), cvt(libc::fork())?) };
 
         let pid = unsafe {
             match result {
                 0 => {
+                    mem::forget(env_lock);
                     drop(input);
                     let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
@@ -74,7 +74,10 @@ impl Command {
                     rtassert!(output.write(&bytes).is_ok());
                     libc::_exit(1)
                 }
-                n => n,
+                n => {
+                    drop(env_lock);
+                    n
+                }
             }
         };
 
@@ -124,7 +127,7 @@ impl Command {
                     // Similar to when forking, we want to ensure that access to
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
-                    let _lock = sys::os::env_read_lock();
+                    let _lock = sys::os::env_lock();
 
                     let Err(e) = self.do_exec(theirs, envp.as_ref());
                     e
@@ -404,7 +407,7 @@ impl Command {
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
-            let _env_lock = sys::os::env_read_lock();
+            let _env_lock = sys::os::env_lock();
             let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
             cvt_nz(libc::posix_spawnp(
                 &mut p.pid,
@@ -527,9 +530,22 @@ impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit code: {}", code)
+        } else if let Some(signal) = self.signal() {
+            if self.core_dumped() {
+                write!(f, "signal: {} (core dumped)", signal)
+            } else {
+                write!(f, "signal: {}", signal)
+            }
+        } else if let Some(signal) = self.stopped_signal() {
+            write!(f, "stopped (not terminated) by signal: {}", signal)
+        } else if self.continued() {
+            write!(f, "continued (WIFCONTINUED)")
         } else {
-            let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "unrecognised wait status: {} {:#x}", self.0, self.0)
         }
     }
 }
+
+#[cfg(test)]
+#[path = "process_unix/tests.rs"]
+mod tests;

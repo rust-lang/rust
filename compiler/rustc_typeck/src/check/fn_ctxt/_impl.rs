@@ -769,9 +769,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(move |obligation| {
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Projection(data) => {
-                        Some((bound_predicate.rebind(data).to_poly_trait_ref(self.tcx), obligation))
-                    }
+                    ty::PredicateKind::Projection(data) => Some((
+                        bound_predicate.rebind(data).required_poly_trait_ref(self.tcx),
+                        obligation,
+                    )),
                     ty::PredicateKind::Trait(data, _) => {
                         Some((bound_predicate.rebind(data).to_poly_trait_ref(), obligation))
                     }
@@ -897,7 +898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return (
                     path.res,
                     opt_qself.as_ref().map(|qself| self.to_ty(qself)),
-                    &path.segments[..],
+                    path.segments,
                 );
             }
             QPath::TypeRelative(ref qself, ref segment) => (self.to_ty(qself), qself, segment),
@@ -1073,13 +1074,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
+            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
+                if last_def_id == exp_def_id =>
+            {
+                StatementAsExpression::CorrectType
+            }
             (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
                     last_def_id, last_bounds, exp_def_id, exp_bounds
                 );
-                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_def_id.expect_local());
-                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_def_id.expect_local());
+
+                let (last_local_id, exp_local_id) =
+                    match (last_def_id.as_local(), exp_def_id.as_local()) {
+                        (Some(last_hir_id), Some(exp_hir_id)) => (last_hir_id, exp_hir_id),
+                        (_, _) => return None,
+                    };
+
+                let last_hir_id = self.tcx.hir().local_def_id_to_hir_id(last_local_id);
+                let exp_hir_id = self.tcx.hir().local_def_id_to_hir_id(exp_local_id);
+
                 match (
                     &self.tcx.hir().expect_item(last_hir_id).kind,
                     &self.tcx.hir().expect_item(exp_hir_id).kind,

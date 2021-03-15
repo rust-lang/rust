@@ -819,7 +819,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 sig.decl
                     .inputs
                     .iter()
-                    .map(|arg| match arg.clone().kind {
+                    .map(|arg| match arg.kind {
                         hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
@@ -1368,8 +1368,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(t) => Some(t),
                     None => {
                         let ty = parent_trait_ref.skip_binder().self_ty();
-                        let span =
-                            TyCategory::from_ty(ty).map(|(_, def_id)| self.tcx.def_span(def_id));
+                        let span = TyCategory::from_ty(self.tcx, ty)
+                            .map(|(_, def_id)| self.tcx.def_span(def_id));
                         Some((ty.to_string(), span))
                     }
                 }
@@ -1589,8 +1589,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(body_id, span, a.into(), vec![], ErrorCode::E0282)
             }
             ty::PredicateKind::Projection(data) => {
-                let trait_ref = bound_predicate.rebind(data).to_poly_trait_ref(self.tcx);
-                let self_ty = trait_ref.skip_binder().self_ty();
+                let self_ty = data.projection_ty.self_ty();
                 let ty = data.ty;
                 if predicate.references_error() {
                     return;

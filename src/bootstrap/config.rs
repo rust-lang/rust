@@ -51,6 +51,7 @@ pub struct Config {
     pub submodules: bool,
     pub fast_submodules: bool,
     pub compiler_docs: bool,
+    pub docs_minification: bool,
     pub docs: bool,
     pub locked_deps: bool,
     pub vendor: bool,
@@ -161,6 +162,7 @@ pub struct Config {
     pub verbose_tests: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
+    pub print_step_rusage: bool,
     pub missing_tools: bool,
 
     // Fallback musl-root for all targets
@@ -174,6 +176,7 @@ pub struct Config {
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
+    pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub cargo_native_static: bool,
@@ -360,10 +363,12 @@ struct Build {
     rustfmt: Option<PathBuf>,
     docs: Option<bool>,
     compiler_docs: Option<bool>,
+    docs_minification: Option<bool>,
     submodules: Option<bool>,
     fast_submodules: Option<bool>,
     gdb: Option<String>,
     nodejs: Option<String>,
+    npm: Option<String>,
     python: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
@@ -378,6 +383,7 @@ struct Build {
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
     print_step_timings: Option<bool>,
+    print_step_rusage: Option<bool>,
     check_stage: Option<u32>,
     doc_stage: Option<u32>,
     build_stage: Option<u32>,
@@ -553,6 +559,7 @@ impl Config {
         config.submodules = true;
         config.fast_submodules = true;
         config.docs = true;
+        config.docs_minification = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
@@ -654,10 +661,12 @@ impl Config {
         };
 
         config.nodejs = build.nodejs.map(PathBuf::from);
+        config.npm = build.npm.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
+        set(&mut config.docs_minification, build.docs_minification);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
         set(&mut config.fast_submodules, build.fast_submodules);
@@ -676,6 +685,7 @@ impl Config {
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);
+        set(&mut config.print_step_rusage, build.print_step_rusage);
 
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {

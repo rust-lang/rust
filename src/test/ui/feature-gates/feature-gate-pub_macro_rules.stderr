@@ -1,0 +1,39 @@
+error[E0658]: `pub` on `macro_rules` items is unstable
+  --> $DIR/feature-gate-pub_macro_rules.rs:1:1
+   |
+LL | pub macro_rules! m1 { () => {} }
+   | ^^^
+   |
+   = note: see issue #78855 <https://github.com/rust-lang/rust/issues/78855> for more information
+   = help: add `#![feature(pub_macro_rules)]` to the crate attributes to enable
+
+error[E0658]: `pub` on `macro_rules` items is unstable
+  --> $DIR/feature-gate-pub_macro_rules.rs:4:1
+   |
+LL | pub macro_rules! m2 { () => {} }
+   | ^^^
+   |
+   = note: see issue #78855 <https://github.com/rust-lang/rust/issues/78855> for more information
+   = help: add `#![feature(pub_macro_rules)]` to the crate attributes to enable
+
+error[E0658]: `pub` on `macro_rules` items is unstable
+  --> $DIR/feature-gate-pub_macro_rules.rs:6:1
+   |
+LL | pub(crate) macro_rules! m3 { () => {} }
+   | ^^^^^^^^^^
+   |
+   = note: see issue #78855 <https://github.com/rust-lang/rust/issues/78855> for more information
+   = help: add `#![feature(pub_macro_rules)]` to the crate attributes to enable
+
+error[E0658]: `pub` on `macro_rules` items is unstable
+  --> $DIR/feature-gate-pub_macro_rules.rs:8:1
+   |
+LL | pub(in self) macro_rules! m4 { () => {} }
+   | ^^^^^^^^^^^^
+   |
+   = note: see issue #78855 <https://github.com/rust-lang/rust/issues/78855> for more information
+   = help: add `#![feature(pub_macro_rules)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

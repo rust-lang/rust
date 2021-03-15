@@ -667,17 +667,6 @@ impl OutputFilenames {
         path
     }
 
-    /// Returns the name of the Split DWARF file - this can differ depending on which Split DWARF
-    /// mode is being used, which is the logic that this function is intended to encapsulate.
-    pub fn split_dwarf_filename(
-        &self,
-        split_debuginfo_kind: SplitDebuginfo,
-        cgu_name: Option<&str>,
-    ) -> Option<PathBuf> {
-        self.split_dwarf_path(split_debuginfo_kind, cgu_name)
-            .map(|path| path.strip_prefix(&self.out_directory).unwrap_or(&path).to_path_buf())
-    }
-
     /// Returns the path for the Split DWARF file - this can differ depending on which Split DWARF
     /// mode is being used, which is the logic that this function is intended to encapsulate.
     pub fn split_dwarf_path(
@@ -1350,7 +1339,7 @@ pub fn parse_error_format(
     error_format
 }
 
-fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
+pub fn parse_crate_edition(matches: &getopts::Matches) -> Edition {
     let edition = match matches.opt_str("edition") {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             early_error(
@@ -1547,7 +1536,7 @@ fn parse_target_triple(matches: &getopts::Matches, error_format: ErrorOutputType
                 early_error(error_format, &format!("target file {:?} does not exist", path))
             })
         }
-        Some(target) => TargetTriple::from_alias(target),
+        Some(target) => TargetTriple::TargetTriple(target),
         _ => TargetTriple::from_triple(host_triple()),
     }
 }
@@ -1949,21 +1938,23 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(SymbolManglingVersion::V0) => {}
         }
 
-        if debugging_opts.mir_opt_level > 1 {
-            // Functions inlined during MIR transform can, at best, make it impossible to
-            // effectively cover inlined functions, and, at worst, break coverage map generation
-            // during LLVM codegen. For example, function counter IDs are only unique within a
-            // function. Inlining after these counters are injected can produce duplicate counters,
-            // resulting in an invalid coverage map (and ICE); so this option combination is not
-            // allowed.
-            early_warn(
-                error_format,
-                &format!(
-                    "`-Z mir-opt-level={}` (or any level > 1) enables function inlining, which \
+        if let Some(mir_opt_level) = debugging_opts.mir_opt_level {
+            if mir_opt_level > 1 {
+                // Functions inlined during MIR transform can, at best, make it impossible to
+                // effectively cover inlined functions, and, at worst, break coverage map generation
+                // during LLVM codegen. For example, function counter IDs are only unique within a
+                // function. Inlining after these counters are injected can produce duplicate counters,
+                // resulting in an invalid coverage map (and ICE); so this option combination is not
+                // allowed.
+                early_warn(
+                    error_format,
+                    &format!(
+                        "`-Z mir-opt-level={}` (or any level > 1) enables function inlining, which \
                     is incompatible with `-Z instrument-coverage`. Inlining will be disabled.",
-                    debugging_opts.mir_opt_level,
-                ),
-            );
+                        mir_opt_level,
+                    ),
+                );
+            }
         }
     }
 
@@ -2068,40 +2059,24 @@ fn parse_pretty(
     debugging_opts: &DebuggingOptions,
     efmt: ErrorOutputType,
 ) -> Option<PpMode> {
-    let pretty = if debugging_opts.unstable_options {
-        matches.opt_default("pretty", "normal").map(|a| {
-            // stable pretty-print variants only
-            parse_pretty_inner(efmt, &a, false)
-        })
-    } else {
-        None
-    };
-
-    return if pretty.is_none() {
-        debugging_opts.unpretty.as_ref().map(|a| {
-            // extended with unstable pretty-print variants
-            parse_pretty_inner(efmt, &a, true)
-        })
-    } else {
-        pretty
-    };
-
     fn parse_pretty_inner(efmt: ErrorOutputType, name: &str, extended: bool) -> PpMode {
         use PpMode::*;
-        use PpSourceMode::*;
         let first = match (name, extended) {
-            ("normal", _) => PpmSource(PpmNormal),
-            ("identified", _) => PpmSource(PpmIdentified),
-            ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
-            ("expanded", _) => PpmSource(PpmExpanded),
-            ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
-            ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
-            ("hir", true) => PpmHir(PpmNormal),
-            ("hir,identified", true) => PpmHir(PpmIdentified),
-            ("hir,typed", true) => PpmHir(PpmTyped),
-            ("hir-tree", true) => PpmHirTree(PpmNormal),
-            ("mir", true) => PpmMir,
-            ("mir-cfg", true) => PpmMirCFG,
+            ("normal", _) => Source(PpSourceMode::Normal),
+            ("identified", _) => Source(PpSourceMode::Identified),
+            ("everybody_loops", true) => Source(PpSourceMode::EveryBodyLoops),
+            ("expanded", _) => Source(PpSourceMode::Expanded),
+            ("expanded,identified", _) => Source(PpSourceMode::ExpandedIdentified),
+            ("expanded,hygiene", _) => Source(PpSourceMode::ExpandedHygiene),
+            ("ast-tree", true) => AstTree(PpAstTreeMode::Normal),
+            ("ast-tree,expanded", true) => AstTree(PpAstTreeMode::Expanded),
+            ("hir", true) => Hir(PpHirMode::Normal),
+            ("hir,identified", true) => Hir(PpHirMode::Identified),
+            ("hir,typed", true) => Hir(PpHirMode::Typed),
+            ("hir-tree", true) => HirTree,
+            ("thir-tree", true) => ThirTree,
+            ("mir", true) => Mir,
+            ("mir-cfg", true) => MirCFG,
             _ => {
                 if extended {
                     early_error(
@@ -2110,8 +2085,8 @@ fn parse_pretty(
                             "argument to `unpretty` must be one of `normal`, \
                                         `expanded`, `identified`, `expanded,identified`, \
                                         `expanded,hygiene`, `everybody_loops`, \
-                                        `hir`, `hir,identified`, `hir,typed`, `hir-tree`, \
-                                        `mir` or `mir-cfg`; got {}",
+                                        `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
+                                        `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
                             name
                         ),
                     );
@@ -2130,6 +2105,18 @@ fn parse_pretty(
         tracing::debug!("got unpretty option: {:?}", first);
         first
     }
+
+    if debugging_opts.unstable_options {
+        if let Some(a) = matches.opt_default("pretty", "normal") {
+            // stable pretty-print variants only
+            return Some(parse_pretty_inner(efmt, &a, false));
+        }
+    }
+
+    debugging_opts.unpretty.as_ref().map(|a| {
+        // extended with unstable pretty-print variants
+        parse_pretty_inner(efmt, &a, true)
+    })
 }
 
 pub fn make_crate_type_option() -> RustcOptGroup {
@@ -2237,22 +2224,54 @@ impl fmt::Display for CrateType {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
-    PpmNormal,
-    PpmEveryBodyLoops,
-    PpmExpanded,
-    PpmIdentified,
-    PpmExpandedIdentified,
-    PpmExpandedHygiene,
-    PpmTyped,
+    /// `--pretty=normal`
+    Normal,
+    /// `-Zunpretty=everybody_loops`
+    EveryBodyLoops,
+    /// `--pretty=expanded`
+    Expanded,
+    /// `--pretty=identified`
+    Identified,
+    /// `--pretty=expanded,identified`
+    ExpandedIdentified,
+    /// `--pretty=expanded,hygiene`
+    ExpandedHygiene,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpAstTreeMode {
+    /// `-Zunpretty=ast`
+    Normal,
+    /// `-Zunpretty=ast,expanded`
+    Expanded,
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum PpHirMode {
+    /// `-Zunpretty=hir`
+    Normal,
+    /// `-Zunpretty=hir,identified`
+    Identified,
+    /// `-Zunpretty=hir,typed`
+    Typed,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
-    PpmSource(PpSourceMode),
-    PpmHir(PpSourceMode),
-    PpmHirTree(PpSourceMode),
-    PpmMir,
-    PpmMirCFG,
+    /// Options that print the source code, i.e.
+    /// `--pretty` and `-Zunpretty=everybody_loops`
+    Source(PpSourceMode),
+    AstTree(PpAstTreeMode),
+    /// Options that print the HIR, i.e. `-Zunpretty=hir`
+    Hir(PpHirMode),
+    /// `-Zunpretty=hir-tree`
+    HirTree,
+    /// `-Zunpretty=thir-tree`
+    ThirTree,
+    /// `-Zunpretty=mir`
+    Mir,
+    /// `-Zunpretty=mir-cfg`
+    MirCFG,
 }
 
 impl PpMode {
@@ -2260,22 +2279,21 @@ impl PpMode {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
-            PpmSource(PpmNormal | PpmIdentified) => false,
+            Source(Normal | Identified) | AstTree(PpAstTreeMode::Normal) => false,
 
-            PpmSource(
-                PpmExpanded | PpmEveryBodyLoops | PpmExpandedIdentified | PpmExpandedHygiene,
-            )
-            | PpmHir(_)
-            | PpmHirTree(_)
-            | PpmMir
-            | PpmMirCFG => true,
-            PpmSource(PpmTyped) => panic!("invalid state"),
+            Source(Expanded | EveryBodyLoops | ExpandedIdentified | ExpandedHygiene)
+            | AstTree(PpAstTreeMode::Expanded)
+            | Hir(_)
+            | HirTree
+            | ThirTree
+            | Mir
+            | MirCFG => true,
         }
     }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
-        matches!(*self, PpmMir | PpmMirCFG)
+        matches!(*self, Mir | MirCFG)
     }
 }
 
@@ -2313,6 +2331,7 @@ crate mod dep_tracking {
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
 
     pub trait DepTrackingHash {
@@ -2353,6 +2372,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(lint::Level);
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
+    impl_dep_tracking_hash_via_hash!(Option<NonZeroUsize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
     impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);

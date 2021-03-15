@@ -44,7 +44,7 @@ where
 {
     infcx: &'me InferCtxt<'me, 'tcx>,
 
-    /// Callback to use when we deduce an outlives relationship
+    /// Callback to use when we deduce an outlives relationship.
     delegate: D,
 
     /// How are we relating `a` and `b`?
@@ -768,7 +768,7 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     }
 }
 
-/// The "type generalize" is used when handling inference variables.
+/// The "type generalizer" is used when handling inference variables.
 ///
 /// The basic strategy for handling a constraint like `?A <: B` is to
 /// apply a "generalization strategy" to the type `B` -- this replaces

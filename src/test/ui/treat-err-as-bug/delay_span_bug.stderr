@@ -1,5 +1,5 @@
 error: internal compiler error: delayed span bug triggered by #[rustc_error(delay_span_bug_from_inside_query)]
-  --> $DIR/delay_span_bug.rs:11:1
+  --> $DIR/delay_span_bug.rs:12:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

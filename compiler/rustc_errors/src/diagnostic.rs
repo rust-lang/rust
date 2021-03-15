@@ -295,6 +295,7 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
+        assert!(!suggestion.is_empty());
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
@@ -318,6 +319,10 @@ impl Diagnostic {
         suggestions: Vec<Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
+        assert!(!suggestions.is_empty());
+        for s in &suggestions {
+            assert!(!s.is_empty());
+        }
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions
                 .into_iter()
@@ -348,6 +353,7 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
+        assert!(!suggestion.is_empty());
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion

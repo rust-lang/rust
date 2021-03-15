@@ -1,10 +1,10 @@
-use super::super::DeterministicRng;
+use super::super::testing::crash_test::{CrashTestDummy, Panic};
+use super::super::testing::rng::DeterministicRng;
 use super::*;
 use crate::vec::Vec;
 use std::cmp::Ordering;
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU32, Ordering::SeqCst};
 
 #[test]
 fn test_clone_eq() {
@@ -349,70 +349,45 @@ fn test_drain_filter() {
 
 #[test]
 fn test_drain_filter_drop_panic_leak() {
-    static PREDS: AtomicU32 = AtomicU32::new(0);
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    struct D(i32);
-    impl Drop for D {
-        fn drop(&mut self) {
-            if DROPS.fetch_add(1, SeqCst) == 1 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
     let mut set = BTreeSet::new();
-    set.insert(D(0));
-    set.insert(D(4));
-    set.insert(D(8));
+    set.insert(a.spawn(Panic::Never));
+    set.insert(b.spawn(Panic::InDrop));
+    set.insert(c.spawn(Panic::Never));
 
-    catch_unwind(move || {
-        drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, SeqCst);
-            true
-        }))
-    })
-    .ok();
+    catch_unwind(move || drop(set.drain_filter(|dummy| dummy.query(true)))).ok();
 
-    assert_eq!(PREDS.load(SeqCst), 0x011);
-    assert_eq!(DROPS.load(SeqCst), 3);
+    assert_eq!(a.queried(), 1);
+    assert_eq!(b.queried(), 1);
+    assert_eq!(c.queried(), 0);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
 }
 
 #[test]
 fn test_drain_filter_pred_panic_leak() {
-    static PREDS: AtomicU32 = AtomicU32::new(0);
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    struct D(i32);
-    impl Drop for D {
-        fn drop(&mut self) {
-            DROPS.fetch_add(1, SeqCst);
-        }
-    }
-
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
     let mut set = BTreeSet::new();
-    set.insert(D(0));
-    set.insert(D(4));
-    set.insert(D(8));
+    set.insert(a.spawn(Panic::Never));
+    set.insert(b.spawn(Panic::InQuery));
+    set.insert(c.spawn(Panic::InQuery));
 
-    catch_unwind(AssertUnwindSafe(|| {
-        drop(set.drain_filter(|d| {
-            PREDS.fetch_add(1u32 << d.0, SeqCst);
-            match d.0 {
-                0 => true,
-                _ => panic!(),
-            }
-        }))
-    }))
-    .ok();
+    catch_unwind(AssertUnwindSafe(|| drop(set.drain_filter(|dummy| dummy.query(true))))).ok();
 
-    assert_eq!(PREDS.load(SeqCst), 0x011);
-    assert_eq!(DROPS.load(SeqCst), 1);
+    assert_eq!(a.queried(), 1);
+    assert_eq!(b.queried(), 1);
+    assert_eq!(c.queried(), 0);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 0);
     assert_eq!(set.len(), 2);
-    assert_eq!(set.first().unwrap().0, 4);
-    assert_eq!(set.last().unwrap().0, 8);
+    assert_eq!(set.first().unwrap().id(), 1);
+    assert_eq!(set.last().unwrap().id(), 2);
 }
 
 #[test]

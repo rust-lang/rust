@@ -4,40 +4,34 @@ use crate::build::scope::DropKind;
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::thir::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir as hir;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    crate fn as_temp<M>(
+    crate fn as_temp(
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: M,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
-    ) -> BlockAnd<Local>
-    where
-        M: Mirror<'tcx, Output = Expr<'tcx>>,
-    {
-        let expr = self.hir.mirror(expr);
-        //
+    ) -> BlockAnd<Local> {
         // this is the only place in mir building that we need to truly need to worry about
         // infinite recursion. Everything else does recurse, too, but it always gets broken up
         // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.expr_as_temp(block, temp_lifetime, expr, mutability))
+        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
     }
 
-    fn expr_as_temp(
+    fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: Expr<'tcx>,
+        expr: &Expr<'_, 'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
         debug!(
-            "expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
+            "as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
             block, temp_lifetime, expr, mutability
         );
         let this = self;
@@ -65,13 +59,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             match expr.kind {
                 ExprKind::StaticRef { def_id, .. } => {
-                    assert!(!this.hir.tcx().is_thread_local_static(def_id));
+                    assert!(!this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
                     local_decl.local_info =
                         Some(box LocalInfo::StaticRef { def_id, is_thread_local: false });
                 }
                 ExprKind::ThreadLocalRef(def_id) => {
-                    assert!(this.hir.tcx().is_thread_local_static(def_id));
+                    assert!(this.tcx.is_thread_local_static(def_id));
                     local_decl.internal = true;
                     local_decl.local_info =
                         Some(box LocalInfo::StaticRef { def_id, is_thread_local: true });
@@ -89,7 +83,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Don't bother with StorageLive and Dead for these temporaries,
             // they are never assigned.
             ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
-            ExprKind::Block { body: hir::Block { expr: None, targeted_by_break: false, .. } }
+            ExprKind::Block { body: Block { expr: None, targeted_by_break: false, .. } }
                 if expr_ty.is_never() => {}
             _ => {
                 this.cfg
@@ -114,7 +108,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        unpack!(block = this.into(temp_place, block, expr));
+        unpack!(block = this.expr_into_dest(temp_place, block, expr));
 
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);

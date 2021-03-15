@@ -6,11 +6,11 @@ use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob
 
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::SyntaxExtension;
-use rustc_hir::def_id::{CrateNum, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::cstore::{CrateDepKind, CrateSource, ExternCrate};
@@ -42,6 +42,10 @@ pub struct CStore {
     allocator_kind: Option<AllocatorKind>,
     /// This crate has a `#[global_allocator]` item.
     has_global_allocator: bool,
+
+    /// This map is used to verify we get no hash conflicts between
+    /// `StableCrateId` values.
+    stable_crate_ids: FxHashMap<StableCrateId, CrateNum>,
 }
 
 pub struct CrateLoader<'a> {
@@ -194,6 +198,11 @@ impl<'a> CrateLoader<'a> {
         metadata_loader: &'a MetadataLoaderDyn,
         local_crate_name: &str,
     ) -> Self {
+        let local_crate_stable_id =
+            StableCrateId::new(local_crate_name, sess.local_crate_disambiguator());
+        let mut stable_crate_ids = FxHashMap::default();
+        stable_crate_ids.insert(local_crate_stable_id, LOCAL_CRATE);
+
         CrateLoader {
             sess,
             metadata_loader,
@@ -207,6 +216,7 @@ impl<'a> CrateLoader<'a> {
                 injected_panic_runtime: None,
                 allocator_kind: None,
                 has_global_allocator: false,
+                stable_crate_ids,
             },
             used_extern_options: Default::default(),
         }
@@ -313,6 +323,20 @@ impl<'a> CrateLoader<'a> {
         res
     }
 
+    fn verify_no_stable_crate_id_hash_conflicts(
+        &mut self,
+        root: &CrateRoot<'_>,
+        cnum: CrateNum,
+    ) -> Result<(), CrateError> {
+        if let Some(existing) = self.cstore.stable_crate_ids.insert(root.stable_crate_id(), cnum) {
+            let crate_name0 = root.name();
+            let crate_name1 = self.cstore.get_crate_data(existing).name();
+            return Err(CrateError::StableCrateIdCollision(crate_name0, crate_name1));
+        }
+
+        Ok(())
+    }
+
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
@@ -333,6 +357,8 @@ impl<'a> CrateLoader<'a> {
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
+
+        self.verify_no_stable_crate_id_hash_conflicts(&crate_root, cnum)?;
 
         info!(
             "register crate `{}` (cnum = {}. private_dep = {})",

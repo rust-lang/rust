@@ -11,6 +11,7 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
+use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
     TargetMachineFactoryFn,
@@ -93,7 +94,7 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
         tcx.output_filenames(LOCAL_CRATE)
-            .split_dwarf_filename(tcx.sess.split_debuginfo(), Some(mod_name))
+            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
     } else {
         None
     };
@@ -139,7 +140,7 @@ fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     }
 }
 
-fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
+pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
     match code_model {
         Some(CodeModel::Tiny) => llvm::CodeModel::Tiny,
         Some(CodeModel::Small) => llvm::CodeModel::Small,
@@ -879,9 +880,7 @@ pub(crate) unsafe fn codegen(
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);
-                    if let Err(e) = fs::remove_file(&bc_out) {
-                        diag_handler.err(&format!("failed to remove bitcode: {}", e));
-                    }
+                    ensure_removed(diag_handler, &bc_out);
                 }
             }
 

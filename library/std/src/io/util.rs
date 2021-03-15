@@ -4,7 +4,9 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{
+    self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
+};
 
 /// A reader which is always at EOF.
 ///
@@ -77,6 +79,12 @@ impl Seek for Empty {
 impl fmt::Debug for Empty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Empty { .. }")
+    }
+}
+
+impl SizeHint for Empty {
+    fn upper_bound(&self) -> Option<usize> {
+        Some(0)
     }
 }
 

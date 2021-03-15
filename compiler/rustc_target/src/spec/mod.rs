@@ -641,6 +641,7 @@ supported_targets! {
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("s390x-unknown-linux-musl", s390x_unknown_linux_musl),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
@@ -678,7 +679,7 @@ supported_targets! {
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
-    ("x86_64-linux-kernel", x86_64_linux_kernel),
+    ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
@@ -693,6 +694,7 @@ supported_targets! {
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("sparc64-unknown-openbsd", sparc64_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
+    ("powerpc-unknown-openbsd", powerpc_unknown_openbsd),
 
     ("aarch64-unknown-netbsd", aarch64_unknown_netbsd),
     ("armv6-unknown-netbsd-eabihf", armv6_unknown_netbsd_eabihf),
@@ -701,7 +703,6 @@ supported_targets! {
     ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
-    ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
 
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
@@ -727,6 +728,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
+    ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
@@ -735,9 +737,8 @@ supported_targets! {
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
-    // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-    // (See <https://github.com/rust-lang/rust/issues/40531>.)
-    ("x86_64-sun-solaris", "x86_64-pc-solaris", x86_64_sun_solaris),
+    ("x86_64-pc-solaris", x86_64_pc_solaris),
+    ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
@@ -777,15 +778,18 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
-    ("x86_64-unknown-hermit-kernel", x86_64_unknown_hermit_kernel),
+
+    ("x86_64-unknown-none-hermitkernel", x86_64_unknown_none_hermitkernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
+    ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
+    ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
@@ -1280,24 +1284,31 @@ impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            Abi::System => {
+            Abi::System { unwind } => {
                 if self.is_like_windows && self.arch == "x86" {
-                    Abi::Stdcall
+                    Abi::Stdcall { unwind }
                 } else {
-                    Abi::C
+                    Abi::C { unwind }
                 }
             }
             // These ABI kinds are ignored on non-x86 Windows targets.
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
-            Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
-                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
+            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => {
+                if self.is_like_windows && self.arch != "x86" { Abi::C { unwind } } else { abi }
+            }
+            Abi::Fastcall | Abi::Vectorcall => {
+                if self.is_like_windows && self.arch != "x86" {
+                    Abi::C { unwind: false }
+                } else {
+                    abi
+                }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
                     Abi::Win64
                 } else {
-                    Abi::C
+                    Abi::C { unwind: false }
                 }
             }
             abi => abi,
@@ -1492,7 +1503,7 @@ impl Target {
             } );
             ($key_name:ident = $json_name:expr, optional) => ( {
                 let name = $json_name;
-                if let Some(o) = obj.find(&name[..]) {
+                if let Some(o) = obj.find(name) {
                     base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
@@ -1981,24 +1992,6 @@ impl TargetTriple {
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = path.canonicalize()?;
         Ok(TargetTriple::TargetPath(canonicalized_path))
-    }
-
-    /// Creates a target triple from its alias
-    pub fn from_alias(triple: String) -> Self {
-        macro_rules! target_aliases {
-            ( $(($alias:literal, $target:literal ),)+ ) => {
-                match triple.as_str() {
-                    $( $alias => TargetTriple::from_triple($target), )+
-                    _ => TargetTriple::TargetTriple(triple),
-                }
-            }
-        }
-
-        target_aliases! {
-            // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-            // (See <https://github.com/rust-lang/rust/issues/40531>.)
-            ("x86_64-pc-solaris", "x86_64-sun-solaris"),
-        }
     }
 
     /// Returns a string triple for this target.

@@ -7,10 +7,8 @@ LL | #![allow(unused_variables)];
 error[E0601]: `main` function not found in crate `issue_49040`
   --> $DIR/issue-49040.rs:1:1
    |
-LL | / #![allow(unused_variables)];
-LL | |
-LL | | fn foo() {}
-   | |__^ consider adding a `main` function to `$DIR/issue-49040.rs`
+LL | #![allow(unused_variables)];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ consider adding a `main` function to `$DIR/issue-49040.rs`
 
 error: aborting due to 2 previous errors
 

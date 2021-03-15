@@ -942,7 +942,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
 
         self.add_bounds(param_ty, ast_bounds, &mut bounds);
-        bounds.trait_bounds.sort_by_key(|(t, _, _)| t.def_id());
 
         bounds.implicitly_sized = if let SizedByDefault::Yes = sized_by_default {
             if !self.is_unsized(ast_bounds, span) { Some(span) } else { None }
@@ -985,10 +984,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         //
         // We want to produce `<B as SuperTrait<i32>>::T == foo`.
 
-        debug!(
-            "add_predicates_for_ast_type_binding(hir_ref_id {:?}, trait_ref {:?}, binding {:?}, bounds {:?}",
-            hir_ref_id, trait_ref, binding, bounds
-        );
+        debug!(?hir_ref_id, ?trait_ref, ?binding, ?bounds, "add_predicates_for_ast_type_binding",);
         let tcx = self.tcx();
 
         let candidate =
@@ -1321,42 +1317,42 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
-        auto_traits.sort_by_key(|i| i.trait_ref().def_id());
-        auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
+        // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
+        // the bounds
+        let mut duplicates = FxHashSet::default();
+        auto_traits.retain(|i| duplicates.insert(i.trait_ref().def_id()));
         debug!("regular_traits: {:?}", regular_traits);
         debug!("auto_traits: {:?}", auto_traits);
 
-        // Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
-        // removing the dummy `Self` type (`trait_object_dummy_self`).
-        let trait_ref_to_existential = |trait_ref: ty::TraitRef<'tcx>| {
-            if trait_ref.self_ty() != dummy_self {
-                // FIXME: There appears to be a missing filter on top of `expand_trait_aliases`,
-                // which picks up non-supertraits where clauses - but also, the object safety
-                // completely ignores trait aliases, which could be object safety hazards. We
-                // `delay_span_bug` here to avoid an ICE in stable even when the feature is
-                // disabled. (#66420)
-                tcx.sess.delay_span_bug(
-                    DUMMY_SP,
-                    &format!(
-                        "trait_ref_to_existential called on {:?} with non-dummy Self",
-                        trait_ref,
-                    ),
-                );
-            }
-            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
-        };
-
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let existential_trait_refs =
-            regular_traits.iter().map(|i| i.trait_ref().map_bound(trait_ref_to_existential));
+        let existential_trait_refs = regular_traits.iter().map(|i| {
+            i.trait_ref().map_bound(|trait_ref: ty::TraitRef<'tcx>| {
+                if trait_ref.self_ty() != dummy_self {
+                    // FIXME: There appears to be a missing filter on top of `expand_trait_aliases`,
+                    // which picks up non-supertraits where clauses - but also, the object safety
+                    // completely ignores trait aliases, which could be object safety hazards. We
+                    // `delay_span_bug` here to avoid an ICE in stable even when the feature is
+                    // disabled. (#66420)
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!(
+                            "trait_ref_to_existential called on {:?} with non-dummy Self",
+                            trait_ref,
+                        ),
+                    );
+                }
+                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+            })
+        });
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
-                let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
-                ty::ExistentialProjection {
-                    ty: b.ty,
-                    item_def_id: b.projection_ty.item_def_id,
-                    substs: trait_ref.substs,
+                if b.projection_ty.self_ty() != dummy_self {
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP,
+                        &format!("trait_ref_to_existential called on {:?} with non-dummy Self", b),
+                    );
                 }
+                ty::ExistentialProjection::erase_self_ty(tcx, b)
             })
         });
 
@@ -1473,7 +1469,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }),
                     assoc_name,
                 )
-                .into_iter()
             },
             || param_name.to_string(),
             assoc_name,
@@ -2210,8 +2205,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.res_to_ty(opt_self_ty, path, false)
             }
             hir::TyKind::OpaqueDef(item_id, ref lifetimes) => {
-                let opaque_ty = tcx.hir().expect_item(item_id.id);
-                let def_id = tcx.hir().local_def_id(item_id.id).to_def_id();
+                let opaque_ty = tcx.hir().item(item_id);
+                let def_id = item_id.def_id.to_def_id();
 
                 match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
@@ -2374,7 +2369,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             crate::collect::placeholder_type_error(
                 tcx,
                 ident_span.map(|sp| sp.shrink_to_hi()),
-                &generics.params[..],
+                generics.params,
                 visitor.0,
                 true,
                 hir_ty,

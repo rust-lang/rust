@@ -201,9 +201,7 @@ unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
     I: TrustedRandomAccess,
 {
-    fn may_have_side_effect() -> bool {
-        I::may_have_side_effect()
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
 }
 
 // Fuse specialization trait

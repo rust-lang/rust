@@ -105,12 +105,33 @@ pub trait CommandExt: Sealed {
     /// [1]: https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
     #[stable(feature = "windows_process_extensions", since = "1.16.0")]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command;
+
+    /// Forces all arguments to be wrapped in quote (`"`) characters.
+    ///
+    /// This is useful for passing arguments to [MSYS2/Cygwin][1] based
+    /// executables: these programs will expand unquoted arguments containing
+    /// wildcard characters (`?` and `*`) by searching for any file paths
+    /// matching the wildcard pattern.
+    ///
+    /// Adding quotes has no effect when passing arguments to programs
+    /// that use [msvcrt][2]. This includes programs built with both
+    /// MinGW and MSVC.
+    ///
+    /// [1]: <https://github.com/msys2/MSYS2-packages/issues/2176>
+    /// [2]: <https://msdn.microsoft.com/en-us/library/17w5ykft.aspx>
+    #[unstable(feature = "windows_process_extensions_force_quotes", issue = "82227")]
+    fn force_quotes(&mut self, enabled: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 impl CommandExt for process::Command {
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
         self.as_inner_mut().creation_flags(flags);
+        self
+    }
+
+    fn force_quotes(&mut self, enabled: bool) -> &mut process::Command {
+        self.as_inner_mut().force_quotes(enabled);
         self
     }
 }

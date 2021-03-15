@@ -6,11 +6,11 @@ LL | fn func<T: Test>(foo: &Foo, t: T) {
 LL |     foo.bar(move |_| {
    |         ^^^
    |
-note: the parameter type `T` must be valid for the anonymous lifetime #2 defined on the function body at 19:1...
-  --> $DIR/missing-lifetimes-in-signature-2.rs:19:1
+note: the parameter type `T` must be valid for the anonymous lifetime defined on the function body at 19:24...
+  --> $DIR/missing-lifetimes-in-signature-2.rs:19:24
    |
 LL | fn func<T: Test>(foo: &Foo, t: T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^
 note: ...so that the type `[closure@$DIR/missing-lifetimes-in-signature-2.rs:20:13: 23:6]` will meet its required lifetime bounds
   --> $DIR/missing-lifetimes-in-signature-2.rs:20:9
    |

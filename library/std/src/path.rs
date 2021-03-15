@@ -1066,6 +1066,7 @@ impl FusedIterator for Ancestors<'_> {}
 ///
 /// Which method works best depends on what kind of situation you're in.
 #[derive(Clone)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `PathBuf::as_mut_vec` current implementation relies
@@ -1719,6 +1720,7 @@ impl AsRef<OsStr> for PathBuf {
 /// let extension = path.extension();
 /// assert_eq!(extension, Some(OsStr::new("txt")));
 /// ```
+#[cfg_attr(not(test), rustc_diagnostic_item = "Path")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `Path::new` current implementation relies
@@ -2321,7 +2323,9 @@ impl Path {
     }
 
     /// Returns an object that implements [`Display`] for safely printing paths
-    /// that may contain non-Unicode data.
+    /// that may contain non-Unicode data. This may perform lossy conversion,
+    /// depending on the platform.  If you would like an implementation which
+    /// escapes the path please use [`Debug`] instead.
     ///
     /// [`Display`]: fmt::Display
     ///
@@ -2555,7 +2559,9 @@ impl fmt::Debug for Path {
 ///
 /// A [`Path`] might contain non-Unicode data. This `struct` implements the
 /// [`Display`] trait in a way that mitigates that. It is created by the
-/// [`display`](Path::display) method on [`Path`].
+/// [`display`](Path::display) method on [`Path`]. This may perform lossy
+/// conversion, depending on the platform. If you would like an implementation
+/// which escapes the path please use [`Debug`] instead.
 ///
 /// # Examples
 ///

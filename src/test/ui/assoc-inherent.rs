@@ -1,9 +1,20 @@
-// Test associated types are, until #8995 is implemented, forbidden in inherent impls.
+// Test that inherent associated types work with
+// inherent_associated_types feature gate.
+
+#![feature(inherent_associated_types)]
+#![allow(incomplete_features)]
 
 struct Foo;
 
 impl Foo {
-    type Bar = isize; //~ERROR associated types are not yet supported in inherent impls (see #8995)
+    type Bar = isize;
 }
 
-fn main() {}
+impl Foo {
+    type Baz; //~ ERROR associated type in `impl` without body
+}
+
+fn main() {
+    let x : Foo::Bar; //~ERROR ambiguous associated type
+    x = 0isize;
+}

@@ -353,12 +353,12 @@ pub fn struct_lint_level<'s, 'd>(
                  it will become a hard error";
 
             let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-                "once this method is added to the standard library, \
-                 the ambiguity may cause an error or change in behavior!"
+                "once this associated item is added to the standard library, the ambiguity may \
+                 cause an error or change in behavior!"
                     .to_owned()
             } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-                "this borrowing pattern was not meant to be accepted, \
-                 and may become a hard error in the future"
+                "this borrowing pattern was not meant to be accepted, and may become a hard error \
+                 in the future"
                     .to_owned()
             } else if let Some(edition) = future_incompatible.edition {
                 format!("{} in the {} edition!", STANDARD_MESSAGE, edition)

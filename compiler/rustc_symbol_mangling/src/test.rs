@@ -5,6 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -31,9 +32,8 @@ struct SymbolNamesTest<'tcx> {
 }
 
 impl SymbolNamesTest<'tcx> {
-    fn process_attrs(&mut self, hir_id: hir::HirId) {
+    fn process_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id(hir_id);
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
             if tcx.sess.check_name(attr, SYMBOL_NAME) {
                 let def_id = def_id.to_def_id();
@@ -61,18 +61,18 @@ impl SymbolNamesTest<'tcx> {
 
 impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.hir_id);
+        self.process_attrs(item.def_id);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.process_attrs(trait_item.hir_id);
+        self.process_attrs(trait_item.def_id);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.process_attrs(impl_item.hir_id);
+        self.process_attrs(impl_item.def_id);
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
-        self.process_attrs(foreign_item.hir_id);
+        self.process_attrs(foreign_item.def_id);
     }
 }

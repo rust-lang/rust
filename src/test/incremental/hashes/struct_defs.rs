@@ -24,8 +24,8 @@
 pub struct LayoutPacked;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner_nodes", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]
@@ -41,8 +41,8 @@ pub struct LayoutPacked;
 struct LayoutC;
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(label="hir_owner", cfg="cfail2")]
-#[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(label="hir_owner", cfg="cfail2")]
+#[rustc_clean(label="hir_owner_nodes", cfg="cfail2")]
 #[rustc_dirty(label="type_of", cfg="cfail2")]
 #[rustc_clean(label="generics_of", cfg="cfail2")]
 #[rustc_clean(label="predicates_of", cfg="cfail2")]

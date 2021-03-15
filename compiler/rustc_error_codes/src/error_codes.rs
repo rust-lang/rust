@@ -103,7 +103,6 @@ E0198: include_str!("./error_codes/E0198.md"),
 E0199: include_str!("./error_codes/E0199.md"),
 E0200: include_str!("./error_codes/E0200.md"),
 E0201: include_str!("./error_codes/E0201.md"),
-E0202: include_str!("./error_codes/E0202.md"),
 E0203: include_str!("./error_codes/E0203.md"),
 E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
@@ -286,8 +285,11 @@ E0538: include_str!("./error_codes/E0538.md"),
 E0539: include_str!("./error_codes/E0539.md"),
 E0541: include_str!("./error_codes/E0541.md"),
 E0542: include_str!("./error_codes/E0542.md"),
+E0543: include_str!("./error_codes/E0543.md"),
+E0545: include_str!("./error_codes/E0545.md"),
 E0546: include_str!("./error_codes/E0546.md"),
 E0547: include_str!("./error_codes/E0547.md"),
+E0549: include_str!("./error_codes/E0549.md"),
 E0550: include_str!("./error_codes/E0550.md"),
 E0551: include_str!("./error_codes/E0551.md"),
 E0552: include_str!("./error_codes/E0552.md"),
@@ -604,13 +606,8 @@ E0781: include_str!("./error_codes/E0781.md"),
     E0523,
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
-    E0543, // missing 'reason'
     E0544, // multiple stability levels
-    E0545, // incorrect 'issue'
 //  E0548, // replaced with a generic attribute input check
-    // rustc_deprecated attribute must be paired with either stable or unstable
-    // attribute
-    E0549,
     E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
 //  E0558, // replaced with a generic attribute input check

@@ -62,8 +62,13 @@ pub trait CommandExt: Sealed {
     /// `fork`. This primarily means that any modifications made to memory on
     /// behalf of this closure will **not** be visible to the parent process.
     /// This is often a very constrained environment where normal operations
-    /// like `malloc` or acquiring a mutex are not guaranteed to work (due to
+    /// like `malloc`, accessing environment variables through [`std::env`]
+    /// or acquiring a mutex are not guaranteed to work (due to
     /// other threads perhaps still running when the `fork` was run).
+    ///
+    /// For further details refer to the [POSIX fork() specification]
+    /// and the equivalent documentation for any targeted
+    /// platform, especially the requirements around *async-signal-safety*.
     ///
     /// This also means that all resources such as file descriptors and
     /// memory-mapped regions got duplicated. It is your responsibility to make
@@ -73,6 +78,10 @@ pub trait CommandExt: Sealed {
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
+    ///
+    /// [POSIX fork() specification]:
+    ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
+    /// [`std::env`]: mod@crate::env
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
@@ -172,6 +181,8 @@ impl CommandExt for process::Command {
     }
 
     fn exec(&mut self) -> io::Error {
+        // NOTE: This may *not* be safe to call after `libc::fork`, because it
+        // may allocate. That may be worth fixing at some point in the future.
         self.as_inner_mut().exec(sys::process::Stdio::Inherit)
     }
 
@@ -186,12 +197,20 @@ impl CommandExt for process::Command {
 
 /// Unix-specific extensions to [`process::ExitStatus`].
 ///
+/// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as passed to the
+/// `exit` system call or returned by [`ExitStatus::code()`](crate::process::ExitStatus::code).
+/// It represents **any wait status**, as returned by one of the `wait` family of system calls.
+///
+/// This is because a Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but
+/// can also represent other kinds of process event.
+///
 /// This trait is sealed: it cannot be implemented outside the standard library.
 /// This is so that future additional methods are not breaking changes.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExitStatusExt: Sealed {
-    /// Creates a new `ExitStatus` from the raw underlying `i32` return value of
-    /// a process.
+    /// Creates a new `ExitStatus` from the raw underlying integer status value from `wait`
+    ///
+    /// The value should be a **wait status, not an exit status**.
     #[stable(feature = "exit_status_from", since = "1.12.0")]
     fn from_raw(raw: i32) -> Self;
 
@@ -220,6 +239,8 @@ pub trait ExitStatusExt: Sealed {
     fn continued(&self) -> bool;
 
     /// Returns the underlying raw `wait` status.
+    ///
+    /// The returned integer is a **wait status, not an exit status**.
     #[unstable(feature = "unix_process_wait_more", issue = "80695")]
     fn into_raw(self) -> i32;
 }

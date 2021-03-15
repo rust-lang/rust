@@ -3,11 +3,14 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![unstable(feature = "wasi_ext", issue = "none")]
 
+use crate::ffi::OsStr;
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
-use crate::sys::fs::osstr2str;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
+// Used for `File::read` on intra-doc links
+#[allow(unused_imports)]
+use io::{Read, Write};
 
 /// WASI-specific extensions to [`File`].
 pub trait FileExt {
@@ -54,11 +57,11 @@ pub trait FileExt {
     /// # Errors
     ///
     /// If this function encounters an error of the kind
-    /// [`ErrorKind::Interrupted`] then the error is ignored and the operation
+    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
     /// will continue.
     ///
     /// If this function encounters an "end of file" before completely filling
-    /// the buffer, it returns an error of the kind [`ErrorKind::UnexpectedEof`].
+    /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
     /// The contents of `buf` are unspecified in this case.
     ///
     /// If any other read error is encountered then this function immediately
@@ -131,16 +134,16 @@ pub trait FileExt {
     /// The current file cursor is not affected by this function.
     ///
     /// This method will continuously call [`write_at`] until there is no more data
-    /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
+    /// to be written or an error of non-[`io::ErrorKind::Interrupted`] kind is
     /// returned. This method will not return until the entire buffer has been
     /// successfully written or such an error occurs. The first error that is
-    /// not of [`ErrorKind::Interrupted`] kind generated from this method will be
+    /// not of [`io::ErrorKind::Interrupted`] kind generated from this method will be
     /// returned.
     ///
     /// # Errors
     ///
     /// This function will return the first error of
-    /// non-[`ErrorKind::Interrupted`] kind that [`write_at`] returns.
+    /// non-[`io::ErrorKind::Interrupted`] kind that [`write_at`] returns.
     ///
     /// [`write_at`]: FileExt::write_at
     #[stable(feature = "rw_exact_all_at", since = "1.33.0")]
@@ -397,6 +400,8 @@ pub trait MetadataExt {
     fn ino(&self) -> u64;
     /// Returns the `st_nlink` field of the internal `filestat_t`
     fn nlink(&self) -> u64;
+    /// Returns the `st_size` field of the internal `filestat_t`
+    fn size(&self) -> u64;
     /// Returns the `st_atim` field of the internal `filestat_t`
     fn atim(&self) -> u64;
     /// Returns the `st_mtim` field of the internal `filestat_t`
@@ -415,6 +420,9 @@ impl MetadataExt for fs::Metadata {
     fn nlink(&self) -> u64 {
         self.as_inner().as_wasi().nlink
     }
+    fn size(&self) -> u64 {
+        self.as_inner().as_wasi().size
+    }
     fn atim(&self) -> u64 {
         self.as_inner().as_wasi().atim
     }
@@ -426,7 +434,7 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/// WASI-specific extensions for [`FileType`].
+/// WASI-specific extensions for [`fs::FileType`].
 ///
 /// Adds support for special WASI file types such as block/character devices,
 /// pipes, and sockets.
@@ -517,8 +525,12 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
 
 /// Create a symbolic link.
 ///
-/// This is a convenience API similar to [`std::os::unix::fs::symlink`] and
-/// [`std::os::windows::fs::symlink_file`] and [`symlink_dir`](std::os::windows::fs::symlink_dir).
+/// This is a convenience API similar to `std::os::unix::fs::symlink` and
+/// `std::os::windows::fs::symlink_file` and `std::os::windows::fs::symlink_dir`.
 pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) -> io::Result<()> {
     crate::sys::fs::symlink(old_path.as_ref(), new_path.as_ref())
+}
+
+fn osstr2str(f: &OsStr) -> io::Result<&str> {
+    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
 }

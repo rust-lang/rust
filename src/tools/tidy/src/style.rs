@@ -289,7 +289,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                     suppressible_tidy_err!(err, skip_undocumented_unsafe, "undocumented unsafe");
                 }
             }
-            if line.contains("// SAFETY:") || line.contains("// Safety:") {
+            if line.contains("// SAFETY:") {
                 last_safety_comment = true;
             } else if line.trim().starts_with("//") || line.trim().is_empty() {
                 // keep previous value

@@ -1,22 +1,10 @@
-error: name `HTTPResponse` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:3:8
-   |
-LL | struct HTTPResponse; // linted
-   |        ^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `HttpResponse`
-   |
-   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
-
-error: name `NS` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:8:5
-   |
-LL |     NS, // linted
-   |     ^^ help: consider making the acronym lowercase, except the initial letter (notice the capitalization): `Ns`
-
 error: name `CWR` contains a capitalized acronym
   --> $DIR/upper_case_acronyms.rs:9:5
    |
 LL |     CWR,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Cwr`
+   |
+   = note: `-D clippy::upper-case-acronyms` implied by `-D warnings`
 
 error: name `ECE` contains a capitalized acronym
   --> $DIR/upper_case_acronyms.rs:10:5
@@ -60,11 +48,5 @@ error: name `FIN` contains a capitalized acronym
 LL |     FIN,
    |     ^^^ help: consider making the acronym lowercase, except the initial letter: `Fin`
 
-error: name `GCCLLVMSomething` contains a capitalized acronym
-  --> $DIR/upper_case_acronyms.rs:19:8
-   |
-LL | struct GCCLLVMSomething; // linted, beware that lint suggests `GccllvmSomething` instead of `GccLlvmSomething`
-   |        ^^^^^^^^^^^^^^^^ help: consider making the acronym lowercase, except the initial letter: `GccllvmSomething`
-
-error: aborting due to 11 previous errors
+error: aborting due to 8 previous errors
 

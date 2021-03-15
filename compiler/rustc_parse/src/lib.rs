@@ -6,11 +6,12 @@
 #![feature(or_patterns)]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
+#![recursion_limit = "256"]
 
 use rustc_ast as ast;
-use rustc_ast::attr::HasAttrs;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens, LazyTokenStream, TokenStream};
+use rustc_ast::AstLike;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};

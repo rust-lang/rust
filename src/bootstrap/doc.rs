@@ -270,6 +270,10 @@ fn invoke_rustdoc(
         .arg("--markdown-css")
         .arg("../rust.css");
 
+    if !builder.config.docs_minification {
+        cmd.arg("-Z").arg("unstable-options").arg("--disable-minification");
+    }
+
     builder.run(&mut cmd);
 }
 
@@ -365,6 +369,10 @@ impl Step for Standalone {
                 .arg(&out)
                 .arg(&path);
 
+            if !builder.config.docs_minification {
+                cmd.arg("--disable-minification");
+            }
+
             if filename == "not_found.md" {
                 cmd.arg("--markdown-css").arg("https://doc.rust-lang.org/rust.css");
             } else {
@@ -436,6 +444,10 @@ impl Step for Std {
                 .arg(&builder.version)
                 .arg("--index-page")
                 .arg(&builder.src.join("src/doc/index.md"));
+
+            if !builder.config.docs_minification {
+                cargo.arg("--disable-minification");
+            }
 
             builder.run(&mut cargo.into());
         };

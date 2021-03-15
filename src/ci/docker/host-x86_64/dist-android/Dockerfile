@@ -36,3 +36,6 @@ ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
+
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh

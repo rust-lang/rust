@@ -5,15 +5,19 @@ use rustc_ast::ast::{Item, ItemKind, Variant};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for camel case name containing a capitalized acronym.
+    /// **What it does:** Checks for fully capitalized names and optionally names containing a capitalized acronym.
     ///
     /// **Why is this bad?** In CamelCase, acronyms count as one word.
     /// See [naming conventions](https://rust-lang.github.io/api-guidelines/naming.html#casing-conforms-to-rfc-430-c-case)
     /// for more.
+    ///
+    /// By default, the lint only triggers on fully-capitalized names.
+    /// You can use the `upper-case-acronyms-aggressive: true` config option to enable linting
+    /// on all camel case names
     ///
     /// **Known problems:** When two acronyms are contiguous, the lint can't tell where
     /// the first acronym ends and the second starts, so it suggests to lowercase all of
@@ -33,7 +37,20 @@ declare_clippy_lint! {
     "capitalized acronyms are against the naming convention"
 }
 
-declare_lint_pass!(UpperCaseAcronyms => [UPPER_CASE_ACRONYMS]);
+#[derive(Default)]
+pub struct UpperCaseAcronyms {
+    upper_case_acronyms_aggressive: bool,
+}
+
+impl UpperCaseAcronyms {
+    pub fn new(aggressive: bool) -> Self {
+        Self {
+            upper_case_acronyms_aggressive: aggressive,
+        }
+    }
+}
+
+impl_lint_pass!(UpperCaseAcronyms => [UPPER_CASE_ACRONYMS]);
 
 fn correct_ident(ident: &str) -> String {
     let ident = ident.chars().rev().collect::<String>();
@@ -56,11 +73,18 @@ fn correct_ident(ident: &str) -> String {
     ident
 }
 
-fn check_ident(cx: &EarlyContext<'_>, ident: &Ident) {
+fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
     let span = ident.span;
     let ident = &ident.as_str();
     let corrected = correct_ident(ident);
-    if ident != &corrected {
+    // warn if we have pure-uppercase idents
+    // assume that two-letter words are some kind of valid abbreviation like FP for false positive
+    // (and don't warn)
+    if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
+    // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive 
+    // upper-case-acronyms-aggressive config option enabled
+    || (be_aggressive && ident != &corrected)
+    {
         span_lint_and_sugg(
             cx,
             UPPER_CASE_ACRONYMS,
@@ -82,12 +106,12 @@ impl EarlyLintPass for UpperCaseAcronyms {
                 ItemKind::TyAlias(..) | ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..)
             );
             then {
-                check_ident(cx, &it.ident);
+                check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
             }
         }
     }
 
     fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &Variant) {
-        check_ident(cx, &v.ident);
+        check_ident(cx, &v.ident, self.upper_case_acronyms_aggressive);
     }
 }

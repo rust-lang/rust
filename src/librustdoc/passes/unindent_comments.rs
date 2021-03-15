@@ -14,7 +14,7 @@ crate const UNINDENT_COMMENTS: Pass = Pass {
     description: "removes excess indentation on comments in order for markdown to like it",
 };
 
-crate fn unindent_comments(krate: clean::Crate, _: &DocContext<'_>) -> clean::Crate {
+crate fn unindent_comments(krate: clean::Crate, _: &mut DocContext<'_>) -> clean::Crate {
     CommentCleaner.fold_crate(krate)
 }
 

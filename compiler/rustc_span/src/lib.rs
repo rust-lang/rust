@@ -22,7 +22,6 @@
 #![feature(nll)]
 #![feature(min_specialization)]
 #![feature(option_expect_none)]
-#![feature(str_split_once)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -47,6 +46,8 @@ use def_id::{CrateNum, DefId, LOCAL_CRATE};
 pub mod lev_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
+
+pub mod crate_disambiguator;
 
 pub mod symbol;
 pub use symbol::{sym, Symbol};
@@ -1873,10 +1874,6 @@ pub trait HashStableContext {
     fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
-    fn byte_pos_to_line_and_col(
-        &mut self,
-        byte: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)>;
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
@@ -1905,9 +1902,10 @@ where
             return;
         }
 
+        self.ctxt().hash_stable(ctx, hasher);
+
         if self.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
-            self.ctxt().hash_stable(ctx, hasher);
             return;
         }
 
@@ -1920,7 +1918,6 @@ where
             Some(pos) => pos,
             None => {
                 Hash::hash(&TAG_INVALID_SPAN, hasher);
-                span.ctxt.hash_stable(ctx, hasher);
                 return;
             }
         };
@@ -1947,7 +1944,6 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
-        span.ctxt.hash_stable(ctx, hasher);
     }
 }
 

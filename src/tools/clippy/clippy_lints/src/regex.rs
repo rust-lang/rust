@@ -35,14 +35,16 @@ declare_clippy_lint! {
     /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
     /// methods.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** If the same regex is going to be applied to multiple
+    /// inputs, the precomputations done by `Regex` construction can give
+    /// significantly better performance than any of the `str`-based methods.
     ///
     /// **Example:**
     /// ```ignore
     /// Regex::new("^foobar")
     /// ```
     pub TRIVIAL_REGEX,
-    style,
+    nursery,
     "trivial regular expressions"
 }
 

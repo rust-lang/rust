@@ -275,7 +275,8 @@ fn resolve_associated_item<'tcx>(
         traits::ImplSource::AutoImpl(..)
         | traits::ImplSource::Param(..)
         | traits::ImplSource::TraitAlias(..)
-        | traits::ImplSource::DiscriminantKind(..) => None,
+        | traits::ImplSource::DiscriminantKind(..)
+        | traits::ImplSource::Pointee(..) => None,
     })
 }
 

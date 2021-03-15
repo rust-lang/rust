@@ -10,6 +10,7 @@ use rustc_ast::ast;
 use rustc_hir::def::CtorKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::symbol::Symbol;
 use rustc_span::Pos;
 
 use rustdoc_json_types::*;
@@ -22,35 +23,34 @@ use std::collections::HashSet;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
-        let item_type = ItemType::from(&item);
         let deprecation = item.deprecation(self.tcx);
         let clean::Item { source, name, attrs, kind, visibility, def_id } = item;
-        match *kind {
-            clean::StrippedItem(_) => None,
-            kind => Some(Item {
-                id: from_def_id(def_id),
-                crate_id: def_id.krate.as_u32(),
-                name: name.map(|sym| sym.to_string()),
-                source: self.convert_span(source),
-                visibility: self.convert_visibility(visibility),
-                docs: attrs.collapsed_doc_value(),
-                links: attrs
-                    .links
-                    .into_iter()
-                    .filter_map(|clean::ItemLink { link, did, .. }| {
-                        did.map(|did| (link, from_def_id(did)))
-                    })
-                    .collect(),
-                attrs: attrs
-                    .other_attrs
-                    .iter()
-                    .map(rustc_ast_pretty::pprust::attribute_to_string)
-                    .collect(),
-                deprecation: deprecation.map(from_deprecation),
-                kind: item_type.into(),
-                inner: from_clean_item_kind(kind, self.tcx),
-            }),
-        }
+        let inner = match *kind {
+            clean::StrippedItem(_) => return None,
+            x => from_clean_item_kind(x, self.tcx, &name),
+        };
+        Some(Item {
+            id: from_def_id(def_id),
+            crate_id: def_id.krate.as_u32(),
+            name: name.map(|sym| sym.to_string()),
+            source: self.convert_span(source),
+            visibility: self.convert_visibility(visibility),
+            docs: attrs.collapsed_doc_value(),
+            links: attrs
+                .links
+                .into_iter()
+                .filter_map(|clean::ItemLink { link, did, .. }| {
+                    did.map(|did| (link, from_def_id(did)))
+                })
+                .collect(),
+            attrs: attrs
+                .other_attrs
+                .iter()
+                .map(rustc_ast_pretty::pprust::attribute_to_string)
+                .collect(),
+            deprecation: deprecation.map(from_deprecation),
+            inner,
+        })
     }
 
     fn convert_span(&self, span: clean::Span) -> Option<Span> {
@@ -149,43 +149,44 @@ crate fn from_def_id(did: DefId) -> Id {
     Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
 }
 
-fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>) -> ItemEnum {
+fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Symbol>) -> ItemEnum {
     use clean::ItemKind::*;
     match item {
-        ModuleItem(m) => ItemEnum::ModuleItem(m.into()),
-        ExternCrateItem(c, a) => {
-            ItemEnum::ExternCrateItem { name: c.to_string(), rename: a.map(|x| x.to_string()) }
-        }
-        ImportItem(i) => ItemEnum::ImportItem(i.into()),
-        StructItem(s) => ItemEnum::StructItem(s.into()),
-        UnionItem(u) => ItemEnum::UnionItem(u.into()),
-        StructFieldItem(f) => ItemEnum::StructFieldItem(f.into()),
-        EnumItem(e) => ItemEnum::EnumItem(e.into()),
-        VariantItem(v) => ItemEnum::VariantItem(v.into()),
-        FunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-        ForeignFunctionItem(f) => ItemEnum::FunctionItem(f.into()),
-        TraitItem(t) => ItemEnum::TraitItem(t.into()),
-        TraitAliasItem(t) => ItemEnum::TraitAliasItem(t.into()),
-        MethodItem(m, _) => ItemEnum::MethodItem(from_function_method(m, true)),
-        TyMethodItem(m) => ItemEnum::MethodItem(from_function_method(m, false)),
-        ImplItem(i) => ItemEnum::ImplItem(i.into()),
-        StaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
-        ForeignStaticItem(s) => ItemEnum::StaticItem(from_clean_static(s, tcx)),
-        ForeignTypeItem => ItemEnum::ForeignTypeItem,
-        TypedefItem(t, _) => ItemEnum::TypedefItem(t.into()),
-        OpaqueTyItem(t) => ItemEnum::OpaqueTyItem(t.into()),
-        ConstantItem(c) => ItemEnum::ConstantItem(c.into()),
-        MacroItem(m) => ItemEnum::MacroItem(m.source),
-        ProcMacroItem(m) => ItemEnum::ProcMacroItem(m.into()),
-        AssocConstItem(t, s) => ItemEnum::AssocConstItem { type_: t.into(), default: s },
-        AssocTypeItem(g, t) => ItemEnum::AssocTypeItem {
+        ModuleItem(m) => ItemEnum::Module(m.into()),
+        ImportItem(i) => ItemEnum::Import(i.into()),
+        StructItem(s) => ItemEnum::Struct(s.into()),
+        UnionItem(u) => ItemEnum::Union(u.into()),
+        StructFieldItem(f) => ItemEnum::StructField(f.into()),
+        EnumItem(e) => ItemEnum::Enum(e.into()),
+        VariantItem(v) => ItemEnum::Variant(v.into()),
+        FunctionItem(f) => ItemEnum::Function(f.into()),
+        ForeignFunctionItem(f) => ItemEnum::Function(f.into()),
+        TraitItem(t) => ItemEnum::Trait(t.into()),
+        TraitAliasItem(t) => ItemEnum::TraitAlias(t.into()),
+        MethodItem(m, _) => ItemEnum::Method(from_function_method(m, true)),
+        TyMethodItem(m) => ItemEnum::Method(from_function_method(m, false)),
+        ImplItem(i) => ItemEnum::Impl(i.into()),
+        StaticItem(s) => ItemEnum::Static(from_clean_static(s, tcx)),
+        ForeignStaticItem(s) => ItemEnum::Static(from_clean_static(s, tcx)),
+        ForeignTypeItem => ItemEnum::ForeignType,
+        TypedefItem(t, _) => ItemEnum::Typedef(t.into()),
+        OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into()),
+        ConstantItem(c) => ItemEnum::Constant(c.into()),
+        MacroItem(m) => ItemEnum::Macro(m.source),
+        ProcMacroItem(m) => ItemEnum::ProcMacro(m.into()),
+        AssocConstItem(t, s) => ItemEnum::AssocConst { type_: t.into(), default: s },
+        AssocTypeItem(g, t) => ItemEnum::AssocType {
             bounds: g.into_iter().map(Into::into).collect(),
             default: t.map(Into::into),
         },
-        StrippedItem(inner) => from_clean_item_kind(*inner, tcx).into(),
+        StrippedItem(inner) => from_clean_item_kind(*inner, tcx, name),
         PrimitiveItem(_) | KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }
+        ExternCrateItem { ref src } => ItemEnum::ExternCrate {
+            name: name.as_ref().unwrap().to_string(),
+            rename: src.map(|x| x.to_string()),
+        },
     }
 }
 
@@ -408,7 +409,7 @@ impl From<clean::FnDecl> for FnDecl {
 
 impl From<clean::Trait> for Trait {
     fn from(trait_: clean::Trait) -> Self {
-        let clean::Trait { unsafety, items, generics, bounds, is_spotlight: _, is_auto } = trait_;
+        let clean::Trait { unsafety, items, generics, bounds, is_auto } = trait_;
         Trait {
             is_auto,
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,

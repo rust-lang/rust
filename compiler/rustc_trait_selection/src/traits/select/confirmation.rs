@@ -30,7 +30,8 @@ use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
     ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
     ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
-    ImplSourceObjectData, ImplSourceTraitAliasData, ImplSourceUserDefinedData,
+    ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
+    ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
 use crate::traits::{Obligation, ObligationCause};
@@ -98,6 +99,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             DiscriminantKindCandidate => {
                 Ok(ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData))
             }
+
+            PointeeCandidate => Ok(ImplSource::Pointee(ImplSourcePointeeData)),
 
             TraitAliasCandidate(alias_def_id) => {
                 let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);

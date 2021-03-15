@@ -5,6 +5,7 @@
 
 #include "LLVMWrapper.h"
 
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
@@ -683,6 +684,25 @@ void LLVMSelfProfileInitializeCallbacks(
     PassInstrumentationCallbacks& PIC, void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
     LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
+#if LLVM_VERSION_GE(12, 0)
+  PIC.registerBeforeNonSkippedPassCallback([LlvmSelfProfiler, BeforePassCallback](
+                                           StringRef Pass, llvm::Any Ir) {
+    std::string PassName = Pass.str();
+    std::string IrName = LLVMRustwrappedIrGetName(Ir);
+    BeforePassCallback(LlvmSelfProfiler, PassName.c_str(), IrName.c_str());
+  });
+
+  PIC.registerAfterPassCallback(
+      [LlvmSelfProfiler, AfterPassCallback](StringRef Pass, llvm::Any IR,
+                                            const PreservedAnalyses &Preserved) {
+        AfterPassCallback(LlvmSelfProfiler);
+      });
+
+  PIC.registerAfterPassInvalidatedCallback(
+      [LlvmSelfProfiler, AfterPassCallback](StringRef Pass, const PreservedAnalyses &Preserved) {
+        AfterPassCallback(LlvmSelfProfiler);
+      });
+#else
   PIC.registerBeforePassCallback([LlvmSelfProfiler, BeforePassCallback](
                                      StringRef Pass, llvm::Any Ir) {
     std::string PassName = Pass.str();
@@ -700,6 +720,7 @@ void LLVMSelfProfileInitializeCallbacks(
       [LlvmSelfProfiler, AfterPassCallback](StringRef Pass) {
         AfterPassCallback(LlvmSelfProfiler);
       });
+#endif
 
   PIC.registerBeforeAnalysisCallback([LlvmSelfProfiler, BeforePassCallback](
                                          StringRef Pass, llvm::Any Ir) {
@@ -751,17 +772,28 @@ LLVMRustOptimizeWithNewPassManager(
   TargetMachine *TM = unwrap(TMRef);
   PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
 
-  // FIXME: MergeFunctions is not supported by NewPM yet.
-  (void) MergeFunctions;
 
   PipelineTuningOptions PTO;
   PTO.LoopUnrolling = UnrollLoops;
   PTO.LoopInterleaving = UnrollLoops;
   PTO.LoopVectorization = LoopVectorize;
   PTO.SLPVectorization = SLPVectorize;
+#if LLVM_VERSION_GE(12, 0)
+  PTO.MergeFunctions = MergeFunctions;
+#else
+  // MergeFunctions is not supported by NewPM in older LLVM versions.
+  (void) MergeFunctions;
+#endif
+
+  // FIXME: We may want to expose this as an option.
+  bool DebugPassManager = false;
 
   PassInstrumentationCallbacks PIC;
+#if LLVM_VERSION_GE(12, 0)
+  StandardInstrumentations SI(DebugPassManager);
+#else
   StandardInstrumentations SI;
+#endif
   SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler){
@@ -777,10 +809,12 @@ LLVMRustOptimizeWithNewPassManager(
     PGOOpt = PGOOptions(PGOUsePath, "", "", PGOOptions::IRUse);
   }
 
+#if LLVM_VERSION_GE(12, 0)
+  PassBuilder PB(DebugPassManager, TM, PTO, PGOOpt, &PIC);
+#else
   PassBuilder PB(TM, PTO, PGOOpt, &PIC);
+#endif
 
-  // FIXME: We may want to expose this as an option.
-  bool DebugPassManager = false;
   LoopAnalysisManager LAM(DebugPassManager);
   FunctionAnalysisManager FAM(DebugPassManager);
   CGSCCAnalysisManager CGAM(DebugPassManager);
@@ -802,7 +836,8 @@ LLVMRustOptimizeWithNewPassManager(
 
   // We manually collect pipeline callbacks so we can apply them at O0, where the
   // PassBuilder does not create a pipeline.
-  std::vector<std::function<void(ModulePassManager &)>> PipelineStartEPCallbacks;
+  std::vector<std::function<void(ModulePassManager &, PassBuilder::OptimizationLevel)>>
+      PipelineStartEPCallbacks;
 #if LLVM_VERSION_GE(11, 0)
   std::vector<std::function<void(ModulePassManager &, PassBuilder::OptimizationLevel)>>
       OptimizerLastEPCallbacks;
@@ -812,9 +847,11 @@ LLVMRustOptimizeWithNewPassManager(
 #endif
 
   if (VerifyIR) {
-    PipelineStartEPCallbacks.push_back([VerifyIR](ModulePassManager &MPM) {
+    PipelineStartEPCallbacks.push_back(
+      [VerifyIR](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
         MPM.addPass(VerifierPass());
-    });
+      }
+    );
   }
 
   if (SanitizerOptions) {
@@ -832,9 +869,11 @@ LLVMRustOptimizeWithNewPassManager(
       );
 #else
 #if LLVM_VERSION_GE(10, 0)
-      PipelineStartEPCallbacks.push_back([Options](ModulePassManager &MPM) {
-        MPM.addPass(MemorySanitizerPass(Options));
-      });
+      PipelineStartEPCallbacks.push_back(
+        [Options](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(MemorySanitizerPass(Options));
+        }
+      );
 #endif
       OptimizerLastEPCallbacks.push_back(
         [Options](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
@@ -854,9 +893,11 @@ LLVMRustOptimizeWithNewPassManager(
       );
 #else
 #if LLVM_VERSION_GE(10, 0)
-      PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM) {
-        MPM.addPass(ThreadSanitizerPass());
-      });
+      PipelineStartEPCallbacks.push_back(
+        [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(ThreadSanitizerPass());
+        }
+      );
 #endif
       OptimizerLastEPCallbacks.push_back(
         [](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
@@ -879,9 +920,11 @@ LLVMRustOptimizeWithNewPassManager(
         }
       );
 #else
-      PipelineStartEPCallbacks.push_back([&](ModulePassManager &MPM) {
-        MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
-      });
+      PipelineStartEPCallbacks.push_back(
+        [&](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+          MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
+        }
+      );
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](FunctionPassManager &FPM, PassBuilder::OptimizationLevel Level) {
           FPM.addPass(AddressSanitizerPass(
@@ -890,7 +933,7 @@ LLVMRustOptimizeWithNewPassManager(
         }
       );
       PipelineStartEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM) {
+        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
         }
@@ -907,7 +950,7 @@ LLVMRustOptimizeWithNewPassManager(
       );
 #else
       PipelineStartEPCallbacks.push_back(
-        [SanitizerOptions](ModulePassManager &MPM) {
+        [SanitizerOptions](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
           MPM.addPass(HWAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeHWAddressRecover));
         }
@@ -917,35 +960,53 @@ LLVMRustOptimizeWithNewPassManager(
   }
 
   ModulePassManager MPM(DebugPassManager);
+  bool NeedThinLTOBufferPasses = UseThinLTOBuffers;
   if (!NoPrepopulatePasses) {
     if (OptLevel == PassBuilder::OptimizationLevel::O0) {
+#if LLVM_VERSION_GE(12, 0)
       for (const auto &C : PipelineStartEPCallbacks)
-        C(MPM);
+        PB.registerPipelineStartEPCallback(C);
+      for (const auto &C : OptimizerLastEPCallbacks)
+        PB.registerOptimizerLastEPCallback(C);
 
-#if LLVM_VERSION_GE(11, 0)
+      // Pass false as we manually schedule ThinLTOBufferPasses below.
+      MPM = PB.buildO0DefaultPipeline(OptLevel, /* PreLinkLTO */ false);
+#else
+      for (const auto &C : PipelineStartEPCallbacks)
+        C(MPM, OptLevel);
+
+# if LLVM_VERSION_GE(11, 0)
       for (const auto &C : OptimizerLastEPCallbacks)
         C(MPM, OptLevel);
-#else
+# else
       if (!OptimizerLastEPCallbacks.empty()) {
         FunctionPassManager FPM(DebugPassManager);
         for (const auto &C : OptimizerLastEPCallbacks)
           C(FPM, OptLevel);
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
       }
-#endif
+# endif
 
       MPM.addPass(AlwaysInlinerPass(EmitLifetimeMarkers));
 
-#if LLVM_VERSION_GE(10, 0)
+# if LLVM_VERSION_GE(10, 0)
       if (PGOOpt) {
         PB.addPGOInstrPassesForO0(
             MPM, DebugPassManager, PGOOpt->Action == PGOOptions::IRInstr,
             /*IsCS=*/false, PGOOpt->ProfileFile, PGOOpt->ProfileRemappingFile);
       }
+# endif
 #endif
     } else {
+#if LLVM_VERSION_GE(12, 0)
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
+#else
+      for (const auto &C : PipelineStartEPCallbacks)
+        PB.registerPipelineStartEPCallback([C, OptLevel](ModulePassManager &MPM) {
+          C(MPM, OptLevel);
+        });
+#endif
       if (OptStage != LLVMRustOptStage::PreLinkThinLTO) {
         for (const auto &C : OptimizerLastEPCallbacks)
           PB.registerOptimizerLastEPCallback(C);
@@ -956,7 +1017,17 @@ LLVMRustOptimizeWithNewPassManager(
         MPM = PB.buildPerModuleDefaultPipeline(OptLevel, DebugPassManager);
         break;
       case LLVMRustOptStage::PreLinkThinLTO:
+#if LLVM_VERSION_GE(12, 0)
+        MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel);
+        // The ThinLTOPreLink pipeline already includes ThinLTOBuffer passes. However, callback
+        // passes may still run afterwards. This means we need to run the buffer passes again.
+        // FIXME: In LLVM 13, the ThinLTOPreLink pipeline also runs OptimizerLastEPCallbacks
+        // before the RequiredLTOPreLinkPasses, in which case we can remove these hacks.
+        if (OptimizerLastEPCallbacks.empty())
+          NeedThinLTOBufferPasses = false;
+#else
         MPM = PB.buildThinLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+#endif
 #if LLVM_VERSION_GE(11, 0)
         for (const auto &C : OptimizerLastEPCallbacks)
           C(MPM, OptLevel);
@@ -970,21 +1041,34 @@ LLVMRustOptimizeWithNewPassManager(
 #endif
         break;
       case LLVMRustOptStage::PreLinkFatLTO:
+#if LLVM_VERSION_GE(12, 0)
+        MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel);
+        NeedThinLTOBufferPasses = false;
+#else
         MPM = PB.buildLTOPreLinkDefaultPipeline(OptLevel, DebugPassManager);
+#endif
         break;
       case LLVMRustOptStage::ThinLTO:
         // FIXME: Does it make sense to pass the ModuleSummaryIndex?
         // It only seems to be needed for C++ specific optimizations.
+#if LLVM_VERSION_GE(12, 0)
+        MPM = PB.buildThinLTODefaultPipeline(OptLevel, nullptr);
+#else
         MPM = PB.buildThinLTODefaultPipeline(OptLevel, DebugPassManager, nullptr);
+#endif
         break;
       case LLVMRustOptStage::FatLTO:
+#if LLVM_VERSION_GE(12, 0)
+        MPM = PB.buildLTODefaultPipeline(OptLevel, nullptr);
+#else
         MPM = PB.buildLTODefaultPipeline(OptLevel, DebugPassManager, nullptr);
+#endif
         break;
       }
     }
   }
 
-  if (UseThinLTOBuffers) {
+  if (NeedThinLTOBufferPasses) {
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
   }
@@ -1178,6 +1262,14 @@ extern "C" void LLVMRustSetModulePICLevel(LLVMModuleRef M) {
 
 extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
   unwrap(M)->setPIELevel(PIELevel::Level::Large);
+}
+
+extern "C" void LLVMRustSetModuleCodeModel(LLVMModuleRef M,
+                                           LLVMRustCodeModel Model) {
+  auto CM = fromRust(Model);
+  if (!CM.hasValue())
+    return;
+  unwrap(M)->setCodeModel(*CM);
 }
 
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler

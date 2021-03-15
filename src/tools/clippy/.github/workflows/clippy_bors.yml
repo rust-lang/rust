@@ -72,6 +72,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # NOTE: If you modify this job, make sure you copy the changes to clippy.yml
     steps:
     # Setup
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
@@ -131,10 +132,21 @@ jobs:
       run: ../target/debug/cargo-clippy
       working-directory: clippy_workspace_tests
 
+    - name: Test cargo-clippy --fix
+      run: ../target/debug/cargo-clippy clippy --fix -Zunstable-options
+      working-directory: clippy_workspace_tests
+
     - name: Test clippy-driver
       run: bash .github/driver.sh
       env:
         OS: ${{ runner.os }}
+
+    - name: Test cargo dev new lint
+      run: |
+        cargo dev new_lint --name new_early_pass --pass early
+        cargo dev new_lint --name new_late_pass --pass late
+        cargo check
+        git reset --hard HEAD
 
   integration_build:
     needs: changelog

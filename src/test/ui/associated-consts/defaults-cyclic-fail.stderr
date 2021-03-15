@@ -32,7 +32,7 @@ note: ...which requires const-evaluating + checking `Tr::B`...
 LL |     const B: u8 = Self::A;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires normalizing `<() as Tr>::A`, completing the cycle
-note: cycle used when const-evaluating + checking `main::promoted[2]`
+note: cycle used when const-evaluating + checking `main::promoted[1]`
   --> $DIR/defaults-cyclic-fail.rs:14:1
    |
 LL | fn main() {

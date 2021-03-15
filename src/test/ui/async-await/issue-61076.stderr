@@ -61,11 +61,12 @@ error[E0308]: mismatched types
   --> $DIR/issue-61076.rs:92:9
    |
 LL | async fn tuple() -> Tuple {
-   |                     ----- the `Output` of this `async fn`'s expected opaque type
+   |                     ----- checked the `Output` of this `async fn`, expected opaque type
 ...
 LL |         Tuple(_) => {}
    |         ^^^^^^^^ expected opaque type, found struct `Tuple`
    |
+   = note: while checking the return type of the `async fn`
    = note: expected opaque type `impl Future`
                    found struct `Tuple`
 help: consider `await`ing on the `Future`

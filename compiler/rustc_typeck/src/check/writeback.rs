@@ -348,9 +348,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 let min_list_wb = min_list
                     .iter()
                     .map(|captured_place| {
-                        let locatable = captured_place.info.path_expr_id.unwrap_or(
-                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local()),
-                        );
+                        let locatable = captured_place.info.path_expr_id.unwrap_or_else(|| {
+                            self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local())
+                        });
 
                         self.resolve(captured_place.clone(), &locatable)
                     })

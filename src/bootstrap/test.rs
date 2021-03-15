@@ -212,6 +212,7 @@ impl Step for Cargo {
         if !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
+        cargo.arg("--").args(builder.config.cmd.test_args());
 
         // Don't run cross-compile tests, we may not have cross-compiled libstd libs
         // available.
@@ -688,6 +689,78 @@ impl Step for RustdocJSNotStd {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocGUI {
+    pub target: TargetSelection,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocGUI {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/test/rustdoc-gui")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RustdocGUI { target: run.target, compiler });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        if let (Some(nodejs), Some(npm)) = (&builder.config.nodejs, &builder.config.npm) {
+            builder.ensure(compile::Std { compiler: self.compiler, target: self.target });
+
+            // The goal here is to check if the necessary packages are installed, and if not, we
+            // display a warning and move on.
+            let mut command = Command::new(&npm);
+            command.arg("list").arg("--depth=0");
+            let lines = command
+                .output()
+                .map(|output| String::from_utf8_lossy(&output.stdout).to_string())
+                .unwrap_or(String::new());
+            if !lines.contains(&" browser-ui-test@") {
+                println!(
+                    "warning: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
+                     dependency is missing",
+                );
+                println!(
+                    "If you want to install the `{0}` dependency, run `npm install {0}`",
+                    "browser-ui-test",
+                );
+                return;
+            }
+
+            let out_dir = builder.test_out(self.target).join("rustdoc-gui");
+            let mut command = builder.rustdoc_cmd(self.compiler);
+            command.arg("src/test/rustdoc-gui/lib.rs").arg("-o").arg(&out_dir);
+            builder.run(&mut command);
+
+            for file in fs::read_dir("src/test/rustdoc-gui").unwrap() {
+                let file = file.unwrap();
+                let file_path = file.path();
+                let file_name = file.file_name();
+
+                if !file_name.to_str().unwrap().ends_with(".goml") {
+                    continue;
+                }
+                let mut command = Command::new(&nodejs);
+                command
+                    .arg("src/tools/rustdoc-gui/tester.js")
+                    .arg("--doc-folder")
+                    .arg(out_dir.join("test_docs"))
+                    .arg("--test-file")
+                    .arg(file_path);
+                builder.run(&mut command);
+            }
+        } else {
+            builder.info("No nodejs found, skipping \"src/test/rustdoc-gui\" tests");
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
@@ -1003,7 +1076,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
-            || (mode == "run-make" && suite.ends_with("fulldeps"))
+            || mode == "run-make"
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
@@ -1047,6 +1120,9 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
+        }
+        if let Some(ref npm) = builder.config.npm {
+            cmd.arg("--npm").arg(npm);
         }
 
         let mut flags = if is_rustdoc { Vec::new() } else { vec!["-Crpath".to_string()] };
@@ -1838,6 +1914,77 @@ impl Step for CrateRustdoc {
 
         builder.info(&format!(
             "{} rustdoc stage{} ({} -> {})",
+            test_kind, compiler.stage, &compiler.host, target
+        ));
+        let _time = util::timeit(&builder);
+
+        try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRustdocJsonTypes {
+    host: TargetSelection,
+    test_kind: TestKind,
+}
+
+impl Step for CrateRustdocJsonTypes {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/rustdoc-json-types")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+
+        let test_kind = builder.kind.into();
+
+        builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let test_kind = self.test_kind;
+        let target = self.host;
+
+        // Use the previous stage compiler to reuse the artifacts that are
+        // created when running compiletest for src/test/rustdoc. If this used
+        // `compiler`, then it would cause rustdoc to be built *again*, which
+        // isn't really necessary.
+        let compiler = builder.compiler_for(builder.top_stage, target, target);
+        builder.ensure(compile::Rustc { compiler, target });
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            target,
+            test_kind.subcommand(),
+            "src/rustdoc-json-types",
+            SourceType::InTree,
+            &[],
+        );
+        if test_kind.subcommand() == "test" && !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
+        cargo.arg("-p").arg("rustdoc-json-types");
+
+        cargo.arg("--");
+        cargo.args(&builder.config.cmd.test_args());
+
+        if self.host.contains("musl") {
+            cargo.arg("'-Ctarget-feature=-crt-static'");
+        }
+
+        if !builder.config.verbose_tests {
+            cargo.arg("--quiet");
+        }
+
+        builder.info(&format!(
+            "{} rustdoc-json-types stage{} ({} -> {})",
             test_kind, compiler.stage, &compiler.host, target
         ));
         let _time = util::timeit(&builder);

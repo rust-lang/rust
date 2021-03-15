@@ -1,17 +1,15 @@
 //! Functions dealing with attributes and meta items.
 
 use crate::ast;
-use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute};
-use crate::ast::{Expr, GenericParam, Item, Lit, LitKind, Local, Stmt, StmtKind};
+use crate::ast::{AttrId, AttrItem, AttrKind, AttrStyle, Attribute};
+use crate::ast::{Lit, LitKind};
 use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Path, PathSegment};
-use crate::mut_visit::visit_clobber;
-use crate::ptr::P;
 use crate::token::{self, CommentKind, Token};
 use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree, TreeAndSpacing};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::source_map::{BytePos, Spanned};
+use rustc_span::source_map::BytePos;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
 
@@ -36,7 +34,7 @@ impl MarkedAttrs {
 }
 
 pub fn is_known_lint_tool(m_item: Ident) -> bool {
-    [sym::clippy, sym::rustc].contains(&m_item.name)
+    [sym::clippy, sym::rustc, sym::rustdoc].contains(&m_item.name)
 }
 
 impl NestedMetaItem {
@@ -122,6 +120,7 @@ impl NestedMetaItem {
 }
 
 impl Attribute {
+    #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
             AttrKind::Normal(ref item, _) => item.path == name,
@@ -616,102 +615,4 @@ impl NestedMetaItem {
         }
         MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
     }
-}
-
-pub trait HasAttrs: Sized {
-    fn attrs(&self) -> &[Attribute];
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>));
-}
-
-impl<T: HasAttrs> HasAttrs for Spanned<T> {
-    fn attrs(&self) -> &[Attribute] {
-        self.node.attrs()
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        self.node.visit_attrs(f);
-    }
-}
-
-impl HasAttrs for Vec<Attribute> {
-    fn attrs(&self) -> &[Attribute] {
-        self
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        f(self)
-    }
-}
-
-impl HasAttrs for AttrVec {
-    fn attrs(&self) -> &[Attribute] {
-        self
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        visit_clobber(self, |this| {
-            let mut vec = this.into();
-            f(&mut vec);
-            vec.into()
-        });
-    }
-}
-
-impl<T: HasAttrs + 'static> HasAttrs for P<T> {
-    fn attrs(&self) -> &[Attribute] {
-        (**self).attrs()
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        (**self).visit_attrs(f);
-    }
-}
-
-impl HasAttrs for StmtKind {
-    fn attrs(&self) -> &[Attribute] {
-        match *self {
-            StmtKind::Local(ref local) => local.attrs(),
-            StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.attrs(),
-            StmtKind::Item(ref item) => item.attrs(),
-            StmtKind::Empty => &[],
-            StmtKind::MacCall(ref mac) => mac.attrs.attrs(),
-        }
-    }
-
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        match self {
-            StmtKind::Local(local) => local.visit_attrs(f),
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
-            StmtKind::Item(item) => item.visit_attrs(f),
-            StmtKind::Empty => {}
-            StmtKind::MacCall(mac) => {
-                mac.attrs.visit_attrs(f);
-            }
-        }
-    }
-}
-
-impl HasAttrs for Stmt {
-    fn attrs(&self) -> &[ast::Attribute] {
-        self.kind.attrs()
-    }
-
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-        self.kind.visit_attrs(f);
-    }
-}
-
-macro_rules! derive_has_attrs {
-    ($($ty:path),*) => { $(
-        impl HasAttrs for $ty {
-            fn attrs(&self) -> &[Attribute] {
-                &self.attrs
-            }
-
-            fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
-                self.attrs.visit_attrs(f);
-            }
-        }
-    )* }
-}
-
-derive_has_attrs! {
-    Item, Expr, Local, ast::AssocItem, ast::ForeignItem, ast::StructField, ast::Arm,
-    ast::Field, ast::FieldPat, ast::Variant, ast::Param, GenericParam
 }

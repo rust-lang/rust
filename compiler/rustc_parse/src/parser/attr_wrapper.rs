@@ -3,7 +3,7 @@ use super::{ForceCollect, Parser, TokenCursor, TrailingToken};
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::{CreateTokenStream, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, Spacing};
-use rustc_ast::HasTokens;
+use rustc_ast::AstLike;
 use rustc_ast::{self as ast};
 use rustc_errors::PResult;
 use rustc_span::{Span, DUMMY_SP};
@@ -59,7 +59,7 @@ impl<'a> Parser<'a> {
     /// This restriction shouldn't be an issue in practice,
     /// since this function is used to record the tokens for
     /// a parsed AST item, which always has matching delimiters.
-    pub fn collect_tokens_trailing_token<R: HasTokens>(
+    pub fn collect_tokens_trailing_token<R: AstLike>(
         &mut self,
         attrs: AttrWrapper,
         force_collect: ForceCollect,
@@ -72,6 +72,10 @@ impl<'a> Parser<'a> {
         let cursor_snapshot = self.token_cursor.clone();
 
         let (mut ret, trailing_token) = f(self, attrs.attrs)?;
+        let tokens = match ret.tokens_mut() {
+            Some(tokens) if tokens.is_none() => tokens,
+            _ => return Ok(ret),
+        };
 
         // Produces a `TokenStream` on-demand. Using `cursor_snapshot`
         // and `num_calls`, we can reconstruct the `TokenStream` seen
@@ -128,14 +132,14 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let lazy_impl = LazyTokenStreamImpl {
+        *tokens = Some(LazyTokenStream::new(LazyTokenStreamImpl {
             start_token,
             num_calls,
             cursor_snapshot,
             desugar_doc_comments: self.desugar_doc_comments,
             append_unglued_token: self.token_cursor.append_unglued_token.clone(),
-        };
-        ret.finalize_tokens(LazyTokenStream::new(lazy_impl));
+        }));
+
         Ok(ret)
     }
 }

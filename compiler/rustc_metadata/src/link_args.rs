@@ -8,7 +8,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<String> {
     let mut collector = Collector { tcx, args: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
-    for attr in tcx.hir().krate().item.attrs.iter() {
+    for attr in tcx.hir().attrs(hir::CRATE_HIR_ID).iter() {
         if attr.has_name(sym::link_args) {
             if let Some(linkarg) = attr.value_str() {
                 collector.add_link_args(linkarg);
@@ -36,7 +36,9 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
         // First, add all of the custom #[link_args] attributes
         let sess = &self.tcx.sess;
-        for m in it.attrs.iter().filter(|a| sess.check_name(a, sym::link_args)) {
+        for m in
+            self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| sess.check_name(a, sym::link_args))
+        {
             if let Some(linkarg) = m.value_str() {
                 self.add_link_args(linkarg);
             }

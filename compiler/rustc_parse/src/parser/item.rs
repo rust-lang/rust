@@ -25,11 +25,9 @@ use tracing::debug;
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
-        let lo = self.token.span;
-        let (module, attrs) = self.parse_mod(&token::Eof, Unsafe::No)?;
-        let span = lo.to(self.token.span);
+        let (attrs, items, span) = self.parse_mod(&token::Eof)?;
         let proc_macros = Vec::new(); // Filled in by `proc_macro_harness::inject()`.
-        Ok(ast::Crate { attrs, module, span, proc_macros })
+        Ok(ast::Crate { attrs, items, span, proc_macros })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
@@ -37,35 +35,26 @@ impl<'a> Parser<'a> {
         let unsafety = self.parse_unsafety();
         self.expect_keyword(kw::Mod)?;
         let id = self.parse_ident()?;
-        let (module, mut inner_attrs) = if self.eat(&token::Semi) {
-            (Mod { inner: Span::default(), unsafety, items: Vec::new(), inline: false }, Vec::new())
+        let mod_kind = if self.eat(&token::Semi) {
+            ModKind::Unloaded
         } else {
             self.expect(&token::OpenDelim(token::Brace))?;
-            self.parse_mod(&token::CloseDelim(token::Brace), unsafety)?
+            let (mut inner_attrs, items, inner_span) =
+                self.parse_mod(&token::CloseDelim(token::Brace))?;
+            attrs.append(&mut inner_attrs);
+            ModKind::Loaded(items, Inline::Yes, inner_span)
         };
-        attrs.append(&mut inner_attrs);
-        Ok((id, ItemKind::Mod(module)))
+        Ok((id, ItemKind::Mod(unsafety, mod_kind)))
     }
 
     /// Parses the contents of a module (inner attributes followed by module items).
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-        unsafety: Unsafe,
-    ) -> PResult<'a, (Mod, Vec<Attribute>)> {
+    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, Span)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
-        let module = self.parse_mod_items(term, lo, unsafety)?;
-        Ok((module, attrs))
-    }
 
-    /// Given a termination token, parses all of the items in a module.
-    fn parse_mod_items(
-        &mut self,
-        term: &TokenKind,
-        inner_lo: Span,
-        unsafety: Unsafe,
-    ) -> PResult<'a, Mod> {
         let mut items = vec![];
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
@@ -82,9 +71,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let hi = if self.token.span.is_dummy() { inner_lo } else { self.prev_token.span };
-
-        Ok(Mod { inner: inner_lo.to(hi), unsafety, items, inline: true })
+        Ok((attrs, items, lo.to(self.prev_token.span)))
     }
 }
 
@@ -238,7 +225,7 @@ impl<'a> Parser<'a> {
                 return Err(e);
             }
 
-            (Ident::invalid(), ItemKind::Use(P(tree)))
+            (Ident::invalid(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter() {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
@@ -1488,15 +1475,7 @@ impl<'a> Parser<'a> {
         let vstr = pprust::vis_to_string(vis);
         let vstr = vstr.trim_end();
         if macro_rules {
-            let msg = format!("can't qualify macro_rules invocation with `{}`", vstr);
-            self.struct_span_err(vis.span, &msg)
-                .span_suggestion(
-                    vis.span,
-                    "try exporting the macro",
-                    "#[macro_export]".to_owned(),
-                    Applicability::MaybeIncorrect, // speculative
-                )
-                .emit();
+            self.sess.gated_spans.gate(sym::pub_macro_rules, vis.span);
         } else {
             self.struct_span_err(vis.span, "can't qualify macro invocation with `pub`")
                 .span_suggestion(
@@ -1692,7 +1671,7 @@ impl<'a> Parser<'a> {
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
-        let ext = self.parse_extern()?;
+        let ext = self.parse_extern();
 
         if let Async::Yes { span, .. } = asyncness {
             self.ban_async_in_2015(span);
@@ -1778,8 +1757,9 @@ impl<'a> Parser<'a> {
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
-                let pat = this.parse_fn_param_pat()?;
-                if let Err(mut err) = this.expect(&token::Colon) {
+                let (pat, colon) = this.parse_fn_param_pat_colon()?;
+                if !colon {
+                    let mut err = this.unexpected::<()>().unwrap_err();
                     return if let Some(ident) =
                         this.parameter_without_type(&mut err, pat, is_name_required, first_param)
                     {

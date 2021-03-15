@@ -27,6 +27,7 @@ env:
 
 jobs:
   base:
+    # NOTE: If you modify this job, make sure you copy the changes to clippy_bors.yml
     runs-on: ubuntu-latest
 
     steps:
@@ -50,9 +51,6 @@ jobs:
     - name: Build
       run: cargo build --features deny-warnings,internal-lints
 
-    - name: Test "--fix -Zunstable-options"
-      run: cargo run --features deny-warnings,internal-lints --bin cargo-clippy -- clippy --fix -Zunstable-options
-
     - name: Test
       run: cargo test --features deny-warnings,internal-lints
 
@@ -70,6 +68,10 @@ jobs:
 
     - name: Test cargo-clippy
       run: ../target/debug/cargo-clippy
+      working-directory: clippy_workspace_tests
+
+    - name: Test cargo-clippy --fix
+      run: ../target/debug/cargo-clippy clippy --fix -Zunstable-options
       working-directory: clippy_workspace_tests
 
     - name: Test clippy-driver

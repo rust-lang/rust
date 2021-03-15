@@ -14,11 +14,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ImmTy<'tcx, M::PointerTag>,
-        right: ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::PointerTag>,
+        right: &ImmTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let (val, overflowed, ty) = self.overflowing_binary_op(op, left, right)?;
+        let (val, overflowed, ty) = self.overflowing_binary_op(op, &left, &right)?;
         debug_assert_eq!(
             self.tcx.intern_tup(&[ty, self.tcx.types.bool]),
             dest.layout.ty,
@@ -34,9 +34,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binop_ignore_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ImmTy<'tcx, M::PointerTag>,
-        right: ImmTy<'tcx, M::PointerTag>,
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::PointerTag>,
+        right: &ImmTy<'tcx, M::PointerTag>,
+        dest: &PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         let (val, _overflowed, ty) = self.overflowing_binary_op(op, left, right)?;
         assert_eq!(ty, dest.layout.ty, "type mismatch for result of {:?}", op);
@@ -269,8 +269,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn overflowing_binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, M::PointerTag>,
-        right: ImmTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::PointerTag>,
+        right: &ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
         trace!(
             "Running binary op {:?}: {:?} ({:?}), {:?} ({:?})",
@@ -347,8 +347,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn binary_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, M::PointerTag>,
-        right: ImmTy<'tcx, M::PointerTag>,
+        left: &ImmTy<'tcx, M::PointerTag>,
+        right: &ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
         let (val, _overflow, ty) = self.overflowing_binary_op(bin_op, left, right)?;
         Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))
@@ -359,7 +359,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn overflowing_unary_op(
         &self,
         un_op: mir::UnOp,
-        val: ImmTy<'tcx, M::PointerTag>,
+        val: &ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<M::PointerTag>, bool, Ty<'tcx>)> {
         use rustc_middle::mir::UnOp::*;
 
@@ -409,7 +409,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
-        val: ImmTy<'tcx, M::PointerTag>,
+        val: &ImmTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
         let (val, _overflow, ty) = self.overflowing_unary_op(un_op, val)?;
         Ok(ImmTy::from_scalar(val, self.layout_of(ty)?))

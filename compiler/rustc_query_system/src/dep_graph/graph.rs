@@ -23,7 +23,8 @@ use super::debug::EdgeFilter;
 use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
 use super::serialized::SerializedDepNodeIndex;
-use super::{DepContext, DepKind, DepNode, WorkProductId};
+use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
+use crate::query::QueryContext;
 
 #[derive(Clone)]
 pub struct DepGraph<K: DepKind> {
@@ -235,7 +236,7 @@ impl<K: DepKind> DepGraph<K> {
     ///   `arg` parameter.
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
-    pub fn with_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -261,7 +262,7 @@ impl<K: DepKind> DepGraph<K> {
         )
     }
 
-    fn with_task_impl<Ctxt: DepContext<DepKind = K>, A, R>(
+    fn with_task_impl<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -271,14 +272,15 @@ impl<K: DepKind> DepGraph<K> {
         hash_result: impl FnOnce(&mut Ctxt::StableHashingContext, &R) -> Option<Fingerprint>,
     ) -> (R, DepNodeIndex) {
         if let Some(ref data) = self.data {
+            let dcx = cx.dep_context();
             let task_deps = create_task(key).map(Lock::new);
             let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
             let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
-            let mut hcx = cx.create_stable_hashing_context();
+            let mut hcx = dcx.create_stable_hashing_context();
             let current_fingerprint = hash_result(&mut hcx, &result);
 
-            let print_status = cfg!(debug_assertions) && cx.debug_dep_tasks();
+            let print_status = cfg!(debug_assertions) && dcx.sess().opts.debugging_opts.dep_tasks;
 
             // Intern the new `DepNode`.
             let dep_node_index = if let Some(prev_index) = data.previous.node_to_index_opt(&key) {
@@ -408,7 +410,7 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Executes something within an "eval-always" task which is a task
     /// that runs whenever anything changes.
-    pub fn with_eval_always_task<Ctxt: DepContext<DepKind = K>, A, R>(
+    pub fn with_eval_always_task<Ctxt: HasDepContext<DepKind = K>, A, R>(
         &self,
         key: DepNode<K>,
         cx: Ctxt,
@@ -585,7 +587,7 @@ impl<K: DepKind> DepGraph<K> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green_and_read<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green_and_read<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode<K>,
@@ -597,7 +599,7 @@ impl<K: DepKind> DepGraph<K> {
         })
     }
 
-    pub fn try_mark_green<Ctxt: DepContext<DepKind = K>>(
+    pub fn try_mark_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         dep_node: &DepNode<K>,
@@ -625,7 +627,7 @@ impl<K: DepKind> DepGraph<K> {
     }
 
     /// Try to mark a dep-node which existed in the previous compilation session as green.
-    fn try_mark_previous_green<Ctxt: DepContext<DepKind = K>>(
+    fn try_mark_previous_green<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
@@ -729,7 +731,7 @@ impl<K: DepKind> DepGraph<K> {
                                 return None;
                             }
                             None => {
-                                if !tcx.has_errors_or_delayed_span_bugs() {
+                                if !tcx.dep_context().sess().has_errors_or_delayed_span_bugs() {
                                     panic!(
                                         "try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color"
@@ -809,7 +811,7 @@ impl<K: DepKind> DepGraph<K> {
     /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
-    fn emit_diagnostics<Ctxt: DepContext<DepKind = K>>(
+    fn emit_diagnostics<Ctxt: QueryContext<DepKind = K>>(
         &self,
         tcx: Ctxt,
         data: &DepGraphData<K>,
@@ -833,7 +835,7 @@ impl<K: DepKind> DepGraph<K> {
             // Promote the previous diagnostics to the current session.
             tcx.store_diagnostics(dep_node_index, diagnostics.clone().into());
 
-            let handle = tcx.diagnostic();
+            let handle = tcx.dep_context().sess().diagnostic();
 
             for diagnostic in diagnostics {
                 handle.emit_diagnostic(&diagnostic);
@@ -874,7 +876,8 @@ impl<K: DepKind> DepGraph<K> {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<Ctxt: DepContext<DepKind = K>>(&self, tcx: Ctxt) {
+    pub fn exec_cache_promotions<Ctxt: QueryContext<DepKind = K>>(&self, qcx: Ctxt) {
+        let tcx = qcx.dep_context();
         let _prof_timer = tcx.profiler().generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
@@ -882,7 +885,7 @@ impl<K: DepKind> DepGraph<K> {
             match data.colors.get(prev_index) {
                 Some(DepNodeColor::Green(_)) => {
                     let dep_node = data.previous.index_to_node(prev_index);
-                    tcx.try_load_from_on_disk_cache(&dep_node);
+                    qcx.try_load_from_on_disk_cache(&dep_node);
                 }
                 None | Some(DepNodeColor::Red) => {
                     // We can skip red nodes because a node can only be marked
@@ -964,29 +967,29 @@ impl<K: DepKind> DepGraph<K> {
                                  ----------------------------------------------\
                                  ------------";
 
-        println!("[incremental]");
-        println!("[incremental] DepGraph Statistics");
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
-        println!("[incremental] Total Node Count: {}", total_node_count);
-        println!("[incremental] Total Edge Count: {}", total_edge_count);
+        eprintln!("[incremental]");
+        eprintln!("[incremental] DepGraph Statistics");
+        eprintln!("{}", SEPARATOR);
+        eprintln!("[incremental]");
+        eprintln!("[incremental] Total Node Count: {}", total_node_count);
+        eprintln!("[incremental] Total Edge Count: {}", total_edge_count);
 
         if cfg!(debug_assertions) {
             let total_edge_reads = current.total_read_count.load(Relaxed);
             let total_duplicate_edge_reads = current.total_duplicate_read_count.load(Relaxed);
 
-            println!("[incremental] Total Edge Reads: {}", total_edge_reads);
-            println!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
+            eprintln!("[incremental] Total Edge Reads: {}", total_edge_reads);
+            eprintln!("[incremental] Total Duplicate Edge Reads: {}", total_duplicate_edge_reads);
         }
 
-        println!("[incremental]");
+        eprintln!("[incremental]");
 
-        println!(
+        eprintln!(
             "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
             "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
         );
 
-        println!(
+        eprintln!(
             "[incremental] -------------------------------------\
                   |------------------\
                   |-------------\
@@ -997,7 +1000,7 @@ impl<K: DepKind> DepGraph<K> {
             let node_kind_ratio = (100.0 * (stat.node_counter as f64)) / (total_node_count as f64);
             let node_kind_avg_edges = (stat.edge_counter as f64) / (stat.node_counter as f64);
 
-            println!(
+            eprintln!(
                 "[incremental]  {:<36}|{:>16.1}% |{:>12} |{:>17.1} |",
                 format!("{:?}", stat.kind),
                 node_kind_ratio,
@@ -1006,8 +1009,8 @@ impl<K: DepKind> DepGraph<K> {
             );
         }
 
-        println!("{}", SEPARATOR);
-        println!("[incremental]");
+        eprintln!("{}", SEPARATOR);
+        eprintln!("[incremental]");
     }
 
     fn next_virtual_depnode_index(&self) -> DepNodeIndex {

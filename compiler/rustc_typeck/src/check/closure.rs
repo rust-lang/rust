@@ -208,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         // Even if we can't infer the full signature, we may be able to
-        // infer the kind. This can occur if there is a trait-reference
+        // infer the kind. This can occur when we elaborate a predicate
         // like `F : Fn<A>`. Note that due to subtyping we could encounter
         // many viable options, so pick the most restrictive.
         let expected_kind = self
@@ -234,11 +234,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("deduce_sig_from_projection({:?})", projection);
 
-        let trait_ref = projection.to_poly_trait_ref(tcx);
+        let trait_def_id = projection.trait_def_id(tcx);
 
-        let is_fn = tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some();
+        let is_fn = tcx.fn_trait_kind_from_lang_item(trait_def_id).is_some();
         let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
-        let is_gen = gen_trait == trait_ref.def_id();
+        let is_gen = gen_trait == trait_def_id;
         if !is_fn && !is_gen {
             debug!("deduce_sig_from_projection: not fn or generator");
             return None;
@@ -256,7 +256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let input_tys = if is_fn {
-            let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
+            let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
             debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
 
@@ -662,9 +662,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Check that this is a projection from the `Future` trait.
-        let trait_ref = predicate.projection_ty.trait_ref(self.tcx);
+        let trait_def_id = predicate.projection_ty.trait_def_id(self.tcx);
         let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(cause_span));
-        if trait_ref.def_id != future_trait {
+        if trait_def_id != future_trait {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
         }

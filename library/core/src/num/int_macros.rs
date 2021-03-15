@@ -1067,7 +1067,7 @@ macro_rules! int_impl {
         ///
         /// Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is restricted to
         /// the range of the type, rather than the bits shifted out of the LHS being returned to the other end.
-        /// The primitive integer types all implement a [`rotate_left`](#method.rotate_left) function,
+        /// The primitive integer types all implement a [`rotate_left`](Self::rotate_left) function,
         /// which may be what you want instead.
         ///
         /// # Examples
@@ -1096,7 +1096,7 @@ macro_rules! int_impl {
         ///
         /// Note that this is *not* the same as a rotate-right; the RHS of a wrapping shift-right is restricted
         /// to the range of the type, rather than the bits shifted out of the LHS being returned to the other
-        /// end. The primitive integer types all implement a [`rotate_right`](#method.rotate_right) function,
+        /// end. The primitive integer types all implement a [`rotate_right`](Self::rotate_right) function,
         /// which may be what you want instead.
         ///
         /// # Examples
@@ -1812,8 +1812,8 @@ macro_rules! int_impl {
         ///
         #[doc = $to_xe_bytes_doc]
         ///
-        /// [`to_be_bytes`]: #method.to_be_bytes
-        /// [`to_le_bytes`]: #method.to_le_bytes
+        /// [`to_be_bytes`]: Self::to_be_bytes
+        /// [`to_le_bytes`]: Self::to_le_bytes
         ///
         /// # Examples
         ///
@@ -1845,7 +1845,7 @@ macro_rules! int_impl {
         ///
         /// [`to_ne_bytes`] should be preferred over this whenever possible.
         ///
-        /// [`to_ne_bytes`]: #method.to_ne_bytes
+        /// [`to_ne_bytes`]: Self::to_ne_bytes
         ///
         /// # Examples
         ///
@@ -1937,8 +1937,8 @@ macro_rules! int_impl {
         /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
         /// appropriate instead.
         ///
-        /// [`from_be_bytes`]: #method.from_be_bytes
-        /// [`from_le_bytes`]: #method.from_le_bytes
+        /// [`from_be_bytes`]: Self::from_be_bytes
+        /// [`from_le_bytes`]: Self::from_le_bytes
         ///
         #[doc = $to_xe_bytes_doc]
         ///
@@ -1976,7 +1976,7 @@ macro_rules! int_impl {
         }
 
         /// New code should prefer to use
-        #[doc = concat!("[`", stringify!($SelfT), "::MIN", "`](#associatedconstant.MIN).")]
+        #[doc = concat!("[`", stringify!($SelfT), "::MIN", "`] instead.")]
         ///
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1989,7 +1989,7 @@ macro_rules! int_impl {
         }
 
         /// New code should prefer to use
-        #[doc = concat!("[`", stringify!($SelfT), "::MAX", "`](#associatedconstant.MAX).")]
+        #[doc = concat!("[`", stringify!($SelfT), "::MAX", "`] instead.")]
         ///
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]

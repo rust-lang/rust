@@ -3,10 +3,12 @@
 use crate::Build;
 use build_helper::{output, t};
 use ignore::WalkBuilder;
-use std::path::Path;
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::mpsc::SyncSender;
 
-fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
+fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut() {
     let mut cmd = Command::new(&rustfmt);
     // avoid the submodule config paths from coming into play,
     // we only allow a single global config for the workspace for now
@@ -17,17 +19,21 @@ fn rustfmt(src: &Path, rustfmt: &Path, path: &Path, check: bool) {
     if check {
         cmd.arg("--check");
     }
-    cmd.arg(&path);
+    cmd.args(paths);
     let cmd_debug = format!("{:?}", cmd);
-    let status = cmd.status().expect("executing rustfmt");
-    if !status.success() {
-        eprintln!(
-            "Running `{}` failed.\nIf you're running `tidy`, \
-            try again with `--bless`. Or, if you just want to format \
-            code, run `./x.py fmt` instead.",
-            cmd_debug,
-        );
-        std::process::exit(1);
+    let mut cmd = cmd.spawn().expect("running rustfmt");
+    // poor man's async: return a closure that'll wait for rustfmt's completion
+    move || {
+        let status = cmd.wait().unwrap();
+        if !status.success() {
+            eprintln!(
+                "Running `{}` failed.\nIf you're running `tidy`, \
+                        try again with `--bless`. Or, if you just want to format \
+                        code, run `./x.py fmt` instead.",
+                cmd_debug,
+            );
+            std::process::exit(1);
+        }
     }
 }
 
@@ -101,19 +107,58 @@ pub fn format(build: &Build, check: bool) {
     }
     let ignore_fmt = ignore_fmt.build().unwrap();
 
-    let rustfmt_path = build.config.initial_rustfmt.as_ref().unwrap_or_else(|| {
-        eprintln!("./x.py fmt is not supported on this channel");
-        std::process::exit(1);
+    let rustfmt_path = build
+        .config
+        .initial_rustfmt
+        .as_ref()
+        .unwrap_or_else(|| {
+            eprintln!("./x.py fmt is not supported on this channel");
+            std::process::exit(1);
+        })
+        .to_path_buf();
+    let src = build.src.clone();
+    let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
+    let walker =
+        WalkBuilder::new(src.clone()).types(matcher).overrides(ignore_fmt).build_parallel();
+
+    // there is a lot of blocking involved in spawning a child process and reading files to format.
+    // spawn more processes than available concurrency to keep the CPU busy
+    let max_processes = build.jobs() as usize * 2;
+
+    // spawn child processes on a separate thread so we can batch entries we have received from ignore
+    let thread = std::thread::spawn(move || {
+        let mut children = VecDeque::new();
+        while let Ok(path) = rx.recv() {
+            // try getting a few more paths from the channel to amortize the overhead of spawning processes
+            let paths: Vec<_> = rx.try_iter().take(7).chain(std::iter::once(path)).collect();
+
+            let child = rustfmt(&src, &rustfmt_path, paths.as_slice(), check);
+            children.push_back(child);
+
+            if children.len() >= max_processes {
+                // await oldest child
+                children.pop_front().unwrap()();
+            }
+        }
+
+        // await remaining children
+        for mut child in children {
+            child();
+        }
     });
-    let src = &build.src;
-    let walker = WalkBuilder::new(src).types(matcher).overrides(ignore_fmt).build_parallel();
+
     walker.run(|| {
+        let tx = tx.clone();
         Box::new(move |entry| {
             let entry = t!(entry);
             if entry.file_type().map_or(false, |t| t.is_file()) {
-                rustfmt(src, &rustfmt_path, &entry.path(), check);
+                t!(tx.send(entry.into_path()));
             }
             ignore::WalkState::Continue
         })
     });
+
+    drop(tx);
+
+    thread.join().unwrap();
 }

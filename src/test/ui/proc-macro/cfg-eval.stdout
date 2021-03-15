@@ -1,0 +1,135 @@
+PRINT-ATTR INPUT (DISPLAY): struct S1 { #[cfg(all())] #[allow()] field_true : u8, }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+    },
+    Ident {
+        ident: "S1",
+        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "all",
+                                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [],
+                                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                    },
+                ],
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "allow",
+                        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [],
+                        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+                    },
+                ],
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Ident {
+                ident: "field_true",
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+            },
+        ],
+        span: $DIR/cfg-eval.rs:17:1: 24:2 (#0),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): (#[cfg(all())] 1,)
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: Parenthesis,
+        stream: TokenStream [
+            Punct {
+                ch: '#',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+            },
+            Group {
+                delimiter: Bracket,
+                stream: TokenStream [
+                    Ident {
+                        ident: "cfg",
+                        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                    },
+                    Group {
+                        delimiter: Parenthesis,
+                        stream: TokenStream [
+                            Ident {
+                                ident: "all",
+                                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                            },
+                            Group {
+                                delimiter: Parenthesis,
+                                stream: TokenStream [],
+                                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                            },
+                        ],
+                        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+                    },
+                ],
+                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+            },
+            Punct {
+                ch: ',',
+                spacing: Alone,
+                span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+            },
+        ],
+        span: $DIR/cfg-eval.rs:31:38: 31:80 (#0),
+    },
+]

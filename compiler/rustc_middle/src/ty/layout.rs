@@ -130,6 +130,7 @@ impl IntegerExt for Integer {
 
         if repr.c() {
             match &tcx.sess.target.arch[..] {
+                "hexagon" => min_from_extern = Some(I8),
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
                 // but some systems may use the variant corresponding to no
@@ -231,7 +232,7 @@ fn layout_raw<'tcx>(
             let layout = cx.layout_raw_uncached(ty);
             // Type-level uninhabitedness should always imply ABI uninhabitedness.
             if let Ok(layout) = layout {
-                if ty.conservative_is_privately_uninhabited(tcx) {
+                if tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
                     assert!(layout.abi.is_uninhabited());
                 }
             }
@@ -583,11 +584,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let size =
                     element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
-                    Abi::Uninhabited
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let abi =
+                    if count != 0 && tcx.conservative_is_privately_uninhabited(param_env.and(ty)) {
+                        Abi::Uninhabited
+                    } else {
+                        Abi::Aggregate { sized: true }
+                    };
 
                 let largest_niche = if count != 0 { element.largest_niche.clone() } else { None };
 
@@ -730,11 +732,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!("monomorphising SIMD type `{}` of zero length", ty));
-                } else if !e_len.is_power_of_two() {
-                    tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` of non-power-of-two length",
-                        ty
-                    ));
                 } else if e_len > MAX_SIMD_LANES {
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` of length greater than {}",
@@ -2565,6 +2562,7 @@ fn fn_can_unwind(
     panic_strategy: PanicStrategy,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     call_conv: Conv,
+    abi: SpecAbi,
 ) -> bool {
     if panic_strategy != PanicStrategy::Unwind {
         // In panic=abort mode we assume nothing can unwind anywhere, so
@@ -2589,17 +2587,34 @@ fn fn_can_unwind(
             //
             //  2. A Rust item using a non-Rust ABI (like `extern "C" fn foo() { ... }`).
             //
-            // Foreign items (case 1) are assumed to not unwind; it is
-            // UB otherwise. (At least for now; see also
-            // rust-lang/rust#63909 and Rust RFC 2753.)
-            //
-            // Items defined in Rust with non-Rust ABIs (case 2) are also
-            // not supposed to unwind. Whether this should be enforced
-            // (versus stating it is UB) and *how* it would be enforced
-            // is currently under discussion; see rust-lang/rust#58794.
-            //
-            // In either case, we mark item as explicitly nounwind.
-            false
+            // In both of these cases, we should refer to the ABI to determine whether or not we
+            // should unwind. See Rust RFC 2945 for more information on this behavior, here:
+            // https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
+            use SpecAbi::*;
+            match abi {
+                C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+                    unwind
+                }
+                Cdecl
+                | Fastcall
+                | Vectorcall
+                | Aapcs
+                | Win64
+                | SysV64
+                | PtxKernel
+                | Msp430Interrupt
+                | X86Interrupt
+                | AmdGpuKernel
+                | EfiApi
+                | AvrInterrupt
+                | AvrNonBlockingInterrupt
+                | CCmseNonSecureCall
+                | RustIntrinsic
+                | PlatformIntrinsic
+                | Unadjusted => false,
+                // In the `if` above, we checked for functions with the Rust calling convention.
+                Rust | RustCall => unreachable!(),
+            }
         }
     }
 }
@@ -2657,14 +2672,14 @@ where
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
-            System => bug!("system abi should be selected elsewhere"),
+            System { .. } => bug!("system abi should be selected elsewhere"),
             EfiApi => bug!("eficall abi should be selected elsewhere"),
 
-            Stdcall => Conv::X86Stdcall,
+            Stdcall { .. } => Conv::X86Stdcall,
             Fastcall => Conv::X86Fastcall,
             Vectorcall => Conv::X86VectorCall,
-            Thiscall => Conv::X86ThisCall,
-            C => Conv::C,
+            Thiscall { .. } => Conv::X86ThisCall,
+            C { .. } => Conv::C,
             Unadjusted => Conv::C,
             Win64 => Conv::X86_64Win64,
             SysV64 => Conv::X86_64SysV,
@@ -2826,7 +2841,12 @@ where
             c_variadic: sig.c_variadic,
             fixed_count: inputs.len(),
             conv,
-            can_unwind: fn_can_unwind(cx.tcx().sess.panic_strategy(), codegen_fn_attr_flags, conv),
+            can_unwind: fn_can_unwind(
+                cx.tcx().sess.panic_strategy(),
+                codegen_fn_attr_flags,
+                conv,
+                sig.abi,
+            ),
         };
         fn_abi.adjust_for_abi(cx, sig.abi);
         debug!("FnAbi::new_internal = {:?}", fn_abi);

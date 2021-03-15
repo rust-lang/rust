@@ -91,7 +91,7 @@ pub fn inject(
     }
 
     let decls = mk_decls(&mut krate, &mut cx, &macros);
-    krate.module.items.push(decls);
+    krate.items.push(decls);
 
     krate
 }

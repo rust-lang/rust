@@ -212,9 +212,7 @@ unsafe impl<T, A: Allocator> TrustedRandomAccess for IntoIter<T, A>
 where
     T: Copy,
 {
-    fn may_have_side_effect() -> bool {
-        false
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]

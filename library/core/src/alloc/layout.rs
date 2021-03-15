@@ -164,7 +164,6 @@ impl Layout {
     ///       [`Layout::for_value`] on a reference to an extern type tail.
     ///     - otherwise, it is conservatively not allowed to call this function.
     ///
-    /// [slice]: ../../std/primitive.slice.html
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]

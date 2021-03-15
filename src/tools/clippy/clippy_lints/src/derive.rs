@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_def_path, match_path, span_lint_and_help,
+    get_trait_def_id, is_allowed, is_automatically_derived, is_copy, match_def_path, span_lint_and_help,
     span_lint_and_note, span_lint_and_then,
 };
 use if_chain::if_chain;
@@ -169,8 +169,9 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(cx.tcx.hir().local_def_id(item.hir_id));
-            let is_automatically_derived = is_automatically_derived(&*item.attrs);
+            let ty = cx.tcx.type_of(item.def_id);
+            let attrs = cx.tcx.hir().attrs(item.hir_id());
+            let is_automatically_derived = is_automatically_derived(attrs);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -293,7 +294,12 @@ fn check_ord_partial_ord<'tcx>(
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &TraitRef<'_>, ty: Ty<'tcx>) {
-    if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
+    if cx
+        .tcx
+        .lang_items()
+        .clone_trait()
+        .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+    {
         if !is_copy(cx, ty) {
             return;
         }

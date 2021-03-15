@@ -14,6 +14,7 @@ use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
+pub use pat::{GateOr, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
@@ -21,7 +22,7 @@ use rustc_ast::token::{self, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TreeAndSpacing};
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, CrateSugar, Extern, HasTokens};
+use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
 use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -949,7 +950,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Ok(Ident::new(symbol, self.prev_token.span))
         } else {
-            self.parse_ident_common(false)
+            self.parse_ident_common(true)
         }
     }
 
@@ -1201,12 +1202,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    fn parse_extern(&mut self) -> PResult<'a, Extern> {
-        Ok(if self.eat_keyword(kw::Extern) {
-            Extern::from_abi(self.parse_abi())
-        } else {
-            Extern::None
-        })
+    fn parse_extern(&mut self) -> Extern {
+        if self.eat_keyword(kw::Extern) { Extern::from_abi(self.parse_abi()) } else { Extern::None }
     }
 
     /// Parses a string literal as an ABI spec.
@@ -1231,7 +1228,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn collect_tokens_no_attrs<R: HasTokens>(
+    pub fn collect_tokens_no_attrs<R: AstLike>(
         &mut self,
         f: impl FnOnce(&mut Self) -> PResult<'a, R>,
     ) -> PResult<'a, R> {

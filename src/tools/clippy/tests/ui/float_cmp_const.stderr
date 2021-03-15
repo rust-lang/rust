@@ -1,5 +1,5 @@
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:20:5
+  --> $DIR/float_cmp_const.rs:16:5
    |
 LL |     1f32 == ONE;
    |     ^^^^^^^^^^^ help: consider comparing them within some margin of error: `(1f32 - ONE).abs() < error_margin`
@@ -8,7 +8,7 @@ LL |     1f32 == ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:21:5
+  --> $DIR/float_cmp_const.rs:17:5
    |
 LL |     TWO == ONE;
    |     ^^^^^^^^^^ help: consider comparing them within some margin of error: `(TWO - ONE).abs() < error_margin`
@@ -16,7 +16,7 @@ LL |     TWO == ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:22:5
+  --> $DIR/float_cmp_const.rs:18:5
    |
 LL |     TWO != ONE;
    |     ^^^^^^^^^^ help: consider comparing them within some margin of error: `(TWO - ONE).abs() > error_margin`
@@ -24,7 +24,7 @@ LL |     TWO != ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:23:5
+  --> $DIR/float_cmp_const.rs:19:5
    |
 LL |     ONE + ONE == TWO;
    |     ^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(ONE + ONE - TWO).abs() < error_margin`
@@ -32,7 +32,7 @@ LL |     ONE + ONE == TWO;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:25:5
+  --> $DIR/float_cmp_const.rs:21:5
    |
 LL |     x as f32 == ONE;
    |     ^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(x as f32 - ONE).abs() < error_margin`
@@ -40,7 +40,7 @@ LL |     x as f32 == ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:28:5
+  --> $DIR/float_cmp_const.rs:24:5
    |
 LL |     v == ONE;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() < error_margin`
@@ -48,7 +48,7 @@ LL |     v == ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant
-  --> $DIR/float_cmp_const.rs:29:5
+  --> $DIR/float_cmp_const.rs:25:5
    |
 LL |     v != ONE;
    |     ^^^^^^^^ help: consider comparing them within some margin of error: `(v - ONE).abs() > error_margin`
@@ -56,7 +56,7 @@ LL |     v != ONE;
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
 
 error: strict comparison of `f32` or `f64` constant arrays
-  --> $DIR/float_cmp_const.rs:61:5
+  --> $DIR/float_cmp_const.rs:57:5
    |
 LL |     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

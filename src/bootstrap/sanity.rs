@@ -113,6 +113,13 @@ pub fn check(build: &mut Build) {
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
+    build.config.npm = build
+        .config
+        .npm
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("npm"));
+
     build.config.gdb = build
         .config
         .gdb

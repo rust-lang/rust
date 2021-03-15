@@ -61,14 +61,14 @@
 //!    type, but not the all-important methods.
 //!
 //! So for example there is a [page for the primitive type
-//! `i32`](primitive.i32.html) that lists all the methods that can be called on
+//! `i32`](primitive::i32) that lists all the methods that can be called on
 //! 32-bit integers (very useful), and there is a [page for the module
 //! `std::i32`] that documents the constant values [`MIN`] and [`MAX`] (rarely
 //! useful).
 //!
-//! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
+//! Note the documentation for the primitives [`str`] and [`[T]`][prim@slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
-//! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
+//! calls to methods on [`str`] and [`[T]`][prim@slice] respectively, via [deref
 //! coercions][deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
@@ -111,8 +111,8 @@
 //! regions of memory:
 //!
 //! * [`Vec<T>`] - A heap-allocated *vector* that is resizable at runtime.
-//! * [`[T; n]`][array] - An inline *array* with a fixed size at compile time.
-//! * [`[T]`][slice] - A dynamically sized *slice* into any other kind of contiguous
+//! * [`[T; N]`][prim@array] - An inline *array* with a fixed size at compile time.
+//! * [`[T]`][prim@slice] - A dynamically sized *slice* into any other kind of contiguous
 //!   storage, whether heap-allocated or not.
 //!
 //! Slices can only be handled through some kind of *pointer*, and as such come
@@ -185,8 +185,8 @@
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/ch03-02-data-types.html
 //! [rust-discord]: https://discord.gg/rust-lang
-#![cfg_attr(not(bootstrap), doc = "[array]: prim@array")]
-#![cfg_attr(not(bootstrap), doc = "[slice]: prim@slice")]
+//! [array]: prim@array
+//! [slice]: prim@slice
 #![cfg_attr(not(feature = "restricted-std"), stable(feature = "rust1", since = "1.0.0"))]
 #![cfg_attr(feature = "restricted-std", unstable(feature = "restricted_std", issue = "none"))]
 #![doc(
@@ -228,11 +228,13 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
+#![cfg_attr(not(bootstrap), feature(cfg_eval))]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
@@ -263,7 +265,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
-#![feature(external_doc)]
+#![feature(extended_key_value_attributes)]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
@@ -275,11 +277,13 @@
 #![feature(int_error_matching)]
 #![feature(integer_atomics)]
 #![feature(into_future)]
+#![feature(intra_doc_pointers)]
 #![feature(lang_items)]
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(llvm_asm)]
 #![feature(log_syntax)]
+#![feature(map_try_insert)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
@@ -288,6 +292,7 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
@@ -297,6 +302,7 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
+#![feature(prelude_2021)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
@@ -313,7 +319,6 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
-#![feature(str_split_once)]
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(thread_local_internals)]
@@ -323,7 +328,7 @@
 #![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_block_in_unsafe_fn)]
+#![cfg_attr(bootstrap, feature(unsafe_block_in_unsafe_fn))]
 #![feature(unsafe_cell_raw_get)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
@@ -391,7 +396,11 @@ pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[doc(no_inline)]
+// The `no_inline`-attribute is required to make the documentation of all
+// targets available.
+// See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
+// more information.
+#[doc(no_inline)] // Note (#82861): required for correct documentation
 pub use core::arch;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
@@ -550,8 +559,8 @@ pub use std_detect::detect;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
-    unimplemented, unreachable, write, writeln,
+    assert_eq, assert_matches, assert_ne, debug_assert, debug_assert_eq, debug_assert_matches,
+    debug_assert_ne, matches, r#try, todo, unimplemented, unreachable, write, writeln,
 };
 
 // Re-export built-in macros defined through libcore.

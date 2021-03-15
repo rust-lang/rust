@@ -67,40 +67,52 @@ LL |     map.entry(42).or_insert(String::new());
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
 
 error: use of `or_insert` followed by a function call
-  --> $DIR/or_fun_call.rs:66:21
+  --> $DIR/or_fun_call.rs:66:23
+   |
+LL |     map_vec.entry(42).or_insert(vec![]);
+   |                       ^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(Vec::new)`
+
+error: use of `or_insert` followed by a function call
+  --> $DIR/or_fun_call.rs:69:21
    |
 LL |     btree.entry(42).or_insert(String::new());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
 
+error: use of `or_insert` followed by a function call
+  --> $DIR/or_fun_call.rs:72:25
+   |
+LL |     btree_vec.entry(42).or_insert(vec![]);
+   |                         ^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(Vec::new)`
+
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:69:21
+  --> $DIR/or_fun_call.rs:75:21
    |
 LL |     let _ = stringy.unwrap_or("".to_owned());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:77:21
+  --> $DIR/or_fun_call.rs:83:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
 
 error: use of `unwrap_or` followed by a function call
-  --> $DIR/or_fun_call.rs:79:21
+  --> $DIR/or_fun_call.rs:85:21
    |
 LL |     let _ = Some(1).unwrap_or(map[&1]);
    |                     ^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| map[&1])`
 
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:103:35
+  --> $DIR/or_fun_call.rs:109:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
 error: use of `or` followed by a function call
-  --> $DIR/or_fun_call.rs:107:10
+  --> $DIR/or_fun_call.rs:113:10
    |
 LL |         .or(Some(Bar(b, Duration::from_secs(2))));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some(Bar(b, Duration::from_secs(2))))`
 
-error: aborting due to 17 previous errors
+error: aborting due to 19 previous errors
 

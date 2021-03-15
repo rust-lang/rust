@@ -3,7 +3,7 @@
 // can't split that into multiple files.
 
 use crate::cmp::{self, Ordering};
-use crate::ops::{Add, ControlFlow, Try};
+use crate::ops::{ControlFlow, Try};
 
 use super::super::TrustedRandomAccess;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
@@ -93,6 +93,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     message = "`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
+#[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
     /// The type of the elements being iterated over.
@@ -242,13 +243,11 @@ pub trait Iterator {
     where
         Self: Sized,
     {
-        #[inline]
-        fn add1<T>(count: usize, _: T) -> usize {
-            // Might overflow.
-            Add::add(count, 1)
-        }
-
-        self.fold(0, add1)
+        self.fold(
+            0,
+            #[rustc_inherit_overflow_checks]
+            |count, _| count + 1,
+        )
     }
 
     /// Consumes the iterator, returning the last element.
@@ -2475,13 +2474,9 @@ pub trait Iterator {
         fn check<T>(
             mut predicate: impl FnMut(T) -> bool,
         ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
-            // The addition might panic on overflow
+            #[rustc_inherit_overflow_checks]
             move |i, x| {
-                if predicate(x) {
-                    ControlFlow::Break(i)
-                } else {
-                    ControlFlow::Continue(Add::add(i, 1))
-                }
+                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i + 1) }
             }
         }
 
@@ -2742,6 +2737,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[doc(alias = "reverse")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self>
     where
@@ -3327,24 +3323,31 @@ pub trait Iterator {
     ///
     /// [`is_sorted`]: Iterator::is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    fn is_sorted_by<F>(mut self, mut compare: F) -> bool
+    fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
         Self: Sized,
         F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
     {
+        #[inline]
+        fn check<'a, T>(
+            last: &'a mut T,
+            mut compare: impl FnMut(&T, &T) -> Option<Ordering> + 'a,
+        ) -> impl FnMut(T) -> bool + 'a {
+            move |curr| {
+                if let Some(Ordering::Greater) | None = compare(&last, &curr) {
+                    return false;
+                }
+                *last = curr;
+                true
+            }
+        }
+
         let mut last = match self.next() {
             Some(e) => e,
             None => return true,
         };
 
-        while let Some(curr) = self.next() {
-            if let Some(Ordering::Greater) | None = compare(&last, &curr) {
-                return false;
-            }
-            last = curr;
-        }
-
-        true
+        self.all(check(&mut last, compare))
     }
 
     /// Checks if the elements of this iterator are sorted using the given key extraction

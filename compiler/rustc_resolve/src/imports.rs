@@ -156,6 +156,21 @@ impl<'a> NameResolution<'a> {
     }
 }
 
+// Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
+// are permitted for backward-compatibility under a deprecation lint.
+fn pub_use_of_private_extern_crate_hack(import: &Import<'_>, binding: &NameBinding<'_>) -> bool {
+    match (&import.kind, &binding.kind) {
+        (
+            ImportKind::Single { .. },
+            NameBindingKind::Import {
+                import: Import { kind: ImportKind::ExternCrate { .. }, .. },
+                ..
+            },
+        ) => import.vis.get() == ty::Visibility::Public,
+        _ => false,
+    }
+}
+
 impl<'a> Resolver<'a> {
     crate fn resolve_ident_in_module_unadjusted(
         &mut self,
@@ -263,10 +278,7 @@ impl<'a> Resolver<'a> {
                     return Err((Determined, Weak::No));
                 }
             }
-            // `extern crate` are always usable for backwards compatibility, see issue #37020,
-            // remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`.
-            let usable = this.is_accessible_from(binding.vis, parent_scope.module)
-                || binding.is_extern_crate();
+            let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
 
@@ -309,10 +321,7 @@ impl<'a> Resolver<'a> {
                             }
                         }
 
-                        if !(self.is_accessible_from(binding.vis, parent_scope.module) ||
-                       // Remove this together with `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
-                       (self.last_import_segment && binding.is_extern_crate()))
-                        {
+                        if !self.is_accessible_from(binding.vis, parent_scope.module) {
                             self.privacy_errors.push(PrivacyError {
                                 ident,
                                 binding,
@@ -455,9 +464,8 @@ impl<'a> Resolver<'a> {
         binding: &'a NameBinding<'a>,
         import: &'a Import<'a>,
     ) -> &'a NameBinding<'a> {
-        let vis = if binding.vis.is_at_least(import.vis.get(), self) ||
-                     // cf. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
-                     !import.is_glob() && binding.is_extern_crate()
+        let vis = if binding.vis.is_at_least(import.vis.get(), self)
+            || pub_use_of_private_extern_crate_hack(import, binding)
         {
             import.vis.get()
         } else {
@@ -1188,7 +1196,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         // All namespaces must be re-exported with extra visibility for an error to occur.
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
-            if ns == TypeNS && binding.is_extern_crate() {
+            if pub_use_of_private_extern_crate_hack(import, binding) {
                 let msg = format!(
                     "extern crate `{}` is private, and cannot be \
                                    re-exported (error E0365), consider declaring with \

@@ -9,7 +9,6 @@ use crate::require_same_types;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, TyCtxt};
@@ -21,7 +20,6 @@ use std::iter;
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     it: &hir::ForeignItem<'_>,
-    def_id: DefId,
     n_tps: usize,
     sig: ty::PolyFnSig<'tcx>,
 ) {
@@ -35,7 +33,7 @@ fn equate_intrinsic_type<'tcx>(
         }
     }
 
-    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
+    let i_n_tps = tcx.generics_of(it.def_id).own_counts().types;
     if i_n_tps != n_tps {
         let span = match it.kind {
             hir::ForeignItemKind::Fn(_, _, ref generics) => generics.span,
@@ -51,8 +49,8 @@ fn equate_intrinsic_type<'tcx>(
     }
 
     let fty = tcx.mk_fn_ptr(sig);
-    let cause = ObligationCause::new(it.span, it.hir_id, ObligationCauseCode::IntrinsicType);
-    require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(def_id)), fty);
+    let cause = ObligationCause::new(it.span, it.hir_id(), ObligationCauseCode::IntrinsicType);
+    require_same_types(tcx, &cause, tcx.mk_fn_ptr(tcx.fn_sig(it.def_id)), fty);
 }
 
 /// Returns `true` if the given intrinsic is unsafe to call or not.
@@ -100,8 +98,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: Symbol) -> hir::Unsafety {
 /// and in `library/core/src/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
-    let def_id = tcx.hir().local_def_id(it.hir_id).to_def_id();
-    let intrinsic_name = tcx.item_name(def_id);
+    let intrinsic_name = tcx.item_name(it.def_id.to_def_id());
     let name_str = intrinsic_name.as_str();
 
     let mk_va_list_ty = |mutbl| {
@@ -370,7 +367,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     };
     let sig = tcx.mk_fn_sig(inputs.into_iter(), output, false, unsafety, Abi::RustIntrinsic);
     let sig = ty::Binder::bind(sig);
-    equate_intrinsic_type(tcx, it, def_id, n_tps, sig)
+    equate_intrinsic_type(tcx, it, n_tps, sig)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -380,7 +377,6 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         tcx.mk_ty_param(n, name)
     };
 
-    let def_id = tcx.hir().local_def_id(it.hir_id).to_def_id();
     let name = it.ident.name;
 
     let (n_tps, inputs, output) = match name {
@@ -464,5 +460,5 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         Abi::PlatformIntrinsic,
     );
     let sig = ty::Binder::dummy(sig);
-    equate_intrinsic_type(tcx, it, def_id, n_tps, sig)
+    equate_intrinsic_type(tcx, it, n_tps, sig)
 }

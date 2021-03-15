@@ -292,11 +292,7 @@ fn predicate_references_self(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            if data.projection_ty.trait_ref(tcx).substs[1..].iter().any(has_self_ty) {
-                Some(sp)
-            } else {
-                None
-            }
+            if data.projection_ty.substs[1..].iter().any(has_self_ty) { Some(sp) } else { None }
         }
         ty::PredicateKind::WellFormed(..)
         | ty::PredicateKind::ObjectSafe(..)

@@ -8,9 +8,9 @@
 
 fn main() {
     // One level:
-    let Ok(a) | Err(a) = Ok(0);
-    let Ok(ref a) | Err(ref a) = Ok(0);
-    let Ok(ref mut a) | Err(ref mut a) = Ok(0);
+    let (Ok(a) | Err(a)) = Ok(0);
+    let (Ok(ref a) | Err(ref a)) = Ok(0);
+    let (Ok(ref mut a) | Err(ref mut a)) = Ok(0);
 
     // Two levels:
     enum Tri<S, T, U> {
@@ -20,10 +20,10 @@ fn main() {
     }
     use Tri::*;
 
-    let Ok((V1(a) | V2(a) | V3(a), b)) | Err(Ok((a, b)) | Err((a, b))): Result<_, Result<_, _>> =
+    let (Ok((V1(a) | V2(a) | V3(a), b)) | Err(Ok((a, b)) | Err((a, b)))): Result<_, Result<_, _>> =
         Ok((V1(1), 1));
 
-    let Ok((V1(a) | V2(a) | V3(a), ref b)) | Err(Ok((a, ref b)) | Err((a, ref b))): Result<
+    let (Ok((V1(a) | V2(a) | V3(a), ref b)) | Err(Ok((a, ref b)) | Err((a, ref b)))): Result<
         _,
         Result<_, _>,
     > = Ok((V1(1), 1));

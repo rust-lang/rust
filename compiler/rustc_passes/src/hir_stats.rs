@@ -66,13 +66,13 @@ impl<'k> StatCollector<'k> {
 
         let mut total_size = 0;
 
-        println!("\n{}\n", title);
+        eprintln!("\n{}\n", title);
 
-        println!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
-        println!("----------------------------------------------------------------");
+        eprintln!("{:<18}{:>18}{:>14}{:>14}", "Name", "Accumulated Size", "Count", "Item Size");
+        eprintln!("----------------------------------------------------------------");
 
         for (label, data) in stats {
-            println!(
+            eprintln!(
                 "{:<18}{:>18}{:>14}{:>14}",
                 label,
                 to_readable_str(data.count * data.size),
@@ -82,8 +82,8 @@ impl<'k> StatCollector<'k> {
 
             total_size += data.count * data.size;
         }
-        println!("----------------------------------------------------------------");
-        println!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
+        eprintln!("----------------------------------------------------------------");
+        eprintln!("{:<18}{:>18}\n", "Total", to_readable_str(total_size));
     }
 }
 
@@ -100,7 +100,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
-        let nested_item = self.krate.unwrap().item(id.id);
+        let nested_item = self.krate.unwrap().item(id);
         self.visit_item(nested_item)
     }
 
@@ -114,23 +114,23 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_impl_item(nested_impl_item)
     }
 
+    fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
+        let nested_foreign_item = self.krate.unwrap().foreign_item(id);
+        self.visit_foreign_item(nested_foreign_item);
+    }
+
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let nested_body = self.krate.unwrap().body(body_id);
         self.visit_body(nested_body)
     }
 
     fn visit_item(&mut self, i: &'v hir::Item<'v>) {
-        self.record("Item", Id::Node(i.hir_id), i);
+        self.record("Item", Id::Node(i.hir_id()), i);
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: hir::HirId) {
-        self.record("Mod", Id::None, m);
-        hir_visit::walk_mod(self, m, n)
-    }
-
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
-        self.record("ForeignItem", Id::Node(i.hir_id), i);
+        self.record("ForeignItem", Id::Node(i.hir_id()), i);
         hir_visit::walk_foreign_item(self, i)
     }
 
@@ -187,12 +187,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
-        self.record("TraitItem", Id::Node(ti.hir_id), ti);
+        self.record("TraitItem", Id::Node(ti.hir_id()), ti);
         hir_visit::walk_trait_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
-        self.record("ImplItem", Id::Node(ii.hir_id), ii);
+        self.record("ImplItem", Id::Node(ii.hir_id()), ii);
         hir_visit::walk_impl_item(self, ii)
     }
 
@@ -241,22 +241,17 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_type_binding(self, type_binding)
     }
 
-    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+    fn visit_attribute(&mut self, _: hir::HirId, attr: &'v ast::Attribute) {
         self.record("Attribute", Id::Attr(attr.id), attr);
     }
 
     fn visit_macro_def(&mut self, macro_def: &'v hir::MacroDef<'v>) {
-        self.record("MacroDef", Id::Node(macro_def.hir_id), macro_def);
+        self.record("MacroDef", Id::Node(macro_def.hir_id()), macro_def);
         hir_visit::walk_macro_def(self, macro_def)
     }
 }
 
 impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_mod(&mut self, m: &'v ast::Mod, _s: Span, _a: &[ast::Attribute], _n: NodeId) {
-        self.record("Mod", Id::None, m);
-        ast_visit::walk_mod(self, m)
-    }
-
     fn visit_foreign_item(&mut self, i: &'v ast::ForeignItem) {
         self.record("ForeignItem", Id::None, i);
         ast_visit::walk_foreign_item(self, i)

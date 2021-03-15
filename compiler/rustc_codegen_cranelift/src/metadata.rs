@@ -94,9 +94,7 @@ pub(crate) fn write_metadata<P: WriteMetadata>(
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
-    FrameEncoder::new(&mut compressed)
-        .write_all(&metadata.raw_data)
-        .unwrap();
+    FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
 
     product.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),

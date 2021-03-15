@@ -779,14 +779,11 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
         self,
         interner: &RustInterner<'tcx>,
     ) -> chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>> {
-        let trait_ref = self.projection_ty.trait_ref(interner.tcx);
+        let (trait_ref, own_substs) = self.projection_ty.trait_ref_and_own_substs(interner.tcx);
         chalk_solve::rust_ir::AliasEqBound {
             trait_bound: trait_ref.lower_into(interner),
             associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
-            parameters: self.projection_ty.substs[trait_ref.substs.len()..]
-                .iter()
-                .map(|arg| arg.lower_into(interner))
-                .collect(),
+            parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
             value: self.ty.lower_into(interner),
         }
     }

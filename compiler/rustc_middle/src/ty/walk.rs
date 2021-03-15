@@ -13,7 +13,7 @@ type TypeWalkerStack<'tcx> = SmallVec<[GenericArg<'tcx>; 8]>;
 pub struct TypeWalker<'tcx> {
     stack: TypeWalkerStack<'tcx>,
     last_subtree: usize,
-    visited: SsoHashSet<GenericArg<'tcx>>,
+    pub visited: SsoHashSet<GenericArg<'tcx>>,
 }
 
 /// An iterator for walking the type tree.

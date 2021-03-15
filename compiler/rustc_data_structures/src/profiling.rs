@@ -608,7 +608,7 @@ pub fn print_time_passes_entry(
         (None, None) => String::new(),
     };
 
-    println!("time: {:>7}{}\t{}", duration_to_secs_str(dur), mem_string, what);
+    eprintln!("time: {:>7}{}\t{}", duration_to_secs_str(dur), mem_string, what);
 }
 
 // Hack up our own formatting for the duration to make it easier for scripts

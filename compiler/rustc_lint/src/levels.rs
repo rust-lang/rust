@@ -38,10 +38,10 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
 
     builder.levels.id_to_set.reserve(krate.exported_macros.len() + 1);
 
-    let push = builder.levels.push(&krate.item.attrs, &store, true);
+    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     for macro_def in krate.exported_macros {
-        builder.levels.register_id(macro_def.hir_id);
+        builder.levels.register_id(macro_def.hir_id());
     }
     intravisit::walk_crate(&mut builder, krate);
     builder.levels.pop(push);
@@ -321,17 +321,18 @@ impl<'s> LintLevelsBuilder<'s> {
                     None
                 };
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
-                match store.check_lint_name(&name.as_str(), tool_name) {
+                let lint_result = store.check_lint_name(&name.as_str(), tool_name);
+                match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintLevelSource::Node(name, li.span(), reason);
-                        for &id in ids {
+                        for &id in *ids {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
                     }
 
                     CheckLintNameResult::Tool(result) => {
-                        match result {
+                        match *result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintLevelSource::Node(
@@ -343,7 +344,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                     self.insert_spec(&mut specs, *id, (level, src));
                                 }
                             }
-                            Err((Some(ids), new_lint_name)) => {
+                            Err((Some(ids), ref new_lint_name)) => {
                                 let lint = builtin::RENAMED_AND_REMOVED_LINTS;
                                 let (lvl, src) =
                                     self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
@@ -392,21 +393,21 @@ impl<'s> LintLevelsBuilder<'s> {
 
                     CheckLintNameResult::Warning(msg, renamed) => {
                         let lint = builtin::RENAMED_AND_REMOVED_LINTS;
-                        let (level, src) =
+                        let (renamed_lint_level, src) =
                             self.sets.get_lint_level(lint, self.cur, Some(&specs), &sess);
                         struct_lint_level(
                             self.sess,
                             lint,
-                            level,
+                            renamed_lint_level,
                             src,
                             Some(li.span().into()),
                             |lint| {
                                 let mut err = lint.build(&msg);
-                                if let Some(new_name) = renamed {
+                                if let Some(new_name) = &renamed {
                                     err.span_suggestion(
                                         li.span(),
                                         "use the new name",
-                                        new_name,
+                                        new_name.to_string(),
                                         Applicability::MachineApplicable,
                                     );
                                 }
@@ -442,6 +443,22 @@ impl<'s> LintLevelsBuilder<'s> {
                                 db.emit();
                             },
                         );
+                    }
+                }
+                // If this lint was renamed, apply the new lint instead of ignoring the attribute.
+                // This happens outside of the match because the new lint should be applied even if
+                // we don't warn about the name change.
+                if let CheckLintNameResult::Warning(_, Some(new_name)) = lint_result {
+                    // Ignore any errors or warnings that happen because the new name is inaccurate
+                    if let CheckLintNameResult::Ok(ids) =
+                        store.check_lint_name(&new_name, tool_name)
+                    {
+                        let src =
+                            LintLevelSource::Node(Symbol::intern(&new_name), li.span(), reason);
+                        for &id in ids {
+                            self.check_gated_lint(id, attr.span);
+                            self.insert_spec(&mut specs, id, (level, src));
+                        }
                     }
                 }
             }
@@ -549,11 +566,12 @@ struct LintLevelMapBuilder<'a, 'tcx> {
 }
 
 impl LintLevelMapBuilder<'_, '_> {
-    fn with_lint_attrs<F>(&mut self, id: hir::HirId, attrs: &[ast::Attribute], f: F)
+    fn with_lint_attrs<F>(&mut self, id: hir::HirId, f: F)
     where
         F: FnOnce(&mut Self),
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
+        let attrs = self.tcx.hir().attrs(id);
         let push = self.levels.push(attrs, self.store, is_crate_hir);
         if push.changed {
             self.levels.register_id(id);
@@ -571,19 +589,19 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
+        self.with_lint_attrs(param.hir_id, |builder| {
             intravisit::walk_param(builder, param);
         });
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_item(builder, it);
         });
     }
 
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
-        self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
+        self.with_lint_attrs(it.hir_id(), |builder| {
             intravisit::walk_foreign_item(builder, it);
         })
     }
@@ -596,13 +614,13 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
-        self.with_lint_attrs(e.hir_id, &e.attrs, |builder| {
+        self.with_lint_attrs(e.hir_id, |builder| {
             intravisit::walk_expr(builder, e);
         })
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
-        self.with_lint_attrs(s.hir_id, &s.attrs, |builder| {
+        self.with_lint_attrs(s.hir_id, |builder| {
             intravisit::walk_struct_field(builder, s);
         })
     }
@@ -613,31 +631,31 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         g: &'tcx hir::Generics<'tcx>,
         item_id: hir::HirId,
     ) {
-        self.with_lint_attrs(v.id, &v.attrs, |builder| {
+        self.with_lint_attrs(v.id, |builder| {
             intravisit::walk_variant(builder, v, g, item_id);
         })
     }
 
     fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
-        self.with_lint_attrs(l.hir_id, &l.attrs, |builder| {
+        self.with_lint_attrs(l.hir_id, |builder| {
             intravisit::walk_local(builder, l);
         })
     }
 
     fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
-        self.with_lint_attrs(a.hir_id, &a.attrs, |builder| {
+        self.with_lint_attrs(a.hir_id, |builder| {
             intravisit::walk_arm(builder, a);
         })
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |builder| {
+        self.with_lint_attrs(trait_item.hir_id(), |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |builder| {
+        self.with_lint_attrs(impl_item.hir_id(), |builder| {
             intravisit::walk_impl_item(builder, impl_item);
         });
     }

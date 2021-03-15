@@ -240,13 +240,16 @@ def default_build_triple(verbose):
         else:
             ostype = 'unknown-linux-gnu'
     elif ostype == 'SunOS':
-        ostype = 'sun-solaris'
+        ostype = 'pc-solaris'
         # On Solaris, uname -m will return a machine classification instead
         # of a cpu type, so uname -p is recommended instead.  However, the
         # output from that option is too generic for our purposes (it will
         # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
         # must be used instead.
         cputype = require(['isainfo', '-k']).decode(default_encoding)
+        # sparc cpus have sun as a target vendor
+        if 'sparc' in cputype:
+            ostype = 'sun-solaris'
     elif ostype.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
@@ -644,9 +647,8 @@ class RustBuild(object):
         compiler = "{}/compiler/".format(top_level)
 
         # Look for a version to compare to based on the current commit.
-        # Ideally this would just use `merge-base`, but on beta and stable branches that wouldn't
-        # come up with any commits, so hack it and use `author=bors` instead.
-        merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1", "--", compiler]
+        # Only commits merged by bors will have CI artifacts.
+        merge_base = ["git", "log", "--author=bors", "--pretty=%H", "-n1"]
         commit = subprocess.check_output(merge_base, universal_newlines=True).strip()
 
         # Warn if there were changes to the compiler since the ancestor commit.

@@ -626,6 +626,15 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                     self.consume_operand(location, (input, span), flow_state);
                 }
             }
+
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ..
+            }) => {
+                span_bug!(
+                    span,
+                    "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
+                )
+            }
             StatementKind::Nop
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..)
@@ -1316,8 +1325,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }
