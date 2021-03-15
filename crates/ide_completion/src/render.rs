@@ -928,6 +928,66 @@ fn f(foo: &Foo) { f(foo, w$0) }
     }
 
     #[test]
+    fn score_fn_type_and_name_match() {
+        check_relevance(
+            r#"
+struct A { bar: u8 }
+fn baz() -> u8 { 0 }
+fn bar() -> u8 { 0 }
+fn f() { A { bar: b$0 }; }
+"#,
+            expect![[r#"
+                fn baz() [type]
+                st A []
+                fn bar() [type+name]
+                fn f() []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn score_method_type_and_name_match() {
+        check_relevance(
+            r#"
+fn baz(aaa: u32){}
+struct Foo;
+impl Foo {
+fn aaa(&self) -> u32 { 0 }
+fn bbb(&self) -> u32 { 0 }
+fn ccc(&self) -> u64 { 0 }
+}
+fn f() {
+    baz(Foo.$0
+}
+"#,
+            expect![[r#"
+                me aaa() [type+name]
+                me bbb() [type]
+                me ccc() []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn score_method_name_match_only() {
+        check_relevance(
+            r#"
+fn baz(aaa: u32){}
+struct Foo;
+impl Foo {
+fn aaa(&self) -> u64 { 0 }
+}
+fn f() {
+    baz(Foo.$0
+}
+"#,
+            expect![[r#"
+                me aaa() [name]
+            "#]],
+        );
+    }
+
+    #[test]
     fn suggest_ref_mut() {
         cov_mark::check!(suggest_ref);
         check(
