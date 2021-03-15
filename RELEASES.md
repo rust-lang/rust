@@ -109,8 +109,8 @@ Compatibility Notes
 - [WASI platforms no longer use the `wasm-bindgen` ABI, and instead use the wasm32 ABI.][79998]
 - [`rustc` no longer promotes division, modulo and indexing operations to `const` that
   could fail.][80579]
-- [The minimum version of `glibc` required when building with the Ubuntu 20.04 toolchain
-  for the following platforms has been bumped to version 2.31.][81521]
+- [The minimum version of glibc for the following platforms has been bumped to version 2.31
+  for the distributed artifacts.][81521]
     - `armv5te-unknown-linux-gnueabi`
     - `sparc64-unknown-linux-gnu`
     - `thumbv7neon-unknown-linux-gnueabihf`
