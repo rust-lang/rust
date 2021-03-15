@@ -343,11 +343,6 @@ impl Definitions {
     }
 
     #[inline]
-    pub fn opt_local_def_id_to_hir_id(&self, id: LocalDefId) -> Option<hir::HirId> {
-        self.def_id_to_hir_id[id]
-    }
-
-    #[inline]
     pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
         self.hir_id_to_def_id.get(&hir_id).copied()
     }
