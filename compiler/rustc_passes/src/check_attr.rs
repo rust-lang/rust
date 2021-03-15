@@ -524,7 +524,7 @@ impl CheckAttrVisitor<'tcx> {
                 .struct_span_err(
                     meta.span(),
                     &format!(
-                        "`#![doc({} = \"...\")]` isn't allowed as a crate level attribute",
+                        "`#![doc({} = \"...\")]` isn't allowed as a crate-level attribute",
                         attr_name,
                     ),
                 )
@@ -535,79 +535,97 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
-        if let Some(mi) = attr.meta() {
-            if let Some(list) = mi.meta_item_list() {
-                for meta in list {
-                    if meta.has_name(sym::alias) {
-                        if !self.check_attr_crate_level(meta, hir_id, "alias")
-                            || !self.check_doc_alias(meta, hir_id, target)
+        let mut is_valid = true;
+
+        if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
+            for meta in list {
+                if let Some(i_meta) = meta.meta_item() {
+                    match i_meta.name_or_empty() {
+                        sym::alias
+                            if !self.check_attr_crate_level(&meta, hir_id, "alias")
+                                || !self.check_doc_alias(&meta, hir_id, target) =>
                         {
-                            return false;
+                            is_valid = false
                         }
-                    } else if meta.has_name(sym::keyword) {
-                        if !self.check_attr_crate_level(meta, hir_id, "keyword")
-                            || !self.check_doc_keyword(meta, hir_id)
+
+                        sym::keyword
+                            if !self.check_attr_crate_level(&meta, hir_id, "keyword")
+                                || !self.check_doc_keyword(&meta, hir_id) =>
                         {
-                            return false;
+                            is_valid = false
                         }
-                    } else if meta.has_name(sym::test) {
-                        if CRATE_HIR_ID != hir_id {
+
+                        sym::test if CRATE_HIR_ID != hir_id => {
                             self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 meta.span(),
                                 |lint| {
                                     lint.build(
-                                        "`#![doc(test(...)]` is only allowed as a crate level attribute"
+                                        "`#![doc(test(...)]` is only allowed \
+                                         as a crate-level attribute",
                                     )
                                     .emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
-                    } else if let Some(i_meta) = meta.meta_item() {
-                        if ![
-                            sym::cfg,
-                            sym::hidden,
-                            sym::html_favicon_url,
-                            sym::html_logo_url,
-                            sym::html_no_source,
-                            sym::html_playground_url,
-                            sym::html_root_url,
-                            sym::include,
-                            sym::inline,
-                            sym::issue_tracker_base_url,
-                            sym::masked,
-                            sym::no_default_passes, // deprecated
-                            sym::no_inline,
-                            sym::passes,  // deprecated
-                            sym::plugins, // removed, but rustdoc warns about it itself
-                            sym::primitive,
-                            sym::spotlight,
-                            sym::test,
-                        ]
-                        .iter()
-                        .any(|m| i_meta.has_name(*m))
-                        {
+
+                        // no_default_passes: deprecated
+                        // passes: deprecated
+                        // plugins: removed, but rustdoc warns about it itself
+                        sym::alias
+                        | sym::cfg
+                        | sym::hidden
+                        | sym::html_favicon_url
+                        | sym::html_logo_url
+                        | sym::html_no_source
+                        | sym::html_playground_url
+                        | sym::html_root_url
+                        | sym::include
+                        | sym::inline
+                        | sym::issue_tracker_base_url
+                        | sym::keyword
+                        | sym::masked
+                        | sym::no_default_passes
+                        | sym::no_inline
+                        | sym::passes
+                        | sym::plugins
+                        | sym::primitive
+                        | sym::spotlight
+                        | sym::test => {}
+
+                        _ => {
                             self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
-                                    lint.build(&format!(
+                                    let msg = format!(
                                         "unknown `doc` attribute `{}`",
-                                        i_meta.name_or_empty()
-                                    ))
-                                    .emit();
+                                        rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
+                                    );
+                                    lint.build(&msg).emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
                     }
+                } else {
+                    self.tcx.struct_span_lint_hir(
+                        INVALID_DOC_ATTRIBUTES,
+                        hir_id,
+                        meta.span(),
+                        |lint| {
+                            lint.build(&format!("invalid `doc` attribute")).emit();
+                        },
+                    );
+                    is_valid = false;
                 }
             }
         }
-        true
+
+        is_valid
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
