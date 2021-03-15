@@ -633,7 +633,9 @@ pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub auto: bool,
+    pub is_auto: bool,
+    pub is_unsafe: bool,
+    pub bounds: Box<[TypeBound]>,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }

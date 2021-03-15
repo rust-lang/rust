@@ -87,7 +87,10 @@ impl TypeAliasData {
 pub struct TraitData {
     pub name: Name,
     pub items: Vec<(Name, AssocItemId)>,
-    pub auto: bool,
+    pub is_auto: bool,
+    pub is_unsafe: bool,
+    pub visibility: RawVisibility,
+    pub bounds: Box<[TypeBound]>,
 }
 
 impl TraitData {
@@ -96,10 +99,13 @@ impl TraitData {
         let item_tree = db.item_tree(tr_loc.id.file_id);
         let tr_def = &item_tree[tr_loc.id.value];
         let name = tr_def.name.clone();
-        let auto = tr_def.auto;
+        let is_auto = tr_def.is_auto;
+        let is_unsafe = tr_def.is_unsafe;
         let module_id = tr_loc.container;
         let container = AssocContainerId::TraitId(tr);
         let mut expander = Expander::new(db, tr_loc.id.file_id, module_id);
+        let visibility = item_tree[tr_def.visibility].clone();
+        let bounds = tr_def.bounds.clone();
 
         let items = collect_items(
             db,
@@ -111,7 +117,7 @@ impl TraitData {
             100,
         );
 
-        Arc::new(TraitData { name, items, auto })
+        Arc::new(TraitData { name, items, is_auto, is_unsafe, visibility, bounds })
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {

@@ -1,7 +1,7 @@
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, FieldSource, GenericParam, HasAttrs, HasSource,
-    HirDisplay, Module, ModuleDef, ModuleSource, Semantics,
+    Adt, AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, Module,
+    ModuleDef, Semantics,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -14,7 +14,7 @@ use stdx::format_to;
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, TokenAtOffset, T};
 
 use crate::{
-    display::{macro_label, ShortLabel, TryToNav},
+    display::{macro_label, TryToNav},
     doc_links::{remove_links, rewrite_links},
     markdown_remove::remove_markdown,
     markup::Markup,
@@ -335,34 +335,18 @@ fn hover_for_definition(
             let label = macro_label(&it.source(db)?.value);
             from_def_source_labeled(db, it, Some(label), mod_path)
         }
-        Definition::Field(def) => {
-            let src = def.source(db)?.value;
-            if let FieldSource::Named(it) = src {
-                from_def_source_labeled(db, def, it.short_label(), mod_path)
-            } else {
-                None
-            }
-        }
+        Definition::Field(def) => from_hir_fmt(db, def, mod_path),
         Definition::ModuleDef(it) => match it {
-            ModuleDef::Module(it) => from_def_source_labeled(
-                db,
-                it,
-                match it.definition_source(db).value {
-                    ModuleSource::Module(it) => it.short_label(),
-                    ModuleSource::SourceFile(it) => it.short_label(),
-                    ModuleSource::BlockExpr(it) => it.short_label(),
-                },
-                mod_path,
-            ),
+            ModuleDef::Module(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Function(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Adt(Adt::Struct(it)) => from_def_source(db, it, mod_path),
-            ModuleDef::Adt(Adt::Union(it)) => from_def_source(db, it, mod_path),
-            ModuleDef::Adt(Adt::Enum(it)) => from_def_source(db, it, mod_path),
-            ModuleDef::Variant(it) => from_def_source(db, it, mod_path),
-            ModuleDef::Const(it) => from_def_source(db, it, mod_path),
-            ModuleDef::Static(it) => from_def_source(db, it, mod_path),
-            ModuleDef::Trait(it) => from_def_source(db, it, mod_path),
-            ModuleDef::TypeAlias(it) => from_def_source(db, it, mod_path),
+            ModuleDef::Adt(Adt::Struct(it)) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Adt(Adt::Union(it)) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Adt(Adt::Enum(it)) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Variant(it) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Const(it) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Static(it) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Trait(it) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::TypeAlias(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::BuiltinType(it) => famous_defs
                 .and_then(|fd| hover_for_builtin(fd, it))
                 .or_else(|| Some(Markup::fenced_block(&it.name()))),
@@ -370,16 +354,16 @@ fn hover_for_definition(
         Definition::Local(it) => hover_for_local(it, db),
         Definition::SelfType(impl_def) => {
             impl_def.target_ty(db).as_adt().and_then(|adt| match adt {
-                Adt::Struct(it) => from_def_source(db, it, mod_path),
-                Adt::Union(it) => from_def_source(db, it, mod_path),
-                Adt::Enum(it) => from_def_source(db, it, mod_path),
+                Adt::Struct(it) => from_hir_fmt(db, it, mod_path),
+                Adt::Union(it) => from_hir_fmt(db, it, mod_path),
+                Adt::Enum(it) => from_hir_fmt(db, it, mod_path),
             })
         }
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
         Definition::GenericParam(it) => match it {
             GenericParam::TypeParam(it) => Some(Markup::fenced_block(&it.display(db))),
             GenericParam::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
-            GenericParam::ConstParam(it) => from_def_source(db, it, None),
+            GenericParam::ConstParam(it) => Some(Markup::fenced_block(&it.display(db))),
         },
     };
 
@@ -389,15 +373,6 @@ fn hover_for_definition(
     {
         let label = def.display(db).to_string();
         from_def_source_labeled(db, def, Some(label), mod_path)
-    }
-
-    fn from_def_source<A, D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>
-    where
-        D: HasSource<Ast = A> + HasAttrs + Copy,
-        A: ShortLabel,
-    {
-        let short_label = def.source(db)?.value.short_label();
-        from_def_source_labeled(db, def, short_label, mod_path)
     }
 
     fn from_def_source_labeled<D>(

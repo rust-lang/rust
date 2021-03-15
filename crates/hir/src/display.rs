@@ -1,8 +1,9 @@
 //! HirDisplay implementations for various hir types.
 use hir_def::{
+    adt::VariantData,
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     type_ref::{TypeBound, TypeRef},
-    GenericDefId,
+    AdtId, GenericDefId,
 };
 use hir_ty::display::{
     write_bounds_like_dyn_trait_with_prefix, write_visibility, HirDisplay, HirDisplayError,
@@ -10,7 +11,10 @@ use hir_ty::display::{
 };
 use syntax::ast::{self, NameOwner};
 
-use crate::{Function, HasVisibility, Substs, Type, TypeParam};
+use crate::{
+    Const, ConstParam, Enum, Field, Function, HasVisibility, Module, Static, Struct, Substs, Trait,
+    Type, TypeAlias, TypeParam, Union, Variant,
+};
 
 impl HirDisplay for Function {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
@@ -116,6 +120,91 @@ impl HirDisplay for Function {
     }
 }
 
+impl HirDisplay for Struct {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        write!(f, "struct ")?;
+        write!(f, "{}", self.name(f.db))?;
+        let def_id = GenericDefId::AdtId(AdtId::StructId(self.id));
+        write_generic_params(def_id, f)?;
+        write_where_clause(def_id, f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Enum {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        write!(f, "enum ")?;
+        write!(f, "{}", self.name(f.db))?;
+        let def_id = GenericDefId::AdtId(AdtId::EnumId(self.id));
+        write_generic_params(def_id, f)?;
+        write_where_clause(def_id, f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Union {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        write!(f, "union ")?;
+        write!(f, "{}", self.name(f.db))?;
+        let def_id = GenericDefId::AdtId(AdtId::UnionId(self.id));
+        write_generic_params(def_id, f)?;
+        write_where_clause(def_id, f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Field {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.parent.module(f.db).id, self.visibility(f.db), f)?;
+        write!(f, "{}: ", self.name(f.db))?;
+        self.signature_ty(f.db).hir_fmt(f)
+    }
+}
+
+impl HirDisplay for Variant {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "{}", self.name(f.db))?;
+        let data = self.variant_data(f.db);
+        match &*data {
+            VariantData::Unit => {}
+            VariantData::Tuple(fields) => {
+                write!(f, "(")?;
+                let mut first = true;
+                for (_, field) in fields.iter() {
+                    if first {
+                        first = false;
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    // Enum variant fields must be pub.
+                    field.type_ref.hir_fmt(f)?;
+                }
+                write!(f, ")")?;
+            }
+            VariantData::Record(fields) => {
+                write!(f, " {{")?;
+                let mut first = true;
+                for (_, field) in fields.iter() {
+                    if first {
+                        first = false;
+                        write!(f, " ")?;
+                    } else {
+                        write!(f, ", ")?;
+                    }
+                    // Enum variant fields must be pub.
+                    write!(f, "{}: ", field.name)?;
+                    field.type_ref.hir_fmt(f)?;
+                }
+                write!(f, " }}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl HirDisplay for Type {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         self.ty.value.hir_fmt(f)
@@ -132,6 +221,13 @@ impl HirDisplay for TypeParam {
             write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
         }
         Ok(())
+    }
+}
+
+impl HirDisplay for ConstParam {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "const {}: ", self.name(f.db))?;
+        self.ty(f.db).hir_fmt(f)
     }
 }
 
@@ -252,4 +348,84 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
     write!(f, ",")?;
 
     Ok(())
+}
+
+impl HirDisplay for Const {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let data = f.db.const_data(self.id);
+        write!(f, "const ")?;
+        match &data.name {
+            Some(name) => write!(f, "{}: ", name)?,
+            None => write!(f, "_: ")?,
+        }
+        data.type_ref.hir_fmt(f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Static {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let data = f.db.static_data(self.id);
+        write!(f, "static ")?;
+        if data.mutable {
+            write!(f, "mut ")?;
+        }
+        match &data.name {
+            Some(name) => write!(f, "{}: ", name)?,
+            None => write!(f, "_: ")?,
+        }
+        data.type_ref.hir_fmt(f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for Trait {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let data = f.db.trait_data(self.id);
+        if data.is_unsafe {
+            write!(f, "unsafe ")?;
+        }
+        if data.is_auto {
+            write!(f, "auto ")?;
+        }
+        write!(f, "trait {}", data.name)?;
+        let def_id = GenericDefId::TraitId(self.id);
+        write_generic_params(def_id, f)?;
+        if !data.bounds.is_empty() {
+            write!(f, ": ")?;
+            f.write_joined(&*data.bounds, " + ")?;
+        }
+        write_where_clause(def_id, f)?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for TypeAlias {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let data = f.db.type_alias_data(self.id);
+        write!(f, "type {}", data.name)?;
+        if !data.bounds.is_empty() {
+            write!(f, ": ")?;
+            f.write_joined(&data.bounds, " + ")?;
+        }
+        if let Some(ty) = &data.type_ref {
+            write!(f, " = ")?;
+            ty.hir_fmt(f)?;
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for Module {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        // FIXME: Module doesn't have visibility saved in data.
+        match self.name(f.db) {
+            Some(name) => write!(f, "mod {}", name),
+            None => write!(f, "mod {{unnamed}}"),
+        }
+    }
 }

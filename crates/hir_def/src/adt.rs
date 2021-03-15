@@ -31,12 +31,14 @@ pub struct StructData {
     pub name: Name,
     pub variant_data: Arc<VariantData>,
     pub repr: Option<ReprKind>,
+    pub visibility: RawVisibility,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
     pub variants: Arena<EnumVariantData>,
+    pub visibility: RawVisibility,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +104,7 @@ impl StructData {
             name: strukt.name.clone(),
             variant_data: Arc::new(variant_data),
             repr,
+            visibility: item_tree[strukt.visibility].clone(),
         })
     }
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
@@ -118,6 +121,7 @@ impl StructData {
             name: union.name.clone(),
             variant_data: Arc::new(variant_data),
             repr,
+            visibility: item_tree[union.visibility].clone(),
         })
     }
 }
@@ -150,7 +154,11 @@ impl EnumData {
             }
         }
 
-        Arc::new(EnumData { name: enum_.name.clone(), variants })
+        Arc::new(EnumData {
+            name: enum_.name.clone(),
+            variants,
+            visibility: item_tree[enum_.visibility].clone(),
+        })
     }
 
     pub fn variant(&self, name: &Name) -> Option<LocalEnumVariantId> {

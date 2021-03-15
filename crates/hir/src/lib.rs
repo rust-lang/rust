@@ -572,6 +572,12 @@ impl Struct {
     }
 }
 
+impl HasVisibility for Struct {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.struct_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Union {
     pub(crate) id: UnionId,
@@ -604,6 +610,12 @@ impl Union {
     }
 }
 
+impl HasVisibility for Union {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.union_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) id: EnumId,
@@ -628,6 +640,12 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id.lookup(db.upcast()).container.krate(), self.id)
+    }
+}
+
+impl HasVisibility for Enum {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
@@ -962,6 +980,10 @@ impl Const {
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         db.const_data(self.id).name.clone()
     }
+
+    pub fn type_ref(self, db: &dyn HirDatabase) -> TypeRef {
+        db.const_data(self.id).type_ref.clone()
+    }
 }
 
 impl HasVisibility for Const {
@@ -995,6 +1017,12 @@ impl Static {
     }
 }
 
+impl HasVisibility for Static {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.static_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
     pub(crate) id: TraitId,
@@ -1014,7 +1042,13 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).auto
+        db.trait_data(self.id).is_auto
+    }
+}
+
+impl HasVisibility for Trait {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.trait_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
