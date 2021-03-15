@@ -1161,4 +1161,15 @@ struct S;
 "#,
         )
     }
+
+    #[test]
+    fn goto_incomplete_field() {
+        check(
+            r#"
+struct A { a: u32 }
+         //^
+fn foo() { A { a$0: }; }
+"#,
+        )
+    }
 }
