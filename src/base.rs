@@ -660,7 +660,9 @@ fn codegen_stmt<'tcx>(
                         .val
                         .try_to_bits(fx.tcx.data_layout.pointer_size)
                         .unwrap();
-                    if fx.clif_type(operand.layout().ty) == Some(types::I8) {
+                    if operand.layout().size.bytes() == 0 {
+                        // Do nothing for ZST's
+                    } else if fx.clif_type(operand.layout().ty) == Some(types::I8) {
                         let times = fx.bcx.ins().iconst(fx.pointer_type, times as i64);
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
