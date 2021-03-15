@@ -31,7 +31,7 @@ use crate::{
     traits::chalk::{Interner, ToChalk},
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics,
-        make_mut_slice, variant_data,
+        variant_data,
     },
     AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, FnPointer, FnSig, GenericPredicate,
     ImplTraitId, OpaqueTy, PolyFnSig, ProjectionPredicate, ProjectionTy, ReturnTypeImplTrait,
@@ -150,8 +150,9 @@ impl<'a> TyLoweringContext<'a> {
         let ty = match type_ref {
             TypeRef::Never => TyKind::Never.intern(&Interner),
             TypeRef::Tuple(inner) => {
-                let inner_tys: Arc<[Ty]> = inner.iter().map(|tr| self.lower_ty(tr)).collect();
-                TyKind::Tuple(inner_tys.len(), Substs(inner_tys)).intern(&Interner)
+                let inner_tys = inner.iter().map(|tr| self.lower_ty(tr));
+                TyKind::Tuple(inner_tys.len(), Substs::from_iter(&Interner, inner_tys))
+                    .intern(&Interner)
             }
             TypeRef::Path(path) => {
                 let (ty, res_) = self.lower_path(path);
@@ -638,7 +639,7 @@ impl<'a> TyLoweringContext<'a> {
     ) -> TraitRef {
         let mut substs = self.trait_ref_substs_from_path(segment, resolved);
         if let Some(self_ty) = explicit_self_ty {
-            make_mut_slice(&mut substs.0)[0] = self_ty;
+            substs.0[0] = self_ty;
         }
         TraitRef { trait_: resolved, substs }
     }
