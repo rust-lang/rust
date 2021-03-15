@@ -2,6 +2,10 @@
 pub mod insert_use;
 pub mod import_assets;
 
+use std::collections::VecDeque;
+
+use base_db::FileId;
+use either::Either;
 use hir::{Crate, Enum, ItemInNs, MacroDef, Module, ModuleDef, Name, ScopeDef, Semantics, Trait};
 use syntax::ast::{self, make};
 
@@ -37,6 +41,30 @@ pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
             .map(|segment| make::path_segment(make::name_ref(&segment.to_string()))),
     );
     make::path_from_segments(segments, is_abs)
+}
+
+/// Iterates all `ModuleDef`s and `Impl` blocks of the given file.
+pub fn visit_file_defs(
+    sema: &Semantics<RootDatabase>,
+    file_id: FileId,
+    cb: &mut dyn FnMut(Either<hir::ModuleDef, hir::Impl>),
+) {
+    let db = sema.db;
+    let module = match sema.to_module_def(file_id) {
+        Some(it) => it,
+        None => return,
+    };
+    let mut defs: VecDeque<_> = module.declarations(db).into();
+    while let Some(def) = defs.pop_front() {
+        if let ModuleDef::Module(submodule) = def {
+            if let hir::ModuleSource::Module(_) = submodule.definition_source(db).value {
+                defs.extend(submodule.declarations(db));
+                submodule.impl_defs(db).into_iter().for_each(|impl_| cb(Either::Right(impl_)));
+            }
+        }
+        cb(Either::Left(def));
+    }
+    module.impl_defs(db).into_iter().for_each(|impl_| cb(Either::Right(impl_)));
 }
 
 /// Helps with finding well-know things inside the standard library. This is
