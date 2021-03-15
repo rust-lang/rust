@@ -222,14 +222,10 @@ fn convert_doc_comment(token: &syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>
     let doc = comment.kind().doc?;
 
     // Make `doc="\" Comments\""
-    let mut meta_tkns = Vec::new();
-    meta_tkns.push(mk_ident("doc"));
-    meta_tkns.push(mk_punct('='));
-    meta_tkns.push(mk_doc_literal(&comment));
+    let meta_tkns = vec![mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)];
 
     // Make `#![]`
-    let mut token_trees = Vec::new();
-    token_trees.push(mk_punct('#'));
+    let mut token_trees = vec![mk_punct('#')];
     if let ast::CommentPlacement::Inner = doc {
         token_trees.push(mk_punct('!'));
     }

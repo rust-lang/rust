@@ -70,7 +70,7 @@ impl Definition {
                 hir::ModuleDef::Static(it) => it.name(db)?,
                 hir::ModuleDef::Trait(it) => it.name(db),
                 hir::ModuleDef::TypeAlias(it) => it.name(db),
-                hir::ModuleDef::BuiltinType(_) => return None,
+                hir::ModuleDef::BuiltinType(it) => it.name(),
             },
             Definition::SelfType(_) => return None,
             Definition::Local(it) => it.name(db)?,

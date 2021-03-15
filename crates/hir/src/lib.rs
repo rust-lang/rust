@@ -266,8 +266,7 @@ impl ModuleDef {
     }
 
     pub fn canonical_path(&self, db: &dyn HirDatabase) -> Option<String> {
-        let mut segments = Vec::new();
-        segments.push(self.name(db)?.to_string());
+        let mut segments = vec![self.name(db)?.to_string()];
         for m in self.module(db)?.path_to_root(db) {
             segments.extend(m.name(db).map(|it| it.to_string()))
         }

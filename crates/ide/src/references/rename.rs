@@ -510,7 +510,8 @@ fn source_edit_from_def(
     def: Definition,
     new_name: &str,
 ) -> RenameResult<(FileId, TextEdit)> {
-    let nav = def.try_to_nav(sema.db).unwrap();
+    let nav =
+        def.try_to_nav(sema.db).ok_or_else(|| format_err!("No references found at position"))?;
 
     let mut replacement_text = String::new();
     let mut repl_range = nav.focus_or_full_range();

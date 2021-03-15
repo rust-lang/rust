@@ -846,9 +846,9 @@ pub(crate) fn handle_references(
     };
 
     let decl = if params.context.include_declaration {
-        Some(FileRange {
-            file_id: refs.declaration.nav.file_id,
-            range: refs.declaration.nav.focus_or_full_range(),
+        refs.declaration.map(|decl| FileRange {
+            file_id: decl.nav.file_id,
+            range: decl.nav.focus_or_full_range(),
         })
     } else {
         None
@@ -1153,14 +1153,12 @@ pub(crate) fn handle_document_highlight(
         Some(refs) => refs,
     };
 
-    let decl = if refs.declaration.nav.file_id == position.file_id {
-        Some(DocumentHighlight {
-            range: to_proto::range(&line_index, refs.declaration.nav.focus_or_full_range()),
-            kind: refs.declaration.access.map(to_proto::document_highlight_kind),
-        })
-    } else {
-        None
-    };
+    let decl = refs.declaration.filter(|decl| decl.nav.file_id == position.file_id).map(|decl| {
+        DocumentHighlight {
+            range: to_proto::range(&line_index, decl.nav.focus_or_full_range()),
+            kind: decl.access.map(to_proto::document_highlight_kind),
+        }
+    });
 
     let file_refs = refs.references.get(&position.file_id).map_or(&[][..], Vec::as_slice);
     let mut res = Vec::with_capacity(file_refs.len() + 1);

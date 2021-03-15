@@ -108,7 +108,7 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
 }
 
 fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
-    let mut result = Vec::<tt::TokenTree>::new();
+    let mut result = Vec::<tt::TokenTree>::with_capacity(n * 2);
     result.push(
         tt::Leaf::Punct(tt::Punct {
             char: '<',

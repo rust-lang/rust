@@ -59,7 +59,7 @@ pub(crate) fn add_format_like_completions(
 /// Checks whether provided item is a string literal.
 fn string_literal_contents(item: &ast::String) -> Option<String> {
     let item = item.text();
-    if item.len() >= 2 && item.starts_with("\"") && item.ends_with("\"") {
+    if item.len() >= 2 && item.starts_with('\"') && item.ends_with('\"') {
         return Some(item[1..item.len() - 1].to_owned());
     }
 
