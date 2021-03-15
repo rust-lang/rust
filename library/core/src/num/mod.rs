@@ -849,7 +849,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     };
 
     let mut result = T::from_u32(0);
-    if radix == 10 {
+    if mem::size_of::<T>() <= mem::size_of::<u32>() && radix == 10 {
         // The cpu can reorder these adds as each mul isn't dependent
         // on the previous answer.
         let factors = &MULTIPLIER[MULTIPLIER.len() - src.len()..];
