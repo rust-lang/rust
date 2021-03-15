@@ -172,7 +172,7 @@ config_data! {
         notifications_cargoTomlNotFound: bool      = "true",
 
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
-        procMacro_enable: bool                     = "false",
+        procMacro_enable: bool                     = "true",
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",

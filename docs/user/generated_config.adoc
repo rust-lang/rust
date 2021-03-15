@@ -276,7 +276,7 @@ Number of syntax trees rust-analyzer keeps in memory. Defaults to 128.
 --
 Whether to show `can't find Cargo.toml` error message.
 --
-[[rust-analyzer.procMacro.enable]]rust-analyzer.procMacro.enable (default: `false`)::
+[[rust-analyzer.procMacro.enable]]rust-analyzer.procMacro.enable (default: `true`)::
 +
 --
 Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
