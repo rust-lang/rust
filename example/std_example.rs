@@ -16,8 +16,7 @@ fn main() {
     let mut stderr = stderr.lock();
 
     // FIXME support lazy jit when multi threading
-    // FIXME support TLS on windows
-    #[cfg(not(any(lazy_jit, windows)))]
+    #[cfg(not(lazy_jit))]
     std::thread::spawn(move || {
         println!("Hello from another thread!");
     });
