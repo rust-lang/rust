@@ -311,6 +311,7 @@ crate fn create_config(
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
+        parse_sess_created: None,
         register_lints: Some(box crate::lint::register_lints),
         override_queries: Some(|_sess, providers, _external_providers| {
             // Most lints will require typechecking, so just don't run them.

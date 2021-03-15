@@ -95,6 +95,7 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
         lint_caps,
+        parse_sess_created: None,
         register_lints: Some(box crate::lint::register_lints),
         override_queries: None,
         make_codegen_backend: None,
