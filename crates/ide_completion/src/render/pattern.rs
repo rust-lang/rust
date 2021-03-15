@@ -6,24 +6,6 @@ use itertools::Itertools;
 
 use crate::{item::CompletionKind, render::RenderContext, CompletionItem, CompletionItemKind};
 
-fn visible_fields(
-    ctx: &RenderContext<'_>,
-    fields: &[hir::Field],
-    item: impl HasAttrs,
-) -> Option<(Vec<hir::Field>, bool)> {
-    let module = ctx.completion.scope.module()?;
-    let n_fields = fields.len();
-    let fields = fields
-        .into_iter()
-        .filter(|field| field.is_visible_from(ctx.db(), module))
-        .copied()
-        .collect::<Vec<_>>();
-
-    let fields_omitted =
-        n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
-    Some((fields, fields_omitted))
-}
-
 pub(crate) fn render_struct_pat(
     ctx: RenderContext<'_>,
     strukt: hir::Struct,
@@ -147,4 +129,22 @@ fn render_tuple_as_pat(fields: &[hir::Field], name: &str, fields_omitted: bool) 
         if fields_omitted { ", .." } else { "" },
         name = name
     )
+}
+
+fn visible_fields(
+    ctx: &RenderContext<'_>,
+    fields: &[hir::Field],
+    item: impl HasAttrs,
+) -> Option<(Vec<hir::Field>, bool)> {
+    let module = ctx.completion.scope.module()?;
+    let n_fields = fields.len();
+    let fields = fields
+        .into_iter()
+        .filter(|field| field.is_visible_from(ctx.db(), module))
+        .copied()
+        .collect::<Vec<_>>();
+
+    let fields_omitted =
+        n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
+    Some((fields, fields_omitted))
 }
