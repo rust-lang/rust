@@ -276,20 +276,17 @@ impl HirDisplay for Ty {
             &TyKind::Scalar(Scalar::Float(t)) => write!(f, "{}", primitive::float_ty_to_string(t))?,
             &TyKind::Scalar(Scalar::Int(t)) => write!(f, "{}", primitive::int_ty_to_string(t))?,
             &TyKind::Scalar(Scalar::Uint(t)) => write!(f, "{}", primitive::uint_ty_to_string(t))?,
-            TyKind::Slice(parameters) => {
-                let t = parameters.as_single();
+            TyKind::Slice(t) => {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TyKind::Array(parameters) => {
-                let t = parameters.as_single();
+            TyKind::Array(t) => {
                 write!(f, "[")?;
                 t.hir_fmt(f)?;
                 write!(f, "; _]")?;
             }
-            TyKind::Raw(m, parameters) | TyKind::Ref(m, parameters) => {
-                let t = parameters.as_single();
+            TyKind::Raw(m, t) | TyKind::Ref(m, t) => {
                 let ty_display =
                     t.into_displayable(f.db, f.max_size, f.omit_verbose_types, f.display_target);
 

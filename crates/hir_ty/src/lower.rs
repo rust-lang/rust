@@ -160,21 +160,19 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Raw(lower_to_chalk_mutability(*mutability), Substs::single(inner_ty))
-                    .intern(&Interner)
+                TyKind::Raw(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
             }
             TypeRef::Array(inner) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Array(Substs::single(inner_ty)).intern(&Interner)
+                TyKind::Array(inner_ty).intern(&Interner)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Slice(Substs::single(inner_ty)).intern(&Interner)
+                TyKind::Slice(inner_ty).intern(&Interner)
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Ref(lower_to_chalk_mutability(*mutability), Substs::single(inner_ty))
-                    .intern(&Interner)
+                TyKind::Ref(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
             }
             TypeRef::Placeholder => TyKind::Unknown.intern(&Interner),
             TypeRef::Fn(params, is_varargs) => {
@@ -993,7 +991,7 @@ pub(crate) fn generic_defaults_query(
 
             // Each default can only refer to previous parameters.
             ty.walk_mut_binders(
-                &mut |ty, binders| match &mut ty.0 {
+                &mut |ty, binders| match ty.interned_mut() {
                     TyKind::BoundVar(BoundVar { debruijn, index }) if *debruijn == binders => {
                         if *index >= idx {
                             // type variable default referring to parameter coming

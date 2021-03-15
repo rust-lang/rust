@@ -108,6 +108,17 @@ pub struct TypeMismatch {
     pub actual: Ty,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct InternedStandardTypes {
+    unknown: Ty,
+}
+
+impl Default for InternedStandardTypes {
+    fn default() -> Self {
+        InternedStandardTypes { unknown: TyKind::Unknown.intern(&Interner) }
+    }
+}
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
@@ -126,6 +137,8 @@ pub struct InferenceResult {
     pub type_of_expr: ArenaMap<ExprId, Ty>,
     pub type_of_pat: ArenaMap<PatId, Ty>,
     pub(super) type_mismatches: ArenaMap<ExprId, TypeMismatch>,
+    /// Interned Unknown to return references to.
+    standard_types: InternedStandardTypes,
 }
 
 impl InferenceResult {
@@ -170,7 +183,7 @@ impl Index<ExprId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, expr: ExprId) -> &Ty {
-        self.type_of_expr.get(expr).unwrap_or(&Ty(TyKind::Unknown))
+        self.type_of_expr.get(expr).unwrap_or(&self.standard_types.unknown)
     }
 }
 
@@ -178,7 +191,7 @@ impl Index<PatId> for InferenceResult {
     type Output = Ty;
 
     fn index(&self, pat: PatId) -> &Ty {
-        self.type_of_pat.get(pat).unwrap_or(&Ty(TyKind::Unknown))
+        self.type_of_pat.get(pat).unwrap_or(&self.standard_types.unknown)
     }
 }
 
@@ -723,14 +736,19 @@ impl Expectation {
 
     /// This expresses no expectation on the type.
     fn none() -> Self {
-        Expectation { ty: TyKind::Unknown.intern(&Interner), rvalue_hint: false }
+        Expectation {
+            // FIXME
+            ty: TyKind::Unknown.intern(&Interner),
+            rvalue_hint: false,
+        }
     }
 
-    fn coercion_target(&self) -> &Ty {
+    fn coercion_target(&self) -> Ty {
         if self.rvalue_hint {
-            &Ty(TyKind::Unknown)
+            // FIXME
+            TyKind::Unknown.intern(&Interner)
         } else {
-            &self.ty
+            self.ty.clone()
         }
     }
 }

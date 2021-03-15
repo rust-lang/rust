@@ -158,12 +158,12 @@ impl<'a> InferenceContext<'a> {
                         if mutability != exp_mut {
                             // FIXME: emit type error?
                         }
-                        inner_ty
+                        inner_ty.clone()
                     }
-                    _ => &Ty(TyKind::Unknown),
+                    _ => self.result.standard_types.unknown.clone(),
                 };
-                let subty = self.infer_pat(*pat, expectation, default_bm);
-                TyKind::Ref(mutability, Substs::single(subty)).intern(&Interner)
+                let subty = self.infer_pat(*pat, &expectation, default_bm);
+                TyKind::Ref(mutability, subty).intern(&Interner)
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_ref(),
@@ -196,7 +196,7 @@ impl<'a> InferenceContext<'a> {
 
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
-                        TyKind::Ref(mutability, Substs::single(inner_ty.clone())).intern(&Interner)
+                        TyKind::Ref(mutability, inner_ty.clone()).intern(&Interner)
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
@@ -206,8 +206,8 @@ impl<'a> InferenceContext<'a> {
             }
             Pat::Slice { prefix, slice, suffix } => {
                 let (container_ty, elem_ty): (fn(_) -> _, _) = match expected.interned(&Interner) {
-                    TyKind::Array(st) => (TyKind::Array, st.as_single().clone()),
-                    TyKind::Slice(st) => (TyKind::Slice, st.as_single().clone()),
+                    TyKind::Array(st) => (TyKind::Array, st.clone()),
+                    TyKind::Slice(st) => (TyKind::Slice, st.clone()),
                     _ => (TyKind::Slice, self.err_ty()),
                 };
 
@@ -215,7 +215,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_pat(*pat_id, &elem_ty, default_bm);
                 }
 
-                let pat_ty = container_ty(Substs::single(elem_ty)).intern(&Interner);
+                let pat_ty = container_ty(elem_ty).intern(&Interner);
                 if let Some(slice_pat_id) = slice {
                     self.infer_pat(*slice_pat_id, &pat_ty, default_bm);
                 }
@@ -232,11 +232,11 @@ impl<'a> InferenceContext<'a> {
             Pat::Box { inner } => match self.resolve_boxed_box() {
                 Some(box_adt) => {
                     let inner_expected = match expected.as_adt() {
-                        Some((adt, substs)) if adt == box_adt => substs.as_single(),
-                        _ => &Ty(TyKind::Unknown),
+                        Some((adt, substs)) if adt == box_adt => substs.as_single().clone(),
+                        _ => self.result.standard_types.unknown.clone(),
                     };
 
-                    let inner_ty = self.infer_pat(*inner, inner_expected, default_bm);
+                    let inner_ty = self.infer_pat(*inner, &inner_expected, default_bm);
                     Ty::adt_ty(box_adt, Substs::single(inner_ty))
                 }
                 None => self.err_ty(),

@@ -7,8 +7,8 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    BoundVar, Canonical, DebruijnIndex, GenericPredicate, InEnvironment, InferenceVar, Interner,
-    Scalar, Substs, Ty, TyKind, TypeWalk,
+    BoundVar, Canonical, DebruijnIndex, FnPointer, GenericPredicate, InEnvironment, InferenceVar,
+    Interner, Scalar, Substs, Ty, TyKind, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -108,7 +108,7 @@ impl<T> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
         ty.walk_mut_binders(
             &mut |ty, binders| {
-                if let &mut TyKind::BoundVar(bound) = &mut ty.0 {
+                if let &mut TyKind::BoundVar(bound) = ty.interned_mut() {
                     if bound.debruijn >= binders {
                         let (v, k) = self.free_vars[bound.index];
                         *ty = TyKind::InferenceVar(v, k).intern(&Interner);
@@ -283,9 +283,23 @@ impl InferenceTable {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         if ty1.equals_ctor(&ty2) {
-            match (ty1.substs(), ty2.substs()) {
-                (Some(st1), Some(st2)) => self.unify_substs(st1, st2, depth + 1),
-                (None, None) => true,
+            match (ty1.interned(&Interner), ty2.interned(&Interner)) {
+                (TyKind::Adt(_, substs1), TyKind::Adt(_, substs2))
+                | (TyKind::FnDef(_, substs1), TyKind::FnDef(_, substs2))
+                | (
+                    TyKind::Function(FnPointer { substs: substs1, .. }),
+                    TyKind::Function(FnPointer { substs: substs2, .. }),
+                )
+                | (TyKind::Tuple(_, substs1), TyKind::Tuple(_, substs2))
+                | (TyKind::OpaqueType(_, substs1), TyKind::OpaqueType(_, substs2))
+                | (TyKind::AssociatedType(_, substs1), TyKind::AssociatedType(_, substs2))
+                | (TyKind::Closure(.., substs1), TyKind::Closure(.., substs2)) => {
+                    self.unify_substs(substs1, substs2, depth + 1)
+                }
+                (TyKind::Ref(_, ty1), TyKind::Ref(_, ty2))
+                | (TyKind::Raw(_, ty1), TyKind::Raw(_, ty2))
+                | (TyKind::Array(ty1), TyKind::Array(ty2))
+                | (TyKind::Slice(ty1), TyKind::Slice(ty2)) => self.unify_inner(ty1, ty2, depth + 1),
                 _ => false,
             }
         } else {
@@ -404,7 +418,7 @@ impl InferenceTable {
             if i > 0 {
                 cov_mark::hit!(type_var_resolves_to_int_var);
             }
-            match &ty.0 {
+            match ty.interned(&Interner) {
                 TyKind::InferenceVar(tv, _) => {
                     let inner = tv.to_inner();
                     match self.var_unification_table.inlined_probe_value(inner).known() {

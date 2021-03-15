@@ -435,8 +435,7 @@ fn iterate_method_candidates_with_autoref(
     }
     let refed = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: TyKind::Ref(Mutability::Not, Substs::single(deref_chain[0].value.clone()))
-            .intern(&Interner),
+        value: TyKind::Ref(Mutability::Not, deref_chain[0].value.clone()).intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &refed,
@@ -452,8 +451,7 @@ fn iterate_method_candidates_with_autoref(
     }
     let ref_muted = Canonical {
         kinds: deref_chain[0].kinds.clone(),
-        value: TyKind::Ref(Mutability::Mut, Substs::single(deref_chain[0].value.clone()))
-            .intern(&Interner),
+        value: TyKind::Ref(Mutability::Mut, deref_chain[0].value.clone()).intern(&Interner),
     };
     if iterate_method_candidates_by_receiver(
         &ref_muted,
