@@ -262,6 +262,7 @@ macro_rules! options {
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
         pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
+        pub const parse_instrument_coverage: &str = "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
         pub const parse_unpretty: &str = "`string` or `string=string`";
         pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
         pub const parse_lto: &str =
@@ -587,6 +588,41 @@ macro_rules! options {
                 "statement" | "stmt" => MirSpanview::Statement,
                 "terminator" | "term" => MirSpanview::Terminator,
                 "block" | "basicblock" => MirSpanview::Block,
+                _ => return false,
+            });
+            true
+        }
+
+        fn parse_instrument_coverage(slot: &mut Option<InstrumentCoverage>, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        Some(InstrumentCoverage::All)
+                    } else {
+                        None
+                    };
+                    return true
+                }
+            }
+
+            let v = match v {
+                None => {
+                    *slot = Some(InstrumentCoverage::All);
+                    return true;
+                }
+                Some(v) => v,
+            };
+
+            *slot = Some(match v {
+                "all" => InstrumentCoverage::All,
+                "except-unused-generics" | "except_unused_generics" => {
+                    InstrumentCoverage::ExceptUnusedGenerics
+                }
+                "except-unused-functions" | "except_unused_functions" => {
+                    InstrumentCoverage::ExceptUnusedFunctions
+                }
+                "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
                 _ => return false,
             });
             true
@@ -967,12 +1003,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
-    instrument_coverage: bool = (false, parse_bool, [TRACKED],
+    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
         implies `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
-        optimizations (default: no)"),
+        optimizations. Optional values are: `=all` (default coverage), \
+        `=except-unused-generics`, `=except-unused-functions`, or `=off` \
+        (default: instrument-coverage=off)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],

@@ -17,7 +17,7 @@ else
 	COMDAT_IF_SUPPORTED=, comdat
 endif
 
-DEFINE_INTERNAL=define internal
+DEFINE_INTERNAL=define hidden
 
 ifdef IS_WINDOWS
 	LLVM_FILECHECK_OPTIONS=\

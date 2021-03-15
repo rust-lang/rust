@@ -1150,6 +1150,21 @@ impl Session {
         self.opts.cg.link_dead_code.unwrap_or(false)
     }
 
+    pub fn instrument_coverage(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            != config::InstrumentCoverage::Off
+    }
+
+    pub fn instrument_coverage_except_unused_generics(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            == config::InstrumentCoverage::ExceptUnusedGenerics
+    }
+
+    pub fn instrument_coverage_except_unused_functions(&self) -> bool {
+        self.opts.debugging_opts.instrument_coverage.unwrap_or(config::InstrumentCoverage::Off)
+            == config::InstrumentCoverage::ExceptUnusedFunctions
+    }
+
     pub fn mark_attr_known(&self, attr: &Attribute) {
         self.known_attrs.lock().mark(attr)
     }

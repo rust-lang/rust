@@ -59,7 +59,7 @@ endif
 # if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
 # appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
-	--ignore-filename-regex=uses_crate.rs
+	--ignore-filename-regex='(uses_crate.rs|uses_inline_crate.rs)'
 
 # When generating `expected_*` results (using `x.py test --bless`), the `--debug` flag is forced.
 # If assertions are disabled, the command will fail with an error, rather than attempt to generate
@@ -82,13 +82,13 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/lib/$@.rs) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/lib/$@.rs ) \
 			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
@@ -107,7 +107,7 @@ endif
 	# Run it through rustdoc as well to cover doctests
 	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
-			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
+			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
 			-L "$(TMPDIR)" -Zinstrument-coverage \
 			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
 

@@ -184,6 +184,37 @@ pub enum MirSpanview {
     Block,
 }
 
+/// The different settings that the `-Z instrument-coverage` flag can have.
+///
+/// Coverage instrumentation now supports combining `-Z instrument-coverage`
+/// with compiler and linker optimization (enabled with `-O` or `-C opt-level=1`
+/// and higher). Nevertheless, there are many variables, depending on options
+/// selected, code structure, and enabled attributes. If errors are encountered,
+/// either while compiling or when generating `llvm-cov show` reports, consider
+/// lowering the optimization level, including or excluding `-C link-dead-code`,
+/// or using `-Z instrument-coverage=except-unused-functions` or `-Z
+/// instrument-coverage=except-unused-generics`.
+///
+/// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
+/// coverage map, it will not attempt to generate synthetic functions for unused
+/// (and not code-generated) functions (whether they are generic or not). As a
+/// result, non-codegenned functions will not be included in the coverage map,
+/// and will not appear, as covered or uncovered, in coverage reports.
+///
+/// `ExceptUnusedGenerics` will add synthetic functions to the coverage map,
+/// unless the function has type parameters.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InstrumentCoverage {
+    /// Default `-Z instrument-coverage` or `-Z instrument-coverage=statement`
+    All,
+    /// `-Z instrument-coverage=except-unused-generics`
+    ExceptUnusedGenerics,
+    /// `-Z instrument-coverage=except-unused-functions`
+    ExceptUnusedFunctions,
+    /// `-Z instrument-coverage=off` (or `no`, etc.)
+    Off,
+}
+
 #[derive(Clone, PartialEq, Hash)]
 pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
@@ -1911,7 +1942,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
-    if debugging_opts.instrument_coverage {
+    if debugging_opts.instrument_coverage.is_some()
+        && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
+    {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
                 error_format,
@@ -2298,9 +2331,9 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
     use super::{
-        CFGuard, CrateType, DebugInfo, ErrorOutputType, LinkerPluginLto, LtoCli, OptLevel,
-        OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm, SwitchWithOptPath,
-        SymbolManglingVersion, TrimmedDefPaths,
+        CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
+        LtoCli, OptLevel, OutputTypes, Passes, SanitizerSet, SourceFileHashAlgorithm,
+        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2364,6 +2397,7 @@ crate mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
+    impl_dep_tracking_hash_via_hash!(Option<InstrumentCoverage>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
     impl_dep_tracking_hash_via_hash!(CrateType);

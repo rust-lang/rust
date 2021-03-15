@@ -2875,7 +2875,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     .emit();
                     InlineAttr::None
                 } else if list_contains_name(&items[..], sym::always) {
-                    InlineAttr::Always
+                    if tcx.sess.instrument_coverage() {
+                        // Forced inlining will discard functions marked with `#[inline(always)]`.
+                        // If `-Z instrument-coverage` is enabled, the generated coverage map may
+                        // hold references to functions that no longer exist, causing errors in
+                        // coverage reports. (Note, this fixes #82875. I added some tests that
+                        // also include `#[inline(always)]` functions, used and unused, and within
+                        // and across crates, but could not reproduce the reported error in the
+                        // `rustc` test suite. I am able to reproduce the error, following the steps
+                        // described in #82875, and this change does fix that issue.)
+                        InlineAttr::Hint
+                    } else {
+                        InlineAttr::Always
+                    }
                 } else if list_contains_name(&items[..], sym::never) {
                     InlineAttr::Never
                 } else {

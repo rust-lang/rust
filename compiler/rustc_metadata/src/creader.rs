@@ -736,7 +736,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self, krate: &ast::Crate) {
-        if (self.sess.opts.debugging_opts.instrument_coverage
+        if (self.sess.instrument_coverage()
             || self.sess.opts.debugging_opts.profile
             || self.sess.opts.cg.profile_generate.enabled())
             && !self.sess.opts.debugging_opts.no_profiler_runtime

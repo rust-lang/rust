@@ -72,8 +72,7 @@ For revisions in Pull Requests (PR):
 <div class="code" style="counter-reset: line 90"><span class="line">                        <span><span class="code even" style="--layer: 1" title="91:25-91:34: @0[1]: _3 = (_1.0: u8)
 91:25-91:34: @0[2]: FakeRead(ForLet, _3)
 91:27-91:28: @0[4]: _4 = _3
-91:27-91:32: @0[5]: _5 = CheckedSub(_4, const 1_u8)
-91:27-91:32: @1[0]: _0 = move (_5.0: u8)
-91:34-91:34: @1.Return: return"><span class="annotation">@0,1⦊</span>{ x - 1 }<span class="annotation">⦉@0,1</span></span></span></span></div>
+91:27-91:32: @0[5]: _0 = Sub(move _4, const 1_u8)
+91:34-91:34: @0.Return: return"><span class="annotation">@0⦊</span>{ x - 1 }<span class="annotation">⦉@0</span></span></span></span></div>
 </body>
 </html>
