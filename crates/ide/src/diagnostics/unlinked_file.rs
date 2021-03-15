@@ -1,3 +1,5 @@
+//! Diagnostic emitted for files that aren't part of any crate.
+
 use hir::{
     db::DefDatabase,
     diagnostics::{Diagnostic, DiagnosticCode},
