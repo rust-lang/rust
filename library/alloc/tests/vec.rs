@@ -7,6 +7,7 @@ use std::mem::{size_of, swap};
 use std::ops::Bound::*;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};
 
 struct DropCounter<'a> {
@@ -2167,5 +2168,58 @@ fn test_vec_dedup() {
         vec.dedup();
 
         assert_eq!(vec, dedup);
+    }
+}
+
+#[test]
+fn test_vec_dedup_panicking() {
+    #[derive(Debug)]
+    struct Panic {
+        drop_counter: &'static AtomicU32,
+        value: bool,
+        index: usize,
+    }
+
+    impl PartialEq for Panic {
+        fn eq(&self, other: &Self) -> bool {
+            self.value == other.value
+        }
+    }
+
+    impl Drop for Panic {
+        fn drop(&mut self) {
+            let x = self.drop_counter.fetch_add(1, Ordering::SeqCst);
+            assert!(x != 4);
+        }
+    }
+
+    static DROP_COUNTER: AtomicU32 = AtomicU32::new(0);
+    let expected = [
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 0 },
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 5 },
+        Panic { drop_counter: &DROP_COUNTER, value: true, index: 6 },
+        Panic { drop_counter: &DROP_COUNTER, value: true, index: 7 },
+    ];
+    let mut vec = vec![
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 0 },
+        // these elements get deduplicated
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 1 },
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 2 },
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 3 },
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 4 },
+        // here it panics
+        Panic { drop_counter: &DROP_COUNTER, value: false, index: 5 },
+        Panic { drop_counter: &DROP_COUNTER, value: true, index: 6 },
+        Panic { drop_counter: &DROP_COUNTER, value: true, index: 7 },
+    ];
+
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        vec.dedup();
+    }));
+
+    let ok = vec.iter().zip(expected.iter()).all(|(x, y)| x.index == y.index);
+
+    if !ok {
+        panic!("expected: {:?}\ngot: {:?}\n", expected, vec);
     }
 }
