@@ -8,7 +8,7 @@ use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
-use crate::{db::HirDatabase, DebruijnIndex, Substs};
+use crate::{db::HirDatabase, DebruijnIndex, Substitution};
 
 use super::{
     Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TyKind, TypeWalk,
@@ -252,7 +252,7 @@ fn solution_from_chalk(
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SolutionVariables(pub Canonical<Substs>);
+pub struct SolutionVariables(pub Canonical<Substitution>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.

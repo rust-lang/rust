@@ -20,7 +20,7 @@ use crate::{
     db::HirDatabase, from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, primitive,
     to_assoc_type_id, traits::chalk::from_chalk, utils::generics, AdtId, AliasTy, CallableDefId,
     CallableSig, GenericPredicate, ImplTraitId, Interner, Lifetime, Obligation, OpaqueTy,
-    ProjectionTy, Scalar, Substs, TraitRef, Ty, TyKind,
+    ProjectionTy, Scalar, Substitution, TraitRef, Ty, TyKind,
 };
 
 pub struct HirFormatter<'a> {
@@ -562,7 +562,7 @@ impl HirDisplay for Ty {
                     }
                     TypeParamProvenance::ArgumentImplTrait => {
                         let bounds = f.db.generic_predicates_for_param(id);
-                        let substs = Substs::type_params_for_generics(f.db, &generics);
+                        let substs = Substitution::type_params_for_generics(f.db, &generics);
                         write_bounds_like_dyn_trait_with_prefix(
                             "impl",
                             &bounds.iter().map(|b| b.clone().subst(&substs)).collect::<Vec<_>>(),

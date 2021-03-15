@@ -38,7 +38,7 @@ use syntax::SmolStr;
 
 use super::{
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeWalk,
+    InEnvironment, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TypeWalk,
 };
 use crate::{
     db::HirDatabase, infer::diagnostics::InferenceDiagnostic, lower::ImplTraitLoweringMode,
@@ -390,7 +390,7 @@ impl<'a> InferenceContext<'a> {
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
                 let ty = self.table.new_type_var();
-                let substs = Substs::build_for_def(self.db, res_assoc_ty)
+                let substs = Substitution::build_for_def(self.db, res_assoc_ty)
                     .push(inner_ty)
                     .fill(params.iter().cloned())
                     .build();
@@ -469,7 +469,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substs::type_params_for_generics(self.db, &generics);
+                let substs = Substitution::type_params_for_generics(self.db, &generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 match unresolved {
                     None => {
@@ -496,7 +496,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             TypeNs::TypeAliasId(it) => {
-                let substs = Substs::build_for_def(self.db, it)
+                let substs = Substitution::build_for_def(self.db, it)
                     .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                     .build();
                 let ty = self.db.ty(it.into()).subst(&substs);

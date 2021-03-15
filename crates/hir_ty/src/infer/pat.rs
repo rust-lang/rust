@@ -12,7 +12,9 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use super::{BindingMode, Expectation, InferenceContext};
-use crate::{lower::lower_to_chalk_mutability, utils::variant_data, Interner, Substs, Ty, TyKind};
+use crate::{
+    lower::lower_to_chalk_mutability, utils::variant_data, Interner, Substitution, Ty, TyKind,
+};
 
 impl<'a> InferenceContext<'a> {
     fn infer_tuple_struct_pat(
@@ -31,7 +33,7 @@ impl<'a> InferenceContext<'a> {
         }
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
@@ -70,7 +72,7 @@ impl<'a> InferenceContext<'a> {
 
         self.unify(&ty, expected);
 
-        let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
+        let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
@@ -138,7 +140,7 @@ impl<'a> InferenceContext<'a> {
                 inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
                 inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
 
-                TyKind::Tuple(inner_tys.len(), Substs(inner_tys.into())).intern(&Interner)
+                TyKind::Tuple(inner_tys.len(), Substitution(inner_tys.into())).intern(&Interner)
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
@@ -237,7 +239,7 @@ impl<'a> InferenceContext<'a> {
                     };
 
                     let inner_ty = self.infer_pat(*inner, &inner_expected, default_bm);
-                    Ty::adt_ty(box_adt, Substs::single(inner_ty))
+                    Ty::adt_ty(box_adt, Substitution::single(inner_ty))
                 }
                 None => self.err_ty(),
             },

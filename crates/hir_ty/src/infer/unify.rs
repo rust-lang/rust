@@ -8,7 +8,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use super::{InferenceContext, Obligation};
 use crate::{
     BoundVar, Canonical, DebruijnIndex, FnPointer, GenericPredicate, InEnvironment, InferenceVar,
-    Interner, Scalar, Substs, Ty, TyKind, TypeWalk,
+    Interner, Scalar, Substitution, Ty, TyKind, TypeWalk,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -123,10 +123,10 @@ impl<T> Canonicalized<T> {
     pub(super) fn apply_solution(
         &self,
         ctx: &mut InferenceContext<'_>,
-        solution: Canonical<Substs>,
+        solution: Canonical<Substitution>,
     ) {
         // the solution may contain new variables, which we need to convert to new inference vars
-        let new_vars = Substs(
+        let new_vars = Substitution(
             solution
                 .kinds
                 .iter()
@@ -147,9 +147,9 @@ impl<T> Canonicalized<T> {
     }
 }
 
-pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
+pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     let mut table = InferenceTable::new();
-    let vars = Substs(
+    let vars = Substitution(
         tys.kinds
             .iter()
             // we always use type vars here because we want everything to
@@ -173,7 +173,7 @@ pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substs> {
         }
     }
     Some(
-        Substs::builder(tys.kinds.len())
+        Substitution::builder(tys.kinds.len())
             .fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone())))
             .build(),
     )
@@ -264,8 +264,8 @@ impl InferenceTable {
 
     pub(crate) fn unify_substs(
         &mut self,
-        substs1: &Substs,
-        substs2: &Substs,
+        substs1: &Substitution,
+        substs2: &Substitution,
         depth: usize,
     ) -> bool {
         substs1.0.iter().zip(substs2.0.iter()).all(|(t1, t2)| self.unify_inner(t1, t2, depth))

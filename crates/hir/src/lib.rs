@@ -57,8 +57,8 @@ use hir_ty::{
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
-    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, Ty,
-    TyDefId, TyKind, TyVariableKind,
+    InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substitution,
+    Ty, TyDefId, TyKind, TyVariableKind,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -518,7 +518,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent.id.into(),
         };
-        let substs = Substs::type_params(db, generic_def_id);
+        let substs = Substitution::type_params(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().subst(&substs);
         Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
@@ -1471,7 +1471,7 @@ impl TypeParam {
         let resolver = self.id.parent.resolver(db.upcast());
         let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
-        let subst = Substs::type_params(db, self.id.parent);
+        let subst = Substitution::type_params(db, self.id.parent);
         let ty = ty.subst(&subst.prefix(local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
@@ -1674,7 +1674,7 @@ impl Type {
         krate: CrateId,
         def: impl HasResolver + Into<TyDefId> + Into<GenericDefId>,
     ) -> Type {
-        let substs = Substs::build_for_def(db, def).fill_with_unknown().build();
+        let substs = Substitution::build_for_def(db, def).fill_with_unknown().build();
         let ty = db.ty(def.into()).subst(&substs);
         Type::new(db, krate, def, ty)
     }
@@ -1754,7 +1754,7 @@ impl Type {
     pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
         let trait_ref = hir_ty::TraitRef {
             trait_: trait_.id,
-            substs: Substs::build_for_def(db, trait_.id)
+            substs: Substitution::build_for_def(db, trait_.id)
                 .push(self.ty.value.clone())
                 .fill(args.iter().map(|t| t.ty.value.clone()))
                 .build(),
@@ -1778,7 +1778,7 @@ impl Type {
         args: &[Type],
         alias: TypeAlias,
     ) -> Option<Type> {
-        let subst = Substs::build_for_def(db, trait_.id)
+        let subst = Substitution::build_for_def(db, trait_.id)
             .push(self.ty.value.clone())
             .fill(args.iter().map(|t| t.ty.value.clone()))
             .build();
@@ -2045,7 +2045,7 @@ impl Type {
         fn walk_substs(
             db: &dyn HirDatabase,
             type_: &Type,
-            substs: &Substs,
+            substs: &Substitution,
             cb: &mut impl FnMut(Type),
         ) {
             for ty in substs.iter() {

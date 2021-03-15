@@ -20,7 +20,7 @@ use hir_def::{
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Substs,
+    InferenceResult, Substitution,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -329,7 +329,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         krate: CrateId,
-        substs: &Substs,
+        substs: &Substitution,
         variant: VariantId,
         missing_fields: Vec<LocalFieldId>,
     ) -> Vec<(Field, Type)> {

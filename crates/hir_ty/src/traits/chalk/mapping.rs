@@ -15,7 +15,7 @@ use crate::{
     primitive::UintTy,
     traits::{Canonical, Obligation},
     AliasTy, CallableDefId, FnPointer, GenericPredicate, InEnvironment, OpaqueTy,
-    ProjectionPredicate, ProjectionTy, Scalar, Substs, TraitRef, Ty,
+    ProjectionPredicate, ProjectionTy, Scalar, Substitution, TraitRef, Ty,
 };
 
 use super::interner::*;
@@ -134,7 +134,7 @@ impl ToChalk for Ty {
                 ..
             }) => {
                 assert_eq!(num_binders, 0);
-                let substs: Substs = from_chalk(
+                let substs: Substitution = from_chalk(
                     db,
                     substitution.0.shifted_out(&Interner).expect("fn ptr should have no binders"),
                 );
@@ -213,14 +213,17 @@ fn array_to_chalk(db: &dyn HirDatabase, ty: Ty) -> chalk_ir::Ty<Interner> {
     chalk_ir::TyKind::Array(arg, const_).intern(&Interner)
 }
 
-impl ToChalk for Substs {
+impl ToChalk for Substitution {
     type Chalk = chalk_ir::Substitution<Interner>;
 
     fn to_chalk(self, db: &dyn HirDatabase) -> chalk_ir::Substitution<Interner> {
         chalk_ir::Substitution::from_iter(&Interner, self.iter().map(|ty| ty.clone().to_chalk(db)))
     }
 
-    fn from_chalk(db: &dyn HirDatabase, parameters: chalk_ir::Substitution<Interner>) -> Substs {
+    fn from_chalk(
+        db: &dyn HirDatabase,
+        parameters: chalk_ir::Substitution<Interner>,
+    ) -> Substitution {
         let tys = parameters
             .iter(&Interner)
             .map(|p| match p.ty(&Interner) {
@@ -228,7 +231,7 @@ impl ToChalk for Substs {
                 None => unimplemented!(),
             })
             .collect();
-        Substs(tys)
+        Substitution(tys)
     }
 }
 
@@ -489,7 +492,7 @@ where
 pub(super) fn convert_where_clauses(
     db: &dyn HirDatabase,
     def: GenericDefId,
-    substs: &Substs,
+    substs: &Substitution,
 ) -> Vec<chalk_ir::QuantifiedWhereClause<Interner>> {
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
