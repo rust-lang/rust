@@ -1699,7 +1699,7 @@ fn super_trait_assoc_type_bounds() {
 
 #[test]
 fn fn_trait() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         trait FnOnce<Args> {
             type Output;
@@ -1727,7 +1727,7 @@ fn fn_trait() {
 
 #[test]
 fn fn_ptr_and_item() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         #[lang="fn_once"]
         trait FnOnce<Args> {
@@ -1743,12 +1743,12 @@ fn fn_ptr_and_item() {
         struct Bar<T>(T);
 
         impl<A1, R, F: FnOnce(A1) -> R> Foo<(A1, R)> for Bar<F> {
-            fn foo(&self) -> (A1, R) {}
+            fn foo(&self) -> (A1, R) { loop {} }
         }
 
         enum Opt<T> { None, Some(T) }
         impl<T> Opt<T> {
-            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> {}
+            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Opt<U> { loop {} }
         }
 
         fn test() {
@@ -1765,19 +1765,23 @@ fn fn_ptr_and_item() {
             80..84 'args': Args
             139..143 'self': &Self
             243..247 'self': &Bar<F>
-            260..262 '{}': ()
-            346..350 'self': Opt<T>
-            352..353 'f': F
-            368..370 '{}': ()
-            384..500 '{     ...(f); }': ()
-            394..397 'bar': Bar<fn(u8) -> u32>
-            423..426 'bar': Bar<fn(u8) -> u32>
-            423..432 'bar.foo()': (u8, u32)
-            443..446 'opt': Opt<u8>
-            465..466 'f': fn(u8) -> u32
-            487..490 'opt': Opt<u8>
-            487..497 'opt.map(f)': Opt<u32>
-            495..496 'f': fn(u8) -> u32
+            260..271 '{ loop {} }': (A1, R)
+            262..269 'loop {}': !
+            267..269 '{}': ()
+            355..359 'self': Opt<T>
+            361..362 'f': F
+            377..388 '{ loop {} }': Opt<U>
+            379..386 'loop {}': !
+            384..386 '{}': ()
+            402..518 '{     ...(f); }': ()
+            412..415 'bar': Bar<fn(u8) -> u32>
+            441..444 'bar': Bar<fn(u8) -> u32>
+            441..450 'bar.foo()': (u8, u32)
+            461..464 'opt': Opt<u8>
+            483..484 'f': fn(u8) -> u32
+            505..508 'opt': Opt<u8>
+            505..515 'opt.map(f)': Opt<u32>
+            513..514 'f': fn(u8) -> u32
         "#]],
     );
 }
@@ -1859,7 +1863,7 @@ fn fn_trait_deref_with_ty_default() {
 
 #[test]
 fn closure_1() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         #[lang = "fn_once"]
         trait FnOnce<Args> {
@@ -1868,7 +1872,7 @@ fn closure_1() {
 
         enum Option<T> { Some(T), None }
         impl<T> Option<T> {
-            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {}
+            fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> { loop {} }
         }
 
         fn test() {
@@ -1881,37 +1885,39 @@ fn closure_1() {
         expect![[r#"
             147..151 'self': Option<T>
             153..154 'f': F
-            172..174 '{}': ()
-            188..307 '{     ... 1); }': ()
-            198..199 'x': Option<u32>
-            202..214 'Option::Some': Some<u32>(u32) -> Option<u32>
-            202..220 'Option...(1u32)': Option<u32>
-            215..219 '1u32': u32
-            226..227 'x': Option<u32>
-            226..242 'x.map(...v + 1)': Option<u32>
-            232..241 '|v| v + 1': |u32| -> u32
-            233..234 'v': u32
-            236..237 'v': u32
-            236..241 'v + 1': u32
-            240..241 '1': u32
-            248..249 'x': Option<u32>
-            248..264 'x.map(... 1u64)': Option<u64>
-            254..263 '|_v| 1u64': |u32| -> u64
-            255..257 '_v': u32
-            259..263 '1u64': u64
-            274..275 'y': Option<i64>
-            291..292 'x': Option<u32>
-            291..304 'x.map(|_v| 1)': Option<i64>
-            297..303 '|_v| 1': |u32| -> i64
-            298..300 '_v': u32
-            302..303 '1': i64
+            172..183 '{ loop {} }': Option<U>
+            174..181 'loop {}': !
+            179..181 '{}': ()
+            197..316 '{     ... 1); }': ()
+            207..208 'x': Option<u32>
+            211..223 'Option::Some': Some<u32>(u32) -> Option<u32>
+            211..229 'Option...(1u32)': Option<u32>
+            224..228 '1u32': u32
+            235..236 'x': Option<u32>
+            235..251 'x.map(...v + 1)': Option<u32>
+            241..250 '|v| v + 1': |u32| -> u32
+            242..243 'v': u32
+            245..246 'v': u32
+            245..250 'v + 1': u32
+            249..250 '1': u32
+            257..258 'x': Option<u32>
+            257..273 'x.map(... 1u64)': Option<u64>
+            263..272 '|_v| 1u64': |u32| -> u64
+            264..266 '_v': u32
+            268..272 '1u64': u64
+            283..284 'y': Option<i64>
+            300..301 'x': Option<u32>
+            300..313 'x.map(|_v| 1)': Option<i64>
+            306..312 '|_v| 1': |u32| -> i64
+            307..309 '_v': u32
+            311..312 '1': i64
         "#]],
     );
 }
 
 #[test]
 fn closure_2() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         trait FnOnce<Args> {
             type Output;
@@ -1951,22 +1957,22 @@ fn closure_2() {
 
 #[test]
 fn closure_as_argument_inference_order() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         #[lang = "fn_once"]
         trait FnOnce<Args> {
             type Output;
         }
 
-        fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U {}
-        fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U {}
+        fn foo1<T, U, F: FnOnce(T) -> U>(x: T, f: F) -> U { loop {} }
+        fn foo2<T, U, F: FnOnce(T) -> U>(f: F, x: T) -> U { loop {} }
 
         struct S;
         impl S {
             fn method(self) -> u64;
 
-            fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U {}
-            fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U {}
+            fn foo1<T, U, F: FnOnce(T) -> U>(self, x: T, f: F) -> U { loop {} }
+            fn foo2<T, U, F: FnOnce(T) -> U>(self, f: F, x: T) -> U { loop {} }
         }
 
         fn test() {
@@ -1979,52 +1985,60 @@ fn closure_as_argument_inference_order() {
         expect![[r#"
             94..95 'x': T
             100..101 'f': F
-            111..113 '{}': ()
-            147..148 'f': F
-            153..154 'x': T
-            164..166 '{}': ()
-            201..205 'self': S
-            253..257 'self': S
-            259..260 'x': T
-            265..266 'f': F
-            276..278 '{}': ()
-            316..320 'self': S
-            322..323 'f': F
-            328..329 'x': T
-            339..341 '{}': ()
-            355..514 '{     ... S); }': ()
-            365..367 'x1': u64
-            370..374 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
-            370..393 'foo1(S...hod())': u64
-            375..376 'S': S
-            378..392 '|s| s.method()': |S| -> u64
-            379..380 's': S
-            382..383 's': S
-            382..392 's.method()': u64
-            403..405 'x2': u64
-            408..412 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
-            408..431 'foo2(|...(), S)': u64
-            413..427 '|s| s.method()': |S| -> u64
-            414..415 's': S
-            417..418 's': S
-            417..427 's.method()': u64
-            429..430 'S': S
-            441..443 'x3': u64
-            446..447 'S': S
-            446..471 'S.foo1...hod())': u64
-            453..454 'S': S
-            456..470 '|s| s.method()': |S| -> u64
-            457..458 's': S
-            460..461 's': S
-            460..470 's.method()': u64
-            481..483 'x4': u64
-            486..487 'S': S
-            486..511 'S.foo2...(), S)': u64
-            493..507 '|s| s.method()': |S| -> u64
-            494..495 's': S
-            497..498 's': S
-            497..507 's.method()': u64
-            509..510 'S': S
+            111..122 '{ loop {} }': U
+            113..120 'loop {}': !
+            118..120 '{}': ()
+            156..157 'f': F
+            162..163 'x': T
+            173..184 '{ loop {} }': U
+            175..182 'loop {}': !
+            180..182 '{}': ()
+            219..223 'self': S
+            271..275 'self': S
+            277..278 'x': T
+            283..284 'f': F
+            294..305 '{ loop {} }': U
+            296..303 'loop {}': !
+            301..303 '{}': ()
+            343..347 'self': S
+            349..350 'f': F
+            355..356 'x': T
+            366..377 '{ loop {} }': U
+            368..375 'loop {}': !
+            373..375 '{}': ()
+            391..550 '{     ... S); }': ()
+            401..403 'x1': u64
+            406..410 'foo1': fn foo1<S, u64, |S| -> u64>(S, |S| -> u64) -> u64
+            406..429 'foo1(S...hod())': u64
+            411..412 'S': S
+            414..428 '|s| s.method()': |S| -> u64
+            415..416 's': S
+            418..419 's': S
+            418..428 's.method()': u64
+            439..441 'x2': u64
+            444..448 'foo2': fn foo2<S, u64, |S| -> u64>(|S| -> u64, S) -> u64
+            444..467 'foo2(|...(), S)': u64
+            449..463 '|s| s.method()': |S| -> u64
+            450..451 's': S
+            453..454 's': S
+            453..463 's.method()': u64
+            465..466 'S': S
+            477..479 'x3': u64
+            482..483 'S': S
+            482..507 'S.foo1...hod())': u64
+            489..490 'S': S
+            492..506 '|s| s.method()': |S| -> u64
+            493..494 's': S
+            496..497 's': S
+            496..506 's.method()': u64
+            517..519 'x4': u64
+            522..523 'S': S
+            522..547 'S.foo2...(), S)': u64
+            529..543 '|s| s.method()': |S| -> u64
+            530..531 's': S
+            533..534 's': S
+            533..543 's.method()': u64
+            545..546 'S': S
         "#]],
     );
 }
@@ -2536,7 +2550,7 @@ fn test() {
 
 #[test]
 fn iterator_chain() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         //- /main.rs
         #[lang = "fn_once"]
@@ -2939,7 +2953,7 @@ fn infer_closure_arg() {
 
 #[test]
 fn infer_fn_trait_arg() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
         //- /lib.rs deps:std
 
@@ -2986,7 +3000,8 @@ fn infer_fn_trait_arg() {
 
 #[test]
 fn infer_box_fn_arg() {
-    check_infer(
+    // The type mismatch is a bug
+    check_infer_with_mismatches(
         r#"
         //- /lib.rs deps:std
 
@@ -3025,7 +3040,7 @@ fn infer_box_fn_arg() {
         fn foo() {
             let s = Option::None;
             let f: Box<dyn FnOnce(&Option<i32>)> = box (|ps| {});
-            f(&s)
+            f(&s);
         }
         "#,
         expect![[r#"
@@ -3037,7 +3052,7 @@ fn infer_box_fn_arg() {
             406..417 '&self.inner': &*mut T
             407..411 'self': &Box<T>
             407..417 'self.inner': *mut T
-            478..575 '{     ...(&s) }': FnOnce::Output<dyn FnOnce(&Option<i32>), (&Option<i32>,)>
+            478..576 '{     ...&s); }': ()
             488..489 's': Option<i32>
             492..504 'Option::None': Option<i32>
             514..515 'f': Box<dyn FnOnce(&Option<i32>)>
@@ -3049,6 +3064,7 @@ fn infer_box_fn_arg() {
             568..573 'f(&s)': FnOnce::Output<dyn FnOnce(&Option<i32>), (&Option<i32>,)>
             570..572 '&s': &Option<i32>
             571..572 's': Option<i32>
+            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|_| -> ()>
         "#]],
     );
 }
