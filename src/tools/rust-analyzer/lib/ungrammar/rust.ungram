@@ -90,7 +90,7 @@ Item =
 | ExternCrate
 | Fn
 | Impl
-| MacroItem
+| MacroCall
 | MacroRules
 | MacroDef
 | Module
@@ -100,9 +100,6 @@ Item =
 | TypeAlias
 | Union
 | Use
-
-MacroItem =
-  MacroCall
 
 MacroRules =
   Attr* Visibility?
@@ -251,7 +248,7 @@ AssocItemList =
 AssocItem =
   Const
 | Fn
-| MacroItem
+| MacroCall
 | TypeAlias
 
 Impl =
@@ -268,7 +265,7 @@ ExternItemList =
 
 ExternItem =
   Fn
-| MacroItem
+| MacroCall
 | Static
 | TypeAlias
 
