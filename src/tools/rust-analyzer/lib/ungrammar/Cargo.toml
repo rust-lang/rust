@@ -1,7 +1,7 @@
 [package]
 name = "ungrammar"
 description = "A DSL for describing concrete syntax trees"
-version = "1.12.1"
+version = "1.12.2"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/matklad/ungrammar"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]

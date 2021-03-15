@@ -336,6 +336,7 @@ Expr =
 | Literal
 | LoopExpr
 | MacroCall
+| MacroStmts
 | MatchExpr
 | MethodCallExpr
 | ParenExpr
