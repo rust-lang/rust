@@ -1,5 +1,7 @@
 include ../../run-make-fulldeps/tools.mk
 
+# ignore-none no-std is not supported
+
 # Regression test for issue #83112
 # The generated test harness code contains spans with a dummy location,
 # but a non-dummy SyntaxContext. Previously, the incremental cache was encoding
