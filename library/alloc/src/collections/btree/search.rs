@@ -68,12 +68,17 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// of the range is different from the edge matching the upper bound, i.e.,
     /// the nearest node that has at least one key contained in the range.
     ///
-    /// If found, returns an `Ok` with that node, the pair of edge indices in it
-    /// delimiting the range, and the corresponding pair of bounds for
-    /// continuing the search in the child nodes, in case the node is internal.
+    /// If found, returns an `Ok` with that node, the strictly ascending pair of
+    /// edge indices in the node delimiting the range, and the corresponding
+    /// pair of bounds for continuing the search in the child nodes, in case
+    /// the node is internal.
     ///
     /// If not found, returns an `Err` with the leaf edge matching the entire
     /// range.
+    ///
+    /// As a diagnostic service, panics if the range specifies impossible bounds
+    /// or if it witnesses that the `Ord` implementation of `Q` violates total
+    /// order or is inconsistent with the `Ord` implementation of `K`.
     ///
     /// The result is meaningful only if the tree is ordered by key.
     pub fn search_tree_for_bifurcation<'r, Q: ?Sized, R>(
@@ -115,6 +120,10 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
             let (lower_edge_idx, lower_child_bound) = self.find_lower_bound_index(lower_bound);
             let (upper_edge_idx, upper_child_bound) = self.find_upper_bound_index(upper_bound);
             if lower_edge_idx > upper_edge_idx {
+                // Since we already checked the range bounds, this can only
+                // happen if `Q: Ord` does not implement a total order or does
+                // not correspond to the `K: Ord` implementation that is used
+                // while populating the tree.
                 panic!("Ord is ill-defined in BTreeMap range")
             }
             if lower_edge_idx < upper_edge_idx {
