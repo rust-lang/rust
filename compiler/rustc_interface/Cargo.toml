@@ -10,8 +10,8 @@ doctest = false
 [dependencies]
 libc = "0.2"
 tracing = "0.1"
-rustc-rayon-core = "0.3.0"
-rayon = { version = "0.3.0", package = "rustc-rayon" }
+rustc-rayon-core = "0.3.1"
+rayon = { version = "0.3.1", package = "rustc-rayon" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
