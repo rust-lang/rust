@@ -705,6 +705,19 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
+        (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
+            if adt_def_a.did == adt_def_b.did =>
+        {
+            let mut types_a = substs_a.types();
+            let mut types_b = substs_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
         _ => {
             assert_eq!(
                 from_ty, to_ty,
