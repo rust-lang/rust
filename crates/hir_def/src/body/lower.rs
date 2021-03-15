@@ -379,23 +379,22 @@ impl ExprCollector<'_> {
             }
             ast::Expr::RecordExpr(e) => {
                 let path = e.path().and_then(|path| self.expander.parse_path(path));
-                let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
-                        .inspect(|field| field_ptrs.push(AstPtr::new(field)))
                         .filter_map(|field| {
                             self.check_cfg(&field)?;
 
                             let name = field.field_name()?.as_name();
 
-                            Some(RecordLitField {
-                                name,
-                                expr: match field.expr() {
-                                    Some(e) => self.collect_expr(e),
-                                    None => self.missing_expr(),
-                                },
-                            })
+                            let expr = match field.expr() {
+                                Some(e) => self.collect_expr(e),
+                                None => self.missing_expr(),
+                            };
+                            let src = self.expander.to_source(AstPtr::new(&field));
+                            self.source_map.field_map.insert(src.clone(), expr);
+                            self.source_map.field_map_back.insert(expr, src);
+                            Some(RecordLitField { name, expr })
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
@@ -404,12 +403,7 @@ impl ExprCollector<'_> {
                     Expr::RecordLit { path, fields: Vec::new(), spread: None }
                 };
 
-                let res = self.alloc_expr(record_lit, syntax_ptr);
-                for (i, ptr) in field_ptrs.into_iter().enumerate() {
-                    let src = self.expander.to_source(ptr);
-                    self.source_map.field_map.insert((res, i), src);
-                }
-                res
+                self.alloc_expr(record_lit, syntax_ptr)
             }
             ast::Expr::FieldExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
