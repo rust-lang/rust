@@ -44,7 +44,12 @@ pub(crate) fn const_to_valtree<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     raw: ConstAlloc<'tcx>,
 ) -> Option<ty::ValTree<'tcx>> {
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let ecx = mk_eval_cx(
+        tcx, DUMMY_SP, param_env,
+        // It is absolutely crucial for soundness that
+        // we do not read from static items or other mutable memory.
+        false,
+    );
     let place = ecx.raw_const_to_mplace(raw).unwrap();
     const_to_valtree_inner(&ecx, &place)
 }
