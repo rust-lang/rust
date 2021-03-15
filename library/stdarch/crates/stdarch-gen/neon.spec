@@ -527,7 +527,7 @@ generate int*_t
 
 /// Unsigned count leading sign bits
 name = vclz
-multi_fn = transmute, [self-signed-ext, transmute(a)]
+multi_fn = transmute, {self-signed-ext, transmute(a)}
 a = MIN, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, MAX
 validate BITS, BITS, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, 0
 
@@ -588,6 +588,69 @@ generate float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 
 arm = vacge.s
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
+
+/// Floating-point convert to higher precision long
+name = vcvt
+double-suffixes
+fn = simd_cast
+a = -1.2, 1.2
+validate -1.2f32 as f64, 1.2f32 as f64
+
+aarch64 = fcvtl
+generate float32x2_t:float64x2_t
+
+/// Floating-point convert to higher precision long
+name = vcvt_high
+double-suffixes
+multi_fn = simd_shuffle2, b:float32x2_t, a, a, [2, 3]
+multi_fn = simd_cast, b
+a = -1.2, 1.2, 2.3, 3.4
+validate 2.3f32 as f64, 3.4f32 as f64
+
+aarch64 = fcvtl
+generate float32x4_t:float64x2_t
+
+/// Floating-point convert to lower precision narrow
+name = vcvt
+double-suffixes
+fn = simd_cast
+a = -1.2, 1.2
+validate -1.2f64 as f32, 1.2f64 as f32
+
+aarch64 = fcvtn
+generate float64x2_t:float32x2_t
+
+/// Floating-point convert to lower precision narrow
+name = vcvt_high
+double-suffixes
+multi_fn = simd_shuffle4, a, {simd_cast, b}, [0, 1, 2, 3]
+a = -1.2, 1.2
+b = -2.3, 3.4
+validate -1.2, 1.2, -2.3f64 as f32, 3.4f64 as f32
+
+aarch64 = fcvtn
+generate float32x2_t:float64x2_t:float32x4_t
+
+/// Floating-point convert to lower precision narrow, rounding to odd
+name = vcvtx
+double-suffixes
+a = -1.0, 2.0
+validate -1.0, 2.0
+
+aarch64 = fcvtxn
+link-aarch64 = fcvtxn._EXT2_._EXT_
+generate float64x2_t:float32x2_t
+
+/// Floating-point convert to lower precision narrow, rounding to odd
+name = vcvtx_high
+double-suffixes
+multi_fn = simd_shuffle4, a, {vcvtx-doubleself-noext, b}, [0, 1, 2, 3]
+a = -1.0, 2.0
+b = -3.0, 4.0
+validate -1.0, 2.0, -3.0, 4.0
+
+aarch64 = fcvtxn
+generate float32x2_t:float64x2_t:float32x4_t
 
 /// Saturating subtract
 name = vqsub

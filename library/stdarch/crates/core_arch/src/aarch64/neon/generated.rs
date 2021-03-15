@@ -1099,6 +1099,60 @@ pub unsafe fn vcaleq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
     vcageq_f64(b, a)
 }
 
+/// Floating-point convert to higher precision long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtl))]
+pub unsafe fn vcvt_f64_f32(a: float32x2_t) -> float64x2_t {
+    simd_cast(a)
+}
+
+/// Floating-point convert to higher precision long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtl))]
+pub unsafe fn vcvt_high_f64_f32(a: float32x4_t) -> float64x2_t {
+    let b: float32x2_t = simd_shuffle2(a, a, [2, 3]);
+    simd_cast(b)
+}
+
+/// Floating-point convert to lower precision narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtn))]
+pub unsafe fn vcvt_f32_f64(a: float64x2_t) -> float32x2_t {
+    simd_cast(a)
+}
+
+/// Floating-point convert to lower precision narrow
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtn))]
+pub unsafe fn vcvt_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
+    simd_shuffle4(a, simd_cast(b), [0, 1, 2, 3])
+}
+
+/// Floating-point convert to lower precision narrow, rounding to odd
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtxn))]
+pub unsafe fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtxn.v2f32.v2f64")]
+        fn vcvtx_f32_f64_(a: float64x2_t) -> float32x2_t;
+    }
+    vcvtx_f32_f64_(a)
+}
+
+/// Floating-point convert to lower precision narrow, rounding to odd
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtxn))]
+pub unsafe fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
+    simd_shuffle4(a, vcvtx_f32_f64(b), [0, 1, 2, 3])
+}
+
 /// Multiply
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2363,6 +2417,56 @@ mod test {
         let b: f64x2 = f64x2::new(-1.1, 0.0);
         let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
         let r: u64x2 = transmute(vcaleq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_f64_f32() {
+        let a: f32x2 = f32x2::new(-1.2, 1.2);
+        let e: f64x2 = f64x2::new(-1.2f32 as f64, 1.2f32 as f64);
+        let r: f64x2 = transmute(vcvt_f64_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_high_f64_f32() {
+        let a: f32x4 = f32x4::new(-1.2, 1.2, 2.3, 3.4);
+        let e: f64x2 = f64x2::new(2.3f32 as f64, 3.4f32 as f64);
+        let r: f64x2 = transmute(vcvt_high_f64_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_f32_f64() {
+        let a: f64x2 = f64x2::new(-1.2, 1.2);
+        let e: f32x2 = f32x2::new(-1.2f64 as f32, 1.2f64 as f32);
+        let r: f32x2 = transmute(vcvt_f32_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_high_f32_f64() {
+        let a: f32x2 = f32x2::new(-1.2, 1.2);
+        let b: f64x2 = f64x2::new(-2.3, 3.4);
+        let e: f32x4 = f32x4::new(-1.2, 1.2, -2.3f64 as f32, 3.4f64 as f32);
+        let r: f32x4 = transmute(vcvt_high_f32_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtx_f32_f64() {
+        let a: f64x2 = f64x2::new(-1.0, 2.0);
+        let e: f32x2 = f32x2::new(-1.0, 2.0);
+        let r: f32x2 = transmute(vcvtx_f32_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtx_high_f32_f64() {
+        let a: f32x2 = f32x2::new(-1.0, 2.0);
+        let b: f64x2 = f64x2::new(-3.0, 4.0);
+        let e: f32x4 = f32x4::new(-1.0, 2.0, -3.0, 4.0);
+        let r: f32x4 = transmute(vcvtx_high_f32_f64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
