@@ -1520,6 +1520,30 @@ pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
     float64x1_t(simd_extract(a, 1))
 }
 
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
+    transmute(u64x1::new(simd_extract(a, 1)))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
+    float64x1_t(simd_extract(a, 0))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
+    transmute(u64x1::new(simd_extract(a, 0)))
+}
+
 /* FIXME: 16-bit float
 /// Vector combine
 #[inline]
@@ -3480,6 +3504,30 @@ mod tests {
         let a = f64x2::new(1.0, 2.0);
         let e = f64x1::new(2.0);
         let r: f64x1 = transmute(vget_high_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vget_high_p64() {
+        let a = u64x2::new(1, 2);
+        let e = u64x1::new(2);
+        let r: u64x1 = transmute(vget_high_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vget_low_f64() {
+        let a = f64x2::new(1.0, 2.0);
+        let e = f64x1::new(1.0);
+        let r: f64x1 = transmute(vget_low_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vget_low_p64() {
+        let a = u64x2::new(1, 2);
+        let e = u64x1::new(1);
+        let r: u64x1 = transmute(vget_low_p64(transmute(a)));
         assert_eq!(r, e);
     }
 
