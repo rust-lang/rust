@@ -377,8 +377,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 },
                 _ => None,
             };
-            if let Some(ty::Unevaluated { def, substs, promoted }) = maybe_uneval {
-                if let Some(promoted) = promoted {
+            if let Some(uv) = maybe_uneval {
+                if let Some(promoted) = uv.promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                                      promoted: &Body<'tcx>,
                                      ty,
@@ -413,8 +413,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         ConstraintCategory::Boring,
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
                             constant.literal.ty(),
-                            def.did,
-                            UserSubsts { substs, user_self_ty: None },
+                            uv.def.did,
+                            UserSubsts { substs: uv.substs(self.tcx()), user_self_ty: None },
                         )),
                     ) {
                         span_mirbug!(

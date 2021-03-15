@@ -473,8 +473,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     struct FindParentLifetimeVisitor<'tcx>(TyCtxt<'tcx>, &'tcx ty::Generics);
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
         type BreakTy = FoundParentLifetime;
-        fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-            self.0
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            Some(self.0)
         }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -510,8 +510,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Ty<'tcx>;
-        fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-            self.tcx
+        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+            Some(self.tcx)
         }
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -1584,10 +1584,11 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                 .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
                 .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
             {
-                struct VisitTypes(Vec<DefId>);
-                impl<'tcx> ty::fold::TypeVisitor<'tcx> for VisitTypes {
-                    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-                        bug!("tcx_for_anon_const_substs called for VisitTypes");
+                struct OpaqueTypeCollector(Vec<DefId>);
+                impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypeCollector {
+                    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+                        // Default anon const substs cannot contain opaque types.
+                        None
                     }
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
@@ -1599,7 +1600,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
                         }
                     }
                 }
-                let mut visitor = VisitTypes(vec![]);
+                let mut visitor = OpaqueTypeCollector(vec![]);
                 ty.visit_with(&mut visitor);
                 for def_id in visitor.0 {
                     let ty_span = tcx.def_span(def_id);

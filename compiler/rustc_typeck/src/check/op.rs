@@ -1006,8 +1006,8 @@ fn suggest_constraining_param(
 struct TypeParamVisitor<'tcx>(TyCtxt<'tcx>, Vec<Ty<'tcx>>);
 
 impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> TyCtxt<'tcx> {
-        self.0
+    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
+        Some(self.0)
     }
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         if let ty::Param(_) = ty.kind() {
