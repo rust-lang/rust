@@ -20,7 +20,7 @@ LL |         } else {
 LL |             println!("{}", v);
 LL |         }
  ...
-help: try replacing `return` with `continue`
+help: ...and replace `return` with `continue`
    |
 LL |             continue;
    |             ^^^^^^^^

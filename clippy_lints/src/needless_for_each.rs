@@ -10,7 +10,10 @@ use rustc_span::{source_map::Span, sym, Symbol};
 
 use if_chain::if_chain;
 
-use crate::utils::{has_iter_method, is_trait_method, snippet_with_applicability, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_trait_method;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::has_iter_method;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `for_each` that would be more simply written as a
@@ -104,18 +107,12 @@ impl LateLintPass<'_> for NeedlessForEach {
                     snippet_with_applicability(cx, body.value.span, "..", &mut applicability),
                 );
 
-                span_lint_and_then(
-                    cx,
-                    NEEDLESS_FOR_EACH,
-                    stmt.span,
-                    "needless use of `for_each`",
-                    |diag| {
-                        diag.span_suggestion(stmt.span, "try", sugg, applicability);
-                        if let Some(ret_suggs) = ret_suggs {
-                            diag.multipart_suggestion("try replacing `return` with `continue`", ret_suggs, applicability);
-                        }
+                span_lint_and_then(cx, NEEDLESS_FOR_EACH, stmt.span, "needless use of `for_each`", |diag| {
+                    diag.span_suggestion(stmt.span, "try", sugg, applicability);
+                    if let Some(ret_suggs) = ret_suggs {
+                        diag.multipart_suggestion("...and replace `return` with `continue`", ret_suggs, applicability);
                     }
-                )
+                })
             }
         }
     }
