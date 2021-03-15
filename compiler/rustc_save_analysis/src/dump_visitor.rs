@@ -301,7 +301,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_struct_field_def(
         &mut self,
-        field: &'tcx hir::StructField<'tcx>,
+        field: &'tcx hir::FieldDef<'tcx>,
         parent_id: hir::HirId,
     ) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
@@ -793,7 +793,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         ex: &'tcx hir::Expr<'tcx>,
         path: &'tcx hir::QPath<'tcx>,
-        fields: &'tcx [hir::Field<'tcx>],
+        fields: &'tcx [hir::ExprField<'tcx>],
         variant: &'tcx ty::VariantDef,
         rest: Option<&'tcx hir::Expr<'tcx>>,
     ) {

@@ -177,14 +177,14 @@ ast_fragments! {
     Arms(SmallVec<[ast::Arm; 1]>) {
         "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
     }
-    Fields(SmallVec<[ast::Field; 1]>) {
-        "field expression"; many fn flat_map_field; fn visit_field(); fn make_fields;
+    Fields(SmallVec<[ast::ExprField; 1]>) {
+        "field expression"; many fn flat_map_expr_field; fn visit_expr_field(); fn make_expr_fields;
     }
-    FieldPats(SmallVec<[ast::FieldPat; 1]>) {
+    FieldPats(SmallVec<[ast::PatField; 1]>) {
         "field pattern";
-        many fn flat_map_field_pattern;
-        fn visit_field_pattern();
-        fn make_field_patterns;
+        many fn flat_map_pat_field;
+        fn visit_pat_field();
+        fn make_pat_fields;
     }
     GenericParams(SmallVec<[ast::GenericParam; 1]>) {
         "generic parameter";
@@ -195,11 +195,11 @@ ast_fragments! {
     Params(SmallVec<[ast::Param; 1]>) {
         "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
     }
-    StructFields(SmallVec<[ast::StructField; 1]>) {
+    StructFields(SmallVec<[ast::FieldDef; 1]>) {
         "field";
-        many fn flat_map_struct_field;
-        fn visit_struct_field();
-        fn make_struct_fields;
+        many fn flat_map_field_def;
+        fn visit_field_def();
+        fn make_field_defs;
     }
     Variants(SmallVec<[ast::Variant; 1]>) {
         "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
@@ -243,10 +243,10 @@ impl AstFragmentKind {
                 AstFragment::Arms(items.map(Annotatable::expect_arm).collect())
             }
             AstFragmentKind::Fields => {
-                AstFragment::Fields(items.map(Annotatable::expect_field).collect())
+                AstFragment::Fields(items.map(Annotatable::expect_expr_field).collect())
             }
             AstFragmentKind::FieldPats => {
-                AstFragment::FieldPats(items.map(Annotatable::expect_field_pattern).collect())
+                AstFragment::FieldPats(items.map(Annotatable::expect_pat_field).collect())
             }
             AstFragmentKind::GenericParams => {
                 AstFragment::GenericParams(items.map(Annotatable::expect_generic_param).collect())
@@ -255,7 +255,7 @@ impl AstFragmentKind {
                 AstFragment::Params(items.map(Annotatable::expect_param).collect())
             }
             AstFragmentKind::StructFields => {
-                AstFragment::StructFields(items.map(Annotatable::expect_struct_field).collect())
+                AstFragment::StructFields(items.map(Annotatable::expect_field_def).collect())
             }
             AstFragmentKind::Variants => {
                 AstFragment::Variants(items.map(Annotatable::expect_variant).collect())
@@ -321,8 +321,8 @@ impl InvocationKind {
         // The assumption is that the attribute expansion cannot change field visibilities,
         // and it holds because only inert attributes are supported in this position.
         match self {
-            InvocationKind::Attr { item: Annotatable::StructField(field), .. }
-            | InvocationKind::Derive { item: Annotatable::StructField(field), .. }
+            InvocationKind::Attr { item: Annotatable::FieldDef(field), .. }
+            | InvocationKind::Derive { item: Annotatable::FieldDef(field), .. }
                 if field.ident.is_none() =>
             {
                 Some(field.vis.clone())
@@ -787,11 +787,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Annotatable::Expr(_) => "expressions",
             Annotatable::Arm(..)
-            | Annotatable::Field(..)
-            | Annotatable::FieldPat(..)
+            | Annotatable::ExprField(..)
+            | Annotatable::PatField(..)
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
-            | Annotatable::StructField(..)
+            | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
         if self.cx.ecfg.proc_macro_hygiene() {
@@ -1108,28 +1108,28 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         noop_flat_map_arm(arm, self)
     }
 
-    fn flat_map_field(&mut self, field: ast::Field) -> SmallVec<[ast::Field; 1]> {
+    fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
         let mut field = configure!(self, field);
 
         if let Some(attr) = self.take_first_attr(&mut field) {
             return self
-                .collect_attr(attr, Annotatable::Field(field), AstFragmentKind::Fields)
-                .make_fields();
+                .collect_attr(attr, Annotatable::ExprField(field), AstFragmentKind::Fields)
+                .make_expr_fields();
         }
 
-        noop_flat_map_field(field, self)
+        noop_flat_map_expr_field(field, self)
     }
 
-    fn flat_map_field_pattern(&mut self, fp: ast::FieldPat) -> SmallVec<[ast::FieldPat; 1]> {
+    fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
         let mut fp = configure!(self, fp);
 
         if let Some(attr) = self.take_first_attr(&mut fp) {
             return self
-                .collect_attr(attr, Annotatable::FieldPat(fp), AstFragmentKind::FieldPats)
-                .make_field_patterns();
+                .collect_attr(attr, Annotatable::PatField(fp), AstFragmentKind::FieldPats)
+                .make_pat_fields();
         }
 
-        noop_flat_map_field_pattern(fp, self)
+        noop_flat_map_pat_field(fp, self)
     }
 
     fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
@@ -1144,16 +1144,16 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         noop_flat_map_param(p, self)
     }
 
-    fn flat_map_struct_field(&mut self, sf: ast::StructField) -> SmallVec<[ast::StructField; 1]> {
+    fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
         let mut sf = configure!(self, sf);
 
         if let Some(attr) = self.take_first_attr(&mut sf) {
             return self
-                .collect_attr(attr, Annotatable::StructField(sf), AstFragmentKind::StructFields)
-                .make_struct_fields();
+                .collect_attr(attr, Annotatable::FieldDef(sf), AstFragmentKind::StructFields)
+                .make_field_defs();
         }
 
-        noop_flat_map_struct_field(sf, self)
+        noop_flat_map_field_def(sf, self)
     }
 
     fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {

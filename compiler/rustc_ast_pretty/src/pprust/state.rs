@@ -1711,7 +1711,7 @@ impl<'a> State<'a> {
     fn print_expr_struct(
         &mut self,
         path: &ast::Path,
-        fields: &[ast::Field],
+        fields: &[ast::ExprField],
         rest: &ast::StructRest,
         attrs: &[ast::Attribute],
     ) {

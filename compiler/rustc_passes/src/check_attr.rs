@@ -1282,9 +1282,9 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_struct_field(&mut self, struct_field: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, struct_field: &'tcx hir::FieldDef<'tcx>) {
         self.check_attributes(struct_field.hir_id, &struct_field.span, Target::Field, None);
-        intravisit::walk_struct_field(self, struct_field);
+        intravisit::walk_field_def(self, struct_field);
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {

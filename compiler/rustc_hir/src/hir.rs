@@ -882,7 +882,7 @@ impl<'hir> Pat<'hir> {
 /// are treated the same as` x: x, y: ref y, z: ref mut z`,
 /// except `is_shorthand` is true.
 #[derive(Debug, HashStable_Generic)]
-pub struct FieldPat<'hir> {
+pub struct PatField<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     /// The identifier for the field.
@@ -946,7 +946,7 @@ pub enum PatKind<'hir> {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath<'hir>, &'hir [FieldPat<'hir>], bool),
+    Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -1203,7 +1203,7 @@ pub enum Guard<'hir> {
 }
 
 #[derive(Debug, HashStable_Generic)]
-pub struct Field<'hir> {
+pub struct ExprField<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub ident: Ident,
@@ -1762,7 +1762,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
     /// where `base` is the `Option<Expr>`.
-    Struct(&'hir QPath<'hir>, &'hir [Field<'hir>], Option<&'hir Expr<'hir>>),
+    Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], Option<&'hir Expr<'hir>>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -2623,7 +2623,7 @@ impl VisibilityKind<'_> {
 }
 
 #[derive(Debug, HashStable_Generic)]
-pub struct StructField<'hir> {
+pub struct FieldDef<'hir> {
     pub span: Span,
     #[stable_hasher(project(name))]
     pub ident: Ident,
@@ -2632,7 +2632,7 @@ pub struct StructField<'hir> {
     pub ty: &'hir Ty<'hir>,
 }
 
-impl StructField<'_> {
+impl FieldDef<'_> {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
         let first = self.ident.as_str().as_bytes()[0];
@@ -2646,11 +2646,11 @@ pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(&'hir [StructField<'hir>], /* recovered */ bool),
+    Struct(&'hir [FieldDef<'hir>], /* recovered */ bool),
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(&'hir [StructField<'hir>], HirId),
+    Tuple(&'hir [FieldDef<'hir>], HirId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
@@ -2659,7 +2659,7 @@ pub enum VariantData<'hir> {
 
 impl VariantData<'hir> {
     /// Return the fields of this variant.
-    pub fn fields(&self) -> &'hir [StructField<'hir>] {
+    pub fn fields(&self) -> &'hir [FieldDef<'hir>] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
             _ => &[],
@@ -2967,7 +2967,7 @@ pub enum Node<'hir> {
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
     Variant(&'hir Variant<'hir>),
-    Field(&'hir StructField<'hir>),
+    Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -2998,7 +2998,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
-            | Node::Field(StructField { ident, .. })
+            | Node::Field(FieldDef { ident, .. })
             | Node::Variant(Variant { ident, .. })
             | Node::MacroDef(MacroDef { ident, .. })
             | Node::Item(Item { ident, .. }) => Some(*ident),
@@ -3046,7 +3046,7 @@ impl<'hir> Node<'hir> {
             | Node::ImplItem(ImplItem { def_id, .. })
             | Node::ForeignItem(ForeignItem { def_id, .. })
             | Node::MacroDef(MacroDef { def_id, .. }) => Some(HirId::make_owner(*def_id)),
-            Node::Field(StructField { hir_id, .. })
+            Node::Field(FieldDef { hir_id, .. })
             | Node::AnonConst(AnonConst { hir_id, .. })
             | Node::Expr(Expr { hir_id, .. })
             | Node::Stmt(Stmt { hir_id, .. })

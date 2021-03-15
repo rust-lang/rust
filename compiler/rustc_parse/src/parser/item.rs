@@ -9,7 +9,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::{self as ast, AttrVec, Attribute, DUMMY_NODE_ID};
 use rustc_ast::{Async, Const, Defaultness, IsAuto, Mutability, Unsafe, UseTree, UseTreeKind};
 use rustc_ast::{BindingMode, Block, FnDecl, FnSig, Param, SelfKind};
-use rustc_ast::{EnumDef, Generics, StructField, TraitRef, Ty, TyKind, Variant, VariantData};
+use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, VariantData};
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
@@ -1231,14 +1231,12 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    fn parse_record_struct_body(
-        &mut self,
-    ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
+    fn parse_record_struct_body(&mut self) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                let field = self.parse_struct_decl_field().map_err(|e| {
+                let field = self.parse_field_def().map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
@@ -1263,7 +1261,7 @@ impl<'a> Parser<'a> {
         Ok((fields, recovered))
     }
 
-    fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<StructField>> {
+    fn parse_tuple_struct_body(&mut self) -> PResult<'a, Vec<FieldDef>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
         // Unit like structs are handled in parse_item_struct function
         self.parse_paren_comma_seq(|p| {
@@ -1274,7 +1272,7 @@ impl<'a> Parser<'a> {
                 let ty = p.parse_ty()?;
 
                 Ok((
-                    StructField {
+                    FieldDef {
                         span: lo.to(ty.span),
                         vis,
                         ident: None,
@@ -1291,7 +1289,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an element of a struct declaration.
-    fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
+    fn parse_field_def(&mut self) -> PResult<'a, FieldDef> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
@@ -1306,7 +1304,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
-    ) -> PResult<'a, StructField> {
+    ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
         let a_var = self.parse_name_and_ty(lo, vis, attrs)?;
         if self.token == token::Comma {
@@ -1398,11 +1396,11 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
-    ) -> PResult<'a, StructField> {
+    ) -> PResult<'a, FieldDef> {
         let name = self.parse_ident_common(false)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
-        Ok(StructField {
+        Ok(FieldDef {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
             vis,

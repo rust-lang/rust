@@ -1578,7 +1578,7 @@ impl<'a> TraitDef<'a> {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
-                        ast::FieldPat {
+                        ast::PatField {
                             ident: ident.unwrap(),
                             is_shorthand: false,
                             attrs: ast::AttrVec::new(),

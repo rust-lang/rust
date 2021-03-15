@@ -619,9 +619,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
         self.with_lint_attrs(s.hir_id, |builder| {
-            intravisit::walk_struct_field(builder, s);
+            intravisit::walk_field_def(builder, s);
         })
     }
 

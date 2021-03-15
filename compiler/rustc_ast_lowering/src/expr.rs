@@ -244,7 +244,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),
                         )),
-                        self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_field(x))),
+                        self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_expr_field(x))),
                         rest,
                     )
                 }
@@ -1113,7 +1113,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Struct(path, fields, rest) => {
                 let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
-                    hir::FieldPat {
+                    hir::PatField {
                         hir_id: self.next_id(),
                         ident: f.ident,
                         pat,
@@ -1244,7 +1244,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e))).map(|(s, e)| {
                 let expr = self.lower_expr(&e);
                 let ident = Ident::new(Symbol::intern(s), e.span);
-                self.field(ident, expr, e.span)
+                self.expr_field(ident, expr, e.span)
             }),
         );
 
@@ -1658,8 +1658,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::LlvmInlineAsm(self.arena.alloc(hir_asm))
     }
 
-    fn lower_field(&mut self, f: &Field) -> hir::Field<'hir> {
-        hir::Field {
+    fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
+        hir::ExprField {
             hir_id: self.next_id(),
             ident: f.ident,
             expr: self.lower_expr(&f.expr),
@@ -2156,8 +2156,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Expr { hir_id, kind, span }
     }
 
-    fn field(&mut self, ident: Ident, expr: &'hir hir::Expr<'hir>, span: Span) -> hir::Field<'hir> {
-        hir::Field { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
+    fn expr_field(
+        &mut self,
+        ident: Ident,
+        expr: &'hir hir::Expr<'hir>,
+        span: Span,
+    ) -> hir::ExprField<'hir> {
+        hir::ExprField { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
     }
 
     fn arm(&mut self, pat: &'hir hir::Pat<'hir>, expr: &'hir hir::Expr<'hir>) -> hir::Arm<'hir> {

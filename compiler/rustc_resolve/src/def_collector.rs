@@ -51,7 +51,7 @@ impl<'a, 'b> DefCollector<'a, 'b> {
         self.impl_trait_context = orig_itc;
     }
 
-    fn collect_field(&mut self, field: &'a StructField, index: Option<usize>) {
+    fn collect_field(&mut self, field: &'a FieldDef, index: Option<usize>) {
         let index = |this: &Self| {
             index.unwrap_or_else(|| {
                 let node_id = NodeId::placeholder_from_expn_id(this.expansion);
@@ -66,7 +66,7 @@ impl<'a, 'b> DefCollector<'a, 'b> {
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
             let def = self.create_def(field.id, DefPathData::ValueNs(name), field.span);
-            self.with_parent(def, |this| visit::walk_struct_field(this, field));
+            self.with_parent(def, |this| visit::walk_field_def(this, field));
         }
     }
 
@@ -309,15 +309,19 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         if arm.is_placeholder { self.visit_macro_invoc(arm.id) } else { visit::walk_arm(self, arm) }
     }
 
-    fn visit_field(&mut self, f: &'a Field) {
-        if f.is_placeholder { self.visit_macro_invoc(f.id) } else { visit::walk_field(self, f) }
+    fn visit_expr_field(&mut self, f: &'a ExprField) {
+        if f.is_placeholder {
+            self.visit_macro_invoc(f.id)
+        } else {
+            visit::walk_expr_field(self, f)
+        }
     }
 
-    fn visit_field_pattern(&mut self, fp: &'a FieldPat) {
+    fn visit_pat_field(&mut self, fp: &'a PatField) {
         if fp.is_placeholder {
             self.visit_macro_invoc(fp.id)
         } else {
-            visit::walk_field_pattern(self, fp)
+            visit::walk_pat_field(self, fp)
         }
     }
 
@@ -333,7 +337,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     // This method is called only when we are visiting an individual field
     // after expanding an attribute on it.
-    fn visit_struct_field(&mut self, field: &'a StructField) {
+    fn visit_field_def(&mut self, field: &'a FieldDef) {
         self.collect_field(field, None);
     }
 }

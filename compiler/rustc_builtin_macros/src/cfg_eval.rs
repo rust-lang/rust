@@ -67,11 +67,11 @@ impl CfgEval<'_> {
                 expr
             }),
             Annotatable::Arm(arm) => Annotatable::Arm(self.flat_map_arm(arm).pop().unwrap()),
-            Annotatable::Field(field) => {
-                Annotatable::Field(self.flat_map_field(field).pop().unwrap())
+            Annotatable::ExprField(field) => {
+                Annotatable::ExprField(self.flat_map_expr_field(field).pop().unwrap())
             }
-            Annotatable::FieldPat(fp) => {
-                Annotatable::FieldPat(self.flat_map_field_pattern(fp).pop().unwrap())
+            Annotatable::PatField(fp) => {
+                Annotatable::PatField(self.flat_map_pat_field(fp).pop().unwrap())
             }
             Annotatable::GenericParam(param) => {
                 Annotatable::GenericParam(self.flat_map_generic_param(param).pop().unwrap())
@@ -79,8 +79,8 @@ impl CfgEval<'_> {
             Annotatable::Param(param) => {
                 Annotatable::Param(self.flat_map_param(param).pop().unwrap())
             }
-            Annotatable::StructField(sf) => {
-                Annotatable::StructField(self.flat_map_struct_field(sf).pop().unwrap())
+            Annotatable::FieldDef(sf) => {
+                Annotatable::FieldDef(self.flat_map_field_def(sf).pop().unwrap())
             }
             Annotatable::Variant(v) => {
                 Annotatable::Variant(self.flat_map_variant(v).pop().unwrap())
@@ -135,20 +135,20 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::noop_flat_map_arm(configure!(self, arm), self)
     }
 
-    fn flat_map_field(&mut self, field: ast::Field) -> SmallVec<[ast::Field; 1]> {
-        mut_visit::noop_flat_map_field(configure!(self, field), self)
+    fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
+        mut_visit::noop_flat_map_expr_field(configure!(self, field), self)
     }
 
-    fn flat_map_field_pattern(&mut self, fp: ast::FieldPat) -> SmallVec<[ast::FieldPat; 1]> {
-        mut_visit::noop_flat_map_field_pattern(configure!(self, fp), self)
+    fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
+        mut_visit::noop_flat_map_pat_field(configure!(self, fp), self)
     }
 
     fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
         mut_visit::noop_flat_map_param(configure!(self, p), self)
     }
 
-    fn flat_map_struct_field(&mut self, sf: ast::StructField) -> SmallVec<[ast::StructField; 1]> {
-        mut_visit::noop_flat_map_struct_field(configure!(self, sf), self)
+    fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
+        mut_visit::noop_flat_map_field_def(configure!(self, sf), self)
     }
 
     fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {

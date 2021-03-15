@@ -201,9 +201,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &'v hir::StructField<'v>) {
-        self.record("StructField", Id::Node(s.hir_id), s);
-        hir_visit::walk_struct_field(self, s)
+    fn visit_field_def(&mut self, s: &'v hir::FieldDef<'v>) {
+        self.record("FieldDef", Id::Node(s.hir_id), s);
+        hir_visit::walk_field_def(self, s)
     }
 
     fn visit_variant(
@@ -316,9 +316,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &'v ast::StructField) {
-        self.record("StructField", Id::None, s);
-        ast_visit::walk_struct_field(self, s)
+    fn visit_field_def(&mut self, s: &'v ast::FieldDef) {
+        self.record("FieldDef", Id::None, s);
+        ast_visit::walk_field_def(self, s)
     }
 
     fn visit_variant(&mut self, v: &'v ast::Variant) {

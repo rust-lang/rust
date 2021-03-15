@@ -219,10 +219,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         lint_callback!(self, check_struct_def_post, s);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
         self.with_lint_attrs(s.hir_id, |cx| {
-            lint_callback!(cx, check_struct_field, s);
-            hir_visit::walk_struct_field(cx, s);
+            lint_callback!(cx, check_field_def, s);
+            hir_visit::walk_field_def(cx, s);
         })
     }
 

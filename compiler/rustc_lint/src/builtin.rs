@@ -651,7 +651,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, foreign_item.hir_id(), foreign_item.span, article, desc);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_>, sf: &hir::StructField<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
         if !sf.is_positional() {
             self.check_missing_docs_attrs(cx, sf.hir_id, sf.span, "a", "struct field")
         }
@@ -1345,7 +1345,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         );
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'_>, field: &hir::StructField<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         self.perform_lint(cx, "field", field.hir_id, &field.vis, field.span, false);
     }
 
