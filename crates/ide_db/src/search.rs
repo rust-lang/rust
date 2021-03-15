@@ -260,7 +260,7 @@ impl Definition {
             let mut res = source_root.iter().map(|id| (id, None)).collect::<FxHashMap<_, _>>();
 
             let krate = module.krate();
-            for rev_dep in krate.reverse_dependencies(db) {
+            for rev_dep in krate.transitive_reverse_dependencies(db) {
                 let root_file = rev_dep.root_file(db);
                 let source_root_id = db.file_source_root(root_file);
                 let source_root = db.source_root(source_root_id);

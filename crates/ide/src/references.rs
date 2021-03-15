@@ -1270,4 +1270,27 @@ fn foo(_: bool) -> bo$0ol { true }
             "#]],
         );
     }
+
+    #[test]
+    fn test_transitive() {
+        check(
+            r#"
+//- /level3/level3.rs crate:level3
+pub struct Fo$0o;
+//- /level2/level2.rs crate:level2 deps:level3
+pub use level3::Foo;
+//- /level1/level1.rs crate:level1 deps:level2
+pub use level2::Foo;
+//- /level0/level0.rs crate:level0 deps:level1
+pub use level1::Foo;
+"#,
+            expect![[r#"
+                Foo Struct FileId(0) 0..15 11..14
+
+                FileId(1) 16..19
+                FileId(2) 16..19
+                FileId(3) 16..19
+            "#]],
+        );
+    }
 }
