@@ -180,11 +180,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.local_def_id_to_hir_id(def_id)
     }
 
-    #[inline]
-    pub fn opt_local_def_id_to_hir_id(&self, def_id: LocalDefId) -> Option<HirId> {
-        self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
-    }
-
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.tcx.definitions.iter_local_def_id()
     }
