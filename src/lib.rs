@@ -224,8 +224,10 @@ pub struct CraneliftCodegenBackend {
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
-        if sess.lto() != rustc_session::config::Lto::No && sess.opts.cg.embed_bitcode {
-            sess.warn("LTO is not supported. You may get a linker error.");
+        use rustc_session::config::Lto;
+        match sess.lto() {
+            Lto::No | Lto::ThinLocal => {}
+            Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
         }
     }
 
@@ -320,11 +322,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
             flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Aggressive => {
+        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
-        }
-        OptLevel::Size | OptLevel::SizeMin => {
-            sess.warn("Optimizing for size is not supported. Just ignoring the request");
         }
     }
 
