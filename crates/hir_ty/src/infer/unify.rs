@@ -300,7 +300,7 @@ impl InferenceTable {
                 | (TyKind::Raw(_, ty1), TyKind::Raw(_, ty2))
                 | (TyKind::Array(ty1), TyKind::Array(ty2))
                 | (TyKind::Slice(ty1), TyKind::Slice(ty2)) => self.unify_inner(ty1, ty2, depth + 1),
-                _ => false,
+                _ => true, /* we checked equals_ctor already */
             }
         } else {
             self.unify_inner_trivial(&ty1, &ty2, depth)
