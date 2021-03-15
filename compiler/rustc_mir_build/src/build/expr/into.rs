@@ -427,7 +427,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
             ExprKind::Index { .. } | ExprKind::Deref { .. } | ExprKind::Field { .. } => {
-                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
+                debug_assert_eq!(Category::of(&expr.kind), Some(Category::Place));
 
                 // Create a "fake" temporary variable so that we check that the
                 // value is Sized. Usually, this is caught in type checking, but
@@ -435,8 +435,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if !destination.projection.is_empty() {
                     this.local_decls.push(LocalDecl::new(expr.ty, expr.span));
                 }
-
-                debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr));
                 let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));

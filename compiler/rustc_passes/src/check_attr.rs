@@ -8,7 +8,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::{Attribute, LitKind, NestedMetaItem};
+use rustc_ast::{Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -87,6 +87,10 @@ impl CheckAttrVisitor<'tcx> {
                 self.check_export_name(hir_id, &attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::rustc_args_required_const) {
                 self.check_rustc_args_required_const(&attr, span, target, item)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_layout_scalar_valid_range_start) {
+                self.check_rustc_layout_scalar_valid_range(&attr, span, target)
+            } else if self.tcx.sess.check_name(attr, sym::rustc_layout_scalar_valid_range_end) {
+                self.check_rustc_layout_scalar_valid_range(&attr, span, target)
             } else if self.tcx.sess.check_name(attr, sym::allow_internal_unstable) {
                 self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
             } else if self.tcx.sess.check_name(attr, sym::rustc_allow_const_fn_unstable) {
@@ -520,7 +524,7 @@ impl CheckAttrVisitor<'tcx> {
                 .struct_span_err(
                     meta.span(),
                     &format!(
-                        "`#![doc({} = \"...\")]` isn't allowed as a crate level attribute",
+                        "`#![doc({} = \"...\")]` isn't allowed as a crate-level attribute",
                         attr_name,
                     ),
                 )
@@ -531,79 +535,97 @@ impl CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
-        if let Some(mi) = attr.meta() {
-            if let Some(list) = mi.meta_item_list() {
-                for meta in list {
-                    if meta.has_name(sym::alias) {
-                        if !self.check_attr_crate_level(meta, hir_id, "alias")
-                            || !self.check_doc_alias(meta, hir_id, target)
+        let mut is_valid = true;
+
+        if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
+            for meta in list {
+                if let Some(i_meta) = meta.meta_item() {
+                    match i_meta.name_or_empty() {
+                        sym::alias
+                            if !self.check_attr_crate_level(&meta, hir_id, "alias")
+                                || !self.check_doc_alias(&meta, hir_id, target) =>
                         {
-                            return false;
+                            is_valid = false
                         }
-                    } else if meta.has_name(sym::keyword) {
-                        if !self.check_attr_crate_level(meta, hir_id, "keyword")
-                            || !self.check_doc_keyword(meta, hir_id)
+
+                        sym::keyword
+                            if !self.check_attr_crate_level(&meta, hir_id, "keyword")
+                                || !self.check_doc_keyword(&meta, hir_id) =>
                         {
-                            return false;
+                            is_valid = false
                         }
-                    } else if meta.has_name(sym::test) {
-                        if CRATE_HIR_ID != hir_id {
+
+                        sym::test if CRATE_HIR_ID != hir_id => {
                             self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 meta.span(),
                                 |lint| {
                                     lint.build(
-                                        "`#![doc(test(...)]` is only allowed as a crate level attribute"
+                                        "`#![doc(test(...)]` is only allowed \
+                                         as a crate-level attribute",
                                     )
                                     .emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
-                    } else if let Some(i_meta) = meta.meta_item() {
-                        if ![
-                            sym::cfg,
-                            sym::hidden,
-                            sym::html_favicon_url,
-                            sym::html_logo_url,
-                            sym::html_no_source,
-                            sym::html_playground_url,
-                            sym::html_root_url,
-                            sym::include,
-                            sym::inline,
-                            sym::issue_tracker_base_url,
-                            sym::masked,
-                            sym::no_default_passes, // deprecated
-                            sym::no_inline,
-                            sym::passes,  // deprecated
-                            sym::plugins, // removed, but rustdoc warns about it itself
-                            sym::primitive,
-                            sym::spotlight,
-                            sym::test,
-                        ]
-                        .iter()
-                        .any(|m| i_meta.has_name(*m))
-                        {
+
+                        // no_default_passes: deprecated
+                        // passes: deprecated
+                        // plugins: removed, but rustdoc warns about it itself
+                        sym::alias
+                        | sym::cfg
+                        | sym::hidden
+                        | sym::html_favicon_url
+                        | sym::html_logo_url
+                        | sym::html_no_source
+                        | sym::html_playground_url
+                        | sym::html_root_url
+                        | sym::include
+                        | sym::inline
+                        | sym::issue_tracker_base_url
+                        | sym::keyword
+                        | sym::masked
+                        | sym::no_default_passes
+                        | sym::no_inline
+                        | sym::passes
+                        | sym::plugins
+                        | sym::primitive
+                        | sym::spotlight
+                        | sym::test => {}
+
+                        _ => {
                             self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 i_meta.span,
                                 |lint| {
-                                    lint.build(&format!(
+                                    let msg = format!(
                                         "unknown `doc` attribute `{}`",
-                                        i_meta.name_or_empty()
-                                    ))
-                                    .emit();
+                                        rustc_ast_pretty::pprust::path_to_string(&i_meta.path),
+                                    );
+                                    lint.build(&msg).emit();
                                 },
                             );
-                            return false;
+                            is_valid = false;
                         }
                     }
+                } else {
+                    self.tcx.struct_span_lint_hir(
+                        INVALID_DOC_ATTRIBUTES,
+                        hir_id,
+                        meta.span(),
+                        |lint| {
+                            lint.build(&format!("invalid `doc` attribute")).emit();
+                        },
+                    );
+                    is_valid = false;
                 }
             }
         }
-        true
+
+        is_valid
     }
 
     /// Checks if `#[cold]` is applied to a non-function. Returns `true` if valid.
@@ -804,6 +826,37 @@ impl CheckAttrVisitor<'tcx> {
             false
         } else {
             true
+        }
+    }
+
+    fn check_rustc_layout_scalar_valid_range(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        if target != Target::Struct {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "attribute should be applied to a struct")
+                .span_label(*span, "not a struct")
+                .emit();
+            return false;
+        }
+
+        let list = match attr.meta_item_list() {
+            None => return false,
+            Some(it) => it,
+        };
+
+        if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
+            true
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(attr.span, "expected exactly one integer literal argument")
+                .emit();
+            false
         }
     }
 

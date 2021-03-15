@@ -15,7 +15,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_interface::interface;
-use rustc_session::Session;
+use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
 use rustc_tools_util::VersionInfo;
 
@@ -63,8 +63,8 @@ fn test_arg_value() {
     assert_eq!(arg_value(args, "--foo", |_| true), None);
 }
 
-fn track_clippy_args(sess: &Session, args_env_var: &Option<String>) {
-    sess.parse_sess.env_depinfo.borrow_mut().insert((
+fn track_clippy_args(parse_sess: &mut ParseSess, args_env_var: &Option<String>) {
+    parse_sess.env_depinfo.get_mut().insert((
         Symbol::intern("CLIPPY_ARGS"),
         args_env_var.as_deref().map(Symbol::intern),
     ));
@@ -81,14 +81,9 @@ struct RustcCallbacks {
 
 impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
-        let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
-        config.register_lints = Some(Box::new(move |sess, lint_store| {
-            if let Some(ref previous) = previous {
-                (previous)(sess, lint_store);
-            }
-
-            track_clippy_args(sess, &clippy_args_var);
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            track_clippy_args(parse_sess, &clippy_args_var);
         }));
     }
 }
@@ -101,14 +96,15 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
+        config.parse_sess_created = Some(Box::new(move |parse_sess| {
+            track_clippy_args(parse_sess, &clippy_args_var);
+        }));
         config.register_lints = Some(Box::new(move |sess, mut lint_store| {
             // technically we're ~guaranteed that this is none but might as well call anything that
             // is there already. Certainly it can't hurt.
             if let Some(previous) = &previous {
                 (previous)(sess, lint_store);
             }
-
-            track_clippy_args(sess, &clippy_args_var);
 
             let conf = clippy_lints::read_conf(&[], &sess);
             clippy_lints::register_plugins(&mut lint_store, &sess, &conf);

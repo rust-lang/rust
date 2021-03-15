@@ -4,7 +4,7 @@ error: '\'' character isn't allowed in `#[doc(alias = "...")]`
 LL | #[doc(alias = "shouldn't work!")]
    |               ^^^^^^^^^^^^^^^^^
 
-error: `#![doc(alias = "...")]` isn't allowed as a crate level attribute
+error: `#![doc(alias = "...")]` isn't allowed as a crate-level attribute
   --> $DIR/doc-alias-crate-level.rs:5:8
    |
 LL | #![doc(alias = "not working!")]

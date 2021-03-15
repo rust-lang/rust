@@ -1045,12 +1045,12 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        if *self == DUMMY_SP {
+        let span_data = self.data();
+        if self.is_dummy() {
             TAG_PARTIAL_SPAN.encode(s)?;
-            return SyntaxContext::root().encode(s);
+            return span_data.ctxt.encode(s);
         }
 
-        let span_data = self.data();
         let pos = s.source_map.byte_pos_to_line_and_col(span_data.lo);
         let partial_span = match &pos {
             Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),

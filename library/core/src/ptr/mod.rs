@@ -512,7 +512,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
         let t = t.as_mut_ptr() as *mut u8;
 
         // SAFETY: As `i < len`, and as the caller must guarantee that `x` and `y` are valid
-        // for `len` bytes, `x + i` and `y + i` must be valid adresses, which fulfills the
+        // for `len` bytes, `x + i` and `y + i` must be valid addresses, which fulfills the
         // safety contract for `add`.
         //
         // Also, the caller must guarantee that `x` and `y` are valid for writes, properly aligned,
