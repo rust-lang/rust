@@ -360,11 +360,11 @@ mod tests {
             "Completion with disjoint edits is valid"
         );
         assert!(
-            !all_edits_are_disjoint(&completion_with_disjoint_edits, &[joint_edit.clone()]),
+            !all_edits_are_disjoint(&completion_with_disjoint_edits, &[joint_edit]),
             "Completion with disjoint edits and joint extra edit is invalid"
         );
         assert!(
-            all_edits_are_disjoint(&completion_with_disjoint_edits, &[disjoint_edit_2.clone()]),
+            all_edits_are_disjoint(&completion_with_disjoint_edits, &[disjoint_edit_2]),
             "Completion with disjoint edits and joint extra edit is valid"
         );
     }

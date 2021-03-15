@@ -6,7 +6,7 @@ use crate::{cfg_flag::CfgFlag, utf8_stdout};
 
 pub(crate) fn get(target: Option<&str>) -> Vec<CfgFlag> {
     let _p = profile::span("rustc_cfg::get");
-    let mut res = Vec::new();
+    let mut res = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
     res.push(CfgFlag::Atom("target_thread_local".into()));

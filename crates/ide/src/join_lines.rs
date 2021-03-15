@@ -218,7 +218,7 @@ mod tests {
         let result = join_lines(&file, range);
 
         let actual = {
-            let mut actual = before.to_string();
+            let mut actual = before;
             result.apply(&mut actual);
             actual
         };
@@ -622,7 +622,7 @@ fn foo() {
         let parse = SourceFile::parse(&before);
         let result = join_lines(&parse.tree(), sel);
         let actual = {
-            let mut actual = before.to_string();
+            let mut actual = before;
             result.apply(&mut actual);
             actual
         };

@@ -145,9 +145,8 @@ mod tests {
     use super::*;
 
     fn do_type_char(char_typed: char, before: &str) -> Option<String> {
-        let (offset, before) = extract_offset(before);
+        let (offset, mut before) = extract_offset(before);
         let edit = TextEdit::insert(offset, char_typed.to_string());
-        let mut before = before.to_string();
         edit.apply(&mut before);
         let parse = SourceFile::parse(&before);
         on_char_typed_inner(&parse.tree(), offset, char_typed).map(|it| {
