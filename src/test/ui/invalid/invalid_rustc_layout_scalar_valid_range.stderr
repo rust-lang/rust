@@ -1,0 +1,31 @@
+error: expected exactly one integer literal argument
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:3:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(u32::MAX)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected exactly one integer literal argument
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:6:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(1, 2)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: expected exactly one integer literal argument
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:9:1
+   |
+LL | #[rustc_layout_scalar_valid_range_end(a = "a")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: attribute should be applied to a struct
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:12:1
+   |
+LL |   #[rustc_layout_scalar_valid_range_end(1)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / enum E {
+LL | |     X = 1,
+LL | |     Y = 14,
+LL | | }
+   | |_- not a struct
+
+error: aborting due to 4 previous errors
+
