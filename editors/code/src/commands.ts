@@ -170,22 +170,28 @@ export function parentModule(ctx: Ctx): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const response = await client.sendRequest(ra.parentModule, {
+        const locations = await client.sendRequest(ra.parentModule, {
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             position: client.code2ProtocolConverter.asPosition(
                 editor.selection.active,
             ),
         });
-        const loc = response[0];
-        if (!loc) return;
 
-        const uri = client.protocol2CodeConverter.asUri(loc.targetUri);
-        const range = client.protocol2CodeConverter.asRange(loc.targetRange);
+        if (locations.length === 1) {
+            const loc = locations[0];
 
-        const doc = await vscode.workspace.openTextDocument(uri);
-        const e = await vscode.window.showTextDocument(doc);
-        e.selection = new vscode.Selection(range.start, range.start);
-        e.revealRange(range, vscode.TextEditorRevealType.InCenter);
+            const uri = client.protocol2CodeConverter.asUri(loc.targetUri);
+            const range = client.protocol2CodeConverter.asRange(loc.targetRange);
+
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const e = await vscode.window.showTextDocument(doc);
+            e.selection = new vscode.Selection(range.start, range.start);
+            e.revealRange(range, vscode.TextEditorRevealType.InCenter);
+        } else {
+            const uri = editor.document.uri.toString();
+            const position = client.code2ProtocolConverter.asPosition(editor.selection.active);
+            await showReferencesImpl(client, uri, position, locations.map(loc => lc.Location.create(loc.targetUri, loc.targetRange)));
+        }
     };
 }
 
