@@ -6,6 +6,7 @@
 #![feature(or_patterns)]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
+#![recursion_limit = "256"]
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Nonterminal};

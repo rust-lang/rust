@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `{integer}: Tweedledum`
+error[E0275]: overflow evaluating the requirement `{integer}: Tweedledee`
   --> $DIR/simultaneous.rs:18:5
    |
 LL | fn is_ee<T: Combo>(t: T) {

@@ -1,17 +1,3 @@
-error[E0277]: `Rc<Foo>` cannot be sent between threads safely
-  --> $DIR/issue-40827.rs:14:5
-   |
-LL | fn f<T: Send>(_: T) {}
-   |         ---- required by this bound in `f`
-...
-LL |     f(Foo(Arc::new(Bar::B(None))));
-   |     ^ `Rc<Foo>` cannot be sent between threads safely
-   |
-   = help: within `Bar`, the trait `Send` is not implemented for `Rc<Foo>`
-   = note: required because it appears within the type `Bar`
-   = note: required because of the requirements on the impl of `Send` for `Arc<Bar>`
-   = note: required because it appears within the type `Foo`
-
 error[E0277]: `Rc<Foo>` cannot be shared between threads safely
   --> $DIR/issue-40827.rs:14:5
    |
@@ -22,6 +8,20 @@ LL |     f(Foo(Arc::new(Bar::B(None))));
    |     ^ `Rc<Foo>` cannot be shared between threads safely
    |
    = help: within `Bar`, the trait `Sync` is not implemented for `Rc<Foo>`
+   = note: required because it appears within the type `Bar`
+   = note: required because of the requirements on the impl of `Send` for `Arc<Bar>`
+   = note: required because it appears within the type `Foo`
+
+error[E0277]: `Rc<Foo>` cannot be sent between threads safely
+  --> $DIR/issue-40827.rs:14:5
+   |
+LL | fn f<T: Send>(_: T) {}
+   |         ---- required by this bound in `f`
+...
+LL |     f(Foo(Arc::new(Bar::B(None))));
+   |     ^ `Rc<Foo>` cannot be sent between threads safely
+   |
+   = help: within `Bar`, the trait `Send` is not implemented for `Rc<Foo>`
    = note: required because it appears within the type `Bar`
    = note: required because of the requirements on the impl of `Send` for `Arc<Bar>`
    = note: required because it appears within the type `Foo`

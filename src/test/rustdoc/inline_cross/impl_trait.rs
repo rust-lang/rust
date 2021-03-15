@@ -18,7 +18,7 @@ pub use impl_trait_aux::func2;
 
 // @has impl_trait/fn.func3.html
 // @has - '//pre[@class="rust fn"]' "func3("
-// @has - '//pre[@class="rust fn"]' "_x: impl Clone + Iterator<Item = impl Iterator<Item = u8>>)"
+// @has - '//pre[@class="rust fn"]' "_x: impl Iterator<Item = impl Iterator<Item = u8>> + Clone)"
 // @!has - '//pre[@class="rust fn"]' 'where'
 pub use impl_trait_aux::func3;
 
