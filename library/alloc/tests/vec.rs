@@ -2096,3 +2096,76 @@ fn test_extend_from_within() {
 
     assert_eq!(v, ["a", "b", "c", "b", "c", "a", "b"]);
 }
+
+#[test]
+fn test_vec_dedup_by() {
+    let mut vec: Vec<i32> = vec![1, -1, 2, 3, 1, -5, 5, -2, 2];
+
+    vec.dedup_by(|a, b| a.abs() == b.abs());
+
+    assert_eq!(vec, [1, 2, 3, 1, -5, -2]);
+}
+
+#[test]
+fn test_vec_dedup_empty() {
+    let mut vec: Vec<i32> = Vec::new();
+
+    vec.dedup();
+
+    assert_eq!(vec, []);
+}
+
+#[test]
+fn test_vec_dedup_one() {
+    let mut vec = vec![12i32];
+
+    vec.dedup();
+
+    assert_eq!(vec, [12]);
+}
+
+#[test]
+fn test_vec_dedup_multiple_ident() {
+    let mut vec = vec![12, 12, 12, 12, 12, 11, 11, 11, 11, 11, 11];
+
+    vec.dedup();
+
+    assert_eq!(vec, [12, 11]);
+}
+
+#[test]
+fn test_vec_dedup_partialeq() {
+    #[derive(Debug)]
+    struct Foo(i32, i32);
+
+    impl PartialEq for Foo {
+        fn eq(&self, other: &Foo) -> bool {
+            self.0 == other.0
+        }
+    }
+
+    let mut vec = vec![Foo(0, 1), Foo(0, 5), Foo(1, 7), Foo(1, 9)];
+
+    vec.dedup();
+    assert_eq!(vec, [Foo(0, 1), Foo(1, 7)]);
+}
+
+#[test]
+fn test_vec_dedup() {
+    let mut vec: Vec<bool> = Vec::with_capacity(8);
+    let mut template = vec.clone();
+
+    for x in 0u8..255u8 {
+        vec.clear();
+        template.clear();
+
+        let iter = (0..8).map(move |bit| (x >> bit) & 1 == 1);
+        vec.extend(iter);
+        template.extend_from_slice(&vec);
+
+        let (dedup, _) = template.partition_dedup();
+        vec.dedup();
+
+        assert_eq!(vec, dedup);
+    }
+}
