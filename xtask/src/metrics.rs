@@ -26,7 +26,7 @@ impl flags::Metrics {
         }
         {
             let _d = pushd("./target/rustc-perf")?;
-            cmd!("git reset --hard 1d9288b0da7febf2599917da1b57dc241a1af033").run()?;
+            cmd!("git reset --hard c52ee623e231e7690a93be88d943016968c1036b").run()?;
         }
 
         let _env = pushenv("RA_METRICS", "1");
@@ -35,6 +35,7 @@ impl flags::Metrics {
         metrics.measure_analysis_stats_self()?;
         metrics.measure_analysis_stats("ripgrep")?;
         metrics.measure_analysis_stats("webrender")?;
+        metrics.measure_analysis_stats("diesel/diesel")?;
 
         if !self.dry_run {
             let _d = pushd("target")?;
