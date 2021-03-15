@@ -1,6 +1,7 @@
 use hir::Semantics;
 use ide_db::base_db::{CrateId, FileId, FilePosition};
 use ide_db::RootDatabase;
+use itertools::Itertools;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, AstNode},
@@ -18,8 +19,7 @@ use crate::NavigationTarget;
 // | VS Code | **Rust Analyzer: Locate parent module**
 // |===
 
-/// This returns `Vec` because a module may be included from several places. We
-/// don't handle this case yet though, so the Vec has length at most one.
+/// This returns `Vec` because a module may be included from several places.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
@@ -37,27 +37,23 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
         }
     }
 
-    let module = match module {
-        Some(module) => sema.to_def(&module),
-        None => sema.to_module_def(position.file_id),
-    };
-    let module = match module {
-        None => return Vec::new(),
-        Some(it) => it,
-    };
-    let nav = NavigationTarget::from_module_to_decl(db, module);
-    vec![nav]
+    match module {
+        Some(module) => sema
+            .to_def(&module)
+            .into_iter()
+            .map(|module| NavigationTarget::from_module_to_decl(db, module))
+            .collect(),
+        None => sema
+            .to_module_defs(position.file_id)
+            .map(|module| NavigationTarget::from_module_to_decl(db, module))
+            .collect(),
+    }
 }
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
     let sema = Semantics::new(db);
-    let module = match sema.to_module_def(file_id) {
-        Some(it) => it,
-        None => return Vec::new(),
-    };
-    let krate = module.krate();
-    vec![krate.into()]
+    sema.to_module_defs(file_id).map(|module| module.krate().into()).unique().collect()
 }
 
 #[cfg(test)]
@@ -67,11 +63,13 @@ mod tests {
     use crate::fixture;
 
     fn check(ra_fixture: &str) {
-        let (analysis, position, expected) = fixture::nav_target_annotation(ra_fixture);
-        let mut navs = analysis.parent_module(position).unwrap();
-        assert_eq!(navs.len(), 1);
-        let nav = navs.pop().unwrap();
-        assert_eq!(expected, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() });
+        let (analysis, position, expected) = fixture::annotations(ra_fixture);
+        let navs = analysis.parent_module(position).unwrap();
+        let navs = navs
+            .iter()
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .collect::<Vec<_>>();
+        assert_eq!(expected.into_iter().map(|(fr, _)| fr).collect::<Vec<_>>(), navs);
     }
 
     #[test]
@@ -120,15 +118,46 @@ mod foo {
     }
 
     #[test]
-    fn test_resolve_crate_root() {
-        let (analysis, file_id) = fixture::file(
+    fn test_resolve_multi_parent_module() {
+        check(
             r#"
 //- /main.rs
 mod foo;
+  //^^^
+#[path = "foo.rs"]
+mod bar;
+  //^^^
 //- /foo.rs
 $0
 "#,
         );
+    }
+
+    #[test]
+    fn test_resolve_crate_root() {
+        let (analysis, file_id) = fixture::file(
+            r#"
+//- /foo.rs
+$0
+//- /main.rs
+mod foo;
+"#,
+        );
         assert_eq!(analysis.crate_for(file_id).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_resolve_multi_parent_crate() {
+        let (analysis, file_id) = fixture::file(
+            r#"
+//- /baz.rs
+$0
+//- /foo.rs crate:foo
+mod baz;
+//- /bar.rs crate:bar
+mod baz;
+"#,
+        );
+        assert_eq!(analysis.crate_for(file_id).unwrap().len(), 2);
     }
 }

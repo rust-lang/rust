@@ -15,6 +15,7 @@ rustc-hash = "1.1.0"
 either = "1.5.3"
 arrayvec = "0.5.1"
 itertools = "0.10.0"
+smallvec = "1.4.0"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
