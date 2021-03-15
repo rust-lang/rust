@@ -40,8 +40,8 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
         let const_ = match fx.monomorphize(constant.literal) {
-            ConstantSource::Ty(ct) => ct,
-            ConstantSource::Val(..) => continue,
+            ConstantKind::Ty(ct) => ct,
+            ConstantKind::Val(..) => continue,
         };
         match const_.val {
             ConstKind::Value(_) => {}
@@ -117,8 +117,8 @@ pub(crate) fn codegen_constant<'tcx>(
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let const_ = match fx.monomorphize(constant.literal) {
-        ConstantSource::Ty(ct) => ct,
-        ConstantSource::Val(val, ty) => return codegen_const_value(fx, val, ty),
+        ConstantKind::Ty(ct) => ct,
+        ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
@@ -427,10 +427,10 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     match operand {
         Operand::Copy(_) | Operand::Move(_) => None,
         Operand::Constant(const_) => match const_.literal {
-            ConstantSource::Ty(const_) => {
+            ConstantKind::Ty(const_) => {
                 fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val.try_to_value()
             }
-            ConstantSource::Val(val, _) => Some(val),
+            ConstantKind::Val(val, _) => Some(val),
         },
     }
 }
