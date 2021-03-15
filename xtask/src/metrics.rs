@@ -26,7 +26,8 @@ impl flags::Metrics {
         }
         {
             let _d = pushd("./target/rustc-perf")?;
-            cmd!("git reset --hard c52ee623e231e7690a93be88d943016968c1036b").run()?;
+            let revision = &metrics.perf_revision;
+            cmd!("git reset --hard {revision}").run()?;
         }
 
         let _env = pushenv("RA_METRICS", "1");
@@ -108,6 +109,7 @@ struct Metrics {
     host: Host,
     timestamp: SystemTime,
     revision: String,
+    perf_revision: String,
     metrics: BTreeMap<String, (u64, Unit)>,
 }
 
@@ -123,7 +125,8 @@ impl Metrics {
         let host = Host::new()?;
         let timestamp = SystemTime::now();
         let revision = cmd!("git rev-parse HEAD").read()?;
-        Ok(Metrics { host, timestamp, revision, metrics: BTreeMap::new() })
+        let perf_revision = "c52ee623e231e7690a93be88d943016968c1036b".into();
+        Ok(Metrics { host, timestamp, revision, perf_revision, metrics: BTreeMap::new() })
     }
 
     fn report(&mut self, name: &str, value: u64, unit: Unit) {
@@ -141,6 +144,7 @@ impl Metrics {
         let timestamp = self.timestamp.duration_since(UNIX_EPOCH).unwrap();
         obj.number("timestamp", timestamp.as_secs() as f64);
         obj.string("revision", &self.revision);
+        obj.string("perf_revision", &self.perf_revision);
         let mut metrics = obj.object("metrics");
         for (k, (value, unit)) in &self.metrics {
             metrics.array(k).number(*value as f64).string(unit);
