@@ -1,6 +1,6 @@
 //! Thread-local destructor
 //!
-//! Besides thread-local "keys" (pointer-sized non-adressable thread-local store
+//! Besides thread-local "keys" (pointer-sized non-addressable thread-local store
 //! with an associated destructor), many platforms also provide thread-local
 //! destructors that are not associated with any particular data. These are
 //! often more efficient.
