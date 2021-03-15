@@ -51,7 +51,8 @@ use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
-    method_resolution, to_assoc_type_id,
+    method_resolution::{self, TyFingerprint},
+    to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
     InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, Ty,
@@ -1500,13 +1501,20 @@ impl Impl {
         def_crates.iter().for_each(|&id| {
             all.extend(db.inherent_impls_in_crate(id).all_impls().map(Self::from).filter(filter))
         });
+        let fp = TyFingerprint::for_impl(&ty.value);
         for id in def_crates
             .iter()
             .flat_map(|&id| Crate { id }.reverse_dependencies(db))
             .map(|Crate { id }| id)
             .chain(def_crates.iter().copied())
         {
-            all.extend(db.trait_impls_in_crate(id).all_impls().map(Self::from).filter(filter));
+            match fp {
+                Some(fp) => all.extend(
+                    db.trait_impls_in_crate(id).for_self_ty(fp).map(Self::from).filter(filter),
+                ),
+                None => all
+                    .extend(db.trait_impls_in_crate(id).all_impls().map(Self::from).filter(filter)),
+            }
         }
         all
     }
