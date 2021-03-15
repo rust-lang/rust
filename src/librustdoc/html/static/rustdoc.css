@@ -136,11 +136,12 @@ h1, h2, h3, h4,
 #source-sidebar, #sidebar-toggle,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
-	font-family: "Fira Sans", Arial;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content ul.crate a.crate {
-	font: 16px/1.6 "Fira Sans";
+	font-size: 16px/1.6;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -482,7 +483,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", Arial;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -1301,7 +1302,7 @@ h4 > .notable-traits {
 
 .help-button {
 	right: 30px;
-	font-family: "Fira Sans", Arial;
+	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	font-size: 17px;
 }
