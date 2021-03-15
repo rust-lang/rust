@@ -461,12 +461,10 @@ impl Visitor<'tcx> for UsedLocals<'tcx> {
 
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _location: Location) {
         debug!("local: {:?} is_static: {:?}, ctx: {:?}", local, self.is_static, ctx);
-        // Do not count a local as used in `_local = <rhs>` if RHS is a ZST.
-        let store = matches!(ctx, PlaceContext::MutatingUse(MutatingUseContext::Store));
         // Do not count _0 as a used in `return;` if it is a ZST.
         let return_place = *local == RETURN_PLACE
             && matches!(ctx, PlaceContext::NonMutatingUse(visit::NonMutatingUseContext::Move));
-        if !self.is_static && (store || return_place) {
+        if !self.is_static && return_place {
             let ty = self.local_decls[*local].ty;
             let param_env_and = self.param_env.and(ty);
             if let Ok(layout) = self.tcx.layout_of(param_env_and) {
