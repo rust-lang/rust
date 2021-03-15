@@ -1486,7 +1486,7 @@ impl ModCollector<'_, '_> {
                 self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                     self.module_id,
                     MacroCallKind::FnLike(ast_id.ast_id),
-                    error.map(|e| e.to_string()).unwrap_or_else(|| String::from("macro error")),
+                    error.unwrap().to_string(),
                 ));
                 return;
             }
