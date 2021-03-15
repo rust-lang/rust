@@ -1836,7 +1836,7 @@ function defocusSearchBar() {
         function buildIndex(rawSearchIndex) {
             searchIndex = [];
             var searchWords = [];
-            var i;
+            var i, word;
             var currentIndex = 0;
             var id = 0;
 
@@ -1905,10 +1905,10 @@ function defocusSearchBar() {
                     // This object should have exactly the same set of fields as the "crateRow"
                     // object defined above.
                     if (typeof itemNames[i] === "string") {
-                        var word = itemNames[i].toLowerCase();
+                        word = itemNames[i].toLowerCase();
                         searchWords.push(word);
                     } else {
-                        var word = "";
+                        word = "";
                         searchWords.push("");
                     }
                     var normalizedName = word.indexOf("_") === -1
