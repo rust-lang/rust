@@ -1,7 +1,7 @@
 use crate::utils::{
-    is_trait_method, is_type_diagnostic_item, snippet, snippet_with_applicability, span_lint_and_help,
-    span_lint_and_sugg, strip_pat_refs,
+    is_trait_method, snippet, snippet_with_applicability, span_lint_and_help, span_lint_and_sugg, strip_pat_refs,
 };
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

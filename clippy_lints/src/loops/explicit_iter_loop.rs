@@ -1,12 +1,12 @@
 use super::EXPLICIT_ITER_LOOP;
-use crate::utils::{match_trait_method, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty, TyS};
 use rustc_span::sym;
 
-use crate::utils::{is_type_diagnostic_item, match_type, paths};
+use crate::utils::{match_trait_method, paths, snippet_with_applicability, span_lint_and_sugg};
 
 pub(super) fn check(cx: &LateContext<'_>, args: &[Expr<'_>], arg: &Expr<'_>, method_name: &str) {
     let should_lint = match method_name {

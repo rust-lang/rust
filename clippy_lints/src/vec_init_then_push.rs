@@ -1,6 +1,5 @@
-use crate::utils::{
-    is_type_diagnostic_item, match_def_path, path_to_local, path_to_local_id, paths, snippet, span_lint_and_sugg,
-};
+use crate::utils::{match_def_path, path_to_local, path_to_local_id, paths, snippet, span_lint_and_sugg};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

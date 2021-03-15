@@ -2,13 +2,13 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
-    expr_block, get_parent_expr, implements_trait, in_macro, indent_of, is_allowed, is_expn_of, is_refutable,
-    is_type_diagnostic_item, is_wild, match_qpath, match_type, meets_msrv, multispan_sugg, path_to_local,
-    path_to_local_id, peel_hir_pat_refs, peel_mid_ty_refs, peel_n_hir_expr_refs, remove_blocks, snippet, snippet_block,
-    snippet_opt, snippet_with_applicability, span_lint_and_help, span_lint_and_note, span_lint_and_sugg,
-    span_lint_and_then, strip_pat_refs,
+    expr_block, get_parent_expr, in_macro, indent_of, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath,
+    meets_msrv, multispan_sugg, path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs,
+    remove_blocks, snippet, snippet_block, snippet_opt, snippet_with_applicability, span_lint_and_help,
+    span_lint_and_note, span_lint_and_sugg, span_lint_and_then, strip_pat_refs,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

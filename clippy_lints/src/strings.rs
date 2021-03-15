@@ -1,3 +1,10 @@
+use crate::utils::SpanlessEq;
+use crate::utils::{
+    get_parent_expr, is_allowed, match_function_call, method_calls, paths, span_lint, span_lint_and_help,
+    span_lint_and_sugg,
+};
+use clippy_utils::ty::is_type_diagnostic_item;
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -6,14 +13,6 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
-
-use if_chain::if_chain;
-
-use crate::utils::SpanlessEq;
-use crate::utils::{
-    get_parent_expr, is_allowed, is_type_diagnostic_item, match_function_call, method_calls, paths, span_lint,
-    span_lint_and_help, span_lint_and_sugg,
-};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without

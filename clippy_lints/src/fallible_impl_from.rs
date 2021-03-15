@@ -1,4 +1,5 @@
-use crate::utils::{is_expn_of, is_type_diagnostic_item, match_panic_def_id, method_chain_args, span_lint_and_then};
+use crate::utils::{is_expn_of, match_panic_def_id, method_chain_args, span_lint_and_then};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};

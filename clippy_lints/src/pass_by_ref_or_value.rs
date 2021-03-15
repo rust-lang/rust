@@ -1,6 +1,7 @@
 use std::cmp;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use crate::utils::{is_self_ty, snippet, span_lint_and_sugg};
+use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;

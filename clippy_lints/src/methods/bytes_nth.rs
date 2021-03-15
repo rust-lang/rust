@@ -1,4 +1,5 @@
-use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};

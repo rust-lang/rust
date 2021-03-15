@@ -1,4 +1,5 @@
-use crate::utils::{is_type_lang_item, match_function_call, paths, span_lint_and_help};
+use crate::utils::{match_function_call, paths, span_lint_and_help};
+use clippy_utils::ty::is_type_lang_item;
 use rustc_hir::{lang_items, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

@@ -1,7 +1,6 @@
 use crate::methods::derefs_to_slice;
-use crate::utils::{
-    get_parent_expr, is_type_diagnostic_item, match_type, paths, snippet_with_applicability, span_lint_and_sugg,
-};
+use crate::utils::{get_parent_expr, paths, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

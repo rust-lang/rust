@@ -1,6 +1,5 @@
-use crate::utils::{
-    get_parent_expr, match_trait_method, paths, snippet_with_applicability, span_lint_and_sugg, walk_ptrs_ty_depth,
-};
+use crate::utils::{get_parent_expr, match_trait_method, paths, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::ty::walk_ptrs_ty_depth;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

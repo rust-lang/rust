@@ -1,6 +1,7 @@
 use crate::consts::constant_simple;
 use crate::utils;
 use crate::utils::{path_to_local_id, sugg};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind};
@@ -96,9 +97,9 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     if_chain! {
         if let ExprKind::Match(scrutinee, match_arms, _) = expr.kind;
         let ty = cx.typeck_results().expr_ty(scrutinee);
-        if let Some(case) = if utils::is_type_diagnostic_item(cx, ty, sym::option_type) {
+        if let Some(case) = if is_type_diagnostic_item(cx, ty, sym::option_type) {
             Some(Case::Option)
-        } else if utils::is_type_diagnostic_item(cx, ty, sym::result_type) {
+        } else if is_type_diagnostic_item(cx, ty, sym::result_type) {
             Some(Case::Result)
         } else {
             None

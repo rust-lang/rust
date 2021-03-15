@@ -1,8 +1,9 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_parent_expr, is_type_diagnostic_item, match_def_path, match_trait_method, paths, snippet,
-    snippet_with_macro_callsite, span_lint_and_help, span_lint_and_sugg,
+    get_parent_expr, match_def_path, match_trait_method, paths, snippet, snippet_with_macro_callsite,
+    span_lint_and_help, span_lint_and_sugg,
 };
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
