@@ -157,10 +157,9 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self
     }
     /// Used by RLS.
-    pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self
-    {
-           self.emitter = emitter;
-           self
+    pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
+        self.emitter = emitter;
+        self
     }
     /// Used by RLS.
     pub fn set_file_loader(

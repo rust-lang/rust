@@ -236,8 +236,6 @@ cfg_if! {
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
 
-        pub use crossbeam_utils::atomic::AtomicCell;
-
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 

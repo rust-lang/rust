@@ -146,7 +146,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
-pub(crate) struct Instantiate {}
+pub(crate) struct Instantiate;
 
 pub(crate) struct Delegate;
 
@@ -222,7 +222,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         // Hack: we only need this so that `types_escaping_snapshot`
         // can see what has been unified; see the Delegate impl for
         // more details.
-        self.undo_log.push(Instantiate {});
+        self.undo_log.push(Instantiate);
     }
 
     /// Creates a new type variable.

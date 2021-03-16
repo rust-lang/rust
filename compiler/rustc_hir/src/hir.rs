@@ -2206,7 +2206,7 @@ impl PrimTy {
         Self::Str,
     ];
 
-    /// [`PrimTy::name`], but returns a &str instead of a symbol.
+    /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
     ///
     /// Used by rustdoc.
     pub fn name_str(self) -> &'static str {

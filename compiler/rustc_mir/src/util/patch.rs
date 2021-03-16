@@ -13,7 +13,6 @@ pub struct MirPatch<'tcx> {
     new_locals: Vec<LocalDecl<'tcx>>,
     resume_block: BasicBlock,
     next_local: usize,
-    make_nop: Vec<Location>,
 }
 
 impl<'tcx> MirPatch<'tcx> {
@@ -25,7 +24,6 @@ impl<'tcx> MirPatch<'tcx> {
             new_locals: vec![],
             next_local: body.local_decls.len(),
             resume_block: START_BLOCK,
-            make_nop: vec![],
         };
 
         // make sure the MIR we create has a resume block. It is
@@ -118,10 +116,6 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub fn apply(self, body: &mut Body<'tcx>) {
-        debug!("MirPatch: make nops at: {:?}", self.make_nop);
-        for loc in self.make_nop {
-            body.make_statement_nop(loc);
-        }
         debug!(
             "MirPatch: {:?} new temps, starting from index {}: {:?}",
             self.new_locals.len(),

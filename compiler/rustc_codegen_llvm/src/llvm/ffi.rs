@@ -703,6 +703,74 @@ pub mod coverageinfo {
                 kind: RegionKind::CodeRegion,
             }
         }
+
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn expansion_region(
+            file_id: u32,
+            expanded_file_id: u32,
+            start_line: u32,
+            start_col: u32,
+            end_line: u32,
+            end_col: u32,
+        ) -> Self {
+            Self {
+                counter: coverage_map::Counter::zero(),
+                file_id,
+                expanded_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+                kind: RegionKind::ExpansionRegion,
+            }
+        }
+
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn skipped_region(
+            file_id: u32,
+            start_line: u32,
+            start_col: u32,
+            end_line: u32,
+            end_col: u32,
+        ) -> Self {
+            Self {
+                counter: coverage_map::Counter::zero(),
+                file_id,
+                expanded_file_id: 0,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+                kind: RegionKind::SkippedRegion,
+            }
+        }
+
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn gap_region(
+            counter: coverage_map::Counter,
+            file_id: u32,
+            start_line: u32,
+            start_col: u32,
+            end_line: u32,
+            end_col: u32,
+        ) -> Self {
+            Self {
+                counter,
+                file_id,
+                expanded_file_id: 0,
+                start_line,
+                start_col,
+                end_line,
+                end_col: ((1 as u32) << 31) | end_col,
+                kind: RegionKind::GapRegion,
+            }
+        }
     }
 }
 

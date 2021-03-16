@@ -471,7 +471,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ast_json, true);
     untracked!(ast_json_noexpand, true);
     untracked!(borrowck, String::from("other"));
-    untracked!(borrowck_stats, true);
     untracked!(deduplicate_diagnostics, true);
     untracked!(dep_tasks, true);
     untracked!(dont_buffer_diagnostics, true);
