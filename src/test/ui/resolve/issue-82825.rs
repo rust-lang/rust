@@ -2,7 +2,6 @@
 
 trait Trait {
     fn static_call(&self) where Self: Sized;
-    
     fn maybe_dynamic_call(&self) {
         unimplemented!("unsupported maybe_dynamic_call");
     }
