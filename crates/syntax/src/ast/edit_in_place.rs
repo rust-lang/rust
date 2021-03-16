@@ -8,7 +8,7 @@ use parser::T;
 use crate::{
     ast,
     ted::{self, Position},
-    AstNode, Direction, SyntaxKind,
+    AstNode, Direction, SyntaxElement,
 };
 
 use super::NameOwner;
@@ -27,7 +27,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position, true)
+            create_where_clause(position)
         }
         self.where_clause().unwrap()
     }
@@ -41,7 +41,7 @@ impl GenericParamsOwnerEdit for ast::Impl {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position, false)
+            create_where_clause(position)
         }
         self.where_clause().unwrap()
     }
@@ -55,7 +55,7 @@ impl GenericParamsOwnerEdit for ast::Trait {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position, false)
+            create_where_clause(position)
         }
         self.where_clause().unwrap()
     }
@@ -77,7 +77,7 @@ impl GenericParamsOwnerEdit for ast::Struct {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position, true)
+            create_where_clause(position)
         }
         self.where_clause().unwrap()
     }
@@ -93,21 +93,16 @@ impl GenericParamsOwnerEdit for ast::Enum {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position, true)
+            create_where_clause(position)
         }
         self.where_clause().unwrap()
     }
 }
 
-fn create_where_clause(position: Position, after: bool) {
-    let mut elements = vec![make::where_clause(empty()).clone_for_update().syntax().clone().into()];
-    let ws = make::tokens::single_space().into();
-    if after {
-        elements.insert(0, ws)
-    } else {
-        elements.push(ws)
-    }
-    ted::insert_all(position, elements);
+fn create_where_clause(position: Position) {
+    let where_clause: SyntaxElement =
+        make::where_clause(empty()).clone_for_update().syntax().clone().into();
+    ted::insert_ws(position, where_clause);
 }
 
 impl ast::WhereClause {
@@ -117,12 +112,7 @@ impl ast::WhereClause {
                 ted::append_child(self.syntax().clone(), make::token(T![,]));
             }
         }
-        if self.syntax().children_with_tokens().last().map(|it| it.kind())
-            != Some(SyntaxKind::WHITESPACE)
-        {
-            ted::append_child(self.syntax().clone(), make::tokens::single_space());
-        }
-        ted::append_child(self.syntax().clone(), predicate.syntax().clone())
+        ted::append_child_ws(self.syntax().clone(), predicate.syntax().clone())
     }
 }
 
