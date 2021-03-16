@@ -131,9 +131,9 @@ export interface OpenCargoTomlParams {
 export const moveItem = new lc.RequestType<MoveItemParams, lc.TextDocumentEdit | void, void>("experimental/moveItem");
 
 export interface MoveItemParams {
-    textDocument: lc.TextDocumentIdentifier,
-    range: lc.Range,
-    direction: Direction
+    textDocument: lc.TextDocumentIdentifier;
+    range: lc.Range;
+    direction: Direction;
 }
 
 export const enum Direction {

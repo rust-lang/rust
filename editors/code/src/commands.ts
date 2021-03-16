@@ -154,7 +154,7 @@ export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
             direction
         });
 
-        if(!edit) return;
+        if (!edit) return;
 
         await editor.edit((builder) => {
             client.protocol2CodeConverter.asTextEdits(edit.edits).forEach((edit: any) => {
