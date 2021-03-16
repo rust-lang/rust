@@ -1,6 +1,7 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
 use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
@@ -48,7 +49,7 @@ fn load_data(
     report_incremental_info: bool,
     path: &Path,
     nightly_build: bool,
-) -> LoadResult<(Vec<u8>, usize)> {
+) -> LoadResult<(Mmap, usize)> {
     match file_format::read_file(report_incremental_info, path, nightly_build) {
         Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
         Ok(None) => {

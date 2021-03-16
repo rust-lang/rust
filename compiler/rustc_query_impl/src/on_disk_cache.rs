@@ -1,5 +1,6 @@
 use crate::QueryCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, StableCrateId, LOCAL_CRATE};
@@ -42,7 +43,7 @@ const TAG_EXPN_DATA: u8 = 1;
 /// any side effects that have been emitted during a query.
 pub struct OnDiskCache<'sess> {
     // The complete cache data in serialized form.
-    serialized_data: Vec<u8>,
+    serialized_data: Option<Mmap>,
 
     // Collects all `QuerySideEffects` created during the current compilation
     // session.
@@ -182,7 +183,8 @@ impl EncodedSourceFileId {
 }
 
 impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
-    fn new(sess: &'sess Session, data: Vec<u8>, start_pos: usize) -> Self {
+    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
+    fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Self {
         debug_assert!(sess.opts.incremental.is_some());
 
         // Wrap in a scope so we can borrow `data`.
@@ -204,7 +206,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         };
 
         Self {
-            serialized_data: data,
+            serialized_data: Some(data),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
@@ -225,7 +227,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
     fn new_empty(source_map: &'sess SourceMap) -> Self {
         Self {
-            serialized_data: Vec::new(),
+            serialized_data: None,
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
             cnum_map: OnceCell::new(),
@@ -577,7 +579,10 @@ impl<'sess> OnDiskCache<'sess> {
 
         let mut decoder = CacheDecoder {
             tcx,
-            opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
+            opaque: opaque::Decoder::new(
+                self.serialized_data.as_deref().unwrap_or(&[]),
+                pos.to_usize(),
+            ),
             source_map: self.source_map,
             cnum_map,
             file_index_to_file: &self.file_index_to_file,
