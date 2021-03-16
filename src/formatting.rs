@@ -92,7 +92,7 @@ fn format_project<T: FormatHandler>(
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
     let files = modules::ModResolver::new(
         &context.parse_session,
-        directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaMod),
+        directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaBlock),
         !input_is_stdin && !config.skip_children(),
     )
     .visit_crate(&krate)?;

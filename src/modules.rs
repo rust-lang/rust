@@ -13,7 +13,7 @@ use crate::attr::MetaVisitor;
 use crate::config::FileName;
 use crate::items::is_mod_decl;
 use crate::syntux::parser::{
-    Directory, DirectoryOwnership, ModulePathSuccess, Parser, ParserError,
+    Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
 use crate::syntux::session::ParseSess;
 use crate::utils::contains_skip;
@@ -60,6 +60,9 @@ impl<'a> AstLike for Module<'a> {
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<ast::Attribute>)) {
         f(&mut self.inner_attr)
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyTokenStream>> {
+        unimplemented!()
     }
 }
 
@@ -331,7 +334,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     ) -> Result<Option<SubModKind<'c, 'ast>>, ModuleResolutionError> {
         let relative = match self.directory.ownership {
             DirectoryOwnership::Owned { relative } => relative,
-            DirectoryOwnership::UnownedViaBlock | DirectoryOwnership::UnownedViaMod => None,
+            DirectoryOwnership::UnownedViaBlock => None,
         };
         if let Some(path) = Parser::submod_path_from_attr(attrs, &self.directory.path) {
             if self.parse_sess.is_file_parsed(&path) {
@@ -366,31 +369,32 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         match self
             .parse_sess
             .default_submod_path(mod_name, relative, &self.directory.path)
-            .result
         {
             Ok(ModulePathSuccess {
-                path, ownership, ..
+                file_path,
+                dir_ownership,
+                ..
             }) => {
                 let outside_mods_empty = mods_outside_ast.is_empty();
                 let should_insert = !mods_outside_ast
                     .iter()
-                    .any(|(outside_path, _, _)| outside_path == &path);
-                if self.parse_sess.is_file_parsed(&path) {
+                    .any(|(outside_path, _, _)| outside_path == &file_path);
+                if self.parse_sess.is_file_parsed(&file_path) {
                     if outside_mods_empty {
                         return Ok(None);
                     } else {
                         if should_insert {
-                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                            mods_outside_ast.push((file_path, dir_ownership, sub_mod.clone()));
                         }
                         return Ok(Some(SubModKind::MultiExternal(mods_outside_ast)));
                     }
                 }
-                match Parser::parse_file_as_module(self.parse_sess, &path, sub_mod.span) {
+                match Parser::parse_file_as_module(self.parse_sess, &file_path, sub_mod.span) {
                     Ok((ref attrs, _, _)) if contains_skip(attrs) => Ok(None),
                     Ok((attrs, items, span)) if outside_mods_empty => {
                         Ok(Some(SubModKind::External(
-                            path,
-                            ownership,
+                            file_path,
+                            dir_ownership,
                             Module::new(
                                 span,
                                 Some(Cow::Owned(ast::ModKind::Unloaded)),
@@ -401,8 +405,8 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                     }
                     Ok((attrs, items, span)) => {
                         mods_outside_ast.push((
-                            path.clone(),
-                            ownership,
+                            file_path.clone(),
+                            dir_ownership,
                             Module::new(
                                 span,
                                 Some(Cow::Owned(ast::ModKind::Unloaded)),
@@ -411,39 +415,38 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                             ),
                         ));
                         if should_insert {
-                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                            mods_outside_ast.push((file_path, dir_ownership, sub_mod.clone()));
                         }
                         Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
                     }
                     Err(ParserError::ParseError) => Err(ModuleResolutionError {
                         module: mod_name.to_string(),
-                        kind: ModuleResolutionErrorKind::ParseError { file: path },
+                        kind: ModuleResolutionErrorKind::ParseError { file: file_path },
                     }),
                     Err(..) if outside_mods_empty => Err(ModuleResolutionError {
                         module: mod_name.to_string(),
-                        kind: ModuleResolutionErrorKind::NotFound { file: path },
+                        kind: ModuleResolutionErrorKind::NotFound { file: file_path },
                     }),
                     Err(..) => {
                         if should_insert {
-                            mods_outside_ast.push((path, ownership, sub_mod.clone()));
+                            mods_outside_ast.push((file_path, dir_ownership, sub_mod.clone()));
                         }
                         Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
                     }
                 }
             }
-            Err(mut e) if !mods_outside_ast.is_empty() => {
-                e.cancel();
+            Err(mod_err) if !mods_outside_ast.is_empty() => {
+                if let ModError::ParserError(mut e) = mod_err {
+                    e.cancel();
+                }
                 Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
             }
-            Err(mut e) => {
-                e.cancel();
-                Err(ModuleResolutionError {
-                    module: mod_name.to_string(),
-                    kind: ModuleResolutionErrorKind::NotFound {
-                        file: self.directory.path.clone(),
-                    },
-                })
-            }
+            Err(_) => Err(ModuleResolutionError {
+                module: mod_name.to_string(),
+                kind: ModuleResolutionErrorKind::NotFound {
+                    file: self.directory.path.clone(),
+                },
+            }),
         }
     }
 

@@ -14,8 +14,9 @@ use crate::attr::first_attr_value_str_by_name;
 use crate::syntux::session::ParseSess;
 use crate::Input;
 
-pub(crate) type DirectoryOwnership = rustc_expand::module::DirectoryOwnership;
+pub(crate) type DirectoryOwnership = rustc_expand::module::DirOwnership;
 pub(crate) type ModulePathSuccess = rustc_expand::module::ModulePathSuccess;
+pub(crate) type ModError<'a> = rustc_expand::module::ModError<'a>;
 
 #[derive(Clone)]
 pub(crate) struct Directory {

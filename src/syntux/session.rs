@@ -150,14 +150,8 @@ impl ParseSess {
         id: symbol::Ident,
         relative: Option<symbol::Ident>,
         dir_path: &Path,
-    ) -> rustc_expand::module::ModulePath<'_> {
-        rustc_expand::module::default_submod_path(
-            &self.parse_sess,
-            id,
-            rustc_span::DUMMY_SP,
-            relative,
-            dir_path,
-        )
+    ) -> Result<rustc_expand::module::ModulePathSuccess, rustc_expand::module::ModError<'_>> {
+        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path)
     }
 
     pub(crate) fn is_file_parsed(&self, path: &Path) -> bool {
