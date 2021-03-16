@@ -266,7 +266,7 @@ a {
 
 .stab.portability > code {
 	color: #e6e1cf;
-	background-color: transparent;
+	background: none;
 }
 
 #help > div {
