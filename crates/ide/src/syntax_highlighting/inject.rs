@@ -4,7 +4,7 @@ use either::Either;
 use hir::{HasAttrs, Semantics};
 use ide_db::call_info::ActiveParameter;
 use syntax::{
-    ast::{self, AstNode, AttrsOwner},
+    ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
     match_ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
@@ -85,28 +85,57 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2021",
 ];
 
+// Basically an owned dyn AttrsOwner without extra Boxing
+struct AttrsOwnerNode {
+    node: SyntaxNode,
+}
+
+impl AttrsOwnerNode {
+    fn new<N: DocCommentsOwner>(node: N) -> Self {
+        AttrsOwnerNode { node: node.syntax().clone() }
+    }
+}
+
+impl AttrsOwner for AttrsOwnerNode {}
+impl AstNode for AttrsOwnerNode {
+    fn can_cast(_: syntax::SyntaxKind) -> bool
+    where
+        Self: Sized,
+    {
+        false
+    }
+    fn cast(_: SyntaxNode) -> Option<Self>
+    where
+        Self: Sized,
+    {
+        None
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.node
+    }
+}
+
 fn doc_attributes<'node>(
     sema: &Semantics<RootDatabase>,
     node: &'node SyntaxNode,
-) -> Option<(Box<dyn AttrsOwner>, hir::Attrs)> {
+) -> Option<(AttrsOwnerNode, hir::Attrs)> {
     match_ast! {
         match node {
-            ast::SourceFile(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Fn(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Struct(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Union(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::TupleField(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Enum(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Variant(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Trait(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Module(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Static(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Const(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::TypeAlias(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::Impl(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::MacroRules(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
-            ast::MacroRules(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::SourceFile(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Fn(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Struct(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Union(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::TupleField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Enum(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Variant(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Trait(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Module(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Static(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Const(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::TypeAlias(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::Impl(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::MacroRules(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
             // ast::MacroDef(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => return None
@@ -124,7 +153,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     if attributes.docs().map_or(true, |docs| !String::from(docs).contains(RUSTDOC_FENCE)) {
         return;
     }
-    let doc_comments = attributes.by_key("doc").attrs().map(|attr| attr.to_src(&*owner));
+    let doc_comments = attributes.by_key("doc").attrs().map(|attr| attr.to_src(&owner));
 
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");

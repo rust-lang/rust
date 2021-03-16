@@ -72,7 +72,7 @@ pub trait AttrsOwner: AstNode {
     }
 }
 
-pub trait DocCommentsOwner: AstNode {
+pub trait DocCommentsOwner: AttrsOwner {
     fn doc_comments(&self) -> CommentIter {
         CommentIter { iter: self.syntax().children_with_tokens() }
     }
