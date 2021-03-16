@@ -39,7 +39,7 @@
       bb1: {
           StorageDead(_5);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:11: 8:12
           StorageDead(_4);                 // scope 1 at $DIR/const_prop_fails_gracefully.rs:8:12: 8:13
-          _0 = const ();                   // scope 0 at $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
+          nop;                             // scope 0 at $DIR/const_prop_fails_gracefully.rs:5:11: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/const_prop_fails_gracefully.rs:9:2: 9:2
       }

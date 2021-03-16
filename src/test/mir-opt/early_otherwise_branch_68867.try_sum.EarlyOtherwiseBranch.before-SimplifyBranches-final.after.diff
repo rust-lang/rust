@@ -98,7 +98,7 @@
 -     bb2: {
 +         StorageDead(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:25: 27:27
           StorageLive(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:25: 27:27
-          ((_0 as Err).0: ()) = const ();  // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:21: 27:28
+-         nop;                             // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:21: 27:28
           discriminant(_0) = 1;            // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:21: 27:28
           StorageDead(_33);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:27: 27:28
 -         StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:28:6: 28:7

@@ -29,7 +29,7 @@
       }
   
       bb2: {
-          _0 = const ();                   // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
+          nop;                             // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
           StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:14:5: 14:6
           return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
       }

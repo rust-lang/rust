@@ -107,7 +107,7 @@
           StorageDead(_14);                // scope 1 at $DIR/issue_76432.rs:9:84: 9:85
           StorageDead(_13);                // scope 1 at $DIR/issue_76432.rs:9:84: 9:85
           StorageDead(_9);                 // scope 1 at $DIR/issue_76432.rs:11:6: 11:7
-          _0 = const ();                   // scope 0 at $DIR/issue_76432.rs:6:44: 12:2
+          nop;                             // scope 0 at $DIR/issue_76432.rs:6:44: 12:2
           StorageDead(_5);                 // scope 0 at $DIR/issue_76432.rs:12:1: 12:2
           StorageDead(_2);                 // scope 0 at $DIR/issue_76432.rs:12:1: 12:2
           return;                          // scope 0 at $DIR/issue_76432.rs:12:2: 12:2

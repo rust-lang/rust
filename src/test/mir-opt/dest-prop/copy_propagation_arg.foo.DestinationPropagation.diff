@@ -25,7 +25,7 @@
 -         StorageDead(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:11:16: 11:17
 +         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:11:5: 11:17
 +         nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:11:16: 11:17
-          _0 = const ();                   // scope 0 at $DIR/copy_propagation_arg.rs:9:19: 12:2
+          nop;                             // scope 0 at $DIR/copy_propagation_arg.rs:9:19: 12:2
           return;                          // scope 0 at $DIR/copy_propagation_arg.rs:12:2: 12:2
       }
   }
