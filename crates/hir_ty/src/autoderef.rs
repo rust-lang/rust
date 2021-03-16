@@ -15,7 +15,7 @@ use crate::{
     to_assoc_type_id,
     traits::{InEnvironment, Solution},
     utils::generics,
-    BoundVar, Canonical, DebruijnIndex, Interner, Obligation, Substs, TraitRef, Ty, TyKind,
+    BoundVar, Canonical, DebruijnIndex, Interner, Obligation, Substitution, TraitRef, Ty, TyKind,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
@@ -65,7 +65,7 @@ fn deref_by_trait(
     // FIXME make the Canonical / bound var handling nicer
 
     let parameters =
-        Substs::build_for_generics(&generic_params).push(ty.value.value.clone()).build();
+        Substitution::build_for_generics(&generic_params).push(ty.value.value.clone()).build();
 
     // Check that the type implements Deref at all
     let trait_ref = TraitRef { trait_: deref_trait, substs: parameters.clone() };

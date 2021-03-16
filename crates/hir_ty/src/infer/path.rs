@@ -9,7 +9,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use crate::{method_resolution, Interner, Substs, Ty, TyKind, ValueTyDefId};
+use crate::{method_resolution, Interner, Substitution, Ty, TyKind, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -79,7 +79,7 @@ impl<'a> InferenceContext<'a> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = Substs::type_params_for_generics(self.db, &generics);
+                let substs = Substitution::type_params_for_generics(self.db, &generics);
                 let ty = self.db.impl_self_ty(impl_id).subst(&substs);
                 if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     let ty = self.db.value_ty(struct_id.into()).subst(&substs);
@@ -94,10 +94,10 @@ impl<'a> InferenceContext<'a> {
 
         let ty = self.db.value_ty(typable);
         // self_subst is just for the parent
-        let parent_substs = self_subst.unwrap_or_else(Substs::empty);
+        let parent_substs = self_subst.unwrap_or_else(Substitution::empty);
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let substs = ctx.substs_from_path(path, typable, true);
-        let full_substs = Substs::builder(substs.len())
+        let full_substs = Substitution::builder(substs.len())
             .use_parent_substs(&parent_substs)
             .fill(substs.0[parent_substs.len()..].iter().cloned())
             .build();
@@ -111,7 +111,7 @@ impl<'a> InferenceContext<'a> {
         path: &Path,
         remaining_index: usize,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substs>)> {
+    ) -> Option<(ValueNs, Option<Substitution>)> {
         assert!(remaining_index < path.segments().len());
         // there may be more intermediate segments between the resolved one and
         // the end. Only the last segment needs to be resolved to a value; from
@@ -164,7 +164,7 @@ impl<'a> InferenceContext<'a> {
         trait_ref: TraitRef,
         segment: PathSegment<'_>,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substs>)> {
+    ) -> Option<(ValueNs, Option<Substitution>)> {
         let trait_ = trait_ref.trait_;
         let item =
             self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id)).find_map(|item| {
@@ -208,7 +208,7 @@ impl<'a> InferenceContext<'a> {
         ty: Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substs>)> {
+    ) -> Option<(ValueNs, Option<Substitution>)> {
         if let TyKind::Unknown = ty.interned(&Interner) {
             return None;
         }
@@ -241,7 +241,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let substs = match container {
                     AssocContainerId::ImplId(impl_id) => {
-                        let impl_substs = Substs::build_for_def(self.db, impl_id)
+                        let impl_substs = Substitution::build_for_def(self.db, impl_id)
                             .fill(iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
@@ -250,7 +250,7 @@ impl<'a> InferenceContext<'a> {
                     }
                     AssocContainerId::TraitId(trait_) => {
                         // we're picking this method
-                        let trait_substs = Substs::build_for_def(self.db, trait_)
+                        let trait_substs = Substitution::build_for_def(self.db, trait_)
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
@@ -274,7 +274,7 @@ impl<'a> InferenceContext<'a> {
         ty: &Ty,
         name: &Name,
         id: ExprOrPatId,
-    ) -> Option<(ValueNs, Option<Substs>)> {
+    ) -> Option<(ValueNs, Option<Substitution>)> {
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

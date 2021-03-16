@@ -21,7 +21,7 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     utils::all_super_traits,
     AdtId, Canonical, DebruijnIndex, FnPointer, FnSig, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substs, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
+    Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyKind, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -672,10 +672,10 @@ pub(crate) fn inherent_impl_substs(
     db: &dyn HirDatabase,
     impl_id: ImplId,
     self_ty: &Canonical<Ty>,
-) -> Option<Substs> {
+) -> Option<Substitution> {
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
-    let vars = Substs::build_for_def(db, impl_id)
+    let vars = Substitution::build_for_def(db, impl_id)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty.kinds.len())
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
@@ -693,7 +693,7 @@ pub(crate) fn inherent_impl_substs(
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
 /// num_vars_to_keep) by `TyKind::Unknown`.
-fn fallback_bound_vars(s: Substs, num_vars_to_keep: usize) -> Substs {
+fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution {
     s.fold_binders(
         &mut |ty, binders| {
             if let TyKind::BoundVar(bound) = ty.interned(&Interner) {
@@ -716,13 +716,13 @@ fn transform_receiver_ty(
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
     let substs = match function_id.lookup(db.upcast()).container {
-        AssocContainerId::TraitId(_) => Substs::build_for_def(db, function_id)
+        AssocContainerId::TraitId(_) => Substitution::build_for_def(db, function_id)
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
         AssocContainerId::ImplId(impl_id) => {
             let impl_substs = inherent_impl_substs(db, impl_id, &self_ty)?;
-            Substs::build_for_def(db, function_id)
+            Substitution::build_for_def(db, function_id)
                 .use_parent_substs(&impl_substs)
                 .fill_with_unknown()
                 .build()
@@ -768,7 +768,7 @@ fn generic_implements_goal(
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {
     let mut kinds = self_ty.kinds.to_vec();
-    let substs = super::Substs::build_for_def(db, trait_)
+    let substs = super::Substitution::build_for_def(db, trait_)
         .push(self_ty.value)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();

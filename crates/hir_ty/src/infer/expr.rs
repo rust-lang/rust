@@ -21,8 +21,8 @@ use crate::{
     to_assoc_type_id,
     traits::{chalk::from_chalk, FnTrait, InEnvironment},
     utils::{generics, variant_data, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, Rawness, Scalar, Substs,
-    TraitRef, Ty, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, Interner, Obligation, Rawness, Scalar,
+    Substitution, TraitRef, Ty, TyKind,
 };
 
 use super::{
@@ -77,7 +77,7 @@ impl<'a> InferenceContext<'a> {
             return None;
         }
 
-        let mut param_builder = Substs::builder(num_args);
+        let mut param_builder = Substitution::builder(num_args);
         let mut arg_tys = vec![];
         for _ in 0..num_args {
             let arg = self.table.new_type_var();
@@ -87,7 +87,7 @@ impl<'a> InferenceContext<'a> {
         let parameters = param_builder.build();
         let arg_ty = TyKind::Tuple(num_args, parameters).intern(&Interner);
         let substs =
-            Substs::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
+            Substitution::build_for_generics(&generic_params).push(ty.clone()).push(arg_ty).build();
 
         let trait_env = Arc::clone(&self.trait_env);
         let implements_fn_trait =
@@ -181,7 +181,7 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr(*body, &Expectation::none());
                 let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
                 let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-                TyKind::OpaqueType(opaque_ty_id, Substs::single(inner_ty)).intern(&Interner)
+                TyKind::OpaqueType(opaque_ty_id, Substitution::single(inner_ty)).intern(&Interner)
             }
             Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
@@ -262,12 +262,12 @@ impl<'a> InferenceContext<'a> {
                 let sig_ty = TyKind::Function(FnPointer {
                     num_args: sig_tys.len() - 1,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
-                    substs: Substs(sig_tys.clone().into()),
+                    substs: Substitution(sig_tys.clone().into()),
                 })
                 .intern(&Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                 let closure_ty =
-                    TyKind::Closure(closure_id, Substs::single(sig_ty)).intern(&Interner);
+                    TyKind::Closure(closure_id, Substitution::single(sig_ty)).intern(&Interner);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -402,7 +402,7 @@ impl<'a> InferenceContext<'a> {
 
                 self.unify(&ty, &expected.ty);
 
-                let substs = ty.substs().cloned().unwrap_or_else(Substs::empty);
+                let substs = ty.substs().cloned().unwrap_or_else(Substitution::empty);
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| variant_data(self.db.upcast(), it));
                 for field in fields.iter() {
@@ -511,7 +511,8 @@ impl<'a> InferenceContext<'a> {
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
-                    let mut sb = Substs::builder(generics(self.db.upcast(), box_.into()).len());
+                    let mut sb =
+                        Substitution::builder(generics(self.db.upcast(), box_.into()).len());
                     sb = sb.push(inner_ty);
                     match self.db.generic_defaults(box_.into()).as_ref() {
                         [_, alloc_ty, ..] if !alloc_ty.value.is_unknown() => {
@@ -610,31 +611,31 @@ impl<'a> InferenceContext<'a> {
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
                 match (range_type, lhs_ty, rhs_ty) {
                     (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
-                        Some(adt) => Ty::adt_ty(adt, Substs::empty()),
+                        Some(adt) => Ty::adt_ty(adt, Substitution::empty()),
                         None => self.err_ty(),
                     },
                     (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
-                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, None, Some(ty)) => {
                         match self.resolve_range_to_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
+                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
-                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, Some(_), Some(ty)) => {
                         match self.resolve_range_inclusive() {
-                            Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
+                            Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
                             None => self.err_ty(),
                         }
                     }
                     (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
-                        Some(adt) => Ty::adt_ty(adt, Substs::single(ty)),
+                        Some(adt) => Ty::adt_ty(adt, Substitution::single(ty)),
                         None => self.err_ty(),
                     },
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
@@ -681,7 +682,7 @@ impl<'a> InferenceContext<'a> {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
-                TyKind::Tuple(tys.len(), Substs(tys.into())).intern(&Interner)
+                TyKind::Tuple(tys.len(), Substitution(tys.into())).intern(&Interner)
             }
             Expr::Array(array) => {
                 let elem_ty = match expected.ty.interned(&Interner) {
@@ -887,7 +888,7 @@ impl<'a> InferenceContext<'a> {
         def_generics: Option<Generics>,
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
-    ) -> Substs {
+    ) -> Substitution {
         let (parent_params, self_params, type_params, impl_trait_params) =
             def_generics.as_ref().map_or((0, 0, 0, 0), |g| g.provenance_split());
         assert_eq!(self_params, 0); // method shouldn't have another Self param
@@ -926,7 +927,7 @@ impl<'a> InferenceContext<'a> {
             substs.push(self.err_ty());
         }
         assert_eq!(substs.len(), total_len);
-        Substs(substs.into())
+        Substitution(substs.into())
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {

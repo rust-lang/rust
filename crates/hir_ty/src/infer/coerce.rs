@@ -7,7 +7,9 @@
 use chalk_ir::{Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, traits::Solution, Interner, Obligation, Substs, TraitRef, Ty, TyKind};
+use crate::{
+    autoderef, traits::Solution, Interner, Obligation, Substitution, TraitRef, Ty, TyKind,
+};
 
 use super::{InEnvironment, InferenceContext};
 
@@ -134,7 +136,7 @@ impl<'a> InferenceContext<'a> {
             return None;
         }
 
-        let substs = Substs::build_for_generics(&generic_params)
+        let substs = Substitution::build_for_generics(&generic_params)
             .push(from_ty.clone())
             .push(to_ty.clone())
             .build();
