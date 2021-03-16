@@ -13,6 +13,7 @@ env:
   CARGO_NET_RETRY: 10
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTUP_MAX_RETRIES: 10
+  FETCH_DEPTH: 200
 
 jobs:
   dist-x86_64-pc-windows-msvc:
@@ -24,6 +25,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     # We need to disable the existing toolchain to avoid updating rust-docs
     # which takes a long time. The fastest way to do this is to rename the
@@ -57,6 +60,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Rename existing rust toolchain
       run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
@@ -87,6 +92,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -139,6 +146,8 @@ jobs:
 
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Dist
       run: cargo xtask dist
@@ -159,6 +168,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -193,6 +204,8 @@ jobs:
 
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -223,6 +236,8 @@ jobs:
 
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
@@ -259,6 +274,8 @@ jobs:
 
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: ${{ env.FETCH_DEPTH }}
 
     - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
     - run: 'echo "HEAD_SHA: $HEAD_SHA"'
