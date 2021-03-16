@@ -4,7 +4,7 @@ use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::{Lock, Lrc};
+use rustc_data_structures::sync::Lock;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize};
 use rustc_serialize::{Decodable, Decoder, Encodable};
@@ -125,66 +125,80 @@ struct Stat<K: DepKind> {
     edge_counter: u64,
 }
 
-struct Stats<K: DepKind> {
-    stats: FxHashMap<K, Stat<K>>,
+struct EncodingStatus<K: DepKind> {
+    encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
+    result: FileEncodeResult,
+    stats: Option<FxHashMap<K, Stat<K>>>,
 }
 
-#[instrument(skip(encoder, _record_graph, record_stats))]
-fn encode_node<K: DepKind>(
-    encoder: &mut FileEncoder,
-    _index: DepNodeIndex,
-    node: &NodeInfo<K>,
-    _record_graph: &Option<Lrc<Lock<DepGraphQuery<K>>>>,
-    record_stats: &Option<Lrc<Lock<Stats<K>>>>,
-) -> FileEncodeResult {
-    #[cfg(debug_assertions)]
-    if let Some(record_graph) = &_record_graph {
-        // Do not ICE when a query is called from within `with_query`.
-        if let Some(record_graph) = &mut record_graph.try_lock() {
-            record_graph.push(_index, node.node, &node.edges);
+impl<K: DepKind> EncodingStatus<K> {
+    fn new(encoder: FileEncoder, record_stats: bool) -> Self {
+        Self {
+            encoder,
+            total_edge_count: 0,
+            total_node_count: 0,
+            result: Ok(()),
+            stats: if record_stats { Some(FxHashMap::default()) } else { None },
         }
     }
 
-    if let Some(record_stats) = &record_stats {
-        let mut stats = record_stats.lock();
-        let kind = node.node.kind;
-        let edge_count = node.edges.len();
+    #[instrument(skip(self, _record_graph))]
+    fn encode_node(
+        &mut self,
+        node: &NodeInfo<K>,
+        _record_graph: &Option<Lock<DepGraphQuery<K>>>,
+    ) -> DepNodeIndex {
+        let index = DepNodeIndex::new(self.total_node_count);
+        self.total_node_count += 1;
 
-        let stat =
-            stats.stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
-        stat.node_counter += 1;
-        stat.edge_counter += edge_count as u64;
-        stats.total_node_count += 1;
-        stats.total_edge_count += edge_count;
+        let edge_count = node.edges.len();
+        self.total_edge_count += edge_count;
+
+        #[cfg(debug_assertions)]
+        if let Some(record_graph) = &_record_graph {
+            // Do not ICE when a query is called from within `with_query`.
+            if let Some(record_graph) = &mut record_graph.try_lock() {
+                record_graph.push(index, node.node, &node.edges);
+            }
+        }
+
+        if let Some(stats) = &mut self.stats {
+            let kind = node.node.kind;
+
+            let stat = stats.entry(kind).or_insert(Stat { kind, node_counter: 0, edge_counter: 0 });
+            stat.node_counter += 1;
+            stat.edge_counter += edge_count as u64;
+        }
+
+        debug!(?index, ?node);
+        let encoder = &mut self.encoder;
+        self.result =
+            std::mem::replace(&mut self.result, Ok(())).and_then(|()| node.encode(encoder));
+        index
     }
 
-    debug!(?_index, ?node);
-    node.encode(encoder)
-}
+    fn finish(self) -> FileEncodeResult {
+        let Self { mut encoder, total_node_count, total_edge_count, result, stats: _ } = self;
+        let () = result?;
 
-fn encode_counts(
-    mut encoder: FileEncoder,
-    node_count: usize,
-    edge_count: usize,
-) -> FileEncodeResult {
-    let node_count = node_count.try_into().unwrap();
-    let edge_count = edge_count.try_into().unwrap();
+        let node_count = total_node_count.try_into().unwrap();
+        let edge_count = total_edge_count.try_into().unwrap();
 
-    debug!(?node_count, ?edge_count);
-    debug!("position: {:?}", encoder.position());
-    IntEncodedWithFixedSize(node_count).encode(&mut encoder)?;
-    IntEncodedWithFixedSize(edge_count).encode(&mut encoder)?;
-    debug!("position: {:?}", encoder.position());
-    // Drop the encoder so that nothing is written after the counts.
-    encoder.flush()
+        debug!(?node_count, ?edge_count);
+        debug!("position: {:?}", encoder.position());
+        IntEncodedWithFixedSize(node_count).encode(&mut encoder)?;
+        IntEncodedWithFixedSize(edge_count).encode(&mut encoder)?;
+        debug!("position: {:?}", encoder.position());
+        // Drop the encoder so that nothing is written after the counts.
+        encoder.flush()
+    }
 }
 
 pub struct GraphEncoder<K: DepKind> {
-    status: Lock<(FileEncoder, DepNodeIndex, usize, FileEncodeResult)>,
-    record_graph: Option<Lrc<Lock<DepGraphQuery<K>>>>,
-    record_stats: Option<Lrc<Lock<Stats<K>>>>,
+    status: Lock<EncodingStatus<K>>,
+    record_graph: Option<Lock<DepGraphQuery<K>>>,
 }
 
 impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
@@ -195,21 +209,12 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         record_stats: bool,
     ) -> Self {
         let record_graph = if cfg!(debug_assertions) && record_graph {
-            Some(Lrc::new(Lock::new(DepGraphQuery::new(prev_node_count))))
+            Some(Lock::new(DepGraphQuery::new(prev_node_count)))
         } else {
             None
         };
-        let record_stats = if record_stats {
-            Some(Lrc::new(Lock::new(Stats {
-                stats: FxHashMap::default(),
-                total_node_count: 0,
-                total_edge_count: 0,
-            })))
-        } else {
-            None
-        };
-        let status = Lock::new((encoder, DepNodeIndex::new(0), 0, Ok(())));
-        GraphEncoder { status, record_graph, record_stats }
+        let status = Lock::new(EncodingStatus::new(encoder, record_stats));
+        GraphEncoder { status, record_graph }
     }
 
     pub(crate) fn with_query(&self, f: impl Fn(&DepGraphQuery<K>)) {
@@ -223,10 +228,9 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         total_read_count: u64,
         total_duplicate_read_count: u64,
     ) {
-        if let Some(record_stats) = &self.record_stats {
-            let record_stats = record_stats.lock();
-
-            let mut stats: Vec<_> = record_stats.stats.values().collect();
+        let status = self.status.lock();
+        if let Some(record_stats) = &status.stats {
+            let mut stats: Vec<_> = record_stats.values().collect();
             stats.sort_by_key(|s| -(s.node_counter as i64));
 
             const SEPARATOR: &str = "[incremental] --------------------------------\
@@ -237,8 +241,8 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
             eprintln!("[incremental] DepGraph Statistics");
             eprintln!("{}", SEPARATOR);
             eprintln!("[incremental]");
-            eprintln!("[incremental] Total Node Count: {}", record_stats.total_node_count);
-            eprintln!("[incremental] Total Edge Count: {}", record_stats.total_edge_count);
+            eprintln!("[incremental] Total Node Count: {}", status.total_node_count);
+            eprintln!("[incremental] Total Edge Count: {}", status.total_edge_count);
 
             if cfg!(debug_assertions) {
                 eprintln!("[incremental] Total Edge Reads: {}", total_read_count);
@@ -257,7 +261,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
             for stat in stats {
                 let node_kind_ratio =
-                    (100.0 * (stat.node_counter as f64)) / (record_stats.total_node_count as f64);
+                    (100.0 * (stat.node_counter as f64)) / (status.total_node_count as f64);
                 let node_kind_avg_edges = (stat.edge_counter as f64) / (stat.node_counter as f64);
 
                 eprintln!(
@@ -280,23 +284,11 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         fingerprint: Fingerprint,
         edges: SmallVec<[DepNodeIndex; 8]>,
     ) -> DepNodeIndex {
-        let &mut (ref mut encoder, ref mut next_index, ref mut edge_count, ref mut result) =
-            &mut *self.status.lock();
-        let index = next_index.clone();
-        next_index.increment_by(1);
-        *edge_count += edges.len();
-        *result = std::mem::replace(result, Ok(())).and_then(|()| {
-            let node = NodeInfo { node, fingerprint, edges };
-            encode_node(encoder, index, &node, &self.record_graph, &self.record_stats)
-        });
-        index
+        let node = NodeInfo { node, fingerprint, edges };
+        self.status.lock().encode_node(&node, &self.record_graph)
     }
 
     pub fn finish(self) -> FileEncodeResult {
-        let (encoder, node_count, edge_count, result) = self.status.into_inner();
-        let () = result?;
-        let node_count = node_count.index();
-
-        encode_counts(encoder, node_count, edge_count)
+        self.status.into_inner().finish()
     }
 }
