@@ -274,6 +274,33 @@ impl CrateGraph {
         deps.into_iter()
     }
 
+    /// Returns an iterator over all transitive reverse dependencies of the given crate.
+    pub fn transitive_reverse_dependencies(
+        &self,
+        of: CrateId,
+    ) -> impl Iterator<Item = CrateId> + '_ {
+        let mut worklist = vec![of];
+        let mut rev_deps = FxHashSet::default();
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        self.arena.iter().for_each(|(&krate, data)| {
+            data.dependencies
+                .iter()
+                .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
+        });
+
+        while let Some(krate) = worklist.pop() {
+            if let Some(krate_rev_deps) = inverted_graph.get(&krate) {
+                krate_rev_deps
+                    .iter()
+                    .copied()
+                    .filter(|&rev_dep| rev_deps.insert(rev_dep))
+                    .for_each(|rev_dep| worklist.push(rev_dep));
+            }
+        }
+
+        rev_deps.into_iter()
+    }
+
     /// Returns all crates in the graph, sorted in topological order (ie. dependencies of a crate
     /// come before the crate itself).
     pub fn crates_in_topological_order(&self) -> Vec<CrateId> {

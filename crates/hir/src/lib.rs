@@ -60,6 +60,7 @@ use hir_ty::{
     InEnvironment, Interner, Obligation, ProjectionPredicate, ProjectionTy, Scalar, Substs, Ty,
     TyDefId, TyKind, TyVariableKind,
 };
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -141,7 +142,6 @@ impl Crate {
             .collect()
     }
 
-    // FIXME: add `transitive_reverse_dependencies`.
     pub fn reverse_dependencies(self, db: &dyn HirDatabase) -> Vec<Crate> {
         let crate_graph = db.crate_graph();
         crate_graph
@@ -149,6 +149,14 @@ impl Crate {
             .filter(|&krate| {
                 crate_graph[krate].dependencies.iter().any(|it| it.crate_id == self.id)
             })
+            .map(|id| Crate { id })
+            .collect()
+    }
+
+    pub fn transitive_reverse_dependencies(self, db: &dyn HirDatabase) -> Vec<Crate> {
+        db.crate_graph()
+            .transitive_reverse_dependencies(self.id)
+            .into_iter()
             .map(|id| Crate { id })
             .collect()
     }
@@ -1541,11 +1549,17 @@ impl Impl {
         };
 
         let mut all = Vec::new();
-        def_crates.into_iter().for_each(|id| {
+        def_crates.iter().for_each(|&id| {
             all.extend(db.inherent_impls_in_crate(id).all_impls().map(Self::from).filter(filter))
         });
         let fp = TyFingerprint::for_impl(&ty.value);
-        for id in db.crate_graph().iter() {
+        for id in def_crates
+            .iter()
+            .flat_map(|&id| Crate { id }.transitive_reverse_dependencies(db))
+            .map(|Crate { id }| id)
+            .chain(def_crates.iter().copied())
+            .unique()
+        {
             match fp {
                 Some(fp) => all.extend(
                     db.trait_impls_in_crate(id).for_self_ty(fp).map(Self::from).filter(filter),
@@ -1560,7 +1574,8 @@ impl Impl {
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
         let krate = trait_.module(db).krate();
         let mut all = Vec::new();
-        for Crate { id } in krate.reverse_dependencies(db).into_iter().chain(Some(krate)) {
+        for Crate { id } in krate.transitive_reverse_dependencies(db).into_iter().chain(Some(krate))
+        {
             let impls = db.trait_impls_in_crate(id);
             all.extend(impls.for_trait(trait_.id).map(Self::from))
         }

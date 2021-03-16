@@ -14,6 +14,7 @@ pub struct Fixture {
     pub cfg_key_values: Vec<(String, String)>,
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
+    pub introduce_new_source_root: bool,
 }
 
 impl Fixture {
@@ -70,6 +71,7 @@ impl Fixture {
         let mut cfg_atoms = Vec::new();
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
+        let mut introduce_new_source_root = false;
         for component in components[1..].iter() {
             let (key, value) = split_once(component, ':').unwrap();
             match key {
@@ -91,11 +93,22 @@ impl Fixture {
                         }
                     }
                 }
+                "new_source_root" => introduce_new_source_root = true,
                 _ => panic!("bad component: {:?}", component),
             }
         }
 
-        Fixture { path, text: String::new(), krate, deps, cfg_atoms, cfg_key_values, edition, env }
+        Fixture {
+            path,
+            text: String::new(),
+            krate,
+            deps,
+            cfg_atoms,
+            cfg_key_values,
+            edition,
+            env,
+            introduce_new_source_root,
+        }
     }
 }
 
