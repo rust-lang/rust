@@ -175,6 +175,18 @@ fn f() {
 }
 
 #[test]
+fn unresolved_macro_diag() {
+    check_diagnostics(
+        r#"
+fn f() {
+    m!();
+  //^^^^ unresolved macro call
+}
+      "#,
+    );
+}
+
+#[test]
 fn dollar_crate_in_builtin_macro() {
     check_diagnostics(
         r#"

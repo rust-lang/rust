@@ -2,13 +2,14 @@
 
 use hir_expand::diagnostics::DiagnosticSink;
 
-use crate::diagnostics::{InactiveCode, MacroError, UnresolvedProcMacro};
+use crate::diagnostics::{InactiveCode, MacroError, UnresolvedMacroCall, UnresolvedProcMacro};
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum BodyDiagnostic {
     InactiveCode(InactiveCode),
     MacroError(MacroError),
     UnresolvedProcMacro(UnresolvedProcMacro),
+    UnresolvedMacroCall(UnresolvedMacroCall),
 }
 
 impl BodyDiagnostic {
@@ -21,6 +22,9 @@ impl BodyDiagnostic {
                 sink.push(diag.clone());
             }
             BodyDiagnostic::UnresolvedProcMacro(diag) => {
+                sink.push(diag.clone());
+            }
+            BodyDiagnostic::UnresolvedMacroCall(diag) => {
                 sink.push(diag.clone());
             }
         }

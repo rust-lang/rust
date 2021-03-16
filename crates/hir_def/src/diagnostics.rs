@@ -99,7 +99,7 @@ impl Diagnostic for UnresolvedImport {
 //
 // This diagnostic is triggered if rust-analyzer is unable to resolve the path to a
 // macro in a macro invocation.
-#[derive(Debug)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedMacroCall {
     pub file: HirFileId,
     pub node: AstPtr<ast::MacroCall>,

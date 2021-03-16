@@ -261,23 +261,26 @@ fn collect_items(
                 let ast_id_map = db.ast_id_map(file_id);
                 let root = db.parse_or_expand(file_id).unwrap();
                 let call = ast_id_map.get(call.ast_id).to_node(&root);
+                let res = expander.enter_expand(db, call);
 
-                if let Some((mark, mac)) = expander.enter_expand(db, call).value {
-                    let src: InFile<ast::MacroItems> = expander.to_source(mac);
-                    let item_tree = db.item_tree(src.file_id);
-                    let iter =
-                        item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
-                    items.extend(collect_items(
-                        db,
-                        module,
-                        expander,
-                        iter,
-                        src.file_id,
-                        container,
-                        limit - 1,
-                    ));
+                if let Ok(res) = res {
+                    if let Some((mark, mac)) = res.value {
+                        let src: InFile<ast::MacroItems> = expander.to_source(mac);
+                        let item_tree = db.item_tree(src.file_id);
+                        let iter =
+                            item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
+                        items.extend(collect_items(
+                            db,
+                            module,
+                            expander,
+                            iter,
+                            src.file_id,
+                            container,
+                            limit - 1,
+                        ));
 
-                    expander.exit(db, mark);
+                        expander.exit(db, mark);
+                    }
                 }
             }
         }

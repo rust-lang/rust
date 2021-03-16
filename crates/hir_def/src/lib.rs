@@ -583,7 +583,7 @@ pub trait AsMacroCall {
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
-        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ())
+        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ()).ok()?
     }
 
     fn as_call_id_with_errors(
@@ -592,7 +592,7 @@ pub trait AsMacroCall {
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
         error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId>;
+    ) -> Result<Option<MacroCallId>, UnresolvedMacro>;
 }
 
 impl AsMacroCall for InFile<&ast::MacroCall> {
@@ -602,24 +602,27 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
         error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId> {
+    ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
         let path = self.value.path().and_then(|path| path::ModPath::from_src(path, &h));
 
-        if path.is_none() {
-            error_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
-        }
+        let path = match path {
+            None => {
+                error_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
+                return Ok(None);
+            }
+            Some(path) => path,
+        };
 
         macro_call_as_call_id(
-            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path?),
+            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             db,
             krate,
             resolver,
             error_sink,
         )
-        .ok()?
-        .ok()
+        .map(Result::ok)
     }
 }
 
@@ -636,7 +639,7 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
     }
 }
 
-struct UnresolvedMacro;
+pub struct UnresolvedMacro;
 
 fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
