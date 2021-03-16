@@ -148,16 +148,20 @@ export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
         const client = ctx.client;
         if (!editor || !client) return;
 
-        const edit: lc.TextDocumentEdit = await client.sendRequest(ra.moveItem, {
+        const edit = await client.sendRequest(ra.moveItem, {
             range: client.code2ProtocolConverter.asRange(editor.selection),
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
             direction
         });
 
+        if(!edit) return;
+
         await editor.edit((builder) => {
             client.protocol2CodeConverter.asTextEdits(edit.edits).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
+        }).then(() => {
+            editor.selection = new vscode.Selection(editor.selection.end, editor.selection.end);
         });
     };
 }

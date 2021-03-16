@@ -33,26 +33,6 @@ pub(crate) fn move_item(
 }
 
 fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit> {
-    let movable = [
-        SyntaxKind::MATCH_ARM,
-        // https://github.com/intellij-rust/intellij-rust/blob/master/src/main/kotlin/org/rust/ide/actions/mover/RsStatementUpDownMover.kt
-        SyntaxKind::LET_STMT,
-        SyntaxKind::EXPR_STMT,
-        SyntaxKind::MATCH_EXPR,
-        // https://github.com/intellij-rust/intellij-rust/blob/master/src/main/kotlin/org/rust/ide/actions/mover/RsItemUpDownMover.kt
-        SyntaxKind::TRAIT,
-        SyntaxKind::IMPL,
-        SyntaxKind::MACRO_CALL,
-        SyntaxKind::MACRO_DEF,
-        SyntaxKind::STRUCT,
-        SyntaxKind::ENUM,
-        SyntaxKind::MODULE,
-        SyntaxKind::USE,
-        SyntaxKind::FN,
-        SyntaxKind::CONST,
-        SyntaxKind::TYPE_ALIAS,
-    ];
-
     let root = match item {
         NodeOrToken::Node(node) => node,
         NodeOrToken::Token(token) => token.parent(),
@@ -60,17 +40,18 @@ fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit>
 
     let ancestor = once(root.clone())
         .chain(root.ancestors())
-        .filter(|ancestor| movable.contains(&ancestor.kind()))
-        .max_by_key(|ancestor| kind_priority(ancestor.kind()))?;
+        .filter_map(|ancestor| kind_priority(ancestor.kind()).map(|priority| (priority, ancestor)))
+        .max_by_key(|(priority, _)| *priority)
+        .map(|(_, ancestor)| ancestor)?;
 
     move_in_direction(&ancestor, direction)
 }
 
-fn kind_priority(kind: SyntaxKind) -> i32 {
+fn kind_priority(kind: SyntaxKind) -> Option<i32> {
     match kind {
-        SyntaxKind::MATCH_ARM => 4,
+        SyntaxKind::MATCH_ARM => Some(4),
 
-        SyntaxKind::LET_STMT | SyntaxKind::EXPR_STMT | SyntaxKind::MATCH_EXPR => 3,
+        SyntaxKind::LET_STMT | SyntaxKind::EXPR_STMT | SyntaxKind::MATCH_EXPR => Some(3),
 
         SyntaxKind::TRAIT
         | SyntaxKind::IMPL
@@ -82,10 +63,9 @@ fn kind_priority(kind: SyntaxKind) -> i32 {
         | SyntaxKind::USE
         | SyntaxKind::FN
         | SyntaxKind::CONST
-        | SyntaxKind::TYPE_ALIAS => 2,
+        | SyntaxKind::TYPE_ALIAS => Some(2),
 
-        // Placeholder for items, that are non-movable, and filtered even before kind_priority call
-        _ => 1,
+        _ => None,
     }
 }
 
