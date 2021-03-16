@@ -5,8 +5,9 @@
 pub use self::ConsumeMode::*;
 
 // Export these here so that Clippy can use them.
-pub use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId, Projection};
+pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
@@ -14,6 +15,7 @@ use rustc_hir::PatKind;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::hir::place::ProjectionKind;
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, adjustment, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
@@ -51,6 +53,9 @@ pub trait Delegate<'tcx> {
     // The path at `assignee_place` is being assigned to.
     // `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
+
+    // The `place` should be a fake read because of specified `cause`.
+    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -229,7 +234,61 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(&discr));
-                self.borrow_expr(&discr, ty::ImmBorrow);
+
+                // Matching should not always be considered a use of the place, hence
+                // discr does not necessarily need to be borrowed.
+                // We only want to borrow discr if the pattern contain something other
+                // than wildcards.
+                let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
+                let mut needs_to_be_read = false;
+                for arm in arms.iter() {
+                    return_if_err!(mc.cat_pattern(discr_place.clone(), &arm.pat, |place, pat| {
+                        match &pat.kind {
+                            PatKind::Binding(.., opt_sub_pat) => {
+                                // If the opt_sub_pat is None, than the binding does not count as
+                                // a wildcard for the purpose of borrowing discr.
+                                if opt_sub_pat.is_none() {
+                                    needs_to_be_read = true;
+                                }
+                            }
+                            PatKind::TupleStruct(..)
+                            | PatKind::Path(..)
+                            | PatKind::Struct(..)
+                            | PatKind::Tuple(..) => {
+                                // If the PatKind is a TupleStruct, Struct or Tuple then we want to check
+                                // whether the Variant is a MultiVariant or a SingleVariant. We only want
+                                // to borrow discr if it is a MultiVariant.
+                                // If it is a SingleVariant and creates a binding we will handle that when
+                                // this callback gets called again.
+                                if let ty::Adt(def, _) = place.place.base_ty.kind() {
+                                    if def.variants.len() > 1 {
+                                        needs_to_be_read = true;
+                                    }
+                                }
+                            }
+                            PatKind::Lit(_) => {
+                                // If the PatKind is a Lit then we want
+                                // to borrow discr.
+                                needs_to_be_read = true;
+                            }
+                            _ => {}
+                        }
+                    }));
+                }
+
+                if needs_to_be_read {
+                    self.borrow_expr(&discr, ty::ImmBorrow);
+                } else {
+                    self.delegate.fake_read(
+                        discr_place.place.clone(),
+                        FakeReadCause::ForMatchedPlace,
+                        discr_place.hir_id,
+                    );
+
+                    // We always want to walk the discriminant. We want to make sure, for instance,
+                    // that the discriminant has been initialized.
+                    self.walk_expr(&discr);
+                }
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
@@ -518,6 +577,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     }
 
     fn walk_arm(&mut self, discr_place: &PlaceWithHirId<'tcx>, arm: &hir::Arm<'_>) {
+        self.delegate.fake_read(
+            discr_place.place.clone(),
+            FakeReadCause::ForMatchedPlace,
+            discr_place.hir_id,
+        );
         self.walk_pat(discr_place, &arm.pat);
 
         if let Some(hir::Guard::If(ref e)) = arm.guard {
@@ -530,6 +594,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// Walks a pat that occurs in isolation (i.e., top-level of fn argument or
     /// let binding, and *not* a match arm or nested pat.)
     fn walk_irrefutable_pat(&mut self, discr_place: &PlaceWithHirId<'tcx>, pat: &hir::Pat<'_>) {
+        self.delegate.fake_read(
+            discr_place.place.clone(),
+            FakeReadCause::ForLet,
+            discr_place.hir_id,
+        );
         self.walk_pat(discr_place, pat);
     }
 
@@ -597,6 +666,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
+        fn upvar_is_local_variable(
+            upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+            upvar_id: &hir::HirId,
+            body_owner_is_closure: bool,
+        ) -> bool {
+            upvars.map(|upvars| !upvars.contains_key(upvar_id)).unwrap_or(body_owner_is_closure)
+        }
+
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id(closure_expr.hir_id).to_def_id();
@@ -607,6 +684,46 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             self.tcx().type_of(self.body_owner.to_def_id()).kind(),
             ty::Closure(..) | ty::Generator(..)
         );
+
+        // If we have a nested closure, we want to include the fake reads present in the nested closure.
+        if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
+            for (fake_read, cause, hir_id) in fake_reads.iter() {
+                match fake_read.base {
+                    PlaceBase::Upvar(upvar_id) => {
+                        if upvar_is_local_variable(
+                            upvars,
+                            &upvar_id.var_path.hir_id,
+                            body_owner_is_closure,
+                        ) {
+                            // The nested closure might be fake reading the current (enclosing) closure's local variables.
+                            // The only places we want to fake read before creating the parent closure are the ones that
+                            // are not local to it/ defined by it.
+                            //
+                            // ```rust,ignore(cannot-test-this-because-pseduo-code)
+                            // let v1 = (0, 1);
+                            // let c = || { // fake reads: v1
+                            //    let v2 = (0, 1);
+                            //    let e = || { // fake reads: v1, v2
+                            //       let (_, t1) = v1;
+                            //       let (_, t2) = v2;
+                            //    }
+                            // }
+                            // ```
+                            // This check is performed when visiting the body of the outermost closure (`c`) and ensures
+                            // that we don't add a fake read of v2 in c.
+                            continue;
+                        }
+                    }
+                    _ => {
+                        bug!(
+                            "Do not know how to get HirId out of Rvalue and StaticItem {:?}",
+                            fake_read.base
+                        );
+                    }
+                };
+                self.delegate.fake_read(fake_read.clone(), *cause, *hir_id);
+            }
+        }
 
         if let Some(min_captures) = self.mc.typeck_results.closure_min_captures.get(&closure_def_id)
         {

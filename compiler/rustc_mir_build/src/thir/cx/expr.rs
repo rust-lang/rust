@@ -5,6 +5,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::vec::Idx;
+use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::mir::interpret::Scalar;
@@ -452,7 +453,21 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
                         .zip(substs.upvar_tys())
                         .map(|(captured_place, ty)| self.capture_upvar(expr, captured_place, ty)),
                 );
-                ExprKind::Closure { closure_id: def_id, substs, upvars, movability }
+
+                // Convert the closure fake reads, if any, from hir `Place` to ExprRef
+                let fake_reads = match self.typeck_results.closure_fake_reads.get(&def_id) {
+                    Some(fake_reads) => fake_reads
+                        .iter()
+                        .map(|(place, cause, hir_id)| {
+                            let expr = self.convert_captured_hir_place(expr, place.clone());
+                            let expr_ref: &'thir Expr<'thir, 'tcx> = self.arena.alloc(expr);
+                            (expr_ref, *cause, *hir_id)
+                        })
+                        .collect(),
+                    None => Vec::new(),
+                };
+
+                ExprKind::Closure { closure_id: def_id, substs, upvars, movability, fake_reads }
             }
 
             hir::ExprKind::Path(ref qpath) => {
@@ -1012,22 +1027,20 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
         ExprKind::Deref { arg: ref_expr }
     }
 
-    fn capture_upvar(
+    fn convert_captured_hir_place(
         &mut self,
         closure_expr: &'tcx hir::Expr<'tcx>,
-        captured_place: &'tcx ty::CapturedPlace<'tcx>,
-        upvar_ty: Ty<'tcx>,
+        place: HirPlace<'tcx>,
     ) -> Expr<'thir, 'tcx> {
-        let upvar_capture = captured_place.info.capture_kind;
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-        let var_ty = captured_place.place.base_ty;
+        let var_ty = place.base_ty;
 
         // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
         // as it's seen for use within the closure and not at the time of closure creation.
         //
         // That is we see expect to see it start from a captured upvar and not something that is local
         // to the closure's parent.
-        let var_hir_id = match captured_place.place.base {
+        let var_hir_id = match place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected an upvar, found {:?}", base),
         };
@@ -1039,7 +1052,7 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             kind: self.convert_var(var_hir_id),
         };
 
-        for proj in captured_place.place.projections.iter() {
+        for proj in place.projections.iter() {
             let kind = match proj.kind {
                 HirProjectionKind::Deref => {
                     ExprKind::Deref { arg: self.arena.alloc(captured_place_expr) }
@@ -1061,6 +1074,20 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
             captured_place_expr =
                 Expr { temp_lifetime, ty: proj.ty, span: closure_expr.span, kind };
         }
+
+        captured_place_expr
+    }
+
+    fn capture_upvar(
+        &mut self,
+        closure_expr: &'tcx hir::Expr<'tcx>,
+        captured_place: &'tcx ty::CapturedPlace<'tcx>,
+        upvar_ty: Ty<'tcx>,
+    ) -> Expr<'thir, 'tcx> {
+        let upvar_capture = captured_place.info.capture_kind;
+        let captured_place_expr =
+            self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
+        let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
 
         match upvar_capture {
             ty::UpvarCapture::ByValue(_) => captured_place_expr,

@@ -41,6 +41,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults, UpvarSubsts};
 use rustc_session::lint;
@@ -145,6 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
             current_origin: None,
             capture_information: Default::default(),
+            fake_reads: Default::default(),
         };
         euv::ExprUseVisitor::new(
             &mut delegate,
@@ -245,6 +247,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // and unify the upvar tupe type in the closure with it:
         let final_tupled_upvars_type = self.tcx.mk_tup(final_upvar_tys.iter());
         self.demand_suptype(span, substs.tupled_upvars_ty(), final_tupled_upvars_type);
+
+        let fake_reads = delegate
+            .fake_reads
+            .into_iter()
+            .map(|(place, cause, hir_id)| (place, cause, hir_id))
+            .collect();
+        self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
         // If we are also inferred the closure kind here,
         // process any deferred resolutions.
@@ -1148,6 +1157,7 @@ struct InferBorrowKind<'a, 'tcx> {
     /// Place { V1, [ProjectionKind::Field(Index=1, Variant=0)] } : CaptureKind { E2, MutableBorrow }
     /// ```
     capture_information: InferredCaptureInformation<'tcx>,
+    fake_reads: Vec<(Place<'tcx>, FakeReadCause, hir::HirId)>,
 }
 
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
@@ -1409,6 +1419,12 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
+    fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId) {
+        if let PlaceBase::Upvar(_) = place.base {
+            self.fake_reads.push((place, cause, diag_expr_id));
+        }
+    }
+
     fn consume(
         &mut self,
         place_with_id: &PlaceWithHirId<'tcx>,

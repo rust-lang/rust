@@ -5,6 +5,7 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
+use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Candidate, MatchPair, Test, TestKind};
 use crate::build::Builder;
 use crate::thir::pattern::compare_const_vals;
@@ -81,7 +82,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn add_cases_to_switch<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
@@ -123,7 +124,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(super) fn add_variants_to_switch<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
@@ -151,10 +152,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(super) fn perform_test(
         &mut self,
         block: BasicBlock,
-        place: Place<'tcx>,
+        place_builder: PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
     ) {
+        let place: Place<'tcx>;
+        if let Ok(test_place_builder) =
+            place_builder.try_upvars_resolved(self.tcx, self.typeck_results)
+        {
+            place = test_place_builder.into_place(self.tcx, self.typeck_results);
+        } else {
+            return;
+        }
         debug!(
             "perform_test({:?}, {:?}: {:?}, {:?})",
             block,
@@ -481,7 +490,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// tighter match code if we do something a bit different.
     pub(super) fn sort_candidate<'pat>(
         &mut self,
-        test_place: &Place<'tcx>,
+        test_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Option<usize> {
@@ -728,7 +737,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) {
         let match_pair = candidate.match_pairs.remove(match_pair_index);
-        let tcx = self.tcx;
 
         // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
         // we want to create a set of derived match-patterns like
@@ -737,10 +745,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Some(adt_def.variants[variant_index].ident.name),
             variant_index,
         );
-        let downcast_place = tcx.mk_place_elem(match_pair.place, elem); // `(x as Variant)`
+        let downcast_place = match_pair.place.project(elem); // `(x as Variant)`
         let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
             // e.g., `(x as Variant).0`
-            let place = tcx.mk_place_field(downcast_place, subpattern.field, subpattern.pattern.ty);
+            let place = downcast_place.clone().field(subpattern.field, subpattern.pattern.ty);
             // e.g., `(x as Variant).0 @ P1`
             MatchPair::new(place, &subpattern.pattern)
         });

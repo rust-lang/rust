@@ -7,21 +7,8 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-warning: irrefutable `if let` pattern
-  --> $DIR/closure-origin-single-variant-diagnostics.rs:18:9
-   |
-LL | /         if let SingleVariant::Point(ref mut x, _) = point {
-LL | |
-LL | |             *x += 1;
-LL | |         }
-   | |_________^
-   |
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
-   = note: this pattern will always match, so the `if let` is useless
-   = help: consider replacing the `if let` with a `let`
-
 error[E0382]: use of moved value: `c`
-  --> $DIR/closure-origin-single-variant-diagnostics.rs:25:13
+  --> $DIR/closure-origin-single-variant-diagnostics.rs:21:13
    |
 LL |     let b = c;
    |             - value moved here
@@ -29,11 +16,11 @@ LL |     let a = c;
    |             ^ value used here after move
    |
 note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `point.0` out of its environment
-  --> $DIR/closure-origin-single-variant-diagnostics.rs:18:53
+  --> $DIR/closure-origin-single-variant-diagnostics.rs:16:50
    |
-LL |         if let SingleVariant::Point(ref mut x, _) = point {
-   |                                                     ^^^^^
+LL |         let SingleVariant::Point(ref mut x, _) = point;
+   |                                                  ^^^^^
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0382`.

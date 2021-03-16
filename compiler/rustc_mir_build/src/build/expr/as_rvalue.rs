@@ -8,6 +8,7 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
@@ -164,7 +165,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, movability } => {
+            ExprKind::Closure { closure_id, substs, upvars, movability, ref fake_reads } => {
+                // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
+                // and push the fake reads.
+                // This must come before creating the operands. This is required in case
+                // there is a fake read and a borrow of the same path, since otherwise the
+                // fake read might interfere with the borrow. Consider an example like this
+                // one:
+                // ```
+                // let mut x = 0;
+                // let c = || {
+                //     &mut x; // mutable borrow of `x`
+                //     match x { _ => () } // fake read of `x`
+                // };
+                // ```
+                // FIXME(RFC2229): Remove feature gate once diagnostics are improved
+                if this.tcx.features().capture_disjoint_fields {
+                    for (thir_place, cause, hir_id) in fake_reads.into_iter() {
+                        let place_builder =
+                            unpack!(block = this.as_place_builder(block, thir_place));
+
+                        if let Ok(place_builder_resolved) =
+                            place_builder.try_upvars_resolved(this.tcx, this.typeck_results)
+                        {
+                            let mir_place =
+                                place_builder_resolved.into_place(this.tcx, this.typeck_results);
+                            this.cfg.push_fake_read(
+                                block,
+                                this.source_info(this.tcx.hir().span(*hir_id)),
+                                *cause,
+                                mir_place,
+                            );
+                        }
+                    }
+                }
+
                 // see (*) above
                 let operands: Vec<_> = upvars
                     .into_iter()
@@ -203,6 +238,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     })
                     .collect();
+
                 let result = match substs {
                     UpvarSubsts::Generator(substs) => {
                         // We implicitly set the discriminant to 0. See

@@ -4,11 +4,15 @@
 
 use crate::check::FnCtxt;
 
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::InferCtxt;
+use rustc_middle::hir::place::Place as HirPlace;
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -56,6 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();
+        wbcx.visit_fake_reads_map();
         wbcx.visit_upvar_capture_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
@@ -361,6 +366,27 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
 
         self.typeck_results.closure_min_captures = min_captures_wb;
+    }
+
+    fn visit_fake_reads_map(&mut self) {
+        let mut resolved_closure_fake_reads: FxHashMap<
+            DefId,
+            Vec<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>,
+        > = Default::default();
+        for (closure_def_id, fake_reads) in
+            self.fcx.typeck_results.borrow().closure_fake_reads.iter()
+        {
+            let mut resolved_fake_reads = Vec::<(HirPlace<'tcx>, FakeReadCause, hir::HirId)>::new();
+            for (place, cause, hir_id) in fake_reads.iter() {
+                let locatable =
+                    self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+
+                let resolved_fake_read = self.resolve(place.clone(), &locatable);
+                resolved_fake_reads.push((resolved_fake_read, *cause, *hir_id));
+            }
+            resolved_closure_fake_reads.insert(*closure_def_id, resolved_fake_reads);
+        }
+        self.typeck_results.closure_fake_reads = resolved_closure_fake_reads;
     }
 
     fn visit_upvar_capture_map(&mut self) {
