@@ -1437,9 +1437,14 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
 
+#if LLVM_VERSION_GE(12,0)
+  lto::Config conf;
+  thinLTOResolvePrevailingInIndex(conf, Ret->Index, isPrevailing, recordNewLinkage,
+                                  Ret->GUIDPreservedSymbols);
+#else
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
                                   Ret->GUIDPreservedSymbols);
-
+#endif
   // Here we calculate an `ExportedGUIDs` set for use in the `isExported`
   // callback below. This callback below will dictate the linkage for all
   // summaries in the index, and we basically just only want to ensure that dead
