@@ -4,8 +4,9 @@
 use crate::utils::{
     in_macro,
     numeric_literal::{NumericLiteral, Radix},
-    snippet_opt, span_lint_and_sugg,
+    span_lint_and_sugg,
 };
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Lit, LitKind};
 use rustc_errors::Applicability;

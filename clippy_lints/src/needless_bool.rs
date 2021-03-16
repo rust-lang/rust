@@ -3,7 +3,8 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{is_expn_of, parent_node_is_if_expr, snippet_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{is_expn_of, parent_node_is_if_expr, span_lint, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};

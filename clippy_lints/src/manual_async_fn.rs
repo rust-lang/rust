@@ -1,5 +1,6 @@
 use crate::utils::paths::FUTURE_FROM_GENERATOR;
-use crate::utils::{match_function_call, position_before_rarrow, snippet_block, snippet_opt, span_lint_and_then};
+use crate::utils::{match_function_call, span_lint_and_then};
+use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;

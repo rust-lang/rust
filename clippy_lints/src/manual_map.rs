@@ -1,11 +1,9 @@
 use crate::{
     map_unit_fn::OPTION_MAP_UNIT_FN,
     matches::MATCH_AS_REF,
-    utils::{
-        is_allowed, match_def_path, match_var, paths, peel_hir_expr_refs, snippet_with_applicability,
-        snippet_with_context, span_lint_and_sugg,
-    },
+    utils::{is_allowed, match_def_path, match_var, paths, peel_hir_expr_refs, span_lint_and_sugg},
 };
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::{can_partially_move_ty, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;

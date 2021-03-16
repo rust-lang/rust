@@ -1,4 +1,5 @@
 use crate::utils;
+use clippy_utils::source::snippet_with_macro_callsite;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -82,13 +83,13 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
             if utils::match_qpath(els_call_qpath, &utils::paths::OPTION_NONE);
             then {
-                let cond_snip = utils::snippet_with_macro_callsite(cx, cond.span, "[condition]");
+                let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
                 let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {
                     format!("({})", cond_snip)
                 } else {
                     cond_snip.into_owned()
                 };
-                let arg_snip = utils::snippet_with_macro_callsite(cx, then_arg.span, "");
+                let arg_snip = snippet_with_macro_callsite(cx, then_arg.span, "");
                 let closure_body = if then_block.stmts.is_empty() {
                     arg_snip.into_owned()
                 } else {

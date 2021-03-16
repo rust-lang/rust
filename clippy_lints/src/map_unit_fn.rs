@@ -1,4 +1,5 @@
-use crate::utils::{iter_input_pats, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::{iter_input_pats, method_chain_args, span_lint_and_then};
+use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

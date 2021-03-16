@@ -1,3 +1,5 @@
+use clippy_utils::source::snippet_opt;
+use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Lit, UnOp};
@@ -5,9 +7,7 @@ use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
 
-use if_chain::if_chain;
-
-use crate::utils::{numeric_literal::NumericLiteral, snippet_opt, span_lint_and_sugg};
+use crate::utils::{numeric_literal::NumericLiteral, span_lint_and_sugg};
 
 use super::UNNECESSARY_CAST;
 

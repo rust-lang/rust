@@ -1,5 +1,6 @@
 use super::SAME_ITEM_PUSH;
-use crate::utils::{snippet_with_macro_callsite, span_lint_and_help};
+use crate::utils::span_lint_and_help;
+use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};

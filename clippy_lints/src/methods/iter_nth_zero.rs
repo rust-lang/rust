@@ -1,5 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_trait_method, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{is_trait_method, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

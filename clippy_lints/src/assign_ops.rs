@@ -1,5 +1,6 @@
-use crate::utils::{eq_expr_value, get_trait_def_id, snippet_opt, span_lint_and_then, trait_ref_of_method};
+use crate::utils::{eq_expr_value, get_trait_def_id, span_lint_and_then, trait_ref_of_method};
 use crate::utils::{higher, sugg};
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

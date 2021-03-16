@@ -1,3 +1,4 @@
+use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
@@ -145,7 +146,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
         entire_expr.span,
         "question mark operator is useless here",
         "try",
-        format!("{}", utils::snippet(cx, inner_expr.span, r#""...""#)),
+        format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
         Applicability::MachineApplicable,
     );
 }

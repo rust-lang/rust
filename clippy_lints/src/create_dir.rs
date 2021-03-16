@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, snippet, span_lint_and_sugg};
+use crate::utils::{match_def_path, paths, span_lint_and_sugg};
+use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};

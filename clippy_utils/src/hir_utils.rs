@@ -1,5 +1,6 @@
 use crate::consts::{constant_context, constant_simple};
-use crate::{differing_macro_contexts, snippet_opt};
+use crate::differing_macro_contexts;
+use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};

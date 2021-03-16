@@ -1,7 +1,5 @@
-use crate::utils::{
-    differing_macro_contexts, in_macro, match_def_path, match_qpath, paths, snippet, snippet_with_macro_callsite,
-    span_lint_and_sugg,
-};
+use crate::utils::{differing_macro_contexts, in_macro, match_def_path, match_qpath, paths, span_lint_and_sugg};
+use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

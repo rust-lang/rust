@@ -1,4 +1,5 @@
-use crate::utils::{last_path_segment, snippet};
+use crate::utils::last_path_segment;
+use clippy_utils::source::snippet;
 use clippy_utils::ty::is_normalizable;
 use if_chain::if_chain;
 use rustc_hir::{Expr, GenericArg, QPath, TyKind};

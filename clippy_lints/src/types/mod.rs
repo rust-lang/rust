@@ -13,6 +13,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+use clippy_utils::source::{indent_of, reindent_multiline, snippet, snippet_opt, snippet_with_macro_callsite};
 use clippy_utils::ty::{is_isize_or_usize, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -38,9 +39,8 @@ use rustc_typeck::hir_ty_to_ty;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, indent_of, int_bits, match_path, multispan_sugg,
-    reindent_multiline, sext, snippet, snippet_opt, snippet_with_macro_callsite, span_lint, span_lint_and_help,
-    span_lint_and_then, unsext,
+    clip, comparisons, differing_macro_contexts, higher, int_bits, match_path, multispan_sugg, sext, span_lint,
+    span_lint_and_help, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {

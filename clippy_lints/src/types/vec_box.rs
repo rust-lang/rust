@@ -1,3 +1,5 @@
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
@@ -6,9 +8,7 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::LayoutOf;
 use rustc_typeck::hir_ty_to_ty;
 
-use if_chain::if_chain;
-
-use crate::utils::{last_path_segment, snippet, span_lint_and_sugg};
+use crate::utils::{last_path_segment, span_lint_and_sugg};
 
 use super::VEC_BOX;
 

@@ -1,7 +1,5 @@
-use crate::utils::{
-    get_item_name, get_parent_as_impl, is_allowed, snippet_with_applicability, span_lint, span_lint_and_sugg,
-    span_lint_and_then,
-};
+use crate::utils::{get_item_name, get_parent_as_impl, is_allowed, span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;

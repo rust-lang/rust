@@ -1,3 +1,5 @@
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -5,9 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
-use if_chain::if_chain;
-
-use crate::utils::{snippet, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for struct constructors where all fields are shorthand and

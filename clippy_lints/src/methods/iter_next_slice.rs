@@ -1,5 +1,6 @@
 use crate::methods::derefs_to_slice;
-use crate::utils::{get_parent_expr, higher, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{get_parent_expr, higher, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_ast::ast;
