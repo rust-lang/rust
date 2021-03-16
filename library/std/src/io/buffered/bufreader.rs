@@ -313,16 +313,13 @@ impl<R: Read> Read for BufReader<R> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Read> BufRead for BufReader<R> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        // If we've reached the end of our internal buffer then we need to fetch
-        // some more data from the underlying reader.
-        // Branch using `>=` instead of the more correct `==`
-        // to tell the compiler that the pos..cap slice is always valid.
-        if self.pos >= self.cap {
-            debug_assert!(self.pos == self.cap);
-            self.cap = self.inner.read(&mut self.buf)?;
-            self.pos = 0;
+        if self.cap < self.buf.len() {
+            // We still have some room in the buffer, try to fetch more data.
+            self.cap += self.inner.read(&mut self.buf[self.cap..])?;
+            Ok(&self.buf[self.pos..self.cap])
+        } else {
+            Ok(&self.buf[self.pos..])
         }
-        Ok(&self.buf[self.pos..self.cap])
     }
 
     fn consume(&mut self, amt: usize) {
