@@ -1,6 +1,9 @@
 # ignore-riscv64 $(call RUN,foo) expects to run the target executable natively
 #                              so it won't work with remote-test-server
 # ignore-none no-std is not supported
+# ignore-wasm32 FIXME: don't attempt to compile C++ to WASM
+# ignore-wasm64 FIXME: don't attempt to compile C++ to WASM
+# ignore-nvptx64-nvidia-cuda FIXME: can't find crate for `std`
 
 include ../../run-make-fulldeps/tools.mk
 
