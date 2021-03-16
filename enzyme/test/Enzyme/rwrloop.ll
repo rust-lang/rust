@@ -132,11 +132,11 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup3, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup3 ], [ 0, %entry ]
+; CHECK-NEXT:   %2 = mul i64 %iv, 10
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   br i1 %cmp233, label %for.body4.lr.ph, label %for.cond.cleanup3
 
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
-; CHECK-NEXT:   %2 = mul nuw nsw i64 %iv, 10
 ; CHECK-NEXT:   %3 = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %4 = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %iv
 ; CHECK-NEXT:   store i32 %3, i32* %4, align 4, !invariant.group !8

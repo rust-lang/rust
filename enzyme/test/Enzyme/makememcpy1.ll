@@ -1,6 +1,5 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -loop-deletion -correlated-propagation -adce -simplifycfg -S | FileCheck %s
 
-; XFAIL: *
 ; This requires the additional optimization to create memcpy's
 
 source_filename = "mem.c"
@@ -137,7 +136,7 @@ attributes #7 = { nounwind }
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %entry
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ 99, %entry ], [ %[[inc:.+]], %incinvertfor.body ]
 ; CHECK-NEXT:   %[[gep:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gep]], align 8, !invariant.group !6, !enzyme_fromcache !7
+; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gep]], align 8, !invariant.group !6
 ; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %[[ld]]
 ; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %[[ld]]
 ; CHECK-NEXT:   %[[add:.+]] = fadd fast double %m0diffe, %m1diffe

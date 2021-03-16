@@ -1004,6 +1004,7 @@ public:
       assert(reverseBlocks.size());
     LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                       inst->getParent());
+
     AllocaInst *cache =
         createCacheForScope(lctx, inst->getType(), inst->getName(), shouldFree);
     assert(cache);

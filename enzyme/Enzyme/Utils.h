@@ -609,6 +609,7 @@ static inline void
 allInstructionsBetween(llvm::LoopInfo &LI, llvm::Instruction *inst1,
                        llvm::Instruction *inst2,
                        std::function<bool(llvm::Instruction *)> f) {
+  assert(inst1->getParent()->getParent() == inst2->getParent()->getParent());
   for (auto uinst = inst1->getNextNode(); uinst != nullptr;
        uinst = uinst->getNextNode()) {
     if (f(uinst))

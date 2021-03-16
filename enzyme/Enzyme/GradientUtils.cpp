@@ -841,6 +841,10 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                                       int idx) {
   assert(malloc);
   assert(BuilderQ.GetInsertBlock()->getParent() == newFunc);
+  if (mode == DerivativeMode::Both) {
+    assert(!tape);
+    return malloc;
+  }
 
   if (tape) {
     if (idx >= 0 && !tape->getType()->isStructTy()) {
@@ -2676,7 +2680,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       if (mode == DerivativeMode::Both)
         if (!li->isVolatile()) {
           auto scev1 = SE.getSCEV(li->getPointerOperand());
-          llvm::errs() << "scev1: " << *scev1 << "\n";
           // Store in memcpy opt
           if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
             if (auto step =
@@ -2708,8 +2711,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               }
               lim = v.CreateAdd(lim, ConstantInt::get(lim->getType(), 1), "",
                                 true, true);
-              llvm::errs() << "l1: " << *li << "\n";
-              llvm::errs() << "lim: " << *lim << "\n";
 
               Value *start = nullptr;
 
@@ -2730,7 +2731,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 start = unwrapM(start0, v,
                                 /*available*/ ValueToValueMapTy(),
                                 UnwrapMode::AttemptFullUnwrapWithLookup);
-                llvm::errs() << *l1.header << "\n";
                 std::set<Value *> todo = {start0};
                 while (todo.size()) {
                   Value *now = *todo.begin();
@@ -2752,20 +2752,16 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               if (!start)
                 goto noSpeedCache;
 
-              llvm::errs() << " getStart: " << *ar1->getStart() << "\n";
-              llvm::errs() << " starT: " << *start << "\n";
+              Instruction* origTerm = origPH->getTerminator();
 
               bool failed = false;
               allInstructionsBetween(
-                  OrigLI, &*v.GetInsertPoint(), origInst,
+                  OrigLI, &*origTerm, origInst,
                   [&](Instruction *I) -> bool {
-                    // llvm::errs() << "examining instruction: " << *I << "
-                    // between: " << *li2 << " and " << *li << "\n";
                     if (I->mayWriteToMemory() &&
                         writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
                       failed = true;
-                      llvm::errs() << "memcpy FAILED: " << *I << "\n";
                       return /*earlyBreak*/ true;
                     }
                     return /*earlyBreak*/ false;
@@ -2773,6 +2769,42 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               if (failed)
                 goto noSpeedCache;
 
+              while (Loop* L = LI.getLoopFor(ctx)) {
+                BasicBlock *nctx = L->getLoopPreheader();
+                assert(nctx);
+                bool failed = false;
+                auto origPH = cast_or_null<BasicBlock>(isOriginal(nctx));
+                assert(origPH);
+                if (OrigPDT.dominates(origPH, origInst->getParent())) {
+                  break;
+                }
+                Instruction* origTerm = origPH->getTerminator();
+                allInstructionsBetween(
+                    OrigLI, &*origTerm, origInst,
+                    [&](Instruction *I) -> bool {
+                      if (I->mayWriteToMemory() &&
+                          writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
+                                              /*maybeWriter*/ I)) {
+                        failed = true;
+                        return /*earlyBreak*/ true;
+                      }
+                      return /*earlyBreak*/ false;
+                    });
+                if (failed) break;
+                IRBuilder <> nv(ctx->getTerminator());
+                Value* nlim = unwrapM(lim, nv,
+                                   /*available*/ ValueToValueMapTy(),
+                                   UnwrapMode::AttemptFullUnwrapWithLookup);
+                if (!nlim) break;
+                Value* nstart = unwrapM(start, nv,
+                                   /*available*/ ValueToValueMapTy(),
+                                   UnwrapMode::AttemptFullUnwrapWithLookup);
+                if (!nstart) break;
+                lim = nlim;
+                start = nstart;
+                ctx = nctx;
+                v.SetInsertPoint(ctx->getTerminator());
+              }
               bool isi1 = val->getType()->isIntegerTy() &&
                           cast<IntegerType>(li->getType())->getBitWidth() == 1;
 
@@ -2824,7 +2856,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
                 auto memcpyF = Intrinsic::getDeclaration(
                     newFunc->getParent(), Intrinsic::memcpy, tys);
-                llvm::errs() << *memcpyF << "\n";
                 auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
                 // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
                 // inst->getAlignment()));
@@ -2876,7 +2907,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               return result;
             }
           }
-
+        }
     noSpeedCache:;
     }
 

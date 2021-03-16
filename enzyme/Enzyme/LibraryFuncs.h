@@ -323,6 +323,7 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
 static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
                                         llvm::Instruction *maybeReader,
                                         llvm::Instruction *maybeWriter) {
+  assert(maybeReader->getParent()->getParent() == maybeWriter->getParent()->getParent());
   using namespace llvm;
   if (auto call = dyn_cast<CallInst>(maybeWriter)) {
     Function *called = call->getCalledFunction();
