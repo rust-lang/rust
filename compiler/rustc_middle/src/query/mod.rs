@@ -1278,6 +1278,8 @@ rustc_queries! {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
+        // This depends on untracked global state (`tcx.extern_crate_map`)
+        eval_always
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
