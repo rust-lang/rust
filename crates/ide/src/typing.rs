@@ -108,7 +108,7 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     };
     let current_indent_len = TextSize::of(current_indent);
 
-    let parent = whitespace.syntax().parent();
+    let parent = whitespace.syntax().parent()?;
     // Make sure dot is a part of call chain
     if !matches!(parent.kind(), FIELD_EXPR | METHOD_CALL_EXPR) {
         return None;

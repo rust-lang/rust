@@ -33,7 +33,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         });
     };
 
-    for node in ctx.token.parent().ancestors() {
+    for node in ctx.token.ancestors() {
         match_ast! {
             match node {
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {

@@ -510,7 +510,10 @@ impl InFile<SyntaxToken> {
         self,
         db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
-        self.map(|it| it.parent()).ancestors_with_macros(db)
+        self.value
+            .parent()
+            .into_iter()
+            .flat_map(move |parent| InFile::new(self.file_id, parent).ancestors_with_macros(db))
     }
 }
 

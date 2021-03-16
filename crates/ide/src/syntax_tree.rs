@@ -27,7 +27,7 @@ pub(crate) fn syntax_tree(
                 if let Some(tree) = syntax_tree_for_string(&token, text_range) {
                     return tree;
                 }
-                token.parent()
+                token.parent().unwrap()
             }
         };
 

@@ -167,8 +167,7 @@ fn find_related_tests(
             let functions = refs.iter().filter_map(|(range, _)| {
                 let token = file.token_at_offset(range.start()).next()?;
                 let token = sema.descend_into_macros(token);
-                let syntax = token.parent();
-                syntax.ancestors().find_map(ast::Fn::cast)
+                token.ancestors().find_map(ast::Fn::cast)
             });
 
             for fn_def in functions {

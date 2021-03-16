@@ -120,7 +120,7 @@ impl<'a> CompletionContext<'a> {
         let original_token =
             original_file.syntax().token_at_offset(position.offset).left_biased()?;
         let token = sema.descend_into_macros(original_token.clone());
-        let scope = sema.scope_at_offset(&token.parent(), position.offset);
+        let scope = sema.scope_at_offset(&token, position.offset);
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
@@ -281,7 +281,7 @@ impl<'a> CompletionContext<'a> {
     fn fill_impl_def(&mut self) {
         self.impl_def = self
             .sema
-            .ancestors_with_macros(self.token.parent())
+            .token_ancestors_with_macros(self.token.clone())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::Impl::cast);
     }
@@ -293,7 +293,10 @@ impl<'a> CompletionContext<'a> {
         offset: TextSize,
     ) {
         let expected = {
-            let mut node = self.token.parent();
+            let mut node = match self.token.parent() {
+                Some(it) => it,
+                None => return,
+            };
             loop {
                 let ret = match_ast! {
                     match node {
@@ -474,17 +477,17 @@ impl<'a> CompletionContext<'a> {
         }
 
         self.use_item_syntax =
-            self.sema.ancestors_with_macros(self.token.parent()).find_map(ast::Use::cast);
+            self.sema.token_ancestors_with_macros(self.token.clone()).find_map(ast::Use::cast);
 
         self.function_syntax = self
             .sema
-            .ancestors_with_macros(self.token.parent())
+            .token_ancestors_with_macros(self.token.clone())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::Fn::cast);
 
         self.record_field_syntax = self
             .sema
-            .ancestors_with_macros(self.token.parent())
+            .token_ancestors_with_macros(self.token.clone())
             .take_while(|it| {
                 it.kind() != SOURCE_FILE && it.kind() != MODULE && it.kind() != CALL_EXPR
             })

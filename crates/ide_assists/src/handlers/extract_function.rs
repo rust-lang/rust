@@ -16,7 +16,6 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode,
     },
-    SyntaxElement,
     SyntaxKind::{self, BLOCK_EXPR, BREAK_EXPR, COMMENT, PATH_EXPR, RETURN_EXPR},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
@@ -62,7 +61,10 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    let node = element_to_node(node);
+    let node = match node {
+        syntax::NodeOrToken::Node(n) => n,
+        syntax::NodeOrToken::Token(t) => t.parent()?,
+    };
 
     let body = extraction_target(&node, ctx.frange.range)?;
 
@@ -557,14 +559,6 @@ impl HasTokenAtOffset for FunctionBody {
                 }
             }
         }
-    }
-}
-
-/// node or token's parent
-fn element_to_node(node: SyntaxElement) -> SyntaxNode {
-    match node {
-        syntax::NodeOrToken::Node(n) => n,
-        syntax::NodeOrToken::Token(t) => t.parent(),
     }
 }
 
@@ -1246,7 +1240,7 @@ fn make_body(
             })
         }
         FlowHandler::If { .. } => {
-            let lit_false = ast::Literal::cast(make::tokens::literal("false").parent()).unwrap();
+            let lit_false = make::expr_literal("false");
             with_tail_expr(block, lit_false.into())
         }
         FlowHandler::IfOption { .. } => {
@@ -1420,9 +1414,7 @@ fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) -> S
 fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Option<ast::Expr> {
     let value = match handler {
         FlowHandler::None | FlowHandler::Try { .. } => return None,
-        FlowHandler::If { .. } => {
-            ast::Literal::cast(make::tokens::literal("true").parent()).unwrap().into()
-        }
+        FlowHandler::If { .. } => make::expr_literal("true").into(),
         FlowHandler::IfOption { .. } => {
             let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
             let args = make::arg_list(iter::once(expr));

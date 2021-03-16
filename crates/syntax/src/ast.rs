@@ -6,6 +6,7 @@ mod token_ext;
 mod node_ext;
 mod expr_ext;
 pub mod edit;
+pub mod edit_in_place;
 pub mod make;
 
 use std::marker::PhantomData;
@@ -40,6 +41,12 @@ pub trait AstNode {
         Self: Sized;
 
     fn syntax(&self) -> &SyntaxNode;
+    fn clone_for_update(&self) -> Self
+    where
+        Self: Sized,
+    {
+        Self::cast(self.syntax().clone_for_update()).unwrap()
+    }
 }
 
 /// Like `AstNode`, but wraps tokens rather than interior nodes.

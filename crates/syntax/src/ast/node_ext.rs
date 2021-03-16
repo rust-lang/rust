@@ -34,7 +34,9 @@ impl ast::NameRef {
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> &str {
-    node.green().children().next().and_then(|it| it.into_token()).unwrap().text()
+    let t =
+        node.green().children().next().and_then(|it| it.into_token()).unwrap().text().to_string();
+    Box::leak(Box::new(t))
 }
 
 pub enum Macro {

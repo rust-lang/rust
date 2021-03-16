@@ -32,27 +32,33 @@ pub(crate) fn join_lines(file: &SourceFile, range: TextRange) -> TextEdit {
         range
     };
 
-    let node = match file.syntax().covering_element(range) {
-        NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
-    };
     let mut edit = TextEdit::builder();
-    for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
-        let range = match range.intersect(token.text_range()) {
-            Some(range) => range,
-            None => continue,
-        } - token.text_range().start();
-        let text = token.text();
-        for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
-            let pos: TextSize = (pos as u32).into();
-            let offset = token.text_range().start() + range.start() + pos;
-            if !edit.invalidates_offset(offset) {
-                remove_newline(&mut edit, &token, offset);
+    match file.syntax().covering_element(range) {
+        NodeOrToken::Node(node) => {
+            for token in node.descendants_with_tokens().filter_map(|it| it.into_token()) {
+                remove_newlines(&mut edit, &token, range)
             }
         }
-    }
-
+        NodeOrToken::Token(token) => remove_newlines(&mut edit, &token, range),
+    };
     edit.finish()
+}
+
+fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextRange) {
+    let intersection = match range.intersect(token.text_range()) {
+        Some(range) => range,
+        None => return,
+    };
+
+    let range = intersection - token.text_range().start();
+    let text = token.text();
+    for (pos, _) in text[range].bytes().enumerate().filter(|&(_, b)| b == b'\n') {
+        let pos: TextSize = (pos as u32).into();
+        let offset = token.text_range().start() + range.start() + pos;
+        if !edit.invalidates_offset(offset) {
+            remove_newline(edit, &token, offset);
+        }
+    }
 }
 
 fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextSize) {
@@ -148,7 +154,7 @@ fn has_comma_after(node: &SyntaxNode) -> bool {
 }
 
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
-    let block_expr = ast::BlockExpr::cast(token.parent())?;
+    let block_expr = ast::BlockExpr::cast(token.parent()?)?;
     if !block_expr.is_standalone() {
         return None;
     }
@@ -170,7 +176,7 @@ fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Op
 }
 
 fn join_single_use_tree(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
-    let use_tree_list = ast::UseTreeList::cast(token.parent())?;
+    let use_tree_list = ast::UseTreeList::cast(token.parent()?)?;
     let (tree,) = use_tree_list.use_trees().collect_tuple()?;
     edit.replace(use_tree_list.syntax().text_range(), tree.syntax().text().to_string());
     Some(())

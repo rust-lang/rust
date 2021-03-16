@@ -82,13 +82,14 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
 
 fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, SyntaxNode, Impl)> {
     let mut token = ctx.token.clone();
-    // For keywork without name like `impl .. { fn $0 }`, the current position is inside
+    // For keyword without name like `impl .. { fn $0 }`, the current position is inside
     // the whitespace token, which is outside `FN` syntax node.
     // We need to follow the previous token in this case.
     if token.kind() == SyntaxKind::WHITESPACE {
         token = token.prev_token()?;
     }
 
+    let parent_kind = token.parent().map_or(SyntaxKind::EOF, |it| it.kind());
     let impl_item_offset = match token.kind() {
         // `impl .. { const $0 }`
         // ERROR      0
@@ -102,14 +103,14 @@ fn completion_match(ctx: &CompletionContext) -> Option<(ImplCompletionKind, Synt
         // FN/TYPE_ALIAS/CONST  1
         //  NAME                0
         //    IDENT             <- *
-        SyntaxKind::IDENT if token.parent().kind() == SyntaxKind::NAME => 1,
+        SyntaxKind::IDENT if parent_kind == SyntaxKind::NAME => 1,
         // `impl .. { foo$0 }`
         // MACRO_CALL       3
         //  PATH            2
         //    PATH_SEGMENT  1
         //      NAME_REF    0
         //        IDENT     <- *
-        SyntaxKind::IDENT if token.parent().kind() == SyntaxKind::NAME_REF => 3,
+        SyntaxKind::IDENT if parent_kind == SyntaxKind::NAME_REF => 3,
         _ => return None,
     };
 

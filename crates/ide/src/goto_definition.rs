@@ -30,7 +30,7 @@ pub(crate) fn goto_definition(
     let file = sema.parse(position.file_id).syntax().clone();
     let original_token = pick_best(file.token_at_offset(position.offset))?;
     let token = sema.descend_into_macros(original_token.clone());
-    let parent = token.parent();
+    let parent = token.parent()?;
     if let Some(comment) = ast::Comment::cast(token) {
         let nav = def_for_doc_comment(&sema, position, &comment)?.try_to_nav(db)?;
         return Some(RangeInfo::new(original_token.text_range(), vec![nav]));
@@ -63,7 +63,7 @@ fn def_for_doc_comment(
     position: FilePosition,
     doc_comment: &ast::Comment,
 ) -> Option<hir::ModuleDef> {
-    let parent = doc_comment.syntax().parent();
+    let parent = doc_comment.syntax().parent()?;
     let (link, ns) = extract_positioned_link_from_comment(position, doc_comment)?;
 
     let def = doc_owner_to_def(sema, parent)?;
