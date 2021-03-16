@@ -203,6 +203,23 @@ impl ScalarInt {
     }
 
     #[inline]
+    pub fn from_uint(i: impl Into<u128>, size: Size) -> Self {
+        let i = i.into();
+        Self::try_from_uint(i, size)
+            .unwrap_or_else(|| bug!("Unsigned value {:#x} does not fit in {} bits", i, size.bits()))
+    }
+
+    #[inline]
+    pub fn from_bool(b: bool) -> Self {
+        Self::from_uint(b as u8, Size::from_bytes(1))
+    }
+
+    #[inline]
+    pub fn from_char(c: char) -> Self {
+        Self::from_uint(c as u32, Size::from_bytes(4))
+    }
+
+    #[inline]
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
         let data = i.into();
         if size.truncate(data) == data {
