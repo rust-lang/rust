@@ -475,7 +475,7 @@ impl<'a> AttrQuery<'a> {
         self.attrs().next().is_some()
     }
 
-    pub(crate) fn attrs(self) -> impl Iterator<Item = &'a Attr> {
+    pub fn attrs(self) -> impl Iterator<Item = &'a Attr> {
         let key = self.key;
         self.attrs
             .iter()

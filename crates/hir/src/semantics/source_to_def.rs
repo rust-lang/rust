@@ -71,6 +71,12 @@ impl SourceToDefCtx<'_, '_> {
         Some(def_map.module_id(child_id))
     }
 
+    pub(super) fn source_file_to_def(&mut self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
+        let _p = profile::span("source_file_to_def");
+        let file_id = src.file_id.original_file(self.db.upcast());
+        self.file_to_def(file_id).get(0).copied()
+    }
+
     pub(super) fn trait_to_def(&mut self, src: InFile<ast::Trait>) -> Option<TraitId> {
         self.to_def(src, keys::TRAIT)
     }

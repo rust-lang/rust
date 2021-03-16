@@ -1,8 +1,12 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use hir::Semantics;
+use either::Either;
+use hir::{HasAttrs, Semantics};
 use ide_db::call_info::ActiveParameter;
-use syntax::{ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize};
+use syntax::{
+    ast::{self, AstNode, AttrsOwner},
+    match_ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
+};
 
 use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
 
@@ -81,16 +85,46 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2021",
 ];
 
-/// Injection of syntax highlighting of doctests.
-pub(super) fn doc_comment(hl: &mut Highlights, node: &SyntaxNode) {
-    let doc_comments = node
-        .children_with_tokens()
-        .filter_map(|it| it.into_token().and_then(ast::Comment::cast))
-        .filter(|it| it.kind().doc.is_some());
+fn doc_attributes<'node>(
+    sema: &Semantics<RootDatabase>,
+    node: &'node SyntaxNode,
+) -> Option<(Box<dyn AttrsOwner>, hir::Attrs)> {
+    match_ast! {
+        match node {
+            ast::SourceFile(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Fn(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Struct(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Union(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::TupleField(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Enum(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Variant(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Trait(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Module(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Static(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Const(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::TypeAlias(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::Impl(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::MacroRules(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            ast::MacroRules(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            // ast::MacroDef(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
+            _ => return None
+        }
+    }
+}
 
-    if !doc_comments.clone().any(|it| it.text().contains(RUSTDOC_FENCE)) {
+/// Injection of syntax highlighting of doctests.
+pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, node: &SyntaxNode) {
+    let (owner, attributes) = match doc_attributes(sema, node) {
+        Some(it) => it,
+        None => return,
+    };
+
+    if attributes.docs().map_or(true, |docs| !String::from(docs).contains(RUSTDOC_FENCE)) {
         return;
     }
+    let doc_comments = attributes.by_key("doc").attrs().map(|attr| attr.to_src(&*owner));
 
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
@@ -102,11 +136,17 @@ pub(super) fn doc_comment(hl: &mut Highlights, node: &SyntaxNode) {
     // spanning comment ranges.
     let mut new_comments = Vec::new();
     for comment in doc_comments {
-        match comment.text().find(RUSTDOC_FENCE) {
+        let (line, range, prefix) = match &comment {
+            Either::Left(_) => continue, // FIXME
+            Either::Right(comment) => {
+                (comment.text(), comment.syntax().text_range(), comment.prefix())
+            }
+        };
+        match line.find(RUSTDOC_FENCE) {
             Some(idx) => {
                 is_codeblock = !is_codeblock;
                 // Check whether code is rust by inspecting fence guards
-                let guards = &comment.text()[idx + RUSTDOC_FENCE.len()..];
+                let guards = &line[idx + RUSTDOC_FENCE.len()..];
                 let is_rust =
                     guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
                 is_doctest = is_codeblock && is_rust;
@@ -116,10 +156,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, node: &SyntaxNode) {
             None => (),
         }
 
-        let line: &str = comment.text();
-        let range = comment.syntax().text_range();
-
-        let mut pos = TextSize::of(comment.prefix());
+        let mut pos = TextSize::of(prefix);
         // whitespace after comment is ignored
         if let Some(ws) = line[pos.into()..].chars().next().filter(|c| c.is_whitespace()) {
             pos += TextSize::of(ws);
