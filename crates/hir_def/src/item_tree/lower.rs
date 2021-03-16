@@ -391,14 +391,33 @@ impl Ctx {
         let has_body = func.body().is_some();
 
         let ast_id = self.source_ast_id_map.ast_id(func);
+        let qualifier = FunctionQualifier {
+            is_default: func.default_token().is_some(),
+            is_const: func.const_token().is_some(),
+            is_async: func.async_token().is_some(),
+            is_unsafe: func.unsafe_token().is_some(),
+            abi: func.abi().map(|abi| {
+                // FIXME: Abi::abi() -> Option<SyntaxToken>?
+                match abi.syntax().last_token() {
+                    Some(tok) if tok.kind() == SyntaxKind::STRING => {
+                        // FIXME: Better way to unescape?
+                        tok.text().trim_matches('"').into()
+                    }
+                    _ => {
+                        // `extern` default to be `extern "C"`.
+                        "C".into()
+                    }
+                }
+            }),
+        };
         let mut res = Function {
             name,
             visibility,
             generic_params: GenericParamsId::EMPTY,
             has_self_param,
             has_body,
-            is_unsafe: func.unsafe_token().is_some(),
-            is_extern: false,
+            qualifier,
+            is_in_extern_block: false,
             params,
             is_varargs,
             ret_type,
@@ -481,7 +500,9 @@ impl Ctx {
         let visibility = self.lower_visibility(trait_def);
         let generic_params =
             self.lower_generic_params_and_inner_items(GenericsOwner::Trait(trait_def), trait_def);
-        let auto = trait_def.auto_token().is_some();
+        let is_auto = trait_def.auto_token().is_some();
+        let is_unsafe = trait_def.unsafe_token().is_some();
+        let bounds = self.lower_type_bounds(trait_def);
         let items = trait_def.assoc_item_list().map(|list| {
             self.with_inherited_visibility(visibility, |this| {
                 list.assoc_items()
@@ -501,7 +522,9 @@ impl Ctx {
             name,
             visibility,
             generic_params,
-            auto,
+            is_auto,
+            is_unsafe,
+            bounds: bounds.into(),
             items: items.unwrap_or_default(),
             ast_id,
         };
@@ -608,8 +631,8 @@ impl Ctx {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;
                             let func = &mut self.data().functions[func_id.index];
-                            func.is_unsafe = is_intrinsic_fn_unsafe(&func.name);
-                            func.is_extern = true;
+                            func.qualifier.is_unsafe = is_intrinsic_fn_unsafe(&func.name);
+                            func.is_in_extern_block = true;
                             func_id.into()
                         }
                         ast::ExternItem::Static(ast) => {

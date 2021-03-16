@@ -230,7 +230,7 @@ fn foo() {
     bar.fo$0;
 }
 "#,
-            DetailAndDocumentation { detail: "-> ()", documentation: "Do the foo" },
+            DetailAndDocumentation { detail: "fn(&self)", documentation: "Do the foo" },
         );
     }
 
@@ -255,7 +255,7 @@ fn foo() {
     bar.fo$0;
 }
 "#,
-            DetailAndDocumentation { detail: "-> ()", documentation: " Do the foo" },
+            DetailAndDocumentation { detail: "fn(&self)", documentation: " Do the foo" },
         );
     }
 
@@ -273,7 +273,7 @@ fn bar() {
     for c in fo$0
 }
 "#,
-            DetailAndDocumentation { detail: "-> &str", documentation: "Do the foo" },
+            DetailAndDocumentation { detail: "fn() -> &str", documentation: "Do the foo" },
         );
     }
 }

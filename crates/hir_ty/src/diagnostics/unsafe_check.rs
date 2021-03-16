@@ -32,7 +32,7 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
         let def = self.owner.into();
         let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
         let is_unsafe = match self.owner {
-            DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe,
+            DefWithBodyId::FunctionId(it) => db.function_data(it).qualifier.is_unsafe,
             DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
         };
         if is_unsafe
@@ -86,7 +86,7 @@ fn walk_unsafe(
     match expr {
         &Expr::Call { callee, .. } => {
             if let Some(func) = infer[callee].as_fn_def(db) {
-                if db.function_data(func).is_unsafe {
+                if db.function_data(func).qualifier.is_unsafe {
                     unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
@@ -103,7 +103,7 @@ fn walk_unsafe(
         Expr::MethodCall { .. } => {
             if infer
                 .method_resolution(current)
-                .map(|func| db.function_data(func).is_unsafe)
+                .map(|func| db.function_data(func).qualifier.is_unsafe)
                 .unwrap_or(false)
             {
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });

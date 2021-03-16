@@ -9,7 +9,7 @@ use crate::{
     attr::Attrs,
     body::Expander,
     db::DefDatabase,
-    item_tree::{AssocItem, ItemTreeId, ModItem},
+    item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem},
     type_ref::{TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -26,9 +26,9 @@ pub struct FunctionData {
     /// can be called as a method.
     pub has_self_param: bool,
     pub has_body: bool,
-    pub is_unsafe: bool,
+    pub qualifier: FunctionQualifier,
+    pub is_in_extern_block: bool,
     pub is_varargs: bool,
-    pub is_extern: bool,
     pub visibility: RawVisibility,
 }
 
@@ -46,9 +46,9 @@ impl FunctionData {
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
-            is_unsafe: func.is_unsafe,
+            qualifier: func.qualifier.clone(),
+            is_in_extern_block: func.is_in_extern_block,
             is_varargs: func.is_varargs,
-            is_extern: func.is_extern,
             visibility: item_tree[func.visibility].clone(),
         })
     }
@@ -87,7 +87,10 @@ impl TypeAliasData {
 pub struct TraitData {
     pub name: Name,
     pub items: Vec<(Name, AssocItemId)>,
-    pub auto: bool,
+    pub is_auto: bool,
+    pub is_unsafe: bool,
+    pub visibility: RawVisibility,
+    pub bounds: Box<[TypeBound]>,
 }
 
 impl TraitData {
@@ -96,10 +99,13 @@ impl TraitData {
         let item_tree = db.item_tree(tr_loc.id.file_id);
         let tr_def = &item_tree[tr_loc.id.value];
         let name = tr_def.name.clone();
-        let auto = tr_def.auto;
+        let is_auto = tr_def.is_auto;
+        let is_unsafe = tr_def.is_unsafe;
         let module_id = tr_loc.container;
         let container = AssocContainerId::TraitId(tr);
         let mut expander = Expander::new(db, tr_loc.id.file_id, module_id);
+        let visibility = item_tree[tr_def.visibility].clone();
+        let bounds = tr_def.bounds.clone();
 
         let items = collect_items(
             db,
@@ -111,7 +117,7 @@ impl TraitData {
             100,
         );
 
-        Arc::new(TraitData { name, items, auto })
+        Arc::new(TraitData { name, items, is_auto, is_unsafe, visibility, bounds })
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {

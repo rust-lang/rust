@@ -452,6 +452,44 @@ fn main() { Foo::Fo$0 }
     }
 
     #[test]
+    fn fn_detail_includes_args_and_return_type() {
+        check(
+            r#"
+fn foo<T>(a: u32, b: u32, t: T) -> (u32, T) { (a, t) }
+
+fn main() { fo$0 }
+"#,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "foo(…)",
+                        source_range: 68..70,
+                        delete: 68..70,
+                        insert: "foo(${1:a}, ${2:b}, ${3:t})$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "fn(u32, u32, T) -> (u32, T)",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        source_range: 68..70,
+                        delete: 68..70,
+                        insert: "main()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "fn()",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn enum_detail_just_parentheses_for_unit() {
         check(
             r#"
@@ -538,7 +576,7 @@ fn main() { let _: m::Spam = S$0 }
                             Function,
                         ),
                         lookup: "main",
-                        detail: "-> ()",
+                        detail: "fn()",
                     },
                 ]
             "#]],
@@ -567,7 +605,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "main",
-                        detail: "-> ()",
+                        detail: "fn()",
                     },
                     CompletionItem {
                         label: "something_deprecated()",
@@ -578,7 +616,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "something_deprecated",
-                        detail: "-> ()",
+                        detail: "fn()",
                         deprecated: true,
                     },
                     CompletionItem {
@@ -590,7 +628,7 @@ fn main() { som$0 }
                             Function,
                         ),
                         lookup: "something_else_deprecated",
-                        detail: "-> ()",
+                        detail: "fn()",
                         deprecated: true,
                     },
                 ]
@@ -641,7 +679,7 @@ impl S {
                         insert: "bar()$0",
                         kind: Method,
                         lookup: "bar",
-                        detail: "-> ()",
+                        detail: "fn(self)",
                         documentation: Documentation(
                             "Method docs",
                         ),
@@ -741,7 +779,7 @@ fn foo(s: S) { s.$0 }
                         insert: "the_method()$0",
                         kind: Method,
                         lookup: "the_method",
-                        detail: "-> ()",
+                        detail: "fn(&self)",
                     },
                 ]
             "#]],
@@ -1049,7 +1087,7 @@ fn main() {
                             Function,
                         ),
                         lookup: "foo",
-                        detail: "-> ()",
+                        detail: "fn(&mut S)",
                         trigger_call_info: true,
                     },
                     CompletionItem {
@@ -1061,7 +1099,7 @@ fn main() {
                             Function,
                         ),
                         lookup: "main",
-                        detail: "-> ()",
+                        detail: "fn()",
                     },
                     CompletionItem {
                         label: "s",

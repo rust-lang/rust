@@ -9,7 +9,10 @@ use std::{
 
 use crate::{body::LowerCtx, type_ref::LifetimeRef};
 use base_db::CrateId;
-use hir_expand::{hygiene::Hygiene, name::Name};
+use hir_expand::{
+    hygiene::Hygiene,
+    name::{name, Name},
+};
 use syntax::ast;
 
 use crate::{
@@ -208,6 +211,12 @@ impl Path {
             generic_args: self.generic_args[..self.generic_args.len() - 1].to_vec(),
         };
         Some(res)
+    }
+
+    pub fn is_self_type(&self) -> bool {
+        self.type_anchor.is_none()
+            && self.generic_args == &[None]
+            && self.mod_path.as_ident() == Some(&name!(Self))
     }
 }
 

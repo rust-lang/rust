@@ -429,7 +429,7 @@ pub(crate) fn trait_datum_query(
     let generic_params = generics(db.upcast(), trait_.into());
     let bound_vars = Substs::bound_vars(&generic_params, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
-        auto: trait_data.auto,
+        auto: trait_data.is_auto,
         upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing

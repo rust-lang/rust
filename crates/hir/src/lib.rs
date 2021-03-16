@@ -29,6 +29,8 @@ mod has_source;
 pub mod diagnostics;
 pub mod db;
 
+mod display;
+
 use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
@@ -50,7 +52,6 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
-    display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
     to_assoc_type_id,
@@ -572,6 +573,12 @@ impl Struct {
     }
 }
 
+impl HasVisibility for Struct {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.struct_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Union {
     pub(crate) id: UnionId,
@@ -604,6 +611,12 @@ impl Union {
     }
 }
 
+impl HasVisibility for Union {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.union_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Enum {
     pub(crate) id: EnumId,
@@ -628,6 +641,12 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id.lookup(db.upcast()).container.krate(), self.id)
+    }
+}
+
+impl HasVisibility for Enum {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.enum_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
@@ -822,7 +841,8 @@ impl Function {
         db.function_data(self.id)
             .params
             .iter()
-            .map(|type_ref| {
+            .enumerate()
+            .map(|(idx, type_ref)| {
                 let ty = Type {
                     krate,
                     ty: InEnvironment {
@@ -830,7 +850,7 @@ impl Function {
                         environment: environment.clone(),
                     },
                 };
-                Param { ty }
+                Param { func: self, ty, idx }
             })
             .collect()
     }
@@ -844,7 +864,7 @@ impl Function {
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_unsafe
+        db.function_data(self.id).qualifier.is_unsafe
     }
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
@@ -893,12 +913,24 @@ impl From<hir_ty::Mutability> for Access {
 
 #[derive(Debug)]
 pub struct Param {
+    func: Function,
+    /// The index in parameter list, including self parameter.
+    idx: usize,
     ty: Type,
 }
 
 impl Param {
     pub fn ty(&self) -> &Type {
         &self.ty
+    }
+
+    pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {
+        let params = self.func.source(db)?.value.param_list()?;
+        if params.self_param().is_some() {
+            params.params().nth(self.idx.checked_sub(1)?)?.pat()
+        } else {
+            params.params().nth(self.idx)?.pat()
+        }
     }
 }
 
@@ -921,6 +953,14 @@ impl SelfParam {
                 _ => Access::Owned,
             })
             .unwrap_or(Access::Owned)
+    }
+
+    pub fn display(self, db: &dyn HirDatabase) -> &'static str {
+        match self.access(db) {
+            Access::Shared => "&self",
+            Access::Exclusive => "&mut self",
+            Access::Owned => "self",
+        }
     }
 }
 
@@ -948,6 +988,10 @@ impl Const {
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
         db.const_data(self.id).name.clone()
+    }
+
+    pub fn type_ref(self, db: &dyn HirDatabase) -> TypeRef {
+        db.const_data(self.id).type_ref.clone()
     }
 }
 
@@ -982,6 +1026,12 @@ impl Static {
     }
 }
 
+impl HasVisibility for Static {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.static_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Trait {
     pub(crate) id: TraitId,
@@ -1001,7 +1051,13 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).auto
+        db.trait_data(self.id).is_auto
+    }
+}
+
+impl HasVisibility for Trait {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.trait_data(self.id).visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
     }
 }
 
@@ -1410,19 +1466,6 @@ impl TypeParam {
         let subst = Substs::type_params(db, self.id.parent);
         let ty = ty.subst(&subst.prefix(local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
-    }
-}
-
-impl HirDisplay for TypeParam {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        write!(f, "{}", self.name(f.db))?;
-        let bounds = f.db.generic_predicates_for_param(self.id);
-        let substs = Substs::type_params(f.db, self.id.parent);
-        let predicates = bounds.iter().cloned().map(|b| b.subst(&substs)).collect::<Vec<_>>();
-        if !(predicates.is_empty() || f.omit_verbose_types()) {
-            write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
-        }
-        Ok(())
     }
 }
 
@@ -2056,12 +2099,6 @@ impl Type {
         }
 
         walk_type(db, self, &mut cb);
-    }
-}
-
-impl HirDisplay for Type {
-    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        self.ty.value.hir_fmt(f)
     }
 }
 

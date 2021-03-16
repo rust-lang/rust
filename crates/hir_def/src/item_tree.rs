@@ -24,7 +24,7 @@ use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use syntax::{ast, match_ast, SyntaxKind};
+use syntax::{ast, match_ast, SmolStr, SyntaxKind};
 
 use crate::{
     attr::{Attrs, RawAttrs},
@@ -556,14 +556,23 @@ pub struct Function {
     pub generic_params: GenericParamsId,
     pub has_self_param: bool,
     pub has_body: bool,
-    pub is_unsafe: bool,
+    pub qualifier: FunctionQualifier,
     /// Whether the function is located in an `extern` block (*not* whether it is an
     /// `extern "abi" fn`).
-    pub is_extern: bool,
+    pub is_in_extern_block: bool,
     pub params: Box<[Idx<TypeRef>]>,
     pub is_varargs: bool,
     pub ret_type: Idx<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionQualifier {
+    pub is_default: bool,
+    pub is_const: bool,
+    pub is_async: bool,
+    pub is_unsafe: bool,
+    pub abi: Option<SmolStr>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -629,7 +638,9 @@ pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: GenericParamsId,
-    pub auto: bool,
+    pub is_auto: bool,
+    pub is_unsafe: bool,
+    pub bounds: Box<[TypeBound]>,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }
