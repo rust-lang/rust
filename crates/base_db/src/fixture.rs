@@ -57,7 +57,7 @@
 //! fn insert_source_code_here() {}
 //! "
 //! ```
-use std::{str::FromStr, sync::Arc};
+use std::{mem, str::FromStr, sync::Arc};
 
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
@@ -148,6 +148,7 @@ impl ChangeFixture {
         let mut file_set = FileSet::default();
         let source_root_prefix = "/".to_string();
         let mut file_id = FileId(0);
+        let mut roots = Vec::new();
 
         let mut file_position = None;
 
@@ -167,6 +168,10 @@ impl ChangeFixture {
 
             let meta = FileMeta::from(entry);
             assert!(meta.path.starts_with(&source_root_prefix));
+
+            if meta.introduce_new_source_root {
+                roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
+            }
 
             if let Some(krate) = meta.krate {
                 let crate_name = CrateName::normalize_dashes(&krate);
@@ -215,7 +220,8 @@ impl ChangeFixture {
             }
         }
 
-        change.set_roots(vec![SourceRoot::new_local(file_set)]);
+        roots.push(SourceRoot::new_local(mem::take(&mut file_set)));
+        change.set_roots(roots);
         change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
@@ -229,6 +235,7 @@ struct FileMeta {
     cfg: CfgOptions,
     edition: Edition,
     env: Env,
+    introduce_new_source_root: bool,
 }
 
 impl From<Fixture> for FileMeta {
@@ -247,6 +254,7 @@ impl From<Fixture> for FileMeta {
                 .as_ref()
                 .map_or(Edition::Edition2018, |v| Edition::from_str(&v).unwrap()),
             env: f.env.into_iter().collect(),
+            introduce_new_source_root: f.introduce_new_source_root,
         }
     }
 }
