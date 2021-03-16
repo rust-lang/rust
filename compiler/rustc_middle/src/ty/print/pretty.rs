@@ -956,32 +956,40 @@ pub trait PrettyPrinter<'tcx>:
     }
 
     fn pretty_print_const_scalar(
-        mut self,
+        self,
         scalar: Scalar,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        match scalar {
+            Scalar::Ptr(ptr) => self.pretty_print_const_scalar_ptr(ptr, ty, print_ty),
+            Scalar::Int(int) => self.pretty_print_const_scalar_int(int, ty, print_ty),
+        }
+    }
+
+    fn pretty_print_const_scalar_ptr(
+        mut self,
+        ptr: Pointer,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
-        match (scalar, &ty.kind()) {
+        match ty.kind() {
             // Byte strings (&[u8; N])
-            (
-                Scalar::Ptr(ptr),
-                ty::Ref(
-                    _,
-                    ty::TyS {
-                        kind:
-                            ty::Array(
-                                ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
-                                ty::Const {
-                                    val: ty::ConstKind::Value(ConstValue::Scalar(int)),
-                                    ..
-                                },
-                            ),
-                        ..
-                    },
-                    _,
-                ),
+            ty::Ref(
+                _,
+                ty::TyS {
+                    kind:
+                        ty::Array(
+                            ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
+                            ty::Const {
+                                val: ty::ConstKind::Value(ConstValue::Scalar(int)), ..
+                            },
+                        ),
+                    ..
+                },
+                _,
             ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
                     let bytes = int.assert_bits(self.tcx().data_layout.pointer_size);
@@ -997,39 +1005,7 @@ pub trait PrettyPrinter<'tcx>:
                 Some(GlobalAlloc::Function(_)) => p!("<function>"),
                 None => p!("<dangling pointer>"),
             },
-            // Bool
-            (Scalar::Int(int), ty::Bool) if int == ScalarInt::FALSE => p!("false"),
-            (Scalar::Int(int), ty::Bool) if int == ScalarInt::TRUE => p!("true"),
-            // Float
-            (Scalar::Int(int), ty::Float(ty::FloatTy::F32)) => {
-                p!(write("{}f32", Single::try_from(int).unwrap()))
-            }
-            (Scalar::Int(int), ty::Float(ty::FloatTy::F64)) => {
-                p!(write("{}f64", Double::try_from(int).unwrap()))
-            }
-            // Int
-            (Scalar::Int(int), ty::Uint(_) | ty::Int(_)) => {
-                let int =
-                    ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
-                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
-            }
-            // Char
-            (Scalar::Int(int), ty::Char) if char::try_from(int).is_ok() => {
-                p!(write("{:?}", char::try_from(int).unwrap()))
-            }
-            // Raw pointers
-            (Scalar::Int(int), ty::RawPtr(_) | ty::FnPtr(_)) => {
-                let data = int.assert_bits(self.tcx().data_layout.pointer_size);
-                self = self.typed_value(
-                    |mut this| {
-                        write!(this, "0x{:x}", data)?;
-                        Ok(this)
-                    },
-                    |this| this.print_type(ty),
-                    " as ",
-                )?;
-            }
-            (Scalar::Ptr(ptr), ty::FnPtr(_)) => {
+            ty::FnPtr(_) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
                 match self.tcx().get_global_alloc(ptr.alloc_id) {
@@ -1043,12 +1019,61 @@ pub trait PrettyPrinter<'tcx>:
                     _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
                 }
             }
+            // Any pointer values not covered by a branch above
+            _ => {
+                self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
+            }
+        }
+        Ok(self)
+    }
+
+    fn pretty_print_const_scalar_int(
+        mut self,
+        int: ScalarInt,
+        ty: Ty<'tcx>,
+        print_ty: bool,
+    ) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+
+        match ty.kind() {
+            // Bool
+            ty::Bool if int == ScalarInt::FALSE => p!("false"),
+            ty::Bool if int == ScalarInt::TRUE => p!("true"),
+            // Float
+            ty::Float(ty::FloatTy::F32) => {
+                p!(write("{}f32", Single::try_from(int).unwrap()))
+            }
+            ty::Float(ty::FloatTy::F64) => {
+                p!(write("{}f64", Double::try_from(int).unwrap()))
+            }
+            // Int
+            ty::Uint(_) | ty::Int(_) => {
+                let int =
+                    ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
+                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
+            }
+            // Char
+            ty::Char if char::try_from(int).is_ok() => {
+                p!(write("{:?}", char::try_from(int).unwrap()))
+            }
+            // Raw pointers
+            ty::RawPtr(_) | ty::FnPtr(_) => {
+                let data = int.assert_bits(self.tcx().data_layout.pointer_size);
+                self = self.typed_value(
+                    |mut this| {
+                        write!(this, "0x{:x}", data)?;
+                        Ok(this)
+                    },
+                    |this| this.print_type(ty),
+                    " as ",
+                )?;
+            }
             // For function type zsts just printing the path is enough
-            (Scalar::Int(int), ty::FnDef(d, s)) if int == ScalarInt::ZST => {
+            ty::FnDef(d, s) if int == ScalarInt::ZST => {
                 p!(print_value_path(*d, s))
             }
             // Nontrivial types with scalar bit representation
-            (Scalar::Int(int), _) => {
+            _ => {
                 let print = |mut this: Self| {
                     if int.size() == Size::ZERO {
                         write!(this, "transmute(())")?;
@@ -1062,10 +1087,6 @@ pub trait PrettyPrinter<'tcx>:
                 } else {
                     print(self)?
                 };
-            }
-            // Any pointer values not covered by a branch above
-            (Scalar::Ptr(p), _) => {
-                self = self.pretty_print_const_pointer(p, ty, print_ty)?;
             }
         }
         Ok(self)

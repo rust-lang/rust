@@ -438,7 +438,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Need to experiment.
                     user_ty: None,
 
-                    literal: method,
+                    literal: method.into(),
                 }),
                 args: vec![val, expect],
                 destination: Some((eq_result, eq_block)),

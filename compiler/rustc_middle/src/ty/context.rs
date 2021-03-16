@@ -95,6 +95,8 @@ pub struct CtxtInterners<'tcx> {
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
+    /// Const allocations.
+    allocation: InternedSet<'tcx, Allocation>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -112,6 +114,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             projs: Default::default(),
             place_elems: Default::default(),
             const_: Default::default(),
+            allocation: Default::default(),
         }
     }
 
@@ -1041,9 +1044,6 @@ pub struct GlobalCtxt<'tcx> {
     /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
     const_stability_interner: ShardedHashMap<&'tcx attr::ConstStability, ()>,
 
-    /// Stores the value of constants (and deduplicates the actual memory)
-    allocation_interner: ShardedHashMap<&'tcx Allocation, ()>,
-
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
@@ -1086,7 +1086,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_const_alloc(self, alloc: Allocation) -> &'tcx Allocation {
-        self.allocation_interner.intern(alloc, |alloc| self.arena.alloc(alloc))
+        self.interners
+            .allocation
+            .intern(alloc, |alloc| Interned(self.interners.arena.alloc(alloc)))
+            .0
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -1205,7 +1208,6 @@ impl<'tcx> TyCtxt<'tcx> {
             layout_interner: Default::default(),
             stability_interner: Default::default(),
             const_stability_interner: Default::default(),
-            allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames.clone()),
         }
@@ -1641,6 +1643,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift! {allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
@@ -1931,7 +1934,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     "Const Stability interner: #{}",
                     self.0.const_stability_interner.len()
                 )?;
-                writeln!(fmt, "Allocation interner: #{}", self.0.allocation_interner.len())?;
+                writeln!(fmt, "Allocation interner: #{}", self.0.interners.allocation.len())?;
                 writeln!(fmt, "Layout interner: #{}", self.0.layout_interner.len())?;
 
                 Ok(())
@@ -2029,6 +2032,26 @@ impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
 impl<'tcx> Borrow<Const<'tcx>> for Interned<'tcx, Const<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Const<'tcx> {
         &self.0
+    }
+}
+
+impl<'tcx> Borrow<Allocation> for Interned<'tcx, Allocation> {
+    fn borrow<'a>(&'a self) -> &'a Allocation {
+        &self.0
+    }
+}
+
+impl<'tcx> PartialEq for Interned<'tcx, Allocation> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<'tcx> Eq for Interned<'tcx, Allocation> {}
+
+impl<'tcx> Hash for Interned<'tcx, Allocation> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.0.hash(s)
     }
 }
 

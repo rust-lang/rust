@@ -8,7 +8,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };
-use rustc_middle::ty::{Const, ConstKind};
+use rustc_middle::ty::ConstKind;
 
 use cranelift_codegen::ir::GlobalValueData;
 use cranelift_module::*;
@@ -39,7 +39,10 @@ impl ConstantCx {
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
-        let const_ = fx.monomorphize(constant.literal);
+        let const_ = match fx.monomorphize(constant.literal) {
+            ConstantKind::Ty(ct) => ct,
+            ConstantKind::Val(..) => continue,
+        };
         match const_.val {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(def, ref substs, promoted) => {
@@ -113,19 +116,17 @@ pub(crate) fn codegen_constant<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let const_ = fx.monomorphize(constant.literal);
+    let const_ = match fx.monomorphize(constant.literal) {
+        ConstantKind::Ty(ct) => ct,
+        ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
+    };
     let const_val = match const_.val {
         ConstKind::Value(const_val) => const_val,
         ConstKind::Unevaluated(def, ref substs, promoted) if fx.tcx.is_static(def.did) => {
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
-            return codegen_static_ref(
-                fx,
-                def.did,
-                fx.layout_of(fx.monomorphize(&constant.literal.ty)),
-            )
-            .to_cvalue(fx);
+            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty)).to_cvalue(fx);
         }
         ConstKind::Unevaluated(def, ref substs, promoted) => {
             match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), def, substs, promoted, None) {
@@ -422,11 +423,14 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
-) -> Option<&'tcx Const<'tcx>> {
+) -> Option<ConstValue<'tcx>> {
     match operand {
         Operand::Copy(_) | Operand::Move(_) => None,
-        Operand::Constant(const_) => {
-            Some(fx.monomorphize(const_.literal).eval(fx.tcx, ParamEnv::reveal_all()))
-        }
+        Operand::Constant(const_) => match const_.literal {
+            ConstantKind::Ty(const_) => {
+                fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val.try_to_value()
+            }
+            ConstantKind::Val(val, _) => Some(val),
+        },
     }
 }

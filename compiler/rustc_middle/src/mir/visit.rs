@@ -871,7 +871,10 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 drop(user_ty); // no visit method for this
-                self.visit_const(literal, location);
+                match literal {
+                    ConstantKind::Ty(ct) => self.visit_const(ct, location),
+                    ConstantKind::Val(_, t) => self.visit_ty(t, TyContext::Location(location)),
+                }
             }
 
             fn super_span(&mut self, _span: & $($mutability)? Span) {

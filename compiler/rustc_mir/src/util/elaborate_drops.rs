@@ -1035,7 +1035,7 @@ where
         Operand::Constant(box Constant {
             span: self.source_info.span,
             user_ty: None,
-            literal: ty::Const::from_usize(self.tcx(), val.into()),
+            literal: ty::Const::from_usize(self.tcx(), val.into()).into(),
         })
     }
 

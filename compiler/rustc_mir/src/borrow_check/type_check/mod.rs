@@ -282,7 +282,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let ty = self.sanitize_type(constant, constant.literal.ty);
+        let ty = self.sanitize_type(constant, constant.literal.ty());
 
         self.cx.infcx.tcx.for_each_free_region(&ty, |live_region| {
             let live_region_vid =
@@ -296,7 +296,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
-                constant.literal.ty,
+                constant.literal.ty(),
                 ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 location.to_locations(),
@@ -308,13 +308,22 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     constant,
                     "bad constant user type {:?} vs {:?}: {:?}",
                     annotation,
-                    constant.literal.ty,
+                    constant.literal.ty(),
                     terr,
                 );
             }
         } else {
             let tcx = self.tcx();
-            if let ty::ConstKind::Unevaluated(def, substs, promoted) = constant.literal.val {
+            let maybe_uneval = match constant.literal {
+                ConstantKind::Ty(ct) => match ct.val {
+                    ty::ConstKind::Unevaluated(def, substs, promoted) => {
+                        Some((def, substs, promoted))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            };
+            if let Some((def, substs, promoted)) = maybe_uneval {
                 if let Some(promoted) = promoted {
                     let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
                                      promoted: &Body<'tcx>,
@@ -349,7 +358,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         location.to_locations(),
                         ConstraintCategory::Boring,
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                            constant.literal.ty,
+                            constant.literal.ty(),
                             def.did,
                             UserSubsts { substs, user_self_ty: None },
                         )),
@@ -367,7 +376,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 let unnormalized_ty = tcx.type_of(static_def_id);
                 let locations = location.to_locations();
                 let normalized_ty = self.cx.normalize(unnormalized_ty, locations);
-                let literal_ty = constant.literal.ty.builtin_deref(true).unwrap().ty;
+                let literal_ty = constant.literal.ty().builtin_deref(true).unwrap().ty;
 
                 if let Err(terr) = self.cx.eq_types(
                     normalized_ty,
@@ -379,7 +388,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, substs) = *constant.literal.ty.kind() {
+            if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
                 let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
                 self.cx.normalize_and_prove_instantiated_predicates(
                     instantiated_predicates,

@@ -146,7 +146,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Constant {
                         span: expr_span,
                         user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, true),
+                        literal: ty::Const::from_bool(this.tcx, true).into(),
                     },
                 );
 
@@ -157,7 +157,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Constant {
                         span: expr_span,
                         user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, false),
+                        literal: ty::Const::from_bool(this.tcx, false).into(),
                     },
                 );
 

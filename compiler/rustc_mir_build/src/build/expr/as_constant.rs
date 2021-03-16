@@ -11,7 +11,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_constant(&mut self, expr: &Expr<'_, 'tcx>) -> Constant<'tcx> {
         let this = self;
         let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
-        match kind {
+        match *kind {
             ExprKind::Scope { region_scope: _, lint_level: _, value } => this.as_constant(value),
             ExprKind::Literal { literal, user_ty, const_id: _ } => {
                 let user_ty = user_ty.map(|user_ty| {
@@ -22,11 +22,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 });
                 assert_eq!(literal.ty, ty);
-                Constant { span, user_ty, literal }
+                Constant { span, user_ty, literal: literal.into() }
             }
-            ExprKind::StaticRef { literal, .. } => Constant { span, user_ty: None, literal },
+            ExprKind::StaticRef { literal, .. } => {
+                Constant { span, user_ty: None, literal: literal.into() }
+            }
             ExprKind::ConstBlock { value } => {
-                Constant { span: span, user_ty: None, literal: value }
+                Constant { span: span, user_ty: None, literal: value.into() }
             }
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }

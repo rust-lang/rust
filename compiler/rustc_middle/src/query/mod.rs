@@ -785,6 +785,14 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// Convert an evaluated constant to a type level constant or
+    /// return `None` if that is not possible.
+    query const_to_valtree(
+        key: ty::ParamEnvAnd<'tcx, ConstAlloc<'tcx>>
+    ) -> Option<ty::ValTree<'tcx>> {
+        desc { "destructure constant" }
+    }
+
     /// Destructure a constant ADT or array into its variant index and its
     /// field values.
     query destructure_const(

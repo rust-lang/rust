@@ -13,9 +13,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local, LocalDecl, LocalKind,
-    Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantKind, Local, LocalDecl,
+    LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -482,18 +482,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        match self.ecx.const_to_op(c.literal, None) {
+        match self.ecx.mir_const_to_op(&c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
-                    let lint_only = match c.literal.val {
-                        // Promoteds must lint and not error as the user didn't ask for them
-                        ConstKind::Unevaluated(_, _, Some(_)) => true,
-                        // Out of backwards compatibility we cannot report hard errors in unused
-                        // generic functions using associated constants of the generic parameters.
-                        _ => c.literal.needs_subst(),
+                    let lint_only = match c.literal {
+                        ConstantKind::Ty(ct) => match ct.val {
+                            // Promoteds must lint and not error as the user didn't ask for them
+                            ConstKind::Unevaluated(_, _, Some(_)) => true,
+                            // Out of backwards compatibility we cannot report hard errors in unused
+                            // generic functions using associated constants of the generic parameters.
+                            _ => c.literal.needs_subst(),
+                        },
+                        ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
@@ -803,7 +806,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ty::Const::from_scalar(self.tcx, scalar, ty),
+            literal: ty::Const::from_scalar(self.tcx, scalar, ty).into(),
         }))
     }
 
@@ -814,9 +817,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
-            if !matches!(c.literal.val, ConstKind::Unevaluated(..)) {
-                trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
-                return;
+            match c.literal {
+                ConstantKind::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
+                _ => {
+                    trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
+                    return;
+                }
             }
         }
 
@@ -883,13 +889,17 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
                                     span: source_info.span,
                                     user_ty: None,
-                                    literal: self.ecx.tcx.mk_const(ty::Const {
-                                        ty,
-                                        val: ty::ConstKind::Value(ConstValue::ByRef {
-                                            alloc,
-                                            offset: Size::ZERO,
-                                        }),
-                                    }),
+                                    literal: self
+                                        .ecx
+                                        .tcx
+                                        .mk_const(ty::Const {
+                                            ty,
+                                            val: ty::ConstKind::Value(ConstValue::ByRef {
+                                                alloc,
+                                                offset: Size::ZERO,
+                                            }),
+                                        })
+                                        .into(),
                                 })));
                             }
                         }

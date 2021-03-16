@@ -684,7 +684,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
-                            let fn_ty = self.monomorphize(value.literal.ty);
+                            let fn_ty = self.monomorphize(value.literal.ty());
                             visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {

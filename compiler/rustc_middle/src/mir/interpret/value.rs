@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 use rustc_apfloat::{
@@ -8,12 +8,12 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
-use crate::ty::{ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
-#[derive(Clone, HashStable, TyEncodable, TyDecodable, Debug)]
+#[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -47,6 +47,27 @@ pub enum ConstValue<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(ConstValue<'_>, 32);
 
+impl From<Scalar> for ConstValue<'tcx> {
+    fn from(s: Scalar) -> Self {
+        Self::Scalar(s)
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ConstValue<'a> {
+    type Lifted = ConstValue<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
+        Some(match self {
+            ConstValue::Scalar(s) => ConstValue::Scalar(s),
+            ConstValue::Slice { data, start, end } => {
+                ConstValue::Slice { data: tcx.lift(data)?, start, end }
+            }
+            ConstValue::ByRef { alloc, offset } => {
+                ConstValue::ByRef { alloc: tcx.lift(alloc)?, offset }
+            }
+        })
+    }
+}
+
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
@@ -56,20 +77,20 @@ impl<'tcx> ConstValue<'tcx> {
         }
     }
 
+    pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
+        Some(self.try_to_scalar()?.assert_int())
+    }
+
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
+        self.try_to_scalar_int()?.to_bits(size).ok()
     }
 
     pub fn try_to_bool(&self) -> Option<bool> {
-        match self.try_to_bits(Size::from_bytes(1))? {
-            0 => Some(false),
-            1 => Some(true),
-            _ => None,
-        }
+        self.try_to_scalar_int()?.try_into().ok()
     }
 
     pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        Some(self.try_to_bits(tcx.data_layout.pointer_size)? as u64)
+        self.try_to_scalar_int()?.try_to_machine_usize(tcx).ok()
     }
 
     pub fn try_to_bits_for_ty(
@@ -500,6 +521,13 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     #[inline(always)]
     fn from(ptr: Pointer<Tag>) -> Self {
         Scalar::Ptr(ptr)
+    }
+}
+
+impl<Tag> From<ScalarInt> for Scalar<Tag> {
+    #[inline(always)]
+    fn from(ptr: ScalarInt) -> Self {
+        Scalar::Int(ptr)
     }
 }
 

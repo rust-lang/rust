@@ -255,7 +255,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Constant(box Constant {
                     span: expr_span,
                     user_ty: None,
-                    literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit),
+                    literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit).into(),
                 })))
             }
             ExprKind::Yield { .. }

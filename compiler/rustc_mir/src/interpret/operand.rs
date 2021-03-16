@@ -532,7 +532,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(val, layout)?
+
+                self.mir_const_to_op(&val, layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -556,28 +557,45 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         val: &ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        match val.val {
+            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
+            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
+            ty::ConstKind::Unevaluated(def, substs, promoted) => {
+                let instance = self.resolve(def, substs)?;
+                Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into())
+            }
+            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
+                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
+            }
+            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty, layout),
+        }
+    }
+
+    crate fn mir_const_to_op(
+        &self,
+        val: &mir::ConstantKind<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        match val {
+            mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, None),
+        }
+    }
+
+    crate fn const_val_to_op(
+        &self,
+        val_val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        // Other cases need layout.
         let tag_scalar = |scalar| -> InterpResult<'tcx, _> {
             Ok(match scalar {
                 Scalar::Ptr(ptr) => Scalar::Ptr(self.global_base_pointer(ptr)?),
                 Scalar::Int(int) => Scalar::Int(int),
             })
         };
-        // Early-return cases.
-        let val_val = match val.val {
-            ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
-            ty::ConstKind::Unevaluated(def, substs, promoted) => {
-                let instance = self.resolve(def, substs)?;
-                return Ok(self.eval_to_allocation(GlobalId { instance, promoted })?.into());
-            }
-            ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
-                span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
-            }
-            ty::ConstKind::Value(val_val) => val_val,
-        };
-        // Other cases need layout.
-        let layout =
-            from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(val.ty))?;
+        let layout = from_known_layout(self.tcx, self.param_env, layout, || self.layout_of(ty))?;
         let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.create_memory_alloc(alloc);

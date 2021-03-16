@@ -635,12 +635,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
                             if let mir::Operand::Constant(constant) = arg {
                                 let c = self.eval_mir_constant(constant);
-                                let (llval, ty) = self.simd_shuffle_indices(
-                                    &bx,
-                                    constant.span,
-                                    constant.literal.ty,
-                                    c,
-                                );
+                                let (llval, ty) =
+                                    self.simd_shuffle_indices(&bx, constant.span, constant.ty(), c);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
@@ -830,7 +826,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let const_value = self
                             .eval_mir_constant(constant)
                             .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
-                        let ty = constant.literal.ty;
+                        let ty = constant.ty();
                         let size = bx.layout_of(ty).size;
                         let scalar = match const_value {
                             ConstValue::Scalar(s) => s,
@@ -864,7 +860,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let literal = self.monomorphize(value.literal);
-                    if let ty::FnDef(def_id, substs) = *literal.ty.kind() {
+                    if let ty::FnDef(def_id, substs) = *literal.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
                             ty::ParamEnv::reveal_all(),

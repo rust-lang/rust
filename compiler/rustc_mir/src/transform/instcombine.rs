@@ -79,7 +79,7 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
 
     fn try_eval_bool(&self, a: &Operand<'_>) -> Option<bool> {
         let a = a.constant()?;
-        if a.literal.ty.is_bool() { a.literal.val.try_to_bool() } else { None }
+        if a.literal.ty().is_bool() { a.literal.try_to_bool() } else { None }
     }
 
     /// Transform "&(*a)" ==> "a".
@@ -110,12 +110,13 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
     fn combine_len(&self, source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Len(ref place) = *rvalue {
             let place_ty = place.ty(self.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = place_ty.kind() {
+            if let ty::Array(_, len) = *place_ty.kind() {
                 if !self.should_combine(source_info, rvalue) {
                     return;
                 }
 
-                let constant = Constant { span: source_info.span, literal: len, user_ty: None };
+                let constant =
+                    Constant { span: source_info.span, literal: len.into(), user_ty: None };
                 *rvalue = Rvalue::Use(Operand::Constant(box constant));
             }
         }

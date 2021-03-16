@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::mir::interpret::ConstValue;
 use crate::mir::interpret::Scalar;
 use crate::mir::Promoted;
@@ -8,6 +10,8 @@ use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_target::abi::Size;
+
+use super::ScalarInt;
 
 /// Represents a constant in Rust.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
@@ -52,13 +56,18 @@ impl<'tcx> ConstKind<'tcx> {
     }
 
     #[inline]
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        Some(self.try_to_value()?.try_to_scalar()?.assert_int())
+    }
+
+    #[inline]
     pub fn try_to_bits(self, size: Size) -> Option<u128> {
-        self.try_to_value()?.try_to_bits(size)
+        self.try_to_scalar_int()?.to_bits(size).ok()
     }
 
     #[inline]
     pub fn try_to_bool(self) -> Option<bool> {
-        self.try_to_value()?.try_to_bool()
+        self.try_to_scalar_int()?.try_into().ok()
     }
 
     #[inline]

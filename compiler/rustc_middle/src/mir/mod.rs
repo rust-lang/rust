@@ -11,12 +11,12 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
+use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Size, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
@@ -30,6 +30,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
@@ -2032,7 +2033,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, ty),
+            literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
         })
     }
 
@@ -2063,7 +2064,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ty::Const::from_scalar(tcx, val, ty),
+            literal: ConstantKind::Val(val.into(), ty),
         })
     }
 
@@ -2405,12 +2406,21 @@ pub struct Constant<'tcx> {
     /// Needed for NLL to impose user-given type constraints.
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
-    pub literal: &'tcx ty::Const<'tcx>,
+    pub literal: ConstantKind<'tcx>,
+}
+
+#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+pub enum ConstantKind<'tcx> {
+    /// This constant came from the type system
+    Ty(&'tcx ty::Const<'tcx>),
+    /// This constant cannot go back into the type system, as it represents
+    /// something the type system cannot handle (e.g. pointers).
+    Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
 }
 
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.val.try_to_scalar() {
+        match self.literal.const_for_ty()?.val.try_to_scalar() {
             Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2419,6 +2429,94 @@ impl Constant<'tcx> {
                 _ => None,
             },
             _ => None,
+        }
+    }
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.literal.ty()
+    }
+}
+
+impl From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+    fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
+        Self::Ty(ct)
+    }
+}
+
+impl ConstantKind<'tcx> {
+    /// Returns `None` if the constant is not trivially safe for use in the type system.
+    pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
+        match self {
+            ConstantKind::Ty(c) => Some(c),
+            ConstantKind::Val(..) => None,
+        }
+    }
+
+    pub fn ty(&self) -> Ty<'tcx> {
+        match self {
+            ConstantKind::Ty(c) => c.ty,
+            ConstantKind::Val(_, ty) => ty,
+        }
+    }
+
+    #[inline]
+    pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
+        match self {
+            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Val(val, _) => Some(val),
+        }
+    }
+
+    #[inline]
+    pub fn try_to_scalar(self) -> Option<Scalar> {
+        self.try_to_value()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        Some(self.try_to_value()?.try_to_scalar()?.assert_int())
+    }
+
+    #[inline]
+    pub fn try_to_bits(self, size: Size) -> Option<u128> {
+        self.try_to_scalar_int()?.to_bits(size).ok()
+    }
+
+    #[inline]
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_scalar_int()?.try_into().ok()
+    }
+
+    #[inline]
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
+            Self::Val(val, t) => {
+                assert_eq!(*t, ty);
+                let size =
+                    tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+                val.try_to_bits(size)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
+            Self::Val(val, _) => val.try_to_bool(),
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u64> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
+            Self::Val(val, _) => val.try_to_machine_usize(tcx),
         }
     }
 }
@@ -2606,11 +2704,14 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self.literal.ty.kind() {
+        match self.ty().kind() {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        pretty_print_const(self.literal, fmt, true)
+        match self.literal {
+            ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
+            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+        }
     }
 }
 
@@ -2625,6 +2726,23 @@ fn pretty_print_const(
         let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
         cx.print_alloc_ids = true;
         cx.pretty_print_const(literal, print_types)?;
+        Ok(())
+    })
+}
+
+fn pretty_print_const_value(
+    val: interpret::ConstValue<'tcx>,
+    ty: Ty<'tcx>,
+    fmt: &mut Formatter<'_>,
+    print_types: bool,
+) -> fmt::Result {
+    use crate::ty::print::PrettyPrinter;
+    ty::tls::with(|tcx| {
+        let val = tcx.lift(val).unwrap();
+        let ty = tcx.lift(ty).unwrap();
+        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        cx.print_alloc_ids = true;
+        cx.pretty_print_const_value(val, ty, print_types)?;
         Ok(())
     })
 }
