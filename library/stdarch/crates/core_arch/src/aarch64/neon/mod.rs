@@ -314,11 +314,6 @@ extern "C" {
         c: uint8x16_t,
     ) -> int8x16_t;
 
-    #[link_name = "llvm.aarch64.neon.fcvtzu.v4i32.v4f32"]
-    fn vcvtq_u32_f32_(a: float32x4_t) -> uint32x4_t;
-    #[link_name = "llvm.aarch64.neon.fcvtzs.v4i32.v4f32"]
-    fn vcvtq_s32_f32_(a: float32x4_t) -> int32x4_t;
-
     #[link_name = "llvm.aarch64.neon.vsli.v8i8"]
     fn vsli_n_s8_(a: int8x8_t, b: int8x8_t, n: i32) -> int8x8_t;
     #[link_name = "llvm.aarch64.neon.vsli.v16i8"]
@@ -2364,21 +2359,6 @@ pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> pol
     ))
 }
 
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fcvtzs))]
-pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
-    vcvtq_s32_f32_(a)
-}
-
-/// Floating-point Convert to Unsigned fixed-point, rounding toward Zero (vector)
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fcvtzu))]
-pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
-    vcvtq_u32_f32_(a)
-}
-
 /// Shift Left and Insert (immediate)
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2748,42 +2728,6 @@ mod tests {
     use crate::core_arch::{aarch64::neon::*, aarch64::*, simd::*};
     use std::mem::transmute;
     use stdarch_test::simd_test;
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vcvtq_s32_f32() {
-        let f = f32x4::new(-1., 2., 3., 4.);
-        let e = i32x4::new(-1, 2, 3, 4);
-        let r: i32x4 = transmute(vcvtq_s32_f32(transmute(f)));
-        assert_eq!(r, e);
-
-        let f = f32x4::new(10e37, 2., 3., 4.);
-        let e = i32x4::new(0x7fffffff, 2, 3, 4);
-        let r: i32x4 = transmute(vcvtq_s32_f32(transmute(f)));
-        assert_eq!(r, e);
-
-        let f = f32x4::new(-10e37, 2., 3., 4.);
-        let e = i32x4::new(-0x80000000, 2, 3, 4);
-        let r: i32x4 = transmute(vcvtq_s32_f32(transmute(f)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vcvtq_u32_f32() {
-        let f = f32x4::new(1., 2., 3., 4.);
-        let e = u32x4::new(1, 2, 3, 4);
-        let r: u32x4 = transmute(vcvtq_u32_f32(transmute(f)));
-        assert_eq!(r, e);
-
-        let f = f32x4::new(-1., 2., 3., 4.);
-        let e = u32x4::new(0, 2, 3, 4);
-        let r: u32x4 = transmute(vcvtq_u32_f32(transmute(f)));
-        assert_eq!(r, e);
-
-        let f = f32x4::new(10e37, 2., 3., 4.);
-        let e = u32x4::new(0xffffffff, 2, 3, 4);
-        let r: u32x4 = transmute(vcvtq_u32_f32(transmute(f)));
-        assert_eq!(r, e);
-    }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vuqadd_s8() {

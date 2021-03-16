@@ -1941,6 +1941,46 @@ pub unsafe fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
     vcageq_f32(b, a)
 }
 
+/// Floating-point convert to signed fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
+pub unsafe fn vcvt_s32_f32(a: float32x2_t) -> int32x2_t {
+    simd_cast(a)
+}
+
+/// Floating-point convert to signed fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzs))]
+pub unsafe fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
+    simd_cast(a)
+}
+
+/// Floating-point convert to unsigned fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
+pub unsafe fn vcvt_u32_f32(a: float32x2_t) -> uint32x2_t {
+    simd_cast(a)
+}
+
+/// Floating-point convert to unsigned fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vcvt))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fcvtzu))]
+pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
+    simd_cast(a)
+}
+
 /// Saturating subtract
 #[inline]
 #[target_feature(enable = "neon")]
@@ -5482,6 +5522,38 @@ mod test {
         let b: f32x4 = f32x4::new(-1.1, 0.0, 1.1, 2.4);
         let e: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 0, 0xFF_FF_FF_FF);
         let r: u32x4 = transmute(vcaleq_f32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_s32_f32() {
+        let a: f32x2 = f32x2::new(-1.1, 2.1);
+        let e: i32x2 = i32x2::new(-1, 2);
+        let r: i32x2 = transmute(vcvt_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_s32_f32() {
+        let a: f32x4 = f32x4::new(-1.1, 2.1, -2.9, 3.9);
+        let e: i32x4 = i32x4::new(-1, 2, -2, 3);
+        let r: i32x4 = transmute(vcvtq_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_u32_f32() {
+        let a: f32x2 = f32x2::new(1.1, 2.1);
+        let e: u32x2 = u32x2::new(1, 2);
+        let r: u32x2 = transmute(vcvt_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_u32_f32() {
+        let a: f32x4 = f32x4::new(1.1, 2.1, 2.9, 3.9);
+        let e: u32x4 = u32x4::new(1, 2, 2, 3);
+        let r: u32x4 = transmute(vcvtq_u32_f32(transmute(a)));
         assert_eq!(r, e);
     }
 

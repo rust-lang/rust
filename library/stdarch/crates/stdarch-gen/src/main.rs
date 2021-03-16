@@ -170,6 +170,10 @@ fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> &'a str {
         ("int32x4_t", "float32x4_t") => "q_s32_f32",
         ("int64x1_t", "float64x1_t") => "_s64_f64",
         ("int64x2_t", "float64x2_t") => "q_s64_f64",
+        ("uint32x2_t", "float32x2_t") => "_u32_f32",
+        ("uint32x4_t", "float32x4_t") => "q_u32_f32",
+        ("uint64x1_t", "float64x1_t") => "_u64_f64",
+        ("uint64x2_t", "float64x2_t") => "q_u64_f64",
         (_, _) => panic!("unknown type: {}, {}", out_t, in_t),
     }
 }
