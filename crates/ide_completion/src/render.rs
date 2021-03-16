@@ -307,12 +307,13 @@ impl<'a> Render<'a> {
 }
 
 fn compute_exact_type_match(ctx: &CompletionContext, completion_ty: &hir::Type) -> bool {
-    if let Some(expected_type) = ctx.expected_type.as_ref() {
-        // We don't ever consider unit type to be an exact type match, since
-        // nearly always this is not meaningful to the user.
-        completion_ty == expected_type && !expected_type.is_unit()
-    } else {
-        false
+    match ctx.expected_type.as_ref() {
+        Some(expected_type) => {
+            // We don't ever consider unit type to be an exact type match, since
+            // nearly always this is not meaningful to the user.
+            completion_ty == expected_type && !expected_type.is_unit()
+        }
+        None => false,
     }
 }
 
@@ -323,27 +324,20 @@ fn compute_exact_name_match(ctx: &CompletionContext, completion_name: impl Into<
 }
 
 fn compute_ref_match(ctx: &CompletionContext, completion_ty: &hir::Type) -> Option<Mutability> {
-    let mut ref_match = None;
-    if let Some(expected_type) = &ctx.expected_type {
-        if completion_ty != expected_type {
-            if let Some(expected_type_without_ref) = expected_type.remove_ref() {
-                if completion_ty == &expected_type_without_ref
-                    || completion_ty
-                        .autoderef(ctx.db)
-                        .any(|deref_ty| deref_ty == expected_type_without_ref)
-                {
-                    cov_mark::hit!(suggest_ref);
-                    let mutability = if expected_type.is_mutable_reference() {
-                        Mutability::Mut
-                    } else {
-                        Mutability::Shared
-                    };
-                    ref_match = Some(mutability);
-                }
-            }
-        }
-    };
-    ref_match
+    let expected_type = ctx.expected_type.as_ref()?;
+    if completion_ty != expected_type {
+        let expected_type_without_ref = expected_type.remove_ref()?;
+        if completion_ty.autoderef(ctx.db).any(|deref_ty| deref_ty == expected_type_without_ref) {
+            cov_mark::hit!(suggest_ref);
+            let mutability = if expected_type.is_mutable_reference() {
+                Mutability::Mut
+            } else {
+                Mutability::Shared
+            };
+            return Some(mutability);
+        };
+    }
+    None
 }
 
 #[cfg(test)]
