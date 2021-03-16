@@ -662,12 +662,11 @@ fn test_tt_to_stmts() {
         LITERAL@12..13
           INT_NUMBER@12..13 "1"
     SEMICOLON@13..14 ";"
-  EXPR_STMT@14..15
-    PATH_EXPR@14..15
-      PATH@14..15
-        PATH_SEGMENT@14..15
-          NAME_REF@14..15
-            IDENT@14..15 "a""#,
+  PATH_EXPR@14..15
+    PATH@14..15
+      PATH_SEGMENT@14..15
+        NAME_REF@14..15
+          IDENT@14..15 "a""#,
     );
 }
 

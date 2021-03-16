@@ -519,13 +519,24 @@ impl ExprCollector<'_> {
             }
             ast::Expr::MacroCall(e) => {
                 let mut ids = vec![];
-                self.collect_macro_call(e, syntax_ptr.clone(), |this, expansion| {
+                self.collect_macro_call(e, syntax_ptr.clone(), true, |this, expansion| {
                     ids.push(match expansion {
                         Some(it) => this.collect_expr(it),
                         None => this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
                     })
                 });
                 ids[0]
+            }
+            ast::Expr::MacroStmts(e) => {
+                // FIXME:  these statements should be held by some hir containter
+                for stmt in e.statements() {
+                    self.collect_stmt(stmt);
+                }
+                if let Some(expr) = e.expr() {
+                    self.collect_expr(expr)
+                } else {
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                }
             }
         }
     }
@@ -534,6 +545,7 @@ impl ExprCollector<'_> {
         &mut self,
         e: ast::MacroCall,
         syntax_ptr: AstPtr<ast::Expr>,
+        is_error_recoverable: bool,
         mut collector: F,
     ) {
         // File containing the macro call. Expansion errors will be attached here.
@@ -567,7 +579,7 @@ impl ExprCollector<'_> {
             Some((mark, expansion)) => {
                 // FIXME: Statements are too complicated to recover from error for now.
                 // It is because we don't have any hygiene for local variable expansion right now.
-                if T::can_cast(syntax::SyntaxKind::MACRO_STMTS) && res.err.is_some() {
+                if !is_error_recoverable && res.err.is_some() {
                     self.expander.exit(self.db, mark);
                     collector(self, None);
                 } else {
@@ -591,56 +603,55 @@ impl ExprCollector<'_> {
     }
 
     fn collect_stmt(&mut self, s: ast::Stmt) -> Option<Vec<Statement>> {
-        let stmt =
-            match s {
-                ast::Stmt::LetStmt(stmt) => {
-                    self.check_cfg(&stmt)?;
+        let stmt = match s {
+            ast::Stmt::LetStmt(stmt) => {
+                self.check_cfg(&stmt)?;
 
-                    let pat = self.collect_pat_opt(stmt.pat());
-                    let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
-                    let initializer = stmt.initializer().map(|e| self.collect_expr(e));
-                    vec![Statement::Let { pat, type_ref, initializer }]
-                }
-                ast::Stmt::ExprStmt(stmt) => {
-                    self.check_cfg(&stmt)?;
+                let pat = self.collect_pat_opt(stmt.pat());
+                let type_ref = stmt.ty().map(|it| TypeRef::from_ast(&self.ctx(), it));
+                let initializer = stmt.initializer().map(|e| self.collect_expr(e));
+                vec![Statement::Let { pat, type_ref, initializer }]
+            }
+            ast::Stmt::ExprStmt(stmt) => {
+                self.check_cfg(&stmt)?;
 
-                    // Note that macro could be expended to multiple statements
-                    if let Some(ast::Expr::MacroCall(m)) = stmt.expr() {
-                        let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
-                        let mut stmts = vec![];
+                // Note that macro could be expended to multiple statements
+                if let Some(ast::Expr::MacroCall(m)) = stmt.expr() {
+                    let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
+                    let mut stmts = vec![];
 
-                        self.collect_macro_call(m, syntax_ptr.clone(), |this, expansion| {
-                            match expansion {
-                                Some(expansion) => {
-                                    let statements: ast::MacroStmts = expansion;
+                    self.collect_macro_call(m, syntax_ptr.clone(), false, |this, expansion| {
+                        match expansion {
+                            Some(expansion) => {
+                                let statements: ast::MacroStmts = expansion;
 
-                                    statements.statements().for_each(|stmt| {
-                                        if let Some(mut r) = this.collect_stmt(stmt) {
-                                            stmts.append(&mut r);
-                                        }
-                                    });
-                                    if let Some(expr) = statements.expr() {
-                                        stmts.push(Statement::Expr(this.collect_expr(expr)));
+                                statements.statements().for_each(|stmt| {
+                                    if let Some(mut r) = this.collect_stmt(stmt) {
+                                        stmts.append(&mut r);
                                     }
-                                }
-                                None => {
-                                    stmts.push(Statement::Expr(
-                                        this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
-                                    ));
+                                });
+                                if let Some(expr) = statements.expr() {
+                                    stmts.push(Statement::Expr(this.collect_expr(expr)));
                                 }
                             }
-                        });
-                        stmts
-                    } else {
-                        vec![Statement::Expr(self.collect_expr_opt(stmt.expr()))]
-                    }
+                            None => {
+                                stmts.push(Statement::Expr(
+                                    this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
+                                ));
+                            }
+                        }
+                    });
+                    stmts
+                } else {
+                    vec![Statement::Expr(self.collect_expr_opt(stmt.expr()))]
                 }
-                ast::Stmt::Item(item) => {
-                    self.check_cfg(&item)?;
+            }
+            ast::Stmt::Item(item) => {
+                self.check_cfg(&item)?;
 
-                    return None;
-                }
-            };
+                return None;
+            }
+        };
 
         Some(stmt)
     }

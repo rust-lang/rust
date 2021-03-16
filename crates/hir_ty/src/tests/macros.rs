@@ -216,6 +216,22 @@ fn expr_macro_expanded_in_various_places() {
 }
 
 #[test]
+fn expr_macro_expanded_in_stmts() {
+    check_infer(
+        r#"
+        macro_rules! id { ($($es:tt)*) => { $($es)* } }
+        fn foo() {
+            id! { let a = (); }
+        }
+        "#,
+        expect![[r#"
+            !0..8 'leta=();': ()
+            57..84 '{     ...); } }': ()
+        "#]],
+    );
+}
+
+#[test]
 fn infer_type_value_macro_having_same_name() {
     check_infer(
         r#"

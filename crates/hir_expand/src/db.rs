@@ -401,13 +401,14 @@ fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
 
     match parent.kind() {
         MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
+        MACRO_STMTS => FragmentKind::Statement,
         ITEM_LIST => FragmentKind::Items,
         LET_STMT => {
             // FIXME: Handle Pattern
             FragmentKind::Expr
         }
         EXPR_STMT => FragmentKind::Statements,
-        BLOCK_EXPR => FragmentKind::Expr,
+        BLOCK_EXPR => FragmentKind::Statements,
         ARG_LIST => FragmentKind::Expr,
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,
