@@ -84,11 +84,10 @@ fn const_to_valtree_inner<'tcx>(
             Some(ty::ValTree::Leaf(val.assert_int()))
         }
 
-        // Raw pointers are not allowed in type level constants, as raw pointers compare equal if
-        // their addresses are equal. Since we cannot guarantee any kind of pointer stability in
-        // the type system.
-        // Technically we could allow function pointers, but they are not guaranteed to be the
-        // same as the function pointers at runtime.
+        // Raw pointers are not allowed in type level constants, as we cannot properly test them for
+        // equality at compile-time (see `ptr_guaranteed_eq`/`_ne`).
+        // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
+        // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => None,
         ty::Ref(..) => unimplemented!("need to use deref_const"),
 
