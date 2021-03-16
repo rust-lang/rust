@@ -10,6 +10,8 @@ use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
+use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::DefId;
@@ -1240,4 +1242,42 @@ pub fn get_exprs_from_tts(
         }
     }
     Some(es)
+}
+
+/// This nonterminal looks like some specific enums from
+/// `proc-macro-hack` and `procedural-masquerade` crates.
+/// We need to maintain some special pretty-printing behavior for them due to incorrect
+/// asserts in old versions of those crates and their wide use in the ecosystem.
+/// See issue #73345 for more details.
+/// FIXME(#73933): Remove this eventually.
+pub(crate) fn pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
+    let item = match nt {
+        Nonterminal::NtItem(item) => item,
+        Nonterminal::NtStmt(stmt) => match &stmt.kind {
+            ast::StmtKind::Item(item) => item,
+            _ => return false,
+        },
+        _ => return false,
+    };
+
+    let name = item.ident.name;
+    if name == sym::ProceduralMasqueradeDummyType {
+        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
+            if let [variant] = &*enum_def.variants {
+                if variant.ident.name == sym::Input {
+                    sess.buffer_lint_with_diagnostic(
+                        &PROC_MACRO_BACK_COMPAT,
+                        item.ident.span,
+                        ast::CRATE_NODE_ID,
+                        "using `procedural-masquerade` crate",
+                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                        "The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. \
+                        Versions of this crate below 0.1.7 will eventually stop compiling.".to_string())
+                    );
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
