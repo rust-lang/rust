@@ -1,0 +1,14 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use3.rs:13:27
+   |
+LL | fn one<T: Debug>(t: T) -> Two<T, T> {
+   |                           ^^^^^^^^^
+   |
+note: type used multiple times
+  --> $DIR/generic_duplicate_param_use3.rs:11:10
+   |
+LL | type Two<T, U> = impl Debug;
+   |          ^  ^
+
+error: aborting due to previous error
+

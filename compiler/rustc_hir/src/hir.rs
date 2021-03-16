@@ -2291,7 +2291,9 @@ pub enum OpaqueTyOrigin {
     AsyncFn,
     /// `let _: impl Trait = ...`
     Binding,
-    /// Impl trait in type aliases, consts, statics, bounds.
+    /// type aliases: `type Foo = impl Trait;`
+    TyAlias,
+    /// Impl trait consts, statics, bounds.
     Misc,
 }
 

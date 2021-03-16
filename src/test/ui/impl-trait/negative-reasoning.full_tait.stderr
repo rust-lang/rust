@@ -1,0 +1,23 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/negative-reasoning.rs:5:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<impl OpaqueTrait>`:
+  --> $DIR/negative-reasoning.rs:22:1
+   |
+LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
+   | ------------------------------------------- first implementation here
+...
+LL | impl AnotherTrait for D<OpaqueType> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `D<impl OpaqueTrait>`
+   |
+   = note: upstream crates may add a new impl of trait `std::fmt::Debug` for type `impl OpaqueTrait` in future versions
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0119`.
