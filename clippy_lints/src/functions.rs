@@ -516,7 +516,7 @@ fn check_needless_must_use(
                 );
             },
         );
-    } else if !attr.is_value_str() && is_must_use_ty(cx, return_ty(cx, item_id)) {
+    } else if !attr.value_str().is_some() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         span_lint_and_help(
             cx,
             DOUBLE_MUST_USE,
