@@ -27,7 +27,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position)
+            create_where_clause(position, true)
         }
         self.where_clause().unwrap()
     }
@@ -36,16 +36,31 @@ impl GenericParamsOwnerEdit for ast::Fn {
 impl GenericParamsOwnerEdit for ast::Impl {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
-            let position = if let Some(ty) = self.self_ty() {
-                Position::after(ty.syntax().clone())
+            let position = if let Some(items) = self.assoc_item_list() {
+                Position::before(items.syntax().clone())
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position)
+            create_where_clause(position, false)
         }
         self.where_clause().unwrap()
     }
 }
+
+impl GenericParamsOwnerEdit for ast::Trait {
+    fn get_or_create_where_clause(&self) -> WhereClause {
+        if self.where_clause().is_none() {
+            let position = if let Some(items) = self.assoc_item_list() {
+                Position::before(items.syntax().clone())
+            } else {
+                Position::last_child_of(self.syntax().clone())
+            };
+            create_where_clause(position, false)
+        }
+        self.where_clause().unwrap()
+    }
+}
+
 impl GenericParamsOwnerEdit for ast::Struct {
     fn get_or_create_where_clause(&self) -> WhereClause {
         if self.where_clause().is_none() {
@@ -62,17 +77,36 @@ impl GenericParamsOwnerEdit for ast::Struct {
             } else {
                 Position::last_child_of(self.syntax().clone())
             };
-            create_where_clause(position)
+            create_where_clause(position, true)
         }
         self.where_clause().unwrap()
     }
 }
 
-fn create_where_clause(position: Position) {
-    let elements = vec![
-        make::tokens::single_space().into(),
-        make::where_clause(empty()).clone_for_update().syntax().clone().into(),
-    ];
+impl GenericParamsOwnerEdit for ast::Enum {
+    fn get_or_create_where_clause(&self) -> WhereClause {
+        if self.where_clause().is_none() {
+            let position = if let Some(gpl) = self.generic_param_list() {
+                Position::after(gpl.syntax().clone())
+            } else if let Some(name) = self.name() {
+                Position::after(name.syntax().clone())
+            } else {
+                Position::last_child_of(self.syntax().clone())
+            };
+            create_where_clause(position, true)
+        }
+        self.where_clause().unwrap()
+    }
+}
+
+fn create_where_clause(position: Position, after: bool) {
+    let mut elements = vec![make::where_clause(empty()).clone_for_update().syntax().clone().into()];
+    let ws = make::tokens::single_space().into();
+    if after {
+        elements.insert(0, ws)
+    } else {
+        elements.push(ws)
+    }
     ted::insert_all(position, elements);
 }
 
