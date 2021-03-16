@@ -2673,7 +2673,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                       8;
 
       // this is guarded because havent told cacheForReverse how to move
-      if (mode == DerivativeMode::Both && false)
+      if (mode == DerivativeMode::Both)
         if (!li->isVolatile()) {
           auto scev1 = SE.getSCEV(li->getPointerOperand());
           llvm::errs() << "scev1: " << *scev1 << "\n";
@@ -2876,7 +2876,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               return result;
             }
           }
-        }
 
     noSpeedCache:;
     }
