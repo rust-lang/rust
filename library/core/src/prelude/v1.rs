@@ -61,7 +61,7 @@ pub use crate::{
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated)]
+#[allow(deprecated, deprecated_in_future)]
 #[doc(no_inline)]
 pub use crate::macros::builtin::{
     bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
