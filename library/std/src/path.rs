@@ -2472,6 +2472,36 @@ impl Path {
         fs::metadata(self).is_ok()
     }
 
+    /// Returns `Ok(true)` if the path points at an existing entity.
+    ///
+    /// This function will traverse symbolic links to query information about the
+    /// destination file. In case of broken symbolic links this will return `Ok(false)`.
+    ///
+    /// As opposed to the `exists()` method, this one doesn't silently ignore errors
+    /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
+    /// denied on some of the parent directories.)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(path_try_exists)]
+    ///
+    /// use std::path::Path;
+    /// assert!(!Path::new("does_not_exist.txt").try_exists().expect("Can't check existence of file does_not_exist.txt"));
+    /// assert!(Path::new("/root/secret_file.txt").try_exists().is_err());
+    /// ```
+    // FIXME: stabilization should modify documentation of `exists()` to recommend this method
+    // instead.
+    #[unstable(feature = "path_try_exists", issue = "83186")]
+    #[inline]
+    pub fn try_exists(&self) -> io::Result<bool> {
+        match fs::metadata(self) {
+            Ok(_) => Ok(true),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
+
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
     ///
     /// This function will traverse symbolic links to query information about the
