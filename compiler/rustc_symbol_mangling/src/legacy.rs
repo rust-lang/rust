@@ -253,6 +253,14 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
         Ok(self)
     }
 
+    fn print_const_value(
+        self,
+        value: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        bug!("symbol mangling should never see MIR constants, but saw {:?}:{:?}", value, ty)
+    }
+
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
         self.write_str(&self.tcx.crate_name(cnum).as_str())?;
         Ok(self)

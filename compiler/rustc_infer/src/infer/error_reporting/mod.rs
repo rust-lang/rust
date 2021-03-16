@@ -65,6 +65,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
@@ -521,6 +522,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             fn print_const(self, _ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_const_value(
+                self,
+                _value: ConstValue<'tcx>,
+                _ty: Ty<'tcx>,
+            ) -> Result<Self::Const, Self::Error> {
                 Err(NonTrivialPath)
             }
 

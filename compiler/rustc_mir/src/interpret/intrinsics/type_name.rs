@@ -1,6 +1,6 @@
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
-use rustc_middle::mir::interpret::Allocation;
+use rustc_middle::mir::interpret::{Allocation, ConstValue};
 use rustc_middle::ty::{
     self,
     print::{PrettyPrinter, Print, Printer},
@@ -70,6 +70,14 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         self.pretty_print_const(ct, false)
+    }
+
+    fn print_const_value(
+        self,
+        val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        self.pretty_print_const_value(val, ty, false)
     }
 
     fn print_dyn_existential(

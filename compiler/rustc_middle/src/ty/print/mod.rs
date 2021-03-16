@@ -1,3 +1,4 @@
+use crate::mir::interpret::ConstValue;
 use crate::ty::subst::{GenericArg, Subst};
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
@@ -67,6 +68,12 @@ pub trait Printer<'tcx>: Sized {
     ) -> Result<Self::DynExistential, Self::Error>;
 
     fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
+
+    fn print_const_value(
+        self,
+        val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error>;
 
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error>;
 
@@ -360,5 +367,13 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::Const<'tcx> {
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.print_const(self)
+    }
+}
+
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for (ConstValue<'tcx>, Ty<'tcx>) {
+    type Output = P::Const;
+    type Error = P::Error;
+    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
+        cx.print_const_value(self.0, self.1)
     }
 }

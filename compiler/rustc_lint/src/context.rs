@@ -31,6 +31,7 @@ use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
@@ -940,6 +941,14 @@ impl<'tcx> LateContext<'tcx> {
             }
 
             fn print_const(self, _ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+                Ok(())
+            }
+
+            fn print_const_value(
+                self,
+                _val: ConstValue<'tcx>,
+                _ty: Ty<'tcx>,
+            ) -> Result<Self::Const, Self::Error> {
                 Ok(())
             }
 

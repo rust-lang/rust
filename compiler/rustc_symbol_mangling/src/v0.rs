@@ -3,6 +3,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, Printer};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
@@ -588,6 +589,14 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             }
         }
         Ok(self)
+    }
+
+    fn print_const_value(
+        self,
+        value: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        bug!("symbol mangling should never see MIR constants, but saw {:?}:{:?}", value, ty)
     }
 
     fn path_crate(mut self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
