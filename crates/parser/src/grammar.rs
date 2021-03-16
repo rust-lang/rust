@@ -63,11 +63,11 @@ pub(crate) mod fragments {
     }
 
     pub(crate) fn stmt(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::No)
+        expressions::stmt(p, expressions::StmtWithSemi::No, true)
     }
 
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::Optional)
+        expressions::stmt(p, expressions::StmtWithSemi::Optional, false)
     }
 
     pub(crate) fn opt_visibility(p: &mut Parser) {
@@ -133,7 +133,7 @@ pub(crate) mod fragments {
                 continue;
             }
 
-            expressions::stmt(p, expressions::StmtWithSemi::Optional);
+            expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
         }
 
         m.complete(p, MACRO_STMTS);

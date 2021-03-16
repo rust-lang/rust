@@ -54,7 +54,7 @@ fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
     !forbid
 }
 
-pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
+pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     let m = p.start();
     // test attr_on_expr_stmt
     // fn foo() {
@@ -90,7 +90,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
         p.error(format!("attributes are not allowed on {:?}", kind));
     }
 
-    if p.at(T!['}']) {
+    if p.at(T!['}']) || (prefer_expr && p.at(EOF)) {
         // test attr_on_last_expr_in_block
         // fn foo() {
         //     { #[A] bar!()? }
@@ -198,7 +198,7 @@ pub(super) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        stmt(p, StmtWithSemi::Yes)
+        stmt(p, StmtWithSemi::Yes, false)
     }
 }
 

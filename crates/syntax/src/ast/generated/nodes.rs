@@ -1336,6 +1336,7 @@ pub enum Expr {
     Literal(Literal),
     LoopExpr(LoopExpr),
     MacroCall(MacroCall),
+    MacroStmts(MacroStmts),
     MatchExpr(MatchExpr),
     MethodCallExpr(MethodCallExpr),
     ParenExpr(ParenExpr),
@@ -3034,6 +3035,9 @@ impl From<LoopExpr> for Expr {
 impl From<MacroCall> for Expr {
     fn from(node: MacroCall) -> Expr { Expr::MacroCall(node) }
 }
+impl From<MacroStmts> for Expr {
+    fn from(node: MacroStmts) -> Expr { Expr::MacroStmts(node) }
+}
 impl From<MatchExpr> for Expr {
     fn from(node: MatchExpr) -> Expr { Expr::MatchExpr(node) }
 }
@@ -3078,8 +3082,8 @@ impl AstNode for Expr {
         match kind {
             ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
             | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | EFFECT_EXPR | FIELD_EXPR | FOR_EXPR
-            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MATCH_EXPR
-            | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
+            | IF_EXPR | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS
+            | MATCH_EXPR | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
             | YIELD_EXPR => true,
             _ => false,
@@ -3105,6 +3109,7 @@ impl AstNode for Expr {
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
             MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
+            MACRO_STMTS => Expr::MacroStmts(MacroStmts { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
             PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
@@ -3142,6 +3147,7 @@ impl AstNode for Expr {
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
             Expr::MacroCall(it) => &it.syntax,
+            Expr::MacroStmts(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
             Expr::ParenExpr(it) => &it.syntax,

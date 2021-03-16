@@ -110,6 +110,11 @@ impl ItemTree {
                     // still need to collect inner items.
                     ctx.lower_inner_items(e.syntax())
                 },
+                ast::ExprStmt(stmt) => {
+                    // Macros can expand to stmt. We return an empty item tree in this case, but
+                    // still need to collect inner items.
+                    ctx.lower_inner_items(stmt.syntax())
+                },
                 _ => {
                     panic!("cannot create item tree from {:?} {}", syntax, syntax);
                 },
