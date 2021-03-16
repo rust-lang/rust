@@ -14,7 +14,7 @@ use rustc_macros::HashStable;
 /// have arbitrary values within that padding, even if the values of the struct are the same.
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
-/// lists of values of itself.
+/// lists of (nested) `ValTree`.
 pub enum ValTree<'tcx> {
     /// ZSTs, integers, `bool`, `char` are represented as scalars.
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
