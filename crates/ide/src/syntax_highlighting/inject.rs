@@ -5,7 +5,7 @@ use hir::{HasAttrs, Semantics};
 use ide_db::call_info::ActiveParameter;
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
-    match_ast, AstToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
 use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
@@ -153,7 +153,6 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     if attributes.docs().map_or(true, |docs| !String::from(docs).contains(RUSTDOC_FENCE)) {
         return;
     }
-    let doc_comments = attributes.by_key("doc").attrs().map(|attr| attr.to_src(&owner));
 
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
@@ -164,13 +163,28 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
     let mut new_comments = Vec::new();
-    for comment in doc_comments {
-        let (line, range, prefix) = match &comment {
-            Either::Left(_) => continue, // FIXME
+    let mut string;
+    for attr in attributes.by_key("doc").attrs() {
+        let src = attr.to_src(&owner);
+        let (line, range, prefix) = match &src {
+            Either::Left(it) => {
+                string = match find_doc_string_in_attr(attr, it) {
+                    Some(it) => it,
+                    None => continue,
+                };
+                let text_range = string.syntax().text_range();
+                let text_range = TextRange::new(
+                    text_range.start() + TextSize::from(1),
+                    text_range.end() - TextSize::from(1),
+                );
+                let text = string.text();
+                (&text[1..text.len() - 1], text_range, "")
+            }
             Either::Right(comment) => {
                 (comment.text(), comment.syntax().text_range(), comment.prefix())
             }
         };
+
         match line.find(RUSTDOC_FENCE) {
             Some(idx) => {
                 is_codeblock = !is_codeblock;
@@ -220,5 +234,29 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
             highlight: HlTag::Comment | HlMod::Documentation,
             binding_hash: None,
         });
+    }
+}
+
+fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::String> {
+    match it.literal() {
+        // #[doc = lit]
+        Some(lit) => match lit.kind() {
+            ast::LiteralKind::String(it) => Some(it),
+            _ => None,
+        },
+        // #[cfg_attr(..., doc = "", ...)]
+        None => {
+            // We gotta hunt the string token manually here
+            let text = attr.string_value()?;
+            // FIXME: We just pick the first string literal that has the same text as the doc attribute
+            // This means technically we might highlight the wrong one
+            it.syntax()
+                .descendants_with_tokens()
+                .filter_map(NodeOrToken::into_token)
+                .filter_map(ast::String::cast)
+                .find(|string| {
+                    string.text().get(1..string.text().len() - 1).map_or(false, |it| it == text)
+                })
+        }
     }
 }

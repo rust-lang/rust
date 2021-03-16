@@ -162,7 +162,6 @@ impl RawAttrs {
                     let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
                     // FIXME hygiene
                     let hygiene = Hygiene::new_unhygienic();
-                    // FIXME same index is assigned to multiple attributes
                     Attr::from_src(attr, &hygiene).map(|attr| Attr { index, ..attr })
                 });
 
@@ -447,6 +446,13 @@ impl Attr {
 
                 Some(paths.into_iter())
             }
+            _ => None,
+        }
+    }
+
+    pub fn string_value(&self) -> Option<&SmolStr> {
+        match self.input.as_ref()? {
+            AttrInput::Literal(it) => Some(it),
             _ => None,
         }
     }
