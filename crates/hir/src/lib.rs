@@ -52,6 +52,7 @@ use hir_ty::{
     autoderef,
     display::{write_bounds_like_dyn_trait_with_prefix, HirDisplayError, HirFormatter},
     method_resolution::{self, TyFingerprint},
+    primitive::UintTy,
     to_assoc_type_id,
     traits::{FnTrait, Solution, SolutionVariables},
     AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, DebruijnIndex, GenericPredicate,
@@ -1629,6 +1630,10 @@ impl Type {
 
     pub fn is_mutable_reference(&self) -> bool {
         matches!(self.ty.value.interned(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
+    }
+
+    pub fn is_usize(&self) -> bool {
+        matches!(self.ty.value.interned(&Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
