@@ -2373,7 +2373,11 @@ impl<'a> Parser<'a> {
 
         let span = pth.span.to(self.token.span);
         self.expect(&token::CloseDelim(token::Brace))?;
-        let expr = if recover_async { ExprKind::Err } else { ExprKind::Struct(pth, fields, base) };
+        let expr = if recover_async {
+            ExprKind::Err
+        } else {
+            ExprKind::Struct(P(ast::StructExpr { path: pth, fields, rest: base }))
+        };
         Ok(self.mk_expr(span, expr, attrs))
     }
 

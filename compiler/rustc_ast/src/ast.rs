@@ -1074,7 +1074,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr, 120);
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1245,6 +1245,13 @@ pub enum StructRest {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StructExpr {
+    pub path: Path,
+    pub fields: Vec<ExprField>,
+    pub rest: StructRest,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
@@ -1369,7 +1376,7 @@ pub enum ExprKind {
     /// A struct literal expression.
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
-    Struct(Path, Vec<ExprField>, StructRest),
+    Struct(P<StructExpr>),
 
     /// An array literal constructed from one repeated element.
     ///

@@ -224,8 +224,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(e.span, asm),
                 ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
-                ExprKind::Struct(ref path, ref fields, ref rest) => {
-                    let rest = match rest {
+                ExprKind::Struct(ref se) => {
+                    let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
                             self.sess
@@ -240,11 +240,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.arena.alloc(self.lower_qpath(
                             e.id,
                             &None,
-                            path,
+                            &se.path,
                             ParamMode::Optional,
                             ImplTraitContext::disallowed(),
                         )),
-                        self.arena.alloc_from_iter(fields.iter().map(|x| self.lower_expr_field(x))),
+                        self.arena
+                            .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
                         rest,
                     )
                 }
@@ -1110,8 +1111,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             }
             // Structs.
-            ExprKind::Struct(path, fields, rest) => {
-                let field_pats = self.arena.alloc_from_iter(fields.iter().map(|f| {
+            ExprKind::Struct(se) => {
+                let field_pats = self.arena.alloc_from_iter(se.fields.iter().map(|f| {
                     let pat = self.destructure_assign(&f.expr, eq_sign_span, assignments);
                     hir::PatField {
                         hir_id: self.next_id(),
@@ -1124,11 +1125,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let qpath = self.lower_qpath(
                     lhs.id,
                     &None,
-                    path,
+                    &se.path,
                     ParamMode::Optional,
                     ImplTraitContext::disallowed(),
                 );
-                let fields_omitted = match rest {
+                let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
                         self.sess
                             .struct_span_err(
