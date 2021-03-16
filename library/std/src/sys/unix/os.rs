@@ -183,7 +183,7 @@ pub mod signal_lookup {
     };
 
     pub static abbrevs: Lookups = Lookups {
-        sigfoo_np: Weak::new("sigabbrev_pn\0"),  // glibc >=2.32
+        sigfoo_np: Weak::new("sigabbrev_np\0"),  // glibc >=2.32
         sys_sigfoos: Weak::new("sys_signame\0"), // glibc < 2.23, BSDs, and other trad unix
     };
 
