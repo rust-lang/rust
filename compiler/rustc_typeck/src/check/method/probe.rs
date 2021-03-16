@@ -83,6 +83,8 @@ struct ProbeContext<'a, 'tcx> {
     unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
+
+    probe_mode: ProbeMode,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -240,6 +242,15 @@ pub enum ProbeScope {
     AllTraits,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ProbeMode {
+    Normal,
+
+    // (See issue #82825) In order to fulfill `Sized` bounds on `Self` in methods whose receivers
+    // are references it might be necessary for the compiler to include an autoref.
+    SizedBound,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// This is used to offer suggestions to users. It returns methods
     /// that could have been called which have the desired return
@@ -270,6 +281,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self_ty,
                 scope_expr_id,
                 ProbeScope::AllTraits,
+                ProbeMode::Normal,
                 |probe_cx| Ok(probe_cx.candidate_method_names()),
             )
             .unwrap_or_default();
@@ -285,6 +297,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self_ty,
                     scope_expr_id,
                     ProbeScope::AllTraits,
+                    ProbeMode::Normal,
                     |probe_cx| probe_cx.pick(),
                 )
                 .ok()
@@ -317,6 +330,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self_ty,
             scope_expr_id,
             scope,
+            ProbeMode::Normal,
+            |probe_cx| probe_cx.pick(),
+        )
+    }
+
+    #[instrument(level = "debug", skip(self, scope_expr_id))]
+    pub fn probe_for_name_with_sized_bound(
+        &self,
+        span: Span,
+        mode: Mode,
+        item_name: Ident,
+        is_suggestion: IsSuggestion,
+        self_ty: Ty<'tcx>,
+        scope_expr_id: hir::HirId,
+        scope: ProbeScope,
+    ) -> PickResult<'tcx> {
+        debug!(
+            "probe(self_ty={:?}, item_name={}, scope_expr_id={})",
+            self_ty, item_name, scope_expr_id
+        );
+        self.probe_op(
+            span,
+            mode,
+            Some(item_name),
+            None,
+            is_suggestion,
+            self_ty,
+            scope_expr_id,
+            scope,
+            ProbeMode::SizedBound,
             |probe_cx| probe_cx.pick(),
         )
     }
@@ -331,6 +374,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         scope_expr_id: hir::HirId,
         scope: ProbeScope,
+        probe_mode: ProbeMode,
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
     where
@@ -448,6 +492,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 orig_values,
                 steps.steps,
                 is_suggestion,
+                probe_mode,
             );
 
             probe_cx.assemble_inherent_candidates();
@@ -547,6 +592,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: Lrc<Vec<CandidateStep<'tcx>>>,
         is_suggestion: IsSuggestion,
+        probe_mode: ProbeMode,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
@@ -564,6 +610,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
             is_suggestion,
+            probe_mode,
         }
     }
 
@@ -1131,7 +1178,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> Option<PickResult<'tcx>> {
-        if step.unsize {
+        // We try to autoref instead by using `pick_autorefd_method`
+        if step.unsize || self.probe_mode == ProbeMode::SizedBound {
             return None;
         }
 
@@ -1594,6 +1642,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values.clone(),
                 steps,
                 IsSuggestion(true),
+                ProbeMode::Normal,
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();

@@ -6,6 +6,7 @@ use crate::hir::def_id::DefId;
 use crate::hir::GenericArg;
 use rustc_hir as hir;
 use rustc_infer::infer::{self, InferOk};
+use rustc_infer::traits::EvaluationResult;
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -14,7 +15,9 @@ use rustc_middle::ty::subst::{self, Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
+use std::collections::hash_map::Entry;
 use std::ops::Deref;
 
 struct ConfirmContext<'a, 'tcx> {
@@ -55,6 +58,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
+
+    fn apply_adjustments_for_sized_bound(
+        &self,
+        expr: &hir::Expr<'tcx>,
+        adj: Vec<Adjustment<'tcx>>,
+    ) {
+        debug!("apply_adjustments_for_sized_bound(expr={:?}, adj={:?})", expr, adj);
+        if adj.is_empty() {
+            return;
+        }
+
+        match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
+            Entry::Vacant(entry) => {
+                entry.insert(adj);
+            }
+            Entry::Occupied(mut entry) => {
+                *entry.get_mut() = adj;
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
@@ -74,16 +97,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
-        let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
-
-        // Create substitutions for the method's type parameters.
-        let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
-        let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
-
-        debug!("all_substs={:?}", all_substs);
+        let (adjusted_self_ty, autoderef_obligations) =
+            self.adjust_self_ty(unadjusted_self_ty, &pick, FnCtxt::apply_adjustments);
 
         // Create the final signature for the method, replacing late-bound regions.
-        let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
+        let (all_substs, method_sig, method_predicates) =
+            self.create_substs_and_instantiate_method_sig(adjusted_self_ty, &pick, segment);
 
         // Unify the (adjusted) self type with what the method expects.
         //
@@ -92,14 +111,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
         let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
-        debug!(
-            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
-            self_ty, method_sig_rcvr, method_sig, method_predicates
-        );
-        self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
+        self.unify_receivers(adjusted_self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
             self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
+
+        debug!(
+            "confirm: adjusted_self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
+            adjusted_self_ty, method_sig_rcvr, method_sig, method_predicates
+        );
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
@@ -114,12 +134,31 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // appropriate hint suggesting to import the trait.
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
 
-        // Add any trait/regions obligations specified on the method's type parameters.
-        // We won't add these if we encountered an illegal sized bound, so that we can use
-        // a custom error in that case.
-        if illegal_sized_bound.is_none() {
-            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
-            self.add_obligations(method_ty, all_substs, method_predicates);
+        match illegal_sized_bound {
+            Some(_) => {
+                // try to autoref receiver to fulfill sized bound (see issue #82825 for an example of
+                // why this might be necessary)
+                if let Some(sized_confirm_result) = self.try_autoref_for_sized_bound(
+                    unadjusted_self_ty,
+                    method_sig_rcvr,
+                    pick.clone(),
+                    &segment,
+                ) {
+                    return sized_confirm_result;
+                }
+            }
+            None => {
+                // We only register predicates from adjusting `self_ty` now, since these
+                // obligations might violate those found in a successful call of
+                // `try_autoref_for_sized_bound
+                self.register_predicates(autoderef_obligations);
+
+                // Add any trait/regions obligations specified on the method's type parameters.
+                // We won't add these if we encountered an illegal sized bound, so that we can use
+                // a custom error in that case.
+                let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
+                self.add_obligations(method_ty, all_substs, method_predicates);
+            }
         }
 
         // Create the final `MethodCallee`.
@@ -134,7 +173,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-    ) -> Ty<'tcx> {
+        apply_adjustments: fn(&FnCtxt<'a, 'tcx>, &hir::Expr<'tcx>, Vec<Adjustment<'tcx>>) -> (),
+    ) -> (Ty<'tcx>, Vec<traits::PredicateObligation<'tcx>>) {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef =
@@ -142,9 +182,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let (_, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,
             None => {
-                return self.tcx.ty_error_with_message(
-                    rustc_span::DUMMY_SP,
-                    &format!("failed autoderef {}", pick.autoderefs),
+                return (
+                    self.tcx.ty_error_with_message(
+                        rustc_span::DUMMY_SP,
+                        &format!("failed autoderef {}", pick.autoderefs),
+                    ),
+                    vec![],
                 );
             }
         };
@@ -197,12 +240,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             None => {}
         }
 
-        self.register_predicates(autoderef.into_obligations());
+        let autoderef_obligations = autoderef.into_obligations();
 
         // Write out the final adjustments.
-        self.apply_adjustments(self.self_expr, adjustments);
+        apply_adjustments(self, self.self_expr, adjustments);
 
-        target
+        (target, autoderef_obligations)
     }
 
     /// Returns a set of substitutions for the method *receiver* where all type and region
@@ -556,5 +599,160 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         self.fcx.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, value).0
+    }
+
+    fn create_substs_and_instantiate_method_sig(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        pick: &probe::Pick<'tcx>,
+        segment: &hir::PathSegment<'_>,
+    ) -> (SubstsRef<'tcx>, ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
+        // Create substitutions for the method's type parameters.
+        let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
+        let all_substs = self.instantiate_method_substs(pick, segment, rcvr_substs);
+
+        debug!("all_substs={:?}", all_substs);
+
+        // Create the final signature for the method, replacing late-bound regions.
+        let (method_sig, method_predicates) = self.instantiate_method_sig(pick, all_substs);
+
+        (all_substs, method_sig, method_predicates)
+    }
+
+    /// In situations in which we have a trait method that takes a reference receiver type,
+    /// a Self : Sized bound and a trait implementation for a reference type, the adjustments
+    /// that the compiler applies in `ProbeMode::Normal` are insufficient to fulfill the Sized bound.
+    /// Example:
+    ///
+    /// ```
+    /// trait Trait {
+    ///     fn foo(&self) where Self: Sized;
+    ///
+    /// impl<T: ?Sized + Trait> Trait for &T {
+    ///     fn foo(&self) where Self: Sized {
+    ///         ...
+    ///     }
+    ///
+    /// fn bar(x: &dyn Trait) {
+    ///     // The compiler needs to include an additional autoref here, a Deref -> Borrow adjustment
+    ///     // will not pick the correct trait implementation
+    ///     x.foo()
+    /// ```
+    ///
+    /// Specifically in `ProbeMode::Normal` we deref to the base type and then autoref once,
+    /// which fulfills the reference receiver type, but violates the `Sized` bound on `Self`.
+    /// In order to generate the correct predicate (i.e. <&dyn Trait as Trait> we try create a
+    /// `&&` receiver type during method probing, try to confirm the probe and see if all obligations hold.
+    /// See issue #82825 for further details.
+    fn try_autoref_for_sized_bound(
+        &mut self,
+        unadjusted_self_ty: Ty<'tcx>,
+        method_rcvr: Ty<'tcx>,
+        pick: probe::Pick<'tcx>,
+        segment: &hir::PathSegment<'_>,
+    ) -> Option<ConfirmResult<'tcx>> {
+        debug!(
+            "try_autoref_for_sized_bound(unadjusted_self_ty: {:?}, pick: {:?}",
+            unadjusted_self_ty, pick
+        );
+
+        // methods that move dyn values always violate sized constraint.
+        match method_rcvr.kind() {
+            ty::Ref(_, _, _) => {}
+            _ => {
+                return None;
+            }
+        }
+
+        let mode = probe::Mode::MethodCall;
+        let self_ty = self.resolve_vars_if_possible(unadjusted_self_ty);
+
+        let mut new_pick = match self.probe_for_name_with_sized_bound(
+            self.span,
+            mode,
+            segment.ident,
+            probe::IsSuggestion(false),
+            self_ty,
+            self.call_expr.hir_id,
+            probe::ProbeScope::TraitsInScope,
+        ) {
+            Ok(new_pick) => new_pick,
+            _ => {
+                return None;
+            }
+        };
+
+        debug!("new_pick: {:?}", new_pick);
+
+        // Note: The previous, failed `confirm` call already set adjustments in `self.typeck_results`.
+        // Since `TyCtxt::apply_adjustments` cannot compose `Borrow` adjustments on top of previous
+        // adjustments, which do not contain `Deref` adjustments, we need to use
+        // `FnCtxt::apply_adjustments_for_sized_bound` to apply the adjustments generated by
+        // `probe_for_name_with_sized_bound`.
+        let (adjusted_self_ty, autoderef_obligations) = self.adjust_self_ty(
+            unadjusted_self_ty,
+            &mut new_pick,
+            FnCtxt::apply_adjustments_for_sized_bound,
+        );
+        debug!(
+            "try_autoref_for_sized_bound: self_ty after adjust_self_ty call is {:?}",
+            adjusted_self_ty
+        );
+
+        // Create the final signature for the method, replacing late-bound regions.
+        let (all_substs, method_sig, method_predicates) =
+            self.create_substs_and_instantiate_method_sig(adjusted_self_ty, &new_pick, segment);
+
+        // Unify the (adjusted) self type with what the method expects.
+        //
+        // SUBTLE: if we want good error messages, because of "guessing" while matching
+        // traits, no trait system method can be called before this point because they
+        // could alter our Self-type, except for normalizing the receiver from the
+        // signature (which is also done during probing).
+        let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
+        self.unify_receivers(adjusted_self_ty, method_sig_rcvr, &new_pick, all_substs);
+
+        let (method_sig, method_predicates) =
+            self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
+
+        debug!("method_sig {:?}, predicates: {:?}", method_sig, method_predicates);
+
+        let cause = traits::ObligationCause::misc(self.span, self.body_id);
+        let obligations_satisfied =
+            traits::predicates_for_generics(cause, self.param_env, method_predicates.clone()).all(
+                |o| {
+                    debug!("obligation: {:?}", o);
+                    let eval_result = self.infcx.evaluate_obligation(&o);
+                    debug!("evaluation result: {:?}", eval_result);
+                    match eval_result {
+                        Ok(EvaluationResult::EvaluatedToOk)
+                        | Ok(EvaluationResult::EvaluatedToOkModuloRegions) => true,
+                        _ => false,
+                    }
+                },
+            );
+
+        if !obligations_satisfied {
+            return None;
+        }
+
+        self.enforce_illegal_method_limitations(&new_pick);
+        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
+
+        match illegal_sized_bound {
+            Some(_) => {
+                return None;
+            }
+            None => {
+                self.register_predicates(autoderef_obligations);
+                let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
+                self.add_obligations(method_ty, all_substs, method_predicates);
+            }
+        }
+
+        // Create the final `MethodCallee`.
+        let callee =
+            MethodCallee { def_id: new_pick.item.def_id, substs: all_substs, sig: method_sig };
+        Some(ConfirmResult { callee, illegal_sized_bound })
     }
 }
