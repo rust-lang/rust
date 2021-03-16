@@ -1331,84 +1331,83 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_asm(&mut self, sp: Span, asm: &InlineAsm) -> hir::ExprKind<'hir> {
-        if self.sess.asm_arch.is_none() {
+        // Rustdoc needs to support asm! from foriegn architectures: don't try
+        // lowering the register contraints in this case.
+        let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };
+        if asm_arch.is_none() && !self.sess.opts.actually_rustdoc {
             struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
-            && !matches!(
-                self.sess.asm_arch,
-                Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64)
-            )
+            && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
+            && !self.sess.opts.actually_rustdoc
         {
             self.sess
                 .struct_span_err(sp, "the `att_syntax` option is only supported on x86")
                 .emit();
         }
 
-        // Lower operands to HIR, filter_map skips any operands with invalid
-        // register classes.
+        // Lower operands to HIR. We use dummy register classes if an error
+        // occurs during lowering because we still need to be able to produce a
+        // valid HIR.
         let sess = self.sess;
         let operands: Vec<_> = asm
             .operands
             .iter()
-            .filter_map(|(op, op_sp)| {
-                let lower_reg = |reg| {
-                    Some(match reg {
-                        InlineAsmRegOrRegClass::Reg(s) => asm::InlineAsmRegOrRegClass::Reg(
+            .map(|(op, op_sp)| {
+                let lower_reg = |reg| match reg {
+                    InlineAsmRegOrRegClass::Reg(s) => {
+                        asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(
-                                sess.asm_arch?,
+                                asm_arch,
                                 |feature| sess.target_features.contains(&Symbol::intern(feature)),
                                 &sess.target,
                                 s,
                             )
-                            .map_err(|e| {
+                            .unwrap_or_else(|e| {
                                 let msg = format!("invalid register `{}`: {}", s.as_str(), e);
                                 sess.struct_span_err(*op_sp, &msg).emit();
+                                asm::InlineAsmReg::Err
                             })
-                            .ok()?,
-                        ),
-                        InlineAsmRegOrRegClass::RegClass(s) => {
-                            asm::InlineAsmRegOrRegClass::RegClass(
-                                asm::InlineAsmRegClass::parse(sess.asm_arch?, s)
-                                    .map_err(|e| {
-                                        let msg = format!(
-                                            "invalid register class `{}`: {}",
-                                            s.as_str(),
-                                            e
-                                        );
-                                        sess.struct_span_err(*op_sp, &msg).emit();
-                                    })
-                                    .ok()?,
-                            )
-                        }
-                    })
+                        } else {
+                            asm::InlineAsmReg::Err
+                        })
+                    }
+                    InlineAsmRegOrRegClass::RegClass(s) => {
+                        asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
+                            asm::InlineAsmRegClass::parse(asm_arch, s).unwrap_or_else(|e| {
+                                let msg = format!("invalid register class `{}`: {}", s.as_str(), e);
+                                sess.struct_span_err(*op_sp, &msg).emit();
+                                asm::InlineAsmRegClass::Err
+                            })
+                        } else {
+                            asm::InlineAsmRegClass::Err
+                        })
+                    }
                 };
 
-                // lower_reg is executed last because we need to lower all
-                // sub-expressions even if we throw them away later.
                 let op = match *op {
                     InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
+                        reg: lower_reg(reg),
                         expr: self.lower_expr_mut(expr),
-                        reg: lower_reg(reg)?,
                     },
                     InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
+                        reg: lower_reg(reg),
                         late,
                         expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
-                        reg: lower_reg(reg)?,
                     },
                     InlineAsmOperand::InOut { reg, late, ref expr } => {
                         hir::InlineAsmOperand::InOut {
+                            reg: lower_reg(reg),
                             late,
                             expr: self.lower_expr_mut(expr),
-                            reg: lower_reg(reg)?,
                         }
                     }
                     InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
+                            reg: lower_reg(reg),
                             late,
                             in_expr: self.lower_expr_mut(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
-                            reg: lower_reg(reg)?,
                         }
                     }
                     InlineAsmOperand::Const { ref expr } => {
@@ -1418,17 +1417,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::InlineAsmOperand::Sym { expr: self.lower_expr_mut(expr) }
                     }
                 };
-                Some((op, *op_sp))
+                (op, *op_sp)
             })
             .collect();
 
-        // Stop if there were any errors when lowering the register classes
-        if operands.len() != asm.operands.len() || sess.asm_arch.is_none() {
-            return hir::ExprKind::Err;
-        }
-
         // Validate template modifiers against the register classes for the operands
-        let asm_arch = sess.asm_arch.unwrap();
         for p in &asm.template {
             if let InlineAsmTemplatePiece::Placeholder {
                 operand_idx,
@@ -1443,7 +1436,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     | hir::InlineAsmOperand::InOut { reg, .. }
                     | hir::InlineAsmOperand::SplitInOut { reg, .. } => {
                         let class = reg.reg_class();
-                        let valid_modifiers = class.valid_modifiers(asm_arch);
+                        if class == asm::InlineAsmRegClass::Err {
+                            continue;
+                        }
+                        let valid_modifiers = class.valid_modifiers(asm_arch.unwrap());
                         if !valid_modifiers.contains(&modifier) {
                             let mut err = sess.struct_span_err(
                                 placeholder_span,
@@ -1506,7 +1502,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // features. We check that at least one type is available for
                 // the current target.
                 let reg_class = reg.reg_class();
-                for &(_, feature) in reg_class.supported_types(asm_arch) {
+                if reg_class == asm::InlineAsmRegClass::Err {
+                    continue;
+                }
+                for &(_, feature) in reg_class.supported_types(asm_arch.unwrap()) {
                     if let Some(feature) = feature {
                         if self.sess.target_features.contains(&Symbol::intern(feature)) {
                             required_features.clear();
