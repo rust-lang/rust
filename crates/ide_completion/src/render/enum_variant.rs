@@ -6,7 +6,8 @@ use itertools::Itertools;
 
 use crate::{
     item::{CompletionItem, CompletionKind, ImportEdit},
-    render::{builder_ext::Params, RenderContext},
+    render::{builder_ext::Params, compute_exact_type_match, compute_ref_match, RenderContext},
+    CompletionRelevance,
 };
 
 pub(crate) fn render_variant<'a>(
@@ -72,6 +73,16 @@ impl<'a> EnumRender<'a> {
             item.add_call_parens(self.ctx.completion, self.short_qualified_name, params);
         } else if self.path.is_some() {
             item.lookup_by(self.short_qualified_name);
+        }
+
+        let ty = self.variant.parent_enum(self.ctx.completion.db).ty(self.ctx.completion.db);
+        item.set_relevance(CompletionRelevance {
+            exact_type_match: compute_exact_type_match(self.ctx.completion, &ty),
+            ..CompletionRelevance::default()
+        });
+
+        if let Some(ref_match) = compute_ref_match(self.ctx.completion, &ty) {
+            item.ref_match(ref_match);
         }
 
         item.build()

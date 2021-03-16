@@ -787,6 +787,27 @@ assert!(0 > x);
 
 **Rationale:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
 
+## If-let
+
+Avoid `if let ... { } else { }` construct, use `match` instead.
+
+```rust
+// GOOD
+match ctx.expected_type.as_ref() {
+    Some(expected_type) => completion_ty == expected_type && !expected_type.is_unit(),
+    None => false,
+}
+
+// BAD
+if let Some(expected_type) = ctx.expected_type.as_ref() {
+    completion_ty == expected_type && !expected_type.is_unit()
+} else {
+    false
+}
+```
+
+**Rational:** `match` is almost always more compact.
+The `else` branch can get a more precise pattern: `None` or `Err(_)` instead of `_`.
 
 ## Token names
 

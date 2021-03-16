@@ -6,7 +6,10 @@ use syntax::ast::Fn;
 
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance, ImportEdit},
-    render::{builder_ext::Params, RenderContext},
+    render::{
+        builder_ext::Params, compute_exact_name_match, compute_exact_type_match, compute_ref_match,
+        RenderContext,
+    },
 };
 
 pub(crate) fn render_fn<'a>(
@@ -52,23 +55,19 @@ impl<'a> FunctionRender<'a> {
                 self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
             )
             .detail(self.detail())
-            .add_call_parens(self.ctx.completion, self.name, params)
+            .add_call_parens(self.ctx.completion, self.name.clone(), params)
             .add_import(import_to_add);
 
-        let mut relevance = CompletionRelevance::default();
-        if let Some(expected_type) = &self.ctx.completion.expected_type {
-            let ret_ty = self.func.ret_type(self.ctx.db());
+        let ret_type = self.func.ret_type(self.ctx.db());
+        item.set_relevance(CompletionRelevance {
+            exact_type_match: compute_exact_type_match(self.ctx.completion, &ret_type),
+            exact_name_match: compute_exact_name_match(self.ctx.completion, self.name.clone()),
+            ..CompletionRelevance::default()
+        });
 
-            // We don't ever consider a function which returns unit type to be an
-            // exact type match, since nearly always this is not meaningful to the
-            // user.
-            relevance.exact_type_match = &ret_ty == expected_type && !ret_ty.is_unit();
+        if let Some(ref_match) = compute_ref_match(self.ctx.completion, &ret_type) {
+            item.ref_match(ref_match);
         }
-        if let Some(expected_name) = &self.ctx.completion.expected_name {
-            relevance.exact_name_match =
-                expected_name == &self.func.name(self.ctx.db()).to_string();
-        }
-        item.set_relevance(relevance);
 
         item.build()
     }
