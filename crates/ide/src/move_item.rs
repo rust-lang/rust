@@ -35,7 +35,7 @@ pub(crate) fn move_item(
 fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit> {
     let root = match item {
         NodeOrToken::Node(node) => node,
-        NodeOrToken::Token(token) => token.parent(),
+        NodeOrToken::Token(token) => token.parent()?,
     };
 
     let ancestor = once(root.clone())
