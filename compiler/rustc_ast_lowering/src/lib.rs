@@ -58,6 +58,7 @@ use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -2774,13 +2775,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .map(|snippet| snippet.starts_with("#["))
             .unwrap_or(true);
         if !is_macro_callsite {
-            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                BARE_TRAIT_OBJECTS,
-                id,
-                span,
-                "trait objects without an explicit `dyn` are deprecated",
-                BuiltinLintDiagnostics::BareTraitObject(span, is_global),
-            )
+            if self.sess.edition() < Edition::Edition2021 {
+                self.resolver.lint_buffer().buffer_lint_with_diagnostic(
+                    BARE_TRAIT_OBJECTS,
+                    id,
+                    span,
+                    "trait objects without an explicit `dyn` are deprecated",
+                    BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+                )
+            } else {
+                let msg = "trait objects must include the `dyn` keyword";
+                let label = "`dyn` keyword should be added before this trait";
+                let mut err = struct_span_err!(self.sess, span, E0782, "{}", msg,);
+                err.span_label(span, label);
+                err.emit();
+            }
         }
     }
 
