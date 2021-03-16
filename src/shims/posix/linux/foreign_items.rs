@@ -1,4 +1,5 @@
 use rustc_middle::mir;
+use rustc_target::spec::abi::Abi;
 
 use crate::*;
 use crate::helpers::check_arg_count;
@@ -12,13 +13,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn emulate_foreign_item_by_name(
         &mut self,
         link_name: &str,
+        abi: Abi,
         args: &[OpTy<'tcx, Tag>],
         dest: &PlaceTy<'tcx, Tag>,
         _ret: mir::BasicBlock,
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
-        match link_name {
+        match_with_abi_check!(link_name, abi, Abi::C { unwind: false }, {
             // errno
             "__errno_location" => {
                 let &[] = check_arg_count(args)?;
@@ -189,7 +191,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
-        };
+        });
 
         Ok(true)
     }

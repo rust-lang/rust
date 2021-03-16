@@ -5,7 +5,7 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::{check_abi, check_arg_count};
+use helpers::check_arg_count;
 use shims::windows::sync::EvalContextExt as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -20,14 +20,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
-        check_abi(abi, Abi::System { unwind: false })?;
-
         // Windows API stubs.
         // HANDLE = isize
         // DWORD = ULONG = u32
         // BOOL = i32
         // BOOLEAN = u8
-        match link_name {
+        match_with_abi_check!(link_name, abi, Abi::System { unwind: false }, {
             // Environment related shims
             "GetEnvironmentVariableW" => {
                 let &[ref name, ref buf, ref size] = check_arg_count(args)?;
@@ -340,7 +338,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
-        }
+        });
 
         Ok(true)
     }

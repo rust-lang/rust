@@ -5,7 +5,7 @@ use rustc_target::abi::{Align, LayoutOf, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use helpers::{check_abi, check_arg_count};
+use helpers::check_arg_count;
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::sync::EvalContextExt as _;
 use shims::posix::thread::EvalContextExt as _;
@@ -22,9 +22,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
-        check_abi(abi, Abi::C { unwind: false })?;
-
-        match link_name {
+        match_with_abi_check!(link_name, abi, Abi::C { unwind: false }, {
             // Environment related shims
             "getenv" => {
                 let &[ref name] = check_arg_count(args)?;
@@ -458,12 +456,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Platform-specific shims
             _ => {
                 match this.tcx.sess.target.os.as_str() {
-                    "linux" => return shims::posix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
-                    "macos" => return shims::posix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, args, dest, ret),
+                    "linux" => return shims::posix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
+                    "macos" => return shims::posix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                     _ => unreachable!(),
                 }
             }
-        };
+        });
 
         Ok(true)
     }
