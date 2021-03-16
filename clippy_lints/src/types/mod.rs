@@ -36,8 +36,8 @@ use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
-use crate::utils::paths;
-use crate::utils::{clip, comparisons, differing_macro_contexts, int_bits, match_path, sext, unsext};
+use clippy_utils::paths;
+use clippy_utils::{clip, comparisons, differing_macro_contexts, int_bits, match_path, sext, unsext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
@@ -618,7 +618,7 @@ fn detect_absurd_comparison<'tcx>(
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
     use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
     use crate::types::ExtremeType::{Maximum, Minimum};
-    use crate::utils::comparisons::{normalize_comparison, Rel};
+    use clippy_utils::comparisons::{normalize_comparison, Rel};
 
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
@@ -860,7 +860,7 @@ fn upcast_comparison_bounds_err<'tcx>(
     rhs: &'tcx Expr<'_>,
     invert: bool,
 ) {
-    use crate::utils::comparisons::Rel;
+    use clippy_utils::comparisons::Rel;
 
     if let Some((lb, ub)) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {

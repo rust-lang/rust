@@ -1,6 +1,6 @@
-use crate::utils::usage::mutated_variables;
-use crate::utils::{expr_or_init, is_trait_method};
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::usage::mutated_variables;
+use clippy_utils::{expr_or_init, is_trait_method};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

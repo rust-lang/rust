@@ -1,7 +1,7 @@
-use crate::utils::paths;
-use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::utils::{get_trait_def_id, return_ty};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
+use clippy_utils::paths;
+use clippy_utils::sugg::DiagnosticBuilderExt;
+use clippy_utils::{get_trait_def_id, return_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

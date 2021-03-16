@@ -1,5 +1,5 @@
-use crate::utils::last_path_segment;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

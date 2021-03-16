@@ -1,9 +1,9 @@
 use crate::consts::constant_simple;
-use crate::utils;
-use crate::utils::{in_constant, path_to_local_id, sugg};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::usage::contains_return_break_continue_macro;
+use clippy_utils::{in_constant, match_qpath, path_to_local_id, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind};
@@ -75,19 +75,19 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             if let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)|
                 match arm.pat.kind {
                     PatKind::Path(ref some_qpath) =>
-                        utils::match_qpath(some_qpath, &utils::paths::OPTION_NONE),
+                        match_qpath(some_qpath, &clippy_utils::paths::OPTION_NONE),
                     PatKind::TupleStruct(ref err_qpath, &[Pat { kind: PatKind::Wild, .. }], _) =>
-                        utils::match_qpath(err_qpath, &utils::paths::RESULT_ERR),
+                        match_qpath(err_qpath, &clippy_utils::paths::RESULT_ERR),
                     _ => false,
                 }
             );
             let unwrap_arm = &arms[1 - idx];
             if let PatKind::TupleStruct(ref unwrap_qpath, &[unwrap_pat], _) = unwrap_arm.pat.kind;
-            if utils::match_qpath(unwrap_qpath, &utils::paths::OPTION_SOME)
-                || utils::match_qpath(unwrap_qpath, &utils::paths::RESULT_OK);
+            if match_qpath(unwrap_qpath, &clippy_utils::paths::OPTION_SOME)
+                || match_qpath(unwrap_qpath, &clippy_utils::paths::RESULT_OK);
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
             if path_to_local_id(unwrap_arm.body, binding_hir_id);
-            if !utils::usage::contains_return_break_continue_macro(or_arm.body);
+            if !contains_return_break_continue_macro(or_arm.body);
             then {
                 Some(or_arm)
             } else {

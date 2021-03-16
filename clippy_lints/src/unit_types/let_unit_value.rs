@@ -1,11 +1,10 @@
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::higher;
+use clippy_utils::source::snippet_with_macro_callsite;
 use rustc_errors::Applicability;
 use rustc_hir::{Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
-
-use crate::utils::diagnostics::span_lint_and_then;
-use crate::utils::higher;
-use crate::utils::source::snippet_with_macro_callsite;
 
 use super::LET_UNIT_VALUE;
 

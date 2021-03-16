@@ -1,6 +1,6 @@
 //! checks for attributes
 
-use crate::utils::get_attr;
+use clippy_utils::get_attr;
 use rustc_ast::ast::{Attribute, InlineAsmTemplatePiece};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};

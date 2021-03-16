@@ -1,11 +1,9 @@
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
-
-use if_chain::if_chain;
-
-use crate::utils::diagnostics::span_lint_and_then;
-use crate::utils::source::{indent_of, reindent_multiline, snippet_opt};
 
 use super::{utils, UNIT_ARG};
 

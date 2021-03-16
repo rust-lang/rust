@@ -1,6 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{match_def_path, paths};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_data_structures::fx::FxHashSet;

@@ -1,8 +1,8 @@
-use crate::utils::eager_or_lazy::is_lazyness_candidate;
-use crate::utils::{contains_return, get_trait_def_id, last_path_segment, paths};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::eager_or_lazy::is_lazyness_candidate;
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_macro_callsite};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type};
+use clippy_utils::{contains_return, get_trait_def_id, last_path_segment, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

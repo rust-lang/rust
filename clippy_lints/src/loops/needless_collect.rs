@@ -1,9 +1,9 @@
 use super::NEEDLESS_COLLECT;
-use crate::utils::sugg::Sugg;
-use crate::utils::{is_trait_method, path_to_local_id, paths};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::{is_trait_method, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};

@@ -1,8 +1,8 @@
 use crate::methods::derefs_to_slice;
-use crate::utils::{get_parent_expr, higher};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{get_parent_expr, higher};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;

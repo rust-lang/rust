@@ -1,8 +1,7 @@
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-
-use crate::utils::diagnostics::span_lint;
 
 use super::UNIT_CMP;
 

@@ -1,5 +1,5 @@
-use crate::utils;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::return_ty;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         if let FnKind::Closure = kind {
             return;
         }
-        let ret_ty = utils::return_ty(cx, hir_id);
+        let ret_ty = return_ty(cx, hir_id);
         if let Opaque(id, subst) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(id);
             let mut is_future = false;

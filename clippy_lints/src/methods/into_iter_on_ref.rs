@@ -1,6 +1,6 @@
-use crate::utils::{match_trait_method, paths};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::has_iter_method;
+use clippy_utils::{match_trait_method, paths};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

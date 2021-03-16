@@ -1,5 +1,5 @@
-use crate::utils::{in_macro, match_qpath, SpanlessEq};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::{in_macro, match_qpath, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

@@ -1,8 +1,8 @@
-use crate::utils::ptr::get_spans;
-use crate::utils::{get_trait_def_id, is_self, paths};
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

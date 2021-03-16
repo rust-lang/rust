@@ -1,6 +1,6 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use crate::utils::camel_case;
+use clippy_utils::camel_case;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
 use rustc_ast::ast::{EnumDef, Item, ItemKind, VisibilityKind};
