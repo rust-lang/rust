@@ -178,7 +178,7 @@ pub mod signal_lookup {
     }
 
     pub static descrs: Lookups = Lookups {
-        sigfoo_np: Weak::new("sigdescr_pn\0"),   // glibc >=2.32
+        sigfoo_np: Weak::new("sigdescr_np\0"),   // glibc >=2.32
         sys_sigfoos: Weak::new("sys_siglist\0"), // FreeBSD/NetBSD/OpenBSD
     };
 
