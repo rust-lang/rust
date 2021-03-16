@@ -10,11 +10,5 @@ note: the lint level is defined here
 LL | #![deny(renamed_and_removed_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `non_autolinks` has been removed: use `rustdoc::non_autolinks` instead
-  --> $DIR/rustdoc-renamed.rs:13:9
-   |
-LL | #![deny(non_autolinks)]
-   |         ^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
