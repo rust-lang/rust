@@ -5,9 +5,10 @@ use std::fmt;
 use either::Either;
 use hir::{
     AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay, InFile, ModuleSource,
+    Semantics,
 };
 use ide_db::{
-    base_db::{FileId, FileRange, SourceDatabase},
+    base_db::{FileId, FileRange},
     symbol_index::FileSymbolKind,
     SymbolKind,
 };
@@ -18,8 +19,6 @@ use syntax::{
 };
 
 use crate::FileSymbol;
-
-use super::short_label::ShortLabel;
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -502,21 +501,22 @@ impl TryToNav for hir::ConstParam {
 ///
 /// e.g. `struct Name`, `enum Name`, `fn Name`
 pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
-    let parse = db.parse(symbol.file_id);
-    let node = symbol.ptr.to_node(parse.tree().syntax());
+    let sema = Semantics::new(db);
+    let parse = sema.parse(symbol.file_id);
+    let node = symbol.ptr.to_node(parse.syntax());
 
     match_ast! {
         match node {
-            ast::Fn(it) => it.short_label(),
-            ast::Struct(it) => it.short_label(),
-            ast::Enum(it) => it.short_label(),
-            ast::Trait(it) => it.short_label(),
-            ast::Module(it) => it.short_label(),
-            ast::TypeAlias(it) => it.short_label(),
-            ast::Const(it) => it.short_label(),
-            ast::Static(it) => it.short_label(),
-            ast::RecordField(it) => it.short_label(),
-            ast::Variant(it) => it.short_label(),
+            ast::Fn(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Struct(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Enum(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Trait(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Module(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::TypeAlias(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Const(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Static(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::RecordField(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
+            ast::Variant(it) => sema.to_def(&it).map(|it| it.display(db).to_string()),
             _ => None,
         }
     }
