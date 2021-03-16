@@ -281,24 +281,23 @@ impl CrateGraph {
     ) -> impl Iterator<Item = CrateId> + '_ {
         let mut worklist = vec![of];
         let mut rev_deps = FxHashSet::default();
-        let mut inverted_graph = FxHashMap::default();
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
         self.arena.iter().for_each(|(&krate, data)| {
-            data.dependencies.iter().for_each(|dep| {
-                inverted_graph.entry(dep.crate_id).or_insert_with(Vec::default).push(krate)
-            })
+            data.dependencies
+                .iter()
+                .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
         });
 
         while let Some(krate) = worklist.pop() {
-            if !rev_deps.insert(krate) {
-                continue;
-            }
-
-            if let Some(rev_deps) = inverted_graph.get(&krate) {
-                worklist.extend(rev_deps);
+            if let Some(krate_rev_deps) = inverted_graph.get(&krate) {
+                krate_rev_deps
+                    .iter()
+                    .copied()
+                    .filter(|&rev_dep| rev_deps.insert(rev_dep))
+                    .for_each(|rev_dep| worklist.push(rev_dep));
             }
         }
 
-        rev_deps.remove(&of);
         rev_deps.into_iter()
     }
 
