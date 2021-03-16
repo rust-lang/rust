@@ -313,7 +313,7 @@ impl<'a> CompletionContext<'a> {
 
                             (ty, name)
                         },
-                        ast::ArgList(it) => {
+                        ast::ArgList(_it) => {
                             cov_mark::hit!(expected_type_fn_param_with_leading_char);
                             cov_mark::hit!(expected_type_fn_param_without_leading_char);
                             ActiveParameter::at_token(
@@ -322,7 +322,7 @@ impl<'a> CompletionContext<'a> {
                             ).map(|ap| (Some(ap.ty), Some(ap.name)))
                             .unwrap_or((None, None))
                         },
-                        ast::RecordExprFieldList(it) => {
+                        ast::RecordExprFieldList(_it) => {
                             cov_mark::hit!(expected_type_struct_field_without_leading_char);
                             self.token.prev_sibling_or_token()
                                 .and_then(|se| se.into_node())
@@ -358,7 +358,7 @@ impl<'a> CompletionContext<'a> {
 
                             (ty, None)
                         },
-                        ast::Fn(it) => {
+                        ast::Fn(_it) => {
                             cov_mark::hit!(expected_type_fn_ret_with_leading_char);
                             cov_mark::hit!(expected_type_fn_ret_without_leading_char);
                             let ty = self.token.ancestors()
