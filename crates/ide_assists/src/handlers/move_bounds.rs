@@ -40,9 +40,9 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
             let where_clause: ast::WhereClause = match_ast! {
                 match parent {
                     ast::Fn(it) => it.get_or_create_where_clause(),
-                    // ast::Trait(it) => it.get_or_create_where_clause(),
+                    ast::Trait(it) => it.get_or_create_where_clause(),
                     ast::Impl(it) => it.get_or_create_where_clause(),
-                    // ast::Enum(it) => it.get_or_create_where_clause(),
+                    ast::Enum(it) => it.get_or_create_where_clause(),
                     ast::Struct(it) => it.get_or_create_where_clause(),
                     _ => return,
                 }
@@ -82,12 +82,8 @@ mod tests {
     fn move_bounds_to_where_clause_fn() {
         check_assist(
             move_bounds_to_where_clause,
-            r#"
-            fn foo<T: u32, $0F: FnOnce(T) -> T>() {}
-            "#,
-            r#"
-            fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
-            "#,
+            r#"fn foo<T: u32, $0F: FnOnce(T) -> T>() {}"#,
+            r#"fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}"#,
         );
     }
 
@@ -95,12 +91,8 @@ mod tests {
     fn move_bounds_to_where_clause_impl() {
         check_assist(
             move_bounds_to_where_clause,
-            r#"
-            impl<U: u32, $0T> A<U, T> {}
-            "#,
-            r#"
-            impl<U, T> A<U, T> where U: u32 {}
-            "#,
+            r#"impl<U: u32, $0T> A<U, T> {}"#,
+            r#"impl<U, T> A<U, T> where U: u32 {}"#,
         );
     }
 
@@ -108,12 +100,8 @@ mod tests {
     fn move_bounds_to_where_clause_struct() {
         check_assist(
             move_bounds_to_where_clause,
-            r#"
-            struct A<$0T: Iterator<Item = u32>> {}
-            "#,
-            r#"
-            struct A<T> where T: Iterator<Item = u32> {}
-            "#,
+            r#"struct A<$0T: Iterator<Item = u32>> {}"#,
+            r#"struct A<T> where T: Iterator<Item = u32> {}"#,
         );
     }
 
@@ -121,12 +109,8 @@ mod tests {
     fn move_bounds_to_where_clause_tuple_struct() {
         check_assist(
             move_bounds_to_where_clause,
-            r#"
-            struct Pair<$0T: u32>(T, T);
-            "#,
-            r#"
-            struct Pair<T>(T, T) where T: u32;
-            "#,
+            r#"struct Pair<$0T: u32>(T, T);"#,
+            r#"struct Pair<T>(T, T) where T: u32;"#,
         );
     }
 }
