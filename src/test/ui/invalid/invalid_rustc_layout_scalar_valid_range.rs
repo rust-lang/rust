@@ -15,6 +15,13 @@ enum E {
     Y = 14,
 }
 
+#[rustc_layout_scalar_valid_range_start(rustc_layout_scalar_valid_range_start)] //~ ERROR
+struct NonZero<T>(T);
+
+fn not_field() -> impl Send {
+    NonZero(false)
+}
+
 fn main() {
     let _ = A(0);
     let _ = B(0);

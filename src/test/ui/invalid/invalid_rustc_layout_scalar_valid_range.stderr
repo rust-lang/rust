@@ -27,5 +27,11 @@ LL | |     Y = 14,
 LL | | }
    | |_- not a struct
 
-error: aborting due to 4 previous errors
+error: expected exactly one integer literal argument
+  --> $DIR/invalid_rustc_layout_scalar_valid_range.rs:18:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(rustc_layout_scalar_valid_range_start)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
