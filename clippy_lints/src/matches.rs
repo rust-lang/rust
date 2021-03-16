@@ -1106,7 +1106,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             cx,
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
-            "match on non-exhaustive enum doesn't explicitly match all known variants",
+            "wildcard matches only a single variant and will also match any future added variants",
             "try this",
             format_suggestion(x),
             Applicability::MaybeIncorrect,
@@ -1115,9 +1115,9 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             let mut suggestions: Vec<_> = variants.iter().cloned().map(format_suggestion).collect();
             let message = if adt_def.is_variant_list_non_exhaustive() {
                 suggestions.push("_".into());
-                "match on non-exhaustive enum doesn't explicitly match all known variants"
+                "wildcard matches known variants and will also match future added variants"
             } else {
-                "wildcard match will miss any future added variants"
+                "wildcard match will also match any future added variants"
             };
 
             span_lint_and_sugg(
