@@ -7,11 +7,11 @@ use crate::utils::diagnostics::span_lint_and_then;
 use crate::utils::higher;
 use crate::utils::source::snippet_with_macro_callsite;
 
-use super::{utils, LET_UNIT_VALUE};
+use super::LET_UNIT_VALUE;
 
 pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Local(ref local) = stmt.kind {
-        if utils::is_unit(cx.typeck_results().pat_ty(&local.pat)) {
+        if cx.typeck_results().pat_ty(&local.pat).is_unit() {
             if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
                 return;
             }

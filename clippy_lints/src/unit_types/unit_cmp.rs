@@ -4,7 +4,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 
 use crate::utils::diagnostics::span_lint;
 
-use super::{utils, UNIT_CMP};
+use super::UNIT_CMP;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.from_expansion() {
@@ -12,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
                 if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
                     let op = cmp.node;
-                    if op.is_comparison() && utils::is_unit(cx.typeck_results().expr_ty(left)) {
+                    if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
                         let result = match &*symbol.as_str() {
                             "assert_eq" | "debug_assert_eq" => "succeed",
                             "assert_ne" | "debug_assert_ne" => "fail",
@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
     if let ExprKind::Binary(ref cmp, ref left, _) = expr.kind {
         let op = cmp.node;
-        if op.is_comparison() && utils::is_unit(cx.typeck_results().expr_ty(left)) {
+        if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
             let result = match op {
                 BinOpKind::Eq | BinOpKind::Le | BinOpKind::Ge => "true",
                 _ => "false",

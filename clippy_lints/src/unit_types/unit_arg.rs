@@ -36,7 +36,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             let args_to_recover = args
                 .iter()
                 .filter(|arg| {
-                    if utils::is_unit(cx.typeck_results().expr_ty(arg)) && !utils::is_unit_literal(arg) {
+                    if cx.typeck_results().expr_ty(arg).is_unit() && !utils::is_unit_literal(arg) {
                         !matches!(
                             &arg.kind,
                             ExprKind::Match(.., MatchSource::TryDesugar) | ExprKind::Path(..)
