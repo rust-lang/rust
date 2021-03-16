@@ -1,13 +1,12 @@
 use crate::context::{CheckLintNameResult, LintStore};
 use crate::late::unerased_lint_store;
 use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::unwrap_or;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::LevelAndSource;
@@ -32,7 +31,8 @@ use std::cmp;
 fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> LintLevelMap {
     assert_eq!(cnum, LOCAL_CRATE);
     let store = unerased_lint_store(tcx);
-    let levels = LintLevelsBuilder::new(tcx.sess, false, &store);
+    let crate_attrs = tcx.get_attrs(DefId { krate: cnum, index: CRATE_DEF_INDEX });
+    let levels = LintLevelsBuilder::new(tcx.sess, false, &store, crate_attrs);
     let mut builder = LintLevelMapBuilder { levels, tcx, store };
     let krate = tcx.hir().krate();
 
@@ -56,6 +56,7 @@ pub struct LintLevelsBuilder<'s> {
     cur: u32,
     warn_about_weird_lints: bool,
     store: &'s LintStore,
+    crate_attrs: &'s [ast::Attribute],
 }
 
 pub struct BuilderPush {
@@ -64,7 +65,12 @@ pub struct BuilderPush {
 }
 
 impl<'s> LintLevelsBuilder<'s> {
-    pub fn new(sess: &'s Session, warn_about_weird_lints: bool, store: &'s LintStore) -> Self {
+    pub fn new(
+        sess: &'s Session,
+        warn_about_weird_lints: bool,
+        store: &'s LintStore,
+        crate_attrs: &'s [ast::Attribute],
+    ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
             sets: LintLevelSets::new(),
@@ -72,6 +78,7 @@ impl<'s> LintLevelsBuilder<'s> {
             id_to_set: Default::default(),
             warn_about_weird_lints,
             store,
+            crate_attrs,
         };
         builder.process_command_line(sess, store);
         assert_eq!(builder.sets.list.len(), 1);
@@ -304,15 +311,22 @@ impl<'s> LintLevelsBuilder<'s> {
                 };
                 let tool_name = if meta_item.path.segments.len() > 1 {
                     let tool_ident = meta_item.path.segments[0].ident;
-                    if !attr::is_known_lint_tool(tool_ident) {
-                        struct_span_err!(
+                    if !is_known_lint_tool(tool_ident.name, sess, &self.crate_attrs) {
+                        let mut err = struct_span_err!(
                             sess,
                             tool_ident.span,
                             E0710,
-                            "an unknown tool name found in scoped lint: `{}`",
+                            "unknown tool name `{}` found in scoped lint: `{}`",
+                            tool_ident.name,
                             pprust::path_to_string(&meta_item.path),
-                        )
-                        .emit();
+                        );
+                        if sess.is_nightly_build() {
+                            err.help(&format!(
+                                "add `#![register_tool({})]` to the crate root",
+                                tool_ident.name
+                            ));
+                        }
+                        err.emit();
                         continue;
                     }
 
@@ -557,6 +571,20 @@ impl<'s> LintLevelsBuilder<'s> {
     pub fn build_map(self) -> LintLevelMap {
         LintLevelMap { sets: self.sets, id_to_set: self.id_to_set }
     }
+}
+
+fn is_known_lint_tool(m_item: Symbol, sess: &Session, attrs: &[ast::Attribute]) -> bool {
+    if [sym::clippy, sym::rustc, sym::rustdoc].contains(&m_item) {
+        return true;
+    }
+    // Look for registered tools
+    // NOTE: does no error handling; error handling is done by rustc_resolve.
+    sess.filter_by_name(attrs, sym::register_tool)
+        .filter_map(|attr| attr.meta_item_list())
+        .flat_map(std::convert::identity)
+        .filter_map(|nested_meta| nested_meta.ident())
+        .map(|ident| ident.name)
+        .any(|name| name == m_item)
 }
 
 struct LintLevelMapBuilder<'a, 'tcx> {
