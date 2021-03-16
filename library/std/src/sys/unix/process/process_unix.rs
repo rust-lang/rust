@@ -3,11 +3,9 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
-use crate::sys_common::FromInner;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
@@ -16,7 +14,7 @@ use crate::os::linux::process::PidFd;
 use libc::RTP_ID as pid_t;
 
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, c_long, gid_t, pid_t, uid_t};
+use libc::{c_int, gid_t, pid_t, uid_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -132,6 +130,7 @@ impl Command {
         // If this fails, we will fall through this block to a call to `fork()`
         #[cfg(target_os = "linux")]
         {
+            use crate::sync::atomic::{AtomicBool, Ordering};
             static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
 
             const CLONE_PIDFD: u64 = 0x00001000;
@@ -152,7 +151,7 @@ impl Command {
             }
 
             syscall! {
-                fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> c_long
+                fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
             }
 
             if HAS_CLONE3.load(Ordering::Relaxed) {
@@ -529,6 +528,7 @@ pub struct Process {
 impl Process {
     #[cfg(target_os = "linux")]
     fn new(pid: pid_t, pidfd: pid_t) -> Self {
+        use crate::sys_common::FromInner;
         let pidfd = (pidfd >= 0).then(|| PidFd::from_inner(sys::fd::FileDesc::new(pidfd)));
         Process { pid, status: None, pidfd }
     }

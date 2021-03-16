@@ -1,5 +1,5 @@
 // run-pass
-// linux-only - pidfds are a linux-specific concept
+// only-linux - pidfds are a linux-specific concept
 
 #![feature(linux_pidfd)]
 use std::os::linux::process::{CommandExt, ChildExt};
