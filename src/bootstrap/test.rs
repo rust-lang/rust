@@ -791,6 +791,19 @@ impl Step for Tidy {
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
+            if builder.config.initial_rustfmt.is_none() {
+                let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
+                eprintln!(
+                    "\
+error: no `rustfmt` binary found in {PATH}
+info: `rust.channel` is currently set to \"{CHAN}\"
+help: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` to `x.py test`",
+                    PATH = inferred_rustfmt_dir.display(),
+                    CHAN = builder.config.channel,
+                );
+                std::process::exit(1);
+            }
             crate::format::format(&builder.build, !builder.config.cmd.bless());
         }
     }

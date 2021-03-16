@@ -67,7 +67,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null, is_nonoverlapping};
+use crate::intrinsics::{self, abort, is_aligned_and_not_null};
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -394,7 +394,8 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
     let mut tmp = MaybeUninit::<T>::uninit();
@@ -451,16 +452,8 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    if cfg!(debug_assertions)
-        && !(is_aligned_and_not_null(x)
-            && is_aligned_and_not_null(y)
-            && is_nonoverlapping(x, y, count))
-    {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
-
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x as *mut u8;
     let y = y as *mut u8;
     let len = mem::size_of::<T>() * count;
@@ -470,7 +463,8 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
-pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
     if mem::size_of::<T>() < 32 {
@@ -488,7 +482,8 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 }
 
 #[inline]
-unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
@@ -589,7 +584,8 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // SAFETY: the caller must guarantee that `dst` is valid to be
     // cast to a mutable reference (valid for writes, aligned, initialized),
     // and cannot overlap `src` since `dst` must point to a distinct
