@@ -1,13 +1,14 @@
-include ../../run-make-fulldeps/tools.mk
+# ignore-riscv64 $(call RUN,foo) expects to run the target executable natively
+#                              so it won't work with remote-test-server
+# ignore-none no-std is not supported
 
-# FIXME https://github.com/rust-lang/rust/issues/78911
-# ignore-32bit wrong/no cross compiler and sometimes we pass wrong gcc args (-m64)
+include ../../run-make-fulldeps/tools.mk
 
 all: foo
 	$(call RUN,foo)
 
 foo: foo.rs $(call NATIVE_STATICLIB,foo)
-	$(RUSTC) $< -lfoo $(EXTRARSCXXFLAGS)
+	$(RUSTC) $< -lfoo $(EXTRARSCXXFLAGS) --target $(TARGET)
 
 $(TMPDIR)/libfoo.o: foo.cpp
 	$(call COMPILE_OBJ_CXX,$@,$<)
