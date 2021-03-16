@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Item, ItemKind, Variant};
@@ -81,7 +81,7 @@ fn check_ident(cx: &EarlyContext<'_>, ident: &Ident, be_aggressive: bool) {
     // assume that two-letter words are some kind of valid abbreviation like FP for false positive
     // (and don't warn)
     if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
-    // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive 
+    // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive
     // upper-case-acronyms-aggressive config option enabled
     || (be_aggressive && ident != &corrected)
     {

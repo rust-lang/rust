@@ -1,10 +1,11 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, LangItem, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
-use crate::utils::{get_qpath_generic_tys, is_ty_param_diagnostic_item, is_ty_param_lang_item, span_lint_and_sugg};
+use crate::utils::{get_qpath_generic_tys, is_ty_param_diagnostic_item, is_ty_param_lang_item};
 
 use super::{utils, REDUNDANT_ALLOCATION};
 

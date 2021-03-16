@@ -1,4 +1,5 @@
-use crate::utils::{meets_msrv, span_lint_and_then};
+use crate::utils::meets_msrv;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
 use rustc_errors::Applicability;

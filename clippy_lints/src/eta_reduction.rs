@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
@@ -10,7 +11,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{is_adjusted, iter_input_pats, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{is_adjusted, iter_input_pats};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for closures which just call another function where

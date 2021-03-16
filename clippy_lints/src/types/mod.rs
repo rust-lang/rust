@@ -13,6 +13,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet, snippet_opt, snippet_with_macro_callsite};
 use clippy_utils::ty::{is_isize_or_usize, is_type_diagnostic_item};
 use if_chain::if_chain;
@@ -38,10 +39,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, int_bits, match_path, multispan_sugg, sext, span_lint,
-    span_lint_and_help, span_lint_and_then, unsext,
-};
+use crate::utils::{clip, comparisons, differing_macro_contexts, higher, int_bits, match_path, sext, unsext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.

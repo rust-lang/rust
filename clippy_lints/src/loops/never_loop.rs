@@ -1,5 +1,5 @@
 use super::NEVER_LOOP;
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Block, Expr, ExprKind, HirId, InlineAsmOperand, Stmt, StmtKind};
 use rustc_lint::LateContext;
 use std::iter::{once, Iterator};

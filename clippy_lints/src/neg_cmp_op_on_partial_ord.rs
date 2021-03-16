@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
@@ -5,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{self, paths, span_lint};
+use crate::utils::{self, paths};
 
 declare_clippy_lint! {
     /// **What it does:**

@@ -1,4 +1,5 @@
-use crate::utils::{differing_macro_contexts, get_parent_expr, span_lint, span_lint_and_sugg};
+use crate::utils::{differing_macro_contexts, get_parent_expr};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;

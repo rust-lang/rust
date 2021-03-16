@@ -1,4 +1,5 @@
 use crate::utils;
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_with_macro_callsite;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
@@ -100,7 +101,7 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
                     cond_snip,
                     closure_body,
                 );
-                utils::span_lint_and_help(
+                span_lint_and_help(
                     cx,
                     IF_THEN_SOME_ELSE_NONE,
                     expr.span,

@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
@@ -12,8 +13,6 @@ use rustc_middle::{
     ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of unconstrained numeric literals which may cause default numeric fallback in type

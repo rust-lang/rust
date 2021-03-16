@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, span_lint_and_then, sugg};
+use crate::utils::{match_def_path, paths, sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
 use if_chain::if_chain;
 use rustc_ast::util::parser::AssocOp;
 use rustc_errors::Applicability;

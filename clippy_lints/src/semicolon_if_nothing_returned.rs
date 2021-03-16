@@ -1,4 +1,5 @@
-use crate::utils::{in_macro, span_lint_and_sugg, sugg};
+use crate::utils::{in_macro, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_macro_callsite;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

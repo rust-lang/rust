@@ -1,13 +1,11 @@
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
 use if_chain::if_chain;
-
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-
-use crate::utils::span_lint_and_then;
 
 declare_clippy_lint! {
     /// **What it does:** Warns on any exported `enum`s that are not tagged `#[non_exhaustive]`

@@ -1,6 +1,7 @@
 use super::utils::make_iterator_snippet;
 use super::MANUAL_FLATTEN;
-use crate::utils::{is_ok_ctor, is_some_ctor, path_to_local_id, span_lint_and_then};
+use crate::utils::{is_ok_ctor, is_some_ctor, path_to_local_id};
+use clippy_utils::diagnostics::span_lint_and_then;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, StmtKind};

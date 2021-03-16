@@ -1,5 +1,6 @@
 use crate::methods::derefs_to_slice;
-use crate::utils::{get_parent_expr, paths, span_lint_and_sugg};
+use crate::utils::{get_parent_expr, paths};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use if_chain::if_chain;

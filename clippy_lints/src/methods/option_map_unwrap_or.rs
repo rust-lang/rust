@@ -1,4 +1,5 @@
-use crate::utils::{differing_macro_contexts, span_lint_and_then};
+use crate::utils::differing_macro_contexts;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;

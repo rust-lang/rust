@@ -5,7 +5,8 @@ use rustc_middle::ty::{self, Ty};
 use if_chain::if_chain;
 
 use crate::consts::{constant, Constant};
-use crate::utils::{method_chain_args, sext, span_lint};
+use crate::utils::{method_chain_args, sext};
+use clippy_utils::diagnostics::span_lint;
 
 use super::CAST_SIGN_LOSS;
 

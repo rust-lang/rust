@@ -1,4 +1,5 @@
-use crate::utils::{in_macro, span_lint_and_help, SpanlessHash};
+use crate::utils::{in_macro, SpanlessHash};
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;

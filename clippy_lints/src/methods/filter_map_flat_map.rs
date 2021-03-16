@@ -1,4 +1,5 @@
-use crate::utils::{is_trait_method, span_lint_and_help};
+use crate::utils::is_trait_method;
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::sym;

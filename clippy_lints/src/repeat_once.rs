@@ -1,5 +1,6 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{in_macro, span_lint_and_sugg};
+use crate::utils::in_macro;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;

@@ -7,7 +7,8 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{clip, span_lint, unsext};
+use crate::utils::{clip, unsext};
+use clippy_utils::diagnostics::span_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for identity operations, e.g., `x + 0`.

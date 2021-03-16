@@ -1,4 +1,5 @@
-use crate::utils::{get_trait_def_id, paths, span_lint_and_sugg, sugg};
+use crate::utils::{get_trait_def_id, paths, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

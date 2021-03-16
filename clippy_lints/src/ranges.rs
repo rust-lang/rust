@@ -1,4 +1,5 @@
 use crate::consts::{constant, Constant};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
@@ -14,10 +15,7 @@ use rustc_span::symbol::Ident;
 use std::cmp::Ordering;
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{
-    get_parent_expr, in_constant, is_integer_const, meets_msrv, single_segment_path, span_lint, span_lint_and_sugg,
-    span_lint_and_then,
-};
+use crate::utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, single_segment_path};
 use crate::utils::{higher, SpanlessEq};
 
 declare_clippy_lint! {

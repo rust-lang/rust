@@ -1,5 +1,5 @@
-use crate::utils::span_lint_and_sugg;
 use crate::utils::{eager_or_lazy, usage};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;

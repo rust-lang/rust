@@ -1,5 +1,5 @@
 use crate::methods::SelfKind;
-use crate::utils::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyS;
 use rustc_span::source_map::Span;

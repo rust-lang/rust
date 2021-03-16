@@ -1,7 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{
-    get_parent_expr, match_def_path, match_trait_method, paths, span_lint_and_help, span_lint_and_sugg,
-};
+use crate::utils::{get_parent_expr, match_def_path, match_trait_method, paths};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;

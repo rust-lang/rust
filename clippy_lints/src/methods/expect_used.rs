@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

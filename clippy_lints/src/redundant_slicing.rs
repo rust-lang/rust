@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_lang_item;
 use if_chain::if_chain;
@@ -6,8 +7,6 @@ use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{lint::in_external_macro, ty::TyS};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for redundant slicing expressions which use the full range, and

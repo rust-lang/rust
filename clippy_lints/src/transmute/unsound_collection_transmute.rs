@@ -1,6 +1,7 @@
 use super::utils::is_layout_incompatible;
 use super::UNSOUND_COLLECTION_TRANSMUTE;
-use crate::utils::{match_def_path, paths, span_lint};
+use crate::utils::{match_def_path, paths};
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};

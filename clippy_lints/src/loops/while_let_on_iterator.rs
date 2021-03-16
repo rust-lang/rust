@@ -3,8 +3,8 @@ use super::WHILE_LET_ON_ITERATOR;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_enclosing_block, is_refutable, is_trait_method, last_path_segment, path_to_local, path_to_local_id,
-    span_lint_and_sugg,
 };
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;

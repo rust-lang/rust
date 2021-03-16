@@ -1,4 +1,5 @@
-use crate::utils::{is_trait_method, path_to_local_id, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{is_trait_method, path_to_local_id, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

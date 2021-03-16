@@ -1,6 +1,7 @@
 use std::cmp;
 
-use crate::utils::{is_self_ty, span_lint_and_sugg};
+use crate::utils::is_self_ty;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
 use if_chain::if_chain;

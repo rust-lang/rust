@@ -1,4 +1,5 @@
-use crate::utils::{get_parent_node, in_macro, is_allowed, span_lint_and_sugg};
+use crate::utils::{get_parent_node, in_macro, is_allowed};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_mid_ty_refs;
 use rustc_ast::util::parser::PREC_PREFIX;

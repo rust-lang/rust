@@ -1,6 +1,6 @@
-use crate::utils::span_lint_and_then;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, paths};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use if_chain::if_chain;

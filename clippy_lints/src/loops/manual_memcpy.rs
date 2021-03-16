@@ -1,6 +1,7 @@
 use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_enclosing_block, higher, path_to_local, span_lint_and_sugg, sugg};
+use crate::utils::{get_enclosing_block, higher, path_to_local, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;

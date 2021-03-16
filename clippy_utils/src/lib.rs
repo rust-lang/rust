@@ -33,7 +33,7 @@ pub mod attrs;
 pub mod camel_case;
 pub mod comparisons;
 pub mod consts;
-mod diagnostics;
+pub mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
@@ -48,7 +48,6 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
-pub use self::diagnostics::*;
 pub use self::hir_utils::{both, eq_expr_value, over, SpanlessEq, SpanlessHash};
 
 use std::collections::hash_map::Entry;

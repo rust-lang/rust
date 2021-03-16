@@ -1,4 +1,5 @@
-use crate::utils::{attr_by_name, in_macro, match_path_ast, span_lint_and_help};
+use crate::utils::{attr_by_name, in_macro, match_path_ast};
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};

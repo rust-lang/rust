@@ -1,4 +1,5 @@
-use crate::utils::{contains_name, higher, iter_input_pats, span_lint_and_then};
+use crate::utils::{contains_name, higher, iter_input_pats};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{

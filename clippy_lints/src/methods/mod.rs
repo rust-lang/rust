@@ -52,6 +52,7 @@ mod wrong_self_convention;
 mod zst_offset;
 
 use bind_instead_of_map::BindInsteadOfMap;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
 use if_chain::if_chain;
@@ -69,8 +70,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use crate::utils::{
     contains_return, get_trait_def_id, in_macro, iter_input_pats, match_def_path, match_qpath, method_calls,
-    method_chain_args, paths, return_ty, single_segment_path, span_lint, span_lint_and_help, span_lint_and_sugg,
-    SpanlessEq,
+    method_chain_args, paths, return_ty, single_segment_path, SpanlessEq,
 };
 
 declare_clippy_lint! {

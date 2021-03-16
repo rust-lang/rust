@@ -1,4 +1,5 @@
-use crate::utils::{eq_expr_value, span_lint};
+use crate::utils::eq_expr_value;
+use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

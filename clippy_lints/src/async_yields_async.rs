@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;

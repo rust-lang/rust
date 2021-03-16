@@ -5,7 +5,7 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/cf9cf7c923eb01146971429044f216a3ca905e06/compiler/rustc_lint/src/builtin.rs#L415
 //
 
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_ast::attr;
