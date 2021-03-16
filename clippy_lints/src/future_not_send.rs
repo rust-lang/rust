@@ -1,4 +1,5 @@
 use crate::utils;
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -84,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                     fulfillment_cx.select_all_or_error(&infcx)
                 });
                 if let Err(send_errors) = send_result {
-                    utils::span_lint_and_then(
+                    span_lint_and_then(
                         cx,
                         FUTURE_NOT_SEND,
                         span,

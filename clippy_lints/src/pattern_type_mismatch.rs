@@ -1,4 +1,5 @@
-use crate::utils::{last_path_segment, span_lint_and_help};
+use crate::utils::last_path_segment;
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{
     intravisit, Body, Expr, ExprKind, FieldPat, FnDecl, HirId, LocalSource, MatchSource, Mutability, Pat, PatKind,
     QPath, Stmt, StmtKind,

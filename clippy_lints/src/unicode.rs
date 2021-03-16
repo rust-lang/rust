@@ -1,4 +1,5 @@
-use crate::utils::{is_allowed, span_lint_and_sugg};
+use crate::utils::is_allowed;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

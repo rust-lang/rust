@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
@@ -7,7 +8,6 @@ use rustc_middle::ty::{self, ConstKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 use crate::rustc_target::abi::LayoutOf;
-use crate::utils::span_lint_and_help;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for local arrays that may be too large.

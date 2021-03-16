@@ -1,4 +1,5 @@
-use crate::utils::{get_trait_def_id, if_sequence, parent_node_is_if_expr, paths, span_lint_and_help, SpanlessEq};
+use crate::utils::{get_trait_def_id, if_sequence, parent_node_is_if_expr, paths, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

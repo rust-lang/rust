@@ -3,7 +3,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 
 use super::{utils, CAST_POSSIBLE_TRUNCATION};
 

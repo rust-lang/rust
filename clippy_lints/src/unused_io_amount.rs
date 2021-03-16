@@ -1,4 +1,5 @@
-use crate::utils::{is_try, match_trait_method, paths, span_lint};
+use crate::utils::{is_try, match_trait_method, paths};
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

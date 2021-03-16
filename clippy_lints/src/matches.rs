@@ -2,11 +2,13 @@ use crate::consts::{constant, miri_to_const, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::visitors::LocalUsedVisitor;
 use crate::utils::{
-    get_parent_expr, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, meets_msrv, multispan_sugg,
-    path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, remove_blocks, span_lint_and_help,
-    span_lint_and_note, span_lint_and_sugg, span_lint_and_then, strip_pat_refs,
+    get_parent_expr, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, meets_msrv, path_to_local,
+    path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, remove_blocks, strip_pat_refs,
 };
 use crate::utils::{paths, search_same, SpanlessEq, SpanlessHash};
+use clippy_utils::diagnostics::{
+    multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+};
 use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use if_chain::if_chain;
@@ -1614,7 +1616,8 @@ where
 
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
-    use crate::utils::{is_trait_method, match_qpath, paths, span_lint_and_then};
+    use crate::utils::{is_trait_method, match_qpath, paths};
+    use clippy_utils::diagnostics::span_lint_and_then;
     use clippy_utils::source::snippet;
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;

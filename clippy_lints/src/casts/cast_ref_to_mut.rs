@@ -1,10 +1,8 @@
+use clippy_utils::diagnostics::span_lint;
+use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, MutTy, Mutability, TyKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-
-use if_chain::if_chain;
-
-use crate::utils::span_lint;
 
 use super::CAST_REF_TO_MUT;
 

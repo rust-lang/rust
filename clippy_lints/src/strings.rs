@@ -1,8 +1,6 @@
 use crate::utils::SpanlessEq;
-use crate::utils::{
-    get_parent_expr, is_allowed, match_function_call, method_calls, paths, span_lint, span_lint_and_help,
-    span_lint_and_sugg,
-};
+use crate::utils::{get_parent_expr, is_allowed, match_function_call, method_calls, paths};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;

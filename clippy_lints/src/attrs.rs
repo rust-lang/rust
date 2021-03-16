@@ -1,6 +1,7 @@
 //! checks for attributes
 
-use crate::utils::{match_panic_def_id, span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::match_panic_def_id;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};

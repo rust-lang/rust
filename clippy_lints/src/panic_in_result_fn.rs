@@ -1,4 +1,5 @@
-use crate::utils::{find_macro_calls, return_ty, span_lint_and_then};
+use crate::utils::{find_macro_calls, return_ty};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;

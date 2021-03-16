@@ -1,4 +1,5 @@
-use crate::utils::{match_qpath, span_lint_and_sugg};
+use crate::utils::match_qpath;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;

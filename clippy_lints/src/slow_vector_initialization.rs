@@ -1,5 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
+use crate::utils::{get_enclosing_block, match_qpath, SpanlessEq};
+use clippy_utils::diagnostics::span_lint_and_then;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

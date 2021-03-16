@@ -1,4 +1,5 @@
-use crate::utils::{is_adjusted, is_trait_method, match_path, match_var, paths, remove_blocks, span_lint_and_sugg};
+use crate::utils::{is_adjusted, is_trait_method, match_path, match_var, paths, remove_blocks};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

@@ -1,5 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{differing_macro_contexts, eq_expr_value, span_lint_and_then};
+use crate::utils::{differing_macro_contexts, eq_expr_value};
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;

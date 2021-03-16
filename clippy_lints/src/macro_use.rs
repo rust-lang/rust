@@ -1,4 +1,5 @@
-use crate::utils::{in_macro, span_lint_and_sugg};
+use crate::utils::in_macro;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
 use if_chain::if_chain;

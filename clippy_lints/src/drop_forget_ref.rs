@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, span_lint_and_note};
+use crate::utils::{match_def_path, paths};
+use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};

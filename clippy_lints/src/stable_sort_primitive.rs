@@ -1,4 +1,5 @@
-use crate::utils::{is_slice_of_primitives, span_lint_and_then, sugg::Sugg};
+use crate::utils::{is_slice_of_primitives, sugg::Sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
 
 use if_chain::if_chain;
 

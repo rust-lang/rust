@@ -1,5 +1,6 @@
 //! Lint on unnecessary double comparisons. Some examples:
 
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -7,7 +8,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
-use crate::utils::{eq_expr_value, span_lint_and_sugg};
+use crate::utils::eq_expr_value;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for double comparisons that could be simplified to a single expression.

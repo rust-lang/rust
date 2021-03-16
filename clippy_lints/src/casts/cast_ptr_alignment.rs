@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
@@ -6,7 +7,7 @@ use rustc_target::abi::LayoutOf;
 
 use if_chain::if_chain;
 
-use crate::utils::{is_hir_ty_cfg_dependant, span_lint};
+use crate::utils::is_hir_ty_cfg_dependant;
 
 use super::CAST_PTR_ALIGNMENT;
 

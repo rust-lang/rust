@@ -1,6 +1,7 @@
 use super::NEEDLESS_COLLECT;
 use crate::utils::sugg::Sugg;
-use crate::utils::{is_trait_method, path_to_local_id, paths, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{is_trait_method, path_to_local_id, paths};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use if_chain::if_chain;

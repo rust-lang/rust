@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::{ImplItem, ImplItemKind};
@@ -5,7 +6,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
-use crate::utils::{get_trait_def_id, paths, return_ty, span_lint_and_help, trait_ref_of_method};
+use crate::utils::{get_trait_def_id, paths, return_ty, trait_ref_of_method};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String`.

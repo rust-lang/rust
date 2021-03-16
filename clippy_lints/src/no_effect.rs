@@ -1,4 +1,4 @@
-use crate::utils::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
 use rustc_errors::Applicability;

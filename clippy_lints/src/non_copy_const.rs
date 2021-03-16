@@ -4,6 +4,7 @@
 
 use std::ptr;
 
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
@@ -18,7 +19,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
 
-use crate::utils::{in_constant, span_lint_and_then};
+use crate::utils::in_constant;
 use if_chain::if_chain;
 
 // FIXME: this is a correctness problem but there's no suitable

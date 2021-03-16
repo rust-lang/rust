@@ -1,5 +1,5 @@
-use crate::utils;
 use crate::utils::sugg::Sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -233,7 +233,7 @@ fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 impl LateLintPass<'_> for UnnecessarySortBy {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         match detect_lint(cx, expr) {
-            Some(LintTrigger::SortByKey(trigger)) => utils::span_lint_and_sugg(
+            Some(LintTrigger::SortByKey(trigger)) => span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,
@@ -256,7 +256,7 @@ impl LateLintPass<'_> for UnnecessarySortBy {
                     Applicability::MachineApplicable
                 },
             ),
-            Some(LintTrigger::Sort(trigger)) => utils::span_lint_and_sugg(
+            Some(LintTrigger::Sort(trigger)) => span_lint_and_sugg(
                 cx,
                 UNNECESSARY_SORT_BY,
                 expr.span,

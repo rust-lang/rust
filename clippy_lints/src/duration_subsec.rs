@@ -9,7 +9,7 @@ use rustc_span::source_map::Spanned;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calculation of subsecond microseconds or milliseconds

@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, span_lint_and_help};
+use crate::utils::match_def_path;
+use clippy_utils::diagnostics::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};

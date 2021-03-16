@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::implements_trait;
 use if_chain::if_chain;
@@ -20,8 +21,7 @@ use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, higher, in_constant, is_diagnostic_assoc_item, is_integer_const, iter_input_pats,
-    last_path_segment, match_qpath, span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then, unsext,
-    SpanlessEq,
+    last_path_segment, match_qpath, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {

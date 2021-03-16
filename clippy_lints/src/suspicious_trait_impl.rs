@@ -1,4 +1,5 @@
-use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
+use crate::utils::{get_trait_def_id, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

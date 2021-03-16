@@ -8,8 +8,9 @@ use rustc_semver::RustcVersion;
 
 use if_chain::if_chain;
 
+use crate::utils::meets_msrv;
 use crate::utils::sugg::Sugg;
-use crate::utils::{meets_msrv, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 
 use super::PTR_AS_PTR;
 

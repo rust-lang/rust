@@ -1,4 +1,5 @@
 use crate::utils;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -58,7 +59,7 @@ impl LateLintPass<'_> for PtrEq {
                     if let Some(left_snip) = snippet_opt(cx, left_var.span);
                     if let Some(right_snip) = snippet_opt(cx, right_var.span);
                     then {
-                        utils::span_lint_and_sugg(
+                        span_lint_and_sugg(
                             cx,
                             PTR_EQ,
                             expr.span,

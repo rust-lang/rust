@@ -1,5 +1,6 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
-use crate::utils::{span_lint_and_sugg, span_lint_and_then, sugg};
+use crate::utils::sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

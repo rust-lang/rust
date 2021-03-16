@@ -1,5 +1,6 @@
 use crate::utils::usage::mutated_variables;
-use crate::utils::{is_trait_method, match_qpath, path_to_local_id, paths, span_lint};
+use crate::utils::{is_trait_method, match_qpath, path_to_local_id, paths};
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_lint::LateContext;

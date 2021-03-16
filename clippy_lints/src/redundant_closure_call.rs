@@ -1,4 +1,4 @@
-use crate::utils::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;

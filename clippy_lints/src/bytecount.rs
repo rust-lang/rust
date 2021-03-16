@@ -1,4 +1,5 @@
-use crate::utils::{contains_name, get_pat_name, paths, single_segment_path, span_lint_and_sugg};
+use crate::utils::{contains_name, get_pat_name, paths, single_segment_path};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::match_type;
 use if_chain::if_chain;

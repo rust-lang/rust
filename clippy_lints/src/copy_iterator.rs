@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::ty::is_copy;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};

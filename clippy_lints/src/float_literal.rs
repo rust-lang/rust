@@ -1,4 +1,5 @@
-use crate::utils::{numeric_literal, span_lint_and_sugg};
+use crate::utils::numeric_literal;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;

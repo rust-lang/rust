@@ -1,6 +1,7 @@
 use crate::consts::constant_simple;
 use crate::utils;
 use crate::utils::{path_to_local_id, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
@@ -112,7 +113,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         then {
             let reindented_or_body =
                 reindent_multiline(or_body_snippet.into(), true, Some(indent));
-            utils::span_lint_and_sugg(
+            span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
                 &format!("this pattern reimplements `{}`", case.unwrap_fn_path()),

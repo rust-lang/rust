@@ -1,5 +1,6 @@
 use super::EXPLICIT_ITER_LOOP;
-use crate::utils::{match_trait_method, paths, span_lint_and_sugg};
+use crate::utils::{match_trait_method, paths};
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use rustc_errors::Applicability;
