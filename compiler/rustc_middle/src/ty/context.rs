@@ -1091,13 +1091,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 None => return Bound::Unbounded,
             };
             debug!("layout_scalar_valid_range: attr={:?}", attr);
-            for meta in attr.meta_item_list().expect("rustc_layout_scalar_valid_range takes args") {
-                match meta.literal().expect("attribute takes lit").kind {
-                    ast::LitKind::Int(a, _) => return Bound::Included(a),
-                    _ => span_bug!(attr.span, "rustc_layout_scalar_valid_range expects int arg"),
-                }
+            if let Some(
+                &[ast::NestedMetaItem::Literal(ast::Lit { kind: ast::LitKind::Int(a, _), .. })],
+            ) = attr.meta_item_list().as_deref()
+            {
+                Bound::Included(a)
+            } else {
+                self.sess
+                    .delay_span_bug(attr.span, "invalid rustc_layout_scalar_valid_range attribute");
+                Bound::Unbounded
             }
-            span_bug!(attr.span, "no arguments to `rustc_layout_scalar_valid_range` attribute");
         };
         (
             get(sym::rustc_layout_scalar_valid_range_start),
