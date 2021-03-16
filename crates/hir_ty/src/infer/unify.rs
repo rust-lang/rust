@@ -157,6 +157,10 @@ impl<T> Canonicalized<T> {
     }
 }
 
+pub fn could_unify(t1: &Ty, t2: &Ty) -> bool {
+    InferenceTable::new().unify(t1, t2)
+}
+
 pub(crate) fn unify(tys: &Canonical<(Ty, Ty)>) -> Option<Substitution> {
     let mut table = InferenceTable::new();
     let vars = Substitution(

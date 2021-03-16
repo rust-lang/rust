@@ -45,6 +45,11 @@ use crate::{
     to_assoc_type_id, to_chalk_trait_id, AliasEq, AliasTy, Interner, TyKind,
 };
 
+// This lint has a false positive here. See the link below for details.
+//
+// https://github.com/rust-lang/rust/issues/57411
+#[allow(unreachable_pub)]
+pub use unify::could_unify;
 pub(crate) use unify::unify;
 
 mod unify;

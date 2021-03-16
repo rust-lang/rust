@@ -314,7 +314,8 @@ fn compute_exact_type_match(ctx: &CompletionContext, completion_ty: &hir::Type) 
         Some(expected_type) => {
             // We don't ever consider unit type to be an exact type match, since
             // nearly always this is not meaningful to the user.
-            completion_ty == expected_type && !expected_type.is_unit()
+            (completion_ty == expected_type || expected_type.could_unify_with(completion_ty))
+                && !expected_type.is_unit()
         }
         None => false,
     }
@@ -1350,6 +1351,36 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                         detail: "fn(&self) -> u32",
                     },
                 ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn generic_enum() {
+        check_relevance(
+            r#"
+enum Foo<T> { A(T), B }
+// bar() should not be an exact type match
+// because the generic parameters are different
+fn bar() -> Foo<u8> { Foo::B }
+// FIXME baz() should be an exact type match
+// because the types could unify, but it currently
+// is not. This is due to the T here being
+// TyKind::Placeholder rather than TyKind::Missing.
+fn baz<T>() -> Foo<T> { Foo::B }
+fn foo() {
+    let foo: Foo<u32> = Foo::B;
+    let _: Foo<u32> = f$0;
+}
+"#,
+            expect![[r#"
+                ev Foo::A(…) [type]
+                ev Foo::B [type]
+                lc foo [type+local]
+                en Foo []
+                fn baz() []
+                fn bar() []
+                fn foo() []
             "#]],
         );
     }

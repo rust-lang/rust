@@ -41,7 +41,7 @@ use crate::{
 };
 
 pub use autoderef::autoderef;
-pub use infer::{InferenceResult, InferenceVar};
+pub use infer::{could_unify, InferenceResult, InferenceVar};
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,
     TyDefId, TyLoweringContext, ValueTyDefId,
