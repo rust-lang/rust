@@ -52,7 +52,7 @@ impl Command {
         // in its own process. Thus the parent drops the lock guard while the child
         // forgets it to avoid unlocking it on a new thread, which would be invalid.
         let env_lock = sys::os::env_read_lock();
-        let (result, pidfd) = self.do_fork()?;
+        let (result, pidfd) = unsafe { self.do_fork()? };
 
         let pid = unsafe {
             match result {
@@ -121,14 +121,14 @@ impl Command {
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
     #[cfg(not(target_os = "linux"))]
-    fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
-        cvt(unsafe { libc::fork() }).map(|res| (res, -1))
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+        cvt(libc::fork()).map(|res| (res, -1))
     }
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, child_pidfd)) in the parent.
     #[cfg(target_os = "linux")]
-    fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
         use crate::sync::atomic::{AtomicBool, Ordering};
 
         static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
@@ -183,7 +183,7 @@ impl Command {
             let args_ptr = &mut args as *mut clone_args;
             let args_size = crate::mem::size_of::<clone_args>();
 
-            let res = cvt(unsafe { clone3(args_ptr, args_size) });
+            let res = cvt(clone3(args_ptr, args_size));
             match res {
                 Ok(n) => return Ok((n as pid_t, pidfd)),
                 Err(e) => match e.raw_os_error() {
@@ -201,7 +201,7 @@ impl Command {
 
         // If we get here, the 'clone3' syscall does not exist
         // or we do not have permission to call it
-        cvt(unsafe { libc::fork() }).map(|res| (res, pidfd))
+        cvt(libc::fork()).map(|res| (res, pidfd))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
