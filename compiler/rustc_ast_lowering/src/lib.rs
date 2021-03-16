@@ -438,31 +438,6 @@ impl<'a> TokenStreamLowering<'a> {
     }
 }
 
-struct ImplTraitTypeIdVisitor<'a> {
-    ids: &'a mut SmallVec<[NodeId; 1]>,
-}
-
-impl Visitor<'_> for ImplTraitTypeIdVisitor<'_> {
-    fn visit_ty(&mut self, ty: &Ty) {
-        match ty.kind {
-            TyKind::Typeof(_) | TyKind::BareFn(_) => return,
-
-            TyKind::ImplTrait(id, _) => self.ids.push(id),
-            _ => {}
-        }
-        visit::walk_ty(self, ty);
-    }
-
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &PathSegment) {
-        if let Some(ref p) = path_segment.args {
-            if let GenericArgs::Parenthesized(_) = **p {
-                return;
-            }
-        }
-        visit::walk_path_segment(self, path_span, path_segment)
-    }
-}
-
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate<'hir> {
         /// Full-crate AST visitor that inserts into a fresh
@@ -1789,14 +1764,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    fn lower_local(&mut self, l: &Local) -> (hir::Local<'hir>, SmallVec<[NodeId; 1]>) {
-        let mut ids = SmallVec::<[NodeId; 1]>::new();
-        if self.sess.features_untracked().impl_trait_in_bindings {
-            if let Some(ref ty) = l.ty {
-                let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                visitor.visit_ty(ty);
-            }
-        }
+    fn lower_local(&mut self, l: &Local) -> hir::Local<'hir> {
         let ty = l.ty.as_ref().map(|t| {
             let mut capturable_lifetimes;
             self.lower_ty(
@@ -1815,17 +1783,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let init = l.init.as_ref().map(|e| self.lower_expr(e));
         let hir_id = self.lower_node_id(l.id);
         self.lower_attrs(hir_id, &l.attrs);
-        (
-            hir::Local {
-                hir_id,
-                ty,
-                pat: self.lower_pat(&l.pat),
-                init,
-                span: l.span,
-                source: hir::LocalSource::Normal,
-            },
-            ids,
-        )
+        hir::Local {
+            hir_id,
+            ty,
+            pat: self.lower_pat(&l.pat),
+            init,
+            span: l.span,
+            source: hir::LocalSource::Normal,
+        }
     }
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
@@ -2445,27 +2410,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
         let (hir_id, kind) = match s.kind {
             StmtKind::Local(ref l) => {
-                let (l, item_ids) = self.lower_local(l);
-                let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
-                    .into_iter()
-                    .map(|item_id| {
-                        let item_id = hir::ItemId {
-                            // All the items that `lower_local` finds are `impl Trait` types.
-                            def_id: self.lower_node_id(item_id).expect_owner(),
-                        };
-                        self.stmt(s.span, hir::StmtKind::Item(item_id))
-                    })
-                    .collect();
+                let l = self.lower_local(l);
                 let hir_id = self.lower_node_id(s.id);
                 self.alias_attrs(hir_id, l.hir_id);
-                ids.push({
-                    hir::Stmt {
-                        hir_id,
-                        kind: hir::StmtKind::Local(self.arena.alloc(l)),
-                        span: s.span,
-                    }
-                });
-                return ids;
+                return smallvec![hir::Stmt {
+                    hir_id,
+                    kind: hir::StmtKind::Local(self.arena.alloc(l)),
+                    span: s.span,
+                }];
             }
             StmtKind::Item(ref it) => {
                 // Can only use the ID once.
