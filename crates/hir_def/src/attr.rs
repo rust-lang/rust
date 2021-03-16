@@ -136,16 +136,15 @@ impl RawAttrs {
         let new_attrs = self
             .iter()
             .flat_map(|attr| -> SmallVec<[_; 1]> {
-                let attr = attr.clone();
                 let is_cfg_attr =
                     attr.path.as_ident().map_or(false, |name| *name == hir_expand::name![cfg_attr]);
                 if !is_cfg_attr {
-                    return smallvec![attr];
+                    return smallvec![attr.clone()];
                 }
 
                 let subtree = match &attr.input {
                     Some(AttrInput::TokenTree(it)) => it,
-                    _ => return smallvec![attr],
+                    _ => return smallvec![attr.clone()],
                 };
 
                 // Input subtree is: `(cfg, $(attr),+)`
@@ -157,11 +156,14 @@ impl RawAttrs {
                 let cfg = parts.next().unwrap();
                 let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
+                let index = attr.index;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
                     let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
                     let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
-                    let hygiene = Hygiene::new_unhygienic(); // FIXME
-                    Attr::from_src(attr, &hygiene)
+                    // FIXME hygiene
+                    let hygiene = Hygiene::new_unhygienic();
+                    // FIXME same index is assigned to multiple attributes
+                    Attr::from_src(attr, &hygiene).map(|attr| Attr { index, ..attr })
                 });
 
                 let cfg_options = &crate_graph[krate].cfg_options;
