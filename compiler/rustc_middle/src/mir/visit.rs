@@ -1247,12 +1247,6 @@ impl PlaceContext {
         matches!(self, PlaceContext::MutatingUse(..))
     }
 
-    /// Returns `true` if this place context represents a use that does not change the value.
-    #[inline]
-    pub fn is_nonmutating_use(&self) -> bool {
-        matches!(self, PlaceContext::NonMutatingUse(..))
-    }
-
     /// Returns `true` if this place context represents a use.
     #[inline]
     pub fn is_use(&self) -> bool {

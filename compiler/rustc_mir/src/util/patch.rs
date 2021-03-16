@@ -117,10 +117,6 @@ impl<'tcx> MirPatch<'tcx> {
         self.add_statement(loc, StatementKind::Assign(box (place, rv)));
     }
 
-    pub fn make_nop(&mut self, loc: Location) {
-        self.make_nop.push(loc);
-    }
-
     pub fn apply(self, body: &mut Body<'tcx>) {
         debug!("MirPatch: make nops at: {:?}", self.make_nop);
         for loc in self.make_nop {

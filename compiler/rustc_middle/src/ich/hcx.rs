@@ -120,11 +120,6 @@ impl<'a> StableHashingContext<'a> {
     }
 
     #[inline]
-    pub fn sess(&self) -> &'a Session {
-        self.sess
-    }
-
-    #[inline]
     pub fn while_hashing_hir_bodies<F: FnOnce(&mut Self)>(&mut self, hash_bodies: bool, f: F) {
         let prev_hash_bodies = self.hash_bodies;
         self.hash_bodies = hash_bodies;

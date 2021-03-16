@@ -52,6 +52,7 @@ impl EdgeFilter {
         }
     }
 
+    #[cfg(debug_assertions)]
     pub fn test<K: DepKind>(&self, source: &DepNode<K>, target: &DepNode<K>) -> bool {
         self.source.test(source) && self.target.test(target)
     }

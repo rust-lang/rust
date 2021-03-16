@@ -253,17 +253,6 @@ impl<'a> ExtCtxt<'a> {
         let pathexpr = self.expr_path(self.path_global(sp, fn_path));
         self.expr_call(sp, pathexpr, args)
     }
-    pub fn expr_method_call(
-        &self,
-        span: Span,
-        expr: P<ast::Expr>,
-        ident: Ident,
-        mut args: Vec<P<ast::Expr>>,
-    ) -> P<ast::Expr> {
-        args.insert(0, expr);
-        let segment = ast::PathSegment::from_ident(ident.with_span_pos(span));
-        self.expr(span, ast::ExprKind::MethodCall(segment, args, span))
-    }
     pub fn expr_block(&self, b: P<ast::Block>) -> P<ast::Expr> {
         self.expr(b.span, ast::ExprKind::Block(b, None))
     }

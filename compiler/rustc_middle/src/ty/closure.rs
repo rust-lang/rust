@@ -6,7 +6,6 @@ use crate::ty;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::lang_items::LangItem;
 use rustc_span::Span;
 
 use super::{Ty, TyCtxt};
@@ -112,14 +111,6 @@ pub enum ClosureKind {
 impl<'tcx> ClosureKind {
     // This is the initial value used when doing upvar inference.
     pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
-
-    pub fn trait_did(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        match *self {
-            ClosureKind::Fn => tcx.require_lang_item(LangItem::Fn, None),
-            ClosureKind::FnMut => tcx.require_lang_item(LangItem::FnMut, None),
-            ClosureKind::FnOnce => tcx.require_lang_item(LangItem::FnOnce, None),
-        }
-    }
 
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
@@ -375,14 +366,6 @@ impl BorrowKind {
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
             UniqueImmBorrow => hir::Mutability::Mut,
-        }
-    }
-
-    pub fn to_user_str(&self) -> &'static str {
-        match *self {
-            MutBorrow => "mutable",
-            ImmBorrow => "immutable",
-            UniqueImmBorrow => "uniquely immutable",
         }
     }
 }

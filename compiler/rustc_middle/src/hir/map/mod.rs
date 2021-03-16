@@ -550,24 +550,6 @@ impl<'hir> Map<'hir> {
         ParentHirIterator { current_id, map: self }
     }
 
-    /// Checks if the node is an argument. An argument is a local variable whose
-    /// immediate parent is an item or a closure.
-    pub fn is_argument(&self, id: HirId) -> bool {
-        match self.find(id) {
-            Some(Node::Binding(_)) => (),
-            _ => return false,
-        }
-        matches!(
-            self.find(self.get_parent_node(id)),
-            Some(
-                Node::Item(_)
-                    | Node::TraitItem(_)
-                    | Node::ImplItem(_)
-                    | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
-            )
-        )
-    }
-
     /// Checks if the node is left-hand side of an assignment.
     pub fn is_lhs(&self, id: HirId) -> bool {
         match self.find(self.get_parent_node(id)) {
@@ -776,17 +758,6 @@ impl<'hir> Map<'hir> {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id)),
-        }
-    }
-
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
-        match self.find(id) {
-            Some(
-                Node::Ctor(vd)
-                | Node::Item(Item { kind: ItemKind::Struct(vd, _) | ItemKind::Union(vd, _), .. }),
-            ) => vd,
-            Some(Node::Variant(variant)) => &variant.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id)),
         }
     }
 

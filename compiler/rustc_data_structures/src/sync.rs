@@ -43,46 +43,6 @@ cfg_if! {
         use std::ops::Add;
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
-        /// This is a single threaded variant of AtomicCell provided by crossbeam.
-        /// Unlike `Atomic` this is intended for all `Copy` types,
-        /// but it lacks the explicit ordering arguments.
-        #[derive(Debug)]
-        pub struct AtomicCell<T: Copy>(Cell<T>);
-
-        impl<T: Copy> AtomicCell<T> {
-            #[inline]
-            pub fn new(v: T) -> Self {
-                AtomicCell(Cell::new(v))
-            }
-
-            #[inline]
-            pub fn get_mut(&mut self) -> &mut T {
-                self.0.get_mut()
-            }
-        }
-
-        impl<T: Copy> AtomicCell<T> {
-            #[inline]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline]
-            pub fn load(&self) -> T {
-                self.0.get()
-            }
-
-            #[inline]
-            pub fn store(&self, val: T) {
-                self.0.set(val)
-            }
-
-            #[inline]
-            pub fn swap(&self, val: T) -> T {
-                self.0.replace(val)
-            }
-        }
-
         /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
         /// It differs from `AtomicCell` in that it has explicit ordering arguments
         /// and is only intended for use with the native atomic types.
@@ -100,11 +60,6 @@ cfg_if! {
 
         impl<T: Copy> Atomic<T> {
             #[inline]
-            pub fn into_inner(self) -> T {
-                self.0.into_inner()
-            }
-
-            #[inline]
             pub fn load(&self, _: Ordering) -> T {
                 self.0.get()
             }
@@ -112,11 +67,6 @@ cfg_if! {
             #[inline]
             pub fn store(&self, val: T, _: Ordering) {
                 self.0.set(val)
-            }
-
-            #[inline]
-            pub fn swap(&self, val: T, _: Ordering) -> T {
-                self.0.replace(val)
             }
         }
 
@@ -157,22 +107,6 @@ cfg_if! {
                   B: FnOnce() -> RB
         {
             (oper_a(), oper_b())
-        }
-
-        pub struct SerialScope;
-
-        impl SerialScope {
-            pub fn spawn<F>(&self, f: F)
-                where F: FnOnce(&SerialScope)
-            {
-                f(self)
-            }
-        }
-
-        pub fn scope<F, R>(f: F) -> R
-            where F: FnOnce(&SerialScope) -> R
-        {
-            f(&SerialScope)
         }
 
         #[macro_export]
@@ -246,12 +180,6 @@ cfg_if! {
             pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
                 WorkerLocal(OneThread::new(f(0)))
             }
-
-            /// Returns the worker-local value for each thread
-            #[inline]
-            pub fn into_inner(self) -> Vec<T> {
-                vec![OneThread::into_inner(self.0)]
-            }
         }
 
         impl<T> Deref for WorkerLocal<T> {
@@ -277,16 +205,6 @@ cfg_if! {
             #[inline(always)]
             pub fn into_inner(self) -> T {
                 self.0
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> &mut T {
-                &mut self.0
-            }
-
-            #[inline(always)]
-            pub fn lock(&self) -> &T {
-                &self.0
             }
 
             #[inline(always)]
@@ -521,16 +439,6 @@ impl<T> RwLock<T> {
         RwLock(InnerRwLock::new(inner))
     }
 
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
     #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn read(&self) -> ReadGuard<'_, T> {
@@ -545,11 +453,6 @@ impl<T> RwLock<T> {
         } else {
             self.0.read()
         }
-    }
-
-    #[inline(always)]
-    pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
-        f(&*self.read())
     }
 
     #[cfg(not(parallel_compiler))]
@@ -578,11 +481,6 @@ impl<T> RwLock<T> {
         } else {
             self.0.write()
         }
-    }
-
-    #[inline(always)]
-    pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
-        f(&mut *self.write())
     }
 
     #[inline(always)]
@@ -632,12 +530,6 @@ impl<T> OneThread<T> {
             thread: thread::current().id(),
             inner,
         }
-    }
-
-    #[inline(always)]
-    pub fn into_inner(value: Self) -> T {
-        value.check();
-        value.inner
     }
 }
 

@@ -413,10 +413,6 @@ impl<'a> Id<'a> {
     pub fn as_slice(&'a self) -> &'a str {
         &*self.name
     }
-
-    pub fn name(self) -> Cow<'a, str> {
-        self.name
-    }
 }
 
 /// Each instance of a type that implements `Label<C>` maps to a
@@ -484,10 +480,6 @@ impl<'a> LabelText<'a> {
         LabelStr(s.into())
     }
 
-    pub fn escaped<S: Into<Cow<'a, str>>>(s: S) -> LabelText<'a> {
-        EscStr(s.into())
-    }
-
     pub fn html<S: Into<Cow<'a, str>>>(s: S) -> LabelText<'a> {
         HtmlStr(s.into())
     }
@@ -543,11 +535,6 @@ impl<'a> LabelText<'a> {
         }
     }
 
-    /// Puts `prefix` on a line above this label, with a blank line separator.
-    pub fn prefix_line(self, prefix: LabelText<'_>) -> LabelText<'static> {
-        prefix.suffix_line(self)
-    }
-
     /// Puts `suffix` on a line below this label, with a blank line separator.
     pub fn suffix_line(self, suffix: LabelText<'_>) -> LabelText<'static> {
         let mut prefix = self.pre_escaped_content().into_owned();
@@ -600,11 +587,6 @@ pub enum RenderOption {
 
     Fontname(String),
     DarkTheme,
-}
-
-/// Returns vec holding all the default render options.
-pub fn default_options() -> Vec<RenderOption> {
-    vec![]
 }
 
 /// Renders directed graph `g` into the writer `w` in DOT syntax.

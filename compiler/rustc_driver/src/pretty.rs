@@ -108,13 +108,6 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
-
-    /// Computes an user-readable representation of a path, if possible.
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        self.hir_map().and_then(|map| map.def_path_from_hir_id(id)).map(|path| {
-            path.data.into_iter().map(|elem| elem.data.to_string()).collect::<Vec<_>>().join("::")
-        })
-    }
 }
 
 struct NoAnn<'hir> {
@@ -326,10 +319,6 @@ impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
 
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
-    }
-
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()))
     }
 }
 
