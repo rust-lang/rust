@@ -14,7 +14,6 @@ use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, BytePos, Span, DUMMY_SP};
-use smallvec::SmallVec;
 
 declare_clippy_lint! {
     /// **What it does:** This lint warns when you use `println!("")` to
@@ -359,8 +358,8 @@ fn newline_span(fmtstr: &StrLit) -> Span {
 /// empty format string.
 #[derive(Default)]
 struct SimpleFormatArgs {
-    unnamed: Vec<SmallVec<[Span; 1]>>,
-    named: Vec<(Symbol, SmallVec<[Span; 1]>)>,
+    unnamed: Vec<Vec<Span>>,
+    named: Vec<(Symbol, Vec<Span>)>,
 }
 impl SimpleFormatArgs {
     fn get_unnamed(&self) -> impl Iterator<Item = &[Span]> {
@@ -396,11 +395,11 @@ impl SimpleFormatArgs {
             ArgumentIs(n) | ArgumentImplicitlyIs(n) => {
                 if self.unnamed.len() <= n {
                     // Use a dummy span to mark all unseen arguments.
-                    self.unnamed.resize_with(n, || SmallVec::from([DUMMY_SP]));
+                    self.unnamed.resize_with(n, || vec![DUMMY_SP]);
                     if arg.format == SIMPLE {
-                        self.unnamed.push(SmallVec::from([span]));
+                        self.unnamed.push(vec![span]);
                     } else {
-                        self.unnamed.push(SmallVec::new());
+                        self.unnamed.push(Vec::new());
                     }
                 } else {
                     let args = &mut self.unnamed[n];
@@ -410,7 +409,7 @@ impl SimpleFormatArgs {
                         // Replace the dummy span, if it exists.
                         ([dummy @ DUMMY_SP], true) => *dummy = span,
                         ([_, ..], true) => args.push(span),
-                        ([_, ..], false) => *args = SmallVec::new(),
+                        ([_, ..], false) => *args = Vec::new(),
                     }
                 }
             },
@@ -420,12 +419,12 @@ impl SimpleFormatArgs {
                         // A non-empty format string has been seen already.
                         [] => (),
                         [_, ..] if arg.format == SIMPLE => x.1.push(span),
-                        [_, ..] => x.1 = SmallVec::new(),
+                        [_, ..] => x.1 = Vec::new(),
                     }
                 } else if arg.format == SIMPLE {
-                    self.named.push((n, SmallVec::from([span])));
+                    self.named.push((n, vec![span]));
                 } else {
-                    self.named.push((n, SmallVec::new()));
+                    self.named.push((n, Vec::new()));
                 }
             },
         };
@@ -436,16 +435,16 @@ impl Write {
     /// Parses a format string into a collection of spans for each argument. This only keeps track
     /// of empty format arguments. Will also lint usages of debug format strings outside of debug
     /// impls.
-    fn parse_fmt_string(&self, cx: &EarlyContext<'_>, str: &StrLit) -> Option<SimpleFormatArgs> {
+    fn parse_fmt_string(&self, cx: &EarlyContext<'_>, str_lit: &StrLit) -> Option<SimpleFormatArgs> {
         use rustc_parse_format::{ParseMode, Parser, Piece};
 
-        let str_sym = str.symbol_unescaped.as_str();
-        let style = match str.style {
+        let str_sym = str_lit.symbol_unescaped.as_str();
+        let style = match str_lit.style {
             StrStyle::Cooked => None,
             StrStyle::Raw(n) => Some(n as usize),
         };
 
-        let mut parser = Parser::new(&str_sym, style, snippet_opt(cx, str.span), false, ParseMode::Format);
+        let mut parser = Parser::new(&str_sym, style, snippet_opt(cx, str_lit.span), false, ParseMode::Format);
         let mut args = SimpleFormatArgs::default();
 
         while let Some(arg) = parser.next() {
@@ -453,7 +452,10 @@ impl Write {
                 Piece::String(_) => continue,
                 Piece::NextArgument(arg) => arg,
             };
-            let span = parser.arg_places.last().map_or(DUMMY_SP, |&x| str.span.from_inner(x));
+            let span = parser
+                .arg_places
+                .last()
+                .map_or(DUMMY_SP, |&x| str_lit.span.from_inner(x));
 
             if !self.in_debug_impl && arg.format.ty == "?" {
                 // FIXME: modify rustc's fmt string parser to give us the current span
@@ -489,7 +491,11 @@ impl Write {
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
         let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, false, None);
         let expr = if is_write {
-            match parser.parse_expr().map(|e| e.into_inner()).map_err(|mut e| e.cancel()) {
+            match parser
+                .parse_expr()
+                .map(rustc_ast::ptr::P::into_inner)
+                .map_err(|mut e| e.cancel())
+            {
                 // write!(e, ...)
                 Ok(p) if parser.eat(&token::Comma) => Some(p),
                 // write!(e) or error
@@ -543,14 +549,14 @@ impl Write {
                     lit.token.symbol.as_str().replace("{", "{{").replace("}", "}}")
                 },
                 LitKind::StrRaw(_) | LitKind::Str | LitKind::ByteStrRaw(_) | LitKind::ByteStr => continue,
-                LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str().deref() {
+                LitKind::Byte | LitKind::Char => match &*lit.token.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
                     "\\\\" if matches!(fmtstr.style, StrStyle::Raw(_)) => "\\",
                     "\\'" => "'",
                     "{" => "{{",
                     "}" => "}}",
-                    x if matches!(fmtstr.style, StrStyle::Raw(_)) && x.starts_with("\\") => continue,
+                    x if matches!(fmtstr.style, StrStyle::Raw(_)) && x.starts_with('\\') => continue,
                     x => x,
                 }
                 .into(),
