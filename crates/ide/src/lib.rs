@@ -37,6 +37,7 @@ mod hover;
 mod inlay_hints;
 mod join_lines;
 mod matching_brace;
+mod move_item;
 mod parent_module;
 mod references;
 mod fn_references;
@@ -76,6 +77,7 @@ pub use crate::{
     hover::{HoverAction, HoverConfig, HoverGotoTypeData, HoverResult},
     inlay_hints::{InlayHint, InlayHintsConfig, InlayKind},
     markup::Markup,
+    move_item::Direction,
     prime_caches::PrimeCachesProgress,
     references::{rename::RenameError, ReferenceSearchResult},
     runnables::{Runnable, RunnableKind, TestId},
@@ -581,6 +583,14 @@ impl Analysis {
 
     pub fn resolve_annotation(&self, annotation: Annotation) -> Cancelable<Annotation> {
         self.with_db(|db| annotations::resolve_annotation(db, annotation))
+    }
+
+    pub fn move_item(
+        &self,
+        range: FileRange,
+        direction: Direction,
+    ) -> Cancelable<Option<TextEdit>> {
+        self.with_db(|db| move_item::move_item(db, range, direction))
     }
 
     /// Performs an operation on that may be Canceled.

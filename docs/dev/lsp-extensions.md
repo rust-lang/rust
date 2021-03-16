@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 4dfa8d7035f4aee7
+lsp_ext.rs hash: e8a7502bd2b2c2f5
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this  issue:
@@ -593,5 +593,31 @@ This request is sent from client to server to get the list of tests for the spec
 ```typescript
 interface TestInfo {
     runnable: Runnable;
+}
+```
+
+## Hover Actions
+
+**Issue:** https://github.com/rust-analyzer/rust-analyzer/issues/6823
+
+This request is sent from client to server to move item under cursor or selection in some direction.
+
+**Method:** `experimental/moveItemUp`
+**Method:** `experimental/moveItemDown`
+
+**Request:** `MoveItemParams`
+
+**Response:** `TextDocumentEdit | null`
+
+```typescript
+export interface MoveItemParams {
+    textDocument: lc.TextDocumentIdentifier,
+    range: lc.Range,
+    direction: Direction
+}
+
+export const enum Direction {
+    Up = "Up",
+    Down = "Down"
 }
 ```

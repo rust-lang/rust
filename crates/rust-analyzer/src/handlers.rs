@@ -1424,6 +1424,25 @@ pub(crate) fn handle_open_cargo_toml(
     Ok(Some(res))
 }
 
+pub(crate) fn handle_move_item(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::MoveItemParams,
+) -> Result<Option<lsp_types::TextDocumentEdit>> {
+    let _p = profile::span("handle_move_item");
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let range = from_proto::file_range(&snap, params.text_document, params.range)?;
+
+    let direction = match params.direction {
+        lsp_ext::MoveItemDirection::Up => ide::Direction::Up,
+        lsp_ext::MoveItemDirection::Down => ide::Direction::Down,
+    };
+
+    match snap.analysis.move_item(range, direction)? {
+        Some(text_edit) => Ok(Some(to_proto::text_document_edit(&snap, file_id, text_edit)?)),
+        None => Ok(None),
+    }
+}
+
 fn to_command_link(command: lsp_types::Command, tooltip: String) -> lsp_ext::CommandLink {
     lsp_ext::CommandLink { tooltip: Some(tooltip), command }
 }

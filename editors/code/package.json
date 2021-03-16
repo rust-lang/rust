@@ -208,6 +208,16 @@
                 "command": "rust-analyzer.peekTests",
                 "title": "Peek related tests",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.moveItemUp",
+                "title": "Move item up",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.moveItemDown",
+                "title": "Move item down",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

@@ -114,6 +114,8 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('openDocs', commands.openDocs);
     ctx.registerCommand('openCargoToml', commands.openCargoToml);
     ctx.registerCommand('peekTests', commands.peekTests);
+    ctx.registerCommand('moveItemUp', commands.moveItemUp);
+    ctx.registerCommand('moveItemDown', commands.moveItemDown);
 
     defaultOnEnter.dispose();
     ctx.registerCommand('onEnter', commands.onEnter);

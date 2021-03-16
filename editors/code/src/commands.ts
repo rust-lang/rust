@@ -134,6 +134,34 @@ export function joinLines(ctx: Ctx): Cmd {
     };
 }
 
+export function moveItemUp(ctx: Ctx): Cmd {
+    return moveItem(ctx, ra.Direction.Up);
+}
+
+export function moveItemDown(ctx: Ctx): Cmd {
+    return moveItem(ctx, ra.Direction.Down);
+}
+
+export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
+    return async () => {
+        const editor = ctx.activeRustEditor;
+        const client = ctx.client;
+        if (!editor || !client) return;
+
+        const edit: lc.TextDocumentEdit = await client.sendRequest(ra.moveItem, {
+            range: client.code2ProtocolConverter.asRange(editor.selection),
+            textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
+            direction
+        });
+
+        await editor.edit((builder) => {
+            client.protocol2CodeConverter.asTextEdits(edit.edits).forEach((edit: any) => {
+                builder.replace(edit.range, edit.newText);
+            });
+        });
+    };
+}
+
 export function onEnter(ctx: Ctx): Cmd {
     async function handleKeypress() {
         const editor = ctx.activeRustEditor;

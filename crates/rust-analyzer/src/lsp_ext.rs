@@ -402,3 +402,25 @@ pub(crate) enum CodeLensResolveData {
 pub fn supports_utf8(caps: &lsp_types::ClientCapabilities) -> bool {
     caps.offset_encoding.as_deref().unwrap_or_default().iter().any(|it| it == "utf-8")
 }
+
+pub enum MoveItem {}
+
+impl Request for MoveItem {
+    type Params = MoveItemParams;
+    type Result = Option<lsp_types::TextDocumentEdit>;
+    const METHOD: &'static str = "experimental/moveItem";
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MoveItemParams {
+    pub direction: MoveItemDirection,
+    pub text_document: TextDocumentIdentifier,
+    pub range: Range,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum MoveItemDirection {
+    Up,
+    Down,
+}
