@@ -2488,7 +2488,7 @@ impl Path {
     /// ```
     // FIXME: stabilization should modify documentation of `exists()` to recommend this method
     // instead.
-    #[unstable(feature = "path_try_exists", issue = "none")]
+    #[unstable(feature = "path_try_exists", issue = "83186")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
         match fs::metadata(self) {
