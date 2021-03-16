@@ -102,17 +102,17 @@ impl GenericParamsOwnerEdit for ast::Enum {
 fn create_where_clause(position: Position) {
     let where_clause: SyntaxElement =
         make::where_clause(empty()).clone_for_update().syntax().clone().into();
-    ted::insert_ws(position, where_clause);
+    ted::insert(position, where_clause);
 }
 
 impl ast::WhereClause {
     pub fn add_predicate(&self, predicate: ast::WherePred) {
         if let Some(pred) = self.predicates().last() {
             if !pred.syntax().siblings_with_tokens(Direction::Next).any(|it| it.kind() == T![,]) {
-                ted::append_child(self.syntax().clone(), make::token(T![,]));
+                ted::append_child_raw(self.syntax().clone(), make::token(T![,]));
             }
         }
-        ted::append_child_ws(self.syntax().clone(), predicate.syntax().clone())
+        ted::append_child(self.syntax().clone(), predicate.syntax().clone())
     }
 }
 

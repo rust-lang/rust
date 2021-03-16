@@ -1,4 +1,7 @@
-//! Primitive tree editor, ed for trees
+//! Primitive tree editor, ed for trees.
+//!
+//! The `_raw`-suffixed functions insert elements as is, unsuffixed versions fix
+//! up elements around the edges.
 use std::ops::RangeInclusive;
 
 use parser::T;
@@ -43,13 +46,13 @@ impl Position {
     }
 }
 
-pub fn insert_ws(position: Position, elem: impl Into<SyntaxElement>) {
-    insert_all_ws(position, vec![elem.into()])
-}
 pub fn insert(position: Position, elem: impl Into<SyntaxElement>) {
     insert_all(position, vec![elem.into()])
 }
-pub fn insert_all_ws(position: Position, mut elements: Vec<SyntaxElement>) {
+pub fn insert_raw(position: Position, elem: impl Into<SyntaxElement>) {
+    insert_all_raw(position, vec![elem.into()])
+}
+pub fn insert_all(position: Position, mut elements: Vec<SyntaxElement>) {
     if let Some(first) = elements.first() {
         if let Some(ws) = ws_before(&position, first) {
             elements.insert(0, ws.into())
@@ -60,9 +63,9 @@ pub fn insert_all_ws(position: Position, mut elements: Vec<SyntaxElement>) {
             elements.push(ws.into())
         }
     }
-    insert_all(position, elements)
+    insert_all_raw(position, elements)
 }
-pub fn insert_all(position: Position, elements: Vec<SyntaxElement>) {
+pub fn insert_all_raw(position: Position, elements: Vec<SyntaxElement>) {
     let (parent, index) = match position.repr {
         PositionRepr::FirstChild(parent) => (parent, 0),
         PositionRepr::After(child) => (child.parent().unwrap(), child.index() + 1),
@@ -89,13 +92,13 @@ pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>
     parent.splice_children(start..end + 1, new)
 }
 
-pub fn append_child_ws(node: impl Into<SyntaxNode>, child: impl Into<SyntaxElement>) {
-    let position = Position::last_child_of(node);
-    insert_ws(position, child)
-}
 pub fn append_child(node: impl Into<SyntaxNode>, child: impl Into<SyntaxElement>) {
     let position = Position::last_child_of(node);
     insert(position, child)
+}
+pub fn append_child_raw(node: impl Into<SyntaxNode>, child: impl Into<SyntaxElement>) {
+    let position = Position::last_child_of(node);
+    insert_raw(position, child)
 }
 
 fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
