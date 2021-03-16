@@ -2,6 +2,10 @@
 // no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
+#![crate_name = "group_compat_hack"]
+
+// This file has an unusual name in order to trigger the back-compat
+// code in the compiler
 
 extern crate proc_macro;
 use proc_macro::TokenStream;
