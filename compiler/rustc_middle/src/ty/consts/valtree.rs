@@ -6,7 +6,8 @@ use rustc_macros::HashStable;
 /// This datastructure is used to represent the value of constants used in the type system.
 ///
 /// We explicitly choose a different datastructure from the way values are processed within
-/// CTFE, as in the type system equal values must also have equal representation.
+/// CTFE, as in the type system equal values (according to their `PartialEq`) must also have
+/// equal representation (`==` on the rustc data structure, e.g. `ValTree`) and vice versa.
 /// Since CTFE uses `AllocId` to represent pointers, it often happens that two different
 /// `AllocId`s point to equal values. So we may end up with different representations for
 /// two constants whose value is `&42`. Furthermore any kind of struct that has padding will
