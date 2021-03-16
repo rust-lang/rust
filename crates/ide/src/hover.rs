@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, Module,
+    AsAssocItem, AssocItemContainer, GenericParam, HasAttrs, HasSource, HirDisplay, Module,
     ModuleDef, Semantics,
 };
 use ide_db::{
@@ -339,9 +339,7 @@ fn hover_for_definition(
         Definition::ModuleDef(it) => match it {
             ModuleDef::Module(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Function(it) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Adt(Adt::Struct(it)) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Adt(Adt::Union(it)) => from_hir_fmt(db, it, mod_path),
-            ModuleDef::Adt(Adt::Enum(it)) => from_hir_fmt(db, it, mod_path),
+            ModuleDef::Adt(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Variant(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Const(it) => from_hir_fmt(db, it, mod_path),
             ModuleDef::Static(it) => from_hir_fmt(db, it, mod_path),
@@ -353,18 +351,10 @@ fn hover_for_definition(
         },
         Definition::Local(it) => hover_for_local(it, db),
         Definition::SelfType(impl_def) => {
-            impl_def.target_ty(db).as_adt().and_then(|adt| match adt {
-                Adt::Struct(it) => from_hir_fmt(db, it, mod_path),
-                Adt::Union(it) => from_hir_fmt(db, it, mod_path),
-                Adt::Enum(it) => from_hir_fmt(db, it, mod_path),
-            })
+            impl_def.target_ty(db).as_adt().and_then(|adt| from_hir_fmt(db, adt, mod_path))
         }
+        Definition::GenericParam(it) => from_hir_fmt(db, it, None),
         Definition::Label(it) => Some(Markup::fenced_block(&it.name(db))),
-        Definition::GenericParam(it) => match it {
-            GenericParam::TypeParam(it) => Some(Markup::fenced_block(&it.display(db))),
-            GenericParam::LifetimeParam(it) => Some(Markup::fenced_block(&it.name(db))),
-            GenericParam::ConstParam(it) => Some(Markup::fenced_block(&it.display(db))),
-        },
     };
 
     fn from_hir_fmt<D>(db: &RootDatabase, def: D, mod_path: Option<String>) -> Option<Markup>

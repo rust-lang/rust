@@ -12,8 +12,8 @@ use hir_ty::display::{
 use syntax::ast::{self, NameOwner};
 
 use crate::{
-    Const, ConstParam, Enum, Field, Function, HasVisibility, Module, Static, Struct, Substs, Trait,
-    Type, TypeAlias, TypeParam, Union, Variant,
+    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasVisibility, LifetimeParam,
+    Module, Static, Struct, Substs, Trait, Type, TypeAlias, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -120,6 +120,16 @@ impl HirDisplay for Function {
     }
 }
 
+impl HirDisplay for Adt {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            Adt::Struct(it) => it.hir_fmt(f),
+            Adt::Union(it) => it.hir_fmt(f),
+            Adt::Enum(it) => it.hir_fmt(f),
+        }
+    }
+}
+
 impl HirDisplay for Struct {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
@@ -211,6 +221,16 @@ impl HirDisplay for Type {
     }
 }
 
+impl HirDisplay for GenericParam {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self {
+            GenericParam::TypeParam(it) => it.hir_fmt(f),
+            GenericParam::LifetimeParam(it) => it.hir_fmt(f),
+            GenericParam::ConstParam(it) => it.hir_fmt(f),
+        }
+    }
+}
+
 impl HirDisplay for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write!(f, "{}", self.name(f.db))?;
@@ -221,6 +241,12 @@ impl HirDisplay for TypeParam {
             write_bounds_like_dyn_trait_with_prefix(":", &predicates, f)?;
         }
         Ok(())
+    }
+}
+
+impl HirDisplay for LifetimeParam {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        write!(f, "{}", self.name(f.db))
     }
 }
 
