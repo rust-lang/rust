@@ -6,12 +6,12 @@ use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind};
+use rustc_hir::{hir_id::HirId, intravisit::FnKind, Arm, Body, Expr, ExprKind, FnDecl, Pat, PatKind, StmtKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
+use rustc_span::{source_map::Span, sym};
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -44,11 +44,34 @@ declare_clippy_lint! {
 declare_lint_pass!(ManualUnwrapOr => [MANUAL_UNWRAP_OR]);
 
 impl LateLintPass<'_> for ManualUnwrapOr {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        kind: FnKind<'tcx>,
+        _: &'tcx FnDecl<'tcx>,
+        body: &'tcx Body<'tcx>,
+        span: Span,
+        _: HirId,
+    ) {
+        if in_external_macro(cx.sess(), span) {
             return;
         }
-        lint_manual_unwrap_or(cx, expr);
+        if_chain! {
+            if let FnKind::ItemFn(_, _, header, _) = kind;
+            if !header.is_const();
+            let expr = &body.value;
+            if let ExprKind::Block(block, _) = expr.kind;
+            then {
+                for stmt in block.stmts {
+                    if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = &stmt.kind {
+                        lint_manual_unwrap_or(cx, expr);
+                    }
+                }
+                if let Some(expr) = block.expr {
+                    lint_manual_unwrap_or(cx, expr);
+                }
+            }
+        }
     }
 }
 
