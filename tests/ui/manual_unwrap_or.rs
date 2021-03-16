@@ -176,14 +176,14 @@ fn result_unwrap_or() {
 }
 
 // don't lint in const fn
-const fn const_fn_unwrap_or() {
+const fn const_fn_option_unwrap_or() {
     match Some(1) {
         Some(s) => s,
         None => 0,
     };
 }
 
-const fn const_fn_unwrap() {
+const fn const_fn_result_unwrap_or() {
     match Ok::<&str, &str>("Alice") {
         Ok(s) => s,
         Err(_) => "Bob",
