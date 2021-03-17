@@ -15,6 +15,10 @@ trait T {
     fn foo_with_qualified_path_and_ref(&<Bar as T>::Baz);
     //~^ ERROR expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
 
+    fn foo_with_multiple_qualified_paths(<Bar as T>::Baz, <Bar as T>::Baz);
+    //~^ ERROR expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `,`
+    //~| ERROR expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+
     fn bar_with_default_impl(String, String) {}
     //~^ ERROR expected one of `:`
     //~| ERROR expected one of `:`
