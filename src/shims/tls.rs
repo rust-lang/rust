@@ -174,7 +174,7 @@ impl<'tcx> TlsData<'tcx> {
         key: Option<TlsKey>,
         thread_id: ThreadId,
     ) -> Option<(ty::Instance<'tcx>, Scalar<Tag>, TlsKey)> {
-        use std::collections::Bound::*;
+        use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;
         let start = match key {
