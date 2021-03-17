@@ -824,6 +824,12 @@ impl<T> Iterator for IdRange<T> {
     }
 }
 
+impl<T> DoubleEndedIterator for IdRange<T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range.next_back().map(|raw| Idx::from_raw(raw.into()))
+    }
+}
+
 impl<T> fmt::Debug for IdRange<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple(&format!("IdRange::<{}>", type_name::<T>())).field(&self.range).finish()

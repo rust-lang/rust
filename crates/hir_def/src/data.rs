@@ -36,18 +36,25 @@ impl FunctionData {
     pub(crate) fn fn_data_query(db: &dyn DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let loc = func.lookup(db);
         let krate = loc.container.module(db).krate;
+        let crate_graph = db.crate_graph();
+        let cfg_options = &crate_graph[krate].cfg_options;
         let item_tree = db.item_tree(loc.id.file_id);
         let func = &item_tree[loc.id.value];
-        let is_varargs = func
+
+        let enabled_params = func
             .params
             .clone()
-            .last()
+            .filter(|&param| item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options));
+
+        // If last cfg-enabled param is a `...` param, it's a varargs function.
+        let is_varargs = enabled_params
+            .clone()
+            .next_back()
             .map_or(false, |param| matches!(item_tree[param], Param::Varargs));
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: func
-                .params
+            params: enabled_params
                 .clone()
                 .filter_map(|id| match &item_tree[id] {
                     Param::Normal(ty) => Some(item_tree[*ty].clone()),
