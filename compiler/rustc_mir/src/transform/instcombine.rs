@@ -12,12 +12,10 @@ pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let param_env = tcx.param_env(body.source.def_id());
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        let ctx = InstCombineContext { tcx, local_decls, param_env };
+        let ctx = InstCombineContext { tcx, local_decls };
         for block in basic_blocks.iter_mut() {
             for statement in block.statements.iter_mut() {
-                ctx.combine_zst(&statement.source_info, &mut statement.kind);
                 match statement.kind {
                     StatementKind::Assign(box (_place, ref mut rvalue)) => {
                         ctx.combine_bool_cmp(&statement.source_info, rvalue);
@@ -34,7 +32,6 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
 struct InstCombineContext<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a LocalDecls<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
@@ -42,28 +39,6 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
         self.tcx.consider_optimizing(|| {
             format!("InstCombine - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)
         })
-    }
-
-    /// Remove assignments to inhabited ZST places.
-    fn combine_zst(&self, source_info: &SourceInfo, kind: &mut StatementKind<'tcx>) {
-        match kind {
-            StatementKind::Assign(box (place, _)) => {
-                let place_ty = place.ty(self.local_decls, self.tcx).ty;
-                if let Ok(layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                    if layout.is_zst() && !layout.abi.is_uninhabited() {
-                        if self.tcx.consider_optimizing(|| {
-                            format!(
-                                "InstCombine ZST - Place: {:?} SourceInfo: {:?}",
-                                place, source_info
-                            )
-                        }) {
-                            *kind = StatementKind::Nop;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
     }
 
     /// Transform boolean comparisons into logical operations.
