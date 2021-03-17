@@ -14,7 +14,7 @@ use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
 
-pub use crate::sys_common::fs::remove_dir_all;
+pub use crate::sys_common::fs::{remove_dir_all, try_exists};
 
 pub struct File {
     fd: WasiFd,
