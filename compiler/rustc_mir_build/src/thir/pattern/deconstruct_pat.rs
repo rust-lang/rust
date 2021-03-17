@@ -52,7 +52,6 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
@@ -115,26 +114,20 @@ impl IntRange {
         param_env: ty::ParamEnv<'tcx>,
         value: &Const<'tcx>,
     ) -> Option<IntRange> {
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
-            let ty = value.ty;
-            let val = (|| {
-                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
-                    // For this specific pattern we can skip a lot of effort and go
-                    // straight to the result, after doing a bit of checking. (We
-                    // could remove this branch and just fall through, which
-                    // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr(target_size, &tcx) {
-                        return Some(bits);
-                    }
-                }
-                // This is a more general form of the previous case.
-                value.try_eval_bits(tcx, param_env, ty)
-            })()?;
-            let val = val ^ bias;
-            Some(IntRange { range: val..=val })
+        let (target_size, bias) = Self::integral_size_and_signed_bias(tcx, value.ty)?;
+        let ty = value.ty;
+        let val = if let Some(int) = value.val.try_to_scalar_int() {
+            // For this specific pattern we can skip a lot of effort and go
+            // straight to the result, after doing a bit of checking. (We
+            // could remove this branch and just always use try_eval_bits, which
+            // is more general but much slower.)
+            int.assert_bits(target_size)
         } else {
-            None
-        }
+            // This is a more general form of the previous case.
+            value.try_eval_bits(tcx, param_env, ty)?
+        };
+        let val = val ^ bias;
+        Some(IntRange { range: val..=val })
     }
 
     #[inline]
