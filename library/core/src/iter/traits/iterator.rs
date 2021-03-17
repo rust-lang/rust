@@ -982,7 +982,7 @@ pub trait Iterator {
     ///
     /// let mut iter = xs.iter().peekable();
     ///
-    /// // peek_mut() lets us see into the future
+    /// // `peek_mut()` lets us see into the future
     /// assert_eq!(iter.peek_mut(), Some(&mut &1));
     /// assert_eq!(iter.peek_mut(), Some(&mut &1));
     /// assert_eq!(iter.next(), Some(&1));
