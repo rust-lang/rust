@@ -656,26 +656,28 @@ impl DefCollector<'_> {
                 }
             }
         } else {
-            match import.path.segments().last() {
-                Some(last_segment) => {
-                    let name = match &import.alias {
-                        Some(ImportAlias::Alias(name)) => Some(name.clone()),
-                        Some(ImportAlias::Underscore) => None,
-                        None => Some(last_segment.clone()),
-                    };
-                    log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
-
-                    // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
-                    if import.is_extern_crate && module_id == self.def_map.root {
-                        if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
-                            self.def_map.extern_prelude.insert(name.clone(), def);
-                        }
+            let name = match &import.alias {
+                Some(ImportAlias::Alias(name)) => Some(name.clone()),
+                Some(ImportAlias::Underscore) => None,
+                None => match import.path.segments().last() {
+                    Some(last_segment) => Some(last_segment.clone()),
+                    None => {
+                        cov_mark::hit!(bogus_paths);
+                        return;
                     }
+                },
+            };
 
-                    self.update(module_id, &[(name, def)], vis, ImportType::Named);
+            log::debug!("resolved import {:?} ({:?}) to {:?}", name, import, def);
+
+            // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
+            if import.is_extern_crate && module_id == self.def_map.root {
+                if let (Some(def), Some(name)) = (def.take_types(), name.as_ref()) {
+                    self.def_map.extern_prelude.insert(name.clone(), def);
                 }
-                None => cov_mark::hit!(bogus_paths),
             }
+
+            self.update(module_id, &[(name, def)], vis, ImportType::Named);
         }
     }
 

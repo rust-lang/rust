@@ -713,3 +713,22 @@ pub fn f() {}
         "#]],
     );
 }
+
+#[test]
+fn use_crate_as() {
+    check(
+        r#"
+use crate as foo;
+
+use foo::bar as baz;
+
+fn bar() {}
+        "#,
+        expect![[r#"
+            crate
+            bar: v
+            baz: v
+            foo: t
+        "#]],
+    );
+}
