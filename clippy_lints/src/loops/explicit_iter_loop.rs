@@ -1,8 +1,8 @@
 use super::EXPLICIT_ITER_LOOP;
-use crate::utils::{match_trait_method, paths};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::{match_trait_method, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;

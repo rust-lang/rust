@@ -1,6 +1,6 @@
-use crate::utils;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::{match_qpath, meets_msrv, parent_node_is_if_expr};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -58,7 +58,7 @@ impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl LateLintPass<'_> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'_>) {
-        if !utils::meets_msrv(self.msrv.as_ref(), &IF_THEN_SOME_ELSE_NONE_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &IF_THEN_SOME_ELSE_NONE_MSRV) {
             return;
         }
 
@@ -67,7 +67,7 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
         }
 
         // We only care about the top-most `if` in the chain
-        if utils::parent_node_is_if_expr(expr, cx) {
+        if parent_node_is_if_expr(expr, cx) {
             return;
         }
 
@@ -77,12 +77,12 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             if let Some(ref then_expr) = then_block.expr;
             if let ExprKind::Call(ref then_call, [then_arg]) = then_expr.kind;
             if let ExprKind::Path(ref then_call_qpath) = then_call.kind;
-            if utils::match_qpath(then_call_qpath, &utils::paths::OPTION_SOME);
+            if match_qpath(then_call_qpath, &clippy_utils::paths::OPTION_SOME);
             if let ExprKind::Block(ref els_block, _) = els.kind;
             if els_block.stmts.is_empty();
             if let Some(ref els_expr) = els_block.expr;
             if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
-            if utils::match_qpath(els_call_qpath, &utils::paths::OPTION_NONE);
+            if match_qpath(els_call_qpath, &clippy_utils::paths::OPTION_NONE);
             then {
                 let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
                 let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {

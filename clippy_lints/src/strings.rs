@@ -1,8 +1,8 @@
-use crate::utils::SpanlessEq;
-use crate::utils::{get_parent_expr, is_allowed, match_function_call, method_calls, paths};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::SpanlessEq;
+use clippy_utils::{get_parent_expr, is_allowed, match_function_call, method_calls, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};

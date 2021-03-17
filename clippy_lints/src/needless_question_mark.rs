@@ -1,15 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_ok_ctor, is_some_ctor, meets_msrv};
+use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
-
-use crate::utils;
-use if_chain::if_chain;
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -161,7 +160,7 @@ fn is_some_or_ok_call<'a>(
         // Check outer expression matches CALL_IDENT(ARGUMENT) format
         if let ExprKind::Call(path, args) = &expr.kind;
         if let ExprKind::Path(QPath::Resolved(None, path)) = &path.kind;
-        if utils::is_some_ctor(cx, path.res) || utils::is_ok_ctor(cx, path.res);
+        if is_some_ctor(cx, path.res) || is_ok_ctor(cx, path.res);
 
         // Extract inner expression from ARGUMENT
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &args[0].kind;
@@ -182,7 +181,7 @@ fn is_some_or_ok_call<'a>(
             let inner_is_some = is_type_diagnostic_item(cx, inner_ty, sym::option_type);
 
             // Check for Option MSRV
-            let meets_option_msrv = utils::meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
+            let meets_option_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
             if outer_is_some && inner_is_some && meets_option_msrv {
                 return Some(SomeOkCall::SomeCall(expr, inner_expr));
             }
@@ -196,7 +195,7 @@ fn is_some_or_ok_call<'a>(
             let does_not_call_from = !has_implicit_error_from(cx, expr, inner_expr);
 
             // Must meet Result MSRV
-            let meets_result_msrv = utils::meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
+            let meets_result_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
             if outer_is_result && inner_is_result && does_not_call_from && meets_result_msrv {
                 return Some(SomeOkCall::OkCall(expr, inner_expr));
             }

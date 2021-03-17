@@ -1,7 +1,7 @@
-use crate::utils::{in_macro, match_def_path, match_qpath, meets_msrv, paths};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diagnostic_assoc_item;
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::{in_macro, match_def_path, match_qpath, meets_msrv, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;

@@ -1,5 +1,5 @@
-use crate::utils::in_macro;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_errors::Applicability;

@@ -18,8 +18,8 @@ use rustc_span::source_map::{ExpnKind, Span};
 use rustc_span::symbol::sym;
 
 use crate::consts::{constant, Constant};
-use crate::utils::sugg::Sugg;
-use crate::utils::{
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{
     get_item_name, get_parent_expr, higher, in_constant, is_diagnostic_assoc_item, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, unsext, SpanlessEq,
 };

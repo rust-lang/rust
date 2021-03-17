@@ -1,6 +1,6 @@
-use crate::utils::{in_macro, meets_msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::{in_macro, meets_msrv};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

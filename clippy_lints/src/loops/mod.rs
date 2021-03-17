@@ -18,7 +18,7 @@ mod while_immutable_condition;
 mod while_let_loop;
 mod while_let_on_iterator;
 
-use crate::utils::higher;
+use clippy_utils::higher;
 use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

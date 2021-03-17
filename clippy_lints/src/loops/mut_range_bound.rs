@@ -1,6 +1,6 @@
 use super::MUT_RANGE_BOUND;
-use crate::utils::{higher, path_to_local};
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{higher, path_to_local};
 use if_chain::if_chain;
 use rustc_hir::{BindingAnnotation, Expr, HirId, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;

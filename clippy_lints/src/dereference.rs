@@ -1,7 +1,7 @@
-use crate::utils::{get_parent_node, in_macro, is_allowed};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::peel_mid_ty_refs;
+use clippy_utils::{get_parent_node, in_macro, is_allowed};
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
