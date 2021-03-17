@@ -45,6 +45,9 @@ macro_rules! forward {
         pub fn $n:ident(&self, $($name:ident: $ty:ty),* $(,)?) -> &Self
     ) => {
         $(#[$attrs])*
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
         pub fn $n(&self, $($name: $ty),*) -> &Self {
             self.diagnostic.$n($($name),*);
@@ -59,6 +62,9 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self
@@ -76,6 +82,9 @@ macro_rules! forward {
     ) => {
         $(#[$attrs])*
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        // we always document with --document-private-items
+        #[cfg_attr(not(bootstrap), allow(rustdoc::private_intra_doc_links))]
+        #[cfg_attr(bootstrap, allow(private_intra_doc_links))]
         pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
             self.0.diagnostic.$n($($name),*);
             self

@@ -772,7 +772,7 @@ impl<'tcx> SaveContext<'tcx> {
     /// returns `None` if the node is not macro-generated or the span is malformed,
     /// else uses the expansion callsite and callee to return some MacroRef.
     ///
-    /// FIXME: [`dump_visitor::process_macro_use`] should actually dump this data
+    /// FIXME: [`DumpVisitor::process_macro_use`] should actually dump this data
     #[allow(dead_code)]
     fn get_macro_use_data(&self, span: Span) -> Option<MacroRef> {
         if !generated_code(span) {
