@@ -40,7 +40,7 @@ use crate::html::{layout, sources};
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub(super) current: Vec<String>,
+    pub(crate) current: Vec<String>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub(super) dst: PathBuf,
@@ -144,8 +144,12 @@ impl SharedContext<'_> {
 }
 
 impl<'tcx> Context<'tcx> {
-    pub(super) fn tcx(&self) -> TyCtxt<'tcx> {
+    pub(crate) fn tcx(&self) -> TyCtxt<'tcx> {
         self.shared.tcx
+    }
+
+    pub(crate) fn cache(&self) -> &Cache {
+        &self.cache
     }
 
     fn sess(&self) -> &'tcx Session {

@@ -9,10 +9,10 @@
 pub fn foo() {}
 
 /// Link to [MyStruct], [link from struct][MyStruct::method], [MyStruct::clone], [MyStruct::Input]
-// @has 'associated_items/struct.MyStruct.html' '//a[@href="../associated_items/struct.MyStruct.html"]' 'MyStruct'
-// @has 'associated_items/struct.MyStruct.html' '//a[@href="../associated_items/struct.MyStruct.html#method.method"]' 'link from struct'
-// @has 'associated_items/struct.MyStruct.html' '//a[@href="../associated_items/struct.MyStruct.html#method.clone"]' 'MyStruct::clone'
-// @has 'associated_items/struct.MyStruct.html' '//a[@href="../associated_items/struct.MyStruct.html#associatedtype.Input"]' 'MyStruct::Input'
+// @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html"]' 'MyStruct'
+// @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from struct'
+// @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.clone"]' 'MyStruct::clone'
+// @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#associatedtype.Input"]' 'MyStruct::Input'
 pub struct MyStruct { foo: () }
 
 impl Clone for MyStruct {
@@ -30,7 +30,7 @@ impl T for MyStruct {
     type Input = usize;
 
     /// [link from method][MyStruct::method] on method
-    // @has 'associated_items/struct.MyStruct.html' '//a[@href="../associated_items/struct.MyStruct.html#method.method"]' 'link from method'
+    // @has 'associated_items/struct.MyStruct.html' '//a[@href="struct.MyStruct.html#method.method"]' 'link from method'
     fn method(i: usize) {
     }
 }

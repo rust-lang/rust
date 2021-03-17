@@ -16,7 +16,6 @@ use crate::clean::Crate;
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::formats::FormatRenderer;
 use crate::html::{layout, static_files};
 
 crate static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
@@ -500,7 +499,7 @@ pub(super) fn write_shared(
                     None
                 } else {
                     Some(Implementor {
-                        text: imp.inner_impl().print(cx.cache(), false, cx.tcx()).to_string(),
+                        text: imp.inner_impl().print(false, cx).to_string(),
                         synthetic: imp.inner_impl().synthetic,
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cx.cache()),
                     })

@@ -4,7 +4,7 @@
 pub struct Something;
 
 // @has anchors/struct.SomeOtherType.html
-// @has - '//a/@href' '../anchors/struct.Something.html#Anchor!'
+// @has - '//a/@href' 'struct.Something.html#Anchor!'
 
 /// I want...
 ///
