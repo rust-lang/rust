@@ -1,6 +1,6 @@
 use crate::consts::constant_simple;
 use crate::utils;
-use crate::utils::{path_to_local_id, sugg};
+use crate::utils::{in_constant, path_to_local_id, sugg};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -45,7 +45,7 @@ declare_lint_pass!(ManualUnwrapOr => [MANUAL_UNWRAP_OR]);
 
 impl LateLintPass<'_> for ManualUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if in_external_macro(cx.sess(), expr.span) || in_constant(cx, expr.hir_id) {
             return;
         }
         lint_manual_unwrap_or(cx, expr);
