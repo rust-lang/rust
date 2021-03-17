@@ -81,7 +81,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// </span><span class="comment injected">       comment */</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">multi_line_string</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Foo</span>
-    <span class="comment documentation">/// </span><span class="string_literal injected">  bar</span>
+    <span class="comment documentation">/// </span><span class="string_literal injected">  bar</span><span class="escape_sequence injected">\n</span>
     <span class="comment documentation">/// </span><span class="string_literal injected">         "</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
@@ -121,4 +121,20 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="attribute attribute">#</span><span class="attribute attribute">[</span><span class="function attribute">cfg_attr</span><span class="parenthesis attribute">(</span><span class="attribute attribute">not</span><span class="parenthesis attribute">(</span><span class="attribute attribute">feature </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"alloc"</span><span class="parenthesis attribute">)</span><span class="comma attribute">,</span><span class="attribute attribute"> doc </span><span class="operator attribute">=</span><span class="attribute attribute"> </span><span class="string_literal attribute">"```ignore"</span><span class="parenthesis attribute">)</span><span class="attribute attribute">]</span>
 <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="function injected">example</span><span class="parenthesis injected">(</span><span class="operator injected">&</span><span class="none injected">alloc::</span><span class="macro injected">vec!</span><span class="bracket injected">[</span><span class="numeric_literal injected">1</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">2</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">3</span><span class="bracket injected">]</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
 <span class="comment documentation">/// ```</span>
-<span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">mix_and_match</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span></code></pre>
+<span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">mix_and_match</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="comment documentation">/**
+It is beyond me why you'd use these when you got ///
+```rust
+</span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="function injected">example</span><span class="parenthesis injected">(</span><span class="operator injected">&</span><span class="bracket injected">[</span><span class="numeric_literal injected">1</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">2</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">3</span><span class="bracket injected">]</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span><span class="comment documentation">
+```
+ */</span>
+<span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">block_comments</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="comment documentation">/**
+    Really, I don't get it
+    ```rust
+</span><span class="comment documentation"> </span><span class="none injected">   </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="function injected">example</span><span class="parenthesis injected">(</span><span class="operator injected">&</span><span class="bracket injected">[</span><span class="numeric_literal injected">1</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">2</span><span class="comma injected">,</span><span class="none injected"> </span><span class="numeric_literal injected">3</span><span class="bracket injected">]</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span><span class="comment documentation">
+    ```
+*/</span>
+<span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration">block_comments2</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span></code></pre>

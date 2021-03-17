@@ -1,5 +1,7 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
+use std::mem;
+
 use either::Either;
 use hir::{HasAttrs, Semantics};
 use ide_db::call_info::ActiveParameter;
@@ -186,34 +188,44 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
             }
         };
 
-        match line.find(RUSTDOC_FENCE) {
-            Some(idx) => {
-                is_codeblock = !is_codeblock;
-                // Check whether code is rust by inspecting fence guards
-                let guards = &line[idx + RUSTDOC_FENCE.len()..];
-                let is_rust =
-                    guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
-                is_doctest = is_codeblock && is_rust;
-                continue;
+        let mut pos = TextSize::from(prefix.len() as u32);
+        let mut range_start = range.start();
+        for line in line.split('\n') {
+            let line_len = TextSize::from(line.len() as u32);
+            let prev_range_start = {
+                let next_range_start = range_start + line_len + TextSize::from(1);
+                mem::replace(&mut range_start, next_range_start)
+            };
+            // only first line has the prefix so take it away for future iterations
+            let mut pos = mem::take(&mut pos);
+
+            match line.find(RUSTDOC_FENCE) {
+                Some(idx) => {
+                    is_codeblock = !is_codeblock;
+                    // Check whether code is rust by inspecting fence guards
+                    let guards = &line[idx + RUSTDOC_FENCE.len()..];
+                    let is_rust =
+                        guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
+                    is_doctest = is_codeblock && is_rust;
+                    continue;
+                }
+                None if !is_doctest => continue,
+                None => (),
             }
-            None if !is_doctest => continue,
-            None => (),
-        }
 
-        let mut pos = TextSize::of(prefix);
-        // whitespace after comment is ignored
-        if let Some(ws) = line[pos.into()..].chars().next().filter(|c| c.is_whitespace()) {
-            pos += TextSize::of(ws);
-        }
-        // lines marked with `#` should be ignored in output, we skip the `#` char
-        if let Some(ws) = line[pos.into()..].chars().next().filter(|&c| c == '#') {
-            pos += TextSize::of(ws);
-        }
+            // whitespace after comment is ignored
+            if let Some(ws) = line[pos.into()..].chars().next().filter(|c| c.is_whitespace()) {
+                pos += TextSize::of(ws);
+            }
+            // lines marked with `#` should be ignored in output, we skip the `#` char
+            if line[pos.into()..].starts_with('#') {
+                pos += TextSize::of('#');
+            }
 
-        new_comments.push(TextRange::at(range.start(), pos));
-
-        inj.add(&line[pos.into()..], TextRange::new(range.start() + pos, range.end()));
-        inj.add_unmapped("\n");
+            new_comments.push(TextRange::at(prev_range_start, pos));
+            inj.add(&line[pos.into()..], TextRange::new(pos, line_len) + prev_range_start);
+            inj.add_unmapped("\n");
+        }
     }
     inj.add_unmapped("\n}");
 
