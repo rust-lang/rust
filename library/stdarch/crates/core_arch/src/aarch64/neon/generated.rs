@@ -1601,6 +1601,38 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
     vcvtpq_u64_f64_(a)
 }
 
+/// Floating-point multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmul))]
+pub unsafe fn vmla_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    simd_add(a, simd_mul(b, c))
+}
+
+/// Floating-point multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmul))]
+pub unsafe fn vmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    simd_add(a, simd_mul(b, c))
+}
+
+/// Floating-point multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmul))]
+pub unsafe fn vmls_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    simd_sub(a, simd_mul(b, c))
+}
+
+/// Floating-point multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmul))]
+pub unsafe fn vmlsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    simd_sub(a, simd_mul(b, c))
+}
+
 /// Multiply
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3203,6 +3235,46 @@ mod test {
         let a: f64x2 = f64x2::new(1.1, 2.1);
         let e: u64x2 = u64x2::new(2, 3);
         let r: u64x2 = transmute(vcvtpq_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmla_f64() {
+        let a: f64 = 0.;
+        let b: f64 = 2.;
+        let c: f64 = 3.;
+        let e: f64 = 6.;
+        let r: f64 = transmute(vmla_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlaq_f64() {
+        let a: f64x2 = f64x2::new(0., 1.);
+        let b: f64x2 = f64x2::new(2., 2.);
+        let c: f64x2 = f64x2::new(3., 3.);
+        let e: f64x2 = f64x2::new(6., 7.);
+        let r: f64x2 = transmute(vmlaq_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmls_f64() {
+        let a: f64 = 6.;
+        let b: f64 = 2.;
+        let c: f64 = 3.;
+        let e: f64 = 0.;
+        let r: f64 = transmute(vmls_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsq_f64() {
+        let a: f64x2 = f64x2::new(6., 7.);
+        let b: f64x2 = f64x2::new(2., 2.);
+        let c: f64x2 = f64x2::new(3., 3.);
+        let e: f64x2 = f64x2::new(0., 1.);
+        let r: f64x2 = transmute(vmlsq_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

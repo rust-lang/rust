@@ -758,6 +758,58 @@ aarch64 = fcvtpu
 link-aarch64 = fcvtpu._EXT2_._EXT_
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 
+/// Multiply-add to accumulator
+name = vmla
+multi_fn = simd_add, a, {simd_mul, b, c}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+arm = vmla.
+aarch64 = mla
+generate int*_t, uint*_t
+
+/// Floating-point multiply-add to accumulator
+name = vmla
+multi_fn = simd_add, a, {simd_mul, b, c}
+a = 0., 1., 2., 3.
+b = 2., 2., 2., 2.
+c = 3., 3., 3., 3.
+validate 6., 7., 8., 9.
+
+aarch64 = fmul
+generate float64x*_t
+
+arm = vmla.
+generate float*_t
+
+/// Multiply-subtract from accumulator
+name = vmls
+multi_fn = simd_sub, a, {simd_mul, b, c}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+arm = vmls.
+aarch64 = mls
+generate int*_t, uint*_t
+
+/// Floating-point multiply-subtract from accumulator
+name = vmls
+multi_fn = simd_sub, a, {simd_mul, b, c}
+a = 6., 7., 8., 9.
+b = 2., 2., 2., 2.
+c = 3., 3., 3., 3.
+validate 0., 1., 2., 3.
+
+aarch64 = fmul
+generate float64x*_t
+
+arm = vmls.
+generate float*_t
+
 /// Saturating subtract
 name = vqsub
 a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42

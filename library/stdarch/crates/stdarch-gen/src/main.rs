@@ -1,3 +1,4 @@
+use self::Suffix::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -176,6 +177,32 @@ fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> &'a str {
         ("uint64x2_t", "float64x2_t") => "q_u64_f64",
         (_, _) => panic!("unknown type: {}, {}", out_t, in_t),
     }
+}
+
+fn type_to_noq_suffix(t: &str) -> &str {
+    match t {
+        "int8x8_t" | "int8x16_t" => "_s8",
+        "int16x4_t" | "int16x8_t" => "_s16",
+        "int32x2_t" | "int32x4_t" => "_s32",
+        "int64x1_t" | "int64x2_t" => "_s64",
+        "uint8x8_t" | "uint8x16_t" => "_u8",
+        "uint16x4_t" | "uint16x8_t" => "_u16",
+        "uint32x2_t" | "uint32x4_t" => "_u32",
+        "uint64x1_t" | "uint64x2_t" => "_u64",
+        "float16x4_t" | "float16x8_t" => "_f16",
+        "float32x2_t" | "float32x4_t" => "_f32",
+        "float64x1_t" | "float64x2_t" => "_f64",
+        "poly8x8_t" | "poly8x16_t" => "_p8",
+        "poly64x1_t" | "poly64x2_t" => "_p64",
+        _ => panic!("unknown type: {}", t),
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Suffix {
+    Normal,
+    Double,
+    NoQ,
 }
 
 fn type_to_global_type(t: &str) -> &str {
@@ -405,21 +432,24 @@ fn gen_aarch64(
     current_name: &str,
     current_aarch64: &Option<String>,
     link_aarch64: &Option<String>,
-    in_t: &str,
-    in_t2: &str,
+    in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    double_suffixes: bool,
+    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    suffix: Suffix,
     para_num: i32,
     fixed: &Vec<String>,
     multi_fn: &Vec<String>,
 ) -> (String, String) {
-    let _global_t = type_to_global_type(in_t);
+    let _global_t = type_to_global_type(in_t[0]);
     let _global_ret_t = type_to_global_type(out_t);
-    let name = if double_suffixes {
-        format!("{}{}", current_name, type_to_double_suffixes(out_t, in_t2))
-    } else {
-        format!("{}{}", current_name, type_to_suffix(in_t2))
+    let name = match suffix {
+        Normal => format!("{}{}", current_name, type_to_suffix(in_t[1])),
+        NoQ => format!("{}{}", current_name, type_to_noq_suffix(in_t[1])),
+        Double => format!(
+            "{}{}",
+            current_name,
+            type_to_double_suffixes(out_t, in_t[1])
+        ),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -448,7 +478,7 @@ fn gen_aarch64(
     };
     let current_aarch64 = current_aarch64.clone().unwrap();
     let ext_c = if let Some(link_aarch64) = link_aarch64.clone() {
-        let ext = type_to_ext(in_t);
+        let ext = type_to_ext(in_t[0]);
         let ext2 = type_to_ext(out_t);
         format!(
             r#"#[allow(improper_ctypes)]
@@ -461,10 +491,13 @@ fn gen_aarch64(
             current_fn,
             match para_num {
                 1 => {
-                    format!("a: {}", in_t)
+                    format!("a: {}", in_t[0])
                 }
                 2 => {
-                    format!("a: {}, b: {}", in_t, in_t2)
+                    format!("a: {}, b: {}", in_t[0], in_t[1])
+                }
+                3 => {
+                    format!("a: {}, b: {}, c: {}", in_t[0], in_t[1], in_t[2])
                 }
                 _ => unimplemented!("unknown para_num"),
             },
@@ -479,58 +512,63 @@ fn gen_aarch64(
             if i > 0 {
                 calls.push_str("\n    ");
             }
-            calls.push_str(&get_call(
-                &multi_fn[i],
-                current_name,
-                in_t,
-                in_t2,
-                out_t,
-                fixed,
-            ));
+            calls.push_str(&get_call(&multi_fn[i], current_name, in_t, out_t, fixed));
         }
         calls
     } else {
         String::new()
     };
     let call = match (multi_calls.len(), para_num, fixed.len()) {
-        (0, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
-    {}{}(a, b)
-}}"#,
-            name, in_t, in_t2, out_t, ext_c, current_fn,
-        ),
         (0, 1, 0) => format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
     {}{}(a)
 }}"#,
-            name, in_t, out_t, ext_c, current_fn,
+            name, in_t[0], out_t, ext_c, current_fn,
         ),
         (0, 1, _) => {
-            let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+            let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
             format!(
                 r#"pub unsafe fn {}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
                 name,
-                in_t,
+                in_t[0],
                 out_t,
-                values(in_t, &fixed),
+                values(in_t[0], &fixed),
                 ext_c,
                 current_fn,
             )
         }
+        (0, 2, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}(a, b)
+}}"#,
+            name, in_t[0], in_t[1], out_t, ext_c, current_fn,
+        ),
+        (0, 3, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+    {}{}(a, b, c)
+}}"#,
+            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
+        ),
         (_, 1, _) => format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t, out_t, ext_c, multi_calls,
+            name, in_t[0], out_t, ext_c, multi_calls,
         ),
         (_, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t, in_t2, out_t, ext_c, multi_calls,
+            name, in_t[0], in_t[1], out_t, ext_c, multi_calls,
+        ),
+        (_, 3, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
         ),
         (_, _, _) => String::new(),
     };
@@ -547,12 +585,10 @@ fn gen_aarch64(
 
     let test = gen_test(
         &name,
-        &in_t,
-        &in_t2,
+        in_t,
         &out_t,
         current_tests,
-        type_len(in_t),
-        type_len(in_t2),
+        [type_len(in_t[0]), type_len(in_t[0]), type_len(in_t[0])],
         type_len(out_t),
         para_num,
     );
@@ -561,12 +597,10 @@ fn gen_aarch64(
 
 fn gen_test(
     name: &str,
-    in_t: &str,
-    in_t2: &str,
+    in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    len_in: usize,
-    len_in2: usize,
+    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    len_in: [usize; 3],
     len_out: usize,
     para_num: i32,
 ) -> String {
@@ -576,9 +610,10 @@ fn gen_test(
     unsafe fn test_{}() {{"#,
         name,
     );
-    for (a, b, e) in current_tests {
-        let a: Vec<String> = a.iter().take(len_in).cloned().collect();
-        let b: Vec<String> = b.iter().take(len_in2).cloned().collect();
+    for (a, b, c, e) in current_tests {
+        let a: Vec<String> = a.iter().take(len_in[0]).cloned().collect();
+        let b: Vec<String> = b.iter().take(len_in[1]).cloned().collect();
+        let c: Vec<String> = c.iter().take(len_in[2]).cloned().collect();
         let e: Vec<String> = e.iter().take(len_out).cloned().collect();
         let t = {
             match para_num {
@@ -590,7 +625,7 @@ fn gen_test(
         let r: {} = transmute({}(transmute(a)));
         assert_eq!(r, e);
 "#,
-                        values(in_t, &a),
+                        values(in_t[0], &a),
                         values(out_t, &e),
                         type_to_global_type(out_t),
                         name
@@ -605,8 +640,26 @@ fn gen_test(
         let r: {} = transmute({}(transmute(a), transmute(b)));
         assert_eq!(r, e);
 "#,
-                        values(in_t, &a),
-                        values(in_t2, &b),
+                        values(in_t[0], &a),
+                        values(in_t[1], &b),
+                        values(out_t, &e),
+                        type_to_global_type(out_t),
+                        name
+                    )
+                }
+                3 => {
+                    format!(
+                        r#"
+        let a{};
+        let b{};
+        let c{};
+        let e{};
+        let r: {} = transmute({}(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+"#,
+                        values(in_t[0], &a),
+                        values(in_t[1], &b),
+                        values(in_t[2], &c),
                         values(out_t, &e),
                         type_to_global_type(out_t),
                         name
@@ -633,21 +686,24 @@ fn gen_arm(
     link_arm: &Option<String>,
     current_aarch64: &Option<String>,
     link_aarch64: &Option<String>,
-    in_t: &str,
-    in_t2: &str,
+    in_t: &[&str; 3],
     out_t: &str,
-    current_tests: &[(Vec<String>, Vec<String>, Vec<String>)],
-    double_suffixes: bool,
+    current_tests: &[(Vec<String>, Vec<String>, Vec<String>, Vec<String>)],
+    suffix: Suffix,
     para_num: i32,
     fixed: &Vec<String>,
     multi_fn: &Vec<String>,
 ) -> (String, String) {
-    let _global_t = type_to_global_type(in_t);
+    let _global_t = type_to_global_type(in_t[0]);
     let _global_ret_t = type_to_global_type(out_t);
-    let name = if double_suffixes {
-        format!("{}{}", current_name, type_to_double_suffixes(out_t, in_t2))
-    } else {
-        format!("{}{}", current_name, type_to_suffix(in_t2))
+    let name = match suffix {
+        Normal => format!("{}{}", current_name, type_to_suffix(in_t[1])),
+        NoQ => format!("{}{}", current_name, type_to_noq_suffix(in_t[1])),
+        Double => format!(
+            "{}{}",
+            current_name,
+            type_to_double_suffixes(out_t, in_t[1])
+        ),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -680,7 +736,7 @@ fn gen_arm(
     };
     let ext_c =
         if let (Some(link_arm), Some(link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
-            let ext = type_to_ext(in_t);
+            let ext = type_to_ext(in_t[0]);
             let ext2 = type_to_ext(out_t);
             format!(
                 r#"#[allow(improper_ctypes)]
@@ -695,10 +751,13 @@ fn gen_arm(
                 current_fn,
                 match para_num {
                     1 => {
-                        format!("a: {}", in_t)
+                        format!("a: {}", in_t[0])
                     }
                     2 => {
-                        format!("a: {}, b: {}", in_t, in_t2)
+                        format!("a: {}, b: {}", in_t[0], in_t[1])
+                    }
+                    3 => {
+                        format!("a: {}, b: {}, c: {}", in_t[0], in_t[1], in_t[2])
                     }
                     _ => unimplemented!("unknown para_num"),
                 },
@@ -713,58 +772,63 @@ fn gen_arm(
             if i > 0 {
                 calls.push_str("\n    ");
             }
-            calls.push_str(&get_call(
-                &multi_fn[i],
-                current_name,
-                in_t,
-                in_t2,
-                out_t,
-                fixed,
-            ));
+            calls.push_str(&get_call(&multi_fn[i], current_name, in_t, out_t, fixed));
         }
         calls
     } else {
         String::new()
     };
     let call = match (multi_calls.len(), para_num, fixed.len()) {
-        (0, 2, _) => format!(
-            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
-    {}{}(a, b)
-}}"#,
-            name, in_t, in_t2, out_t, ext_c, current_fn,
-        ),
         (0, 1, 0) => format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
     {}{}(a)
 }}"#,
-            name, in_t, out_t, ext_c, current_fn,
+            name, in_t[0], out_t, ext_c, current_fn,
         ),
         (0, 1, _) => {
-            let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+            let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
             format!(
                 r#"pub unsafe fn {}(a: {}) -> {} {{
     let b{};
     {}{}(a, transmute(b))
 }}"#,
                 name,
-                in_t,
+                in_t[0],
                 out_t,
-                values(in_t, &fixed),
+                values(in_t[0], &fixed),
                 ext_c,
                 current_fn,
             )
         }
+        (0, 2, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
+    {}{}(a, b)
+}}"#,
+            name, in_t[0], in_t[1], out_t, ext_c, current_fn,
+        ),
+        (0, 3, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+    {}{}(a, b)
+}}"#,
+            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, current_fn,
+        ),
         (_, 1, _) => format!(
             r#"pub unsafe fn {}(a: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t, out_t, ext_c, multi_calls,
+            name, in_t[0], out_t, ext_c, multi_calls,
         ),
         (_, 2, _) => format!(
             r#"pub unsafe fn {}(a: {}, b: {}) -> {} {{
     {}{}
 }}"#,
-            name, in_t, in_t2, out_t, ext_c, multi_calls,
+            name, in_t[0], in_t[1], out_t, ext_c, multi_calls,
+        ),
+        (_, 3, _) => format!(
+            r#"pub unsafe fn {}(a: {}, b: {}, c: {}) -> {} {{
+    {}{}
+}}"#,
+            name, in_t[0], in_t[1], in_t[2], out_t, ext_c, multi_calls,
         ),
         (_, _, _) => String::new(),
     };
@@ -779,18 +843,16 @@ fn gen_arm(
 {}
 "#,
         current_comment,
-        expand_intrinsic(&current_arm, in_t),
-        expand_intrinsic(&current_aarch64, in_t),
+        expand_intrinsic(&current_arm, in_t[0]),
+        expand_intrinsic(&current_aarch64, in_t[0]),
         call,
     );
     let test = gen_test(
         &name,
-        &in_t,
-        &in_t2,
+        in_t,
         &out_t,
         current_tests,
-        type_len(in_t),
-        type_len(in_t2),
+        [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
         type_len(out_t),
         para_num,
     );
@@ -871,8 +933,7 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
 fn get_call(
     in_str: &str,
     current_name: &str,
-    in_t: &str,
-    in_t2: &str,
+    in_t: &[&str; 3],
     out_t: &str,
     fixed: &Vec<String>,
 ) -> String {
@@ -907,7 +968,6 @@ fn get_call(
                 &sub_fn[1..sub_fn.len() - 1],
                 current_name,
                 in_t,
-                in_t2,
                 out_t,
                 fixed,
             );
@@ -918,9 +978,9 @@ fn get_call(
         } else if s.contains(':') {
             let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
             if re_params[1] == "" {
-                re = Some((re_params[0].clone(), in_t.to_string()));
+                re = Some((re_params[0].clone(), in_t[0].to_string()));
             } else if re_params[1] == "in_t" {
-                re = Some((re_params[0].clone(), in_t.to_string()));
+                re = Some((re_params[0].clone(), in_t[0].to_string()));
             } else if re_params[1] == "out_t" {
                 re = Some((re_params[0].clone(), out_t.to_string()));
             } else {
@@ -936,7 +996,7 @@ fn get_call(
     }
     if fn_name == "fixed" {
         let (re_name, re_type) = re.unwrap();
-        let fixed: Vec<String> = fixed.iter().take(type_len(in_t)).cloned().collect();
+        let fixed: Vec<String> = fixed.iter().take(type_len(in_t[0])).cloned().collect();
         return format!(r#"let {}{};"#, re_name, values(&re_type, &fixed));
     }
     if fn_name.contains('-') {
@@ -948,13 +1008,16 @@ fn get_call(
             fn_format[0].clone()
         };
         if fn_format[1] == "self" {
-            fn_name.push_str(type_to_suffix(in_t2));
+            fn_name.push_str(type_to_suffix(in_t[1]));
         } else if fn_format[1] == "signed" {
-            fn_name.push_str(type_to_signed_suffix(in_t2));
+            fn_name.push_str(type_to_signed_suffix(in_t[1]));
         } else if fn_format[1] == "unsigned" {
-            fn_name.push_str(type_to_unsigned_suffix(in_t2));
+            fn_name.push_str(type_to_unsigned_suffix(in_t[1]));
         } else if fn_format[1] == "doubleself" {
-            fn_name.push_str(type_to_double_suffixes(out_t, in_t2));
+            fn_name.push_str(type_to_double_suffixes(out_t, in_t[1]));
+        } else if fn_format[1] == "noqself" {
+            fn_name.push_str(type_to_noq_suffix(in_t[1]));
+        } else if fn_format[1] == "nosuffix" {
         } else {
             fn_name.push_str(&fn_format[1]);
         };
@@ -991,11 +1054,12 @@ fn main() -> io::Result<()> {
     let mut link_arm: Option<String> = None;
     let mut link_aarch64: Option<String> = None;
     let mut para_num = 2;
-    let mut double_suffixes = false;
+    let mut suffix: Suffix = Normal;
     let mut a: Vec<String> = Vec::new();
     let mut b: Vec<String> = Vec::new();
+    let mut c: Vec<String> = Vec::new();
     let mut fixed: Vec<String> = Vec::new();
-    let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
+    let mut current_tests: Vec<(Vec<String>, Vec<String>, Vec<String>, Vec<String>)> = Vec::new();
     let mut multi_fn: Vec<String> = Vec::new();
 
     //
@@ -1067,9 +1131,10 @@ mod test {
             link_arm = None;
             current_tests = Vec::new();
             para_num = 2;
-            double_suffixes = false;
+            suffix = Normal;
             a = Vec::new();
             b = Vec::new();
+            c = Vec::new();
             fixed = Vec::new();
             multi_fn = Vec::new();
         } else if line.starts_with("//") {
@@ -1084,16 +1149,20 @@ mod test {
         } else if line.starts_with("aarch64 = ") {
             current_aarch64 = Some(String::from(&line[10..]));
         } else if line.starts_with("double-suffixes") {
-            double_suffixes = true;
+            suffix = Double;
+        } else if line.starts_with("no-q") {
+            suffix = NoQ;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {
             b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
+        } else if line.starts_with("c = ") {
+            c = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("fixed = ") {
             fixed = line[8..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("validate ") {
             let e = line[9..].split(',').map(|v| v.trim().to_string()).collect();
-            current_tests.push((a.clone(), b.clone(), e));
+            current_tests.push((a.clone(), b.clone(), c.clone(), e));
         } else if line.starts_with("link-aarch64 = ") {
             link_aarch64 = Some(String::from(&line[15..]));
         } else if line.starts_with("link-arm = ") {
@@ -1116,26 +1185,27 @@ mod test {
 
             for line in types {
                 let spec: Vec<&str> = line.split(':').map(|e| e.trim()).collect();
-                let in_t;
-                let in_t2;
+                let in_t: [&str; 3];
                 let out_t;
                 if spec.len() == 1 {
-                    in_t = spec[0];
-                    in_t2 = spec[0];
+                    in_t = [spec[0], spec[0], spec[0]];
                     out_t = spec[0];
                 } else if spec.len() == 2 {
-                    in_t = spec[0];
-                    in_t2 = spec[0];
+                    in_t = [spec[0], spec[0], spec[0]];
                     out_t = spec[1];
                 } else if spec.len() == 3 {
-                    in_t = spec[0];
-                    in_t2 = spec[1];
+                    in_t = [spec[0], spec[1], spec[1]];
                     out_t = spec[2];
+                } else if spec.len() == 4 {
+                    in_t = [spec[0], spec[1], spec[2]];
+                    out_t = spec[3];
                 } else {
                     panic!("Bad spec: {}", line)
                 }
                 if b.len() == 0 {
                     para_num = 1;
+                } else if c.len() != 0 {
+                    para_num = 3;
                 }
                 let current_name = current_name.clone().unwrap();
                 if let Some(current_arm) = current_arm.clone() {
@@ -1148,10 +1218,9 @@ mod test {
                         &current_aarch64,
                         &link_aarch64,
                         &in_t,
-                        &in_t2,
                         &out_t,
                         &current_tests,
-                        double_suffixes,
+                        suffix,
                         para_num,
                         &fixed,
                         &multi_fn,
@@ -1166,10 +1235,9 @@ mod test {
                         &current_aarch64,
                         &link_aarch64,
                         &in_t,
-                        &in_t2,
                         &out_t,
                         &current_tests,
-                        double_suffixes,
+                        suffix,
                         para_num,
                         &fixed,
                         &multi_fn,
