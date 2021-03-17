@@ -218,13 +218,39 @@ pub fn target_cpu(sess: &Session) -> &str {
     handle_native(name)
 }
 
-pub fn handle_native_features(sess: &Session) -> Vec<String> {
-    match sess.opts.cg.target_cpu {
-        Some(ref s) => {
-            if s != "native" {
-                return vec![];
-            }
+/// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
+/// `--target` and similar).
+// FIXME(nagisa): Cache the output of this somehow? Maybe make this a query? We're calling this
+// for every function that has `#[target_feature]` on it. The global features won't change between
+// the functions; only crates, maybe…
+pub fn llvm_global_features(sess: &Session) -> Vec<String> {
+    // FIXME(nagisa): this should definitely be available more centrally and to other codegen backends.
+    /// These features control behaviour of rustc rather than llvm.
+    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
+    // Features that come earlier are overriden by conflicting features later in the string.
+    // Typically we'll want more explicit settings to override the implicit ones, so:
+    //
+    // * Features from -Ctarget-cpu=*; are overriden by [^1]
+    // * Features implied by --target; are overriden by
+    // * Features from -Ctarget-feature; are overriden by
+    // * function specific features.
+    //
+    // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
+    // through LLVM TargetMachine implementation.
+    //
+    // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
+    // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
+    // override anything that's implicit, so e.g. when there's no `--target` flag, features implied
+    // the host target are overriden by `-Ctarget-cpu=*`. On the other hand, what about when both
+    // `--target` and `-Ctarget-cpu=*` are specified? Both then imply some target features and both
+    // flags are specified by the user on the CLI. It isn't as clear-cut which order of precedence
+    // should be taken in cases like these.
+    let mut features = vec![];
+
+    // -Ctarget-cpu=native
+    match sess.opts.cg.target_cpu {
+        Some(ref s) if s == "native" => {
             let features_string = unsafe {
                 let ptr = llvm::LLVMGetHostCPUFeatures();
                 let features_string = if !ptr.is_null() {
@@ -242,11 +268,31 @@ pub fn handle_native_features(sess: &Session) -> Vec<String> {
 
                 features_string
             };
-
-            features_string.split(",").map(|s| s.to_owned()).collect()
+            features.extend(features_string.split(",").map(String::from));
         }
-        None => vec![],
-    }
+        Some(_) | None => {}
+    };
+
+    // Features implied by an implicit or explicit `--target`.
+    features.extend(
+        sess.target
+            .features
+            .split(',')
+            .filter(|f| !f.is_empty() && !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)))
+            .map(String::from),
+    );
+
+    // -Ctarget-features
+    features.extend(
+        sess.opts
+            .cg
+            .target_feature
+            .split(',')
+            .filter(|f| !f.is_empty() && !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)))
+            .map(String::from),
+    );
+
+    features
 }
 
 pub fn tune_cpu(sess: &Session) -> Option<&str> {

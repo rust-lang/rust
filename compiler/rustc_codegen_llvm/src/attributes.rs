@@ -152,18 +152,6 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
-    const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
-
-    let cmdline = sess
-        .opts
-        .cg
-        .target_feature
-        .split(',')
-        .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
-    sess.target.features.split(',').chain(cmdline).filter(|l| !l.is_empty())
-}
-
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
@@ -301,20 +289,22 @@ pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let features = llvm_target_features(cx.tcx.sess)
-        .map(|s| s.to_string())
-        .chain(codegen_fn_attrs.target_features.iter().map(|f| {
+    let function_features = codegen_fn_attrs
+        .target_features
+        .iter()
+        .map(|f| {
             let feature = &f.as_str();
             format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
-        }))
+        })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
             InstructionSetAttr::ArmT32 => "+thumb-mode".to_string(),
         }))
-        .collect::<Vec<String>>()
-        .join(",");
-
-    if !features.is_empty() {
+        .collect::<Vec<String>>();
+    if !function_features.is_empty() {
+        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
+        global_features.extend(function_features.into_iter());
+        let features = global_features.join(",");
         let val = CString::new(features).unwrap();
         llvm::AddFunctionAttrStringValue(
             llfn,
