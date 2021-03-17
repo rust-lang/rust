@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::Res;
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, Field, FieldPat, FnRetTy,
+    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprKind, ExprField, PatField, FnRetTy,
     GenericArg, GenericArgs, Guard, HirId, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatKind, Path,
     PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
@@ -266,7 +266,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         over(left, right, |l, r| self.eq_expr(l, r))
     }
 
-    fn eq_field(&mut self, left: &Field<'_>, right: &Field<'_>) -> bool {
+    fn eq_field(&mut self, left: &ExprField<'_>, right: &ExprField<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
     }
 
@@ -290,8 +290,8 @@ impl HirEqInterExpr<'_, '_, '_> {
         left.name == right.name
     }
 
-    fn eq_fieldpat(&mut self, left: &FieldPat<'_>, right: &FieldPat<'_>) -> bool {
-        let (FieldPat { ident: li, pat: lp, .. }, FieldPat { ident: ri, pat: rp, .. }) = (&left, &right);
+    fn eq_fieldpat(&mut self, left: &PatField<'_>, right: &PatField<'_>) -> bool {
+        let (PatField { ident: li, pat: lp, .. }, PatField { ident: ri, pat: rp, .. }) = (&left, &right);
         li.name == ri.name && self.eq_pat(lp, rp)
     }
 

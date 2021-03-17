@@ -119,7 +119,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
 
 // Check whether the order of the fields in the constructor is consistent with the order in the
 // definition.
-fn is_consistent_order<'tcx>(fields: &'tcx [hir::Field<'tcx>], def_order_map: &FxHashMap<Symbol, usize>) -> bool {
+fn is_consistent_order<'tcx>(fields: &'tcx [hir::ExprField<'tcx>], def_order_map: &FxHashMap<Symbol, usize>) -> bool {
     let mut cur_idx = usize::MIN;
     for f in fields {
         let next_idx = def_order_map[&f.ident.name];
