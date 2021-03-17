@@ -94,9 +94,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
-        // It might be unsound to inline these variables if this logic changes (#81138).
-        // We assume the bounds reported by `range` remain the same, but
-        // an adversarial implementation could change between calls
+        // Inlining these variables should be avoided. We assume the bounds reported by `range`
+        // remain the same, but an adversarial implementation could change between calls (#81138).
         let (start, end) = (range.start_bound(), range.end_bound());
         match (start, end) {
             (Bound::Excluded(s), Bound::Excluded(e)) if s == e => {
@@ -114,8 +113,6 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         loop {
             let (lower_edge_idx, lower_child_bound) = self.find_lower_bound_index(lower_bound);
             let (upper_edge_idx, upper_child_bound) = self.find_upper_bound_index(upper_bound);
-            // SAFETY: This panic is used for safety, so external impls can't be called here. The
-            // comparison is done with integers for that reason.
             if lower_edge_idx > upper_edge_idx {
                 panic!("Ord is ill-defined in BTreeMap range")
             }
