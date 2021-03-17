@@ -121,11 +121,8 @@ impl Expander {
                 err.get_or_insert(e);
             })?;
         let call_id = match call_id {
-            Some(it) => it,
-            None => {
-                if err.is_none() {
-                    log::warn!("no error despite `as_call_id_with_errors` returning `None`");
-                }
+            Ok(it) => it,
+            Err(_) => {
                 return Ok(ExpandResult { value: None, err });
             }
         };
