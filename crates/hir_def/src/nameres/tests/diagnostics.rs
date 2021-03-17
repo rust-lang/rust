@@ -196,7 +196,7 @@ fn builtin_macro_fails_expansion() {
           macro_rules! include { () => {} }
 
           include!("doesntexist");
-        //^^^^^^^^^^^^^^^^^^^^^^^^ could not convert tokens
+        //^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `doesntexist`
         "#,
     );
 }

@@ -137,7 +137,7 @@ fn f() {
     include!(invalid);
   //^^^^^^^^^^^^^^^^^ could not convert tokens
     include!("does not exist");
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^ could not convert tokens
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^ failed to load file `does not exist`
 
     env!(invalid);
   //^^^^^^^^^^^^^ could not convert tokens
