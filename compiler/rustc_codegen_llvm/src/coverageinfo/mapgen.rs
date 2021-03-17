@@ -254,7 +254,7 @@ fn save_function_record(
 ///
 /// 1. The file name of an "Unreachable" function must match the file name of the existing
 ///    codegenned (covered) function to which the unreachable code regions will be added.
-/// 2. The function to which the unreachable code regions will be added must not be a genaric
+/// 2. The function to which the unreachable code regions will be added must not be a generic
 ///    function (must not have type parameters) because the coverage tools will get confused
 ///    if the codegenned function has more than one instantiation and additional `CodeRegion`s
 ///    attached to only one of those instantiations.
@@ -284,7 +284,7 @@ fn add_unreachable_coverage<'tcx>(
     let all_def_ids: DefIdSet =
         tcx.mir_keys(LOCAL_CRATE).iter().map(|local_def_id| local_def_id.to_def_id()).collect();
 
-    let (codegenned_def_ids, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let codegenned_def_ids = tcx.codegened_and_inlined_items(LOCAL_CRATE);
 
     let mut unreachable_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
     for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
