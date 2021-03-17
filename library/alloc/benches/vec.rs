@@ -671,3 +671,92 @@ fn bench_map_fast(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| map_fast(&data));
 }
+
+fn random_sorted_fill(mut seed: u32, buf: &mut [u32]) {
+    let mask = if buf.len() < 8192 {
+        0xFF
+    } else if buf.len() < 200_000 {
+        0xFFFF
+    } else {
+        0xFFFF_FFFF
+    };
+
+    for item in buf.iter_mut() {
+        seed ^= seed << 13;
+        seed ^= seed >> 17;
+        seed ^= seed << 5;
+
+        *item = seed & mask;
+    }
+
+    buf.sort();
+}
+
+fn bench_vec_dedup_old(b: &mut Bencher, sz: usize) {
+    let mut template = vec![0u32; sz];
+    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    random_sorted_fill(0x43, &mut template);
+
+    let mut vec = template.clone();
+    b.iter(|| {
+        let len = {
+            let (dedup, _) = vec.partition_dedup();
+            dedup.len()
+        };
+        vec.truncate(len);
+
+        black_box(vec.first());
+        vec.clear();
+        vec.extend_from_slice(&template);
+    });
+}
+
+fn bench_vec_dedup_new(b: &mut Bencher, sz: usize) {
+    let mut template = vec![0u32; sz];
+    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    random_sorted_fill(0x43, &mut template);
+
+    let mut vec = template.clone();
+    b.iter(|| {
+        vec.dedup();
+        black_box(vec.first());
+        vec.clear();
+        vec.extend_from_slice(&template);
+    });
+}
+
+#[bench]
+fn bench_dedup_old_100(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 100);
+}
+#[bench]
+fn bench_dedup_new_100(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 100);
+}
+
+#[bench]
+fn bench_dedup_old_1000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 1000);
+}
+#[bench]
+fn bench_dedup_new_1000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 1000);
+}
+
+#[bench]
+fn bench_dedup_old_10000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 10000);
+}
+#[bench]
+fn bench_dedup_new_10000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 10000);
+}
+
+#[bench]
+fn bench_dedup_old_100000(b: &mut Bencher) {
+    bench_vec_dedup_old(b, 100000);
+}
+#[bench]
+fn bench_dedup_new_100000(b: &mut Bencher) {
+    bench_vec_dedup_new(b, 100000);
+}
