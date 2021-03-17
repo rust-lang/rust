@@ -28,43 +28,43 @@ fn main() -> () {
         StorageLive(_3);                 // scope 2 at $DIR/match_test.rs:12:5: 17:6
         FakeRead(ForMatchedPlace(None), _1); // scope 2 at $DIR/match_test.rs:12:11: 12:12
         _6 = Le(const 0_i32, _1);        // scope 2 at $DIR/match_test.rs:13:9: 13:14
-        switchInt(move _6) -> [false: bb4, otherwise: bb1]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        switchInt(move _6) -> [false: bb3, otherwise: bb1]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
     }
 
     bb1: {
         _7 = Lt(_1, const 10_i32);       // scope 2 at $DIR/match_test.rs:13:9: 13:14
-        switchInt(move _7) -> [false: bb4, otherwise: bb2]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        switchInt(move _7) -> [false: bb3, otherwise: bb2]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
     }
 
     bb2: {
-        falseEdge -> [real: bb9, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
+        falseEdge -> [real: bb9, imaginary: bb5]; // scope 2 at $DIR/match_test.rs:13:9: 13:14
     }
 
     bb3: {
-        _3 = const 3_i32;                // scope 2 at $DIR/match_test.rs:16:14: 16:15
-        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
+        _4 = Le(const 10_i32, _1);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        switchInt(move _4) -> [false: bb6, otherwise: bb4]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
     }
 
     bb4: {
-        _4 = Le(const 10_i32, _1);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
-        switchInt(move _4) -> [false: bb7, otherwise: bb5]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        _5 = Le(_1, const 20_i32);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        switchInt(move _5) -> [false: bb6, otherwise: bb5]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
     }
 
     bb5: {
-        _5 = Le(_1, const 20_i32);       // scope 2 at $DIR/match_test.rs:14:9: 14:16
-        switchInt(move _5) -> [false: bb7, otherwise: bb6]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        falseEdge -> [real: bb12, imaginary: bb7]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
     }
 
     bb6: {
-        falseEdge -> [real: bb12, imaginary: bb8]; // scope 2 at $DIR/match_test.rs:14:9: 14:16
+        switchInt(_1) -> [-1_i32: bb7, otherwise: bb8]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
     }
 
     bb7: {
-        switchInt(_1) -> [-1_i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
+        falseEdge -> [real: bb13, imaginary: bb8]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
     }
 
     bb8: {
-        falseEdge -> [real: bb13, imaginary: bb3]; // scope 2 at $DIR/match_test.rs:15:9: 15:11
+        _3 = const 3_i32;                // scope 2 at $DIR/match_test.rs:16:14: 16:15
+        goto -> bb14;                    // scope 2 at $DIR/match_test.rs:12:5: 17:6
     }
 
     bb9: {
@@ -83,7 +83,7 @@ fn main() -> () {
 
     bb11: {
         StorageDead(_9);                 // scope 2 at $DIR/match_test.rs:13:23: 13:24
-        falseEdge -> [real: bb3, imaginary: bb6]; // scope 2 at $DIR/match_test.rs:13:18: 13:19
+        falseEdge -> [real: bb3, imaginary: bb5]; // scope 2 at $DIR/match_test.rs:13:18: 13:19
     }
 
     bb12: {

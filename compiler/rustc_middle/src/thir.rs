@@ -26,6 +26,7 @@ use rustc_middle::ty::{self, AdtDef, Const, Ty, UpvarSubsts, UserType};
 use rustc_middle::ty::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
+use rustc_middle::ty::{ConstInt, ScalarInt};
 use rustc_span::{Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::asm::InlineAsmRegOrRegClass;
@@ -668,8 +669,9 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: &'tcx ty::Const<'tcx>,
-    pub hi: &'tcx ty::Const<'tcx>,
+    pub lo: ScalarInt,
+    pub hi: ScalarInt,
+    pub ty: Ty<'tcx>,
     pub end: RangeEnd,
 }
 
@@ -788,10 +790,12 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatKind::Constant { value } => write!(f, "{}", value),
-            PatKind::Range(PatRange { lo, hi, end }) => {
-                write!(f, "{}", lo)?;
+            PatKind::Range(PatRange { lo, hi, end, ty }) => {
+                let lo = ConstInt::new(lo, ty.is_signed(), ty.is_ptr_sized_integral());
+                let hi = ConstInt::new(hi, ty.is_signed(), ty.is_ptr_sized_integral());
+                write!(f, "{:?}", lo)?;
                 write!(f, "{}", end)?;
-                write!(f, "{}", hi)
+                write!(f, "{:?}", hi)
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {

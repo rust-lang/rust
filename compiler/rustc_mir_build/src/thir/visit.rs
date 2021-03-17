@@ -213,10 +213,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             }
         }
         Constant { value } => visitor.visit_const(value),
-        Range(range) => {
-            visitor.visit_const(range.lo);
-            visitor.visit_const(range.hi);
-        }
+        Range(PatRange { lo: _, hi: _, ty: _, end: _ }) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix {
                 visitor.visit_pat(&subpattern);

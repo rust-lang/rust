@@ -130,10 +130,23 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         assert_eq!(lo.ty, ty);
         assert_eq!(hi.ty, ty);
         let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
+        let lo_const = lo;
+        let lo = lo
+            .val
+            .eval(self.tcx, self.param_env)
+            .try_to_scalar_int()
+            .expect("range patterns must be integral");
+        let hi = hi
+            .val
+            .eval(self.tcx, self.param_env)
+            .try_to_scalar_int()
+            .expect("range patterns must be integral");
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
-            (RangeEnd::Excluded, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Excluded, Some(Ordering::Less)) => {
+                PatKind::Range(PatRange { lo, hi, end, ty })
+            }
             // `x..y` where `x >= y`. The range is empty => error.
             (RangeEnd::Excluded, _) => {
                 struct_span_err!(
@@ -146,9 +159,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 PatKind::Wild
             }
             // `x..=y` where `x == y`.
-            (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
+            (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo_const },
             // `x..=y` where `x < y`.
-            (RangeEnd::Included, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Included, Some(Ordering::Less)) => {
+                PatKind::Range(PatRange { lo, hi, end, ty })
+            }
             // `x..=y` where `x > y` hence the range is empty => error.
             (RangeEnd::Included, _) => {
                 let mut err = struct_span_err!(

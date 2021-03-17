@@ -12,6 +12,7 @@ use crate::thir::pattern::compare_const_vals;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::subst::{GenericArg, Subst};
@@ -58,8 +59,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
 
             PatKind::Range(range) => {
-                assert_eq!(range.lo.ty, match_pair.pattern.ty);
-                assert_eq!(range.hi.ty, match_pair.pattern.ty);
+                assert_eq!(range.ty, match_pair.pattern.ty);
                 Test { span: match_pair.pattern.span, kind: TestKind::Range(range) }
             }
 
@@ -271,11 +271,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatRange { ref lo, ref hi, ref end }) => {
+            TestKind::Range(PatRange { lo, hi, ref end, ty }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
+                let lo = ty::Const::from_value(self.tcx, ConstValue::Scalar(lo.into()), ty);
+                let hi = ty::Const::from_value(self.tcx, ConstValue::Scalar(hi.into()), ty);
                 let lo = self.literal_operand(test.span, lo);
                 let hi = self.literal_operand(test.span, hi);
                 let val = Operand::Copy(place);
@@ -640,9 +642,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let tcx = self.tcx;
 
-                    let test_ty = test.lo.ty;
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
+                    let test_ty = match_pair.pattern.ty;
+                    let test_lo =
+                        ty::Const::from_value(tcx, ConstValue::Scalar(test.lo.into()), test_ty);
+                    let test_hi =
+                        ty::Const::from_value(tcx, ConstValue::Scalar(test.hi.into()), test_ty);
+                    let pat_lo =
+                        ty::Const::from_value(tcx, ConstValue::Scalar(test.lo.into()), test_ty);
+                    let pat_hi =
+                        ty::Const::from_value(tcx, ConstValue::Scalar(test.hi.into()), test_ty);
+                    let lo = compare_const_vals(tcx, test_lo, pat_hi, self.param_env, test_ty)?;
+                    let hi = compare_const_vals(tcx, test_hi, pat_lo, self.param_env, test_ty)?;
 
                     match (test.end, pat.end, lo, hi) {
                         // pat < test
@@ -769,8 +779,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.tcx;
 
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty)?;
+        let lo = ty::Const::from_value(tcx, ConstValue::Scalar(range.lo.into()), value.ty);
+        let hi = ty::Const::from_value(tcx, ConstValue::Scalar(range.hi.into()), value.ty);
+        let a = compare_const_vals(tcx, lo, value, self.param_env, value.ty)?;
+        let b = compare_const_vals(tcx, value, hi, self.param_env, value.ty)?;
 
         match (b, range.end) {
             (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
