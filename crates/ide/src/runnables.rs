@@ -576,6 +576,20 @@ fn should_have_runnable_1() {}
 /// ```
 fn should_have_runnable_2() {}
 
+/**
+```rust
+let z = 55;
+```
+*/
+fn should_have_no_runnable_3() {}
+
+/**
+    ```rust
+    let z = 55;
+    ```
+*/
+fn should_have_no_runnable_4() {}
+
 /// ```no_run
 /// let z = 55;
 /// ```
@@ -616,7 +630,7 @@ fn should_have_no_runnable_6() {}
 struct StructWithRunnable(String);
 
 "#,
-            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST],
+            &[&BIN, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST, &DOCTEST],
             expect![[r#"
                 [
                     Runnable {
@@ -682,7 +696,37 @@ struct StructWithRunnable(String);
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 756..821,
+                            full_range: 256..320,
+                            name: "should_have_no_runnable_3",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "should_have_no_runnable_3",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 322..398,
+                            name: "should_have_no_runnable_4",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "should_have_no_runnable_4",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 900..965,
                             name: "StructWithRunnable",
                         },
                         kind: DocTest {

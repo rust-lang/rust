@@ -95,12 +95,10 @@ fn extract_positioned_link_from_comment(
     let comment_range = comment.syntax().text_range();
     let doc_comment = comment.doc_comment()?;
     let def_links = extract_definitions_from_markdown(doc_comment);
+    let start = comment_range.start() + TextSize::from(comment.prefix().len() as u32);
     let (def_link, ns, _) = def_links.iter().min_by_key(|(_, _, def_link_range)| {
-        let matched_position = comment_range.start() + TextSize::from(def_link_range.start as u32);
-        match position.offset.checked_sub(matched_position) {
-            Some(distance) => distance,
-            None => comment_range.end(),
-        }
+        let matched_position = start + TextSize::from(def_link_range.start as u32);
+        position.offset.checked_sub(matched_position).unwrap_or_else(|| comment_range.end())
     })?;
     Some((def_link.to_string(), *ns))
 }

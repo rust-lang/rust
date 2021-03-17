@@ -53,15 +53,15 @@ pub fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> 
 
     match callable.kind() {
         hir::CallableKind::Function(func) => {
-            res.doc = func.docs(db).map(|it| it.as_str().to_string());
+            res.doc = func.docs(db).map(|it| it.into());
             format_to!(res.signature, "fn {}", func.name(db));
         }
         hir::CallableKind::TupleStruct(strukt) => {
-            res.doc = strukt.docs(db).map(|it| it.as_str().to_string());
+            res.doc = strukt.docs(db).map(|it| it.into());
             format_to!(res.signature, "struct {}", strukt.name(db));
         }
         hir::CallableKind::TupleEnumVariant(variant) => {
-            res.doc = variant.docs(db).map(|it| it.as_str().to_string());
+            res.doc = variant.docs(db).map(|it| it.into());
             format_to!(
                 res.signature,
                 "enum {}::{}",

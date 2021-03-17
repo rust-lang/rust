@@ -1,8 +1,6 @@
 //! Various traits that are implemented by ast nodes.
 //!
 //! The implementations are usually trivial, and live in generated.rs
-use itertools::Itertools;
-
 use crate::{
     ast::{self, support, AstChildren, AstNode, AstToken},
     syntax_node::SyntaxElementChildren,
@@ -76,10 +74,6 @@ pub trait DocCommentsOwner: AttrsOwner {
     fn doc_comments(&self) -> CommentIter {
         CommentIter { iter: self.syntax().children_with_tokens() }
     }
-
-    fn doc_comment_text(&self) -> Option<String> {
-        self.doc_comments().doc_comment_text()
-    }
 }
 
 impl CommentIter {
@@ -87,12 +81,12 @@ impl CommentIter {
         CommentIter { iter: syntax_node.children_with_tokens() }
     }
 
-    /// Returns the textual content of a doc comment block as a single string.
-    /// That is, strips leading `///` (+ optional 1 character of whitespace),
-    /// trailing `*/`, trailing whitespace and then joins the lines.
+    #[cfg(test)]
     pub fn doc_comment_text(self) -> Option<String> {
-        let docs =
-            self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)).join("\n");
+        let docs = itertools::Itertools::join(
+            &mut self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)),
+            "\n",
+        );
         if docs.is_empty() {
             None
         } else {
