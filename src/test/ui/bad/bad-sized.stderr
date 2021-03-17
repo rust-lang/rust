@@ -31,7 +31,20 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    = help: the trait `Sized` is not implemented for `dyn Trait`
    = note: required by `Vec::<T>::new`
 
-error: aborting due to 3 previous errors
+error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
+  --> $DIR/bad-sized.rs:4:37
+   |
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |                                     ^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+   |                - required by this bound in `Vec`
+   |
+   = help: the trait `Sized` is not implemented for `dyn Trait`
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0225, E0277.
 For more information about an error, try `rustc --explain E0225`.
