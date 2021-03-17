@@ -340,7 +340,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "non_autolinks",
     ];
     for rustdoc_lint in RUSTDOC_LINTS {
-        store.register_removed(rustdoc_lint, &format!("use `rustdoc::{}` instead", rustdoc_lint));
+        store.register_ignored(rustdoc_lint);
     }
     store.register_removed(
         "intra_doc_link_resolution_failure",
