@@ -1,7 +1,13 @@
 //! Generic hashing support.
 //!
-//! This module provides a generic way to compute the hash of a value. The
-//! simplest way to make a type hashable is to use `#[derive(Hash)]`:
+//! This module provides a generic way to compute the [hash] of a value.
+//! Hashes are most commonly used with [`HashMap`] and [`HashSet`].
+//!
+//! [hash]: https://en.wikipedia.org/wiki/Hash_function
+//! [`HashMap`]: ../../std/collections/struct.HashMap.html
+//! [`HashSet`]: ../../std/collections/struct.HashSet.html
+//!
+//! The simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Examples
 //!

@@ -21,15 +21,15 @@ use Entry::*;
 /// We might temporarily have fewer elements during methods.
 pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
-// A tree in a `BTreeMap` is a tree in the `node` module with addtional invariants:
+// A tree in a `BTreeMap` is a tree in the `node` module with additional invariants:
 // - Keys must appear in ascending order (according to the key's type).
 // - If the root node is internal, it must contain at least 1 element.
 // - Every non-root node contains at least MIN_LEN elements.
 //
-// An empty map may be represented both by the absense of a root node or by a
+// An empty map may be represented both by the absence of a root node or by a
 // root node that is an empty leaf.
 
-/// A map based on a B-Tree.
+/// A map based on a [B-Tree].
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
 /// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
@@ -63,6 +63,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
 /// non-termination.
 ///
+/// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
