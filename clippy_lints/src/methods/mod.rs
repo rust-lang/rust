@@ -3,6 +3,7 @@ mod bytes_nth;
 mod chars_cmp;
 mod chars_cmp_with_unwrap;
 mod chars_last_cmp;
+mod chars_last_cmp_with_unwrap;
 mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
@@ -1974,16 +1975,7 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
     lint_with_both_lhs_and_rhs!(chars_next_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_last_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_next_cmp_with_unwrap::check, cx, info);
-    lint_with_both_lhs_and_rhs!(lint_chars_last_cmp_with_unwrap, cx, info);
-}
-
-/// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
-fn lint_chars_last_cmp_with_unwrap<'tcx>(cx: &LateContext<'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if chars_cmp_with_unwrap::check(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
-        true
-    } else {
-        chars_cmp_with_unwrap::check(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
-    }
+    lint_with_both_lhs_and_rhs!(chars_last_cmp_with_unwrap::check, cx, info);
 }
 
 fn get_hint_if_single_char_arg(
