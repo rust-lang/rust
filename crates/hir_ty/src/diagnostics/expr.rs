@@ -713,4 +713,38 @@ fn main() {
             "#,
         );
     }
+
+    #[test]
+    fn cfgd_out_fn_params() {
+        check_diagnostics(
+            r#"
+fn foo(#[cfg(NEVER)] x: ()) {}
+
+struct S;
+
+impl S {
+    fn method(#[cfg(NEVER)] self) {}
+    fn method2(#[cfg(NEVER)] self, arg: u8) {}
+    fn method3(self, #[cfg(NEVER)] arg: u8) {}
+}
+
+extern "C" {
+    fn fixed(fixed: u8, #[cfg(NEVER)] ...);
+    fn varargs(#[cfg(not(NEVER))] ...);
+}
+
+fn main() {
+    foo();
+    S::method();
+    S::method2(0);
+    S::method3(S);
+    S.method3();
+    unsafe {
+        fixed(0);
+        varargs(1, 2, 3);
+    }
+}
+            "#,
+        )
+    }
 }
