@@ -769,7 +769,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match *vdata {
             VariantData::Struct(ref fields, recovered) => hir::VariantData::Struct(
                 self.arena
-                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_struct_field(f))),
+                    .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f))),
                 recovered,
             ),
             VariantData::Tuple(ref fields, id) => {
@@ -777,7 +777,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.alias_attrs(ctor_id, parent_id);
                 hir::VariantData::Tuple(
                     self.arena.alloc_from_iter(
-                        fields.iter().enumerate().map(|f| self.lower_struct_field(f)),
+                        fields.iter().enumerate().map(|f| self.lower_field_def(f)),
                     ),
                     ctor_id,
                 )
@@ -790,7 +790,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField<'hir> {
+    fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
         let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,
@@ -805,7 +805,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let hir_id = self.lower_node_id(f.id);
         self.lower_attrs(hir_id, &f.attrs);
-        hir::StructField {
+        hir::FieldDef {
             span: f.span,
             hir_id,
             ident: match f.ident {

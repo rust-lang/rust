@@ -1089,9 +1089,9 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
         });
     }
 
-    fn visit_struct_field(&mut self, f: &'hir hir::StructField<'_>) {
+    fn visit_field_def(&mut self, f: &'hir hir::FieldDef<'_>) {
         self.visit_testable(f.ident.to_string(), f.hir_id, f.span, |this| {
-            intravisit::walk_struct_field(this, f);
+            intravisit::walk_field_def(this, f);
         });
     }
 

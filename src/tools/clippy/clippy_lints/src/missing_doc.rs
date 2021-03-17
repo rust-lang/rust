@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
     }
 
-    fn check_struct_field(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::StructField<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
         if !sf.is_positional() {
             let attrs = cx.tcx.hir().attrs(sf.hir_id);
             self.check_missing_docs_attrs(cx, attrs, sf.span, "a", "struct field");

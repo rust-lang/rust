@@ -66,7 +66,7 @@ pub fn eq_range_end(l: &RangeEnd, r: &RangeEnd) -> bool {
     }
 }
 
-pub fn eq_field_pat(l: &FieldPat, r: &FieldPat) -> bool {
+pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
     l.is_placeholder == r.is_placeholder
         && eq_id(l.ident, r.ident)
         && eq_pat(&l.pat, &r.pat)
@@ -168,14 +168,16 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AddrOf(lbk, lm, le), AddrOf(rbk, rm, re)) => lbk == rbk && lm == rm && eq_expr(le, re),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, |l, r| eq_qself(l, r)) && eq_path(lp, rp),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
-        (Struct(lp, lfs, lb), Struct(rp, rfs, rb)) => {
-            eq_path(lp, rp) && eq_struct_rest(lb, rb) && unordered_over(lfs, rfs, |l, r| eq_field(l, r))
+        (Struct(lse), Struct(rse)) => {
+            eq_path(&lse.path, &rse.path) &&
+            eq_struct_rest(&lse.rest, &rse.rest) &&
+            unordered_over(&lse.fields, &rse.fields, |l, r| eq_field(l, r))
         },
         _ => false,
     }
 }
 
-pub fn eq_field(l: &Field, r: &Field) -> bool {
+pub fn eq_field(l: &ExprField, r: &ExprField) -> bool {
     l.is_placeholder == r.is_placeholder
         && eq_id(l.ident, r.ident)
         && eq_expr(&l.expr, &r.expr)
@@ -359,7 +361,7 @@ pub fn eq_variant_data(l: &VariantData, r: &VariantData) -> bool {
     }
 }
 
-pub fn eq_struct_field(l: &StructField, r: &StructField) -> bool {
+pub fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
     l.is_placeholder == r.is_placeholder
         && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
         && eq_vis(&l.vis, &r.vis)

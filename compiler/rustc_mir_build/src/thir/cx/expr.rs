@@ -1111,7 +1111,10 @@ impl<'thir, 'tcx> Cx<'thir, 'tcx> {
     }
 
     /// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExpr.
-    fn field_refs(&mut self, fields: &'tcx [hir::Field<'tcx>]) -> &'thir [FieldExpr<'thir, 'tcx>] {
+    fn field_refs(
+        &mut self,
+        fields: &'tcx [hir::ExprField<'tcx>],
+    ) -> &'thir [FieldExpr<'thir, 'tcx>] {
         self.arena.alloc_from_iter(fields.iter().map(|field| FieldExpr {
             name: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
             expr: self.mirror_expr(field.expr),

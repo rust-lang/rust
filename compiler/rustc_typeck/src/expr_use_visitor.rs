@@ -456,7 +456,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn walk_struct_expr(
         &mut self,
-        fields: &[hir::Field<'_>],
+        fields: &[hir::ExprField<'_>],
         opt_with: &Option<&'hir hir::Expr<'_>>,
     ) {
         // Consume the expressions supplying values for each field.

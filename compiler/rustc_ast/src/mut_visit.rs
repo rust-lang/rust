@@ -102,8 +102,8 @@ pub trait MutVisitor: Sized {
         noop_visit_fn_header(header, self);
     }
 
-    fn flat_map_struct_field(&mut self, sf: StructField) -> SmallVec<[StructField; 1]> {
-        noop_flat_map_struct_field(sf, self)
+    fn flat_map_field_def(&mut self, fd: FieldDef) -> SmallVec<[FieldDef; 1]> {
+        noop_flat_map_field_def(fd, self)
     }
 
     fn visit_item_kind(&mut self, i: &mut ItemKind) {
@@ -254,8 +254,8 @@ pub trait MutVisitor: Sized {
         noop_visit_mt(mt, self);
     }
 
-    fn flat_map_field(&mut self, f: Field) -> SmallVec<[Field; 1]> {
-        noop_flat_map_field(f, self)
+    fn flat_map_expr_field(&mut self, f: ExprField) -> SmallVec<[ExprField; 1]> {
+        noop_flat_map_expr_field(f, self)
     }
 
     fn visit_where_clause(&mut self, where_clause: &mut WhereClause) {
@@ -278,8 +278,8 @@ pub trait MutVisitor: Sized {
         // Do nothing.
     }
 
-    fn flat_map_field_pattern(&mut self, fp: FieldPat) -> SmallVec<[FieldPat; 1]> {
-        noop_flat_map_field_pattern(fp, self)
+    fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
+        noop_flat_map_pat_field(fp, self)
     }
 }
 
@@ -385,11 +385,11 @@ pub fn visit_delim_span<T: MutVisitor>(dspan: &mut DelimSpan, vis: &mut T) {
     vis.visit_span(&mut dspan.close);
 }
 
-pub fn noop_flat_map_field_pattern<T: MutVisitor>(
-    mut fp: FieldPat,
+pub fn noop_flat_map_pat_field<T: MutVisitor>(
+    mut fp: PatField,
     vis: &mut T,
-) -> SmallVec<[FieldPat; 1]> {
-    let FieldPat { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
+) -> SmallVec<[PatField; 1]> {
+    let PatField { attrs, id, ident, is_placeholder: _, is_shorthand: _, pat, span } = &mut fp;
     vis.visit_id(id);
     vis.visit_ident(ident);
     vis.visit_pat(pat);
@@ -842,10 +842,10 @@ pub fn noop_visit_where_predicate<T: MutVisitor>(pred: &mut WherePredicate, vis:
 pub fn noop_visit_variant_data<T: MutVisitor>(vdata: &mut VariantData, vis: &mut T) {
     match vdata {
         VariantData::Struct(fields, ..) => {
-            fields.flat_map_in_place(|field| vis.flat_map_struct_field(field));
+            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
         }
         VariantData::Tuple(fields, id) => {
-            fields.flat_map_in_place(|field| vis.flat_map_struct_field(field));
+            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
             vis.visit_id(id);
         }
         VariantData::Unit(id) => vis.visit_id(id),
@@ -864,22 +864,25 @@ pub fn noop_visit_poly_trait_ref<T: MutVisitor>(p: &mut PolyTraitRef, vis: &mut 
     vis.visit_span(span);
 }
 
-pub fn noop_flat_map_struct_field<T: MutVisitor>(
-    mut sf: StructField,
+pub fn noop_flat_map_field_def<T: MutVisitor>(
+    mut fd: FieldDef,
     visitor: &mut T,
-) -> SmallVec<[StructField; 1]> {
-    let StructField { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut sf;
+) -> SmallVec<[FieldDef; 1]> {
+    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
     visitor.visit_span(span);
     visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_vis(vis);
     visitor.visit_id(id);
     visitor.visit_ty(ty);
     visit_attrs(attrs, visitor);
-    smallvec![sf]
+    smallvec![fd]
 }
 
-pub fn noop_flat_map_field<T: MutVisitor>(mut f: Field, vis: &mut T) -> SmallVec<[Field; 1]> {
-    let Field { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
+pub fn noop_flat_map_expr_field<T: MutVisitor>(
+    mut f: ExprField,
+    vis: &mut T,
+) -> SmallVec<[ExprField; 1]> {
+    let ExprField { ident, expr, span, is_shorthand: _, attrs, id, is_placeholder: _ } = &mut f;
     vis.visit_ident(ident);
     vis.visit_expr(expr);
     vis.visit_id(id);
@@ -1102,7 +1105,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         }
         PatKind::Struct(path, fields, _etc) => {
             vis.visit_path(path);
-            fields.flat_map_in_place(|field| vis.flat_map_field_pattern(field));
+            fields.flat_map_in_place(|field| vis.flat_map_pat_field(field));
         }
         PatKind::Box(inner) => vis.visit_pat(inner),
         PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
@@ -1283,10 +1286,11 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_vec(inputs, |(_c, expr)| vis.visit_expr(expr));
         }
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
-        ExprKind::Struct(path, fields, expr) => {
+        ExprKind::Struct(se) => {
+            let StructExpr { path, fields, rest } = se.deref_mut();
             vis.visit_path(path);
-            fields.flat_map_in_place(|field| vis.flat_map_field(field));
-            match expr {
+            fields.flat_map_in_place(|field| vis.flat_map_expr_field(field));
+            match rest {
                 StructRest::Base(expr) => vis.visit_expr(expr),
                 StructRest::Rest(_span) => {}
                 StructRest::None => {}

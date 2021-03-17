@@ -80,8 +80,8 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
     // }
     // }
     //
-    // fn check_struct_field(&mut self, cx: &LateContext<'tcx>, field: &'tcx
-    // hir::StructField) {
+    // fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx
+    // hir::FieldDef) {
     // if !has_attr(&field.attrs) {
     // return;
     // }

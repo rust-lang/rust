@@ -117,7 +117,7 @@ pub fn placeholder(
             span,
             is_placeholder: true,
         }]),
-        AstFragmentKind::Fields => AstFragment::Fields(smallvec![ast::Field {
+        AstFragmentKind::Fields => AstFragment::Fields(smallvec![ast::ExprField {
             attrs: Default::default(),
             expr: expr_placeholder(),
             id,
@@ -126,7 +126,7 @@ pub fn placeholder(
             span,
             is_placeholder: true,
         }]),
-        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![ast::FieldPat {
+        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![ast::PatField {
             attrs: Default::default(),
             id,
             ident,
@@ -153,7 +153,7 @@ pub fn placeholder(
             ty: ty(),
             is_placeholder: true,
         }]),
-        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![ast::StructField {
+        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![ast::FieldDef {
             attrs: Default::default(),
             id,
             ident: None,
@@ -205,19 +205,19 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         }
     }
 
-    fn flat_map_field(&mut self, field: ast::Field) -> SmallVec<[ast::Field; 1]> {
+    fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
         if field.is_placeholder {
-            self.remove(field.id).make_fields()
+            self.remove(field.id).make_expr_fields()
         } else {
-            noop_flat_map_field(field, self)
+            noop_flat_map_expr_field(field, self)
         }
     }
 
-    fn flat_map_field_pattern(&mut self, fp: ast::FieldPat) -> SmallVec<[ast::FieldPat; 1]> {
+    fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
         if fp.is_placeholder {
-            self.remove(fp.id).make_field_patterns()
+            self.remove(fp.id).make_pat_fields()
         } else {
-            noop_flat_map_field_pattern(fp, self)
+            noop_flat_map_pat_field(fp, self)
         }
     }
 
@@ -240,11 +240,11 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         }
     }
 
-    fn flat_map_struct_field(&mut self, sf: ast::StructField) -> SmallVec<[ast::StructField; 1]> {
+    fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
         if sf.is_placeholder {
-            self.remove(sf.id).make_struct_fields()
+            self.remove(sf.id).make_field_defs()
         } else {
-            noop_flat_map_struct_field(sf, self)
+            noop_flat_map_field_def(sf, self)
         }
     }
 

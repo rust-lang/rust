@@ -153,7 +153,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         &mut self,
         lhs: &hir::Pat<'_>,
         res: Res,
-        pats: &[hir::FieldPat<'_>],
+        pats: &[hir::PatField<'_>],
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
             ty::Adt(adt, _) => adt.variant_of_res(res),
@@ -224,7 +224,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
-    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::Field<'_>]) {
+    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::ExprField<'_>]) {
         if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
             for field in fields {
                 let index = self.tcx.field_index(field.hir_id, self.typeck_results());
@@ -525,7 +525,7 @@ impl DeadVisitor<'tcx> {
         should_warn && !self.symbol_is_live(item.hir_id())
     }
 
-    fn should_warn_about_field(&mut self, field: &hir::StructField<'_>) -> bool {
+    fn should_warn_about_field(&mut self, field: &hir::FieldDef<'_>) -> bool {
         let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
@@ -650,11 +650,11 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         intravisit::walk_foreign_item(self, fi);
     }
 
-    fn visit_struct_field(&mut self, field: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, field: &'tcx hir::FieldDef<'tcx>) {
         if self.should_warn_about_field(&field) {
             self.warn_dead_code(field.hir_id, field.span, field.ident.name, "read");
         }
-        intravisit::walk_struct_field(self, field);
+        intravisit::walk_field_def(self, field);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {

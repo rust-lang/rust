@@ -182,9 +182,9 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
         intravisit::walk_impl_item(self, impl_item);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
         self.process_attrs(s.hir_id);
-        intravisit::walk_struct_field(self, s);
+        intravisit::walk_field_def(self, s);
     }
 }
 

@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Generics, HirId, Item, StructField, TraitRef, Ty, TyKind, Variant};
+use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability::{DeprecationEntry, Index};
@@ -465,7 +465,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         )
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
         self.annotate(
             s.hir_id,
             s.span,
@@ -474,7 +474,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             InheritConstStability::No,
             InheritStability::Yes,
             |v| {
-                intravisit::walk_struct_field(v, s);
+                intravisit::walk_field_def(v, s);
             },
         );
     }
@@ -610,9 +610,9 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
         intravisit::walk_variant(self, var, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
+    fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
         self.check_missing_stability(s.hir_id, s.span);
-        intravisit::walk_struct_field(self, s);
+        intravisit::walk_field_def(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {

@@ -114,7 +114,7 @@ impl<'a> State<'a> {
             Node::Lifetime(a) => self.print_lifetime(&a),
             Node::Visibility(a) => self.print_visibility(&a),
             Node::GenericParam(_) => panic!("cannot print Node::GenericParam"),
-            Node::Field(_) => panic!("cannot print StructField"),
+            Node::Field(_) => panic!("cannot print Node::Field"),
             // These cases do not carry enough information in the
             // `hir_map` to reconstruct their full structure for pretty
             // printing.
@@ -1207,7 +1207,7 @@ impl<'a> State<'a> {
     fn print_expr_struct(
         &mut self,
         qpath: &hir::QPath<'_>,
-        fields: &[hir::Field<'_>],
+        fields: &[hir::ExprField<'_>],
         wth: &Option<&hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);

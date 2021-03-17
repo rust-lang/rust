@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Expectation<'tcx>,
         qpath: &QPath<'_>,
-        fields: &'tcx [hir::Field<'tcx>],
+        fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_id: hir::HirId,
         span: Span,
         variant: &'tcx ty::VariantDef,
-        ast_fields: &'tcx [hir::Field<'tcx>],
+        ast_fields: &'tcx [hir::ExprField<'tcx>],
         check_completeness: bool,
     ) -> bool {
         let tcx = self.tcx;
@@ -1320,7 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_struct_fields_on_error(
         &self,
-        fields: &'tcx [hir::Field<'tcx>],
+        fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) {
         for field in fields {
@@ -1411,8 +1411,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         variant: &'tcx ty::VariantDef,
-        field: &hir::Field<'_>,
-        skip_fields: &[hir::Field<'_>],
+        field: &hir::ExprField<'_>,
+        skip_fields: &[hir::ExprField<'_>],
         kind_name: &str,
         ty_span: Span,
     ) {

@@ -10,7 +10,7 @@ use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
-use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, Field, Lit, UnOp, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
@@ -2316,7 +2316,7 @@ impl<'a> Parser<'a> {
             }
 
             let recovery_field = self.find_struct_error_after_field_looking_code();
-            let parsed_field = match self.parse_field() {
+            let parsed_field = match self.parse_expr_field() {
                 Ok(f) => Some(f),
                 Err(mut e) => {
                     if pth == kw::Async {
@@ -2373,18 +2373,22 @@ impl<'a> Parser<'a> {
 
         let span = pth.span.to(self.token.span);
         self.expect(&token::CloseDelim(token::Brace))?;
-        let expr = if recover_async { ExprKind::Err } else { ExprKind::Struct(pth, fields, base) };
+        let expr = if recover_async {
+            ExprKind::Err
+        } else {
+            ExprKind::Struct(P(ast::StructExpr { path: pth, fields, rest: base }))
+        };
         Ok(self.mk_expr(span, expr, attrs))
     }
 
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
-    fn find_struct_error_after_field_looking_code(&self) -> Option<Field> {
+    fn find_struct_error_after_field_looking_code(&self) -> Option<ExprField> {
         match self.token.ident() {
             Some((ident, is_raw))
                 if (is_raw || !ident.is_reserved())
                     && self.look_ahead(1, |t| *t == token::Colon) =>
             {
-                Some(ast::Field {
+                Some(ast::ExprField {
                     ident,
                     span: self.token.span,
                     expr: self.mk_expr_err(self.token.span),
@@ -2418,7 +2422,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `ident (COLON expr)?`.
-    fn parse_field(&mut self) -> PResult<'a, Field> {
+    fn parse_expr_field(&mut self) -> PResult<'a, ExprField> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
@@ -2438,7 +2442,7 @@ impl<'a> Parser<'a> {
             };
 
             Ok((
-                ast::Field {
+                ast::ExprField {
                     ident,
                     span: lo.to(expr.span),
                     expr,

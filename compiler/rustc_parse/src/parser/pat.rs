@@ -3,7 +3,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token;
-use rustc_ast::{self as ast, AttrVec, Attribute, FieldPat, MacCall, Pat, PatKind, RangeEnd};
+use rustc_ast::{self as ast, AttrVec, Attribute, MacCall, Pat, PatField, PatKind, RangeEnd};
 use rustc_ast::{BindingMode, Expr, ExprKind, Mutability, Path, QSelf, RangeSyntax};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
@@ -928,7 +928,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the fields of a struct-like pattern.
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<FieldPat>, bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<PatField>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    fn parse_pat_field(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, FieldPat> {
+    fn parse_pat_field(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, PatField> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
@@ -1104,7 +1104,7 @@ impl<'a> Parser<'a> {
             (subpat, fieldname, true)
         };
 
-        Ok(FieldPat {
+        Ok(PatField {
             ident: fieldname,
             pat: subpat,
             is_shorthand,

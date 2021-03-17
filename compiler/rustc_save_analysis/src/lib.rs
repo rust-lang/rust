@@ -379,7 +379,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    pub fn get_field_data(&self, field: &hir::StructField<'_>, scope: hir::HirId) -> Option<Def> {
+    pub fn get_field_data(&self, field: &hir::FieldDef<'_>, scope: hir::HirId) -> Option<Def> {
         let name = field.ident.to_string();
         let scope_def_id = self.tcx.hir().local_def_id(scope).to_def_id();
         let qualname = format!("::{}::{}", self.tcx.def_path_str(scope_def_id), field.ident);
@@ -769,7 +769,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     pub fn get_field_ref_data(
         &self,
-        field_ref: &hir::Field<'_>,
+        field_ref: &hir::ExprField<'_>,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
         filter!(self.span_utils, field_ref.ident.span);

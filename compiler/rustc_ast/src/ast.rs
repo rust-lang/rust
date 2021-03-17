@@ -655,7 +655,7 @@ impl Pat {
 /// are treated the same as `x: x, y: ref y, z: ref mut z`,
 /// except when `is_shorthand` is true.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct FieldPat {
+pub struct PatField {
     /// The identifier for the field.
     pub ident: Ident,
     /// The pattern the field is destructured to.
@@ -700,7 +700,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<FieldPat>, /* recovered */ bool),
+    Struct(Path, Vec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Path, Vec<P<Pat>>),
@@ -1035,9 +1035,9 @@ pub struct Arm {
     pub is_placeholder: bool,
 }
 
-/// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
+/// A single field in a struct expression, e.g. `x: value` and `y` in `Foo { x: value, y }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Field {
+pub struct ExprField {
     pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
@@ -1082,7 +1082,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr, 120);
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1253,6 +1253,13 @@ pub enum StructRest {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StructExpr {
+    pub path: Path,
+    pub fields: Vec<ExprField>,
+    pub rest: StructRest,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
@@ -1377,7 +1384,7 @@ pub enum ExprKind {
     /// A struct literal expression.
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
-    Struct(Path, Vec<Field>, StructRest),
+    Struct(P<StructExpr>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -2527,11 +2534,11 @@ impl VisibilityKind {
     }
 }
 
-/// Field of a struct.
+/// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct StructField {
+pub struct FieldDef {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -2548,11 +2555,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<StructField>, bool),
+    Struct(Vec<FieldDef>, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(Vec<StructField>, NodeId),
+    Tuple(Vec<FieldDef>, NodeId),
     /// Unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
@@ -2561,7 +2568,7 @@ pub enum VariantData {
 
 impl VariantData {
     /// Return the fields of this variant.
-    pub fn fields(&self) -> &[StructField] {
+    pub fn fields(&self) -> &[FieldDef] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
             _ => &[],

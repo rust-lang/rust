@@ -36,11 +36,11 @@ pub enum Annotatable {
     Stmt(P<ast::Stmt>),
     Expr(P<ast::Expr>),
     Arm(ast::Arm),
-    Field(ast::Field),
-    FieldPat(ast::FieldPat),
+    ExprField(ast::ExprField),
+    PatField(ast::PatField),
     GenericParam(ast::GenericParam),
     Param(ast::Param),
-    StructField(ast::StructField),
+    FieldDef(ast::FieldDef),
     Variant(ast::Variant),
 }
 
@@ -54,11 +54,11 @@ impl AstLike for Annotatable {
             Annotatable::Stmt(ref stmt) => stmt.attrs(),
             Annotatable::Expr(ref expr) => &expr.attrs,
             Annotatable::Arm(ref arm) => &arm.attrs,
-            Annotatable::Field(ref field) => &field.attrs,
-            Annotatable::FieldPat(ref fp) => &fp.attrs,
+            Annotatable::ExprField(ref field) => &field.attrs,
+            Annotatable::PatField(ref fp) => &fp.attrs,
             Annotatable::GenericParam(ref gp) => &gp.attrs,
             Annotatable::Param(ref p) => &p.attrs,
-            Annotatable::StructField(ref sf) => &sf.attrs,
+            Annotatable::FieldDef(ref sf) => &sf.attrs,
             Annotatable::Variant(ref v) => &v.attrs(),
         }
     }
@@ -72,11 +72,11 @@ impl AstLike for Annotatable {
             Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
             Annotatable::Expr(expr) => expr.visit_attrs(f),
             Annotatable::Arm(arm) => arm.visit_attrs(f),
-            Annotatable::Field(field) => field.visit_attrs(f),
-            Annotatable::FieldPat(fp) => fp.visit_attrs(f),
+            Annotatable::ExprField(field) => field.visit_attrs(f),
+            Annotatable::PatField(fp) => fp.visit_attrs(f),
             Annotatable::GenericParam(gp) => gp.visit_attrs(f),
             Annotatable::Param(p) => p.visit_attrs(f),
-            Annotatable::StructField(sf) => sf.visit_attrs(f),
+            Annotatable::FieldDef(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
         }
     }
@@ -90,11 +90,11 @@ impl AstLike for Annotatable {
             Annotatable::Stmt(stmt) => stmt.tokens_mut(),
             Annotatable::Expr(expr) => expr.tokens_mut(),
             Annotatable::Arm(arm) => arm.tokens_mut(),
-            Annotatable::Field(field) => field.tokens_mut(),
-            Annotatable::FieldPat(fp) => fp.tokens_mut(),
+            Annotatable::ExprField(field) => field.tokens_mut(),
+            Annotatable::PatField(fp) => fp.tokens_mut(),
             Annotatable::GenericParam(gp) => gp.tokens_mut(),
             Annotatable::Param(p) => p.tokens_mut(),
-            Annotatable::StructField(sf) => sf.tokens_mut(),
+            Annotatable::FieldDef(sf) => sf.tokens_mut(),
             Annotatable::Variant(v) => v.tokens_mut(),
         }
     }
@@ -110,11 +110,11 @@ impl Annotatable {
             Annotatable::Stmt(ref stmt) => stmt.span,
             Annotatable::Expr(ref expr) => expr.span,
             Annotatable::Arm(ref arm) => arm.span,
-            Annotatable::Field(ref field) => field.span,
-            Annotatable::FieldPat(ref fp) => fp.pat.span,
+            Annotatable::ExprField(ref field) => field.span,
+            Annotatable::PatField(ref fp) => fp.pat.span,
             Annotatable::GenericParam(ref gp) => gp.ident.span,
             Annotatable::Param(ref p) => p.span,
-            Annotatable::StructField(ref sf) => sf.span,
+            Annotatable::FieldDef(ref sf) => sf.span,
             Annotatable::Variant(ref v) => v.span,
         }
     }
@@ -128,11 +128,11 @@ impl Annotatable {
             Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
             Annotatable::Expr(expr) => visitor.visit_expr(expr),
             Annotatable::Arm(arm) => visitor.visit_arm(arm),
-            Annotatable::Field(field) => visitor.visit_field(field),
-            Annotatable::FieldPat(fp) => visitor.visit_field_pattern(fp),
+            Annotatable::ExprField(field) => visitor.visit_expr_field(field),
+            Annotatable::PatField(fp) => visitor.visit_pat_field(fp),
             Annotatable::GenericParam(gp) => visitor.visit_generic_param(gp),
             Annotatable::Param(p) => visitor.visit_param(p),
-            Annotatable::StructField(sf) => visitor.visit_struct_field(sf),
+            Annotatable::FieldDef(sf) => visitor.visit_field_def(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
         }
     }
@@ -149,11 +149,11 @@ impl Annotatable {
             Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
             Annotatable::Expr(expr) => token::NtExpr(expr),
             Annotatable::Arm(..)
-            | Annotatable::Field(..)
-            | Annotatable::FieldPat(..)
+            | Annotatable::ExprField(..)
+            | Annotatable::PatField(..)
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
-            | Annotatable::StructField(..)
+            | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         }
     }
@@ -214,16 +214,16 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_field(self) -> ast::Field {
+    pub fn expect_expr_field(self) -> ast::ExprField {
         match self {
-            Annotatable::Field(field) => field,
+            Annotatable::ExprField(field) => field,
             _ => panic!("expected field"),
         }
     }
 
-    pub fn expect_field_pattern(self) -> ast::FieldPat {
+    pub fn expect_pat_field(self) -> ast::PatField {
         match self {
-            Annotatable::FieldPat(fp) => fp,
+            Annotatable::PatField(fp) => fp,
             _ => panic!("expected field pattern"),
         }
     }
@@ -242,9 +242,9 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_struct_field(self) -> ast::StructField {
+    pub fn expect_field_def(self) -> ast::FieldDef {
         match self {
-            Annotatable::StructField(sf) => sf,
+            Annotatable::FieldDef(sf) => sf,
             _ => panic!("expected struct field"),
         }
     }
@@ -430,11 +430,11 @@ pub trait MacResult {
         None
     }
 
-    fn make_fields(self: Box<Self>) -> Option<SmallVec<[ast::Field; 1]>> {
+    fn make_expr_fields(self: Box<Self>) -> Option<SmallVec<[ast::ExprField; 1]>> {
         None
     }
 
-    fn make_field_patterns(self: Box<Self>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+    fn make_pat_fields(self: Box<Self>) -> Option<SmallVec<[ast::PatField; 1]>> {
         None
     }
 
@@ -446,7 +446,7 @@ pub trait MacResult {
         None
     }
 
-    fn make_struct_fields(self: Box<Self>) -> Option<SmallVec<[ast::StructField; 1]>> {
+    fn make_field_defs(self: Box<Self>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
         None
     }
 
@@ -630,11 +630,11 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::Field; 1]>> {
+    fn make_expr_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::ExprField; 1]>> {
         Some(SmallVec::new())
     }
 
-    fn make_field_patterns(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+    fn make_pat_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::PatField; 1]>> {
         Some(SmallVec::new())
     }
 
@@ -646,7 +646,7 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_struct_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::StructField; 1]>> {
+    fn make_field_defs(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldDef; 1]>> {
         Some(SmallVec::new())
     }
 

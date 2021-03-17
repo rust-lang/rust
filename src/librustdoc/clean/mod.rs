@@ -1754,7 +1754,7 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     }
 }
 
-impl Clean<Item> for hir::StructField<'_> {
+impl Clean<Item> for hir::FieldDef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.hir_id,

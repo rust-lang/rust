@@ -415,8 +415,8 @@ pub trait Visitor<'v>: Sized {
     ) {
         walk_struct_def(self, s)
     }
-    fn visit_struct_field(&mut self, s: &'v StructField<'v>) {
-        walk_struct_field(self, s)
+    fn visit_field_def(&mut self, s: &'v FieldDef<'v>) {
+        walk_field_def(self, s)
     }
     fn visit_enum_def(
         &mut self,
@@ -1045,14 +1045,14 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(
     struct_definition: &'v VariantData<'v>,
 ) {
     walk_list!(visitor, visit_id, struct_definition.ctor_hir_id());
-    walk_list!(visitor, visit_struct_field, struct_definition.fields());
+    walk_list!(visitor, visit_field_def, struct_definition.fields());
 }
 
-pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v StructField<'v>) {
-    visitor.visit_id(struct_field.hir_id);
-    visitor.visit_vis(&struct_field.vis);
-    visitor.visit_ident(struct_field.ident);
-    visitor.visit_ty(&struct_field.ty);
+pub fn walk_field_def<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v FieldDef<'v>) {
+    visitor.visit_id(field.hir_id);
+    visitor.visit_vis(&field.vis);
+    visitor.visit_ident(field.ident);
+    visitor.visit_ty(&field.ty);
 }
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) {

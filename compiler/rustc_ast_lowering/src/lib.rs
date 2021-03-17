@@ -2559,8 +2559,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         pat: &'hir hir::Pat<'hir>,
-    ) -> &'hir [hir::FieldPat<'hir>] {
-        let field = hir::FieldPat {
+    ) -> &'hir [hir::PatField<'hir>] {
+        let field = hir::PatField {
             hir_id: self.next_id(),
             ident: Ident::new(sym::integer(0), span),
             is_shorthand: false,
@@ -2574,7 +2574,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        fields: &'hir [hir::FieldPat<'hir>],
+        fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let qpath = hir::QPath::LangItem(lang_item, span);
         self.pat(span, hir::PatKind::Struct(qpath, fields, false))
