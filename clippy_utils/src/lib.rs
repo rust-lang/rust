@@ -798,6 +798,26 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
+/// Checks if the given expression is the else clause in the expression `if let .. {} else {}`
+pub fn is_else_clause_of_if_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
+    let map = tcx.hir();
+    let mut iter = map.parent_iter(expr.hir_id);
+    let arm_id = match iter.next() {
+        Some((id, Node::Arm(..))) => id,
+        _ => return false,
+    };
+    match iter.next() {
+        Some((
+            _,
+            Node::Expr(Expr {
+                kind: ExprKind::Match(_, [_, else_arm], kind),
+                ..
+            }),
+        )) => else_arm.hir_id == arm_id && matches!(kind, MatchSource::IfLetDesugar { .. }),
+        _ => false,
+    }
+}
+
 /// Checks whether the given expression is a constant integer of the given value.
 /// unlike `is_integer_literal`, this version does const folding
 pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool {
