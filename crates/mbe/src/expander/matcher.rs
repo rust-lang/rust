@@ -722,7 +722,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                     input
                         .expect_literal()
                         .map(|literal| {
-                            let lit = tt::Leaf::from(literal.clone());
+                            let lit = literal.clone();
                             match neg {
                                 None => Some(lit.into()),
                                 Some(neg) => Some(tt::TokenTree::Subtree(tt::Subtree {

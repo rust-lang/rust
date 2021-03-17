@@ -287,7 +287,7 @@ pub(crate) fn signature_help(
             let params = call_info
                 .parameter_ranges()
                 .iter()
-                .map(|it| [u32::from(it.start()).into(), u32::from(it.end()).into()])
+                .map(|it| [u32::from(it.start()), u32::from(it.end())])
                 .map(|label_offsets| lsp_types::ParameterInformation {
                     label: lsp_types::ParameterLabel::LabelOffsets(label_offsets),
                     documentation: None,

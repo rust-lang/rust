@@ -29,7 +29,7 @@ impl<'a, 'b> UnsafeValidator<'a, 'b> {
     }
 
     pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let def = self.owner.into();
+        let def = self.owner;
         let unsafe_expressions = unsafe_expressions(db, self.infer.as_ref(), def);
         let is_unsafe = match self.owner {
             DefWithBodyId::FunctionId(it) => db.function_data(it).qualifier.is_unsafe,

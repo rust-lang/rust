@@ -203,7 +203,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: fn_src.file_id,
                 ident_type: IdentType::Function,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
                 suggested_text: replacement.suggested_text,
@@ -261,7 +261,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: fn_src.file_id,
                 ident_type: IdentType::Argument,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: param_to_rename.expected_case,
                 ident_text: param_to_rename.current_name.to_string(),
                 suggested_text: param_to_rename.suggested_text,
@@ -313,7 +313,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
                         let diagnostic = IncorrectCase {
                             file: source_ptr.file_id,
                             ident_type: IdentType::Variable,
-                            ident: AstPtr::new(&name_ast).into(),
+                            ident: AstPtr::new(&name_ast),
                             expected_case: replacement.expected_case,
                             ident_text: replacement.current_name.to_string(),
                             suggested_text: replacement.suggested_text,
@@ -403,7 +403,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: struct_src.file_id,
                 ident_type: IdentType::Structure,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
                 suggested_text: replacement.suggested_text,
@@ -448,7 +448,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: struct_src.file_id,
                 ident_type: IdentType::Field,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: field_to_rename.expected_case,
                 ident_text: field_to_rename.current_name.to_string(),
                 suggested_text: field_to_rename.suggested_text,
@@ -527,7 +527,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: enum_src.file_id,
                 ident_type: IdentType::Enum,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: replacement.expected_case,
                 ident_text: replacement.current_name.to_string(),
                 suggested_text: replacement.suggested_text,
@@ -572,7 +572,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
             let diagnostic = IncorrectCase {
                 file: enum_src.file_id,
                 ident_type: IdentType::Variant,
-                ident: AstPtr::new(&ast_ptr).into(),
+                ident: AstPtr::new(&ast_ptr),
                 expected_case: variant_to_rename.expected_case,
                 ident_text: variant_to_rename.current_name.to_string(),
                 suggested_text: variant_to_rename.suggested_text,
@@ -617,7 +617,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let diagnostic = IncorrectCase {
             file: const_src.file_id,
             ident_type: IdentType::Constant,
-            ident: AstPtr::new(&ast_ptr).into(),
+            ident: AstPtr::new(&ast_ptr),
             expected_case: replacement.expected_case,
             ident_text: replacement.current_name.to_string(),
             suggested_text: replacement.suggested_text,
@@ -665,7 +665,7 @@ impl<'a, 'b> DeclValidator<'a, 'b> {
         let diagnostic = IncorrectCase {
             file: static_src.file_id,
             ident_type: IdentType::StaticVariable,
-            ident: AstPtr::new(&ast_ptr).into(),
+            ident: AstPtr::new(&ast_ptr),
             expected_case: replacement.expected_case,
             ident_text: replacement.current_name.to_string(),
             suggested_text: replacement.suggested_text,

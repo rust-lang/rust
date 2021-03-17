@@ -835,7 +835,7 @@ impl<'a> SemanticsScope<'a> {
                 resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                 resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
                 resolver::ScopeDef::Local(pat_id) => {
-                    let parent = resolver.body_owner().unwrap().into();
+                    let parent = resolver.body_owner().unwrap();
                     ScopeDef::Local(Local { parent, pat_id })
                 }
             };

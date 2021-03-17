@@ -56,7 +56,7 @@ impl Builder {
 
 impl Completions {
     pub(crate) fn add(&mut self, item: CompletionItem) {
-        self.buf.push(item.into())
+        self.buf.push(item)
     }
 
     pub(crate) fn add_all<I>(&mut self, items: I)

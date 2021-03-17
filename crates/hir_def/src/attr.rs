@@ -325,7 +325,7 @@ impl Attrs {
         if docs.is_empty() {
             None
         } else {
-            Some(Documentation(docs.into()))
+            Some(Documentation(docs))
         }
     }
 }

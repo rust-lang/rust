@@ -120,7 +120,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt
                 Some("pat") => parent.token_trees.push(make_ident("foo")),
                 Some("path") => parent.token_trees.push(make_ident("foo")),
                 Some("literal") => parent.token_trees.push(make_literal("1")),
-                Some("expr") => parent.token_trees.push(make_ident("foo").into()),
+                Some("expr") => parent.token_trees.push(make_ident("foo")),
                 Some("lifetime") => {
                     parent.token_trees.push(make_punct('\''));
                     parent.token_trees.push(make_ident("a"));
@@ -157,17 +157,15 @@ fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt
                     if i + 1 != cnt {
                         if let Some(sep) = separator {
                             match sep {
-                                Separator::Literal(it) => parent
-                                    .token_trees
-                                    .push(tt::Leaf::Literal(it.clone().into()).into()),
-                                Separator::Ident(it) => parent
-                                    .token_trees
-                                    .push(tt::Leaf::Ident(it.clone().into()).into()),
+                                Separator::Literal(it) => {
+                                    parent.token_trees.push(tt::Leaf::Literal(it.clone()).into())
+                                }
+                                Separator::Ident(it) => {
+                                    parent.token_trees.push(tt::Leaf::Ident(it.clone()).into())
+                                }
                                 Separator::Puncts(puncts) => {
                                     for it in puncts {
-                                        parent
-                                            .token_trees
-                                            .push(tt::Leaf::Punct(it.clone().into()).into())
+                                        parent.token_trees.push(tt::Leaf::Punct(it.clone()).into())
                                     }
                                 }
                             };

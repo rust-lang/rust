@@ -35,7 +35,7 @@ mod rule_parsing {
     fn test_invalid_arms() {
         fn check(macro_body: &str, err: ParseError) {
             let m = parse_macro_arm(macro_body);
-            assert_eq!(m, Err(err.into()));
+            assert_eq!(m, Err(err));
         }
         check("invalid", ParseError::Expected("expected subtree".into()));
 

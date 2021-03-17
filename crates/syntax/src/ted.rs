@@ -122,5 +122,5 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
     if right.kind() == T![;] || right.kind() == T![,] {
         return None;
     }
-    Some(make::tokens::single_space().into())
+    Some(make::tokens::single_space())
 }
