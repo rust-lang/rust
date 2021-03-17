@@ -7,7 +7,7 @@ LL |     thread::spawn(move|| {
    |                   ^^^^^^ move out of `v` occurs here
 LL |
 LL |         println!("v={}", *v);
-   |                           - move occurs due to use in closure
+   |                          -- move occurs due to use in closure
 LL |     });
 LL |     w.use_ref();
    |     - borrow later used here
@@ -21,7 +21,7 @@ LL |     thread::spawn(move|| {
    |                   ^^^^^^ move out of `v` occurs here
 LL |
 LL |         println!("v={}", *v);
-   |                           - move occurs due to use in closure
+   |                          -- move occurs due to use in closure
 LL |     });
 LL |     w.use_ref();
    |     - borrow later used here

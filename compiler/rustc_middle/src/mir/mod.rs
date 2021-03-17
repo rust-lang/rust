@@ -683,6 +683,15 @@ impl BorrowKind {
             BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
         }
     }
+
+    pub fn describe_mutability(&self) -> String {
+        match *self {
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
+                "immutable".to_string()
+            }
+            BorrowKind::Mut { .. } => "mutable".to_string(),
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2369,6 +2378,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
+                            // FIXME: This should be a list of capture names/places
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
@@ -2388,6 +2398,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
+                            // FIXME: This should be a list of capture names/places
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
