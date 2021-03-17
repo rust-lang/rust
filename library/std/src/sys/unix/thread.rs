@@ -231,6 +231,7 @@ pub mod guard {
     use libc::{mmap, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
+    use crate::io;
     use crate::ops::Range;
     use crate::sync::atomic::{AtomicUsize, Ordering};
     use crate::sys::os;
@@ -361,12 +362,12 @@ pub mod guard {
                 0,
             );
             if result != stackaddr || result == MAP_FAILED {
-                panic!("failed to allocate a guard page");
+                panic!("failed to allocate a guard page: {}", io::Error::last_os_error());
             }
 
             let result = mprotect(stackaddr, page_size, PROT_NONE);
             if result != 0 {
-                panic!("failed to protect the guard page");
+                panic!("failed to protect the guard page: {}", io::Error::last_os_error());
             }
 
             let guardaddr = stackaddr as usize;
