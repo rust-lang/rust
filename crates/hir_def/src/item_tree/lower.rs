@@ -333,8 +333,8 @@ impl Ctx {
         let visibility = self.lower_visibility(func);
         let name = func.name()?.as_name();
 
-        let mut params = Vec::new();
         let mut has_self_param = false;
+        let start_param = self.next_param_idx();
         if let Some(param_list) = func.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = match self_param.ty() {
@@ -356,22 +356,25 @@ impl Ctx {
                         }
                     }
                 };
-                params.push(self_type);
+                let ty = self.data().type_refs.intern(self_type);
+                let idx = self.data().params.alloc(Param::Normal(ty));
+                self.add_attrs(idx.into(), RawAttrs::new(&self_param, &self.hygiene));
                 has_self_param = true;
             }
             for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
-                params.push(type_ref);
+                let idx = match param.dotdotdot_token() {
+                    Some(_) => self.data().params.alloc(Param::Varargs),
+                    None => {
+                        let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
+                        let ty = self.data().type_refs.intern(type_ref);
+                        self.data().params.alloc(Param::Normal(ty))
+                    }
+                };
+                self.add_attrs(idx.into(), RawAttrs::new(&param, &self.hygiene));
             }
         }
-        let params = params.into_iter().map(|param| self.data().type_refs.intern(param)).collect();
-
-        let mut is_varargs = false;
-        if let Some(params) = func.param_list() {
-            if let Some(last) = params.params().last() {
-                is_varargs = last.dotdotdot_token().is_some();
-            }
-        }
+        let end_param = self.next_param_idx();
+        let params = IdRange::new(start_param..end_param);
 
         let ret_type = match func.ret_type().and_then(|rt| rt.ty()) {
             Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
@@ -419,7 +422,6 @@ impl Ctx {
             qualifier,
             is_in_extern_block: false,
             params,
-            is_varargs,
             ret_type,
             ast_id,
         };
@@ -682,9 +684,11 @@ impl Ctx {
             GenericsOwner::Function(func) => {
                 generics.fill(&self.body_ctx, sm, node);
                 // lower `impl Trait` in arguments
-                for param in &*func.params {
-                    let param = self.data().type_refs.lookup(*param);
-                    generics.fill_implicit_impl_trait_args(param);
+                for id in func.params.clone() {
+                    if let Param::Normal(ty) = self.data().params[id] {
+                        let ty = self.data().type_refs.lookup(ty);
+                        generics.fill_implicit_impl_trait_args(ty);
+                    }
                 }
             }
             GenericsOwner::Struct
@@ -767,6 +771,11 @@ impl Ctx {
     fn next_variant_idx(&self) -> Idx<Variant> {
         Idx::from_raw(RawIdx::from(
             self.tree.data.as_ref().map_or(0, |data| data.variants.len() as u32),
+        ))
+    }
+    fn next_param_idx(&self) -> Idx<Param> {
+        Idx::from_raw(RawIdx::from(
+            self.tree.data.as_ref().map_or(0, |data| data.params.len() as u32),
         ))
     }
 }

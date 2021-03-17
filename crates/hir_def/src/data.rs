@@ -9,7 +9,7 @@ use crate::{
     attr::Attrs,
     body::Expander,
     db::DefDatabase,
-    item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem},
+    item_tree::{AssocItem, FunctionQualifier, ItemTreeId, ModItem, Param},
     type_ref::{TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
@@ -38,17 +38,29 @@ impl FunctionData {
         let krate = loc.container.module(db).krate;
         let item_tree = db.item_tree(loc.id.file_id);
         let func = &item_tree[loc.id.value];
+        let is_varargs = func
+            .params
+            .clone()
+            .last()
+            .map_or(false, |param| matches!(item_tree[param], Param::Varargs));
 
         Arc::new(FunctionData {
             name: func.name.clone(),
-            params: func.params.iter().map(|id| item_tree[*id].clone()).collect(),
+            params: func
+                .params
+                .clone()
+                .filter_map(|id| match &item_tree[id] {
+                    Param::Normal(ty) => Some(item_tree[*ty].clone()),
+                    Param::Varargs => None,
+                })
+                .collect(),
             ret_type: item_tree[func.ret_type].clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             has_self_param: func.has_self_param,
             has_body: func.has_body,
             qualifier: func.qualifier.clone(),
             is_in_extern_block: func.is_in_extern_block,
-            is_varargs: func.is_varargs,
+            is_varargs,
             visibility: item_tree[func.visibility].clone(),
         })
     }

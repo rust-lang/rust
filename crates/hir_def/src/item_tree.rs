@@ -134,6 +134,7 @@ impl ItemTree {
                 imports,
                 extern_crates,
                 functions,
+                params,
                 structs,
                 fields,
                 unions,
@@ -157,6 +158,7 @@ impl ItemTree {
             imports.shrink_to_fit();
             extern_crates.shrink_to_fit();
             functions.shrink_to_fit();
+            params.shrink_to_fit();
             structs.shrink_to_fit();
             fields.shrink_to_fit();
             unions.shrink_to_fit();
@@ -303,6 +305,7 @@ struct ItemTreeData {
     imports: Arena<Import>,
     extern_crates: Arena<ExternCrate>,
     functions: Arena<Function>,
+    params: Arena<Param>,
     structs: Arena<Struct>,
     fields: Arena<Field>,
     unions: Arena<Union>,
@@ -334,6 +337,7 @@ pub enum AttrOwner {
 
     Variant(Idx<Variant>),
     Field(Idx<Field>),
+    Param(Idx<Param>),
 }
 
 macro_rules! from_attrs {
@@ -348,7 +352,7 @@ macro_rules! from_attrs {
     };
 }
 
-from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>));
+from_attrs!(ModItem(ModItem), Variant(Idx<Variant>), Field(Idx<Field>), Param(Idx<Param>));
 
 /// Trait implemented by all item nodes in the item tree.
 pub trait ItemTreeNode: Clone {
@@ -484,7 +488,7 @@ macro_rules! impl_index {
     };
 }
 
-impl_index!(fields: Field, variants: Variant);
+impl_index!(fields: Field, variants: Variant, params: Param);
 
 impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
@@ -560,10 +564,15 @@ pub struct Function {
     /// Whether the function is located in an `extern` block (*not* whether it is an
     /// `extern "abi" fn`).
     pub is_in_extern_block: bool,
-    pub params: Box<[Idx<TypeRef>]>,
-    pub is_varargs: bool,
+    pub params: IdRange<Param>,
     pub ret_type: Idx<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Param {
+    Normal(Idx<TypeRef>),
+    Varargs,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -796,6 +805,7 @@ pub struct Variant {
     pub fields: Fields,
 }
 
+/// A range of densely allocated ItemTree IDs.
 pub struct IdRange<T> {
     range: Range<u32>,
     _p: PhantomData<T>,
