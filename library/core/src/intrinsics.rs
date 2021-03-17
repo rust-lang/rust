@@ -65,9 +65,13 @@ use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, O
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(
     reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
-    since = "1.18.0"
+    since = "1.52.0"
 )]
-pub use crate::ptr::drop_in_place;
+#[inline]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    // SAFETY: see `ptr::drop_in_place`
+    unsafe { crate::ptr::drop_in_place(to_drop) }
+}
 
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
