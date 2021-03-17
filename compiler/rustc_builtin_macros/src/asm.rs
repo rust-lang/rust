@@ -7,7 +7,10 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{
+    symbol::{kw, sym, Symbol},
+    BytePos,
+};
 use rustc_span::{InnerSpan, Span};
 
 struct AsmArgs {
@@ -399,6 +402,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
     let mut line_spans = Vec::with_capacity(args.templates.len());
     let mut curarg = 0;
 
+    let default_dialect = ecx.sess.inline_asm_dialect();
+
     for template_expr in args.templates.into_iter() {
         if !template.is_empty() {
             template.push(ast::InlineAsmTemplatePiece::String("\n".to_string()));
@@ -424,6 +429,60 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, sp: Span, args: AsmArgs) -> P<ast
 
         let template_str = &template_str.as_str();
         let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
+
+        if let Some(snippet) = &template_snippet {
+            let snippet = snippet.trim_matches('"');
+            match default_dialect {
+                ast::LlvmAsmDialect::Intel => {
+                    if let Some(span) = check_syntax_directive(snippet, ".intel_syntax") {
+                        let span = template_span.from_inner(span);
+                        let mut err = ecx.struct_span_err(span, "intel syntax is the default syntax on this target, and trying to use this directive may cause issues");
+                        err.span_suggestion(
+                            span,
+                            "remove this assembler directive",
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    }
+
+                    if let Some(span) = check_syntax_directive(snippet, ".att_syntax") {
+                        let span = template_span.from_inner(span);
+                        let mut err = ecx.struct_span_err(span, "using the .att_syntax directive may cause issues, use the att_syntax option instead");
+                        let asm_end = sp.hi() - BytePos(2);
+                        let suggestions = vec![
+                            (span, "".to_string()),
+                            (
+                                Span::new(asm_end, asm_end, sp.ctxt()),
+                                ", options(att_syntax)".to_string(),
+                            ),
+                        ];
+                        err.multipart_suggestion(
+                        "remove the assembler directive and replace it with options(att_syntax)",
+                        suggestions,
+                        Applicability::MachineApplicable,
+                    );
+                        err.emit();
+                    }
+                }
+                ast::LlvmAsmDialect::Att => {
+                    if let Some(span) = check_syntax_directive(snippet, ".att_syntax") {
+                        let span = template_span.from_inner(span);
+                        let mut err = ecx.struct_span_err(span, "att syntax is the default syntax on this target, and trying to use this directive may cause issues");
+                        err.span_suggestion(
+                            span,
+                            "remove this assembler directive",
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    }
+
+                    // Use of .intel_syntax is ignored
+                }
+            }
+        }
+
         let mut parser = parse::Parser::new(
             template_str,
             str_style,
@@ -629,5 +688,17 @@ pub fn expand_asm<'cx>(
             err.emit();
             DummyResult::any(sp)
         }
+    }
+}
+
+fn check_syntax_directive<S: AsRef<str>>(piece: S, syntax: &str) -> Option<InnerSpan> {
+    let piece = piece.as_ref();
+    if let Some(idx) = piece.find(syntax) {
+        let end =
+            idx + &piece[idx..].find(|c| matches!(c, '\n' | ';')).unwrap_or(piece[idx..].len());
+        // Offset by one because these represent the span with the " removed
+        Some(InnerSpan::new(idx + 1, end + 1))
+    } else {
+        None
     }
 }
