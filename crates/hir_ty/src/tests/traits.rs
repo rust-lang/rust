@@ -3253,3 +3253,24 @@ fn f() {
         "#,
     );
 }
+
+#[test]
+fn nested_inner_function_calling_self() {
+    check_infer(
+        r#"
+struct S;
+fn f() {
+    fn inner() -> S {
+        let s = inner();
+    }
+}
+        "#,
+        expect![[r#"
+            17..73 '{     ...   } }': ()
+            39..71 '{     ...     }': ()
+            53..54 's': S
+            57..62 'inner': fn inner() -> S
+            57..64 'inner()': S
+        "#]],
+    )
+}
