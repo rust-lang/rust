@@ -4,6 +4,7 @@
 #![feature(btree_drain_filter)]
 #![feature(map_first_last)]
 #![feature(repr_simd)]
+#![feature(slice_partition_dedup)]
 #![feature(test)]
 
 extern crate test;
