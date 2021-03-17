@@ -11,8 +11,8 @@ use hir_ty::db::HirDatabase;
 use syntax::ast;
 
 use crate::{
-    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, LifetimeParam, MacroDef, Module,
-    ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
+    Adt, Const, ConstParam, Enum, Field, Function, GenericParam, Impl, LifetimeParam, MacroDef,
+    Module, ModuleDef, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
 };
 
 pub trait HasAttrs {
@@ -64,6 +64,7 @@ impl_has_attrs![
     (Adt, AdtId),
     (Module, ModuleId),
     (GenericParam, GenericParamId),
+    (Impl, ImplId),
 ];
 
 macro_rules! impl_has_attrs_enum {

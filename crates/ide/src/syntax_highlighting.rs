@@ -150,7 +150,7 @@ fn traverse(
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(it) => {
                 if let Some(node) = it.as_node() {
-                    inject::doc_comment(hl, node);
+                    inject::doc_comment(hl, sema, node);
                 }
                 continue;
             }

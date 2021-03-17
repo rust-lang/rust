@@ -136,16 +136,15 @@ impl RawAttrs {
         let new_attrs = self
             .iter()
             .flat_map(|attr| -> SmallVec<[_; 1]> {
-                let attr = attr.clone();
                 let is_cfg_attr =
                     attr.path.as_ident().map_or(false, |name| *name == hir_expand::name![cfg_attr]);
                 if !is_cfg_attr {
-                    return smallvec![attr];
+                    return smallvec![attr.clone()];
                 }
 
                 let subtree = match &attr.input {
                     Some(AttrInput::TokenTree(it)) => it,
-                    _ => return smallvec![attr],
+                    _ => return smallvec![attr.clone()],
                 };
 
                 // Input subtree is: `(cfg, $(attr),+)`
@@ -157,11 +156,13 @@ impl RawAttrs {
                 let cfg = parts.next().unwrap();
                 let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
+                let index = attr.index;
                 let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
                     let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
                     let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
-                    let hygiene = Hygiene::new_unhygienic(); // FIXME
-                    Attr::from_src(attr, &hygiene)
+                    // FIXME hygiene
+                    let hygiene = Hygiene::new_unhygienic();
+                    Attr::from_src(attr, &hygiene).map(|attr| Attr { index, ..attr })
                 });
 
                 let cfg_options = &crate_graph[krate].cfg_options;
@@ -293,6 +294,13 @@ impl Attrs {
         Arc::new(res)
     }
 
+    /// Constructs a map that maps the lowered `Attr`s in this `Attrs` back to its original syntax nodes.
+    ///
+    /// `owner` must be the original owner of the attributes.
+    pub fn source_map(&self, owner: &dyn AttrsOwner) -> AttrSourceMap {
+        AttrSourceMap { attrs: collect_attrs(owner).collect() }
+    }
+
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
@@ -363,6 +371,24 @@ fn inner_attributes(
     let attrs = attrs.filter(|attr| attr.excl_token().is_some());
     let docs = docs.filter(|doc| doc.is_inner());
     Some((attrs, docs))
+}
+
+pub struct AttrSourceMap {
+    attrs: Vec<Either<ast::Attr, ast::Comment>>,
+}
+
+impl AttrSourceMap {
+    /// Maps the lowered `Attr` back to its original syntax node.
+    ///
+    /// `attr` must come from the `owner` used for AttrSourceMap
+    ///
+    /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
+    /// the attribute represented by `Attr`.
+    pub fn source_of(&self, attr: &Attr) -> &Either<ast::Attr, ast::Comment> {
+        self.attrs
+            .get(attr.index as usize)
+            .unwrap_or_else(|| panic!("cannot find `Attr` at index {}", attr.index))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -448,6 +474,13 @@ impl Attr {
             _ => None,
         }
     }
+
+    pub fn string_value(&self) -> Option<&SmolStr> {
+        match self.input.as_ref()? {
+            AttrInput::Literal(it) => Some(it),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -475,7 +508,7 @@ impl<'a> AttrQuery<'a> {
         self.attrs().next().is_some()
     }
 
-    pub(crate) fn attrs(self) -> impl Iterator<Item = &'a Attr> {
+    pub fn attrs(self) -> impl Iterator<Item = &'a Attr> {
         let key = self.key;
         self.attrs
             .iter()

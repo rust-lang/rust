@@ -541,6 +541,22 @@ macro_rules! noop {
         $expr
     }
 }
+
+/// ```rust
+/// let _ = example(&[1, 2, 3]);
+/// ```
+///
+/// ```
+/// loop {}
+#[cfg_attr(not(feature = "false"), doc = "loop {}")]
+#[doc = "loop {}"]
+/// ```
+///
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
+/// let _ = example(&alloc::vec![1, 2, 3]);
+/// ```
+pub fn mix_and_match() {}
 "#
         .trim(),
         expect_file!["./test_data/highlight_doctest.html"],
