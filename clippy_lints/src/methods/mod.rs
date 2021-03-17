@@ -1786,18 +1786,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
+                into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
 
-                let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
-                match self_ty.kind() {
+                match cx.typeck_results().expr_ty_adjusted(&args[0]).kind() {
                     ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
                         for &(method, pos) in &PATTERN_METHODS {
                             if method_call.ident.name.as_str() == method && args.len() > pos {
                                 single_char_pattern::check(cx, expr, &args[pos]);
                             }
                         }
-                    },
-                    ty::Ref(..) if method_call.ident.name == sym::into_iter => {
-                        into_iter_on_ref::check(cx, expr, self_ty, *method_span);
                     },
                     _ => (),
                 }
