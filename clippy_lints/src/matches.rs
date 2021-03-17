@@ -27,7 +27,7 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
-use std::collections::Bound;
+use std::ops::Bound;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches with a single arm where an `if let`
