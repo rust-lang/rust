@@ -637,7 +637,7 @@ pub(crate) fn extract_post_comment(
         post_snippet.trim_matches(white_space)
     }
     // not comment or over two lines
-    else if post_snippet.ends_with(',')
+    else if post_snippet.ends_with(separator)
         && (!post_snippet.trim().starts_with("//") || post_snippet.trim().contains('\n'))
     {
         post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
