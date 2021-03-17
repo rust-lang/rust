@@ -1469,7 +1469,9 @@ impl ModCollector<'_, '_> {
                     )
                 })
             },
-            &mut |err| error = Some(err),
+            &mut |err| {
+                error.get_or_insert(err);
+            },
         ) {
             Ok(Ok(macro_call_id)) => {
                 self.def_collector.unexpanded_macros.push(MacroDirective {

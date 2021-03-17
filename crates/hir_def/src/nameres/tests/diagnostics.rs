@@ -200,3 +200,20 @@ fn builtin_macro_fails_expansion() {
         "#,
     );
 }
+
+#[test]
+fn good_out_dir_diagnostic() {
+    check_diagnostics(
+        r#"
+        #[rustc_builtin_macro]
+        macro_rules! include { () => {} }
+        #[rustc_builtin_macro]
+        macro_rules! env { () => {} }
+        #[rustc_builtin_macro]
+        macro_rules! concat { () => {} }
+
+        include!(concat!(env!("OUT_DIR"), "/out.rs"));
+      //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `OUT_DIR` not set, enable "load out dirs from check" to fix
+        "#,
+    );
+}
