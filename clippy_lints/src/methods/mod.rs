@@ -61,15 +61,12 @@ mod zst_offset;
 
 use bind_instead_of_map::BindInsteadOfMap;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{
     contains_return, get_trait_def_id, in_macro, iter_input_pats, match_qpath, method_calls, paths, return_ty,
     SpanlessEq,
 };
 use if_chain::if_chain;
-use rustc_ast::ast;
-use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -1976,34 +1973,6 @@ fn lint_binary_expr_with_method_call(cx: &LateContext<'_>, info: &mut BinaryExpr
     lint_with_both_lhs_and_rhs!(chars_last_cmp::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_next_cmp_with_unwrap::check, cx, info);
     lint_with_both_lhs_and_rhs!(chars_last_cmp_with_unwrap::check, cx, info);
-}
-
-fn get_hint_if_single_char_arg(
-    cx: &LateContext<'_>,
-    arg: &hir::Expr<'_>,
-    applicability: &mut Applicability,
-) -> Option<String> {
-    if_chain! {
-        if let hir::ExprKind::Lit(lit) = &arg.kind;
-        if let ast::LitKind::Str(r, style) = lit.node;
-        let string = r.as_str();
-        if string.chars().count() == 1;
-        then {
-            let snip = snippet_with_applicability(cx, arg.span, &string, applicability);
-            let ch = if let ast::StrStyle::Raw(nhash) = style {
-                let nhash = nhash as usize;
-                // for raw string: r##"a"##
-                &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
-            } else {
-                // for regular string: "a"
-                &snip[1..(snip.len() - 1)]
-            };
-            let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
-            Some(hint)
-        } else {
-            None
-        }
-    }
 }
 
 const FN_HEADER: hir::FnHeader = hir::FnHeader {
