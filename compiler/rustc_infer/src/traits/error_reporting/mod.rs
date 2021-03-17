@@ -104,7 +104,7 @@ pub fn report_object_safety_error(
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
 
-    if tcx.sess.trait_methods_not_found.borrow().contains(&span) {
+    if tcx.sess.trait_methods_not_found.borrow().iter().any(|full_span| full_span.contains(span)) {
         // Avoid emitting error caused by non-existing method (#58734)
         err.cancel();
     }

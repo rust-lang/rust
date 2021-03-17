@@ -312,17 +312,18 @@ mod issue4140 {
         fn try_from(value: T) -> Result<Self, Error<Self::From, Self::To>>;
     }
 
-    impl<F, T> TryFrom<F> for T
-    where
-        T: From<F>,
-    {
-        type From = Self;
-        type To = Self;
+    // FIXME: Suggested fix results in infinite recursion.
+    // impl<F, T> TryFrom<F> for T
+    // where
+    //     T: From<F>,
+    // {
+    //     type From = Self::From;
+    //     type To = Self::To;
 
-        fn try_from(value: F) -> Result<Self, Error<Self::From, Self::To>> {
-            Ok(From::from(value))
-        }
-    }
+    //     fn try_from(value: F) -> Result<Self, Error<Self::From, Self::To>> {
+    //         Ok(From::from(value))
+    //     }
+    // }
 
     impl From<bool> for i64 {
         type From = bool;
