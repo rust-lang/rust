@@ -13,36 +13,6 @@ use crate::*;
 use super::backtrace::EvalContextExt as _;
 use helpers::{check_abi, check_arg_count};
 
-/// This macro behaves just like `match $link_name { ... }`, but inserts a
-/// `$crate::helpers::check_abi($abi, $exp_abi)?` call at each match arm
-/// except the wildcard one.
-#[macro_export]
-macro_rules! match_with_abi_check {
-    ($link_name:expr, $abi:expr, $exp_abi:expr, {
-        $(|)? $($pattern:pat)|+ $(if $guard:expr)? => $shim_impl:block
-        $($remaining:tt)+
-    }) => {
-        match ($link_name, $abi, $exp_abi) {
-            ($($pattern)|+, abi, exp_abi) $(if $guard)? => {
-                $crate::helpers::check_abi(abi, exp_abi)?;
-                $shim_impl
-            }
-            (link_name, abi, exp_abi) => match_with_abi_check!(
-                link_name,
-                abi,
-                exp_abi,
-                { $($remaining)* }
-            ),
-        }
-    };
-    ($link_name:ident, $abi:ident, $exp_abi:ident, {
-        _ => $fallback:expr $(,)?
-    }) => ({
-        let _ = ($link_name, $abi, $exp_abi);
-        $fallback
-    });
-}
-
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Returns the minimum alignment for the target architecture for allocations of the given size.

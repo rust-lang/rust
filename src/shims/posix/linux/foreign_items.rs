@@ -2,7 +2,7 @@ use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
-use crate::helpers::check_arg_count;
+use crate::helpers::{check_abi, check_arg_count};
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::linux::sync::futex;
 use shims::posix::sync::EvalContextExt as _;
@@ -20,9 +20,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
-        match_with_abi_check!(link_name, abi, Abi::C { unwind: false }, {
+        match link_name {
             // errno
             "__errno_location" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[] = check_arg_count(args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref().to_scalar()?, dest)?;
@@ -32,27 +33,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // These symbols have different names on Linux and macOS, which is the only reason they are not
             // in the `posix` module.
             "close" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref fd] = check_arg_count(args)?;
                 let result = this.close(fd)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "opendir" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref name] = check_arg_count(args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir64_r" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref dirp, ref entry, ref result] = check_arg_count(args)?;
                 let result = this.linux_readdir64_r(dirp, entry, result)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "ftruncate64" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref fd, ref length] = check_arg_count(args)?;
                 let result = this.ftruncate64(fd, length)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             // Linux-only
             "posix_fadvise" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref fd, ref offset, ref len, ref advice] = check_arg_count(args)?;
                 this.read_scalar(fd)?.to_i32()?;
                 this.read_scalar(offset)?.to_machine_isize(this)?;
@@ -62,6 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_null(dest)?;
             }
             "sync_file_range" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref fd, ref offset, ref nbytes, ref flags] = check_arg_count(args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -69,6 +76,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Time related shims
             "clock_gettime" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 // This is a POSIX function but it has only been tested on linux.
                 let &[ref clk_id, ref tp] = check_arg_count(args)?;
                 let result = this.clock_gettime(clk_id, tp)?;
@@ -77,6 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Querying system information
             "pthread_attr_getstack" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
                 let &[ref attr_place, ref addr_place, ref size_place] = check_arg_count(args)?;
                 this.deref_operand(attr_place)?;
@@ -98,16 +107,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "prctl" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref option, ref arg2, ref arg3, ref arg4, ref arg5] = check_arg_count(args)?;
                 let result = this.prctl(option, arg2, arg3, arg4, arg5)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_setclock" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref attr, ref clock_id] = check_arg_count(args)?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_getclock" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref attr, ref clock_id] = check_arg_count(args)?;
                 let result = this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
@@ -115,6 +127,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Dynamically invoked syscalls
             "syscall" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 // The syscall variadic function is legal to call with more arguments than needed,
                 // extra arguments are simply ignored. However, all arguments need to be scalars;
                 // other types might be treated differently by the calling convention.
@@ -169,10 +182,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Miscelanneous
             "getrandom" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref ptr, ref len, ref flags] = check_arg_count(args)?;
                 getrandom(this, ptr, len, flags, dest)?;
             }
             "sched_getaffinity" => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref pid, ref cpusetsize, ref mask] = check_arg_count(args)?;
                 this.read_scalar(pid)?.to_i32()?;
                 this.read_scalar(cpusetsize)?.to_machine_usize(this)?;
@@ -186,12 +201,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+                check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref _thread, ref _attr] = check_arg_count(args)?;
                 this.write_null(dest)?;
             }
 
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
-        });
+        };
 
         Ok(true)
     }
