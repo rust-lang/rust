@@ -132,7 +132,7 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: for.cond1.preheader:                              ; preds = %for.cond.cleanup3, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup3 ], [ 0, %entry ]
-; CHECK-NEXT:   %2 = mul i64 %iv, 10
+; CHECK-NEXT:   %2 = mul {{(nuw nsw )?}}i64 %iv, 10
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   br i1 %cmp233, label %for.body4.lr.ph, label %for.cond.cleanup3
 

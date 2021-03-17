@@ -273,6 +273,11 @@ protected:
   /// part of the cache
   std::map<llvm::AllocaInst *, std::vector<llvm::CallInst *>> scopeAllocs;
 
+  /// Perform the final load from the cache, applying requisite invariant
+  /// group and alignment
+  llvm::Value *loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
+                                    llvm::Value *cptr, llvm::Value *cache);
+
 public:
   /// Create a cache of Type T at the given LimitContext. If allocateInternal is
   /// set this will allocate the requesite memory. If extraSize is set,

@@ -52,11 +52,11 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   %[[malloccall4:.+]] = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
 ; CHECK-NEXT:   %L2_malloccache = bitcast i8* %[[malloccall4]] to double*
 ; CHECK-NEXT:   %[[xptr:.+]] = bitcast double* %x to i8*
-; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %[[malloccall4]], i8* nonnull %[[xptr:.+]], i64 32, i1 false)
+; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %[[malloccall4]], i8* nonnull {{(align 8 )?}}%[[xptr:.+]], i64 32, i1 false)
 ; CHECK-NEXT:   %[[malloccall:.+]] = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
 ; CHECK-NEXT:   %L1_malloccache = bitcast i8* %[[malloccall]] to double*
 ; CHECK-NEXT:   %[[xptr2:.+]] = bitcast double* %x to i8*
-; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %[[malloccall]], i8* nonnull %[[xptr2:.+]], i64 32, i1 false)
+; CHECK-NEXT:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %[[malloccall]], i8* nonnull {{(align 8 )?}}%[[xptr2:.+]], i64 32, i1 false)
 ; CHECK-NEXT:   br label %loop1
 
 ; CHECK: loop1:                                            ; preds = %cleanup, %entry

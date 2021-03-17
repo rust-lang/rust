@@ -1370,23 +1370,11 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
   return next;
 }
 
-/// Given an allocation specified by the LimitContext ctx and cache, lookup the
-/// underlying cached value.
-Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
-                                          IRBuilder<> &BuilderM,
-                                          LimitContext ctx, Value *cache,
-                                          bool isi1, Value *extraSize,
-                                          Value *extraOffset) {
-  // Get the underlying cache pointer
-  auto cptr = getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
-                              /*storeInInstructionsMap*/ false, extraSize);
-
-  // Optionally apply the additional offset
-  if (extraOffset) {
-    cptr = BuilderM.CreateGEP(cptr, {extraOffset});
-    cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
-  }
-
+/// Perform the final load from the cache, applying requisite invariant
+/// group and alignment
+llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
+                                                llvm::Value *cptr,
+                                                llvm::Value *cache) {
   // Retrieve the actual result
   auto result = BuilderM.CreateLoad(cptr);
 
@@ -1411,6 +1399,28 @@ Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
     result->setAlignment(bsize);
 #endif
   }
+
+  return result;
+}
+
+/// Given an allocation specified by the LimitContext ctx and cache, lookup the
+/// underlying cached value.
+Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
+                                          IRBuilder<> &BuilderM,
+                                          LimitContext ctx, Value *cache,
+                                          bool isi1, Value *extraSize,
+                                          Value *extraOffset) {
+  // Get the underlying cache pointer
+  auto cptr = getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
+                              /*storeInInstructionsMap*/ false, extraSize);
+
+  // Optionally apply the additional offset
+  if (extraOffset) {
+    cptr = BuilderM.CreateGEP(cptr, {extraOffset});
+    cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
+  }
+
+  Value *result = loadFromCachePointer(BuilderM, cptr, cache);
 
   // If using the efficient bool cache, do the corresponding
   // mask and shift to retrieve the actual value

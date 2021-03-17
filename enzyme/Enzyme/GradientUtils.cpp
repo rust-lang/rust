@@ -2582,13 +2582,21 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc, inst->getParent(),
                 "Caching instruction ", *inst, " legalRecompute: ", lrc,
                 " shouldRecompute: ", src);
-  if (auto origInst = isOriginal(inst))
-    if (auto li = dyn_cast<LoadInst>(inst)) {
+  if (auto li = dyn_cast<LoadInst>(inst))
+    if (auto origInst = dyn_cast_or_null<LoadInst>(isOriginal(inst))) {
 #if LLVM_VERSION_MAJOR >= 12
       auto liobj = getUnderlyingObject(li->getPointerOperand(), 100);
 #else
       auto liobj = GetUnderlyingObject(
           li->getPointerOperand(), oldFunc->getParent()->getDataLayout(), 100);
+#endif
+
+#if LLVM_VERSION_MAJOR >= 12
+      auto orig_liobj = getUnderlyingObject(origInst->getPointerOperand(), 100);
+#else
+      auto orig_liobj =
+          GetUnderlyingObject(origInst->getPointerOperand(),
+                              oldFunc->getParent()->getDataLayout(), 100);
 #endif
 
       if (scopeMap.find(inst) == scopeMap.end()) {
@@ -2679,8 +2687,161 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       // this is guarded because havent told cacheForReverse how to move
       if (mode == DerivativeMode::Both)
         if (!li->isVolatile()) {
+          if (auto AI = dyn_cast<AllocaInst>(liobj)) {
+            assert(isa<AllocaInst>(orig_liobj));
+            if (auto AT = dyn_cast<ArrayType>(AI->getAllocatedType()))
+              if (auto GEP =
+                      dyn_cast<GetElementPtrInst>(li->getPointerOperand())) {
+                if (GEP->getPointerOperand() == AI) {
+                  LoopContext l1;
+                  if (!getContext(li->getParent(), l1))
+                    goto noSpeedCache;
+
+                  BasicBlock *ctx = l1.preheader;
+
+                  auto origPH = cast_or_null<BasicBlock>(isOriginal(ctx));
+                  assert(origPH);
+                  if (OrigPDT.dominates(origPH, origInst->getParent())) {
+                    goto noSpeedCache;
+                  }
+
+                  Instruction *origTerm = origPH->getTerminator();
+                  if (!origTerm)
+                    llvm::errs() << *origTerm << "\n";
+                  assert(origTerm);
+                  IRBuilder<> OB(origTerm);
+                  LoadInst *tmpload = OB.CreateLoad(AT, orig_liobj, "'tmpload");
+
+                  bool failed = false;
+                  allInstructionsBetween(
+                      OrigLI, &*origTerm, origInst,
+                      [&](Instruction *I) -> bool {
+                        if (I->mayWriteToMemory() &&
+                            writesToMemoryReadBy(OrigAA,
+                                                 /*maybeReader*/ tmpload,
+                                                 /*maybeWriter*/ I)) {
+                          failed = true;
+                          return /*earlyBreak*/ true;
+                        }
+                        return /*earlyBreak*/ false;
+                      });
+                  if (failed) {
+                    tmpload->eraseFromParent();
+                    goto noSpeedCache;
+                  }
+                  while (Loop *L = LI.getLoopFor(ctx)) {
+                    BasicBlock *nctx = L->getLoopPreheader();
+                    assert(nctx);
+                    bool failed = false;
+                    auto origPH = cast_or_null<BasicBlock>(isOriginal(nctx));
+                    assert(origPH);
+                    if (OrigPDT.dominates(origPH, origInst->getParent())) {
+                      break;
+                    }
+                    Instruction *origTerm = origPH->getTerminator();
+                    allInstructionsBetween(
+                        OrigLI, &*origTerm, origInst,
+                        [&](Instruction *I) -> bool {
+                          if (I->mayWriteToMemory() &&
+                              writesToMemoryReadBy(OrigAA,
+                                                   /*maybeReader*/ tmpload,
+                                                   /*maybeWriter*/ I)) {
+                            failed = true;
+                            return /*earlyBreak*/ true;
+                          }
+                          return /*earlyBreak*/ false;
+                        });
+                    if (failed)
+                      break;
+                    ctx = nctx;
+                  }
+
+                  tmpload->eraseFromParent();
+
+                  IRBuilder<> v(ctx->getTerminator());
+                  bool isi1 = false;
+
+                  AllocaInst *cache = nullptr;
+
+                  LoopContext tmp;
+                  bool forceSingleIter = false;
+                  if (!getContext(ctx, tmp)) {
+                    forceSingleIter = true;
+                  }
+                  LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                                    ctx, forceSingleIter);
+
+                  if (auto found = findInMap(scopeMap, (Value *)AI)) {
+                    cache = found->first;
+                  } else {
+                    // if freeing reverseblocks must exist
+                    assert(reverseBlocks.size());
+                    cache = createCacheForScope(lctx, AT, li->getName(),
+                                                /*shouldFree*/ true,
+                                                /*allocate*/ true);
+                    assert(cache);
+                    scopeMap.insert(
+                        std::make_pair(AI, std::make_pair(cache, lctx)));
+
+                    v.setFastMathFlags(getFast());
+                    assert(isOriginalBlock(*v.GetInsertBlock()));
+                    Value *outer = getCachePointer(/*inForwardPass*/ true, v,
+                                                   lctx, cache, isi1,
+                                                   /*storeinstorecache*/ true);
+
+                    auto ld = v.CreateLoad(AT, AI);
+                    if (AI->getAlignment()) {
+#if LLVM_VERSION_MAJOR >= 10
+                      ld->setAlignment(Align(AI->getAlignment()));
+#else
+                      ld->setAlignment(AI->getAlignment());
+#endif
+                    }
+                    scopeInstructions[cache].push_back(ld);
+                    auto st = v.CreateStore(ld, outer);
+                    auto bsize = newFunc->getParent()
+                                     ->getDataLayout()
+                                     .getTypeAllocSizeInBits(AT) /
+                                 8;
+                    if ((bsize & (bsize - 1)) == 0) {
+#if LLVM_VERSION_MAJOR >= 10
+                      st->setAlignment(Align(bsize));
+#else
+                      st->setAlignment(bsize);
+#endif
+                    }
+                    scopeInstructions[cache].push_back(st);
+                  }
+
+                  assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
+                  Value *outer = getCachePointer(/*inForwardPass*/ false,
+                                                 BuilderM, lctx, cache, isi1,
+                                                 /*storeinstorecache*/ true);
+                  SmallVector<Value *, 2> idxs;
+                  for (auto &idx : GEP->indices()) {
+                    idxs.push_back(lookupM(idx, BuilderM, available,
+                                           tryLegalRecomputeCheck));
+                  }
+
+                  auto cptr = BuilderM.CreateGEP(outer, idxs);
+                  cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
+
+                  // Retrieve the actual result
+                  auto result = loadFromCachePointer(BuilderM, cptr, cache);
+
+                  assert(result->getType() == inst->getType());
+                  lookup_cache[idx] = result;
+                  return result;
+                }
+              }
+          }
+
           auto scev1 = SE.getSCEV(li->getPointerOperand());
           // Store in memcpy opt
+          Value *lim = nullptr;
+          BasicBlock *ctx = nullptr;
+          Value *start = nullptr;
+          Value *offset = nullptr;
           if (auto ar1 = dyn_cast<SCEVAddRecExpr>(scev1)) {
             if (auto step =
                     dyn_cast<SCEVConstant>(ar1->getStepRecurrence(SE))) {
@@ -2693,7 +2854,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               if (l1.dynamic)
                 goto noSpeedCache;
 
-              BasicBlock *ctx = l1.preheader;
+              offset = available[l1.var];
+              ctx = l1.preheader;
 
               IRBuilder<> v(ctx->getTerminator());
 
@@ -2703,16 +2865,14 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 goto noSpeedCache;
               }
 
-              Value *lim = unwrapM(l1.trueLimit, v,
-                                   /*available*/ ValueToValueMapTy(),
-                                   UnwrapMode::AttemptFullUnwrapWithLookup);
+              lim = unwrapM(l1.trueLimit, v,
+                            /*available*/ ValueToValueMapTy(),
+                            UnwrapMode::AttemptFullUnwrapWithLookup);
               if (!lim) {
                 goto noSpeedCache;
               }
               lim = v.CreateAdd(lim, ConstantInt::get(lim->getType(), 1), "",
                                 true, true);
-
-              Value *start = nullptr;
 
               std::vector<Instruction *> toErase;
               {
@@ -2752,12 +2912,11 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
               if (!start)
                 goto noSpeedCache;
 
-              Instruction* origTerm = origPH->getTerminator();
+              Instruction *origTerm = origPH->getTerminator();
 
               bool failed = false;
               allInstructionsBetween(
-                  OrigLI, &*origTerm, origInst,
-                  [&](Instruction *I) -> bool {
+                  OrigLI, &*origTerm, origInst, [&](Instruction *I) -> bool {
                     if (I->mayWriteToMemory() &&
                         writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
                                              /*maybeWriter*/ I)) {
@@ -2768,144 +2927,146 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                   });
               if (failed)
                 goto noSpeedCache;
+            }
+          }
 
-              while (Loop* L = LI.getLoopFor(ctx)) {
-                BasicBlock *nctx = L->getLoopPreheader();
-                assert(nctx);
-                bool failed = false;
-                auto origPH = cast_or_null<BasicBlock>(isOriginal(nctx));
-                assert(origPH);
-                if (OrigPDT.dominates(origPH, origInst->getParent())) {
-                  break;
-                }
-                Instruction* origTerm = origPH->getTerminator();
-                allInstructionsBetween(
-                    OrigLI, &*origTerm, origInst,
-                    [&](Instruction *I) -> bool {
-                      if (I->mayWriteToMemory() &&
-                          writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
-                                              /*maybeWriter*/ I)) {
-                        failed = true;
-                        return /*earlyBreak*/ true;
-                      }
-                      return /*earlyBreak*/ false;
-                    });
-                if (failed) break;
-                IRBuilder <> nv(ctx->getTerminator());
-                Value* nlim = unwrapM(lim, nv,
-                                   /*available*/ ValueToValueMapTy(),
-                                   UnwrapMode::AttemptFullUnwrapWithLookup);
-                if (!nlim) break;
-                Value* nstart = unwrapM(start, nv,
-                                   /*available*/ ValueToValueMapTy(),
-                                   UnwrapMode::AttemptFullUnwrapWithLookup);
-                if (!nstart) break;
-                lim = nlim;
-                start = nstart;
-                ctx = nctx;
-                v.SetInsertPoint(ctx->getTerminator());
+          if (ctx && lim && start && offset) {
+            while (Loop *L = LI.getLoopFor(ctx)) {
+              BasicBlock *nctx = L->getLoopPreheader();
+              assert(nctx);
+              bool failed = false;
+              auto origPH = cast_or_null<BasicBlock>(isOriginal(nctx));
+              assert(origPH);
+              if (OrigPDT.dominates(origPH, origInst->getParent())) {
+                break;
               }
-              bool isi1 = val->getType()->isIntegerTy() &&
-                          cast<IntegerType>(li->getType())->getBitWidth() == 1;
+              Instruction *origTerm = origPH->getTerminator();
+              allInstructionsBetween(
+                  OrigLI, &*origTerm, origInst, [&](Instruction *I) -> bool {
+                    if (I->mayWriteToMemory() &&
+                        writesToMemoryReadBy(OrigAA, /*maybeReader*/ origInst,
+                                             /*maybeWriter*/ I)) {
+                      failed = true;
+                      return /*earlyBreak*/ true;
+                    }
+                    return /*earlyBreak*/ false;
+                  });
+              if (failed)
+                break;
+              IRBuilder<> nv(ctx->getTerminator());
+              Value *nlim = unwrapM(lim, nv,
+                                    /*available*/ ValueToValueMapTy(),
+                                    UnwrapMode::AttemptFullUnwrapWithLookup);
+              if (!nlim)
+                break;
+              Value *nstart = unwrapM(start, nv,
+                                      /*available*/ ValueToValueMapTy(),
+                                      UnwrapMode::AttemptFullUnwrapWithLookup);
+              if (!nstart)
+                break;
+              lim = nlim;
+              start = nstart;
+              ctx = nctx;
+            }
+            IRBuilder<> v(ctx->getTerminator());
+            bool isi1 = val->getType()->isIntegerTy() &&
+                        cast<IntegerType>(li->getType())->getBitWidth() == 1;
 
-              AllocaInst *cache = nullptr;
+            AllocaInst *cache = nullptr;
 
-              LoopContext tmp;
-              bool forceSingleIter = false;
-              if (!getContext(ctx, tmp)) {
-                forceSingleIter = true;
-              }
-              LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, ctx,
-                                forceSingleIter);
+            LoopContext tmp;
+            bool forceSingleIter = false;
+            if (!getContext(ctx, tmp)) {
+              forceSingleIter = true;
+            }
+            LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, ctx,
+                              forceSingleIter);
 
-              if (auto found = findInMap(scopeMap, (Value *)inst)) {
-                cache = found->first;
-              } else {
-                // if freeing reverseblocks must exist
-                assert(reverseBlocks.size());
-                cache = createCacheForScope(
-                    lctx, li->getType(), li->getName(), /*shouldFree*/ true,
-                    /*allocate*/ true, /*extraSize*/ lim);
-                assert(cache);
-                scopeMap.insert(
-                    std::make_pair(inst, std::make_pair(cache, lctx)));
+            if (auto found = findInMap(scopeMap, (Value *)inst)) {
+              cache = found->first;
+            } else {
+              // if freeing reverseblocks must exist
+              assert(reverseBlocks.size());
+              cache = createCacheForScope(lctx, li->getType(), li->getName(),
+                                          /*shouldFree*/ true,
+                                          /*allocate*/ true, /*extraSize*/ lim);
+              assert(cache);
+              scopeMap.insert(
+                  std::make_pair(inst, std::make_pair(cache, lctx)));
 
-                v.setFastMathFlags(getFast());
-                assert(isOriginalBlock(*v.GetInsertBlock()));
-                Value *outer = getCachePointer(/*inForwardPass*/ true, v, lctx,
-                                               cache, isi1,
-                                               /*storeinstorecache*/ true,
-                                               /*extraSize*/ lim);
+              v.setFastMathFlags(getFast());
+              assert(isOriginalBlock(*v.GetInsertBlock()));
+              Value *outer =
+                  getCachePointer(/*inForwardPass*/ true, v, lctx, cache, isi1,
+                                  /*storeinstorecache*/ true,
+                                  /*extraSize*/ lim);
 
-                auto dst_arg = v.CreateBitCast(
-                    outer, Type::getInt8PtrTy(inst->getContext()));
-                scopeInstructions[cache].push_back(cast<Instruction>(dst_arg));
-                auto src_arg = v.CreateBitCast(
-                    start, Type::getInt8PtrTy(inst->getContext()));
-                auto len_arg = v.CreateMul(
-                    ConstantInt::get(lim->getType(), step->getAPInt()), lim, "",
-                    true, true);
-                if (Instruction *I = dyn_cast<Instruction>(len_arg))
-                  scopeInstructions[cache].push_back(I);
-                auto volatile_arg = ConstantInt::getFalse(inst->getContext());
+              auto dst_arg = v.CreateBitCast(
+                  outer, Type::getInt8PtrTy(inst->getContext()));
+              scopeInstructions[cache].push_back(cast<Instruction>(dst_arg));
+              auto src_arg = v.CreateBitCast(
+                  start, Type::getInt8PtrTy(inst->getContext()));
+              auto len_arg =
+                  v.CreateMul(ConstantInt::get(lim->getType(), loadSize), lim,
+                              "", true, true);
+              if (Instruction *I = dyn_cast<Instruction>(len_arg))
+                scopeInstructions[cache].push_back(I);
+              auto volatile_arg = ConstantInt::getFalse(inst->getContext());
 
-                Value *nargs[] = {dst_arg, src_arg, len_arg, volatile_arg};
+              Value *nargs[] = {dst_arg, src_arg, len_arg, volatile_arg};
 
-                Type *tys[] = {dst_arg->getType(), src_arg->getType(),
-                               len_arg->getType()};
+              Type *tys[] = {dst_arg->getType(), src_arg->getType(),
+                             len_arg->getType()};
 
-                auto memcpyF = Intrinsic::getDeclaration(
-                    newFunc->getParent(), Intrinsic::memcpy, tys);
-                auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
-                // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
-                // inst->getAlignment()));
-                mem->addParamAttr(0, Attribute::NonNull);
-                mem->addParamAttr(1, Attribute::NonNull);
+              auto memcpyF = Intrinsic::getDeclaration(newFunc->getParent(),
+                                                       Intrinsic::memcpy, tys);
+              auto mem = cast<CallInst>(v.CreateCall(memcpyF, nargs));
+              // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
+              // inst->getAlignment()));
+              mem->addParamAttr(0, Attribute::NonNull);
+              mem->addParamAttr(1, Attribute::NonNull);
 
-                auto bsize = newFunc->getParent()
-                                 ->getDataLayout()
-                                 .getTypeAllocSizeInBits(li->getType()) /
-                             8;
-                if ((bsize & (bsize - 1)) == 0) {
+              auto bsize =
+                  newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
+                      li->getType()) /
+                  8;
+              if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10
-                  mem->addParamAttr(
-                      0, Attribute::getWithAlignment(memcpyF->getContext(),
-                                                     Align(bsize)));
+                mem->addParamAttr(0, Attribute::getWithAlignment(
+                                         memcpyF->getContext(), Align(bsize)));
 #else
-                  mem->addParamAttr(0, Attribute::getWithAlignment(
-                                           memcpyF->getContext(), bsize));
+                mem->addParamAttr(0, Attribute::getWithAlignment(
+                                         memcpyF->getContext(), bsize));
 #endif
-                }
+              }
 
 #if LLVM_VERSION_MAJOR >= 11
+              mem->addParamAttr(1, Attribute::getWithAlignment(
+                                       memcpyF->getContext(), li->getAlign()));
+#elif LLVM_VERSION_MAJOR >= 10
+              if (li->getAlign())
                 mem->addParamAttr(
                     1, Attribute::getWithAlignment(memcpyF->getContext(),
-                                                   li->getAlign()));
-#elif LLVM_VERSION_MAJOR >= 10
-                if (li->getAlign())
-                  mem->addParamAttr(
-                      1, Attribute::getWithAlignment(
-                             memcpyF->getContext(), li->getAlign().getValue()));
+                                                   li->getAlign().getValue()));
 #else
-                if (li->getAlignment())
-                  mem->addParamAttr(
-                      1, Attribute::getWithAlignment(memcpyF->getContext(),
-                                                     li->getAlignment()));
+              if (li->getAlignment())
+                mem->addParamAttr(
+                    1, Attribute::getWithAlignment(memcpyF->getContext(),
+                                                   li->getAlignment()));
 #endif
 
-                // TODO alignment
+              // TODO alignment
 
-                scopeInstructions[cache].push_back(mem);
-              }
-
-              assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
-              Value *result = lookupValueFromCache(
-                  /*isForwardPass*/ false, BuilderM, lctx, cache, isi1,
-                  /*extraSize*/ lim, available[l1.var]);
-              assert(result->getType() == inst->getType());
-              lookup_cache[idx] = result;
-              return result;
+              scopeInstructions[cache].push_back(mem);
             }
+
+            assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
+            Value *result = lookupValueFromCache(
+                /*isForwardPass*/ false, BuilderM, lctx, cache, isi1,
+                /*extraSize*/ lim, offset);
+            assert(result->getType() == inst->getType());
+            lookup_cache[idx] = result;
+            return result;
           }
         }
     noSpeedCache:;
