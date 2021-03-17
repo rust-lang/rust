@@ -690,4 +690,27 @@ fn main() {
 "#,
         )
     }
+
+    #[test]
+    fn cfgd_out_call_arguments() {
+        check_diagnostics(
+            r#"
+struct C(#[cfg(FALSE)] ());
+impl C {
+    fn new() -> Self {
+        Self(
+            #[cfg(FALSE)]
+            (),
+        )
+    }
+
+    fn method(&self) {}
+}
+
+fn main() {
+    C::new().method(#[cfg(FALSE)] 0);
+}
+            "#,
+        );
+    }
 }

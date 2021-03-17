@@ -177,12 +177,15 @@ impl ExprCollector<'_> {
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
-        let syntax_ptr = AstPtr::new(&expr);
-        if self.check_cfg(&expr).is_none() {
-            return self.missing_expr();
-        }
+        self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr())
+    }
 
-        match expr {
+    /// Returns `None` if the expression is `#[cfg]`d out.
+    fn maybe_collect_expr(&mut self, expr: ast::Expr) -> Option<ExprId> {
+        let syntax_ptr = AstPtr::new(&expr);
+        self.check_cfg(&expr)?;
+
+        Some(match expr {
             ast::Expr::IfExpr(e) => {
                 let then_branch = self.collect_block_opt(e.then_branch());
 
@@ -211,8 +214,9 @@ impl ExprCollector<'_> {
                                     guard: None,
                                 },
                             ];
-                            return self
-                                .alloc_expr(Expr::Match { expr: match_expr, arms }, syntax_ptr);
+                            return Some(
+                                self.alloc_expr(Expr::Match { expr: match_expr, arms }, syntax_ptr),
+                            );
                         }
                     },
                 };
@@ -283,8 +287,9 @@ impl ExprCollector<'_> {
                             ];
                             let match_expr =
                                 self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
-                            return self
-                                .alloc_expr(Expr::Loop { body: match_expr, label }, syntax_ptr);
+                            return Some(
+                                self.alloc_expr(Expr::Loop { body: match_expr, label }, syntax_ptr),
+                            );
                         }
                     },
                 };
@@ -301,7 +306,7 @@ impl ExprCollector<'_> {
             ast::Expr::CallExpr(e) => {
                 let callee = self.collect_expr_opt(e.expr());
                 let args = if let Some(arg_list) = e.arg_list() {
-                    arg_list.args().map(|e| self.collect_expr(e)).collect()
+                    arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
                 } else {
                     Vec::new()
                 };
@@ -310,7 +315,7 @@ impl ExprCollector<'_> {
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.receiver());
                 let args = if let Some(arg_list) = e.arg_list() {
-                    arg_list.args().map(|e| self.collect_expr(e)).collect()
+                    arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
                 } else {
                     Vec::new()
                 };
@@ -538,7 +543,7 @@ impl ExprCollector<'_> {
                     self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
             }
-        }
+        })
     }
 
     fn collect_macro_call<F: FnMut(&mut Self, Option<T>), T: ast::AstNode>(
