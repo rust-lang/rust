@@ -1787,17 +1787,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
                 into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
-
-                match cx.typeck_results().expr_ty_adjusted(&args[0]).kind() {
-                    ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
-                        for &(method, pos) in &PATTERN_METHODS {
-                            if method_call.ident.name.as_str() == method && args.len() > pos {
-                                single_char_pattern::check(cx, expr, &args[pos]);
-                            }
-                        }
-                    },
-                    _ => (),
-                }
+                single_char_pattern::check(cx, expr, method_call.ident.name, args);
             },
             hir::ExprKind::Binary(op, ref lhs, ref rhs)
                 if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne =>
