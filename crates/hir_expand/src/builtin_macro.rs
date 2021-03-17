@@ -333,17 +333,19 @@ fn concat_expand(
 fn relative_file(
     db: &dyn AstDatabase,
     call_id: MacroCallId,
-    path: &str,
+    path_str: &str,
     allow_recursion: bool,
-) -> Option<FileId> {
+) -> Result<FileId, mbe::ExpandError> {
     let call_site = call_id.as_file().original_file(db);
-    let path = AnchoredPath { anchor: call_site, path };
-    let res = db.resolve_path(path)?;
+    let path = AnchoredPath { anchor: call_site, path: path_str };
+    let res = db
+        .resolve_path(path)
+        .ok_or_else(|| mbe::ExpandError::Other(format!("failed to load file `{}`", path_str)))?;
     // Prevent include itself
     if res == call_site && !allow_recursion {
-        None
+        Err(mbe::ExpandError::Other(format!("recursive inclusion of `{}`", path_str)))
     } else {
-        Some(res)
+        Ok(res)
     }
 }
 
@@ -364,8 +366,7 @@ fn include_expand(
 ) -> ExpandResult<Option<(tt::Subtree, FragmentKind)>> {
     let res = (|| {
         let path = parse_string(tt)?;
-        let file_id = relative_file(db, arg_id.into(), &path, false)
-            .ok_or_else(|| mbe::ExpandError::ConversionError)?;
+        let file_id = relative_file(db, arg_id.into(), &path, false)?;
 
         Ok(parse_to_token_tree(&db.file_text(file_id))
             .ok_or_else(|| mbe::ExpandError::ConversionError)?
@@ -417,8 +418,8 @@ fn include_str_expand(
     // Ideally, we'd be able to offer a precise expansion if the user asks for macro
     // expansion.
     let file_id = match relative_file(db, arg_id.into(), &path, true) {
-        Some(file_id) => file_id,
-        None => {
+        Ok(file_id) => file_id,
+        Err(_) => {
             return ExpandResult::ok(Some((quote!(""), FragmentKind::Expr)));
         }
     };
