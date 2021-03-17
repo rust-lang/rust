@@ -6,16 +6,16 @@ SOURCE_FILE@0..28
       IDENT@3..4 "f"
     PARAM_LIST@4..24
       L_PAREN@4..5 "("
-      ATTR@5..13
-        POUND@5..6 "#"
-        L_BRACK@6..7 "["
-        PATH@7..12
-          PATH_SEGMENT@7..12
-            NAME_REF@7..12
-              IDENT@7..12 "attr1"
-        R_BRACK@12..13 "]"
-      WHITESPACE@13..14 " "
-      PARAM@14..23
+      PARAM@5..23
+        ATTR@5..13
+          POUND@5..6 "#"
+          L_BRACK@6..7 "["
+          PATH@7..12
+            PATH_SEGMENT@7..12
+              NAME_REF@7..12
+                IDENT@7..12 "attr1"
+          R_BRACK@12..13 "]"
+        WHITESPACE@13..14 " "
         IDENT_PAT@14..17
           NAME@14..17
             IDENT@14..17 "pat"

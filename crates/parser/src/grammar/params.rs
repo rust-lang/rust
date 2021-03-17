@@ -41,22 +41,32 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         FnDef | FnTrait | FnPointer => (T!['('], T![')']),
     };
 
-    let m = p.start();
+    let list_marker = p.start();
     p.bump(bra);
 
+    let mut param_marker = None;
     if let FnDef = flavor {
         // test self_param_outer_attr
         // fn f(#[must_use] self) {}
         let m = p.start();
         attributes::outer_attrs(p);
-        opt_self_param(p, m);
+        match opt_self_param(p, m) {
+            Ok(()) => {}
+            Err(m) => param_marker = Some(m),
+        }
     }
 
     while !p.at(EOF) && !p.at(ket) {
         // test param_outer_arg
         // fn f(#[attr1] pat: Type) {}
-        let m = p.start();
-        attributes::outer_attrs(p);
+        let m = match param_marker.take() {
+            Some(m) => m,
+            None => {
+                let m = p.start();
+                attributes::outer_attrs(p);
+                m
+            }
+        };
 
         if !p.at_ts(PARAM_FIRST) {
             p.error("expected value parameter");
@@ -72,8 +82,12 @@ fn list_(p: &mut Parser, flavor: Flavor) {
         }
     }
 
+    if let Some(m) = param_marker {
+        m.abandon(p);
+    }
+
     p.expect(ket);
-    m.complete(p, PARAM_LIST);
+    list_marker.complete(p, PARAM_LIST);
 }
 
 const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
@@ -153,7 +167,7 @@ fn variadic_param(p: &mut Parser) -> bool {
 //     fn d(&'a mut self, x: i32) {}
 //     fn e(mut self) {}
 // }
-fn opt_self_param(p: &mut Parser, m: Marker) {
+fn opt_self_param(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
         p.eat(T![mut]);
         self_as_name(p);
@@ -176,7 +190,7 @@ fn opt_self_param(p: &mut Parser, m: Marker) {
                 | (T![&], LIFETIME_IDENT, T![self], _)
                 | (T![&], LIFETIME_IDENT, T![mut], T![self])
         ) {
-            return m.abandon(p);
+            return Err(m);
         }
         p.bump(T![&]);
         if p.at(LIFETIME_IDENT) {
@@ -189,6 +203,7 @@ fn opt_self_param(p: &mut Parser, m: Marker) {
     if !p.at(T![')']) {
         p.expect(T![,]);
     }
+    Ok(())
 }
 
 fn self_as_name(p: &mut Parser) {
