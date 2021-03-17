@@ -38,35 +38,33 @@ fn find_ancestors(item: SyntaxElement, direction: Direction) -> Option<TextEdit>
         NodeOrToken::Token(token) => token.parent()?,
     };
 
+    let movable = [
+        SyntaxKind::MATCH_ARM,
+        SyntaxKind::PARAM,
+        SyntaxKind::LET_STMT,
+        SyntaxKind::EXPR_STMT,
+        SyntaxKind::MATCH_EXPR,
+        SyntaxKind::MACRO_CALL,
+        SyntaxKind::TYPE_ALIAS,
+        SyntaxKind::TRAIT,
+        SyntaxKind::IMPL,
+        SyntaxKind::MACRO_DEF,
+        SyntaxKind::STRUCT,
+        SyntaxKind::UNION,
+        SyntaxKind::ENUM,
+        SyntaxKind::FN,
+        SyntaxKind::MODULE,
+        SyntaxKind::USE,
+        SyntaxKind::STATIC,
+        SyntaxKind::CONST,
+        SyntaxKind::MACRO_RULES,
+    ];
+
     let ancestor = once(root.clone())
         .chain(root.ancestors())
-        .filter_map(|ancestor| kind_priority(ancestor.kind()).map(|priority| (priority, ancestor)))
-        .max_by_key(|(priority, _)| *priority)
-        .map(|(_, ancestor)| ancestor)?;
+        .find(|ancestor| movable.contains(&ancestor.kind()))?;
 
     move_in_direction(&ancestor, direction)
-}
-
-fn kind_priority(kind: SyntaxKind) -> Option<i32> {
-    match kind {
-        SyntaxKind::MATCH_ARM => Some(4),
-
-        SyntaxKind::LET_STMT | SyntaxKind::EXPR_STMT | SyntaxKind::MATCH_EXPR => Some(3),
-
-        SyntaxKind::TRAIT
-        | SyntaxKind::IMPL
-        | SyntaxKind::MACRO_CALL
-        | SyntaxKind::MACRO_DEF
-        | SyntaxKind::STRUCT
-        | SyntaxKind::ENUM
-        | SyntaxKind::MODULE
-        | SyntaxKind::USE
-        | SyntaxKind::FN
-        | SyntaxKind::CONST
-        | SyntaxKind::TYPE_ALIAS => Some(2),
-
-        _ => None,
-    }
 }
 
 fn move_in_direction(node: &SyntaxNode, direction: Direction) -> Option<TextEdit> {
@@ -75,7 +73,7 @@ fn move_in_direction(node: &SyntaxNode, direction: Direction) -> Option<TextEdit
         Direction::Down => node.next_sibling(),
     }?;
 
-    Some(replace_nodes(&sibling, node))
+    Some(replace_nodes(node, &sibling))
 }
 
 fn replace_nodes(first: &SyntaxNode, second: &SyntaxNode) -> TextEdit {
@@ -215,39 +213,6 @@ fn main() {
     }
 
     #[test]
-    fn test_prioritizes_match_arm() {
-        check(
-            r#"
-fn main() {
-    match true {
-        true => {
-            let test = 123;$0$0
-            let test2 = 456;
-        },
-        false => {
-            println!("Test");
-        }
-    };
-}
-            "#,
-            expect![[r#"
-fn main() {
-    match true {
-        false => {
-            println!("Test");
-        },
-        true => {
-            let test = 123;
-            let test2 = 456;
-        }
-    };
-}
-            "#]],
-            Direction::Down,
-        );
-    }
-
-    #[test]
     fn test_moves_expr_up() {
         check(
             r#"
@@ -348,7 +313,7 @@ fn main() {
     $0match test {
         456 => {},
         _ => {}
-    }$0;
+    };$0
 }
             "#,
             expect![[r#"
@@ -359,6 +324,105 @@ fn main() {
     };
 
     let test = 123;
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn moves_param_up() {
+        check(
+            r#"
+fn test(one: i32, two$0$0: u32) {}
+
+fn main() {
+    test(123, 456);
+}
+            "#,
+            expect![[r#"
+fn test(two: u32, one: i32) {}
+
+fn main() {
+    test(123, 456);
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_prioritizes_trait_items() {
+        check(
+            r#"
+struct Test;
+
+trait Yay {
+    type One;
+
+    type Two;
+
+    fn inner();
+}
+
+impl Yay for Test {
+    type One = i32;
+
+    type Two = u32;
+
+    fn inner() {$0$0
+        println!("Mmmm");
+    }
+}
+            "#,
+            expect![[r#"
+struct Test;
+
+trait Yay {
+    type One;
+
+    type Two;
+
+    fn inner();
+}
+
+impl Yay for Test {
+    type One = i32;
+
+    fn inner() {
+        println!("Mmmm");
+    }
+
+    type Two = u32;
+}
+            "#]],
+            Direction::Up,
+        );
+    }
+
+    #[test]
+    fn test_weird_nesting() {
+        check(
+            r#"
+fn test() {
+    mod hello {
+        fn inner() {}
+    }
+
+    mod hi {$0$0
+        fn inner() {}
+    }
+}
+            "#,
+            expect![[r#"
+fn test() {
+    mod hi {
+        fn inner() {}
+    }
+
+    mod hello {
+        fn inner() {}
+    }
 }
             "#]],
             Direction::Up,
