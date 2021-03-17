@@ -193,14 +193,18 @@ declare_clippy_lint! {
     /// **What it does:** Checks for methods with certain name prefixes and which
     /// doesn't match how self is taken. The actual rules are:
     ///
-    /// |Prefix |Postfix     |`self` taken          |
-    /// |-------|------------|----------------------|
-    /// |`as_`  | none       |`&self` or `&mut self`|
-    /// |`from_`| none       | none                 |
-    /// |`into_`| none       |`self`                |
-    /// |`is_`  | none       |`&self` or none       |
-    /// |`to_`  | `_mut`     |`&mut &self`          |
-    /// |`to_`  | not `_mut` |`&self`               |
+    /// |Prefix |Postfix     |`self` taken           | `self` type  |
+    /// |-------|------------|-----------------------|--------------|
+    /// |`as_`  | none       |`&self` or `&mut self` | any          |
+    /// |`from_`| none       | none                  | any          |
+    /// |`into_`| none       |`self`                 | any          |
+    /// |`is_`  | none       |`&self` or none        | any          |
+    /// |`to_`  | `_mut`     |`&mut self`            | any          |
+    /// |`to_`  | not `_mut` |`self`                 | `Copy`       |
+    /// |`to_`  | not `_mut` |`&self`                | not `Copy`   |
+    ///
+    /// Please find more info here:
+    /// https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
     ///
     /// **Why is this bad?** Consistency breeds readability. If you follow the
     /// conventions, your users won't be surprised that they, e.g., need to supply a
@@ -1837,10 +1841,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
 
-        // if this impl block implements a trait, lint in trait definition instead
-        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
-            return;
-        }
+        let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
 
         if_chain! {
             if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind;
@@ -1855,7 +1856,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let Some(first_arg_ty) = first_arg_ty;
 
             then {
-                if cx.access_levels.is_exported(impl_item.hir_id()) {
+                // if this impl block implements a trait, lint in trait definition instead
+                if !implements_trait && cx.access_levels.is_exported(impl_item.hir_id()) {
                     // check missing trait implementations
                     for method_config in &TRAIT_METHODS {
                         if name == method_config.method_name &&
@@ -1891,9 +1893,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     item.vis.node.is_pub(),
                     self_ty,
                     first_arg_ty,
-                    first_arg.pat.span
+                    first_arg.pat.span,
+                    false
                 );
             }
+        }
+
+        // if this impl block implements a trait, lint in trait definition instead
+        if implements_trait {
+            return;
         }
 
         if let hir::ImplItemKind::Fn(_, _) = impl_item.kind {
@@ -1947,7 +1955,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     false,
                     self_ty,
                     first_arg_ty,
-                    first_arg_span
+                    first_arg_span,
+                    true
                 );
             }
         }

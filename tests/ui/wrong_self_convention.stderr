@@ -39,7 +39,7 @@ LL |     fn is_i32(self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `to_*` usually take self by reference
+error: methods with the following characteristics: (`to_*` and `self type is not Copy`) usually take self by reference
   --> $DIR/wrong_self_convention.rs:42:15
    |
 LL |     fn to_i32(self) {}
@@ -79,7 +79,7 @@ LL |     pub fn is_i64(self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `to_*` usually take self by reference
+error: methods with the following characteristics: (`to_*` and `self type is not Copy`) usually take self by reference
   --> $DIR/wrong_self_convention.rs:49:19
    |
 LL |     pub fn to_i64(self) {}
@@ -119,14 +119,6 @@ LL |         fn is_i32(self) {}
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `to_*` usually take self by reference
-  --> $DIR/wrong_self_convention.rs:102:19
-   |
-LL |         fn to_i32(self) {}
-   |                   ^^^^
-   |
-   = help: consider choosing a less ambiguous name
-
 error: methods called `from_*` usually take no self
   --> $DIR/wrong_self_convention.rs:104:21
    |
@@ -159,14 +151,6 @@ LL |         fn is_i32(self);
    |
    = help: consider choosing a less ambiguous name
 
-error: methods called `to_*` usually take self by reference
-  --> $DIR/wrong_self_convention.rs:126:19
-   |
-LL |         fn to_i32(self);
-   |                   ^^^^
-   |
-   = help: consider choosing a less ambiguous name
-
 error: methods called `from_*` usually take no self
   --> $DIR/wrong_self_convention.rs:128:21
    |
@@ -188,6 +172,22 @@ error: methods called `from_*` usually take no self
    |
 LL |         fn from_i32(self);
    |                     ^^^^
+   |
+   = help: consider choosing a less ambiguous name
+
+error: methods with the following characteristics: (`to_*` and `self type is  Copy`) usually take self by value
+  --> $DIR/wrong_self_convention.rs:181:22
+   |
+LL |         fn to_u64_v2(&self) -> u64 {
+   |                      ^^^^^
+   |
+   = help: consider choosing a less ambiguous name
+
+error: methods with the following characteristics: (`to_*` and `self type is not Copy`) usually take self by reference
+  --> $DIR/wrong_self_convention.rs:190:19
+   |
+LL |         fn to_u64(self) -> u64 {
+   |                   ^^^^
    |
    = help: consider choosing a less ambiguous name
 

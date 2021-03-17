@@ -79,6 +79,7 @@ mod issue2894 {
     }
 
     // This should not be linted
+    #[allow(clippy::wrong_self_convention)]
     impl IntoBytes for u8 {
         fn to_bytes(&self) -> Vec<u8> {
             vec![*self]
