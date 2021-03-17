@@ -1,13 +1,5 @@
-warning: lint `broken_intra_doc_links` has been renamed to `rustdoc::broken_intra_doc_links`
-  --> $DIR/renamed-lint-still-applies.rs:2:9
-   |
-LL | #![deny(broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::broken_intra_doc_links`
-   |
-   = note: `#[warn(renamed_and_removed_lints)]` on by default
-
 error: unresolved link to `x`
-  --> $DIR/renamed-lint-still-applies.rs:4:6
+  --> $DIR/renamed-lint-still-applies.rs:5:6
    |
 LL | //! [x]
    |      ^ no item named `x` in scope
@@ -17,7 +9,8 @@ note: the lint level is defined here
    |
 LL | #![deny(broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(broken_intra_doc_links)]`
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to previous error
 

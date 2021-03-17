@@ -100,6 +100,11 @@ enum TargetLint {
     /// Lint with this name existed previously, but has been removed/deprecated.
     /// The string argument is the reason for removal.
     Removed(String),
+
+    /// A lint name that should give no warnings and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    Ignored,
 }
 
 pub enum FindLintError {
@@ -266,6 +271,33 @@ impl LintStore {
         }
     }
 
+    /// This lint should be available with either the old or the new name.
+    ///
+    /// Using the old name will not give a warning.
+    /// You must register a lint with the new name before calling this function.
+    #[track_caller]
+    pub fn register_alias(&mut self, old_name: &str, new_name: &str) {
+        let target = match self.by_name.get(new_name) {
+            Some(&Id(lint_id)) => lint_id,
+            _ => bug!("cannot add alias {} for lint {} that does not exist", old_name, new_name),
+        };
+        match self.by_name.insert(old_name.to_string(), Id(target)) {
+            None | Some(Ignored) => {}
+            Some(x) => bug!("duplicate specification of lint {} (was {:?})", old_name, x),
+        }
+    }
+
+    /// This lint should give no warning and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    #[track_caller]
+    pub fn register_ignored(&mut self, name: &str) {
+        if self.by_name.insert(name.to_string(), Ignored).is_some() {
+            bug!("duplicate specification of lint {}", name);
+        }
+    }
+
+    /// This lint has been renamed; warn about using the new name and apply the lint.
     #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
@@ -284,6 +316,7 @@ impl LintStore {
             Some(&Id(lint_id)) => Ok(vec![lint_id]),
             Some(&Renamed(_, lint_id)) => Ok(vec![lint_id]),
             Some(&Removed(_)) => Err(FindLintError::Removed),
+            Some(&Ignored) => Ok(vec![]),
             None => loop {
                 return match self.lint_groups.get(lint_name) {
                     Some(LintGroup { lint_ids, depr, .. }) => {
@@ -427,6 +460,7 @@ impl LintStore {
                 }
             },
             Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
+            Some(&Ignored) => CheckLintNameResult::Ok(&[]),
         }
     }
 

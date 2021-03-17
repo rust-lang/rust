@@ -1809,7 +1809,7 @@ impl<'hir> QPath<'hir> {
     pub fn span(&self) -> Span {
         match *self {
             QPath::Resolved(_, path) => path.span,
-            QPath::TypeRelative(_, ps) => ps.ident.span,
+            QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
             QPath::LangItem(_, span) => span,
         }
     }
