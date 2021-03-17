@@ -35,7 +35,7 @@ pub struct ErrorEmitted {
     _private: (),
 }
 
-trait ErrorSink {
+pub trait ErrorSink {
     fn emit(&mut self, err: mbe::ExpandError);
 
     fn option<T>(

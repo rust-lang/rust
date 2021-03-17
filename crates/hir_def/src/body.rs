@@ -32,6 +32,7 @@ use crate::{
     path::{ModPath, Path},
     src::HasSource,
     AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
+    UnresolvedMacro,
 };
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
@@ -101,10 +102,12 @@ impl Expander {
         &mut self,
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
-    ) -> ExpandResult<Option<(Mark, T)>> {
+    ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
         if self.recursion_limit + 1 > EXPANSION_RECURSION_LIMIT {
             cov_mark::hit!(your_stack_belongs_to_me);
-            return ExpandResult::str_err("reached recursion limit during macro expansion".into());
+            return Ok(ExpandResult::str_err(
+                "reached recursion limit during macro expansion".into(),
+            ));
         }
 
         let macro_call = InFile::new(self.current_file_id, &macro_call);
@@ -116,14 +119,11 @@ impl Expander {
         let call_id =
             macro_call.as_call_id_with_errors(db, self.def_map.krate(), resolver, &mut |e| {
                 err.get_or_insert(e);
-            });
+            })?;
         let call_id = match call_id {
-            Some(it) => it,
-            None => {
-                if err.is_none() {
-                    log::warn!("no error despite `as_call_id_with_errors` returning `None`");
-                }
-                return ExpandResult { value: None, err };
+            Ok(it) => it,
+            Err(_) => {
+                return Ok(ExpandResult { value: None, err });
             }
         };
 
@@ -141,9 +141,9 @@ impl Expander {
                     log::warn!("no error despite `parse_or_expand` failing");
                 }
 
-                return ExpandResult::only_err(err.unwrap_or_else(|| {
+                return Ok(ExpandResult::only_err(err.unwrap_or_else(|| {
                     mbe::ExpandError::Other("failed to parse macro invocation".into())
-                }));
+                })));
             }
         };
 
@@ -151,7 +151,7 @@ impl Expander {
             Some(it) => it,
             None => {
                 // This can happen without being an error, so only forward previous errors.
-                return ExpandResult { value: None, err };
+                return Ok(ExpandResult { value: None, err });
             }
         };
 
@@ -167,7 +167,7 @@ impl Expander {
         self.current_file_id = file_id;
         self.ast_id_map = db.ast_id_map(file_id);
 
-        ExpandResult { value: Some((mark, node)), err }
+        Ok(ExpandResult { value: Some((mark, node)), err })
     }
 
     pub(crate) fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {

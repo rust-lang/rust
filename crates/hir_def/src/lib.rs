@@ -58,7 +58,7 @@ use std::{
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::FileAstId,
-    eager::{expand_eager_macro, ErrorEmitted},
+    eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
     AstId, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
@@ -583,7 +583,7 @@ pub trait AsMacroCall {
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     ) -> Option<MacroCallId> {
-        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ())
+        self.as_call_id_with_errors(db, krate, resolver, &mut |_| ()).ok()?.ok()
     }
 
     fn as_call_id_with_errors(
@@ -592,7 +592,7 @@ pub trait AsMacroCall {
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
         error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId>;
+    ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro>;
 }
 
 impl AsMacroCall for InFile<&ast::MacroCall> {
@@ -601,25 +601,28 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        error_sink: &mut dyn FnMut(mbe::ExpandError),
-    ) -> Option<MacroCallId> {
+        mut error_sink: &mut dyn FnMut(mbe::ExpandError),
+    ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
         let path = self.value.path().and_then(|path| path::ModPath::from_src(path, &h));
 
-        if path.is_none() {
-            error_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
-        }
+        let path = match error_sink
+            .option(path, || mbe::ExpandError::Other("malformed macro invocation".into()))
+        {
+            Ok(path) => path,
+            Err(error) => {
+                return Ok(Err(error));
+            }
+        };
 
         macro_call_as_call_id(
-            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path?),
+            &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             db,
             krate,
             resolver,
             error_sink,
         )
-        .ok()?
-        .ok()
     }
 }
 
@@ -636,7 +639,7 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
     }
 }
 
-struct UnresolvedMacro;
+pub struct UnresolvedMacro;
 
 fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,

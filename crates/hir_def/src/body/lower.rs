@@ -24,7 +24,7 @@ use crate::{
     body::{Body, BodySourceMap, Expander, LabelSource, PatPtr, SyntheticSyntax},
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    diagnostics::{InactiveCode, MacroError, UnresolvedProcMacro},
+    diagnostics::{InactiveCode, MacroError, UnresolvedMacroCall, UnresolvedProcMacro},
     expr::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Label,
         LabelId, Literal, LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField,
@@ -33,7 +33,7 @@ use crate::{
     item_scope::BuiltinShadowMode,
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockLoc, ModuleDefId,
+    AdtId, BlockLoc, ModuleDefId, UnresolvedMacro,
 };
 
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
@@ -553,6 +553,17 @@ impl ExprCollector<'_> {
 
         let macro_call = self.expander.to_source(AstPtr::new(&e));
         let res = self.expander.enter_expand(self.db, e);
+
+        let res = match res {
+            Ok(res) => res,
+            Err(UnresolvedMacro) => {
+                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedMacroCall(
+                    UnresolvedMacroCall { file: outer_file, node: syntax_ptr.cast().unwrap() },
+                ));
+                collector(self, None);
+                return;
+            }
+        };
 
         match &res.err {
             Some(ExpandError::UnresolvedProcMacro) => {
