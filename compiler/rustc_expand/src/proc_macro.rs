@@ -90,7 +90,8 @@ impl MultiItemModifier for ProcMacroDerive {
             }
             _ => unreachable!(),
         };
-        let input = if item.pretty_printing_compatibility_hack() {
+        let input = if crate::base::pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess)
+        {
             TokenTree::token(token::Interpolated(Lrc::new(item)), DUMMY_SP).into()
         } else {
             nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::Yes)

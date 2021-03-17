@@ -187,7 +187,7 @@ impl FromInternal<(TreeAndSpacing, &'_ ParseSess, &'_ mut Vec<Self>)>
                         delimiter: Delimiter::None,
                         stream,
                         span: DelimSpan::from_single(span),
-                        flatten: nt.pretty_printing_compatibility_hack(),
+                        flatten: crate::base::pretty_printing_compatibility_hack(&nt, sess),
                     })
                 }
             }
