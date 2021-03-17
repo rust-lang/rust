@@ -728,7 +728,7 @@ impl<'a> CrateLocator<'a> {
 }
 
 /// A trivial wrapper for `Mmap` that implements `StableDeref`.
-struct StableDerefMmap(memmap::Mmap);
+struct StableDerefMmap(memmap2::Mmap);
 
 impl Deref for StableDerefMmap {
     type Target = [u8];
@@ -779,7 +779,7 @@ fn get_metadata_section(
             // mmap the file, because only a small fraction of it is read.
             let file = std::fs::File::open(filename)
                 .map_err(|_| format!("failed to open rmeta metadata: '{}'", filename.display()))?;
-            let mmap = unsafe { memmap::Mmap::map(&file) };
+            let mmap = unsafe { memmap2::Mmap::map(&file) };
             let mmap = mmap
                 .map_err(|_| format!("failed to mmap rmeta metadata: '{}'", filename.display()))?;
 
