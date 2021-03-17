@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use either::Either;
 use hir::{HasAttrs, ModuleDef, Semantics};
 use ide_db::{
@@ -5,7 +7,8 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextSize, TokenAtOffset, T,
+    ast, match_ast, AstNode, AstToken, SyntaxKind::*, SyntaxToken, TextRange, TextSize,
+    TokenAtOffset, T,
 };
 
 use crate::{
@@ -92,15 +95,18 @@ fn extract_positioned_link_from_comment(
     position: FilePosition,
     comment: &ast::Comment,
 ) -> Option<(String, Option<hir::Namespace>)> {
-    let comment_range = comment.syntax().text_range();
     let doc_comment = comment.doc_comment()?;
+    let comment_start =
+        comment.syntax().text_range().start() + TextSize::from(comment.prefix().len() as u32);
     let def_links = extract_definitions_from_markdown(doc_comment);
-    let start = comment_range.start() + TextSize::from(comment.prefix().len() as u32);
-    let (def_link, ns, _) = def_links.iter().min_by_key(|(_, _, def_link_range)| {
-        let matched_position = start + TextSize::from(def_link_range.start as u32);
-        position.offset.checked_sub(matched_position).unwrap_or_else(|| comment_range.end())
+    let (def_link, ns, _) = def_links.into_iter().find(|&(_, _, Range { start, end })| {
+        TextRange::at(
+            comment_start + TextSize::from(start as u32),
+            TextSize::from((end - start) as u32),
+        )
+        .contains(position.offset)
     })?;
-    Some((def_link.to_string(), *ns))
+    Some((def_link, ns))
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {
@@ -1134,7 +1140,7 @@ fn foo<'foo>(_: &'foo ()) {
     fn goto_def_for_intra_doc_link_same_file() {
         check(
             r#"
-/// Blah, [`bar`](bar) .. [`foo`](foo)$0 has [`bar`](bar)
+/// Blah, [`bar`](bar) .. [`foo`](foo$0) has [`bar`](bar)
 pub fn bar() { }
 
 /// You might want to see [`std::fs::read()`] too.
