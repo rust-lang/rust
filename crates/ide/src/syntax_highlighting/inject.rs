@@ -1,16 +1,18 @@
 //! "Recursive" Syntax highlighting for code in doctests and fixtures.
 
-use std::mem;
+use std::{mem, ops::Range};
 
 use either::Either;
 use hir::{HasAttrs, Semantics};
-use ide_db::call_info::ActiveParameter;
+use ide_db::{call_info::ActiveParameter, defs::Definition};
 use syntax::{
     ast::{self, AstNode, AttrsOwner, DocCommentsOwner},
     match_ast, AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 
-use crate::{Analysis, HlMod, HlRange, HlTag, RootDatabase};
+use crate::{
+    doc_links::extract_definitions_from_markdown, Analysis, HlMod, HlRange, HlTag, RootDatabase,
+};
 
 use super::{highlights::Highlights, injector::Injector};
 
@@ -120,24 +122,24 @@ impl AstNode for AttrsOwnerNode {
 fn doc_attributes<'node>(
     sema: &Semantics<RootDatabase>,
     node: &'node SyntaxNode,
-) -> Option<(AttrsOwnerNode, hir::Attrs)> {
+) -> Option<(AttrsOwnerNode, hir::Attrs, Definition)> {
     match_ast! {
         match node {
-            ast::SourceFile(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Fn(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Struct(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Union(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::RecordField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::TupleField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Enum(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Variant(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Trait(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Module(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Static(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Const(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::TypeAlias(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::Impl(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
-            ast::MacroRules(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db))),
+            ast::SourceFile(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Module(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Module(def)))),
+            ast::Fn(it)          => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Function(def)))),
+            ast::Struct(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(def))))),
+            ast::Union(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Union(def))))),
+            ast::Enum(it)        => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(def))))),
+            ast::Variant(it)     => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Variant(def)))),
+            ast::Trait(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Trait(def)))),
+            ast::Static(it)      => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Static(def)))),
+            ast::Const(it)       => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::Const(def)))),
+            ast::TypeAlias(it)   => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::ModuleDef(hir::ModuleDef::TypeAlias(def)))),
+            ast::Impl(it)        => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::SelfType(def))),
+            ast::RecordField(it) => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Field(def))),
+            ast::TupleField(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Field(def))),
+            ast::MacroRules(it)  => sema.to_def(&it).map(|def| (AttrsOwnerNode::new(it), def.attrs(sema.db), Definition::Macro(def))),
             // ast::MacroDef(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             // ast::Use(it) => sema.to_def(&it).map(|def| (Box::new(it) as _, def.attrs(sema.db))),
             _ => return None
@@ -147,18 +149,15 @@ fn doc_attributes<'node>(
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, node: &SyntaxNode) {
-    let (owner, attributes) = match doc_attributes(sema, node) {
+    let (owner, attributes, def) = match doc_attributes(sema, node) {
         Some(it) => it,
         None => return,
     };
 
-    if attributes.docs().map_or(true, |docs| !String::from(docs).contains(RUSTDOC_FENCE)) {
-        return;
-    }
-    let attrs_source_map = attributes.source_map(&owner);
-
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
+
+    let attrs_source_map = attributes.source_map(&owner);
 
     let mut is_codeblock = false;
     let mut is_doctest = false;
@@ -166,6 +165,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     // Replace the original, line-spanning comment ranges by new, only comment-prefix
     // spanning comment ranges.
     let mut new_comments = Vec::new();
+    let mut intra_doc_links = Vec::new();
     let mut string;
     for attr in attributes.by_key("doc").attrs() {
         let src = attrs_source_map.source_of(&attr);
@@ -209,7 +209,22 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }
-                None if !is_doctest => continue,
+                None if !is_doctest => {
+                    intra_doc_links.extend(
+                        extract_definitions_from_markdown(line)
+                            .into_iter()
+                            .filter(|(link, ns, _)| {
+                                validate_intra_doc_link(sema.db, &def, link, *ns)
+                            })
+                            .map(|(.., Range { start, end })| {
+                                TextRange::at(
+                                    prev_range_start + TextSize::from(start as u32),
+                                    TextSize::from((end - start) as u32),
+                                )
+                            }),
+                    );
+                    continue;
+                }
                 None => (),
             }
 
@@ -227,17 +242,28 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
             inj.add_unmapped("\n");
         }
     }
+
+    for range in intra_doc_links {
+        hl.add(HlRange {
+            range,
+            highlight: HlTag::IntraDocLink | HlMod::Documentation,
+            binding_hash: None,
+        });
+    }
+
+    if new_comments.is_empty() {
+        return; // no need to run an analysis on an empty file
+    }
+
     inj.add_unmapped("\n}");
 
     let (analysis, tmp_file_id) = Analysis::from_single_file(inj.text().to_string());
 
-    for h in analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap() {
-        for r in inj.map_range_up(h.range) {
-            hl.add(HlRange {
-                range: r,
-                highlight: h.highlight | HlMod::Injected,
-                binding_hash: h.binding_hash,
-            });
+    for HlRange { range, highlight, binding_hash } in
+        analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap()
+    {
+        for range in inj.map_range_up(range) {
+            hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });
         }
     }
 
@@ -272,4 +298,32 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
                 })
         }
     }
+}
+
+fn validate_intra_doc_link(
+    db: &RootDatabase,
+    def: &Definition,
+    link: &str,
+    ns: Option<hir::Namespace>,
+) -> bool {
+    match def {
+        Definition::ModuleDef(def) => match def {
+            hir::ModuleDef::Module(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Function(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Adt(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Variant(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Const(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Static(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::Trait(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::TypeAlias(it) => it.resolve_doc_path(db, &link, ns),
+            hir::ModuleDef::BuiltinType(_) => None,
+        },
+        Definition::Macro(it) => it.resolve_doc_path(db, &link, ns),
+        Definition::Field(it) => it.resolve_doc_path(db, &link, ns),
+        Definition::SelfType(_)
+        | Definition::Local(_)
+        | Definition::GenericParam(_)
+        | Definition::Label(_) => None,
+    }
+    .is_some()
 }

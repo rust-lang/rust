@@ -18,19 +18,20 @@ pub struct HlMods(u32);
 pub enum HlTag {
     Symbol(SymbolKind),
 
+    Attribute,
     BoolLiteral,
     BuiltinType,
     ByteLiteral,
     CharLiteral,
-    NumericLiteral,
-    StringLiteral,
-    Attribute,
     Comment,
     EscapeSequence,
     FormatSpecifier,
+    IntraDocLink,
     Keyword,
-    Punctuation(HlPunct),
+    NumericLiteral,
     Operator,
+    Punctuation(HlPunct),
+    StringLiteral,
     UnresolvedReference,
 
     // For things which don't have a specific highlight.
@@ -116,6 +117,7 @@ impl HlTag {
             HlTag::Comment => "comment",
             HlTag::EscapeSequence => "escape_sequence",
             HlTag::FormatSpecifier => "format_specifier",
+            HlTag::IntraDocLink => "intra_doc_link",
             HlTag::Keyword => "keyword",
             HlTag::Punctuation(punct) => match punct {
                 HlPunct::Bracket => "bracket",
