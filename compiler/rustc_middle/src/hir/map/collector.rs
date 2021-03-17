@@ -52,6 +52,7 @@ fn insert_vec_map<K: Idx, V: Clone>(map: &mut IndexVec<K, Option<V>>, k: K, v: V
     if i >= len {
         map.extend(repeat(None).take(i - len + 1));
     }
+    debug_assert!(map[k].is_none());
     map[k] = Some(v);
 }
 
@@ -216,9 +217,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             // Overwrite the dummy hash with the real HIR owner hash.
             nodes.hash = hash;
 
-            // FIXME: feature(impl_trait_in_bindings) broken and trigger this assert
-            //assert!(data.signature.is_none());
-
+            debug_assert!(data.signature.is_none());
             data.signature =
                 Some(self.arena.alloc(Owner { parent: entry.parent, node: entry.node }));
 
