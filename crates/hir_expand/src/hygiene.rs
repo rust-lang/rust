@@ -23,7 +23,7 @@ pub struct Hygiene {
 
 impl Hygiene {
     pub fn new(db: &dyn AstDatabase, file_id: HirFileId) -> Hygiene {
-        Hygiene { frames: Some(HygieneFrames::new(db, file_id.clone())) }
+        Hygiene { frames: Some(HygieneFrames::new(db, file_id)) }
     }
 
     pub fn new_unhygienic() -> Hygiene {
@@ -129,10 +129,7 @@ impl HygieneInfo {
             mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
             mbe::Origin::Def => (
                 &self.macro_def.1,
-                self.def_start
-                    .as_ref()
-                    .expect("`Origin::Def` used with non-`macro_rules!` macro")
-                    .clone(),
+                *self.def_start.as_ref().expect("`Origin::Def` used with non-`macro_rules!` macro"),
             ),
         };
 

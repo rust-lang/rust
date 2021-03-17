@@ -165,7 +165,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt
                                 }
                                 Separator::Puncts(puncts) => {
                                     for it in puncts {
-                                        parent.token_trees.push(tt::Leaf::Punct(it.clone()).into())
+                                        parent.token_trees.push(tt::Leaf::Punct(*it).into())
                                     }
                                 }
                             };
@@ -174,8 +174,7 @@ fn invocation_fixtures(rules: &FxHashMap<String, MacroRules>) -> Vec<(String, tt
                 }
             }
             Op::Subtree { tokens, delimiter } => {
-                let mut subtree =
-                    tt::Subtree { delimiter: delimiter.clone(), token_trees: Vec::new() };
+                let mut subtree = tt::Subtree { delimiter: *delimiter, token_trees: Vec::new() };
                 tokens.iter().for_each(|it| {
                     collect_from_op(it, &mut subtree, seed);
                 });

@@ -102,7 +102,7 @@ fn extract_positioned_link_from_comment(
             None => comment_range.end(),
         }
     })?;
-    Some((def_link.to_string(), ns.clone()))
+    Some((def_link.to_string(), *ns))
 }
 
 fn pick_best(tokens: TokenAtOffset<SyntaxToken>) -> Option<SyntaxToken> {

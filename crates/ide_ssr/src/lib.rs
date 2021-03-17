@@ -139,11 +139,8 @@ impl<'db> MatchFinder<'db> {
     pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
         use ide_db::base_db::SourceDatabaseExt;
         use ide_db::symbol_index::SymbolsDatabase;
-        if let Some(first_file_id) = db
-            .local_roots()
-            .iter()
-            .next()
-            .and_then(|root| db.source_root(root.clone()).iter().next())
+        if let Some(first_file_id) =
+            db.local_roots().iter().next().and_then(|root| db.source_root(*root).iter().next())
         {
             Ok(MatchFinder::in_context(
                 db,

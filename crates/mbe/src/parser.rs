@@ -262,7 +262,7 @@ fn parse_repeat(src: &mut TtIter) -> Result<(Option<Separator>, RepeatKind), Par
                                 if puncts.len() == 3 {
                                     return Err(ParseError::InvalidRepeat);
                                 }
-                                puncts.push(punct.clone())
+                                puncts.push(*punct)
                             }
                             _ => return Err(ParseError::InvalidRepeat),
                         }

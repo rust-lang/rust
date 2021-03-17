@@ -56,7 +56,7 @@ pub(super) fn ra_fixture(
         for range in inj.map_range_up(hl_range.range) {
             if let Some(range) = literal.map_range_up(range) {
                 hl_range.range = range;
-                hl.add(hl_range.clone());
+                hl.add(hl_range);
             }
         }
     }

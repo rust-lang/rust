@@ -93,7 +93,7 @@ pub(crate) fn remove_links(markdown: &str) -> String {
 
     let mut cb = |_: BrokenLink| {
         let empty = InlineStr::try_from("").unwrap();
-        Some((CowStr::Inlined(empty.clone()), CowStr::Inlined(empty)))
+        Some((CowStr::Inlined(empty), CowStr::Inlined(empty)))
     };
     let doc = Parser::new_with_broken_link_callback(markdown, opts, Some(&mut cb));
     let doc = doc.filter_map(move |evt| match evt {
@@ -147,7 +147,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         _ => return None,
     };
 
-    let ns = ItemInNs::from(target_def.clone());
+    let ns = ItemInNs::from(target_def);
 
     let module = definition.module(db)?;
     let krate = module.krate();

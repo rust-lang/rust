@@ -127,7 +127,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ide_db::RootDatabase>,
     ) -> Result<Match, MatchFailed> {
-        let match_state = Matcher { sema, restrict_range: restrict_range.clone(), rule };
+        let match_state = Matcher { sema, restrict_range: *restrict_range, rule };
         // First pass at matching, where we check that node types and idents match.
         match_state.attempt_match_node(&mut Phase::First, &rule.pattern.node, code)?;
         match_state.validate_range(&sema.original_range(code))?;
