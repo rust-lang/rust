@@ -1510,6 +1510,70 @@ pub unsafe fn vcombine_p64(low: poly64x1_t, high: poly64x1_t) -> poly64x2_t {
 /// Duplicate vector element to vector or scalar
 #[inline]
 #[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmov))]
+pub unsafe fn vdup_n_p64(value: p64) -> poly64x1_t {
+    transmute(u64x1::new(value))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vdup_n_f64(value: f64) -> float64x1_t {
+    float64x1_t(value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup))]
+pub unsafe fn vdupq_n_p64(value: p64) -> poly64x2_t {
+    transmute(u64x2::new(value, value))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup))]
+pub unsafe fn vdupq_n_f64(value: f64) -> float64x2_t {
+    float64x2_t(value, value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmov))]
+pub unsafe fn vmov_n_p64(value: p64) -> poly64x1_t {
+    vdup_n_p64(value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ldr))]
+pub unsafe fn vmov_n_f64(value: f64) -> float64x1_t {
+    vdup_n_f64(value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup))]
+pub unsafe fn vmovq_n_p64(value: p64) -> poly64x2_t {
+    vdupq_n_p64(value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(dup))]
+pub unsafe fn vmovq_n_f64(value: f64) -> float64x2_t {
+    vdupq_n_f64(value)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
     float64x1_t(simd_extract(a, 1))
@@ -3442,6 +3506,70 @@ mod tests {
     test_vcombine!(test_vcombine_u64 => vcombine_u64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_p64 => vcombine_p64([3_u64], [13_u64]));
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_f64() {
+        let a: f64 = 3.3;
+        let e = f64x1::new(3.3);
+        let r: f64x1 = transmute(vdup_n_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdup_n_p64() {
+        let a: u64 = 3;
+        let e = u64x1::new(3);
+        let r: u64x1 = transmute(vdup_n_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_f64() {
+        let a: f64 = 3.3;
+        let e = f64x2::new(3.3, 3.3);
+        let r: f64x2 = transmute(vdupq_n_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vdupq_n_p64() {
+        let a: u64 = 3;
+        let e = u64x2::new(3, 3);
+        let r: u64x2 = transmute(vdupq_n_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmov_n_p64() {
+        let a: u64 = 3;
+        let e = u64x1::new(3);
+        let r: u64x1 = transmute(vmov_n_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmov_n_f64() {
+        let a: f64 = 3.3;
+        let e = f64x1::new(3.3);
+        let r: f64x1 = transmute(vmov_n_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmovq_n_p64() {
+        let a: u64 = 3;
+        let e = u64x2::new(3, 3);
+        let r: u64x2 = transmute(vmovq_n_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmovq_n_f64() {
+        let a: f64 = 3.3;
+        let e = f64x2::new(3.3, 3.3);
+        let r: f64x2 = transmute(vmovq_n_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vget_high_f64() {
