@@ -132,4 +132,18 @@ fn f() -> Option<()> {
     Some(())
 }
 
+mod issue6675 {
+    unsafe fn foo() {
+        let mut s = "test".to_owned();
+        None.unwrap_or_else(|| s.as_mut_vec());
+    }
+
+    fn bar() {
+        let mut s = "test".to_owned();
+        None.unwrap_or_else(|| unsafe { s.as_mut_vec() });
+        #[rustfmt::skip]
+        None.unwrap_or_else(|| unsafe { s.as_mut_vec() });
+    }
+}
+
 fn main() {}
