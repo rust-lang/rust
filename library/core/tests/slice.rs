@@ -2191,3 +2191,36 @@ mod swap_panics {
         x.swap(2, 5);
     }
 }
+
+#[test]
+fn slice_split_array_mut() {
+    let v = &mut [1, 2, 3, 4, 5, 6][..];
+
+    {
+        let (left, right) = v.split_array_mut::<0>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        let (left, right) = v.split_array_mut::<6>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, []);
+    }
+}
+
+#[should_panic]
+#[test]
+fn slice_split_array_ref_out_of_bounds() {
+    let v = &[1, 2, 3, 4, 5, 6][..];
+
+    v.split_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn slice_split_array_mut_out_of_bounds() {
+    let v = &mut [1, 2, 3, 4, 5, 6][..];
+
+    v.split_array_mut::<7>();
+}
