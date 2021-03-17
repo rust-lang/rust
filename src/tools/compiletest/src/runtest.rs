@@ -2367,6 +2367,9 @@ impl<'test> TestCx<'test> {
     }
 
     fn compare_to_default_rustdoc(&mut self, out_dir: &Path) {
+        if !self.config.has_tidy {
+            return;
+        }
         println!("info: generating a diff against nightly rustdoc");
 
         let suffix =
@@ -2428,10 +2431,8 @@ impl<'test> TestCx<'test> {
                 }
             }
         };
-        if self.config.has_tidy {
-            tidy_dir(out_dir);
-            tidy_dir(&compare_dir);
-        }
+        tidy_dir(out_dir);
+        tidy_dir(&compare_dir);
 
         let pager = {
             let output = Command::new("git").args(&["config", "--get", "core.pager"]).output().ok();
