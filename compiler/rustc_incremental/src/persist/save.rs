@@ -42,6 +42,11 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         join(
             move || {
                 sess.time("incr_comp_persist_result_cache", || {
+                    // Drop the memory map so that we can remove the file and write to it.
+                    if let Some(odc) = &tcx.on_disk_cache {
+                        odc.drop_serialized_data(tcx);
+                    }
+
                     file_format::save_in(sess, query_cache_path, "query cache", |e| {
                         encode_query_cache(tcx, e)
                     });

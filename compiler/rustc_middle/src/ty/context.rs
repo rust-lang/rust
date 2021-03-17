@@ -101,6 +101,8 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
     fn register_reused_dep_node(&self, tcx: TyCtxt<'tcx>, dep_node: &DepNode);
     fn store_foreign_def_id_hash(&self, def_id: DefId, hash: DefPathHash);
 
+    fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
+
     fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
 }
 
