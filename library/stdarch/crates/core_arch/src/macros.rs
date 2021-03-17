@@ -58,6 +58,13 @@ macro_rules! static_assert_imm8 {
     };
 }
 
+#[allow(unused_macros)]
+macro_rules! static_assert_imm16 {
+    ($imm:ident) => {
+        let _ = $crate::core_arch::macros::ValidateConstImm::<$imm, 0, { (1 << 16) - 1 }>::VALID;
+    };
+}
+
 #[allow(unused)]
 macro_rules! static_assert {
     ($imm:ident : $ty:ty where $e:expr) => {

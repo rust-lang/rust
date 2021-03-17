@@ -80,33 +80,13 @@ pub unsafe fn __yield() {
 // and ARMv7-R edition (ARM DDI 0406C.c) sections D12.4.1 "ARM instruction set support" and D12.4.2
 // "Thumb instruction set support"
 #[cfg(target_feature = "v7")]
+#[cfg(any(target_arch = "arm", doc))]
+#[doc(cfg(target_arch = "arm"))]
 #[inline(always)]
-#[rustc_args_required_const(0)]
-pub unsafe fn __dbg(imm4: u32) {
-    macro_rules! call {
-        ($imm4:expr) => {
-            llvm_asm!(concat!("DBG ", stringify!($imm4)) : : : : "volatile")
-        }
-    }
-
-    match imm4 & 0b1111 {
-        0 => call!(0),
-        1 => call!(1),
-        2 => call!(2),
-        3 => call!(3),
-        4 => call!(4),
-        5 => call!(5),
-        6 => call!(6),
-        7 => call!(7),
-        8 => call!(8),
-        9 => call!(9),
-        10 => call!(10),
-        11 => call!(11),
-        12 => call!(12),
-        13 => call!(13),
-        14 => call!(14),
-        _ => call!(15),
-    }
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __dbg<const IMM4: i32>() {
+    static_assert_imm4!(IMM4);
+    dbg(IMM4);
 }
 
 /// Generates an unspecified no-op instruction.
@@ -117,13 +97,17 @@ pub unsafe fn __dbg(imm4: u32) {
 /// will increase execution time.
 #[inline(always)]
 pub unsafe fn __nop() {
-    llvm_asm!("NOP" : : : : "volatile")
+    asm!("nop", options(nomem, nostack, preserves_flags));
 }
 
 extern "C" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.hint")]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.hint")]
     fn hint(_: i32);
+
+    #[cfg(target_arch = "arm")]
+    #[link_name = "llvm.arm.dbg"]
+    fn dbg(_: i32);
 }
 
 // from LLVM 7.0.1's lib/Target/ARM/{ARMInstrThumb,ARMInstrInfo,ARMInstrThumb2}.td

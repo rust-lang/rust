@@ -15,7 +15,7 @@
 #![feature(const_fn, staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
-#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(llvm_asm))]
+#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(feature = "std_detect_file_io", feature(vec_spare_capacity))]
 #![no_std]

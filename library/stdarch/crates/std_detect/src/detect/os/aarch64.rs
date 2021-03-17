@@ -34,7 +34,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // ID_AA64ISAR0_EL1 - Instruction Set Attribute Register 0
         let aa64isar0: u64;
         unsafe {
-            llvm_asm!("mrs $0, ID_AA64ISAR0_EL1" : "=r"(aa64isar0));
+            asm!(
+                "mrs {}, ID_AA64ISAR0_EL1",
+                out(reg) aa64isar0,
+                options(pure, nomem, preserves_flags, nostack)
+            );
         }
 
         let aes = bits_shift(aa64isar0, 7, 4) >= 1;
@@ -51,7 +55,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // ID_AA64PFR0_EL1 - Processor Feature Register 0
         let aa64pfr0: u64;
         unsafe {
-            llvm_asm!("mrs $0, ID_AA64PFR0_EL1" : "=r"(aa64pfr0));
+            asm!(
+                "mrs {}, ID_AA64PFR0_EL1",
+                out(reg) aa64pfr0,
+                options(pure, nomem, preserves_flags, nostack)
+            );
         }
 
         let fp = bits_shift(aa64pfr0, 19, 16) < 0xF;
@@ -74,7 +82,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
         // ID_AA64ISAR1_EL1 - Instruction Set Attribute Register 1
         let aa64isar1: u64;
         unsafe {
-            llvm_asm!("mrs $0, ID_AA64ISAR1_EL1" : "=r"(aa64isar1));
+            asm!(
+                "mrs {}, ID_AA64ISAR1_EL1",
+                out(reg) aa64isar1,
+                options(pure, nomem, preserves_flags, nostack)
+            );
         }
 
         enable_feature(Feature::rcpc, bits_shift(aa64isar1, 23, 20) >= 1);

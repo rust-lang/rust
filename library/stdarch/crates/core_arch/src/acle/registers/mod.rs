@@ -4,7 +4,7 @@ macro_rules! rsr {
         impl super::super::sealed::Rsr for $R {
             unsafe fn __rsr(&self) -> u32 {
                 let r: u32;
-                llvm_asm!(concat!("mrs $0,", stringify!($R)) : "=r"(r) : : : "volatile");
+                asm!(concat!("mrs {},", stringify!($R)), out(reg) r, options(nomem, nostack));
                 r
             }
         }
@@ -17,7 +17,7 @@ macro_rules! rsrp {
         impl super::super::sealed::Rsrp for $R {
             unsafe fn __rsrp(&self) -> *const u8 {
                 let r: *const u8;
-                llvm_asm!(concat!("mrs $0,", stringify!($R)) : "=r"(r) : : : "volatile");
+                asm!(concat!("mrs {},", stringify!($R)), out(reg) r, options(nomem, nostack));
                 r
             }
         }
@@ -29,7 +29,7 @@ macro_rules! wsr {
     ($R:ident) => {
         impl super::super::sealed::Wsr for $R {
             unsafe fn __wsr(&self, value: u32) {
-                llvm_asm!(concat!("msr ", stringify!($R), ",$0") : : "r"(value) : : "volatile");
+                asm!(concat!("msr ", stringify!($R), ", {}"), in(reg) value, options(nomem, nostack));
             }
         }
     };
@@ -40,7 +40,7 @@ macro_rules! wsrp {
     ($R:ident) => {
         impl super::super::sealed::Wsrp for $R {
             unsafe fn __wsrp(&self, value: *const u8) {
-                llvm_asm!(concat!("msr ", stringify!($R), ",$0") : : "r"(value) : : "volatile");
+                asm!(concat!("msr ", stringify!($R), ", {}"), in(reg) value, options(nomem, nostack));
             }
         }
     };

@@ -11,58 +11,41 @@ use stdarch_test::assert_instr;
 
 /// Inserts a breakpoint instruction.
 ///
-/// `val` is a compile-time constant integer in range `[0, 255]`.
+/// `VAL` is a compile-time constant integer in range `[0, 65535]`.
 ///
-/// The breakpoint instruction inserted is:
+/// The breakpoint instruction inserted is `BRK` on A64.
+#[cfg(all(target_arch = "aarch64", not(doc)))]
+#[cfg_attr(test, assert_instr(brk, VAL = 0))]
+#[inline(always)]
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __breakpoint<const VAL: i32>() {
+    static_assert_imm16!(VAL);
+    asm!("brk {}", const VAL);
+}
+
+/// Inserts a breakpoint instruction.
 ///
-/// * `BKPT` when compiling as T32,
-/// * `BRK` when compiling as A32 or A64.
+/// `VAL` is a compile-time constant integer in range `[0, 255]`.
 ///
-/// # Safety
-///
-/// If `val` is out-of-range the behavior is **undefined**.
+/// The breakpoint instruction inserted is `BKPT` on A32/T32.
 ///
 /// # Note
 ///
 /// [ARM's documentation][arm_docs] defines that `__breakpoint` accepts the
-/// following values for `val`:
+/// following values for `VAL`:
 ///
-/// - `0...65535` when compiling as A32 or A64,
+/// - `0...65535` when compiling as A32,
 /// - `0...255` when compiling as T32.
 ///
-/// The current implementation only accepts values in range `[0, 255]` - if the
-/// value is out-of-range the behavior is **undefined**.
+/// The current implementation only accepts values in range `[0, 255]`.
 ///
 /// [arm_docs]: https://developer.arm.com/docs/100067/latest/compiler-specific-intrinsics/__breakpoint-intrinsic
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(bkpt, val = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(brk, val = 0))]
+#[cfg(any(target_arch = "arm", doc))]
+#[doc(cfg(target_arch = "arm"))]
+#[cfg_attr(test, assert_instr(bkpt, VAL = 0))]
 #[inline(always)]
-#[rustc_args_required_const(0)]
-pub unsafe fn __breakpoint(val: i32) {
-    // Ensure that this compiles correctly on non-arm architectures, so libstd
-    // doc builds work. The proper macro will shadow this definition below.
-    #[allow(unused_macros)]
-    macro_rules! call {
-        ($e:expr) => {
-            ()
-        };
-    }
-
-    #[cfg(target_arch = "arm")]
-    macro_rules! call {
-        ($imm8:expr) => {
-            llvm_asm!(concat!("BKPT ", stringify!($imm8)) : : : : "volatile")
-        }
-    }
-
-    #[cfg(target_arch = "aarch64")]
-    macro_rules! call {
-        ($imm8:expr) => {
-            llvm_asm!(concat!("BRK ", stringify!($imm8)) : : : : "volatile")
-        }
-    }
-
-    // We can't `panic!` inside this intrinsic, so we can't really validate the
-    // arguments here. If `val` is out-of-range this macro uses `val == 255`:
-    constify_imm8!(val, call);
+#[rustc_legacy_const_generics(0)]
+pub unsafe fn __breakpoint<const VAL: i32>() {
+    static_assert_imm8!(VAL);
+    asm!("bkpt #{}", const VAL);
 }

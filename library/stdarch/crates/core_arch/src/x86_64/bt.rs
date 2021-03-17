@@ -7,10 +7,14 @@ use stdarch_test::assert_instr;
 #[unstable(feature = "simd_x86_bittest", issue = "59414")]
 pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
     let r: u8;
-    llvm_asm!("btq $2, $1\n\tsetc ${0:b}"
-              : "=r"(r)
-              : "*m"(p), "r"(b)
-              : "cc", "memory");
+    asm!(
+        "bt [{p}], {b}",
+        "setc {r}",
+        p = in(reg) p,
+        b = in(reg) b,
+        r = out(reg_byte) r,
+        options(readonly, nostack, pure)
+    );
     r
 }
 
@@ -20,10 +24,14 @@ pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
 #[unstable(feature = "simd_x86_bittest", issue = "59414")]
 pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
-    llvm_asm!("btsq $2, $1\n\tsetc ${0:b}"
-              : "=r"(r), "+*m"(p)
-              : "r"(b)
-              : "cc", "memory");
+    asm!(
+        "bts [{p}], {b}",
+        "setc {r}",
+        p = in(reg) p,
+        b = in(reg) b,
+        r = out(reg_byte) r,
+        options(nostack)
+    );
     r
 }
 
@@ -33,10 +41,14 @@ pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
 #[unstable(feature = "simd_x86_bittest", issue = "59414")]
 pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
-    llvm_asm!("btrq $2, $1\n\tsetc ${0:b}"
-              : "=r"(r), "+*m"(p)
-              : "r"(b)
-              : "cc", "memory");
+    asm!(
+        "btr [{p}], {b}",
+        "setc {r}",
+        p = in(reg) p,
+        b = in(reg) b,
+        r = out(reg_byte) r,
+        options(nostack)
+    );
     r
 }
 
@@ -46,10 +58,14 @@ pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
 #[unstable(feature = "simd_x86_bittest", issue = "59414")]
 pub unsafe fn _bittestandcomplement64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
-    llvm_asm!("btcq $2, $1\n\tsetc ${0:b}"
-              : "=r"(r), "+*m"(p)
-              : "r"(b)
-              : "cc", "memory");
+    asm!(
+        "btc [{p}], {b}",
+        "setc {r}",
+        p = in(reg) p,
+        b = in(reg) b,
+        r = out(reg_byte) r,
+        options(nostack)
+    );
     r
 }
 

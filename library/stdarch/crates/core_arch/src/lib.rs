@@ -12,7 +12,6 @@
     platform_intrinsics,
     repr_simd,
     simd_ffi,
-    llvm_asm,
     proc_macro_hygiene,
     stmt_expr_attributes,
     core_intrinsics,
