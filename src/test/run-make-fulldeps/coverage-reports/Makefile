@@ -82,13 +82,13 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && echo "--edition=2018" ) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/lib/$@.rs) \
 			--crate-type rlib -Zinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
 			-L "$(TMPDIR)" -Zinstrument-coverage
 
 	# Run it in order to generate some profiling data,
@@ -107,7 +107,7 @@ endif
 	# Run it through rustdoc as well to cover doctests
 	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p.profraw \
 			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && echo "--edition=2018" ) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
 			-L "$(TMPDIR)" -Zinstrument-coverage \
 			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
 

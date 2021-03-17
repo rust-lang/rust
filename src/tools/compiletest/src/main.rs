@@ -44,7 +44,7 @@ fn main() {
     }
 
     if !config.has_tidy && config.mode == Mode::Rustdoc {
-        eprintln!("warning: `tidy` is not installed; generated diffs will be harder to read");
+        eprintln!("warning: `tidy` is not installed; diffs will not be generated");
     }
 
     log_config(&config);

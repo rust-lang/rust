@@ -8,7 +8,7 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::TyCtxt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Expression {
     lhs: ExpressionOperandId,
     op: Op,
@@ -64,7 +64,9 @@ impl<'tcx> FunctionCoverage<'tcx> {
 
     /// Adds a code region to be counted by an injected counter intrinsic.
     pub fn add_counter(&mut self, id: CounterValueReference, region: CodeRegion) {
-        self.counters[id].replace(region).expect_none("add_counter called with duplicate `id`");
+        if let Some(previous_region) = self.counters[id].replace(region.clone()) {
+            assert_eq!(previous_region, region, "add_counter: code region for id changed");
+        }
     }
 
     /// Both counters and "counter expressions" (or simply, "expressions") can be operands in other
@@ -94,9 +96,18 @@ impl<'tcx> FunctionCoverage<'tcx> {
             expression_id, lhs, op, rhs, region
         );
         let expression_index = self.expression_index(u32::from(expression_id));
-        self.expressions[expression_index]
-            .replace(Expression { lhs, op, rhs, region })
-            .expect_none("add_counter_expression called with duplicate `id_descending_from_max`");
+        if let Some(previous_expression) = self.expressions[expression_index].replace(Expression {
+            lhs,
+            op,
+            rhs,
+            region: region.clone(),
+        }) {
+            assert_eq!(
+                previous_expression,
+                Expression { lhs, op, rhs, region },
+                "add_counter_expression: expression for id changed"
+            );
+        }
     }
 
     /// Add a region that will be marked as "unreachable", with a constant "zero counter".

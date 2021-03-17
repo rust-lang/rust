@@ -33,10 +33,6 @@ impl MarkedAttrs {
     }
 }
 
-pub fn is_known_lint_tool(m_item: Ident) -> bool {
-    [sym::clippy, sym::rustc, sym::rustdoc].contains(&m_item.name)
-}
-
 impl NestedMetaItem {
     /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem`.
     pub fn meta_item(&self) -> Option<&MetaItem> {

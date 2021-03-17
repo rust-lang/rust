@@ -39,15 +39,6 @@ struct CallSite<'tcx> {
 
 /// Returns true if MIR inlining is enabled in the current compilation session.
 crate fn is_enabled(tcx: TyCtxt<'_>) -> bool {
-    if tcx.sess.opts.debugging_opts.instrument_coverage {
-        // Since `Inline` happens after `InstrumentCoverage`, the function-specific coverage
-        // counters can be invalidated, such as by merging coverage counter statements from
-        // a pre-inlined function into a different function. This kind of change is invalid,
-        // so inlining must be skipped. Note: This check is performed here so inlining can
-        // be disabled without preventing other optimizations (regardless of `mir_opt_level`).
-        return false;
-    }
-
     if let Some(enabled) = tcx.sess.opts.debugging_opts.inline_mir {
         return enabled;
     }

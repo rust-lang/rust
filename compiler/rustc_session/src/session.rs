@@ -793,6 +793,13 @@ impl Session {
         }
     }
 
+    pub fn inline_asm_dialect(&self) -> rustc_ast::LlvmAsmDialect {
+        match self.asm_arch {
+            Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) => rustc_ast::LlvmAsmDialect::Intel,
+            _ => rustc_ast::LlvmAsmDialect::Att,
+        }
+    }
+
     pub fn relocation_model(&self) -> RelocModel {
         self.opts.cg.relocation_model.unwrap_or(self.target.relocation_model)
     }

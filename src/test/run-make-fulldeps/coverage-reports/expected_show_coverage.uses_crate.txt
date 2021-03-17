@@ -19,12 +19,12 @@
    18|      2|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
    19|      2|}
   ------------------
-  | used_crate::used_only_from_bin_crate_generic_function::<&str>:
+  | used_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>:
   |   17|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
   |   18|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
   |   19|      1|}
   ------------------
-  | used_crate::used_only_from_bin_crate_generic_function::<&alloc::vec::Vec<i32>>:
+  | used_crate::used_only_from_bin_crate_generic_function::<&str>:
   |   17|      1|pub fn used_only_from_bin_crate_generic_function<T: Debug>(arg: T) {
   |   18|      1|    println!("used_only_from_bin_crate_generic_function with {:?}", arg);
   |   19|      1|}

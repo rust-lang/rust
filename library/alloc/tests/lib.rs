@@ -19,6 +19,7 @@
 #![feature(int_bits_const)]
 #![feature(vecdeque_binary_search)]
 #![feature(slice_group_by)]
+#![feature(slice_partition_dedup)]
 #![feature(vec_extend_from_within)]
 #![feature(vec_spare_capacity)]
 
