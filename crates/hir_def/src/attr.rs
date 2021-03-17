@@ -294,6 +294,13 @@ impl Attrs {
         Arc::new(res)
     }
 
+    /// Constructs a map that maps the lowered `Attr`s in this `Attrs` back to its original syntax nodes.
+    ///
+    /// `owner` must be the original owner of the attributes.
+    pub fn source_map(&self, owner: &dyn AttrsOwner) -> AttrSourceMap {
+        AttrSourceMap { attrs: collect_attrs(owner).collect() }
+    }
+
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
@@ -364,6 +371,24 @@ fn inner_attributes(
     let attrs = attrs.filter(|attr| attr.excl_token().is_some());
     let docs = docs.filter(|doc| doc.is_inner());
     Some((attrs, docs))
+}
+
+pub struct AttrSourceMap {
+    attrs: Vec<Either<ast::Attr, ast::Comment>>,
+}
+
+impl AttrSourceMap {
+    /// Maps the lowered `Attr` back to its original syntax node.
+    ///
+    /// `attr` must come from the `owner` used for AttrSourceMap
+    ///
+    /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
+    /// the attribute represented by `Attr`.
+    pub fn source_of(&self, attr: &Attr) -> &Either<ast::Attr, ast::Comment> {
+        self.attrs
+            .get(attr.index as usize)
+            .unwrap_or_else(|| panic!("cannot find `Attr` at index {}", attr.index))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

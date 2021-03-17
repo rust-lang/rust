@@ -153,6 +153,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     if attributes.docs().map_or(true, |docs| !String::from(docs).contains(RUSTDOC_FENCE)) {
         return;
     }
+    let attrs_source_map = attributes.source_map(&owner);
 
     let mut inj = Injector::default();
     inj.add_unmapped("fn doctest() {\n");
@@ -165,7 +166,7 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
     let mut new_comments = Vec::new();
     let mut string;
     for attr in attributes.by_key("doc").attrs() {
-        let src = attr.to_src(&owner);
+        let src = attrs_source_map.source_of(&attr);
         let (line, range, prefix) = match &src {
             Either::Left(it) => {
                 string = match find_doc_string_in_attr(attr, it) {
