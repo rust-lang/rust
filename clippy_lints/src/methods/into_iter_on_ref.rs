@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_trait_method;
 use clippy_utils::ty::has_iter_method;
-use clippy_utils::{match_trait_method, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -22,7 +22,7 @@ pub(super) fn check(
     if_chain! {
         if let ty::Ref(..) = self_ty.kind();
         if method_name == sym::into_iter;
-        if match_trait_method(cx, expr, &paths::INTO_ITERATOR);
+        if is_trait_method(cx, expr, sym::IntoIterator);
         if let Some((kind, method_name)) = ty_has_iter_method(cx, self_ty);
         then {
             span_lint_and_sugg(
