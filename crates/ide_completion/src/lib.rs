@@ -255,7 +255,7 @@ fn foo() {
     bar.fo$0;
 }
 "#,
-            DetailAndDocumentation { detail: "fn(&self)", documentation: " Do the foo" },
+            DetailAndDocumentation { detail: "fn(&self)", documentation: "Do the foo" },
         );
     }
 

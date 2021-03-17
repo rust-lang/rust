@@ -118,7 +118,7 @@ fn test_doc_comment_none() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert!(module.doc_comment_text().is_none());
+    assert!(module.doc_comments().doc_comment_text().is_none());
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn test_outer_doc_comment_of_items() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("doc", module.doc_comment_text().unwrap());
+    assert_eq!(" doc", module.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn test_inner_doc_comment_of_items() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert!(module.doc_comment_text().is_none());
+    assert!(module.doc_comments().doc_comment_text().is_none());
 }
 
 #[test]
@@ -162,7 +162,7 @@ fn test_doc_comment_of_statics() {
     .ok()
     .unwrap();
     let st = file.syntax().descendants().find_map(Static::cast).unwrap();
-    assert_eq!("Number of levels", st.doc_comment_text().unwrap());
+    assert_eq!(" Number of levels", st.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]
@@ -181,7 +181,10 @@ fn test_doc_comment_preserves_indents() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("doc1\n```\nfn foo() {\n    // ...\n}\n```", module.doc_comment_text().unwrap());
+    assert_eq!(
+        " doc1\n ```\n fn foo() {\n     // ...\n }\n ```",
+        module.doc_comments().doc_comment_text().unwrap()
+    );
 }
 
 #[test]
@@ -198,7 +201,7 @@ fn test_doc_comment_preserves_newlines() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("this\nis\nmod\nfoo", module.doc_comment_text().unwrap());
+    assert_eq!(" this\n is\n mod\n foo", module.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]
@@ -212,7 +215,7 @@ fn test_doc_comment_single_line_block_strips_suffix() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("this is mod foo", module.doc_comment_text().unwrap());
+    assert_eq!(" this is mod foo", module.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]
@@ -226,7 +229,7 @@ fn test_doc_comment_single_line_block_strips_suffix_whitespace() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("this is mod foo ", module.doc_comment_text().unwrap());
+    assert_eq!(" this is mod foo ", module.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]
@@ -245,8 +248,8 @@ fn test_doc_comment_multi_line_block_strips_suffix() {
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
     assert_eq!(
-        "        this\n        is\n        mod foo\n        ",
-        module.doc_comment_text().unwrap()
+        "\n        this\n        is\n        mod foo\n        ",
+        module.doc_comments().doc_comment_text().unwrap()
     );
 }
 
@@ -259,8 +262,8 @@ fn test_comments_preserve_trailing_whitespace() {
     .unwrap();
     let def = file.syntax().descendants().find_map(Struct::cast).unwrap();
     assert_eq!(
-        "Representation of a Realm.   \nIn the specification these are called Realm Records.",
-        def.doc_comment_text().unwrap()
+        " Representation of a Realm.   \n In the specification these are called Realm Records.",
+        def.doc_comments().doc_comment_text().unwrap()
     );
 }
 
@@ -276,7 +279,7 @@ fn test_four_slash_line_comment() {
     .ok()
     .unwrap();
     let module = file.syntax().descendants().find_map(Module::cast).unwrap();
-    assert_eq!("doc comment", module.doc_comment_text().unwrap());
+    assert_eq!(" doc comment", module.doc_comments().doc_comment_text().unwrap());
 }
 
 #[test]

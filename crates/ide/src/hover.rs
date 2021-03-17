@@ -3424,6 +3424,40 @@ mod Foo$0 {
     }
 
     #[test]
+    fn hover_doc_block_style_indentend() {
+        check(
+            r#"
+/**
+    foo
+    ```rust
+    let x = 3;
+    ```
+*/
+fn foo$0() {}
+"#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                fn foo()
+                ```
+
+                ---
+
+                foo
+
+                ```rust
+                let x = 3;
+                ```
+            "#]],
+        );
+    }
+
+    #[test]
     fn hover_comments_dont_highlight_parent() {
         check_hover_no_result(
             r#"
