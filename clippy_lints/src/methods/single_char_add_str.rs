@@ -1,6 +1,5 @@
 use crate::methods::{single_char_insert_string, single_char_push_string};
-use crate::utils::match_def_path;
-use crate::utils::paths;
+use clippy_utils::{match_def_path, paths};
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 

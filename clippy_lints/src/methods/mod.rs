@@ -63,8 +63,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{contains_ty, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{
-    contains_return, get_trait_def_id, in_macro, iter_input_pats, match_def_path, match_qpath, method_calls,
-    method_chain_args, paths, return_ty, single_segment_path, SpanlessEq,
+    contains_return, get_trait_def_id, in_macro, iter_input_pats, match_qpath, method_calls, paths, return_ty,
+    SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -1777,22 +1777,17 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         match expr.kind {
             hir::ExprKind::Call(ref func, ref args) => {
-                if let hir::ExprKind::Path(path) = &func.kind {
-                    if match_qpath(path, &["from_iter"]) {
-                        from_iter_instead_of_collect::check(cx, expr, args);
-                    }
-                }
+                from_iter_instead_of_collect::check(cx, expr, args, &func.kind);
             },
             hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args, _) => {
                 or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 expect_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
-
-                let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
 
+                let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
                 match self_ty.kind() {
                     ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
                         for &(method, pos) in &PATTERN_METHODS {
