@@ -39,6 +39,7 @@ impl Drop for Handler {
 ))]
 mod imp {
     use super::Handler;
+    use crate::io;
     use crate::mem;
     use crate::ptr;
 
@@ -149,11 +150,11 @@ mod imp {
             0,
         );
         if stackp == MAP_FAILED {
-            panic!("failed to allocate an alternative stack");
+            panic!("failed to allocate an alternative stack: {}", io::Error::last_os_error());
         }
         let guard_result = libc::mprotect(stackp, page_size(), PROT_NONE);
         if guard_result != 0 {
-            panic!("failed to set up alternative stack guard page");
+            panic!("failed to set up alternative stack guard page: {}", io::Error::last_os_error());
         }
         stackp.add(page_size())
     }
