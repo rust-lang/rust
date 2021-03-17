@@ -145,11 +145,8 @@ fn insert_import(
     variant_hir_name: &Name,
 ) -> Option<()> {
     let db = ctx.db();
-    let mod_path = module.find_use_path_prefixed(
-        db,
-        enum_module_def.clone(),
-        ctx.config.insert_use.prefix_kind,
-    );
+    let mod_path =
+        module.find_use_path_prefixed(db, *enum_module_def, ctx.config.insert_use.prefix_kind);
     if let Some(mut mod_path) = mod_path {
         mod_path.pop_segment();
         mod_path.push_segment(variant_hir_name.clone());

@@ -181,7 +181,7 @@ impl NameClass {
                 },
                 ast::SelfParam(it) => {
                     let def = sema.to_def(&it)?;
-                    Some(NameClass::Definition(Definition::Local(def.into())))
+                    Some(NameClass::Definition(Definition::Local(def)))
                 },
                 ast::RecordField(it) => {
                     let field: hir::Field = sema.to_def(&it)?;

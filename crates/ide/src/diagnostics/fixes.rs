@@ -180,7 +180,7 @@ fn missing_record_expr_field_fix(
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
     let def_file_id;
-    let record_fields = match VariantDef::from(def_id) {
+    let record_fields = match def_id {
         VariantDef::Struct(s) => {
             module = s.module(sema.db);
             let source = s.source(sema.db)?;

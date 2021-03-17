@@ -161,7 +161,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
         return Vec::new();
     }
 
-    let severity = diagnostic_severity(config, rd.level.clone(), rd.code.clone());
+    let severity = diagnostic_severity(config, rd.level, rd.code.clone());
 
     let mut source = String::from("rustc");
     let mut code = rd.code.as_ref().map(|c| c.code.clone());

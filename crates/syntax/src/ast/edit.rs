@@ -479,7 +479,7 @@ impl ast::MatchArmList {
             Some(t) => t,
             None => return self.clone(),
         };
-        let position = InsertPosition::Before(r_curly.into());
+        let position = InsertPosition::Before(r_curly);
         let arm_ws = tokens::WsBuilder::new("    ");
         let match_indent = &leading_indent(self.syntax()).unwrap_or_default();
         let match_ws = tokens::WsBuilder::new(&format!("\n{}", match_indent));

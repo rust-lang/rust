@@ -475,7 +475,7 @@ fn original_range_opt(
     let single = skip_trivia_token(node.value.first_token()?, Direction::Next)?
         == skip_trivia_token(node.value.last_token()?, Direction::Prev)?;
 
-    Some(node.value.descendants().find_map(|it| {
+    node.value.descendants().find_map(|it| {
         let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
         let first = ascend_call_token(db, &expansion, node.with_value(first))?;
 
@@ -487,7 +487,7 @@ fn original_range_opt(
         }
 
         Some(first.with_value(first.value.text_range().cover(last.value.text_range())))
-    })?)
+    })
 }
 
 fn ascend_call_token(

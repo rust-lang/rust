@@ -26,11 +26,11 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
         let add_resolution = match &res {
             hir::ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
-                    acc.add_struct_pat(ctx, strukt.clone(), Some(name.clone()));
+                    acc.add_struct_pat(ctx, *strukt, Some(name.clone()));
                     true
                 }
                 hir::ModuleDef::Variant(variant) if !ctx.is_irrefutable_pat_binding => {
-                    acc.add_variant_pat(ctx, variant.clone(), Some(name.clone()));
+                    acc.add_variant_pat(ctx, *variant, Some(name.clone()));
                     true
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(..))

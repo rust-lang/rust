@@ -52,7 +52,7 @@ impl ToChalk for Ty {
 
             TyKind::Tuple(cardinality, substs) => {
                 let substitution = substs.to_chalk(db);
-                chalk_ir::TyKind::Tuple(cardinality.into(), substitution).intern(&Interner)
+                chalk_ir::TyKind::Tuple(cardinality, substitution).intern(&Interner)
             }
             TyKind::Raw(mutability, ty) => {
                 let ty = ty.to_chalk(db);

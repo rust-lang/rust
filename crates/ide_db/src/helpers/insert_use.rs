@@ -80,7 +80,7 @@ impl ImportScope {
             })
             .last()
             .map(|last_inner_element| {
-                (InsertPosition::After(last_inner_element.into()), AddBlankLine::BeforeTwice)
+                (InsertPosition::After(last_inner_element), AddBlankLine::BeforeTwice)
             })
             .unwrap_or_else(|| self.first_insert_pos())
     }

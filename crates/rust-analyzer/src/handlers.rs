@@ -1134,7 +1134,7 @@ pub(crate) fn handle_code_lens_resolve(
 ) -> Result<CodeLens> {
     let annotation = from_proto::annotation(&snap, code_lens)?;
 
-    Ok(to_proto::code_lens(&snap, snap.analysis.resolve_annotation(annotation)?)?)
+    to_proto::code_lens(&snap, snap.analysis.resolve_annotation(annotation)?)
 }
 
 pub(crate) fn handle_document_highlight(

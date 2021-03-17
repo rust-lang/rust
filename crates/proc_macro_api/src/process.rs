@@ -154,5 +154,5 @@ fn send_request(
     req: Request,
 ) -> io::Result<Option<Response>> {
     req.write(&mut writer)?;
-    Ok(Response::read(&mut reader)?)
+    Response::read(&mut reader)
 }

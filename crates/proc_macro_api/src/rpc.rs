@@ -236,13 +236,10 @@ mod tests {
         subtree
             .token_trees
             .push(TokenTree::Leaf(Ident { text: "Foo".into(), id: TokenId(1) }.into()));
-        subtree.token_trees.push(TokenTree::Subtree(
-            Subtree {
-                delimiter: Some(Delimiter { id: TokenId(2), kind: DelimiterKind::Brace }),
-                token_trees: vec![],
-            }
-            .into(),
-        ));
+        subtree.token_trees.push(TokenTree::Subtree(Subtree {
+            delimiter: Some(Delimiter { id: TokenId(2), kind: DelimiterKind::Brace }),
+            token_trees: vec![],
+        }));
         subtree
     }
 

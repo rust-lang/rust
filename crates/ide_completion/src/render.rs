@@ -81,7 +81,7 @@ impl<'a> RenderContext<'a> {
     }
 
     fn snippet_cap(&self) -> Option<SnippetCap> {
-        self.completion.config.snippet_cap.clone()
+        self.completion.config.snippet_cap
     }
 
     fn db(&self) -> &'a RootDatabase {

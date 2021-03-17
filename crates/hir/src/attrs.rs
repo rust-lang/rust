@@ -124,5 +124,5 @@ fn resolve_doc_path(
         Some(Namespace::Macros) => return None,
         None => resolved.iter_items().find_map(|it| it.as_module_def_id())?,
     };
-    Some(def.into())
+    Some(def)
 }

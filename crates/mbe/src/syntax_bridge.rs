@@ -130,7 +130,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
         res.push(match expanded.value {
             None => break,
             Some(tt @ tt::TokenTree::Leaf(_)) => {
-                tt::Subtree { delimiter: None, token_trees: vec![tt.into()] }
+                tt::Subtree { delimiter: None, token_trees: vec![tt] }
             }
             Some(tt::TokenTree::Subtree(tt)) => tt,
         });
@@ -727,7 +727,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
             // Note: We always assume the semi-colon would be the last token in
             // other parts of RA such that we don't add whitespace here.
             if curr.spacing == tt::Spacing::Alone && curr.char != ';' {
-                self.inner.token(WHITESPACE, " ".into());
+                self.inner.token(WHITESPACE, " ");
                 self.text_pos += TextSize::of(' ');
             }
         }

@@ -44,7 +44,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(super) fn validate_body(&mut self, db: &dyn HirDatabase) {
         self.check_for_filter_map_next(db);
 
-        let body = db.body(self.owner.into());
+        let body = db.body(self.owner);
 
         for (id, expr) in body.exprs.iter() {
             if let Some((variant_def, missed_fields, true)) =
@@ -98,7 +98,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
-        let (_, source_map) = db.body_with_source_map(self.owner.into());
+        let (_, source_map) = db.body_with_source_map(self.owner);
 
         if let Ok(source_ptr) = source_map.expr_syntax(id) {
             let root = source_ptr.file_syntax(db.upcast());
@@ -128,7 +128,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         missed_fields: Vec<LocalFieldId>,
     ) {
         // XXX: only look at source_map if we do have missing fields
-        let (_, source_map) = db.body_with_source_map(self.owner.into());
+        let (_, source_map) = db.body_with_source_map(self.owner);
 
         if let Ok(source_ptr) = source_map.pat_syntax(id) {
             if let Some(expr) = source_ptr.value.as_ref().left() {
@@ -175,7 +175,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         // Search function body for instances of .filter_map(..).next()
-        let body = db.body(self.owner.into());
+        let body = db.body(self.owner);
         let mut prev = None;
         for (id, expr) in body.exprs.iter() {
             if let Expr::MethodCall { receiver, .. } = expr {
@@ -192,7 +192,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 if function_id == *next_function_id {
                     if let Some(filter_map_id) = prev {
                         if *receiver == filter_map_id {
-                            let (_, source_map) = db.body_with_source_map(self.owner.into());
+                            let (_, source_map) = db.body_with_source_map(self.owner);
                             if let Ok(next_source_ptr) = source_map.expr_syntax(id) {
                                 self.sink.push(ReplaceFilterMapNextWithFindMap {
                                     file: next_source_ptr.file_id,
@@ -262,7 +262,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let mut arg_count = args.len();
 
         if arg_count != param_count {
-            let (_, source_map) = db.body_with_source_map(self.owner.into());
+            let (_, source_map) = db.body_with_source_map(self.owner);
             if let Ok(source_ptr) = source_map.expr_syntax(call_id) {
                 if is_method_call {
                     param_count -= 1;
@@ -287,7 +287,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         infer: Arc<InferenceResult>,
     ) {
         let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
-            db.body_with_source_map(self.owner.into());
+            db.body_with_source_map(self.owner);
 
         let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
             return;
@@ -393,7 +393,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         if params.len() > 0 && params[0] == mismatch.actual {
-            let (_, source_map) = db.body_with_source_map(self.owner.into());
+            let (_, source_map) = db.body_with_source_map(self.owner);
 
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
                 self.sink.push(MissingOkOrSomeInTailExpr {
@@ -425,7 +425,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return;
         }
 
-        let (_, source_map) = db.body_with_source_map(self.owner.into());
+        let (_, source_map) = db.body_with_source_map(self.owner);
 
         if let Ok(source_ptr) = source_map.expr_syntax(possible_tail_id) {
             self.sink
