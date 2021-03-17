@@ -161,15 +161,9 @@ impl Definition {
 
         if let Definition::Local(var) = self {
             let range = match var.parent(db) {
-                DefWithBody::Function(f) => {
-                    f.source(db).and_then(|src| Some(src.value.syntax().text_range()))
-                }
-                DefWithBody::Const(c) => {
-                    c.source(db).and_then(|src| Some(src.value.syntax().text_range()))
-                }
-                DefWithBody::Static(s) => {
-                    s.source(db).and_then(|src| Some(src.value.syntax().text_range()))
-                }
+                DefWithBody::Function(f) => f.source(db).map(|src| src.value.syntax().text_range()),
+                DefWithBody::Const(c) => c.source(db).map(|src| src.value.syntax().text_range()),
+                DefWithBody::Static(s) => s.source(db).map(|src| src.value.syntax().text_range()),
             };
             let mut res = FxHashMap::default();
             res.insert(file_id, range);
@@ -179,33 +173,29 @@ impl Definition {
         if let Definition::GenericParam(hir::GenericParam::LifetimeParam(param)) = self {
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
                 hir::GenericDef::Adt(it) => match it {
                     hir::Adt::Struct(it) => {
-                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                        it.source(db).map(|src| src.value.syntax().text_range())
                     }
-                    hir::Adt::Union(it) => {
-                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
-                    }
-                    hir::Adt::Enum(it) => {
-                        it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
-                    }
+                    hir::Adt::Union(it) => it.source(db).map(|src| src.value.syntax().text_range()),
+                    hir::Adt::Enum(it) => it.source(db).map(|src| src.value.syntax().text_range()),
                 },
                 hir::GenericDef::Trait(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
                 hir::GenericDef::TypeAlias(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
                 hir::GenericDef::Impl(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
                 hir::GenericDef::Variant(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
                 hir::GenericDef::Const(it) => {
-                    it.source(db).and_then(|src| Some(src.value.syntax().text_range()))
+                    it.source(db).map(|src| src.value.syntax().text_range())
                 }
             };
             let mut res = FxHashMap::default();

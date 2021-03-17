@@ -73,8 +73,8 @@ fn find_parent_and_path(
 ) -> Option<(Either<ast::UseTree, ast::UseTreeList>, ast::Path)> {
     return star.ancestors().find_map(|n| {
         find_use_tree_list(n.clone())
-            .and_then(|(u, p)| Some((Either::Right(u), p)))
-            .or_else(|| find_use_tree(n).and_then(|(u, p)| Some((Either::Left(u), p))))
+            .map(|(u, p)| (Either::Right(u), p))
+            .or_else(|| find_use_tree(n).map(|(u, p)| (Either::Left(u), p)))
     });
 
     fn find_use_tree_list(n: SyntaxNode) -> Option<(ast::UseTreeList, ast::Path)> {
