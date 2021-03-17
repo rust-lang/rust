@@ -76,7 +76,7 @@ impl ops::Deref for Attrs {
 impl RawAttrs {
     pub(crate) const EMPTY: Self = Self { entries: None };
 
-    pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Self {
+    pub(crate) fn new(owner: &dyn ast::AttrsOwner, hygiene: &Hygiene) -> Self {
         let entries = collect_attrs(owner)
             .enumerate()
             .flat_map(|(i, attr)| match attr {
@@ -92,7 +92,7 @@ impl RawAttrs {
         Self { entries: if entries.is_empty() { None } else { Some(entries) } }
     }
 
-    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Self {
+    fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn ast::AttrsOwner>) -> Self {
         let hygiene = Hygiene::new(db.upcast(), owner.file_id);
         Self::new(owner.value, &hygiene)
     }
@@ -178,7 +178,7 @@ impl Attrs {
                     Some(it) => {
                         let raw_attrs = RawAttrs::from_attrs_owner(
                             db,
-                            it.as_ref().map(|it| it as &dyn AttrsOwner),
+                            it.as_ref().map(|it| it as &dyn ast::AttrsOwner),
                         );
                         match mod_data.definition_source(db) {
                             InFile { file_id, value: ModuleSource::SourceFile(file) } => raw_attrs
@@ -189,9 +189,9 @@ impl Attrs {
                     None => RawAttrs::from_attrs_owner(
                         db,
                         mod_data.definition_source(db).as_ref().map(|src| match src {
-                            ModuleSource::SourceFile(file) => file as &dyn AttrsOwner,
-                            ModuleSource::Module(module) => module as &dyn AttrsOwner,
-                            ModuleSource::BlockExpr(block) => block as &dyn AttrsOwner,
+                            ModuleSource::SourceFile(file) => file as &dyn ast::AttrsOwner,
+                            ModuleSource::Module(module) => module as &dyn ast::AttrsOwner,
+                            ModuleSource::BlockExpr(block) => block as &dyn ast::AttrsOwner,
                         }),
                     ),
                 }
@@ -249,7 +249,7 @@ impl Attrs {
         let mut res = ArenaMap::default();
 
         for (id, var) in src.value.iter() {
-            let attrs = RawAttrs::from_attrs_owner(db, src.with_value(var as &dyn AttrsOwner))
+            let attrs = RawAttrs::from_attrs_owner(db, src.with_value(var as &dyn ast::AttrsOwner))
                 .filter(db, krate);
 
             res.insert(id, attrs)
@@ -283,7 +283,7 @@ impl Attrs {
     /// Constructs a map that maps the lowered `Attr`s in this `Attrs` back to its original syntax nodes.
     ///
     /// `owner` must be the original owner of the attributes.
-    pub fn source_map(&self, owner: &dyn AttrsOwner) -> AttrSourceMap {
+    pub fn source_map(&self, owner: &dyn ast::AttrsOwner) -> AttrSourceMap {
         AttrSourceMap { attrs: collect_attrs(owner).collect() }
     }
 
@@ -321,9 +321,7 @@ impl Attrs {
         let mut buf = String::new();
         for doc in docs {
             // str::lines doesn't yield anything for the empty string
-            if doc.is_empty() {
-                buf.push('\n');
-            } else {
+            if !doc.is_empty() {
                 buf.extend(Itertools::intersperse(
                     doc.lines().map(|line| {
                         line.char_indices()
@@ -436,7 +434,7 @@ impl Attr {
     ///
     /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
     /// the attribute represented by `Attr`.
-    pub fn to_src(&self, owner: &dyn AttrsOwner) -> Either<ast::Attr, ast::Comment> {
+    pub fn to_src(&self, owner: &dyn ast::AttrsOwner) -> Either<ast::Attr, ast::Comment> {
         collect_attrs(owner).nth(self.index as usize).unwrap_or_else(|| {
             panic!("cannot find `Attr` at index {} in {}", self.index, owner.syntax())
         })
@@ -528,7 +526,7 @@ where
     N: ast::AttrsOwner,
 {
     let src = InFile::new(src.file_id, src.to_node(db.upcast()));
-    RawAttrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
+    RawAttrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn ast::AttrsOwner))
 }
 
 fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> RawAttrs {
@@ -537,7 +535,9 @@ fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase
     tree.raw_attrs(mod_item.into()).clone()
 }
 
-fn collect_attrs(owner: &dyn AttrsOwner) -> impl Iterator<Item = Either<ast::Attr, ast::Comment>> {
+fn collect_attrs(
+    owner: &dyn ast::AttrsOwner,
+) -> impl Iterator<Item = Either<ast::Attr, ast::Comment>> {
     let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
         .map_or((None, None), |(attrs, docs)| ((Some(attrs), Some(docs))));
 

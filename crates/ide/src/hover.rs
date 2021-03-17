@@ -1533,12 +1533,21 @@ fn my() {}
     fn test_hover_struct_doc_comment() {
         check(
             r#"
-/// bar docs
+/// This is an example
+/// multiline doc
+///
+/// # Example
+///
+/// ```
+/// let five = 5;
+///
+/// assert_eq!(6, my_crate::add_one(5));
+/// ```
 struct Bar;
 
 fn foo() { let bar = Ba$0r; }
 "#,
-            expect![[r#"
+            expect![[r##"
                 *Bar*
 
                 ```rust
@@ -1551,8 +1560,17 @@ fn foo() { let bar = Ba$0r; }
 
                 ---
 
-                bar docs
-            "#]],
+                This is an example
+                multiline doc
+
+                # Example
+
+                ```
+                let five = 5;
+
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+            "##]],
         );
     }
 
