@@ -516,7 +516,7 @@ impl Foo {
     ///        comment */
     ///
     /// let multi_line_string = "Foo
-    ///   bar
+    ///   bar\n
     ///          ";
     ///
     /// ```
@@ -557,6 +557,22 @@ macro_rules! noop {
 /// let _ = example(&alloc::vec![1, 2, 3]);
 /// ```
 pub fn mix_and_match() {}
+
+/**
+It is beyond me why you'd use these when you got ///
+```rust
+let _ = example(&[1, 2, 3]);
+```
+ */
+pub fn block_comments() {}
+
+/**
+    Really, I don't get it
+    ```rust
+    let _ = example(&[1, 2, 3]);
+    ```
+*/
+pub fn block_comments2() {}
 "#
         .trim(),
         expect_file!["./test_data/highlight_doctest.html"],
