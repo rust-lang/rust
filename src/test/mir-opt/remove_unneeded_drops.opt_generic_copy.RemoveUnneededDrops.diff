@@ -20,7 +20,7 @@
 -     bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:14:11: 14:12
           StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:14:12: 14:13
-          _0 = const ();                   // scope 0 at $DIR/remove_unneeded_drops.rs:13:36: 15:2
+-         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:13:36: 15:2
           return;                          // scope 0 at $DIR/remove_unneeded_drops.rs:15:2: 15:2
       }
   }
