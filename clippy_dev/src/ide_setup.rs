@@ -55,7 +55,7 @@ fn inject_deps_into_manifest(
     // do not inject deps if we have aleady done so
     if cargo_toml.contains("[target.'cfg(NOT_A_PLATFORM)'.dependencies]") {
         eprintln!(
-            "cargo dev ra_setup: warning: deps already found inside {}, doing nothing.",
+            "cargo dev ide_setup: warning: deps already found inside {}, doing nothing.",
             manifest_path
         );
         return Ok(());

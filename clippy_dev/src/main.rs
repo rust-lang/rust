@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
+use clippy_dev::{bless, fmt, ide_setup, new_lint, serve, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
 
@@ -34,7 +34,7 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ra_setup", Some(matches)) => ra_setup::run(matches.value_of("rustc-repo-path")),
+        ("ide_setup", Some(matches)) => ide_setup::run(matches.value_of("rustc-repo-path")),
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
@@ -138,8 +138,8 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
-            SubCommand::with_name("ra_setup")
-                .about("Alter dependencies so rust-analyzer can find rustc internals")
+            SubCommand::with_name("ide_setup")
+                .about("Alter dependencies so Intellij Rust can find rustc internals")
                 .arg(
                     Arg::with_name("rustc-repo-path")
                         .long("repo-path")

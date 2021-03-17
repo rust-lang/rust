@@ -90,7 +90,7 @@ pub fn run(check: bool, verbose: bool) {
             },
             CliError::RaSetupActive => {
                 eprintln!(
-                    "error: a local rustc repo is enabled as path dependency via `cargo dev ra_setup`.
+                    "error: a local rustc repo is enabled as path dependency via `cargo dev ide_setup`.
 Not formatting because that would format the local repo as well!
 Please revert the changes to Cargo.tomls first."
                 );
