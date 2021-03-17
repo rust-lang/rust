@@ -45,6 +45,10 @@ LL |     fn foo_with_qualified_path(<Bar as T>::Baz);
    |                                               ^ expected one of 8 possible tokens
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: explicitly ignore the parameter name
+   |
+LL |     fn foo_with_qualified_path(_: <Bar as T>::Baz);
+   |                                ^^^^^^^^^^^^^^^^^^
 
 error: expected one of `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
   --> $DIR/anon-params-denied-2018.rs:15:56
@@ -53,6 +57,10 @@ LL |     fn foo_with_qualified_path_and_ref(&<Bar as T>::Baz);
    |                                                        ^ expected one of 8 possible tokens
    |
    = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: explicitly ignore the parameter name
+   |
+LL |     fn foo_with_qualified_path_and_ref(_: &<Bar as T>::Baz);
+   |                                        ^^^^^^^^^^^^^^^^^^^
 
 error: expected one of `:`, `@`, or `|`, found `,`
   --> $DIR/anon-params-denied-2018.rs:18:36

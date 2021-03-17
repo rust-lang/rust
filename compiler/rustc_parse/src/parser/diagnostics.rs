@@ -640,7 +640,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 Err(mut err) => {
-                    // We could't parse generic parameters, unlikely to be a turbofish. Rely on
+                    // We couldn't parse generic parameters, unlikely to be a turbofish. Rely on
                     // generic parse error instead.
                     err.cancel();
                     *self = snapshot;
@@ -1242,7 +1242,7 @@ impl<'a> Parser<'a> {
         let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(token::Brace) {
             // Handle `await { <expr> }`.
-            // This needs to be handled separatedly from the next arm to avoid
+            // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
             self.parse_block_expr(None, self.token.span, BlockCheckMode::Default, AttrVec::new())
         } else {
@@ -1618,6 +1618,8 @@ impl<'a> Parser<'a> {
                 || self.token == token::Lt
                 || self.token == token::CloseDelim(token::Paren))
         {
+            let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
+
             let (ident, self_sugg, param_sugg, type_sugg) = match pat.kind {
                 PatKind::Ident(_, ident, _) => (
                     ident,
@@ -1626,7 +1628,9 @@ impl<'a> Parser<'a> {
                     format!("_: {}", ident),
                 ),
                 // Also catches `fn foo(&a)`.
-                PatKind::Ref(ref pat, mutab) => {
+                PatKind::Ref(ref pat, mutab)
+                    if matches!(pat.clone().into_inner().kind, PatKind::Ident(..)) =>
+                {
                     match pat.clone().into_inner().kind {
                         PatKind::Ident(_, ident, _) => {
                             let mutab = mutab.prefix_str();
@@ -1637,20 +1641,23 @@ impl<'a> Parser<'a> {
                                 format!("_: &{}{}", mutab, ident),
                             )
                         }
-                        PatKind::Path(..) => {
-                            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
-                            return None;
-                        }
-                        _ => return None,
+                        _ => unreachable!(),
                     }
                 }
-                // Also catches `fn foo(<Bar as T>::Baz)`
-                PatKind::Path(..) => {
-                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                _ => {
+                    // Otherwise, try to get a type and emit a suggestion.
+                    if let Some(ty) = pat.to_ty() {
+                        err.span_suggestion_verbose(
+                            pat.span,
+                            "explicitly ignore the parameter name",
+                            format!("_: {}", pprust::ty_to_string(&ty)),
+                            Applicability::MachineApplicable,
+                        );
+                        err.note(rfc_note);
+                    }
+
                     return None;
                 }
-                // Ignore other `PatKind`.
-                _ => return None,
             };
 
             // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
@@ -1678,7 +1685,7 @@ impl<'a> Parser<'a> {
                 type_sugg,
                 Applicability::MachineApplicable,
             );
-            err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+            err.note(rfc_note);
 
             // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
             return if self.token == token::Lt { None } else { Some(ident) };
