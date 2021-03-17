@@ -23,6 +23,8 @@ use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{fmt, iter};
 
+use super::ScalarInt;
+
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {
     /// Bit representation of the discriminant (e.g., `-128i8` is `0xFF_u128`).
@@ -616,40 +618,38 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
 impl<'tcx> ty::TyS<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
-        let val = match self.kind() {
+    pub fn numeric_max_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<ScalarInt> {
+        match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val = if signed { signed_max(size) as u128 } else { unsigned_max(size) };
-                Some(val)
+                Some(ScalarInt::from_uint(val, size))
             }
-            ty::Char => Some(std::char::MAX as u128),
+            ty::Char => Some(ScalarInt::from(std::char::MAX)),
             ty::Float(fty) => Some(match fty {
-                ty::FloatTy::F32 => rustc_apfloat::ieee::Single::INFINITY.to_bits(),
-                ty::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
+                ty::FloatTy::F32 => ScalarInt::from(rustc_apfloat::ieee::Single::INFINITY),
+                ty::FloatTy::F64 => ScalarInt::from(rustc_apfloat::ieee::Double::INFINITY),
             }),
             _ => None,
-        };
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        }
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
-        let val = match self.kind() {
+    pub fn numeric_min_val(&'tcx self, tcx: TyCtxt<'tcx>) -> Option<ScalarInt> {
+        match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val = if signed { size.truncate(signed_min(size) as u128) } else { 0 };
-                Some(val)
+                Some(ScalarInt::from_uint(val, size))
             }
-            ty::Char => Some(0),
+            ty::Char => Some(ScalarInt::from('\0')),
             ty::Float(fty) => Some(match fty {
-                ty::FloatTy::F32 => (-::rustc_apfloat::ieee::Single::INFINITY).to_bits(),
-                ty::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
+                ty::FloatTy::F32 => ScalarInt::from(-::rustc_apfloat::ieee::Single::INFINITY),
+                ty::FloatTy::F64 => ScalarInt::from(-::rustc_apfloat::ieee::Double::INFINITY),
             }),
             _ => None,
-        };
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        }
     }
 
     /// Checks whether values of this type `T` are *moved* or *copied*

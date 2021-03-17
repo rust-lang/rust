@@ -25,6 +25,7 @@ use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty, TyS, VariantDef};
+use rustc_middle::mir::{self, interpret::ConstValue};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
@@ -1533,11 +1534,17 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs = match lhs {
                         Some(lhs) => constant(cx, cx.typeck_results(), lhs)?.0,
-                        None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
+                        None => miri_to_const(mir::ConstantKind::Val(
+                            ConstValue::Scalar(ty.numeric_min_val(cx.tcx)?.into()),
+                            ty,
+                        ))?,
                     };
                     let rhs = match rhs {
                         Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
-                        None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
+                        None => miri_to_const(mir::ConstantKind::Val(
+                            ConstValue::Scalar(ty.numeric_max_val(cx.tcx)?.into()),
+                            ty,
+                        ))?,
                     };
                     let rhs = match range_end {
                         RangeEnd::Included => Bound::Included(rhs),

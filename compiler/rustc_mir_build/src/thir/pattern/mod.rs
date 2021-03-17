@@ -21,7 +21,7 @@ use rustc_middle::mir::UserTypeProjection;
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
 use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, Ty, TyCtxt, UserType};
+use rustc_middle::ty::{self, AdtDef, DefIdTree, Region, ScalarInt, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
 use std::cmp::Ordering;
@@ -122,25 +122,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range(
         &mut self,
         ty: Ty<'tcx>,
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
+        lo: ScalarInt,
+        hi: ScalarInt,
         end: RangeEnd,
         span: Span,
     ) -> PatKind<'tcx> {
-        assert_eq!(lo.ty, ty);
-        assert_eq!(hi.ty, ty);
-        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
-        let lo_const = lo;
-        let lo = lo
-            .val
-            .eval(self.tcx, self.param_env)
-            .try_to_scalar_int()
-            .expect("range patterns must be integral");
-        let hi = hi
-            .val
-            .eval(self.tcx, self.param_env)
-            .try_to_scalar_int()
-            .expect("range patterns must be integral");
+        let lo_const = ty::Const::from_value(self.tcx, ConstValue::Scalar(lo.into()), ty);
+        let hi_const = ty::Const::from_value(self.tcx, ConstValue::Scalar(hi.into()), ty);
+        let cmp = compare_const_vals(self.tcx, lo_const, hi_const, self.param_env, ty);
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
@@ -193,16 +182,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         lo: Option<&PatKind<'tcx>>,
         hi: Option<&PatKind<'tcx>>,
-    ) -> Option<(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>)> {
+    ) -> Option<(ScalarInt, ScalarInt)> {
+        let eval =
+            |value: &ty::Const<'tcx>| value.val.eval(self.tcx, self.param_env).try_to_scalar_int();
         match (lo, hi) {
             (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
-                Some((lo, hi))
+                Some((eval(lo)?, eval(hi)?))
             }
             (Some(PatKind::Constant { value: lo }), None) => {
-                Some((lo, ty.numeric_max_val(self.tcx)?))
+                Some((eval(lo)?, ty.numeric_max_val(self.tcx)?))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
-                Some((ty.numeric_min_val(self.tcx)?, hi))
+                Some((ty.numeric_min_val(self.tcx)?, eval(hi)?))
             }
             _ => None,
         }

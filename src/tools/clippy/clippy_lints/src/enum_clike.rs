@@ -1,7 +1,6 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use clippy_utils::consts::{miri_to_const, Constant};
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,8 +49,9 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                         .tcx
                         .const_eval_poly(def_id.to_def_id())
                         .ok()
-                        .map(|val| rustc_middle::ty::Const::from_value(cx.tcx, val, ty));
-                    if let Some(Constant::Int(val)) = constant.and_then(miri_to_const) {
+                        .and_then(|c| c.try_to_scalar_int());
+                    if let Some(scalar) = constant {
+                        let val = scalar.to_bits(cx.tcx.layout_of(cx.param_env.and(ty)).unwrap().size).unwrap();
                         if let ty::Adt(adt, _) = ty.kind() {
                             if adt.is_enum() {
                                 ty = adt.repr.discr_type().to_ty(cx.tcx);
