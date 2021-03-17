@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc_ast::ast::{Item, ItemKind, Variant};
+use rustc_ast::ast::{Item, ItemKind, Variant, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -105,6 +105,8 @@ impl EarlyLintPass for UpperCaseAcronyms {
                 it.kind,
                 ItemKind::TyAlias(..) | ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..)
             );
+            // do not lint public items
+            if !matches!(it.vis.kind, VisibilityKind::Public);
             then {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
             }
