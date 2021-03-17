@@ -46,7 +46,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("{:?}", e))?;
 
-                for entry_result in archive.members() {
+            for entry_result in archive.members() {
                 let entry = entry_result.map_err(|e| format!("{:?}", e))?;
                 if entry.name() == METADATA_FILENAME.as_bytes() {
                     return Ok(entry.data());
