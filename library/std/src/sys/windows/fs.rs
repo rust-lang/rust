@@ -11,6 +11,7 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt};
+pub use crate::sys_common::fs::try_exists;
 use crate::sys_common::FromInner;
 
 use super::to_u16s;
