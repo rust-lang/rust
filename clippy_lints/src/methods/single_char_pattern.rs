@@ -1,4 +1,4 @@
-use crate::methods::utils::get_hint_if_single_char_arg;
+use super::utils::get_hint_if_single_char_arg;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
