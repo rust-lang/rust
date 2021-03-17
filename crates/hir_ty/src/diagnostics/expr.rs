@@ -713,4 +713,17 @@ fn main() {
             "#,
         );
     }
+
+    #[test]
+    fn cfgd_out_fn_params() {
+        check_diagnostics(
+            r#"
+fn foo(#[cfg(NEVER)] x: ()) {}
+
+fn main() {
+    foo();
+}
+            "#,
+        )
+    }
 }
