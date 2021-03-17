@@ -6,7 +6,7 @@
 //! [hash]: https://en.wikipedia.org/wiki/Hash_function
 //! [`HashMap`]: ../../std/collections/struct.HashMap.html
 //! [`HashSet`]: ../../std/collections/struct.HashSet.html
-
+//!
 //! The simplest way to make a type hashable is to use `#[derive(Hash)]`:
 //!
 //! # Examples
