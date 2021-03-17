@@ -38,9 +38,7 @@ endif
 %: $(SOURCEDIR)/lib/%.rs
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/lib/$@.rs && \
-				echo "--edition=2018" \
-			) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/lib/$@.rs) \
 			--crate-type rlib \
 			-Ztrim-diagnostic-paths=no \
 			-Zinstrument-coverage \
@@ -70,9 +68,7 @@ endif
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
-			$$( grep -q '^\/\/ require-rust-edition-2018' $(SOURCEDIR)/$@.rs && \
-				echo "--edition=2018" \
-			) \
+			$$( sed -nE 's#^// compile-flags:(.*)#\1# p' $(SOURCEDIR)/$@.rs) \
 			-L "$(TMPDIR)" \
 			-Ztrim-diagnostic-paths=no \
 			-Zinstrument-coverage \
