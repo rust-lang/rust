@@ -65,6 +65,8 @@ pub(crate) fn extract_definitions_from_markdown(
 ) -> Vec<(String, Option<hir::Namespace>, Range<usize>)> {
     let mut res = vec![];
     let mut cb = |link: BrokenLink| {
+        // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
+        // this is fixed in the repo but not on the crates.io release yet
         Some((
             /*url*/ link.reference.to_owned().into(),
             /*title*/ link.reference.to_owned().into(),
@@ -72,13 +74,10 @@ pub(crate) fn extract_definitions_from_markdown(
     };
     let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
     for (event, range) in doc.into_offset_iter() {
-        match event {
-            Event::Start(Tag::Link(_link_type, ref target, ref title)) => {
-                let link = if target.is_empty() { title } else { target };
-                let (link, ns) = parse_link(link);
-                res.push((link.to_string(), ns, range));
-            }
-            _ => {}
+        if let Event::Start(Tag::Link(_, target, title)) = event {
+            let link = if target.is_empty() { title } else { target };
+            let (link, ns) = parse_link(&link);
+            res.push((link.to_string(), ns, range));
         }
     }
     res

@@ -468,7 +468,7 @@ fn main() {
 }
 
 #[test]
-fn test_highlight_doctest() {
+fn test_highlight_doc_comment() {
     check_highlighting(
         r#"
 /// ```
@@ -532,6 +532,11 @@ impl Foo {
         true
     }
 }
+
+/// [`Foo`](Foo) is a struct
+/// [`all_the_links`](all_the_links) is this function
+/// [`noop`](noop) is a macro below
+pub fn all_the_links() {}
 
 /// ```
 /// noop!(1);
