@@ -41,6 +41,7 @@ mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
 mod search_is_some;
+mod single_char_add_str;
 mod single_char_insert_string;
 mod single_char_pattern;
 mod single_char_push_string;
@@ -1785,23 +1786,12 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args, _) => {
                 or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 expect_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
+                clone_on_copy::check(cx, expr, method_call.ident.name, args);
+                clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
 
                 let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && method_call.ident.name == sym::clone {
-                    clone_on_copy::check(cx, expr, &args[0], self_ty);
-                    clone_on_ref_ptr::check(cx, expr, &args[0]);
-                }
-                if args.len() == 1 && method_call.ident.name == sym!(to_string) {
-                    inefficient_to_string::check(cx, expr, &args[0], self_ty);
-                }
-
-                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    if match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
-                        single_char_push_string::check(cx, expr, args);
-                    } else if match_def_path(cx, fn_def_id, &paths::INSERT_STR) {
-                        single_char_insert_string::check(cx, expr, args);
-                    }
-                }
+                inefficient_to_string::check(cx, expr, method_call.ident.name, args);
+                single_char_add_str::check(cx, expr, args);
 
                 match self_ty.kind() {
                     ty::Ref(_, ty, _) if *ty.kind() == ty::Str => {
