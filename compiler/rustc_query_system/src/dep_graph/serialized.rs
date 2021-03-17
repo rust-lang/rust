@@ -1,4 +1,16 @@
 //! The data that we will serialize and deserialize.
+//!
+//! The dep-graph is serialized as a sequence of NodeInfo, with the dependencies
+//! specified inline.  The total number of nodes and edges are stored as the last
+//! 16 bytes of the file, so we can find them easily at decoding time.
+//!
+//! The serialisation is performed on-demand when each node is emitted. Using this
+//! scheme, we do not need to keep the current graph in memory.
+//!
+//! The deserisalisation is performed manually, in order to convert from the stored
+//! sequence of NodeInfos to the different arrays in SerializedDepGraph.  Since the
+//! node and edge count are stored at the end of the file, all the arrays can be
+//! pre-allocated with the right length.
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
