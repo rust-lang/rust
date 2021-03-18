@@ -277,9 +277,9 @@ pub(super) fn doc_comment(hl: &mut Highlights, sema: &Semantics<RootDatabase>, n
 }
 
 fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::String> {
-    match it.literal() {
+    match it.expr() {
         // #[doc = lit]
-        Some(lit) => match lit.kind() {
+        Some(ast::Expr::Literal(lit)) => match lit.kind() {
             ast::LiteralKind::String(it) => Some(it),
             _ => None,
         },
@@ -297,6 +297,7 @@ fn find_doc_string_in_attr(attr: &hir::Attr, it: &ast::Attr) -> Option<ast::Stri
                     string.text().get(1..string.text().len() - 1).map_or(false, |it| it == text)
                 })
         }
+        _ => return None,
     }
 }
 

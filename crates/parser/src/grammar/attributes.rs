@@ -30,8 +30,8 @@ fn attr(p: &mut Parser, inner: bool) {
         match p.current() {
             T![=] => {
                 p.bump(T![=]);
-                if expressions::literal(p).is_none() {
-                    p.error("expected literal");
+                if expressions::expr(p).0.is_none() {
+                    p.error("expected expression");
                 }
             }
             T!['('] | T!['['] | T!['{'] => items::token_tree(p),
