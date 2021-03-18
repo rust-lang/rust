@@ -9,11 +9,14 @@ tests. `panic!` is closely tied with the `unwrap` method of both
 [`Option`][ounwrap] and [`Result`][runwrap] enums. Both implementations call
 `panic!` when they are set to [`None`] or [`Err`] variants.
 
-This macro is used to inject panic into a Rust thread, causing the thread to
-panic entirely. The string built by this macro (using the [`format!`] syntax
-for building the actual message) is printed to `stderr`.
+When using `panic!()` you can specify a string payload, that is built using
+the [`format!`] syntax. That payload is used when injecting the panic into
+the calling Rust thread, causing the thread to panic entirely.
 
-Each thread's panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
+The default `std` panic handling strategy is to print the message payload to
+the `stderr` along with the file/line/column information of the `panic!()`
+call. You can override the panic hook using [`std::panic::set_hook()`].
+Inside the hook a panic can be reaped as the [`Box`]`<`[`Any`]`>` type,
 which contains either a `&str` or `String` for regular `panic!()` invocations.
 To panic with a value of another other type, [`panic_any`] can be used.
 
@@ -26,6 +29,7 @@ See also the macro [`compile_error!`], for raising errors during compilation.
 
 [ounwrap]: Option::unwrap
 [runwrap]: Result::unwrap
+[`std::panic::set_hook()`]: ../std/panic/fn.set_hook.html
 [`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
