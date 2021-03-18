@@ -3476,6 +3476,35 @@ impl<T> [T] {
 
         left
     }
+
+    /// Returns a [`Range`] that represents all valid indices of this slice.
+    /// This can be useful if you need to iterate with an index but want to avoid the possiblity of an off-by-one error.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(slice_indices)]
+    /// assert_eq!((0..0), [0; 0].indices());
+    /// assert_eq!((0..1), [0].indices());
+    /// assert_eq!((0..3), ['a', 'b', 'c'].indices());
+    /// assert_eq!((0..100), [0; 100].indices());
+    ///
+    /// // find the indices where a and b are different:
+    /// let a = b"cats and dogs";
+    /// let b = b"cars and more";
+    /// let res: Vec<usize> = a.indices().filter(|&i| a[i] != b[i]).collect();
+    /// assert_eq!(vec![2, 9, 11, 12], res);
+    ///
+    /// // use indices() in a for loop:
+    /// let s = &['a', 'b', 'c'];
+    /// for i in s.indices() {
+    ///     let element = s[i];
+    ///     // do something with element and i
+    /// }
+    /// ```
+    #[unstable(feature = "slice_indices", reason = "new API", issue = "none")]
+    pub fn indices(&self) -> Range<usize> {
+        0..self.len()
+    }
 }
 
 trait CloneFromSpec<T> {
