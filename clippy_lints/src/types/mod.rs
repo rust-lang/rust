@@ -13,16 +13,16 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_help, span_lint_and_then};
+use clippy_utils::diagnostics::{multispan_sugg, span_lint, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
-use clippy_utils::ty::{is_isize_or_usize, is_type_diagnostic_item};
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::{
-    BinOpKind, Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem,
-    ImplItemKind, Item, ItemKind, Local, MutTy, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
+    Body, Expr, ExprKind, FnDecl, FnRetTy, FnSig, GenericArg, GenericParamKind, HirId, ImplItem, ImplItemKind, Item,
+    ItemKind, Local, MutTy, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -37,7 +37,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use crate::consts::{constant, Constant};
 use clippy_utils::paths;
-use clippy_utils::{clip, comparisons, differing_macro_contexts, int_bits, match_path, sext, unsext};
+use clippy_utils::{comparisons, differing_macro_contexts, match_path, sext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
@@ -549,174 +549,6 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
     }
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
-    }
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for comparisons where one side of the relation is
-    /// either the minimum or maximum value for its type and warns if it involves a
-    /// case that is always true or always false. Only integer and boolean types are
-    /// checked.
-    ///
-    /// **Why is this bad?** An expression like `min <= x` may misleadingly imply
-    /// that it is possible for `x` to be less than the minimum. Expressions like
-    /// `max < x` are probably mistakes.
-    ///
-    /// **Known problems:** For `usize` the size of the current compile target will
-    /// be assumed (e.g., 64 bits on 64 bit systems). This means code that uses such
-    /// a comparison to detect target pointer width will trigger this lint. One can
-    /// use `mem::sizeof` and compare its value or conditional compilation
-    /// attributes
-    /// like `#[cfg(target_pointer_width = "64")] ..` instead.
-    ///
-    /// **Example:**
-    ///
-    /// ```rust
-    /// let vec: Vec<isize> = Vec::new();
-    /// if vec.len() <= 0 {}
-    /// if 100 > i32::MAX {}
-    /// ```
-    pub ABSURD_EXTREME_COMPARISONS,
-    correctness,
-    "a comparison with a maximum or minimum value that is always true or false"
-}
-
-declare_lint_pass!(AbsurdExtremeComparisons => [ABSURD_EXTREME_COMPARISONS]);
-
-enum ExtremeType {
-    Minimum,
-    Maximum,
-}
-
-struct ExtremeExpr<'a> {
-    which: ExtremeType,
-    expr: &'a Expr<'a>,
-}
-
-enum AbsurdComparisonResult {
-    AlwaysFalse,
-    AlwaysTrue,
-    InequalityImpossible,
-}
-
-fn is_cast_between_fixed_and_target<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
-    if let ExprKind::Cast(ref cast_exp, _) = expr.kind {
-        let precast_ty = cx.typeck_results().expr_ty(cast_exp);
-        let cast_ty = cx.typeck_results().expr_ty(expr);
-
-        return is_isize_or_usize(precast_ty) != is_isize_or_usize(cast_ty);
-    }
-
-    false
-}
-
-fn detect_absurd_comparison<'tcx>(
-    cx: &LateContext<'tcx>,
-    op: BinOpKind,
-    lhs: &'tcx Expr<'_>,
-    rhs: &'tcx Expr<'_>,
-) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
-    use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
-    use crate::types::ExtremeType::{Maximum, Minimum};
-    use clippy_utils::comparisons::{normalize_comparison, Rel};
-
-    // absurd comparison only makes sense on primitive types
-    // primitive types don't implement comparison operators with each other
-    if cx.typeck_results().expr_ty(lhs) != cx.typeck_results().expr_ty(rhs) {
-        return None;
-    }
-
-    // comparisons between fix sized types and target sized types are considered unanalyzable
-    if is_cast_between_fixed_and_target(cx, lhs) || is_cast_between_fixed_and_target(cx, rhs) {
-        return None;
-    }
-
-    let (rel, normalized_lhs, normalized_rhs) = normalize_comparison(op, lhs, rhs)?;
-
-    let lx = detect_extreme_expr(cx, normalized_lhs);
-    let rx = detect_extreme_expr(cx, normalized_rhs);
-
-    Some(match rel {
-        Rel::Lt => {
-            match (lx, rx) {
-                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
-                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
-                _ => return None,
-            }
-        },
-        Rel::Le => {
-            match (lx, rx) {
-                (Some(l @ ExtremeExpr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
-                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, InequalityImpossible), // max <= x
-                (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
-                (_, Some(r @ ExtremeExpr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
-                _ => return None,
-            }
-        },
-        Rel::Ne | Rel::Eq => return None,
-    })
-}
-
-fn detect_extreme_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<ExtremeExpr<'tcx>> {
-    use crate::types::ExtremeType::{Maximum, Minimum};
-
-    let ty = cx.typeck_results().expr_ty(expr);
-
-    let cv = constant(cx, cx.typeck_results(), expr)?.0;
-
-    let which = match (ty.kind(), cv) {
-        (&ty::Bool, Constant::Bool(false)) | (&ty::Uint(_), Constant::Int(0)) => Minimum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MIN >> (128 - int_bits(cx.tcx, ity)), ity) => {
-            Minimum
-        },
-
-        (&ty::Bool, Constant::Bool(true)) => Maximum,
-        (&ty::Int(ity), Constant::Int(i)) if i == unsext(cx.tcx, i128::MAX >> (128 - int_bits(cx.tcx, ity)), ity) => {
-            Maximum
-        },
-        (&ty::Uint(uty), Constant::Int(i)) if clip(cx.tcx, u128::MAX, uty) == i => Maximum,
-
-        _ => return None,
-    };
-    Some(ExtremeExpr { which, expr })
-}
-
-impl<'tcx> LateLintPass<'tcx> for AbsurdExtremeComparisons {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        use crate::types::AbsurdComparisonResult::{AlwaysFalse, AlwaysTrue, InequalityImpossible};
-        use crate::types::ExtremeType::{Maximum, Minimum};
-
-        if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.kind {
-            if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !expr.span.from_expansion() {
-                    let msg = "this comparison involving the minimum or maximum element for this \
-                               type contains a case that is always true or always false";
-
-                    let conclusion = match result {
-                        AlwaysFalse => "this comparison is always false".to_owned(),
-                        AlwaysTrue => "this comparison is always true".to_owned(),
-                        InequalityImpossible => format!(
-                            "the case where the two sides are not equal never occurs, consider using `{} == {}` \
-                             instead",
-                            snippet(cx, lhs.span, "lhs"),
-                            snippet(cx, rhs.span, "rhs")
-                        ),
-                    };
-
-                    let help = format!(
-                        "because `{}` is the {} value for this type, {}",
-                        snippet(cx, culprit.expr.span, "x"),
-                        match culprit.which {
-                            Minimum => "minimum",
-                            Maximum => "maximum",
-                        },
-                        conclusion
-                    );
-
-                    span_lint_and_help(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, None, &help);
-                }
-            }
-        }
     }
 }
 

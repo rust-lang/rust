@@ -164,6 +164,7 @@ mod consts;
 mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
+mod absurd_extreme_comparisons;
 mod approx_const;
 mod arithmetic;
 mod as_conversions;
@@ -558,6 +559,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &utils::internal_lints::PRODUCE_ICE,
         #[cfg(feature = "internal-lints")]
         &utils::internal_lints::UNNECESSARY_SYMBOL_STR,
+        &absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
@@ -955,7 +957,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         &transmute::WRONG_TRANSMUTE,
         &transmuting_null::TRANSMUTING_NULL,
         &try_err::TRY_ERR,
-        &types::ABSURD_EXTREME_COMPARISONS,
         &types::BORROWED_BOX,
         &types::BOX_VEC,
         &types::IMPLICIT_HASHER,
@@ -1112,7 +1113,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box get_last_with_len::GetLastWithLen);
     store.register_late_pass(|| box drop_forget_ref::DropForgetRef);
     store.register_late_pass(|| box empty_enum::EmptyEnum);
-    store.register_late_pass(|| box types::AbsurdExtremeComparisons);
+    store.register_late_pass(|| box absurd_extreme_comparisons::AbsurdExtremeComparisons);
     store.register_late_pass(|| box types::InvalidUpcastComparisons);
     store.register_late_pass(|| box regex::Regex::default());
     store.register_late_pass(|| box copies::CopyAndPaste);
@@ -1442,6 +1443,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
+        LintId::of(&absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&assertions_on_constants::ASSERTIONS_ON_CONSTANTS),
         LintId::of(&assign_ops::ASSIGN_OP_PATTERN),
@@ -1701,7 +1703,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
         LintId::of(&try_err::TRY_ERR),
-        LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&types::BORROWED_BOX),
         LintId::of(&types::BOX_VEC),
         LintId::of(&types::REDUNDANT_ALLOCATION),
@@ -1941,6 +1942,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     ]);
 
     store.register_group(true, "clippy::correctness", Some("clippy_correctness"), vec![
+        LintId::of(&absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&approx_const::APPROX_CONSTANT),
         LintId::of(&async_yields_async::ASYNC_YIELDS_ASYNC),
         LintId::of(&atomic_ordering::INVALID_ATOMIC_ORDERING),
@@ -2002,7 +2004,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(&transmute::UNSOUND_COLLECTION_TRANSMUTE),
         LintId::of(&transmute::WRONG_TRANSMUTE),
         LintId::of(&transmuting_null::TRANSMUTING_NULL),
-        LintId::of(&types::ABSURD_EXTREME_COMPARISONS),
         LintId::of(&undropped_manually_drops::UNDROPPED_MANUALLY_DROPS),
         LintId::of(&unicode::INVISIBLE_CHARACTERS),
         LintId::of(&unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
