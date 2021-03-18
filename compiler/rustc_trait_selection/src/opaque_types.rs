@@ -1109,10 +1109,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             } else {
                 // Don't emit multiple errors for the same set of substs
                 opaque_defn.substs.push(substs);
-                /*opaque_defn.concrete_ty = tcx.ty_error_with_message(
+                opaque_defn.concrete_ty = tcx.ty_error_with_message(
                     self.value_span,
                     "defining use generics differ from previous defining use",
-                );*/
+                );
                 tcx.sess
                     .struct_span_err(
                         self.value_span,
