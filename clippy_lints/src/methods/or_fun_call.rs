@@ -6,6 +6,7 @@ use clippy_utils::{contains_return, get_trait_def_id, last_path_segment, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::{BlockCheckMode, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Span;
@@ -154,7 +155,6 @@ pub(super) fn check<'tcx>(
             }
         }
     }
-
     if args.len() == 2 {
         match args[1].kind {
             hir::ExprKind::Call(ref fun, ref or_args) => {
@@ -167,7 +167,16 @@ pub(super) fn check<'tcx>(
             hir::ExprKind::Index(..) | hir::ExprKind::MethodCall(..) => {
                 check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
             },
-            _ => {},
+            hir::ExprKind::Block(block, _) => {
+                if let BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) = block.rules {
+                    if let Some(block_expr) = block.expr {
+                        if let hir::ExprKind::MethodCall(..) = block_expr.kind {
+                            check_general_case(cx, name, method_span, &args[0], &args[1], expr.span, None);
+                        }
+                    }
+                }
+            },
+            _ => (),
         }
     }
 }
