@@ -76,7 +76,7 @@ pub struct ItemTree {
 }
 
 impl ItemTree {
-    pub(crate) fn item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
+    pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = profile::span("item_tree_query").detail(|| format!("{:?}", file_id));
         let syntax = if let Some(node) = db.parse_or_expand(file_id) {
             if node.kind() == SyntaxKind::ERROR {
@@ -401,7 +401,47 @@ impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
     }
 }
 
-pub type ItemTreeId<N> = InFile<FileItemTreeId<N>>;
+#[derive(Debug)]
+pub struct ItemTreeId<N: ItemTreeNode> {
+    file: HirFileId,
+    pub value: FileItemTreeId<N>,
+}
+
+impl<N: ItemTreeNode> ItemTreeId<N> {
+    pub fn new(file: HirFileId, idx: FileItemTreeId<N>) -> Self {
+        Self { file, value: idx }
+    }
+
+    pub fn file_id(self) -> HirFileId {
+        self.file
+    }
+
+    pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
+        db.file_item_tree(self.file)
+    }
+}
+
+impl<N: ItemTreeNode> Copy for ItemTreeId<N> {}
+impl<N: ItemTreeNode> Clone for ItemTreeId<N> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<N: ItemTreeNode> PartialEq for ItemTreeId<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.file == other.file && self.value == other.value
+    }
+}
+
+impl<N: ItemTreeNode> Eq for ItemTreeId<N> {}
+
+impl<N: ItemTreeNode> Hash for ItemTreeId<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.file.hash(state);
+        self.value.hash(state);
+    }
+}
 
 macro_rules! mod_items {
     ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {

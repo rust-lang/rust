@@ -574,7 +574,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {
-        let file_id = self.db.lookup_intern_trait(def.id).id.file_id;
+        let file_id = self.db.lookup_intern_trait(def.id).id.file_id();
         let resolver = def.id.resolver(self.db.upcast());
         SemanticsScope { db: self.db, file_id, resolver }
     }

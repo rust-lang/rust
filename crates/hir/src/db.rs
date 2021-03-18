@@ -3,10 +3,10 @@
 pub use hir_def::db::{
     AttrsQuery, BlockDefMapQuery, BodyQuery, BodyWithSourceMapQuery, ConstDataQuery,
     CrateDefMapQueryQuery, CrateLangItemsQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery,
-    ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery, ImportMapQuery,
-    InternConstQuery, InternDatabase, InternDatabaseStorage, InternEnumQuery, InternFunctionQuery,
-    InternImplQuery, InternStaticQuery, InternStructQuery, InternTraitQuery, InternTypeAliasQuery,
-    InternUnionQuery, ItemTreeQuery, LangItemQuery, StaticDataQuery, StructDataQuery,
+    ExprScopesQuery, FileItemTreeQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery,
+    ImportMapQuery, InternConstQuery, InternDatabase, InternDatabaseStorage, InternEnumQuery,
+    InternFunctionQuery, InternImplQuery, InternStaticQuery, InternStructQuery, InternTraitQuery,
+    InternTypeAliasQuery, InternUnionQuery, LangItemQuery, StaticDataQuery, StructDataQuery,
     TraitDataQuery, TypeAliasDataQuery, UnionDataQuery,
 };
 pub use hir_expand::db::{

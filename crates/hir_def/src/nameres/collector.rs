@@ -242,7 +242,7 @@ struct DefCollector<'a> {
 impl DefCollector<'_> {
     fn seed_with_top_level(&mut self) {
         let file_id = self.db.crate_graph()[self.def_map.krate].root_file_id;
-        let item_tree = self.db.item_tree(file_id.into());
+        let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
         if item_tree
@@ -263,7 +263,7 @@ impl DefCollector<'_> {
     }
 
     fn seed_with_inner(&mut self, block: AstId<ast::BlockExpr>) {
-        let item_tree = self.db.item_tree(block.file_id);
+        let item_tree = self.db.file_item_tree(block.file_id);
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::BlockExpr { block };
         if item_tree
@@ -895,7 +895,7 @@ impl DefCollector<'_> {
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
-        let item_tree = self.db.item_tree(file_id);
+        let item_tree = self.db.file_item_tree(file_id);
         let mod_dir = self.mod_dirs[&module_id].clone();
         ModCollector {
             def_collector: &mut *self,
@@ -951,21 +951,21 @@ impl DefCollector<'_> {
         let mut diagnosed_extern_crates = FxHashSet::default();
         for directive in &self.unresolved_imports {
             if let ImportSource::ExternCrate(krate) = directive.import.source {
-                let item_tree = self.db.item_tree(krate.file_id);
+                let item_tree = krate.item_tree(self.db);
                 let extern_crate = &item_tree[krate.value];
 
                 diagnosed_extern_crates.insert(extern_crate.name.clone());
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_extern_crate(
                     directive.module_id,
-                    InFile::new(krate.file_id, extern_crate.ast_id),
+                    InFile::new(krate.file_id(), extern_crate.ast_id),
                 ));
             }
         }
 
         for directive in &self.unresolved_imports {
             if let ImportSource::Import(import) = &directive.import.source {
-                let item_tree = self.db.item_tree(import.file_id);
+                let item_tree = import.item_tree(self.db);
                 let import_data = &item_tree[import.value];
 
                 match (import_data.path.segments().first(), &import_data.path.kind) {
@@ -979,7 +979,7 @@ impl DefCollector<'_> {
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
-                    InFile::new(import.file_id, import_data.ast_id),
+                    InFile::new(import.file_id(), import_data.ast_id),
                     import_data.index,
                 ));
             }
@@ -1055,7 +1055,7 @@ impl ModCollector<'_, '_> {
                             self.def_collector.db,
                             krate,
                             &self.item_tree,
-                            InFile::new(self.file_id, import_id),
+                            ItemTreeId::new(self.file_id, import_id),
                         ),
                         status: PartialResolvedImport::Unresolved,
                     })
@@ -1067,7 +1067,7 @@ impl ModCollector<'_, '_> {
                             self.def_collector.db,
                             krate,
                             &self.item_tree,
-                            InFile::new(self.file_id, import_id),
+                            ItemTreeId::new(self.file_id, import_id),
                         ),
                         status: PartialResolvedImport::Unresolved,
                     })
@@ -1299,7 +1299,7 @@ impl ModCollector<'_, '_> {
                             Some((file_id, is_mod_rs)),
                             &self.item_tree[module.visibility],
                         );
-                        let item_tree = db.item_tree(file_id.into());
+                        let item_tree = db.file_item_tree(file_id.into());
                         ModCollector {
                             def_collector: &mut *self.def_collector,
                             macro_depth: self.macro_depth,

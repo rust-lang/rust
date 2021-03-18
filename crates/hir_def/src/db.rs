@@ -48,8 +48,8 @@ pub trait InternDatabase: SourceDatabase {
 
 #[salsa::query_group(DefDatabaseStorage)]
 pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
-    #[salsa::invoke(ItemTree::item_tree_query)]
-    fn item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
+    #[salsa::invoke(ItemTree::file_item_tree_query)]
+    fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
 
     #[salsa::invoke(crate_def_map_wait)]
     #[salsa::transparent]

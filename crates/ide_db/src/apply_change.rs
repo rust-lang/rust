@@ -148,7 +148,7 @@ impl RootDatabase {
             hir::db::HygieneFrameQuery
 
             // DefDatabase
-            hir::db::ItemTreeQuery
+            hir::db::FileItemTreeQuery
             hir::db::BlockDefMapQuery
             hir::db::CrateDefMapQueryQuery
             hir::db::StructDataQuery
