@@ -1,21 +1,16 @@
-error: visibility `pub` is not followed by an item
-  --> $DIR/duplicate-visibility.rs:4:5
-   |
-LL |     pub pub fn foo();
-   |     ^^^ the visibility
-   |
-   = help: you likely meant to define an item, e.g., `pub fn foo() {}`
-
-error: non-item in item list
-  --> $DIR/duplicate-visibility.rs:4:9
+error: expected one of `(`, `async`, `const`, `default`, `extern`, `fn`, `pub`, `unsafe`, or `use`, found keyword `pub`
+  --> $DIR/duplicate-visibility.rs:6:9
    |
 LL | extern "C" {
-   |            - item list starts here
+   |            - while parsing this item list starting here
 LL |     pub pub fn foo();
-   |         ^^^ non-item starts here
-...
+   |         ^^^
+   |         |
+   |         expected one of 9 possible tokens
+   |         help: visibility `pub` must come before `pub pub`: `pub pub pub`
+LL |
 LL | }
-   | - item list ends here
+   | - the item list ends here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

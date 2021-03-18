@@ -204,6 +204,7 @@ impl<'a> Parser<'a> {
         def: &mut Defaultness,
         req_name: ReqName,
     ) -> PResult<'a, Option<ItemInfo>> {
+        let def_final = def == &Defaultness::Final;
         let mut def = || mem::replace(def, Defaultness::Final);
 
         let info = if self.eat_keyword(kw::Use) {
@@ -226,7 +227,7 @@ impl<'a> Parser<'a> {
             }
 
             (Ident::invalid(), ItemKind::Use(tree))
-        } else if self.check_fn_front_matter() {
+        } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
             let (ident, sig, generics, body) = self.parse_fn(attrs, req_name, lo)?;
             (ident, ItemKind::Fn(box FnKind(def(), sig, generics, body)))
@@ -1634,18 +1635,27 @@ impl<'a> Parser<'a> {
     }
 
     /// Is the current token the start of an `FnHeader` / not a valid parse?
-    pub(super) fn check_fn_front_matter(&mut self) -> bool {
+    ///
+    /// `check_pub` adds additional `pub` to the checks in case users place it
+    /// wrongly, can be used to ensure `pub` never comes after `default`.
+    pub(super) fn check_fn_front_matter(&mut self, check_pub: bool) -> bool {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
-        const QUALS: [Symbol; 4] = [kw::Const, kw::Async, kw::Unsafe, kw::Extern];
+        // `pub` is added in case users got confused with the ordering like `async pub fn`,
+        // only if it wasn't preceeded by `default` as `default pub` is invalid.
+        let quals: &[Symbol] = if check_pub {
+            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+        } else {
+            &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+        };
         self.check_keyword(kw::Fn) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
-            || QUALS.iter().any(|&kw| self.check_keyword(kw))
+            || quals.iter().any(|&kw| self.check_keyword(kw))
                 && self.look_ahead(1, |t| {
                     // `$qual fn`, e.g. `const fn` or `async fn`.
                     t.is_keyword(kw::Fn)
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
-                    || t.is_non_raw_ident_where(|i| QUALS.contains(&i.name)
+                    || t.is_non_raw_ident_where(|i| quals.contains(&i.name)
                         // Rule out 2015 `const async: T = val`.
                         && i.is_reserved()
                         // Rule out unsafe extern block.
@@ -1666,6 +1676,7 @@ impl<'a> Parser<'a> {
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
     pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+        let sp_start = self.token.span;
         let constness = self.parse_constness();
         let asyncness = self.parse_asyncness();
         let unsafety = self.parse_unsafety();
@@ -1679,8 +1690,27 @@ impl<'a> Parser<'a> {
             // It is possible for `expect_one_of` to recover given the contents of
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
-            if !self.expect_one_of(&[], &[])? {
-                unreachable!()
+            match self.expect_one_of(&[], &[]) {
+                Ok(true) => {}
+                Ok(false) => unreachable!(),
+                Err(mut err) => {
+                    // Recover incorrect visibility order such as `async pub`.
+                    if self.check_keyword(kw::Pub) {
+                        let sp = sp_start.to(self.prev_token.span);
+                        if let Ok(snippet) = self.span_to_snippet(sp) {
+                            let vis = self.parse_visibility(FollowedByType::No)?;
+                            let vs = pprust::vis_to_string(&vis);
+                            let vs = vs.trim_end();
+                            err.span_suggestion(
+                                sp_start.to(self.prev_token.span),
+                                &format!("visibility `{}` must come before `{}`", vs, snippet),
+                                format!("{} {}", vs, snippet),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    }
+                    return Err(err);
+                }
             }
         }
 
