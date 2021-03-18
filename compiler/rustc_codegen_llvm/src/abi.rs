@@ -62,7 +62,7 @@ fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
     //
     // For now, do not enable mutable_noalias by default at all, while the
     // issue is being figured out.
-    cx.tcx.sess.opts.debugging_opts.mutable_noalias
+    cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(false)
 }
 
 impl ArgAttributesExt for ArgAttributes {
