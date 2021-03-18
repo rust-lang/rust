@@ -391,8 +391,6 @@ impl DirtyCleanVisitor<'tcx> {
     fn assert_clean(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_clean({:?})", dep_node);
 
-        // if the node wasn't previously evaluated and now is (or vice versa),
-        // then the node isn't actually clean or dirty.
         if self.tcx.dep_graph.is_red(&dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx

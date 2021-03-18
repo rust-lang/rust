@@ -73,7 +73,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 {
     #[instrument(skip(d))]
     fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
-        let position = d.position();
+        let start_position = d.position();
 
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
@@ -85,7 +85,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
         debug!(?node_count, ?edge_count);
 
         debug!("position: {:?}", d.position());
-        d.set_position(position);
+        d.set_position(start_position);
         debug!("position: {:?}", d.position());
 
         let mut nodes = IndexVec::with_capacity(node_count);
@@ -137,7 +137,7 @@ struct Stat<K: DepKind> {
     edge_counter: u64,
 }
 
-struct EncodingStatus<K: DepKind> {
+struct EncoderState<K: DepKind> {
     encoder: FileEncoder,
     total_node_count: usize,
     total_edge_count: usize,
@@ -145,7 +145,7 @@ struct EncodingStatus<K: DepKind> {
     stats: Option<FxHashMap<K, Stat<K>>>,
 }
 
-impl<K: DepKind> EncodingStatus<K> {
+impl<K: DepKind> EncoderState<K> {
     fn new(encoder: FileEncoder, record_stats: bool) -> Self {
         Self {
             encoder,
@@ -186,8 +186,9 @@ impl<K: DepKind> EncodingStatus<K> {
 
         debug!(?index, ?node);
         let encoder = &mut self.encoder;
-        self.result =
-            std::mem::replace(&mut self.result, Ok(())).and_then(|()| node.encode(encoder));
+        if self.result.is_ok() {
+            self.result = node.encode(encoder);
+        }
         index
     }
 
@@ -209,7 +210,7 @@ impl<K: DepKind> EncodingStatus<K> {
 }
 
 pub struct GraphEncoder<K: DepKind> {
-    status: Lock<EncodingStatus<K>>,
+    status: Lock<EncoderState<K>>,
     record_graph: Option<Lock<DepGraphQuery<K>>>,
 }
 
@@ -225,7 +226,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
         } else {
             None
         };
-        let status = Lock::new(EncodingStatus::new(encoder, record_stats));
+        let status = Lock::new(EncoderState::new(encoder, record_stats));
         GraphEncoder { status, record_graph }
     }
 

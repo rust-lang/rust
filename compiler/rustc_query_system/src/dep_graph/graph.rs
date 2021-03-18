@@ -626,11 +626,10 @@ impl<K: DepKind> DepGraph<K> {
 
         // There may be multiple threads trying to mark the same dep node green concurrently
 
-        let dep_node_index = {
-            // We allocating an entry for the node in the current dependency graph and
-            // adding all the appropriate edges imported from the previous graph
-            data.current.intern_dark_green_node(&data.previous, prev_dep_node_index)
-        };
+        // We allocating an entry for the node in the current dependency graph and
+        // adding all the appropriate edges imported from the previous graph
+        let dep_node_index =
+            data.current.promote_node_and_deps_to_current(&data.previous, prev_dep_node_index);
 
         // ... emitting any stored diagnostic ...
 
@@ -713,7 +712,7 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    // Returns true if the given node has been marked as green during the
+    // Returns true if the given node has been marked as red during the
     // current compilation session. Used in various assertions
     pub fn is_red(&self, dep_node: &DepNode<K>) -> bool {
         self.node_color(dep_node) == Some(DepNodeColor::Red)
@@ -833,17 +832,11 @@ rustc_index::newtype_index! {
 /// will be populated as we run queries or tasks. We never remove nodes from the
 /// graph: they are only added.
 ///
-/// The nodes in it are identified by a `DepNodeIndex`. Internally, this maps to
-/// a `HybridIndex`, which identifies which collection in the `data` field
-/// contains a node's data. Which collection is used for a node depends on
-/// whether the node was present in the `PreviousDepGraph`, and if so, the color
-/// of the node. Each type of node can share more or less data with the previous
-/// graph. When possible, we can store just the index of the node in the
-/// previous graph, rather than duplicating its data in our own collections.
-/// This is important, because these graph structures are some of the largest in
-/// the compiler.
+/// The nodes in it are identified by a `DepNodeIndex`. We avoid keeping the nodes
+/// in memory.  This is important, because these graph structures are some of the
+/// largest in the compiler.
 ///
-/// For the same reason, we also avoid storing `DepNode`s more than once as map
+/// For this reason, we avoid storing `DepNode`s more than once as map
 /// keys. The `new_node_to_index` map only contains nodes not in the previous
 /// graph, and we map nodes in the previous graph to indices via a two-step
 /// mapping. `PreviousDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
@@ -939,6 +932,15 @@ impl<K: DepKind> CurrentDepGraph<K> {
         }
     }
 
+    #[cfg(debug_assertions)]
+    fn record_edge(&self, dep_node_index: DepNodeIndex, key: DepNode<K>) {
+        if let Some(forbidden_edge) = &self.forbidden_edge {
+            forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+        }
+    }
+
+    /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
+    /// Assumes that this is a node that has no equivalent in the previous dep-graph.
     fn intern_new_node(
         &self,
         key: DepNode<K>,
@@ -951,9 +953,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 let dep_node_index = self.encoder.borrow().send(key, current_fingerprint, edges);
                 entry.insert(dep_node_index);
                 #[cfg(debug_assertions)]
-                if let Some(forbidden_edge) = &self.forbidden_edge {
-                    forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-                }
+                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
         }
@@ -964,20 +964,20 @@ impl<K: DepKind> CurrentDepGraph<K> {
         prev_graph: &PreviousDepGraph<K>,
         key: DepNode<K>,
         edges: EdgesVec,
-        current_fingerprint: Option<Fingerprint>,
+        fingerprint: Option<Fingerprint>,
         print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
         let print_status = cfg!(debug_assertions) && print_status;
 
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
             // Determine the color and index of the new `DepNode`.
-            if let Some(current_fingerprint) = current_fingerprint {
-                if current_fingerprint == prev_graph.fingerprint_by_index(prev_index) {
+            if let Some(fingerprint) = fingerprint {
+                if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
                     if print_status {
                         eprintln!("[task::green] {:?}", key);
                     }
 
-                    // This is a light green node: it existed in the previous compilation,
+                    // This is a green node: it existed in the previous compilation,
                     // its query was re-executed, and it has the same result as before.
                     let mut prev_index_to_index = self.prev_index_to_index.lock();
 
@@ -985,16 +985,14 @@ impl<K: DepKind> CurrentDepGraph<K> {
                         Some(dep_node_index) => dep_node_index,
                         None => {
                             let dep_node_index =
-                                self.encoder.borrow().send(key, current_fingerprint, edges);
+                                self.encoder.borrow().send(key, fingerprint, edges);
                             prev_index_to_index[prev_index] = Some(dep_node_index);
                             dep_node_index
                         }
                     };
 
                     #[cfg(debug_assertions)]
-                    if let Some(forbidden_edge) = &self.forbidden_edge {
-                        forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-                    }
+                    self.record_edge(dep_node_index, key);
                     (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
                 } else {
                     if print_status {
@@ -1009,16 +1007,14 @@ impl<K: DepKind> CurrentDepGraph<K> {
                         Some(dep_node_index) => dep_node_index,
                         None => {
                             let dep_node_index =
-                                self.encoder.borrow().send(key, current_fingerprint, edges);
+                                self.encoder.borrow().send(key, fingerprint, edges);
                             prev_index_to_index[prev_index] = Some(dep_node_index);
                             dep_node_index
                         }
                     };
 
                     #[cfg(debug_assertions)]
-                    if let Some(forbidden_edge) = &self.forbidden_edge {
-                        forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-                    }
+                    self.record_edge(dep_node_index, key);
                     (dep_node_index, Some((prev_index, DepNodeColor::Red)))
                 }
             } else {
@@ -1043,9 +1039,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 };
 
                 #[cfg(debug_assertions)]
-                if let Some(forbidden_edge) = &self.forbidden_edge {
-                    forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-                }
+                self.record_edge(dep_node_index, key);
                 (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
         } else {
@@ -1053,16 +1047,16 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 eprintln!("[task::new] {:?}", key);
             }
 
-            let current_fingerprint = current_fingerprint.unwrap_or(Fingerprint::ZERO);
+            let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
 
             // This is a new node: it didn't exist in the previous compilation session.
-            let dep_node_index = self.intern_new_node(key, edges, current_fingerprint);
+            let dep_node_index = self.intern_new_node(key, edges, fingerprint);
 
             (dep_node_index, None)
         }
     }
 
-    fn intern_dark_green_node(
+    fn promote_node_and_deps_to_current(
         &self,
         prev_graph: &PreviousDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
@@ -1086,9 +1080,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
                 );
                 prev_index_to_index[prev_index] = Some(dep_node_index);
                 #[cfg(debug_assertions)]
-                if let Some(forbidden_edge) = &self.forbidden_edge {
-                    forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-                }
+                self.record_edge(dep_node_index, key);
                 dep_node_index
             }
         }

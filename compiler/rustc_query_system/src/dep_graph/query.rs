@@ -32,7 +32,8 @@ impl<K: DepKind> DepGraphQuery<K> {
 
         for &target in edges.iter() {
             let target = self.dep_index_to_index[target];
-            // Skip missing edges.
+            // We may miss the edges that are pushed while the `DepGraphQuery` is being accessed.
+            // Skip them to issues.
             if let Some(target) = target {
                 self.graph.add_edge(source, target, ());
             }

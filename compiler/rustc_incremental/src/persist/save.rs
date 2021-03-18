@@ -34,10 +34,8 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         let dep_graph_path = dep_graph_path(sess);
         let staging_dep_graph_path = staging_dep_graph_path(sess);
 
-        join(
-            || sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx)),
-            || sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx)),
-        );
+        sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx));
+        sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
 
         if sess.opts.debugging_opts.incremental_info {
             tcx.dep_graph.print_incremental_info()
